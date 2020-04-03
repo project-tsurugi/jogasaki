@@ -1,0 +1,22 @@
+# CMake
+/build*
+
+# MS Office
+~*
+
+# Mac
+.DS_Store
+
+# VSCode
+/.vscode
+
+# CLion
+cmake-build-*
+.idea
+*.tokens
+
+#GLOBAL
+GPATH
+GRTAGS
+GTAGS
+HTML/

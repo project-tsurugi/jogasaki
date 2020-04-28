@@ -31,7 +31,7 @@ public:
     consumer_task() = default;
     consumer_task(channel* channel, model::step* src) : task_base(channel, src) {}
     void execute() override {
-        LOG(INFO) << *this << " simple_emit_process_main_task executed. count: " << count_;
+        DVLOG(1) << *this << " consumer_task executed. count: " << count_;
     }
 };
 

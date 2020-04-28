@@ -34,7 +34,7 @@ public:
     record_writer* writer_{};
 
     void execute() override {
-        LOG(INFO) << *this << " simple_scan_process_main_task executed. count: " << count_;
+        DVLOG(1) << *this << " producer_task executed. count: " << count_;
 
         auto rec_meta = std::make_shared<meta::record_meta>(std::vector<meta::field_type>{
                 meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
@@ -55,7 +55,7 @@ public:
             ref.set_value<double>(offset_c2, i);
             writer_->write(ref);
         }
-//        writer_->flush();
+        writer_->flush();
     }
 };
 

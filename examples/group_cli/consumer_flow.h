@@ -28,7 +28,6 @@ namespace jogasaki::executor {
 class consumer_flow : public common::flow {
 public:
     consumer_flow() = default;
-    ~consumer_flow() = default;
     consumer_flow(exchange::step* downstream, model::step* step, channel* ch) : downstream_(downstream), step_(step), channel_(ch) {}
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         auto initial_count = tasks_.size();

@@ -255,7 +255,7 @@ public:
         ss << to_string_view(current);
         ss << " -> ";
         ss << to_string_view(new_state);
-        LOG(INFO) << ss.str();
+        DVLOG(1) << ss.str();
 
         current = new_state;
         on_state_change(v);
@@ -345,7 +345,7 @@ void dag_controller::schedule(model::graph &g) {
 
 void dag_controller::Impl::operator()(upstream_providing_tag_t, event& e) {
     if (auto v = graph_->find_step(e.target())) {
-        LOG(INFO) << *v << " got notified upstream started providing";
+        DVLOG(1) << *v << " got notified upstream started providing";
         if (e.source_port_kind() == port_kind::sub) {
             // start prepare task for the providing port
             start_pretask(*v, e.source_port_index());        // no-op if task already running for the port
@@ -360,7 +360,7 @@ void dag_controller::Impl::operator()(upstream_providing_tag_t, event& e) {
 }
 
 void dag_controller::Impl::operator()(task_completed_tag_t, event& e) {
-    LOG(INFO) << "task[id=" << e.task() << "] completed";
+    DVLOG(1) << "task[id=" << e.task() << "] completed";
     if (auto v = graph_->find_step(e.target())) {
         auto& tasks = steps_[v->id()];
         auto k = tasks.task_state(e.task(), task_state_kind::completed);

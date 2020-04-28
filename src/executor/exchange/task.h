@@ -32,7 +32,7 @@ public:
     task& operator=(task&& other) noexcept = default;
     task(channel* channel, step* src) : channel_(channel), src_(src) {}
     model::task_result operator()() override {
-        LOG(INFO) << *this << " exchange_task executed.";
+        DVLOG(1) << *this << " exchange_task executed.";
         channel_->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     }

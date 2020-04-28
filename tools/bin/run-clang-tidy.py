@@ -149,7 +149,7 @@ def apply_fixes(args, tmpdir):
   if args.style:
     invocation.append('-style=' + args.style)
   invocation.append(tmpdir)
-  subprocess.call(invocation)
+  subprocess.call(invocation, cwd=args.build_path)
 
 
 def run_tidy(args, tmpdir, build_path, queue, lock, failed_files):

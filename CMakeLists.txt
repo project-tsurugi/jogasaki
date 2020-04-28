@@ -30,6 +30,7 @@ option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" 
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_EXAMPLES "Build example programs" ON)
+option(BUILD_DOCUMENTS "build documents" ON)
 option(ENABLE_GOOGLE_PERFTOOLS "Enable Google Perftools" OFF)
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")
@@ -51,6 +52,7 @@ find_package(gperftools)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
+include(InstallOptions)
 include(Tests)
 
 add_subdirectory(third_party) # should be before enable_testing()
@@ -62,11 +64,51 @@ endif()
 set(export_name "jogasaki")
 set(package_name "jogasaki")
 
+add_library(api INTERFACE)
+
+target_include_directories(api
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/jogasaki>
+)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake
+    @ONLY
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
+    COMPATIBILITY SameMajorVersion
+)
+
+install_custom(api ${export_name})
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake
+    DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+)
+
+install(
+    EXPORT ${package_name}
+    NAMESPACE ${package_name}-
+    FILE ${package_name}-targets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+    EXPORT_LINK_INTERFACE_LIBRARIES
+)
+
 add_subdirectory(src)
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+if (BUILD_DOCUMENTS)
+    add_subdirectory(doxygen)
 endif()
 

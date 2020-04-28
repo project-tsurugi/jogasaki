@@ -58,6 +58,10 @@ enum class reader_state {
     eof,
 };
 
+/**
+ * @brief reader for grouped records
+ * @attention readers for shuffle should be acquired after transfer completed
+ */
 class reader : public group_reader {
 public:
     ~reader() override = default;

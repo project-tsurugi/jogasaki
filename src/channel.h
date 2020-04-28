@@ -28,7 +28,7 @@ public:
     using element_type = event;
 
     channel() = default;
-    ~channel() = default;
+    virtual ~channel() = default;
     channel(channel&& other) noexcept = default;
     channel& operator=(channel&& other) noexcept = default;
 

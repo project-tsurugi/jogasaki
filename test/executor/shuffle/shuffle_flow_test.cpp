@@ -59,8 +59,6 @@ TEST_F(shuffle_flow_test, writers) {
     auto& sink = sinks[0];
     auto& source = sources[0];
     auto& writer = sink.acquire_writer();
-    auto reader_container = source.acquire_reader();
-    auto& reader = *reader_container.reader<group_reader>();
 
     page_pool pool{};
     monotonic_paged_memory_resource resource{&pool};
@@ -76,6 +74,8 @@ TEST_F(shuffle_flow_test, writers) {
     }
     writer.flush();
     f.transfer();
+    auto reader_container = source.acquire_reader();
+    auto& reader = *reader_container.reader<group_reader>();
     std::size_t count = 0;
     while(reader.next_group()) {
         while(reader.next_member()) {

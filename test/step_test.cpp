@@ -35,7 +35,7 @@ class step_test : public test_root {};
 
 TEST_F(step_test, basic) {
     auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::isolated_process>();
+    auto p = std::make_unique<test::isolated_process>(g.get());
     p->activate();
     g->insert(std::move(p));
     for(auto&& v : g->steps()) {
@@ -48,7 +48,7 @@ TEST_F(step_test, basic) {
 
 TEST_F(step_test, simple_forward) {
     auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::isolated_process>();
+    auto p = std::make_unique<test::isolated_process>(g.get());
     g->insert(std::move(p));
     for(auto&& v : g->steps()) {
         for(auto&& t : v->create_tasks()) {
@@ -60,11 +60,11 @@ TEST_F(step_test, simple_forward) {
 
 TEST_F(step_test, cogroup) {
     auto g = std::make_unique<common::graph>();
-    auto scan1 = std::make_unique<simple_scan_process>();
-    auto scan2 = std::make_unique<simple_scan_process>();
+    auto scan1 = std::make_unique<simple_scan_process>(g.get());
+    auto scan2 = std::make_unique<simple_scan_process>(g.get());
     auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
     auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
-    auto cgrp = std::make_unique<simple_cogroup_process>();
+    auto cgrp = std::make_unique<simple_cogroup_process>(g.get());
     auto dvr = std::make_unique<deliver::step>();
     *scan1 >> *xch1;
     *scan2 >> *xch2;

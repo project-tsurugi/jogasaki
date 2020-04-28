@@ -2,38 +2,38 @@ file(GLOB SOURCES
     "*.cpp"
 )
 
-add_executable(cli
+add_executable(group-cli
         ${SOURCES}
 )
 
-set_target_properties(cli
+set_target_properties(group-cli
         PROPERTIES
         RUNTIME_OUTPUT_NAME "dc-cli"
 )
 
-target_include_directories(cli
+target_include_directories(group-cli
         PRIVATE .
 )
 
-target_link_libraries(cli
+target_link_libraries(group-cli
         PRIVATE takatori
         PRIVATE dag_controller
         PRIVATE glog::glog
         PRIVATE gflags::gflags
 )
 if (ENABLE_GOOGLE_PERFTOOLS)
-    target_link_libraries(cli
+    target_link_libraries(group-cli
             PRIVATE gperftools::gperftools
             )
 endif()
 
-set_compile_options(cli)
+set_compile_options(group-cli)
 
 if(INSTALL_EXAMPLES)
-    install_custom(cli ${export_name})
+    install_custom(group-cli ${export_name})
 endif()
 
 add_test(
-        NAME cli
-        COMMAND cli
+        NAME group-cli
+        COMMAND group-cli
 )

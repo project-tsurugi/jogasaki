@@ -1,0 +1,118 @@
+/*
+ * Copyright 2018-2019 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <iostream>
+#include <vector>
+
+#include <glog/logging.h>
+
+#include <executor/common/graph.h>
+#include <executor/common/port.h>
+#include <scheduler/dag_controller.h>
+#include <executor/exchange/deliver/step.h>
+#include "producer_process.h"
+#include "consumer_process.h"
+
+namespace dc::group_cli {
+
+using namespace dc;
+using namespace dc::model;
+using namespace dc::executor;
+using namespace dc::executor::exchange;
+using namespace dc::scheduler;
+
+DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
+
+std::shared_ptr<meta::record_meta> test_record_meta() {
+    return std::make_shared<meta::record_meta>(
+            std::vector<meta::field_type>{
+                    meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
+                    meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
+            },
+            boost::dynamic_bitset<std::uint64_t>{std::string("00")});
+}
+
+/*
+static int run() {
+    auto g = std::make_unique<common::graph>();
+    auto scan1 = std::make_unique<simple_scan_process>();
+    auto scan2 = std::make_unique<simple_scan_process>();
+    auto xch1 = std::make_unique<group::step>(test_record_meta(), std::vector<std::size_t>{0});
+    auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
+    auto cgrp = std::make_unique<simple_cogroup_process>();
+    auto dvr = std::make_unique<deliver::step>();
+    *scan1 >> *xch1;
+    *scan2 >> *xch2;
+    *xch1 >> *cgrp;
+    *xch2 >> *cgrp;
+    *cgrp >> *dvr;
+    // step id are assigned from 0 to 5
+    g->insert(std::move(scan1));
+    g->insert(std::move(xch1));
+    g->insert(std::move(scan2));
+    g->insert(std::move(xch2));
+    g->insert(std::move(cgrp));
+    g->insert(std::move(dvr));
+
+    configuration cfg;
+    cfg.thread_pool_size = 1;
+    cfg.single_thread_task_scheduler = false;
+    dag_controller dc{&cfg};
+    dc.schedule(*g);
+    return 0;
+}
+ */
+
+static int run() {
+    auto g = std::make_unique<common::graph>();
+    auto scan = std::make_unique<producer_process>();
+    auto xch = std::make_unique<group::step>(test_record_meta(), std::vector<std::size_t>{0});
+    auto emit = std::make_unique<consumer_process>();
+    auto dvr = std::make_unique<deliver::step>();
+    *scan >> *xch;
+    *xch >> *emit;
+    *emit >> *dvr;
+    // step id are assigned from 0 to 3
+    g->insert(std::move(scan));
+    g->insert(std::move(xch));
+    g->insert(std::move(emit));
+    g->insert(std::move(dvr));
+
+    configuration cfg;
+    cfg.thread_pool_size = 1;
+    cfg.single_thread_task_scheduler = false;
+    dag_controller dc{&cfg};
+    dc.schedule(*g);
+    return 0;
+}
+}  // namespace
+
+extern "C" int main(int argc, char* argv[]) {
+    // ignore log level
+    if (FLAGS_log_dir.empty()) {
+        FLAGS_logtostderr = true;
+    }
+    google::InitGoogleLogging("group cli");
+    google::InstallFailureSignalHandler();
+    gflags::SetUsageMessage("group cli");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    try {
+        return dc::group_cli::run();  // NOLINT
+    } catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return -1;
+    }
+}
+

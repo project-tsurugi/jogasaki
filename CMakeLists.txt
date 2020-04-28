@@ -62,3 +62,10 @@ set(export_name "jogasaki")
 set(package_name "jogasaki")
 
 add_subdirectory(src)
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
+if(BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+

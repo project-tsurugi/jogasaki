@@ -1,0 +1,89 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include <vector>
+
+#include <model/port.h>
+#include <model/step.h>
+#include <executor/exchange/step.h>
+#include <executor/exchange/task.h>
+
+namespace dc::executor::process {
+
+/**
+ * @brief process step data flow
+ */
+class flow : public common::flow {
+public:
+    using field_index_type = meta::record_meta::field_index_type;
+    using record_meta_list = std::vector<std::shared_ptr<meta::record_meta>>;
+    ~flow() override = default;
+    flow(flow&& other) noexcept = default;
+    flow& operator=(flow&& other) noexcept = default;
+
+    /**
+     * @brief create new instance with empty schema (for testing)
+     */
+    flow() = default;
+
+    /**
+     * @brief create new instance
+     * @param input_meta input record metadata
+     * @param key_indices indices for key fields
+     */
+    explicit flow(std::shared_ptr<meta::record_meta> ) : info_(std::move(info)) {}
+
+    /**
+     * @brief create new instance
+     * @param input_meta input record metadata
+     * @param key_indices indices for key fields
+     */
+    flow(
+            record_meta_list input_meta,
+            record_meta_list subinput_meta,
+            record_meta_list output_meta
+    ) :
+            input_meta_(std::move(input_meta)),
+            subinput_meta_(std::move(subinput_meta)),
+            output_meta_(std::move(output_meta))
+    {}
+
+    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+        return tasks_;
+    }
+
+    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+//        for(auto& out : output_ports_) {
+//            for(auto& opposite : out->opposites()) {
+//                dynamic_cast<exchange::input_port *>(opposite)->create_writers(default_partitions); // TODO
+//            }
+//        }
+        return do_create_tasks();
+    }
+private:
+    record_meta_list input_meta_{};
+    record_meta_list subinput_meta_{};
+    record_meta_list output_meta_{};
+    std::vector<std::unique_ptr<model::task>> tasks_{};
+    bool main_input_is_group_ = false;
+protected:
+    virtual takatori::util::sequence_view<std::unique_ptr<model::task>> do_create_tasks() = 0;
+};
+
+}
+
+

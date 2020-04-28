@@ -12,15 +12,15 @@ file(GLOB SOURCES
         "data/*.cpp"
 )
 
-add_library(dag_controller
+add_library(jogasaki
     ${SOURCES}
 )
 
-target_include_directories(dag_controller
+target_include_directories(jogasaki
         PUBLIC .
 )
 
-target_link_libraries(dag_controller
+target_link_libraries(jogasaki
         PRIVATE takatori
         PRIVATE tbb
         PRIVATE Boost::boost
@@ -32,6 +32,6 @@ target_link_libraries(dag_controller
 
 # Boost.Thread doesn't seem to allow multiple versions to coexist.
 # This version definition should be shared with caller at least.
-target_compile_definitions(dag_controller PUBLIC BOOST_THREAD_VERSION=4)
+target_compile_definitions(jogasaki PUBLIC BOOST_THREAD_VERSION=4)
 
-set_compile_options(dag_controller)
+set_compile_options(jogasaki)

@@ -7,7 +7,7 @@ file(GLOB SRCS
         )
 
 register_tests(
-        TARGET dag_controller
+        TARGET jogasaki
         DEPENDS
             PRIVATE tbb
             PRIVATE takatori

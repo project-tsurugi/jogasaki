@@ -21,7 +21,7 @@
 #include <optional>
 #include <constants.h>
 
-namespace dc::accessor {
+namespace jogasaki::accessor {
 
 /**
  * @brief record reference provides access to record contents

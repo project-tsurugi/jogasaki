@@ -9,7 +9,7 @@
 #include "page_pool.h"
 #include "paged_memory_resource.h"
 
-namespace dc::memory {
+namespace jogasaki::memory {
 
 /**
  * @brief an implementation of paged_memory_resource that divides pages into fixed size small blocks.

@@ -17,7 +17,7 @@
 
 #include <executor/reader_container.h>
 
-namespace dc::executor::exchange::forward {
+namespace jogasaki::executor::exchange::forward {
 
 source::source() = default;
 source::~source() = default;

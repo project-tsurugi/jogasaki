@@ -18,7 +18,7 @@
 #include <string>
 #include "record.h"
 
-namespace dc::data {
+namespace jogasaki::data {
 
 class value {
 public:

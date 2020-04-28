@@ -15,7 +15,7 @@
  */
 #pragma once
 
-namespace dc::data {
+namespace jogasaki::data {
 
 class record {
 public:

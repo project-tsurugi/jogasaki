@@ -17,7 +17,7 @@
 
 #include <executor/reader_container.h>
 
-namespace dc::executor::exchange::deliver {
+namespace jogasaki::executor::exchange::deliver {
 
 source::source() = default;
 source::~source() = default;

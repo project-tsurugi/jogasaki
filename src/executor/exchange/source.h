@@ -19,7 +19,7 @@
 #include <memory/monotonic_paged_memory_resource.h>
 #include <executor/reader_container.h>
 
-namespace dc::executor::exchange {
+namespace jogasaki::executor::exchange {
 
 class source {
 public:

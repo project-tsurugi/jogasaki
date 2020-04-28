@@ -20,7 +20,7 @@
 
 #include <takatori/util/enum_tag.h>
 
-namespace dc {
+namespace jogasaki {
 
 enum class internal_event_kind {
     activate,

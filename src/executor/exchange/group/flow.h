@@ -26,7 +26,7 @@
 #include "sink.h"
 #include "source.h"
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 namespace impl {
 

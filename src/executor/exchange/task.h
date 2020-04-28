@@ -22,7 +22,7 @@
 #include <executor/common/task.h>
 #include <channel.h>
 
-namespace dc::executor::exchange {
+namespace jogasaki::executor::exchange {
 
 class task : public common::task {
 public:

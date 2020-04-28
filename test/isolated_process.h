@@ -15,7 +15,7 @@
  */
 #pragma once
 
-namespace dc::test {
+namespace jogasaki::test {
 
 using namespace executor;
 

@@ -21,7 +21,7 @@
 #include <executor/exchange/task.h>
 #include "flow.h"
 
-namespace dc::executor::exchange::deliver {
+namespace jogasaki::executor::exchange::deliver {
 
 class step : public exchange::step {
 public:

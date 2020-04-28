@@ -17,7 +17,7 @@
 
 #include "writer.h"
 
-namespace dc::executor::exchange::forward {
+namespace jogasaki::executor::exchange::forward {
 
 sink::sink() noexcept : writer_(std::make_unique<writer>()) {}
 

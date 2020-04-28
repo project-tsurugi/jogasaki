@@ -22,7 +22,7 @@
 #include <accessor/text.h>
 #include <meta/field_type_kind.h>
 
-namespace dc::meta {
+namespace jogasaki::meta {
 
 // placeholders for optional information for types
 // TODO implement for production

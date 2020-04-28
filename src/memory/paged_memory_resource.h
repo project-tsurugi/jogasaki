@@ -17,7 +17,7 @@
 
 #include <boost/container/pmr/memory_resource.hpp>
 
-namespace dc::memory {
+namespace jogasaki::memory {
 
 /**
  * @brief page based memory resource

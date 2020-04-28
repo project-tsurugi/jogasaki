@@ -27,7 +27,7 @@
 #include <executor/exchange/sink.h>
 #include <executor/exchange/source.h>
 
-namespace dc::executor::exchange {
+namespace jogasaki::executor::exchange {
 
 /**
  * @brief exchange step data flow

@@ -22,7 +22,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/rvalue_reference_wrapper.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 using namespace std::literals::string_literals;
 using namespace data;
 using namespace executor;

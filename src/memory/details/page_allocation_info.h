@@ -7,7 +7,7 @@
 
 #include "../page_pool.h"
 
-namespace dc::memory::details {
+namespace jogasaki::memory::details {
 
 /**
  * @brief the allocated page information.

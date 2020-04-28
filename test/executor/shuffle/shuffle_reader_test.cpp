@@ -27,7 +27,7 @@
 #include <memory/monotonic_paged_memory_resource.h>
 #include "test_root.h"
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 using namespace data;
 using namespace executor;
@@ -36,7 +36,7 @@ using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
-using namespace dc::memory;
+using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
 class shuffle_reader_test : public test_root {

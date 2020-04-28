@@ -20,7 +20,7 @@
 #include "port.h"
 #include "task.h"
 
-namespace dc::model {
+namespace jogasaki::model {
 
 class graph;
 

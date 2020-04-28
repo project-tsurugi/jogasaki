@@ -24,7 +24,7 @@
 #include <channel.h>
 #include <meta/record_meta.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_scan_process_task : public mock_task {
 public:

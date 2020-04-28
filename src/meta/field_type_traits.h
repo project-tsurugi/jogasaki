@@ -28,7 +28,7 @@
 #include <meta/field_type_kind.h>
 #include <meta/field_type_option.h>
 
-namespace dc::meta {
+namespace jogasaki::meta {
 
 /**
  * @brief field type traits providing field type related information

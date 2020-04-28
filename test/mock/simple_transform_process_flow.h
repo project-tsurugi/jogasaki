@@ -23,7 +23,7 @@
 #include <executor/process/step.h>
 #include "simple_transform_process_task.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_transform_process_flow : public common::flow {
 public:

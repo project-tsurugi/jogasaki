@@ -23,7 +23,7 @@
 #include "executor/common/step.h"
 //#include "flow.h"
 
-namespace dc::executor::process {
+namespace jogasaki::executor::process {
 
 class step : public common::step {
 public:

@@ -23,7 +23,7 @@
 #include <executor/process/step.h>
 #include "simple_scan_process_task.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_emit_process_flow : public common::flow {
 public:

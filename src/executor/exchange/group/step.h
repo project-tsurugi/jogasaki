@@ -25,7 +25,7 @@
 #include "shuffle_info.h"
 #include "flow.h"
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 /**
  * @brief group step

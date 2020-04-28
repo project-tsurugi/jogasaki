@@ -26,7 +26,7 @@
 #include <executor/exchange/group/shuffle_info.h>
 #include <memory/page_pool.h>
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 /**
  * @brief partitioned input data processed in upper phase in shuffle

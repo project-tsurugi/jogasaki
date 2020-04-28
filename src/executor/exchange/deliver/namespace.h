@@ -3,4 +3,4 @@
 /**
  * @brief exchange for data delivery
  */
-namespace dc::executor::exchange::deliver {}
+namespace jogasaki::executor::exchange::deliver {}

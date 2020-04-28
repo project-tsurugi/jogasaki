@@ -19,7 +19,7 @@
 #include <meta/record_meta.h>
 #include <constants.h>
 
-namespace dc::meta {
+namespace jogasaki::meta {
 
 /**
  * @brief represents group metadata holding record metadata on key and value parts

@@ -18,7 +18,7 @@
 #include <takatori/util/enum_tag.h>
 #include <meta/field_type.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 
 using namespace std::string_view_literals;
 using namespace meta;

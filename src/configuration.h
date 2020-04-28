@@ -15,7 +15,7 @@
  */
 #pragma once
 
-namespace dc {
+namespace jogasaki {
 
 class configuration {
 public:

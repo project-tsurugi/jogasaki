@@ -15,7 +15,7 @@
  */
 #pragma once
 
-namespace dc::executor::common {
+namespace jogasaki::executor::common {
 
 enum class step_kind {
     process,

@@ -18,7 +18,7 @@
 #include <executor/record_writer.h>
 #include "source.h"
 
-namespace dc::executor::exchange::broadcast {
+namespace jogasaki::executor::exchange::broadcast {
 
 class sink : public record_writer {
 public:

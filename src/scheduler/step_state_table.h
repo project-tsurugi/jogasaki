@@ -22,7 +22,7 @@
 #include <scheduler/task_scheduler.h>
 #include <scheduler/step_state.h>
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 /*
  * @brief responsible for managing step status gathering tasks completion state and decide if prepare/run completes.

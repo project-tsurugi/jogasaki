@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-namespace dc::memory {
+namespace jogasaki::memory {
 
 class block_memory_resource_test : public ::testing::Test {
 public:

@@ -23,7 +23,7 @@
 #include "source.h"
 #include "writer.h"
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 sink::sink(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info) :
         downstream_partitions_(downstream_partitions),

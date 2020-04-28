@@ -3,4 +3,4 @@
 /**
  * @brief metadata containers
  */
-namespace dc::meta {}
+namespace jogasaki::meta {}

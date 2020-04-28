@@ -20,7 +20,7 @@
 #include <model/task.h>
 #include <channel.h>
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 enum class task_scheduler_kind : std::int32_t {
     single_thread = 0,

@@ -17,7 +17,7 @@
 
 #include <accessor/record_ref.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 /**
  * @brief group reader interface for the process to retrieve group data

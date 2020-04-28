@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <takatori/util/enum_set.h>
 
-namespace dc::meta {
+namespace jogasaki::meta {
 
 /**
  * @brief field type kind

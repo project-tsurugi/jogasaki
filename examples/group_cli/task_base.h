@@ -25,7 +25,7 @@
 #include <channel.h>
 #include <utils.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class task_base : public common::task {
 public:

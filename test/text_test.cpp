@@ -20,7 +20,7 @@
 #include <memory/paged_memory_resource.h>
 #include <mock_memory_resource.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 
 using namespace std::string_view_literals;
 using namespace accessor;

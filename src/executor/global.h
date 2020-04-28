@@ -17,7 +17,7 @@
 
 #include <memory/page_pool.h>
 
-namespace dc::global {
+namespace jogasaki::global {
 
 inline static memory::page_pool global_page_pool{};
 

@@ -19,7 +19,7 @@
 #include <boost/dynamic_bitset.hpp>
 #include <executor/partitioner.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

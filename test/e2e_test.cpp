@@ -18,12 +18,12 @@
 #include <executor/common/graph.h>
 #include <scheduler/dag_controller.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 using namespace std::literals::string_literals;
-using namespace dc;
-using namespace dc::model;
-using namespace dc::executor;
-using namespace dc::scheduler;
+using namespace jogasaki;
+using namespace jogasaki::model;
+using namespace jogasaki::executor;
+using namespace jogasaki::scheduler;
 
 class e2e_test : public ::testing::Test {
 public:

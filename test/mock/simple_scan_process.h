@@ -24,7 +24,7 @@
 #include "simple_scan_process_task.h"
 #include "simple_scan_process_flow.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_scan_process : public process::step {
 public:

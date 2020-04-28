@@ -23,7 +23,7 @@
 #include <executor/process/step.h>
 #include "producer_task.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class producer_flow : public common::flow {
 public:

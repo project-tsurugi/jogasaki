@@ -22,7 +22,7 @@
 #include "source.h"
 #include "sink.h"
 
-namespace dc::executor::exchange::forward {
+namespace jogasaki::executor::exchange::forward {
 
 class writer : public record_writer {
 public:

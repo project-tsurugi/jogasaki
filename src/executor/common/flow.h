@@ -19,7 +19,7 @@
 
 #include <executor/common/step_kind.h>
 
-namespace dc::executor::common {
+namespace jogasaki::executor::common {
 
 /**
  * @brief group step data flow

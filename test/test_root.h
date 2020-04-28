@@ -19,7 +19,7 @@
 #include <executor/common/graph.h>
 #include <scheduler/dag_controller.h>
 
-namespace dc {
+namespace jogasaki {
 
 class test_root : public ::testing::Test {
 public:

@@ -19,7 +19,7 @@
 
 #include <accessor/record_ref.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 /**
  * @brief record reader interface for the process to retrieve record data

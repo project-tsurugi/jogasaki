@@ -3,4 +3,4 @@
 /**
  * @brief step graph scheduler
  */
-namespace dc::scheduler {}
+namespace jogasaki::scheduler {}

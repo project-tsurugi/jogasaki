@@ -20,7 +20,7 @@
 #include <executor/exchange/group/input_partition.h>
 #include "executor/group_reader.h"
 
-namespace dc::executor::exchange::deliver {
+namespace jogasaki::executor::exchange::deliver {
 
 class reader;
 

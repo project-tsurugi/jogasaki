@@ -21,7 +21,7 @@
 #include <executor/record_writer.h>
 #include "sink.h"
 
-namespace dc::executor::exchange::deliver {
+namespace jogasaki::executor::exchange::deliver {
 
 class writer : public record_writer {
 public:

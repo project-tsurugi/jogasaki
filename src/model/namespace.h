@@ -3,4 +3,4 @@
 /**
  * @brief executor model objects
  */
-namespace dc::model {}
+namespace jogasaki::model {}

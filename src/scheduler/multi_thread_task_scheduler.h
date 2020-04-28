@@ -26,7 +26,7 @@
 #include <utils.h>
 #include "task_scheduler.h"
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 /**
  * @brief simple implementation of fixed size thread pool

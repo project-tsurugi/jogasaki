@@ -20,7 +20,7 @@
 #include <takatori/util/universal_extractor.h>
 #include <takatori/util/reference_list_view.h>
 
-namespace dc {
+namespace jogasaki {
 
 inline model::step::port_index_type find_port_index(model::port const& p, takatori::util::sequence_view<std::unique_ptr<model::port> const> sv) {
     for(model::step::port_index_type i=0, n = sv.size(); i < n; ++i) {

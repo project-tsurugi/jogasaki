@@ -21,7 +21,7 @@
 #include <executor/process/step.h>
 #include "consumer_flow.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class consumer_process : public process::step {
 public:

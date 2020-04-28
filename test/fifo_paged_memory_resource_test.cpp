@@ -27,7 +27,7 @@ using PmrAllocator = boost::container::pmr::polymorphic_allocator<T>;
 using ByteArray = std::array<std::byte, 1024*1024>;
 using ByteArrayAllocator = PmrAllocator<ByteArray>;
 
-namespace dc::testing {
+namespace jogasaki::testing {
 
 class fifo_paged_memory_resource_test : public ::testing::Test {
 public:
@@ -124,7 +124,7 @@ TEST_F(fifo_paged_memory_resource_test, end_current_page) {
 
     blocks[0] = my_allocator.allocate(1);
     my_resource->end_current_page();
-    EXPECT_TRUE(my_resource->page_remaining() == 0 || my_resource->page_remaining() == dc::memory::page_size);
+    EXPECT_TRUE(my_resource->page_remaining() == 0 || my_resource->page_remaining() == jogasaki::memory::page_size);
     blocks[1] = my_allocator.allocate(1);
     EXPECT_EQ(my_resource->count_pages(), 2);
 

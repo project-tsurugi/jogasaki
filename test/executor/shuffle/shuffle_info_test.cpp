@@ -18,7 +18,7 @@
 #include <boost/dynamic_bitset.hpp>
 #include <executor/exchange/group/shuffle_info.h>
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

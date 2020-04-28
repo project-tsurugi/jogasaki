@@ -23,7 +23,7 @@
 #include <meta/field_type.h>
 #include <constants.h>
 
-namespace dc::meta {
+namespace jogasaki::meta {
 
 /**
  * @brief record metadata holding information about field types, nullability and binary encoding of records.

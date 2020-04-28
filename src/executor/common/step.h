@@ -22,7 +22,7 @@
 #include <executor/common/step_kind.h>
 #include <executor/common/flow.h>
 
-namespace dc::executor::common {
+namespace jogasaki::executor::common {
 
 class step : public model::step {
 public:

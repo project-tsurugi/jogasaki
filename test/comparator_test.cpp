@@ -19,7 +19,7 @@
 #include <executor/partitioner.h>
 #include <executor/comparator.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

@@ -27,7 +27,7 @@
 #include "sink.h"
 #include "source.h"
 
-namespace dc::executor::exchange::deliver {
+namespace jogasaki::executor::exchange::deliver {
 
 /**
  * @brief forward step data flow

@@ -19,7 +19,7 @@
 #include <model/graph.h>
 #include "executor/common/step.h"
 
-namespace dc::executor::exchange {
+namespace jogasaki::executor::exchange {
 
 class step : public common::step {
 public:

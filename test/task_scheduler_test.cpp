@@ -19,7 +19,7 @@
 #include <scheduler/task_scheduler_factory.h>
 #include <executor/common/task.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 
 using namespace scheduler;
 using namespace executor;

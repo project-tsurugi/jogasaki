@@ -19,7 +19,7 @@
 #include <string_view>
 #include <cstdlib>
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 enum class step_state_kind : std::int32_t {
     uninitialized = 0,

@@ -3,4 +3,4 @@
 /**
  * @brief data accessors
  */
-namespace dc::accessor {}
+namespace jogasaki::accessor {}

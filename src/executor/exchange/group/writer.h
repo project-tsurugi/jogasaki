@@ -24,7 +24,7 @@
 #include "source.h"
 #include "sink.h"
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 class writer : public record_writer {
 public:

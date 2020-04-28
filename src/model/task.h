@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <ostream>
 
-namespace dc::model {
+namespace jogasaki::model {
 
 enum class task_kind : std::size_t {
     main = 0,

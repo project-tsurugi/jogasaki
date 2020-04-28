@@ -3,4 +3,4 @@
 /**
  * @brief step graph executor
  */
-namespace dc::executor {}
+namespace jogasaki::executor {}

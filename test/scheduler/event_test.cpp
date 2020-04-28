@@ -28,13 +28,13 @@
 #include <isolated_process.h>
 #include "test_root.h"
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 using namespace std::literals::string_literals;
-using namespace dc;
-using namespace dc::model;
-using namespace dc::executor;
-using namespace dc::executor::exchange;
-using namespace dc::scheduler;
+using namespace jogasaki;
+using namespace jogasaki::model;
+using namespace jogasaki::executor;
+using namespace jogasaki::executor::exchange;
+using namespace jogasaki::scheduler;
 
 class event_test : public test_root {};
 

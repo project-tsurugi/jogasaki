@@ -25,7 +25,7 @@
 #include <executor/partitioner.h>
 #include <executor/comparator.h>
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 /**
  * @brief information to execute shuffle, extracting schema and record layout information and its key/value parts

@@ -25,13 +25,13 @@
 #include "producer_process.h"
 #include "consumer_process.h"
 
-namespace dc::group_cli {
+namespace jogasaki::group_cli {
 
-using namespace dc;
-using namespace dc::model;
-using namespace dc::executor;
-using namespace dc::executor::exchange;
-using namespace dc::scheduler;
+using namespace jogasaki;
+using namespace jogasaki::model;
+using namespace jogasaki::executor;
+using namespace jogasaki::executor::exchange;
+using namespace jogasaki::scheduler;
 
 DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
 
@@ -109,7 +109,7 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::SetUsageMessage("group cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     try {
-        return dc::group_cli::run();  // NOLINT
+        return jogasaki::group_cli::run();  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

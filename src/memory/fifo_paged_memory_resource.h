@@ -7,7 +7,7 @@
 #include "page_pool.h"
 #include "details/page_allocation_info.h"
 
-namespace dc::memory {
+namespace jogasaki::memory {
 
 /**
  * @brief an implementation of paged_memory_resource that only can deallocate memory fragments by FIFO order.

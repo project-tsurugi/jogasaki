@@ -24,7 +24,7 @@
 #include "shuffle_info.h"
 #include "source.h"
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 class writer;
 

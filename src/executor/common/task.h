@@ -21,7 +21,7 @@
 
 #include <model/task.h>
 
-namespace dc::executor::common {
+namespace jogasaki::executor::common {
 
 class task : public model::task {
 

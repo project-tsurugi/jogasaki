@@ -19,7 +19,7 @@
 #include <scheduler/single_thread_task_scheduler.h>
 #include <scheduler/multi_thread_task_scheduler.h>
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 class task_scheduler_factory {
     using kind = task_scheduler_kind;

@@ -24,7 +24,7 @@
 #include <string_view>
 #include <memory/paged_memory_resource.h>
 
-namespace dc::accessor {
+namespace jogasaki::accessor {
 
 /**
  * @brief text field data object

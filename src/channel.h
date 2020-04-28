@@ -18,7 +18,7 @@
 #include <tbb/concurrent_queue.h>
 #include <event.h>
 
-namespace dc {
+namespace jogasaki {
 
 /*
  * @brief communication channel among dag/dag controller/tasks

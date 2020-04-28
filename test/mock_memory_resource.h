@@ -18,7 +18,7 @@
 #include <boost/container/pmr/monotonic_buffer_resource.hpp>
 #include <memory/paged_memory_resource.h>
 
-namespace dc {
+namespace jogasaki {
 
 class mock_memory_resource : public memory::paged_memory_resource {
 protected:

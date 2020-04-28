@@ -20,7 +20,7 @@
 #include "sink.h"
 #include "source.h"
 
-namespace dc::executor::exchange::deliver {
+namespace jogasaki::executor::exchange::deliver {
 
 namespace impl {
 

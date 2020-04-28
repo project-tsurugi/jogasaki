@@ -19,7 +19,7 @@
 #include "executor/group_reader.h"
 #include <executor/exchange/group/input_partition.h>
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 using iterator = input_partition::iterator;
 using iterator_pair = std::pair<iterator, iterator>;

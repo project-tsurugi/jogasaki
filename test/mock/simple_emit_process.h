@@ -22,7 +22,7 @@
 #include "simple_emit_process_task.h"
 #include "simple_emit_process_flow.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_emit_process : public process::step {
 public:

@@ -23,7 +23,7 @@
 #include <mock/mock_task.h>
 #include <channel.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_transform_process_task : public mock_task {
 public:

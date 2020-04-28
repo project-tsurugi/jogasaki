@@ -19,7 +19,7 @@
 #include <executor/record_reader.h>
 #include <executor/group_reader.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 /**
  * @brief reader kind

@@ -3,4 +3,4 @@
 /**
  * @brief memory allocators
  */
-namespace dc::memory {}
+namespace jogasaki::memory {}

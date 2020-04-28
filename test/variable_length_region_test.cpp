@@ -19,13 +19,13 @@
 #include <gtest/gtest.h>
 #include <mock_memory_resource.h>
 
-namespace dc::testing {
+namespace jogasaki::testing {
 
 using namespace data;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 
-using namespace dc::memory;
+using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
 class variable_length_region_test : public ::testing::Test {

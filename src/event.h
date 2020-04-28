@@ -23,7 +23,7 @@
 #include <model/task.h>
 #include <model/step.h>
 
-namespace dc {
+namespace jogasaki {
 
 /*
  * @brief external events handled in dag controller

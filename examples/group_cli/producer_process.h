@@ -24,7 +24,7 @@
 #include "producer_task.h"
 #include "producer_flow.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class producer_process : public process::step {
 public:

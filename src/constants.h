@@ -18,7 +18,7 @@
 #include <limits>
 #include <cstdint>
 
-namespace dc {
+namespace jogasaki {
 
 /**
  * @brief default number of partitions

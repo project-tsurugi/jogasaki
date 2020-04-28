@@ -23,7 +23,7 @@
 #include "simple_transform_process_pretask.h"
 #include "simple_cogroup_process_flow.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_cogroup_process : public process::step {
 public:

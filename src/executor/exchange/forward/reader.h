@@ -17,7 +17,7 @@
 
 #include "executor/group_reader.h"
 
-namespace dc::executor::exchange::forward {
+namespace jogasaki::executor::exchange::forward {
 
 class reader : public group_reader {
 public:

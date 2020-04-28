@@ -24,7 +24,7 @@
 #include <meta/record_meta.h>
 #include "task_base.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class producer_task : public task_base {
 public:

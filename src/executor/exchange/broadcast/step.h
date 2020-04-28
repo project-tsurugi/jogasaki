@@ -20,7 +20,7 @@
 #include <executor/exchange/step.h>
 #include <executor/exchange/task.h>
 
-namespace dc::executor::exchange::broadcast {
+namespace jogasaki::executor::exchange::broadcast {
 
 class step : public exchange::step {
 public:

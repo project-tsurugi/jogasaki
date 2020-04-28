@@ -21,7 +21,7 @@
 #include <meta/record_meta.h>
 #include <meta/field_type_traits.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 /**
  * @brief partitioner determines input partition for the record to be sent

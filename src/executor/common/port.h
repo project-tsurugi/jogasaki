@@ -20,7 +20,7 @@
 #include <model/port.h>
 #include <model/step.h>
 
-namespace dc::executor::common {
+namespace jogasaki::executor::common {
 
 class port : public model::port {
 public:

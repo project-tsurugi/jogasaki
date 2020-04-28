@@ -21,7 +21,7 @@
 #include <channel.h>
 #include "task_scheduler.h"
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 /*
  * @brief task scheduler who is responsible for running task concurrently and efficiently

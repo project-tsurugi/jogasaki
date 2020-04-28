@@ -19,7 +19,7 @@
 #include <functional>
 #include <meta/record_meta.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 /**
  * @brief record comparator

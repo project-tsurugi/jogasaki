@@ -23,13 +23,13 @@
 #include <isolated_process.h>
 #include "test_root.h"
 
-namespace dc::executor {
+namespace jogasaki::executor {
 using namespace std::literals::string_literals;
-using namespace dc;
-using namespace dc::model;
-using namespace dc::executor;
-using namespace dc::executor::exchange;
-using namespace dc::scheduler;
+using namespace jogasaki;
+using namespace jogasaki::model;
+using namespace jogasaki::executor;
+using namespace jogasaki::executor::exchange;
+using namespace jogasaki::scheduler;
 
 class step_test : public test_root {};
 

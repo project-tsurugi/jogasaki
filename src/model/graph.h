@@ -21,7 +21,7 @@
 #include <channel.h>
 #include "step.h"
 
-namespace dc::model {
+namespace jogasaki::model {
 
 template <class T>
 using optional_ptr = takatori::util::optional_ptr<T>;

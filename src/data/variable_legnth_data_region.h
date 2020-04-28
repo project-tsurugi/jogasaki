@@ -23,7 +23,7 @@
 
 #include <memory/paged_memory_resource.h>
 
-namespace dc::data {
+namespace jogasaki::data {
 
 class variable_length_data_region {
 public:

@@ -22,7 +22,7 @@
 #include <sys/mman.h>
 #include <boost/container/pmr/memory_resource.hpp>
 
-namespace dc::memory {
+namespace jogasaki::memory {
 
 /*
  * @brief default page size used by page_pool

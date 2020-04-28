@@ -29,7 +29,7 @@
 #include "step_state.h"
 #include "dag_controller.h"
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 using step = model::step;
 using task_kind = model::task_kind;

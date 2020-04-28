@@ -3,4 +3,4 @@
 /**
  * @brief SQL execution engine
  */
-namespace dc {}
+namespace jogasaki {}

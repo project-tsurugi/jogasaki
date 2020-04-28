@@ -18,7 +18,7 @@
 #include <model/graph.h>
 #include <configuration.h>
 
-namespace dc::scheduler {
+namespace jogasaki::scheduler {
 
 /**
  * @brief Dependency Graph Scheduler

@@ -3,4 +3,4 @@
 /**
  * @brief data containers
  */
-namespace dc::data {}
+namespace jogasaki::data {}

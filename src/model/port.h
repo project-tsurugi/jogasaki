@@ -19,7 +19,7 @@
 #include <memory>
 #include <takatori/util/sequence_view.h>
 
-namespace dc {
+namespace jogasaki {
 
 
 enum class port_direction {
@@ -34,7 +34,7 @@ enum class port_kind {
 
 }
 
-namespace dc::model {
+namespace jogasaki::model {
 
 template <class T>
 using sequence_view = takatori::util::sequence_view<T>;

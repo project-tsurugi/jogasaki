@@ -20,7 +20,7 @@
 #include <memory/monotonic_paged_memory_resource.h>
 #include <executor/record_writer.h>
 
-namespace dc::executor::exchange {
+namespace jogasaki::executor::exchange {
 
 class sink {
 public:

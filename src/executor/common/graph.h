@@ -22,7 +22,7 @@
 #include <model/graph.h>
 #include <executor/common/step.h>
 
-namespace dc::executor::common {
+namespace jogasaki::executor::common {
 
 class graph : public model::graph {
 public:

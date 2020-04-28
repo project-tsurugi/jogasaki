@@ -18,7 +18,7 @@
 
 #include <vector>
 
-namespace dc::executor::exchange::group {
+namespace jogasaki::executor::exchange::group {
 
 namespace impl {
 

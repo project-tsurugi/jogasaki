@@ -36,6 +36,14 @@ using namespace jogasaki::executor::exchange::group;
 using namespace jogasaki::scheduler;
 
 DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
+DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
+DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
+DEFINE_int32(words_per_slice, 100000, "Number of words per slice");  //NOLINT
+DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
+DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
+DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
+DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
+DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
@@ -51,8 +59,8 @@ static int run() {
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
 
     auto g = std::make_unique<common::graph>();
-    auto scan1 = std::make_unique<producer_process>(g.get(), meta);
-    auto scan2 = std::make_unique<producer_process>(g.get(), meta);
+    auto scan1 = std::make_unique<producer_process>(g.get(), meta, FLAGS_upstream_partitions);
+    auto scan2 = std::make_unique<producer_process>(g.get(), meta, FLAGS_upstream_partitions);
     auto xch1 = std::make_unique<group::step>(info);
     auto xch2 = std::make_unique<group::step>(info);
     auto cgrp = std::make_unique<cogroup_process>();
@@ -86,9 +94,9 @@ extern "C" int main(int argc, char* argv[]) {
     if (FLAGS_log_dir.empty()) {
         FLAGS_logtostderr = true;
     }
-    google::InitGoogleLogging("group cli");
+    google::InitGoogleLogging("cogroup cli");
     google::InstallFailureSignalHandler();
-    gflags::SetUsageMessage("group cli");
+    gflags::SetUsageMessage("cogroup cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     try {
         return jogasaki::cogroup_cli::run();  // NOLINT

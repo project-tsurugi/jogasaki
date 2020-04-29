@@ -71,9 +71,6 @@ public:
     isolated_process(model::graph* owner) {
         graph_ = owner;
     }
-    std::size_t max_partitions() const override {
-        return step::max_partitions();
-    }
 
     void activate() override {
         auto ch = graph_ ? &graph_->get_channel() : nullptr;

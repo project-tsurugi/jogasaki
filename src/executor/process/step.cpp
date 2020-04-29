@@ -15,12 +15,7 @@
  */
 
 #include "step.h"
-#include "constants.h"
 
 namespace jogasaki::executor::process {
-
-std::size_t step::max_partitions() const {
-    return default_partitions;
-}
 
 }

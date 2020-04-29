@@ -36,10 +36,6 @@ public:
     void notify_completed() override {
         // destroy process buffer
     }
-    /*
-     * @brief declare max number of partitons
-     */
-    [[nodiscard]] virtual std::size_t max_partitions() const = 0;
 
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::process;

@@ -53,9 +53,6 @@ public:
         pretasks_[subinput] = std::make_unique<simple_transform_process_pretask>(&graph_->get_channel(), this);
         return takatori::util::sequence_view{&pretasks_[subinput]};
     }
-    std::size_t max_partitions() const override {
-        return step::max_partitions();
-    }
     void activate() override {
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());

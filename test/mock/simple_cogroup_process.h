@@ -35,10 +35,6 @@ public:
         graph_ = owner;
     }
 
-    std::size_t max_partitions() const override {
-        return step::max_partitions();
-    }
-
     void activate() override {
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
 //        auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());

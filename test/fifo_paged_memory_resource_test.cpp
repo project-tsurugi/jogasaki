@@ -63,9 +63,10 @@ TEST_F(fifo_paged_memory_resource_test, deallocate_before_at_even) {
     EXPECT_TRUE(my_resource);
 
     ByteArrayAllocator my_allocator(my_resource.get());
-    std::size_t count, remaining;
+    std::size_t count{};
+    std::size_t remaining{};
 
-    memory::fifo_paged_memory_resource::checkpoint point;
+    memory::fifo_paged_memory_resource::checkpoint point{};
     for(std::size_t i = 0; i < loop; i++) {
         my_allocator.allocate(1);
         if (i == loop / 2) {
@@ -91,9 +92,10 @@ TEST_F(fifo_paged_memory_resource_test, deallocate_before_at_odd) {
     EXPECT_TRUE(my_resource);
 
     ByteArrayAllocator my_allocator(my_resource.get());
-    std::size_t count, remaining;
+    std::size_t count{};
+    std::size_t remaining{};
 
-    memory::fifo_paged_memory_resource::checkpoint point;
+    memory::fifo_paged_memory_resource::checkpoint point{};
     for(std::size_t i = 0; i < loop; i++) {
         my_allocator.allocate(1);
         if (i == loop / 2 - 1) {

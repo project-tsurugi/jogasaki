@@ -26,11 +26,11 @@ namespace jogasaki::executor {
 class consumer_process : public process::step {
 public:
     consumer_process() : step(1, 1) {};
-    consumer_process(model::graph* owner) {
+    explicit consumer_process(model::graph* owner) {
         graph_ = owner;
     }
 
-    std::size_t max_partitions() const override {
+    [[nodiscard]] std::size_t max_partitions() const override {
         return step::max_partitions();
     }
     void activate() override {

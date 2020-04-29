@@ -32,7 +32,7 @@ public:
     producer_process(model::graph* owner) {
         graph_ = owner;
     }
-    std::size_t max_partitions() const override {
+    [[nodiscard]] std::size_t max_partitions() const override {
         return 1;
     }
     void activate() override {

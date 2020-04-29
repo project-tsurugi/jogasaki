@@ -61,7 +61,7 @@ public:
         offset_type byte_offset = nullity_offset / bits_per_byte;
         offset_type offset_in_byte = nullity_offset % bits_per_byte;
         unsigned char bitmask = 1U << offset_in_byte;
-        auto p = static_cast<unsigned char*>(data_) + byte_offset;
+        auto p = static_cast<unsigned char*>(data_) + byte_offset; //NOLINT
         return (*p & bitmask) != 0;
     }
 
@@ -78,7 +78,7 @@ public:
         offset_type byte_offset = nullity_offset / bits_per_byte;
         offset_type offset_in_byte = nullity_offset % bits_per_byte;
         unsigned char bitmask = 1U << offset_in_byte;
-        auto p = static_cast<unsigned char*>(data_) + byte_offset;
+        auto p = static_cast<unsigned char*>(data_) + byte_offset; //NOLINT
         if (nullity) {
             *p |= bitmask;
         } else {
@@ -98,7 +98,7 @@ public:
     void set_value(offset_type value_offset, T x) {
         assert(value_offset < size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
-        std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T));
+        std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
     }
 
     /**
@@ -113,7 +113,7 @@ public:
         assert(value_offset < size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
         T data{};
-        std::memcpy(&data, static_cast<char*>(data_) + value_offset, sizeof(T));
+        std::memcpy(&data, static_cast<char*>(data_) + value_offset, sizeof(T)); //NOLINT
         return data;
     }
 

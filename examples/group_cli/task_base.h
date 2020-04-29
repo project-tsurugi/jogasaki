@@ -33,9 +33,6 @@ public:
     using readers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<group_reader>>;
 
     task_base() = default;
-    ~task_base() override = default;
-    task_base(task_base&& other) noexcept = default;
-    task_base& operator=(task_base&& other) noexcept = default;
     task_base(channel* channel, model::step* src, bool is_pretask = false) : channel_(channel), src_(src), is_pretask_(is_pretask) {}
     model::task_result operator()() override {
         execute();

@@ -39,7 +39,7 @@ public:
     /**
      * @brief construct "undefined" object representing invalid reference
      */
-    constexpr record_ref() : data_(nullptr), size_(0) {}
+    constexpr record_ref() = default;
 
     /**
      * @brief construct object from pointer and size
@@ -57,7 +57,7 @@ public:
      * For non-nullable field, the return value should not be used and ignored.
      */
     [[nodiscard]] bool is_null(offset_type nullity_offset) const noexcept {
-        assert(nullity_offset / bits_per_byte < size_);
+        assert(nullity_offset / bits_per_byte < size_); //NOLINT
         offset_type byte_offset = nullity_offset / bits_per_byte;
         offset_type offset_in_byte = nullity_offset % bits_per_byte;
         unsigned char bitmask = 1U << offset_in_byte;
@@ -74,7 +74,7 @@ public:
      * set beforehand, and this function sets nullity = true, then the value is ignored and the field is handled as null.
      */
     void set_null(offset_type nullity_offset, bool nullity = true) noexcept {
-        assert(nullity_offset / bits_per_byte < size_);
+        assert(nullity_offset / bits_per_byte < size_); //NOLINT
         offset_type byte_offset = nullity_offset / bits_per_byte;
         offset_type offset_in_byte = nullity_offset % bits_per_byte;
         unsigned char bitmask = 1U << offset_in_byte;

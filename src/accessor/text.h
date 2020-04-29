@@ -50,12 +50,12 @@ public:
      */
     text(memory::paged_memory_resource* resource, char const* data, size_type size) { //NOLINT
         if (size <= short_text::max_size) {
-            s_ = short_text(data, size);
+            s_ = short_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
             return;
         }
         auto p = resource->allocate(size, 1);
         std::memcpy(p, data, size);
-        l_ = long_text(static_cast<char*>(p), size);
+        l_ = long_text(static_cast<char*>(p), size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
     }
 
     /**
@@ -70,16 +70,16 @@ public:
      */
     explicit operator std::string_view() const noexcept {
         if (is_short()) {
-            return {s_.data(), s_.size()};
+            return {s_.data(), s_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
-        return {l_.data(), l_.size()};
+        return {l_.data(), l_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)
     }
 
     /**
      * @brief return whether the instance is in short format
      */
     [[nodiscard]] bool is_short() const noexcept {
-        return s_.is_short();
+        return s_.is_short();  //NOLINT(cppcoreguidelines-pro-type-union-access)
     }
 
     /**

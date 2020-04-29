@@ -19,9 +19,6 @@
 
 namespace jogasaki::executor::exchange::deliver {
 
-source::source() = default;
-source::~source() = default;
-
 reader_container source::acquire_reader() {
     return {};
 }

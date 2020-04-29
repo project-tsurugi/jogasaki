@@ -29,7 +29,6 @@ namespace jogasaki::executor {
 class producer_process : public process::step {
 public:
     producer_process() : step(0, 1) {};
-
     producer_process(model::graph* owner, std::shared_ptr<meta::record_meta> meta) : meta_(std::move(meta)) {
         graph_ = owner;
     }

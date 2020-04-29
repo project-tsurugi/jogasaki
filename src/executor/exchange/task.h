@@ -27,9 +27,6 @@ namespace jogasaki::executor::exchange {
 class task : public common::task {
 public:
     task() = default;
-    ~task() override = default;
-    task(task&& other) noexcept = default;
-    task& operator=(task&& other) noexcept = default;
     task(channel* channel, step* src) : channel_(channel), src_(src) {}
     model::task_result operator()() override {
         DVLOG(1) << *this << " exchange_task executed.";

@@ -71,7 +71,7 @@ public:
      * @return the remaining size
      */
     [[nodiscard]] std::size_t remaining(std::size_t alignment) const noexcept {
-        auto head = reinterpret_cast<std::uintptr_t>(head_);
+        auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         auto last = head + page_size;
         auto ua_next = head + upper_bound_offset_;
         auto next = (ua_next + (alignment - 1)) / alignment * alignment;
@@ -90,7 +90,7 @@ public:
      */
     void* try_allocate_back(std::size_t bytes, std::size_t alignment) noexcept {
         // the next available block
-        auto head = reinterpret_cast<std::uintptr_t>(head_);
+        auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         auto ua_next = head + upper_bound_offset_;
         auto next = (ua_next + (alignment - 1)) / alignment * alignment;
         auto next_lower_offset = next - head; // inclusive
@@ -104,7 +104,7 @@ public:
             lower_bound_offset_ = next_lower_offset;
         }
         upper_bound_offset_ = static_cast<offset_type>(next_upper_offset);
-        return reinterpret_cast<void*>(next);
+        return reinterpret_cast<void*>(next); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     }
 
     /**
@@ -118,8 +118,8 @@ public:
         if (p < head_) {
             return false;
         }
-        auto head = reinterpret_cast<std::uintptr_t>(head_);
-        auto start = reinterpret_cast<std::uintptr_t>(p) - head;
+        auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+        auto start = reinterpret_cast<std::uintptr_t>(p) - head; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         auto end = start + bytes;
 
         // LB <= start < LB + align
@@ -144,8 +144,8 @@ public:
         if (p < head_) {
             return false;
         }
-        auto head = reinterpret_cast<std::uintptr_t>(head_);
-        auto start = reinterpret_cast<std::uintptr_t>(p) - head;
+        auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+        auto start = reinterpret_cast<std::uintptr_t>(p) - head; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         auto end = start + bytes;
 
         // end <= UB

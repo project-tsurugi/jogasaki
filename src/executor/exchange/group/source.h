@@ -30,7 +30,7 @@ public:
     ~source();
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
-    source(std::shared_ptr<shuffle_info> info);
+    explicit source(std::shared_ptr<shuffle_info> info);
     void receive(std::unique_ptr<input_partition> in);
 
     reader_container acquire_reader() override;

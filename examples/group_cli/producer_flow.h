@@ -28,7 +28,6 @@ namespace jogasaki::executor {
 class producer_flow : public common::flow {
 public:
     producer_flow() = default;
-
     producer_flow(exchange::step* downstream, model::step* step, channel* ch, std::shared_ptr<meta::record_meta> meta) : downstream_(downstream), step_(step), channel_(ch), meta_(std::move(meta)){}
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {

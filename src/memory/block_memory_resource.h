@@ -123,7 +123,7 @@ protected:
         assert(reinterpret_cast<std::uintptr_t>(p) >= page_size); // NOLINT
 
         // find a page which contains this block
-        void* prev = static_cast<char*>(p) - page_size;
+        void* prev = static_cast<char*>(p) - page_size; //NOLINT
         auto iter = blocks_.upper_bound(prev);
         if (iter == blocks_.end()) {
             // no such page
@@ -186,7 +186,7 @@ private:
         [[nodiscard]] constexpr bool empty() const noexcept { return released_.count() == acquired_; }
         [[nodiscard]] constexpr std::size_t remaining_blocks() const noexcept { return nblocks_in_page - acquired_; }
         [[nodiscard]] std::size_t remaining(std::size_t alignment) const noexcept {
-            auto head = reinterpret_cast<std::uintptr_t>(head_);
+            auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
             auto last = head + page_size;
             auto ua_next = head + acquired_ * block_size;
             auto next = (ua_next + (alignment - 1)) / alignment * alignment;
@@ -197,7 +197,7 @@ private:
         }
         void* try_acquire(std::size_t bytes, std::size_t alignment) noexcept {
             // the next available block
-            auto head = reinterpret_cast<std::uintptr_t>(head_);
+            auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
             auto ua_next = head + acquired_ * block_size;
             auto next = (ua_next + (alignment - 1)) / alignment * alignment;
             assert(next >= ua_next); // NOLINT
@@ -211,7 +211,7 @@ private:
                 return nullptr;
             }
             acquired_ += nblocks;
-            return reinterpret_cast<void*>(next);
+            return reinterpret_cast<void*>(next); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         }
         void release(std::size_t offset, std::size_t bytes, bool compaction) noexcept {
             auto start_block = offset / block_size; // inclusive

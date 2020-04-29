@@ -74,15 +74,14 @@ public:
             record_size_(info_->record_meta()->record_size()),
             buf_(std::make_unique<char[]>(record_size_)),
             key_comparator_(info_->key_meta()) {
-        for(std::size_t i=0, n = partitions_.size(); i < n; ++i) {
-            auto& p = partitions_[i];
+        for(auto& p : partitions_) {
             if (p && p->begin() != p->end()) {
                 queue_.emplace(p->begin(), p->end());
             }
         }
     }
 
-    inline void read_and_pop(iterator it, iterator end) {
+    inline void read_and_pop(iterator it, iterator end) { //NOLINT
         queue_.pop();
         memcpy(buf_.get(), *it, record_size_);
         if (++it != end) {

@@ -25,10 +25,6 @@ namespace jogasaki::executor::common {
 class port : public model::port {
 public:
     port() = default;
-    ~port() override = default;
-    port(port&& other) noexcept = default;
-    port& operator=(port&& other) noexcept = default;
-
     port(port_direction direction, port_kind kind, model::step* owner = nullptr) : direction_(direction), kind_(kind), owner_(owner) {}
 
     [[nodiscard]] takatori::util::sequence_view<model::port* const> opposites() const override {

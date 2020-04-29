@@ -33,8 +33,8 @@ public:
     void schedule(model::graph &g);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> impl_;
+    class impl;
+    std::unique_ptr<impl> impl_;
 };
 
 } // namespace

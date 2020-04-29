@@ -24,7 +24,7 @@ namespace jogasaki::executor::common {
 /**
  * @brief group step data flow
  */
-class flow {
+class flow { //NOLINT(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 public:
     /**
      * @brief index used to identify the port attached to this step

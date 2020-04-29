@@ -36,10 +36,6 @@ class flow : public exchange::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    ~flow() override;
-    flow(flow&& other) noexcept = default;
-    flow& operator=(flow&& other) noexcept = default;
-
     flow(channel* ch, model::step* step);
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;

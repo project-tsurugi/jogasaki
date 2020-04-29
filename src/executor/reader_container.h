@@ -69,10 +69,10 @@ public:
      * @brief create empty instance
      */
     constexpr reader_container() = default;
-    reader_container(record_reader* reader) noexcept : reader_(reader), kind_(reader_kind::record) {}
-    reader_container(group_reader* reader) noexcept : reader_(reader), kind_(reader_kind::group) {}
+    explicit reader_container(record_reader* reader) noexcept : reader_(reader), kind_(reader_kind::record) {}
+    explicit reader_container(group_reader* reader) noexcept : reader_(reader), kind_(reader_kind::group) {}
 
-    reader_kind kind() const noexcept {
+    [[nodiscard]] reader_kind kind() const noexcept {
         return kind_;
     }
 

@@ -22,7 +22,6 @@ namespace jogasaki::executor::exchange::forward {
 class reader : public group_reader {
 public:
     reader() = default;
-    ~reader() override = default;
     reader(reader&& other) noexcept = delete;
     reader& operator=(reader&& other) noexcept = delete;
 

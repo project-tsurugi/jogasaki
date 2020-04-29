@@ -27,9 +27,6 @@ namespace jogasaki::executor::common {
 class graph : public model::graph {
 public:
     graph() = default;
-    ~graph() override = default;
-    graph(graph&& other) noexcept = default;
-    graph& operator=(graph&& other) noexcept = default;
 
     explicit graph(std::vector<std::unique_ptr<model::step>>&& steps) : steps_(std::move(steps)) {
         for(auto&& s: steps_) {

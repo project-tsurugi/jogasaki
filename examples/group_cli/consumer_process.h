@@ -26,7 +26,6 @@ namespace jogasaki::executor {
 class consumer_process : public process::step {
 public:
     consumer_process() : step(1, 1) {};
-
     explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta) : meta_(std::move(meta)) {
         graph_ = owner;
     }

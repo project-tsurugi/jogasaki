@@ -37,16 +37,16 @@ using task_kind = model::task_kind;
 /**
  * @brief Dependency Graph Scheduler
  */
-class dag_controller::Impl {
+class dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
-    explicit Impl(configuration const* cfg) : cfg_(cfg),
+    explicit impl(configuration const* cfg) : cfg_(cfg),
             executor_(task_scheduler_factory::create(cfg_->single_thread_task_scheduler ?
                                                      task_scheduler_kind::single_thread : task_scheduler_kind::multi_thread)) {}
-    ~Impl() = default;
-    Impl(Impl&& other) = delete;
-    Impl& operator=(Impl&& other) = delete;
+    ~impl() = default;
+    impl(impl&& other) = delete;
+    impl& operator=(impl&& other) = delete;
 
     /*
      * @brief handles upstream_providing event
@@ -336,14 +336,14 @@ private:
 };
 
 dag_controller::dag_controller() : dag_controller(&default_configuration) {}
-dag_controller::dag_controller(configuration const* cfg) : impl_(std::make_unique<Impl>(cfg)) {};
+dag_controller::dag_controller(configuration const* cfg) : impl_(std::make_unique<impl>(cfg)) {};
 dag_controller::~dag_controller() = default;
 
 void dag_controller::schedule(model::graph &g) {
     return impl_->schedule(g);
 }
 
-void dag_controller::Impl::operator()(upstream_providing_tag_t, event& e) {
+void dag_controller::impl::operator()(upstream_providing_tag_t, event& e) {
     if (auto v = graph_->find_step(e.target())) {
         DVLOG(1) << *v << " got notified upstream started providing";
         if (e.source_port_kind() == port_kind::sub) {
@@ -359,7 +359,7 @@ void dag_controller::Impl::operator()(upstream_providing_tag_t, event& e) {
     throw std::domain_error("invalid event target");
 }
 
-void dag_controller::Impl::operator()(task_completed_tag_t, event& e) {
+void dag_controller::impl::operator()(task_completed_tag_t, event& e) {
     DVLOG(1) << "task[id=" << e.task() << "] completed";
     if (auto v = graph_->find_step(e.target())) {
         auto& tasks = steps_[v->id()];
@@ -372,11 +372,11 @@ void dag_controller::Impl::operator()(task_completed_tag_t, event& e) {
     throw std::domain_error("invalid event target");
 }
 
-void dag_controller::Impl::operator()(completion_instructed_tag_t, event& e) {
+void dag_controller::impl::operator()(completion_instructed_tag_t, event& e) {
     (void)e;
 }
 
-void dag_controller::Impl::operator()(activate_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(activate_tag_t, internal_event&, step* s) {
     auto& step = steps_[s->id()];
     if(step.state_ == step_state_kind::created) {
         s->activate();
@@ -389,15 +389,15 @@ void dag_controller::Impl::operator()(activate_tag_t, internal_event&, step* s) 
     }
 }
 
-void dag_controller::Impl::operator()(prepare_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(prepare_tag_t, internal_event&, step* s) {
     start_preparing(*s);
 }
 
-void dag_controller::Impl::operator()(consume_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(consume_tag_t, internal_event&, step* s) {
     start_running(*s);
 }
 
-void dag_controller::Impl::operator()(deactivate_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(deactivate_tag_t, internal_event&, step* s) {
     auto& st = steps_[s->id()].state_;
     if(st == step_state_kind::completed) {
         s->deactivate();
@@ -405,7 +405,7 @@ void dag_controller::Impl::operator()(deactivate_tag_t, internal_event&, step* s
     }
 }
 
-void dag_controller::Impl::operator()(propagate_downstream_completing_tag_t, internal_event& ie, step* s) {
+void dag_controller::impl::operator()(propagate_downstream_completing_tag_t, internal_event& ie, step* s) {
     (void)s;
     (void)ie;
 }

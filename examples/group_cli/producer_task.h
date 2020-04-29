@@ -30,7 +30,6 @@ class producer_task : public task_base {
 public:
 
     producer_task() = delete;
-
     producer_task(channel* channel,
             model::step* src,
             exchange::sink* sink,

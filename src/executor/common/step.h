@@ -30,10 +30,6 @@ public:
 
     using port_index_type = std::size_t;
 
-    ~step() override = default;
-    step(step&& other) noexcept = default;
-    step& operator=(step&& other) noexcept = default;
-
     explicit step(size_type inputs = 1, size_type outputs = 1, size_type subinputs = 0) {
         main_input_ports_.reserve(inputs);
         sub_input_ports_.reserve(subinputs);

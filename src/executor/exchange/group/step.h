@@ -34,10 +34,6 @@ class step : public exchange::step {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    ~step() override = default;
-    step(step&& other) noexcept = default;
-    step& operator=(step&& other) noexcept = default;
-
     /**
      * @brief create new instance with empty schema (for testing)
      */

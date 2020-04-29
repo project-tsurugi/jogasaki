@@ -43,14 +43,10 @@ class flow : public exchange::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    ~flow() override;
-    flow(flow&& other) noexcept = default;
-    flow& operator=(flow&& other) noexcept = default;
-
     /**
      * @brief create new instance with empty schema (for testing)
      */
-    flow();
+    flow() = default;
 
     /**
      * @brief create new instance

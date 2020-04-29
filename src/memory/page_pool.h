@@ -91,10 +91,10 @@ public:
         }
         page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
                     (MAP_SHARED | MAP_ANON | MAP_HUGETLB), -1, 0); //NOLINT
-        if (page == MAP_FAILED) {
+        if (page == MAP_FAILED) { //NOLINT
             page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
                         (MAP_SHARED | MAP_ANON), -1, 0); //NOLINT
-            if (page == MAP_FAILED) {
+            if (page == MAP_FAILED) { //NOLINT
                 return nullptr;
             }
         }

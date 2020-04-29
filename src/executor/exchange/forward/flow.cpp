@@ -28,7 +28,7 @@ flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<forwa
                 return static_cast<exchange::source&>(**static_cast<std::unique_ptr<forward::source>*>(cursor));
             },
             [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<forward::source>*>(cursor) + offset);
+                return static_cast<void*>(static_cast<std::unique_ptr<forward::source>*>(cursor) + offset); //NOLINT
             },
     };
     return flow::source_list_view{ vp, ext };
@@ -40,15 +40,13 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::
                 return static_cast<exchange::sink&>(**static_cast<std::unique_ptr<forward::sink>*>(cursor));
             },
             [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<forward::sink>*>(cursor) + offset);
+                return static_cast<void*>(static_cast<std::unique_ptr<forward::sink>*>(cursor) + offset); //NOLINT
             },
     };
     return flow::sink_list_view{ vp, ext };
 }
 
 } // namespace impl
-
-flow::~flow() = default;
 
 flow::flow(std::shared_ptr<meta::record_meta> input_meta, channel* ch) :
         input_meta_(std::move(input_meta)), channel_(ch) {}

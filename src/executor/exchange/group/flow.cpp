@@ -28,7 +28,7 @@ flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<group
                 return static_cast<exchange::source&>(**static_cast<std::unique_ptr<group::source>*>(cursor));
             },
             [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<group::source>*>(cursor) + offset);
+                return static_cast<void*>(static_cast<std::unique_ptr<group::source>*>(cursor) + offset); //NOLINT
             },
     };
     return flow::source_list_view{ vp, ext };
@@ -40,7 +40,7 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<group::si
                 return static_cast<exchange::sink&>(**static_cast<std::unique_ptr<group::sink>*>(cursor));
             },
             [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<group::sink>*>(cursor) + offset);
+                return static_cast<void*>(static_cast<std::unique_ptr<group::sink>*>(cursor) + offset); //NOLINT
             },
     };
     return flow::sink_list_view{ vp, ext };
@@ -87,7 +87,7 @@ flow::source_list_view flow::sources() {
 void flow::transfer() {
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        assert(partitions.size() == sources_.size());
+        assert(partitions.size() == sources_.size()); //NOLINT
         for(std::size_t i=0; i < partitions.size(); ++i) {
             sources_[i]->receive(std::move(partitions[i]));
         }

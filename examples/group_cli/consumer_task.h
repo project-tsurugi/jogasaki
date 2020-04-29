@@ -29,7 +29,6 @@ namespace jogasaki::executor {
 class consumer_task : public task_base {
 public:
     consumer_task() = default;
-
     consumer_task(channel* channel,
             model::step* src,
             reader_container reader,

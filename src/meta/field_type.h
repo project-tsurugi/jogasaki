@@ -23,8 +23,8 @@
 #include <takatori/util/enum_tag.h>
 #include <takatori/util/comparable_traits.h>
 
-#include <meta/field_type_traits.h>
 #include <accessor/text.h>
+#include <meta/field_type_traits.h>
 #include <meta/field_type_kind.h>
 #include <meta/field_type_option.h>
 

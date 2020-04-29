@@ -40,6 +40,7 @@ DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NO
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
+DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 
 namespace jogasaki::group_cli {
 
@@ -104,6 +105,14 @@ extern "C" int main(int argc, char* argv[]) {
     s.upstream_partitions_ = FLAGS_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_words_per_slice;
+
+    if (FLAGS_minimum) {
+        s.thread_pool_size_ = 1;
+        s.upstream_partitions_ = 1;
+        s.downstream_partitions_ = 1;
+        s.records_per_upstream_partition_ = 1;
+    }
+
     try {
         return jogasaki::group_cli::run(s);  // NOLINT
     } catch (std::exception& e) {

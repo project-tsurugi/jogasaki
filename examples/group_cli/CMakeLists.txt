@@ -36,5 +36,5 @@ endif()
 
 add_test(
         NAME group-cli
-        COMMAND group-cli
+        COMMAND group-cli --minimum
 )

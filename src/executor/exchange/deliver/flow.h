@@ -46,6 +46,8 @@ public:
 
     sinks_sources setup_partitions(std::size_t partitions) override;
 
+    source_list_view sources() override;
+
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::deliver;
     }

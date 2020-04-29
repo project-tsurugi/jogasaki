@@ -28,34 +28,44 @@ namespace jogasaki::executor {
 
 class producer_task : public task_base {
 public:
-    producer_task() = delete;
-    producer_task(channel* channel, model::step* src, record_writer* writer) : task_base(channel,  src), writer_(writer) {}
 
-    record_writer* writer_{};
+    producer_task() = delete;
+
+    producer_task(channel* channel,
+            model::step* src,
+            exchange::sink* sink,
+            std::shared_ptr<meta::record_meta> meta) :
+            task_base(channel,  src),
+            sink_(sink),
+            meta_(std::move(meta)) {}
 
     void execute() override {
         DVLOG(1) << *this << " producer_task executed. count: " << count_;
-
-        auto rec_meta = std::make_shared<meta::record_meta>(std::vector<meta::field_type>{
-                meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-                meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
-        }, boost::dynamic_bitset<std::uint64_t>(std::string("00")));
-        exchange::group::shuffle_info info{rec_meta, {1}};
-        const auto& key_meta = info.key_meta();
-
         memory::page_pool pool{};
         memory::monotonic_paged_memory_resource resource{&pool};
-        auto offset_c1 = rec_meta->value_offset(0);
-        auto offset_c2 = rec_meta->value_offset(0);
-        for(std::size_t i = 0; i < 3; ++i) {
-            auto sz = rec_meta->record_size();
-            auto ptr = resource.allocate(sz, rec_meta->record_alignment());
+        auto offset_c1 = meta_->value_offset(0);
+        auto offset_c2 = meta_->value_offset(1);
+        initialize_writer();
+        for(std::size_t i = 0; i < 10; ++i) {
+            auto sz = meta_->record_size();
+            auto ptr = resource.allocate(sz, meta_->record_alignment());
             auto ref = accessor::record_ref(ptr, sz);
             ref.set_value<std::int64_t>(offset_c1, i);
             ref.set_value<double>(offset_c2, i);
             writer_->write(ref);
         }
         writer_->flush();
+    }
+
+private:
+    exchange::sink* sink_{};
+    std::shared_ptr<meta::record_meta> meta_{};
+    record_writer* writer_{};
+
+    void initialize_writer() {
+        if(!writer_) {
+            writer_ = &sink_->acquire_writer();
+        }
     }
 };
 

@@ -22,6 +22,7 @@
 #include <executor/common/port.h>
 #include <scheduler/dag_controller.h>
 #include <executor/exchange/deliver/step.h>
+#include <executor/exchange/group/shuffle_info.h>
 #include "producer_process.h"
 #include "consumer_process.h"
 
@@ -31,6 +32,7 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::executor::exchange;
+using namespace jogasaki::executor::exchange::group;
 using namespace jogasaki::scheduler;
 
 DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
@@ -76,10 +78,12 @@ static int run() {
  */
 
 static int run() {
+    auto meta = test_record_meta();
+    auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
     auto g = std::make_unique<common::graph>();
-    auto scan = std::make_unique<producer_process>();
-    auto xch = std::make_unique<group::step>(test_record_meta(), std::vector<std::size_t>{0});
-    auto emit = std::make_unique<consumer_process>();
+    auto scan = std::make_unique<producer_process>(g.get(), meta);
+    auto xch = std::make_unique<group::step>(info);
+    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta());
     auto dvr = std::make_unique<deliver::step>();
     *scan >> *xch;
     *xch >> *emit;
@@ -92,7 +96,7 @@ static int run() {
 
     configuration cfg;
     cfg.thread_pool_size = 1;
-    cfg.single_thread_task_scheduler = false;
+    cfg.single_thread_task_scheduler = true;
     dag_controller dc{&cfg};
     dc.schedule(*g);
     return 0;

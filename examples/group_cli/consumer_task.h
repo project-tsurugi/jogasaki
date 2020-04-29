@@ -29,10 +29,29 @@ namespace jogasaki::executor {
 class consumer_task : public task_base {
 public:
     consumer_task() = default;
-    consumer_task(channel* channel, model::step* src) : task_base(channel, src) {}
+
+    consumer_task(channel* channel,
+            model::step* src,
+            reader_container reader,
+            std::shared_ptr<meta::group_meta> meta
+    ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader) {}
+
     void execute() override {
         DVLOG(1) << *this << " consumer_task executed. count: " << count_;
+        auto key_offset = meta_->key().value_offset(0);
+        auto value_offset = meta_->value().value_offset(0);
+        auto* reader = reader_.reader<group_reader>();
+        while(reader->next_group()) {
+            DVLOG(1) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset);
+            while(reader->next_member()) {
+                DVLOG(1) << *this << "   value : " << reader->get_member().get_value<double>(value_offset);
+            }
+        }
     }
+
+private:
+    std::shared_ptr<meta::group_meta> meta_{};
+    reader_container reader_{};
 };
 
 }

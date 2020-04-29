@@ -69,10 +69,11 @@ public:
             step* owner
             );
 
-
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
 
     sinks_sources setup_partitions(std::size_t partitions) override;
+
+    source_list_view sources() override;
 
     void transfer();
 

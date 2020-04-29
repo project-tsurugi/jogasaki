@@ -33,26 +33,23 @@ public:
     using readers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<group_reader>>;
 
     task_base() = default;
+
     task_base(channel* channel, model::step* src, bool is_pretask = false) : channel_(channel), src_(src), is_pretask_(is_pretask) {}
+
     model::task_result operator()() override {
         execute();
-        if (count_ == 0) {
-            notify_downstream();
-        }
         ++count_;
-        bool has_next = count_ < limit_;
-        if (!has_next) {
-            channel_->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
-        }
-        return has_next ? model::task_result::proceed : model::task_result::complete;
+        channel_->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
+        return model::task_result::complete;
     };
+
     virtual void execute() = 0;
+
 protected:
     channel* channel_{};
     model::step* src_{};
     bool is_pretask_{false};
     std::size_t count_{0};
-    std::size_t limit_{3};
 
     void notify_downstream() {
         if (!src_->output_ports().empty()) {

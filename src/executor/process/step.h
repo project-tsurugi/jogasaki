@@ -44,10 +44,6 @@ public:
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::process;
     }
-//    void activate() override {
-//         create data flow object
-//        data_flow_object_ = std::make_unique<flow>();
-//    }
 };
 
 }

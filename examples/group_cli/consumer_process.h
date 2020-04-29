@@ -26,20 +26,24 @@ namespace jogasaki::executor {
 class consumer_process : public process::step {
 public:
     consumer_process() : step(1, 1) {};
-    explicit consumer_process(model::graph* owner) {
+
+    explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta) : meta_(std::move(meta)) {
         graph_ = owner;
     }
 
     [[nodiscard]] std::size_t max_partitions() const override {
         return step::max_partitions();
     }
+
     void activate() override {
-        auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
+        auto p = dynamic_cast<exchange::step*>(input_ports()[0]->opposites()[0]->owner());
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch);
+        data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch, meta_);
     }
+
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::shared_ptr<meta::group_meta> meta_{};
 };
 
 }

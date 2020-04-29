@@ -21,6 +21,7 @@
 #include <model/task.h>
 #include <constants.h>
 #include <executor/process/step.h>
+#include <zconf.h>
 #include "consumer_task.h"
 
 namespace jogasaki::executor {
@@ -28,28 +29,28 @@ namespace jogasaki::executor {
 class consumer_flow : public common::flow {
 public:
     consumer_flow() = default;
-    consumer_flow(exchange::step* downstream, model::step* step, channel* ch) : downstream_(downstream), step_(step), channel_(ch) {}
+    consumer_flow(exchange::step* upstream, model::step* step, channel* ch, std::shared_ptr<meta::group_meta> meta) : upstream_(upstream), step_(step), channel_(ch), meta_(std::move(meta)){}
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        auto initial_count = tasks_.size();
-        if (tasks_.size() < default_partitions) {
-            for(std::size_t i = 0; i < default_partitions; ++i) {
-                tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_));
-            }
+        auto srcs = dynamic_cast<exchange::group::flow&>(upstream_->data_flow_object()).sources();
+        for(auto& s : srcs) {
+            tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_, s.acquire_reader(), meta_));
         }
-        return takatori::util::sequence_view{&*(tasks_.begin()+initial_count), &*(tasks_.end())};
+        return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
+
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::process;
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
-    exchange::step* downstream_{};
+    exchange::step* upstream_{};
     model::step* step_{};
     channel* channel_{};
+    std::shared_ptr<meta::group_meta> meta_{};
 };
 
 }

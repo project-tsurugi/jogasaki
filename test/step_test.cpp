@@ -51,6 +51,7 @@ TEST_F(step_test, simple_forward) {
     auto p = std::make_unique<test::isolated_process>(g.get());
     g->insert(std::move(p));
     for(auto&& v : g->steps()) {
+        v->activate();
         for(auto&& t : v->create_tasks()) {
             t->operator()();
         }

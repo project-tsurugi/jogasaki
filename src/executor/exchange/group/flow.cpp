@@ -80,6 +80,10 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
             impl::cast_to_exchange_source(sources_));
 }
 
+flow::source_list_view flow::sources() {
+    return impl::cast_to_exchange_source(sources_);
+}
+
 void flow::transfer() {
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();

@@ -31,7 +31,7 @@ using iterator_pair = std::pair<iterator, iterator>;
  */
 class iterator_pair_comparator {
 public:
-    iterator_pair_comparator(std::shared_ptr<shuffle_info> info) :
+    explicit iterator_pair_comparator(std::shared_ptr<shuffle_info> info) :
             info_(std::move(info)),
             record_size_(info_->record_meta()->record_size()),
             key_comparator_(info_->key_meta()) {}
@@ -64,7 +64,6 @@ enum class reader_state {
  */
 class reader : public group_reader {
 public:
-    ~reader() override = default;
     reader(reader&& other) noexcept = delete;
     reader& operator=(reader&& other) noexcept = delete;
 
@@ -77,7 +76,7 @@ public:
             key_comparator_(info_->key_meta()) {
         for(std::size_t i=0, n = partitions_.size(); i < n; ++i) {
             auto& p = partitions_[i];
-            if (p->begin() != p->end()) {
+            if (p && p->begin() != p->end()) {
                 queue_.emplace(p->begin(), p->end());
             }
         }
@@ -117,7 +116,8 @@ public:
         if (state_ == reader_state::before_member) {
             state_ = reader_state::on_member;
             return true;
-        } else if(state_ == reader_state::on_member) {
+        }
+        if(state_ == reader_state::on_member) {
             if (queue_.empty()) {
                 state_ = reader_state::after_group;
                 return false;

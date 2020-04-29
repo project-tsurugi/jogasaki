@@ -26,11 +26,25 @@
 
 namespace jogasaki::executor {
 
+template<class T>
+using sequence_view = takatori::util::sequence_view<T>;
+
 class consumer_flow : public common::flow {
 public:
     consumer_flow() = default;
-    consumer_flow(exchange::step* upstream, model::step* step, channel* ch, std::shared_ptr<meta::group_meta> meta) : upstream_(upstream), step_(step), channel_(ch), meta_(std::move(meta)){}
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+    consumer_flow(
+            exchange::step* upstream,
+            model::step* step,
+            channel* ch,
+            std::shared_ptr<meta::group_meta> meta
+    ) :
+            upstream_(upstream),
+            step_(step),
+            channel_(ch),
+            meta_(std::move(meta))
+    {}
+
+    sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         auto srcs = dynamic_cast<exchange::group::flow&>(upstream_->data_flow_object()).sources();
         for(auto& s : srcs) {
             tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_, s.acquire_reader(), meta_));
@@ -38,7 +52,7 @@ public:
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
+    sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
 

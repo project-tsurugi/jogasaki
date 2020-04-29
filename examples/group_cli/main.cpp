@@ -46,37 +46,6 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }
 
-/*
-static int run() {
-    auto g = std::make_unique<common::graph>();
-    auto scan1 = std::make_unique<simple_scan_process>();
-    auto scan2 = std::make_unique<simple_scan_process>();
-    auto xch1 = std::make_unique<group::step>(test_record_meta(), std::vector<std::size_t>{0});
-    auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
-    auto cgrp = std::make_unique<simple_cogroup_process>();
-    auto dvr = std::make_unique<deliver::step>();
-    *scan1 >> *xch1;
-    *scan2 >> *xch2;
-    *xch1 >> *cgrp;
-    *xch2 >> *cgrp;
-    *cgrp >> *dvr;
-    // step id are assigned from 0 to 5
-    g->insert(std::move(scan1));
-    g->insert(std::move(xch1));
-    g->insert(std::move(scan2));
-    g->insert(std::move(xch2));
-    g->insert(std::move(cgrp));
-    g->insert(std::move(dvr));
-
-    configuration cfg;
-    cfg.thread_pool_size = 1;
-    cfg.single_thread_task_scheduler = false;
-    dag_controller dc{&cfg};
-    dc.schedule(*g);
-    return 0;
-}
- */
-
 static int run() {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
@@ -101,6 +70,7 @@ static int run() {
     dc.schedule(*g);
     return 0;
 }
+
 }  // namespace
 
 extern "C" int main(int argc, char* argv[]) {

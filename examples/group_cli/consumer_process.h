@@ -41,7 +41,6 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
     std::shared_ptr<meta::group_meta> meta_{};
 };
 

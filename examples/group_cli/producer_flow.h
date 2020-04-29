@@ -25,20 +25,24 @@
 
 namespace jogasaki::executor {
 
+template<class T>
+using sequence_view = takatori::util::sequence_view<T>;
+
 class producer_flow : public common::flow {
 public:
     producer_flow() = default;
     producer_flow(exchange::step* downstream, model::step* step, channel* ch, std::shared_ptr<meta::record_meta> meta) : downstream_(downstream), step_(step), channel_(ch), meta_(std::move(meta)){}
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        // process with scan creates only one task
-        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(1);
+    sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(2);
         (void)srcs;
-        tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &sinks[0], meta_));
+        for(auto& s : sinks) {
+            tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_));
+        }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
+    sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
 

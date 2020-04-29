@@ -46,23 +46,6 @@ protected:
     model::step* src_{};
     bool is_pretask_{false};
     std::size_t count_{0};
-
-    void notify_downstream() {
-        if (!src_->output_ports().empty()) {
-            for(auto& oport : src_->output_ports()) {
-                for(auto& o : oport->opposites()) {
-                    auto* downstream = o->owner();
-                    if(dynamic_cast<exchange::group::step*>(downstream)) {
-                        // blocking exchange should not raise upstream_providing
-                        continue;
-                    }
-                    model::step::port_index_type index = o->kind() == port_kind::main ? input_port_index(*o->owner(), *o) : subinput_port_index(
-                            *o->owner(), *o);
-                    channel_->emplace(event_kind_tag<event_kind::upstream_providing>, downstream->id(), o->kind(), index);
-                }
-            }
-        }
-    }
 };
 
 }

@@ -29,7 +29,10 @@ namespace jogasaki::executor {
 class producer_process : public process::step {
 public:
     producer_process() : step(0, 1) {};
-    producer_process(model::graph* owner, std::shared_ptr<meta::record_meta> meta) : meta_(std::move(meta)) {
+    producer_process(model::graph* owner,
+            std::shared_ptr<meta::record_meta> meta,
+            std::size_t partitions) :
+            meta_(std::move(meta)), partitions_(partitions) {
         graph_ = owner;
     }
 
@@ -40,11 +43,12 @@ public:
     void activate() override {
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object_ = std::make_unique<producer_flow>(p, this, ch, meta_);
+        data_flow_object_ = std::make_unique<producer_flow>(p, this, ch, meta_, partitions_);
     }
 
 private:
     std::shared_ptr<meta::record_meta> meta_{};
+    std::size_t partitions_{};
 };
 
 }

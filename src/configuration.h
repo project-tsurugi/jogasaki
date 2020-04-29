@@ -19,9 +19,10 @@ namespace jogasaki {
 
 class configuration {
 public:
-
     bool single_thread_task_scheduler = true;
     std::size_t thread_pool_size = 5;
+    std::size_t default_process_partitions = 5;
+    std::size_t default_scan_process_partitions = 5;
 
 };
 

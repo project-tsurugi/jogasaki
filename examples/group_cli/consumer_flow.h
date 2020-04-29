@@ -59,6 +59,7 @@ public:
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::process;
     }
+
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
     exchange::step* upstream_{};

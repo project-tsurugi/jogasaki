@@ -31,10 +31,19 @@ using sequence_view = takatori::util::sequence_view<T>;
 class producer_flow : public common::flow {
 public:
     producer_flow() = default;
-    producer_flow(exchange::step* downstream, model::step* step, channel* ch, std::shared_ptr<meta::record_meta> meta) : downstream_(downstream), step_(step), channel_(ch), meta_(std::move(meta)){}
+    producer_flow(exchange::step* downstream,
+            model::step* step,
+            channel* ch,
+            std::shared_ptr<meta::record_meta> meta,
+            std::size_t partitions) :
+            downstream_(downstream),
+            step_(step),
+            channel_(ch),
+            meta_(std::move(meta)),
+            partitions_(partitions) {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(2);
+        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(partitions_);
         (void)srcs;
         for(auto& s : sinks) {
             tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_));
@@ -56,6 +65,7 @@ private:
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::record_meta> meta_{};
+    std::size_t partitions_{};
 };
 
 }

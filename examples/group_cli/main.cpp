@@ -26,6 +26,10 @@
 #include "../common/producer_process.h"
 #include "consumer_process.h"
 
+#ifdef ENABLE_GOOGLE_PERFTOOLS
+#include "gperftools/profiler.h"
+#endif
+
 namespace jogasaki::group_cli {
 
 using namespace jogasaki;
@@ -36,6 +40,14 @@ using namespace jogasaki::executor::exchange::group;
 using namespace jogasaki::scheduler;
 
 DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
+DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
+DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
+DEFINE_int32(words_per_slice, 100000, "Number of words per slice");  //NOLINT
+DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
+DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
+DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
+DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
+DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
@@ -50,7 +62,7 @@ static int run() {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
     auto g = std::make_unique<common::graph>();
-    auto scan = std::make_unique<producer_process>(g.get(), meta);
+    auto scan = std::make_unique<producer_process>(g.get(), meta, FLAGS_upstream_partitions);
     auto xch = std::make_unique<group::step>(info);
     auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta());
     auto dvr = std::make_unique<deliver::step>();
@@ -66,6 +78,8 @@ static int run() {
     configuration cfg;
     cfg.thread_pool_size = 1;
     cfg.single_thread_task_scheduler = true;
+    cfg.default_process_partitions = FLAGS_downstream_partitions;
+    cfg.default_scan_process_partitions = FLAGS_upstream_partitions;
     dag_controller dc{&cfg};
     dc.schedule(*g);
     return 0;

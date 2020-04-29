@@ -32,25 +32,32 @@ public:
     consumer_task(channel* channel,
             model::step* src,
             executor::reader_container reader,
-            std::shared_ptr<meta::group_meta> meta
-    ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader) {}
+            std::shared_ptr<meta::group_meta> meta,
+            context& c
+    ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader), context_(&c) {}
 
     void execute() override {
         DVLOG(1) << *this << " consumer_task executed. count: " << count_;
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
         auto* reader = reader_.reader<executor::group_reader>();
+        std::size_t records = 0;
+        std::size_t keys = 0;
         while(reader->next_group()) {
             DVLOG(1) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset);
+            ++keys;
             while(reader->next_member()) {
                 DVLOG(1) << *this << "   value : " << reader->get_member().get_value<double>(value_offset);
+                ++records;
             }
         }
+        LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys";
     }
 
 private:
     std::shared_ptr<meta::group_meta> meta_{};
     executor::reader_container reader_{};
+    context* context_{};
 };
 
 }

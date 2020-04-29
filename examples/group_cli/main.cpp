@@ -25,19 +25,11 @@
 #include <executor/exchange/group/shuffle_info.h>
 #include "producer_process.h"
 #include "consumer_process.h"
+#include "context.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
 #endif
-
-namespace jogasaki::group_cli {
-
-using namespace jogasaki;
-using namespace jogasaki::model;
-using namespace jogasaki::executor;
-using namespace jogasaki::executor::exchange;
-using namespace jogasaki::executor::exchange::group;
-using namespace jogasaki::scheduler;
 
 DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
@@ -49,6 +41,16 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 
+namespace jogasaki::group_cli {
+
+using namespace jogasaki;
+using namespace jogasaki::model;
+using namespace jogasaki::executor;
+using namespace jogasaki::executor::exchange;
+using namespace jogasaki::executor::exchange::group;
+using namespace jogasaki::scheduler;
+
+
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{
@@ -58,13 +60,13 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }
 
-static int run() {
+static int run(context& s) {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
     auto g = std::make_unique<common::graph>();
-    auto scan = std::make_unique<producer_process>(g.get(), meta, FLAGS_upstream_partitions);
+    auto scan = std::make_unique<producer_process>(g.get(), meta, s);
     auto xch = std::make_unique<group::step>(info);
-    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta());
+    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta(), s);
     auto dvr = std::make_unique<deliver::step>();
     *scan >> *xch;
     *xch >> *emit;
@@ -76,10 +78,10 @@ static int run() {
     g->insert(std::move(dvr));
 
     configuration cfg;
-    cfg.thread_pool_size = 1;
+    cfg.thread_pool_size = s.thread_pool_size_;
     cfg.single_thread_task_scheduler = true;
-    cfg.default_process_partitions = FLAGS_downstream_partitions;
-    cfg.default_scan_process_partitions = FLAGS_upstream_partitions;
+    cfg.default_process_partitions = s.downstream_partitions_;
+    cfg.default_scan_process_partitions = s.upstream_partitions_;
     dag_controller dc{&cfg};
     dc.schedule(*g);
     return 0;
@@ -96,8 +98,14 @@ extern "C" int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("group cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    jogasaki::group_cli::context s{};
+    s.thread_pool_size_ = FLAGS_thread_pool_size;
+    s.upstream_partitions_ = FLAGS_upstream_partitions;
+    s.downstream_partitions_ = FLAGS_downstream_partitions;
+    s.records_per_upstream_partition_ = FLAGS_words_per_slice;
     try {
-        return jogasaki::group_cli::run();  // NOLINT
+        return jogasaki::group_cli::run(s);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

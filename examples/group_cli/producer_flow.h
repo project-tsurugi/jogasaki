@@ -22,6 +22,7 @@
 #include <constants.h>
 #include <executor/process/step.h>
 #include "producer_task.h"
+#include "context.h"
 
 namespace jogasaki::group_cli {
 
@@ -36,18 +37,18 @@ public:
             model::step* step,
             channel* ch,
             std::shared_ptr<meta::record_meta> meta,
-            std::size_t partitions) :
+            context& c) :
             downstream_(downstream),
             step_(step),
             channel_(ch),
             meta_(std::move(meta)),
-            partitions_(partitions) {}
+            context_(&c) {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(partitions_);
+        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(context_->upstream_partitions_);
         (void)srcs;
         for(auto& s : sinks) {
-            tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_));
+            tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_, *context_));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
@@ -66,7 +67,7 @@ private:
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::record_meta> meta_{};
-    std::size_t partitions_{};
+    context* context_{};
 };
 
 }

@@ -20,24 +20,27 @@
 #include <constants.h>
 #include <executor/process/step.h>
 #include "consumer_flow.h"
+#include "context.h"
 
 namespace jogasaki::group_cli {
 
 class consumer_process : public executor::process::step {
 public:
-    consumer_process() : step(1, 1) {};
-    explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta) : meta_(std::move(meta)) {
+    consumer_process() = default;
+    explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta, context& c) :
+            step(1, 1), meta_(std::move(meta)), context_(&c) {
         graph_ = owner;
     }
 
     void activate() override {
         auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch, meta_);
+        data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch, meta_, *context_);
     }
 
 private:
     std::shared_ptr<meta::group_meta> meta_{};
+    context* context_{};
 };
 
 }

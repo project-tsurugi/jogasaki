@@ -23,6 +23,7 @@
 #include <executor/process/step.h>
 #include <zconf.h>
 #include "consumer_task.h"
+#include "context.h"
 
 namespace jogasaki::group_cli {
 
@@ -36,18 +37,20 @@ public:
             executor::exchange::step* upstream,
             model::step* step,
             channel* ch,
-            std::shared_ptr<meta::group_meta> meta
+            std::shared_ptr<meta::group_meta> meta,
+            context& c
     ) :
             upstream_(upstream),
             step_(step),
             channel_(ch),
-            meta_(std::move(meta))
+            meta_(std::move(meta)),
+            context_(&c)
     {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         auto srcs = dynamic_cast<executor::exchange::group::flow&>(upstream_->data_flow_object()).sources();
         for(auto& s : srcs) {
-            tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_, s.acquire_reader(), meta_));
+            tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_, s.acquire_reader(), meta_, *context_));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
@@ -66,6 +69,7 @@ private:
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::group_meta> meta_{};
+    context* context_{};
 };
 
 }

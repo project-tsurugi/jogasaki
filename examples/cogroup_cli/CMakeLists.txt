@@ -3,38 +3,38 @@ file(GLOB SOURCES
         "../common/*.cpp"
 )
 
-add_executable(group-cli
+add_executable(cogroup-cli
         ${SOURCES}
 )
 
-set_target_properties(group-cli
+set_target_properties(cogroup-cli
         PROPERTIES
         RUNTIME_OUTPUT_NAME "dc-cli"
 )
 
-target_include_directories(group-cli
+target_include_directories(cogroup-cli
         PRIVATE .
 )
 
-target_link_libraries(group-cli
+target_link_libraries(cogroup-cli
         PRIVATE jogasaki
         PRIVATE takatori
         PRIVATE glog::glog
         PRIVATE gflags::gflags
 )
 if (ENABLE_GOOGLE_PERFTOOLS)
-    target_link_libraries(group-cli
+    target_link_libraries(cogroup-cli
             PRIVATE gperftools::gperftools
             )
 endif()
 
-set_compile_options(group-cli)
+set_compile_options(cogroup-cli)
 
 if(INSTALL_EXAMPLES)
-    install_custom(group-cli ${export_name})
+    install_custom(cogroup-cli ${export_name})
 endif()
 
 add_test(
-        NAME group-cli
-        COMMAND group-cli
+        NAME cogroup-cli
+        COMMAND cogroup-cli
 )

@@ -24,9 +24,9 @@
 #include <executor/exchange/deliver/step.h>
 #include <executor/exchange/group/shuffle_info.h>
 #include "../common/producer_process.h"
-#include "consumer_process.h"
+#include "cogroup_process.h"
 
-namespace jogasaki::group_cli {
+namespace jogasaki::cogroup_cli {
 
 using namespace jogasaki;
 using namespace jogasaki::model;
@@ -49,18 +49,26 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 static int run() {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
+
     auto g = std::make_unique<common::graph>();
-    auto scan = std::make_unique<producer_process>(g.get(), meta);
-    auto xch = std::make_unique<group::step>(info);
-    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta());
+    auto scan1 = std::make_unique<producer_process>(g.get(), meta);
+    auto scan2 = std::make_unique<producer_process>(g.get(), meta);
+    auto xch1 = std::make_unique<group::step>(info);
+    auto xch2 = std::make_unique<group::step>(info);
+    auto cgrp = std::make_unique<cogroup_process>();
+//    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta());
     auto dvr = std::make_unique<deliver::step>();
-    *scan >> *xch;
-    *xch >> *emit;
-    *emit >> *dvr;
-    // step id are assigned from 0 to 3
-    g->insert(std::move(scan));
-    g->insert(std::move(xch));
-    g->insert(std::move(emit));
+    *scan1 >> *xch1;
+    *scan2 >> *xch2;
+    *xch1 >> *cgrp;
+    *xch2 >> *cgrp;
+    *cgrp >> *dvr;
+    // step id are assigned from 0 to 5
+    g->insert(std::move(scan1));
+    g->insert(std::move(xch1));
+    g->insert(std::move(scan2));
+    g->insert(std::move(xch2));
+    g->insert(std::move(cgrp));
     g->insert(std::move(dvr));
 
     configuration cfg;
@@ -83,7 +91,7 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::SetUsageMessage("group cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     try {
-        return jogasaki::group_cli::run();  // NOLINT
+        return jogasaki::cogroup_cli::run();  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

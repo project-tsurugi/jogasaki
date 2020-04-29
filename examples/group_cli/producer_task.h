@@ -24,14 +24,14 @@
 #include <meta/record_meta.h>
 #include "task_base.h"
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
 
 class producer_task : public task_base {
 public:
     producer_task() = delete;
     producer_task(channel* channel,
             model::step* src,
-            exchange::sink* sink,
+            executor::exchange::sink* sink,
             std::shared_ptr<meta::record_meta> meta) :
             task_base(channel,  src),
             sink_(sink),
@@ -56,9 +56,9 @@ public:
     }
 
 private:
-    exchange::sink* sink_{};
+    executor::exchange::sink* sink_{};
     std::shared_ptr<meta::record_meta> meta_{};
-    record_writer* writer_{};
+    executor::record_writer* writer_{};
 
     void initialize_writer() {
         if(!writer_) {

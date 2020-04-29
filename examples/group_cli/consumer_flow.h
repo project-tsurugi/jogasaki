@@ -24,16 +24,16 @@
 #include <zconf.h>
 #include "consumer_task.h"
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
 
 template<class T>
 using sequence_view = takatori::util::sequence_view<T>;
 
-class consumer_flow : public common::flow {
+class consumer_flow : public executor::common::flow {
 public:
     consumer_flow() = default;
     consumer_flow(
-            exchange::step* upstream,
+            executor::exchange::step* upstream,
             model::step* step,
             channel* ch,
             std::shared_ptr<meta::group_meta> meta
@@ -45,7 +45,7 @@ public:
     {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        auto srcs = dynamic_cast<exchange::group::flow&>(upstream_->data_flow_object()).sources();
+        auto srcs = dynamic_cast<executor::exchange::group::flow&>(upstream_->data_flow_object()).sources();
         for(auto& s : srcs) {
             tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_, s.acquire_reader(), meta_));
         }
@@ -56,13 +56,13 @@ public:
         return {};
     }
 
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::process;
+    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
+        return executor::common::step_kind::process;
     }
 
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
-    exchange::step* upstream_{};
+    executor::exchange::step* upstream_{};
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::group_meta> meta_{};

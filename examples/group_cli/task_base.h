@@ -25,9 +25,9 @@
 #include <channel.h>
 #include <utils.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
 
-class task_base : public common::task {
+class task_base : public executor::common::task {
 public:
     task_base() = default;
     task_base(channel* channel, model::step* src, bool is_pretask = false) : channel_(channel), src_(src), is_pretask_(is_pretask) {}

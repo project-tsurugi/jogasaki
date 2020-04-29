@@ -23,15 +23,16 @@
 #include <executor/process/step.h>
 #include "producer_task.h"
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
+
 
 template<class T>
 using sequence_view = takatori::util::sequence_view<T>;
 
-class producer_flow : public common::flow {
+class producer_flow : public executor::common::flow {
 public:
     producer_flow() = default;
-    producer_flow(exchange::step* downstream,
+    producer_flow(executor::exchange::step* downstream,
             model::step* step,
             channel* ch,
             std::shared_ptr<meta::record_meta> meta,
@@ -43,7 +44,7 @@ public:
             partitions_(partitions) {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(partitions_);
+        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(partitions_);
         (void)srcs;
         for(auto& s : sinks) {
             tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_));
@@ -55,13 +56,13 @@ public:
         return {};
     }
 
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::process;
+    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
+        return executor::common::step_kind::process;
     }
 
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
-    exchange::step* downstream_{};
+    executor::exchange::step* downstream_{};
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::record_meta> meta_{};

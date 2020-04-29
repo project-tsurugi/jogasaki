@@ -24,14 +24,14 @@
 #include <channel.h>
 #include "task_base.h"
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
 
 class consumer_task : public task_base {
 public:
     consumer_task() = default;
     consumer_task(channel* channel,
             model::step* src,
-            reader_container reader,
+            executor::reader_container reader,
             std::shared_ptr<meta::group_meta> meta
     ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader) {}
 
@@ -39,7 +39,7 @@ public:
         DVLOG(1) << *this << " consumer_task executed. count: " << count_;
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
-        auto* reader = reader_.reader<group_reader>();
+        auto* reader = reader_.reader<executor::group_reader>();
         while(reader->next_group()) {
             DVLOG(1) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset);
             while(reader->next_member()) {
@@ -50,7 +50,7 @@ public:
 
 private:
     std::shared_ptr<meta::group_meta> meta_{};
-    reader_container reader_{};
+    executor::reader_container reader_{};
 };
 
 }

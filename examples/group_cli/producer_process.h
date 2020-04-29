@@ -24,9 +24,9 @@
 #include "producer_task.h"
 #include "producer_flow.h"
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
 
-class producer_process : public process::step {
+class producer_process : public executor::process::step {
 public:
     producer_process() : step(0, 1) {};
     producer_process(model::graph* owner,
@@ -38,7 +38,7 @@ public:
 
     void activate() override {
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
+        auto p = dynamic_cast<executor::exchange::step*>(output_ports()[0]->opposites()[0]->owner());
         data_flow_object_ = std::make_unique<producer_flow>(p, this, ch, meta_, partitions_);
     }
 

@@ -23,7 +23,7 @@
 #include <scheduler/dag_controller.h>
 #include <executor/exchange/deliver/step.h>
 #include <executor/exchange/group/shuffle_info.h>
-#include "../common/producer_process.h"
+#include "producer_process.h"
 #include "consumer_process.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS

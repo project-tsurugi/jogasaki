@@ -21,9 +21,9 @@
 #include <executor/process/step.h>
 #include "consumer_flow.h"
 
-namespace jogasaki::executor {
+namespace jogasaki::group_cli {
 
-class consumer_process : public process::step {
+class consumer_process : public executor::process::step {
 public:
     consumer_process() : step(1, 1) {};
     explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta) : meta_(std::move(meta)) {
@@ -31,7 +31,7 @@ public:
     }
 
     void activate() override {
-        auto p = dynamic_cast<exchange::step*>(input_ports()[0]->opposites()[0]->owner());
+        auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
         data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch, meta_);
     }

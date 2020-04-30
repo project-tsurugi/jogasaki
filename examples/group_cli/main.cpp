@@ -32,6 +32,7 @@
 #endif
 
 DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
+DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
 DEFINE_int32(words_per_slice, 100000, "Number of words per slice");  //NOLINT
@@ -80,7 +81,7 @@ static int run(context& s) {
 
     configuration cfg;
     cfg.thread_pool_size = s.thread_pool_size_;
-    cfg.single_thread_task_scheduler = true;
+    cfg.single_thread_task_scheduler = !s.use_multithread;
     cfg.default_process_partitions = s.downstream_partitions_;
     cfg.default_scan_process_partitions = s.upstream_partitions_;
     dag_controller dc{&cfg};
@@ -101,12 +102,14 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     jogasaki::group_cli::context s{};
+    s.use_multithread = FLAGS_use_multithread;
     s.thread_pool_size_ = FLAGS_thread_pool_size;
     s.upstream_partitions_ = FLAGS_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_words_per_slice;
 
     if (FLAGS_minimum) {
+        s.use_multithread = false;
         s.thread_pool_size_ = 1;
         s.upstream_partitions_ = 1;
         s.downstream_partitions_ = 1;

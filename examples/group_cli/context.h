@@ -21,6 +21,8 @@ namespace jogasaki::group_cli {
 
 class context {
 public:
+    bool use_multithread = true;
+
     std::size_t thread_pool_size_ = 1;
 
     std::size_t records_per_upstream_partition_ = 1000;

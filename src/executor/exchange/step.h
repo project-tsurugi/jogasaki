@@ -31,13 +31,6 @@ public:
     void notify_completed() override {
         // no-op for exchange
     }
-
-    [[nodiscard]] std::size_t downstream_partitions() const noexcept {
-        return downstream_partitions_;
-    }
-protected:
-    std::size_t downstream_partitions_{5}; // FIXME should be calculated on activate()
-    bool downstream_partitions_enforced_{false};
 };
 
 }

@@ -56,7 +56,7 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    flow(std::shared_ptr<shuffle_info> info, channel* channel, step* owner);
+    flow(std::shared_ptr<shuffle_info> info, channel* channel, step* owner, std::size_t downstream_partitions);
 
     /**
      * @brief create new instance
@@ -66,7 +66,8 @@ public:
     flow(std::shared_ptr<meta::record_meta> input_meta,
             std::vector<field_index_type> key_indices,
             channel* ch,
-            step* owner
+            step* owner,
+            std::size_t downstream_partitions
             );
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
@@ -81,24 +82,14 @@ public:
         return common::step_kind::group;
     }
 
-    /**
-     * @brief request downstream partitions
-     * @details downstream process can use this to instruct the number of partitions
-     * @param arg the number of downstream partitions
-     * @attention To configure the downstream partitions, this should be called before setup_partitions.
-     */
-    void downstream_partitions(std::size_t arg) {
-        downstream_partitions_ = arg;
-    }
-
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
     std::shared_ptr<shuffle_info> info_{};
     std::vector<std::unique_ptr<group::sink>> sinks_;
     std::vector<std::unique_ptr<group::source>> sources_{};
-    std::size_t downstream_partitions_{default_partitions};
     channel* channel_{};
     step* owner_{};
+    std::size_t downstream_partitions_{default_partitions};
 };
 
 }

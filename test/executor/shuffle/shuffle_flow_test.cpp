@@ -40,7 +40,7 @@ TEST_F(shuffle_flow_test, simple) {
     },boost::dynamic_bitset<std::uint64_t>("00"s));
     channel ch{};
 
-    flow f{rec_meta, std::vector<std::size_t>{0}, &ch, nullptr};
+    flow f{rec_meta, std::vector<std::size_t>{0}, &ch, nullptr, 1};
     const auto& [sinks, sources] = f.setup_partitions(1);
 //    ASSERT_EQ(1, sinks[0]);
     (void)sinks;
@@ -53,7 +53,7 @@ TEST_F(shuffle_flow_test, writers) {
             field_type(enum_tag<kind::float8>),
     },boost::dynamic_bitset<std::uint64_t>("00"s));
     channel ch{};
-    flow f{rec_meta, std::vector<std::size_t>{0}, &ch, nullptr};
+    flow f{rec_meta, std::vector<std::size_t>{0}, &ch, nullptr, 1};
     const auto& [sinks, sources] = f.setup_partitions(1);
     EXPECT_EQ(1, sinks.size());
     auto& sink = sinks[0];

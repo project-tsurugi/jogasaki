@@ -36,8 +36,10 @@ public:
         auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
         data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch, meta_, *context_);
-        auto& upstream_flow = dynamic_cast<executor::exchange::group::flow&>(p->data_flow_object());
-        upstream_flow.downstream_partitions(context_->downstream_partitions_);
+    }
+
+    [[nodiscard]] std::size_t partitions() const noexcept override {
+        return context_->downstream_partitions_;
     }
 
 private:

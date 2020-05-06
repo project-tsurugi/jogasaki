@@ -22,6 +22,7 @@
 #include "meta/record_meta.h"
 #include <executor/exchange/step.h>
 #include <executor/exchange/task.h>
+#include <executor/process/step.h>
 #include "shuffle_info.h"
 #include "flow.h"
 
@@ -60,9 +61,24 @@ public:
     }
 
     void activate() override {
+        auto* down = downstream(0);
+        auto downstream_partitions = down ? down->partitions() : default_partitions;
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        data_flow_object_ = std::make_unique<group::flow>(info_, ch, this);
+        data_flow_object_ = std::make_unique<group::flow>(info_, ch, this, downstream_partitions);
     }
+protected:
+    [[nodiscard]] process::step* downstream(std::size_t index) const noexcept {
+        if (output_ports_.empty()) return nullptr;
+        if (output_ports_[0]->opposites().size() <= index) return nullptr;
+        return dynamic_cast<process::step*>(output_ports_[0]->opposites()[index]->owner());
+    }
+
+    [[nodiscard]] process::step* upstream(std::size_t index) const noexcept {
+        if (main_input_ports_.empty()) return nullptr;
+        if (main_input_ports_[0]->opposites().size() <= index) return nullptr;
+        return dynamic_cast<process::step*>(main_input_ports_[0]->opposites()[index]->owner());
+    }
+
 private:
     std::shared_ptr<shuffle_info> info_{};
 };

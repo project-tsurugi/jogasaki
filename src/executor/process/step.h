@@ -17,11 +17,11 @@
 
 #include <takatori/util/sequence_view.h>
 
+#include <constants.h>
 #include <model/step.h>
 #include <model/graph.h>
 #include <model/task.h>
 #include "executor/common/step.h"
-//#include "flow.h"
 
 namespace jogasaki::executor::process {
 
@@ -39,6 +39,18 @@ public:
 
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::process;
+    }
+
+    /**
+     * @brief declare the number of partitions
+     * @details process step has the model level knowledge about the number of partitions this process can run.
+     * E.g. the process contains some logic that forces to run it only on single partition.
+     * This method is to calculate the information based on the graph information and to externalize the knowledge.
+     * Subclass should override the default implementation to handle specific cases limiting the number of partitions.
+     * @return the number of partitions
+     */
+    [[nodiscard]] virtual std::size_t partitions() const noexcept {
+        return default_partitions;
     }
 };
 

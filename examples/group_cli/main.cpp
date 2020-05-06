@@ -116,10 +116,19 @@ extern "C" int main(int argc, char* argv[]) {
     }
 
     try {
-        return jogasaki::group_cli::run(s);  // NOLINT
+        jogasaki::group_cli::run(s);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
+
+    auto& watch = s.watch_;
+    watch->wrap(5);
+    LOG(INFO) << "before produce: " << watch->duration(1,0) << "ms";
+    LOG(INFO) << "produce: " << watch->duration(2,1) << "ms";
+    LOG(INFO) << "pregroup: " << watch->duration(3,2) << "ms";
+    LOG(INFO) << "consume: " << watch->duration(4,3) << "ms";
+    LOG(INFO) << "cleanup: " << watch->duration(5,4) << "ms";
+    return 0;
 }
 

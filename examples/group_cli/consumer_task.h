@@ -38,6 +38,8 @@ public:
 
     void execute() override {
         DVLOG(1) << *this << " consumer_task executed. count: " << count_;
+        auto& watch = context_->watch_;
+        watch->wrap(3);
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
         auto* reader = reader_.reader<executor::group_reader>();
@@ -51,6 +53,7 @@ public:
                 ++records;
             }
         }
+        watch->wrap(4);
         LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys";
     }
 

@@ -24,6 +24,7 @@
 #include <meta/record_meta.h>
 #include "task_base.h"
 #include "context.h"
+#include "random.h"
 
 namespace jogasaki::group_cli {
 
@@ -42,20 +43,25 @@ public:
 
     void execute() override {
         DVLOG(1) << *this << " producer_task executed. count: " << count_;
+        auto& watch = context_->watch_;
+        watch->wrap(0);
         memory::page_pool pool{};
         memory::monotonic_paged_memory_resource resource{&pool};
         auto offset_c1 = meta_->value_offset(0);
         auto offset_c2 = meta_->value_offset(1);
         initialize_writer();
+        xorshift_random rnd{};
         for(std::size_t i = 0; i < context_->records_per_upstream_partition_; ++i) {
             auto sz = meta_->record_size();
             auto ptr = resource.allocate(sz, meta_->record_alignment());
             auto ref = accessor::record_ref(ptr, sz);
-            ref.set_value<std::int64_t>(offset_c1, i);
-            ref.set_value<double>(offset_c2, i);
+            ref.set_value<std::int64_t>(offset_c1, rnd());
+            ref.set_value<double>(offset_c2, rnd());
             writer_->write(ref);
         }
+        watch->wrap(1);
         writer_->flush();
+        watch->wrap(2);
     }
 
 private:

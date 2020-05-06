@@ -28,17 +28,23 @@ public:
     void restart() {
         begin_ = Clock::now();
         for(int i=0; i < NUM_WRAPS; ++i) {
-            wraps_[i] = Clock::time_point();
+            wraps_first_[i] = Clock::time_point();
+            wraps_last_[i] = Clock::time_point();
         }
     }
     bool wrap(std::size_t slot) {
         if (slot >= NUM_WRAPS) {
             std::abort();
         }
-        if (wraps_[slot] == Clock::time_point()) {
+        auto n = Clock::now();
+        {
             std::scoped_lock lk{guard_};
-            if (wraps_[slot] == Clock::time_point()) {
-                wraps_[slot] = Clock::now();
+            wraps_last_[slot] = Clock::now();
+        }
+        if (wraps_first_[slot] == Clock::time_point()) {
+            std::scoped_lock lk{guard_};
+            if (wraps_first_[slot] == Clock::time_point()) {
+                wraps_first_[slot] = n;
                 return true;
             }
         }
@@ -47,19 +53,26 @@ public:
     Clock::time_point base() {
         return begin_;
     }
-    Clock::time_point view(std::size_t slot) {
+    Clock::time_point view_first(std::size_t slot) {
         if (slot >= NUM_WRAPS) {
             return begin_;
         }
-        return wraps_[slot];
+        return wraps_first_[slot];
+    }
+    Clock::time_point view_last(std::size_t slot) {
+        if (slot >= NUM_WRAPS) {
+            return begin_;
+        }
+        return wraps_last_[slot];
     }
     std::size_t duration(std::size_t end, std::size_t begin = -1) {
-        return std::chrono::duration_cast<Duration>(view(end) - view(begin)).count();
+        return std::chrono::duration_cast<Duration>(view_last(end) - view_first(begin)).count();
     }
 
 private:
     std::chrono::time_point<Clock> begin_{};
-    std::array<Clock::time_point, NUM_WRAPS> wraps_{};
+    std::array<Clock::time_point, NUM_WRAPS> wraps_first_{};
+    std::array<Clock::time_point, NUM_WRAPS> wraps_last_{};
     std::mutex guard_;
 };
 

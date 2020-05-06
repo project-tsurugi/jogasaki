@@ -79,10 +79,12 @@ static int run(context& s) {
     g->insert(std::move(dvr));
 
     configuration cfg;
-    cfg.thread_pool_size = s.thread_pool_size_;
-    cfg.single_thread_task_scheduler = !s.use_multithread;
-    cfg.default_process_partitions = s.downstream_partitions_;
-    cfg.default_scan_process_partitions = s.upstream_partitions_;
+    cfg.thread_pool_size_ = s.thread_pool_size_;
+    cfg.single_thread_task_scheduler_ = !s.use_multithread;
+    cfg.default_process_partitions_ = s.downstream_partitions_;
+    cfg.default_scan_process_partitions_ = s.upstream_partitions_;
+    cfg.set_core_affinity_ = s.set_core_affinity_;
+    cfg.initial_core_ = s.initial_core_;
     dag_controller dc{&cfg};
     dc.schedule(*g);
     return 0;
@@ -106,6 +108,8 @@ extern "C" int main(int argc, char* argv[]) {
     s.upstream_partitions_ = FLAGS_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
+    s.initial_core_ = FLAGS_initial_core;
+    s.set_core_affinity_ = FLAGS_core_affinity;
 
     if (FLAGS_minimum) {
         s.use_multithread = false;
@@ -113,6 +117,8 @@ extern "C" int main(int argc, char* argv[]) {
         s.upstream_partitions_ = 1;
         s.downstream_partitions_ = 1;
         s.records_per_upstream_partition_ = 1;
+        s.initial_core_ = 1;
+        s.set_core_affinity_ = false;
     }
 
     try {

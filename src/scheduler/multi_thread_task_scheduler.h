@@ -17,6 +17,7 @@
 
 #include <unordered_set>
 
+#include <glog/logging.h>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 
@@ -25,6 +26,7 @@
 #include <executor/common/task.h>
 #include <utils.h>
 #include "task_scheduler.h"
+#include "thread_params.h"
 
 namespace jogasaki::scheduler {
 
@@ -33,19 +35,28 @@ namespace jogasaki::scheduler {
  */
 class thread_pool {
 public:
-    thread_pool() : thread_pool(1) {};
-    thread_pool(thread_pool const&) = delete;
-    thread_pool& operator=(thread_pool&& other) = delete;
-    explicit thread_pool(std::size_t threads, bool set_core_affinity = true, std::size_t initial_core = 1) :
-            threads_(threads), io_service_(),
+    thread_pool() : thread_pool(thread_params(1)) {};
+    thread_pool(thread_pool const& other) = delete;
+    thread_pool& operator=(thread_pool const& other) = delete;
+    thread_pool(thread_pool&& other) noexcept = delete;
+    thread_pool& operator=(thread_pool&& other) noexcept = delete;
+    explicit thread_pool(thread_params params) :
+            threads_(params.threads()),
+            io_service_(),
             work_(std::make_unique<boost::asio::io_service::work>(io_service_)),
-            set_core_affinity_(set_core_affinity), initial_core_(initial_core) {
+            set_core_affinity_(params.is_set_core_affinity()),
+            initial_core_(params.inititial_core()) {
         prepare_threads_();
     }
+
     ~thread_pool() noexcept {
-        join();
-        io_service_.stop();
-    };
+        try {
+            join();
+            io_service_.stop();
+        } catch (...) {
+            LOG(ERROR) << "error on finishing thread pool";
+        }
+    }
 
     void join() {
         work_.reset();
@@ -85,8 +96,12 @@ class multi_thread_task_scheduler : public task_scheduler {
 public:
     multi_thread_task_scheduler() = default;
     ~multi_thread_task_scheduler() override = default;
+    multi_thread_task_scheduler(multi_thread_task_scheduler const& other) = delete;
+    multi_thread_task_scheduler& operator=(multi_thread_task_scheduler const& other) = delete;
     multi_thread_task_scheduler(multi_thread_task_scheduler&& other) noexcept = delete;
     multi_thread_task_scheduler& operator=(multi_thread_task_scheduler&& other) noexcept = delete;
+    explicit multi_thread_task_scheduler(thread_params params) :
+            threads_(params) {}
 
 private:
     /**

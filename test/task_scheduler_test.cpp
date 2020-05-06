@@ -60,16 +60,16 @@ TEST_F(task_scheduler_test, single) {
 }
 
 TEST_F(task_scheduler_test, multi) {
-    auto executor = task_scheduler_factory::create(task_scheduler_kind::multi_thread);
-    bool run = false;
+    auto executor = task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(1));
+    std::atomic_flag run = false;
     task_wrapper t([&]() {
-        run = true;
+        run.test_and_set() ;
         return task_result::complete;
     });
     executor->schedule_task(&t);
     executor->run();
     executor->stop();
-    ASSERT_TRUE(run);
+    ASSERT_TRUE(run.test_and_set());
 }
 
 }

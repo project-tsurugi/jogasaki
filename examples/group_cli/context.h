@@ -31,6 +31,10 @@ public:
 
     std::size_t downstream_partitions_ = 10;
 
+    bool set_core_affinity_ = false;
+
+    std::size_t initial_core_ = 1;
+
     std::shared_ptr<utils::watch> watch_ = std::make_shared<utils::watch>();
 
 };

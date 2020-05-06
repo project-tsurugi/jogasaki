@@ -18,18 +18,19 @@
 #include <scheduler/task_scheduler.h>
 #include <scheduler/single_thread_task_scheduler.h>
 #include <scheduler/multi_thread_task_scheduler.h>
+#include <scheduler/thread_params.h>
 
 namespace jogasaki::scheduler {
 
 class task_scheduler_factory {
     using kind = task_scheduler_kind;
 public:
-    static std::unique_ptr<task_scheduler> create(kind k) {
+    static std::unique_ptr<task_scheduler> create(kind k, thread_params params = {}) {
         switch(k) {
             case kind::single_thread:
                 return std::make_unique<single_thread_task_scheduler>();
             case kind::multi_thread:
-                return std::make_unique<multi_thread_task_scheduler>();
+                return std::make_unique<multi_thread_task_scheduler>(params);
         }
         std::abort();
     }

@@ -28,6 +28,7 @@
 #include "task_scheduler_factory.h"
 #include "step_state.h"
 #include "dag_controller.h"
+#include "thread_params.h"
 
 namespace jogasaki::scheduler {
 
@@ -42,8 +43,9 @@ public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
     explicit impl(configuration const* cfg) : cfg_(cfg),
-            executor_(task_scheduler_factory::create(cfg_->single_thread_task_scheduler ?
-                                                     task_scheduler_kind::single_thread : task_scheduler_kind::multi_thread)) {}
+            executor_(cfg_->single_thread_task_scheduler_ ?
+                    task_scheduler_factory::create(task_scheduler_kind::single_thread) :
+                    task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(cfg_))) {}
     ~impl() = default;
     impl(impl&& other) = delete;
     impl& operator=(impl&& other) = delete;

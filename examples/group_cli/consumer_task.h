@@ -44,10 +44,10 @@ public:
         std::size_t records = 0;
         std::size_t keys = 0;
         while(reader->next_group()) {
-            DVLOG(1) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset);
+            DVLOG(2) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset);
             ++keys;
             while(reader->next_member()) {
-                DVLOG(1) << *this << "   value : " << reader->get_member().get_value<double>(value_offset);
+                DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset);
                 ++records;
             }
         }

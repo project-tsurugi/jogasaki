@@ -80,6 +80,17 @@ public:
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::group;
     }
+
+    /**
+     * @brief request downstream partitions
+     * @details downstream process can use this to instruct the number of partitions
+     * @param arg the number of downstream partitions
+     * @attention To configure the downstream partitions, this should be called before setup_partitions.
+     */
+    void downstream_partitions(std::size_t arg) {
+        downstream_partitions_ = arg;
+    }
+
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
     std::shared_ptr<shuffle_info> info_{};

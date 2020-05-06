@@ -41,7 +41,7 @@ protected:
     };
 
 private:
-    static inline std::atomic_size_t id_src = 100;
+    static inline std::atomic_size_t id_src = 10000;
     identity_type id_{};
 };
 

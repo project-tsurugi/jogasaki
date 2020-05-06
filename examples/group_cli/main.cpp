@@ -52,7 +52,6 @@ using namespace jogasaki::executor::exchange;
 using namespace jogasaki::executor::exchange::group;
 using namespace jogasaki::scheduler;
 
-
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{

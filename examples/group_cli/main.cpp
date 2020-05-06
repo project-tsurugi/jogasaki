@@ -35,7 +35,7 @@ DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
-DEFINE_int32(words_per_slice, 100000, "Number of words per slice");  //NOLINT
+DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
 DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
@@ -105,7 +105,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.thread_pool_size_ = FLAGS_thread_pool_size;
     s.upstream_partitions_ = FLAGS_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
-    s.records_per_upstream_partition_ = FLAGS_words_per_slice;
+    s.records_per_upstream_partition_ = FLAGS_records_per_partition;
 
     if (FLAGS_minimum) {
         s.use_multithread = false;

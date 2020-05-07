@@ -129,7 +129,9 @@ public:
     void stop() override {
         threads_.join();
     }
-
+    void remove_task(model::task* t) override {
+        tasks_.erase(t);
+    }
 private:
     std::unordered_set<model::task*> tasks_{};
     thread_pool threads_{};

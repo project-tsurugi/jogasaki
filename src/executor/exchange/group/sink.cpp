@@ -20,7 +20,6 @@
 #include <executor/record_writer.h>
 #include "input_partition.h"
 #include "shuffle_info.h"
-#include "source.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::group {
@@ -42,7 +41,7 @@ void sink::release_writer(record_writer& writer) {
     if (*writer_ != writer) {
         std::abort();
     }
-    // TODO release
+    writer_.reset();
 }
 
 std::vector<std::unique_ptr<input_partition>>& sink::input_partitions() {

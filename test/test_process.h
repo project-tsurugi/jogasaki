@@ -19,15 +19,15 @@ namespace jogasaki::test {
 
 using namespace executor;
 
-class isolated_process_task : public common::task {
+class test_process_task : public common::task {
 public:
-    isolated_process_task() = default;
-    ~isolated_process_task() override = default;
-    isolated_process_task(isolated_process_task&& other) noexcept = default;
-    isolated_process_task& operator=(isolated_process_task&& other) noexcept = default;
-    isolated_process_task(channel* channel, model::step* src) : channel_(channel), src_(src) {}
+    test_process_task() = default;
+    ~test_process_task() override = default;
+    test_process_task(test_process_task&& other) noexcept = default;
+    test_process_task& operator=(test_process_task&& other) noexcept = default;
+    test_process_task(channel* channel, model::step* src) : channel_(channel), src_(src) {}
     model::task_result operator()() override {
-        LOG(INFO) << "isolated_process_task executed. count: " << count_;
+        LOG(INFO) << "test_process_task executed. count: " << count_;
         channel_->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
         ++count_;
         return count_ < limit_ ? model::task_result::proceed : model::task_result::complete;
@@ -39,13 +39,13 @@ private:
     std::size_t limit_{3};
 };
 
-class isolated_process_flow : public common::flow {
+class test_process_flow : public common::flow {
 public:
-    isolated_process_flow() = default;
-    ~isolated_process_flow() = default;
-    isolated_process_flow(exchange::step* downstream, model::step* step, channel* ch) : downstream_(downstream), step_(step), channel_(ch) {}
+    test_process_flow() = default;
+    ~test_process_flow() = default;
+    test_process_flow(exchange::step* downstream, model::step* step, channel* ch) : downstream_(downstream), step_(step), channel_(ch) {}
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        tasks_.emplace_back(std::make_unique<isolated_process_task>(channel_, step_));
+        tasks_.emplace_back(std::make_unique<test_process_task>(channel_, step_));
         return tasks_;
     }
 
@@ -62,23 +62,24 @@ private:
     channel* channel_{};
 };
 
-class isolated_process : public process::step {
+class test_process : public process::step {
 public:
-    isolated_process() : step(0, 0) {};
-    ~isolated_process() = default;
-    isolated_process(isolated_process&& other) noexcept = default;
-    isolated_process& operator=(isolated_process&& other) noexcept = default;
-    isolated_process(model::graph* owner) {
+    test_process() : step(0, 0) {};
+    ~test_process() = default;
+    test_process(test_process&& other) noexcept = default;
+    test_process& operator=(test_process&& other) noexcept = default;
+    test_process(model::graph* owner) {
         graph_ = owner;
     }
 
     void activate() override {
         auto ch = graph_ ? &graph_->get_channel() : nullptr;
-//        auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object_ = std::make_unique<isolated_process_flow>(nullptr, this, ch);
+        data_flow_object_ = std::make_unique<test_process_flow>(nullptr, this, ch);
+    }
+    void deactivate() override {
+
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
 };
 
 } // namespace

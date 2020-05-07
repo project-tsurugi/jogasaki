@@ -63,6 +63,7 @@ public:
         }
         watch->wrap(1);
         writer_->flush();
+        writer_->release();
         watch->wrap(2);
     }
 

@@ -44,6 +44,8 @@ public:
     virtual void run() = 0;
 
     virtual void stop() = 0;
+
+    virtual void remove_task(model::task* task) = 0;
 };
 
 }

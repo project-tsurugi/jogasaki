@@ -57,6 +57,7 @@ public:
                 total_val += reader->get_member().get_value<double>(value_offset);
             }
         }
+        reader->release();
         watch->wrap(4);
         LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys (sum: " << total_key << " " << total_val << ")";
     }

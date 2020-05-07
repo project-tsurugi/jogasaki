@@ -20,7 +20,7 @@
 #include <mock/simple_cogroup_process.h>
 #include <scheduler/dag_controller.h>
 #include <executor/exchange/deliver/step.h>
-#include <isolated_process.h>
+#include <test_process.h>
 #include "test_root.h"
 
 namespace jogasaki::executor {
@@ -35,7 +35,7 @@ class step_test : public test_root {};
 
 TEST_F(step_test, basic) {
     auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::isolated_process>(g.get());
+    auto p = std::make_unique<test::test_process>(g.get());
     p->activate();
     g->insert(std::move(p));
     for(auto&& v : g->steps()) {
@@ -48,7 +48,7 @@ TEST_F(step_test, basic) {
 
 TEST_F(step_test, simple_forward) {
     auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::isolated_process>(g.get());
+    auto p = std::make_unique<test::test_process>(g.get());
     g->insert(std::move(p));
     for(auto&& v : g->steps()) {
         v->activate();

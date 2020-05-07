@@ -143,7 +143,8 @@ public:
     }
 
     void release() override {
-        //TODO
+        // TODO when multiple readers exist for a source, wait for all readers to complete
+        partitions_.clear();
     }
 
 private:

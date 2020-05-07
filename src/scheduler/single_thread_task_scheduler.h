@@ -51,6 +51,10 @@ public:
     void stop() override {
         // no-op
     }
+
+    void remove_task(model::task* t) override {
+        tasks_.erase(t);
+    }
 private:
     std::unordered_set<model::task*> tasks_{};
 };

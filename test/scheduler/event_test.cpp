@@ -25,7 +25,7 @@
 #include <mock/simple_emit_process.h>
 #include <mock/simple_transform_process.h>
 #include <scheduler/dag_controller.h>
-#include <isolated_process.h>
+#include <test_process.h>
 #include "test_root.h"
 
 namespace jogasaki::scheduler {
@@ -40,7 +40,7 @@ class event_test : public test_root {};
 
 TEST_F(event_test, basic) {
     auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::isolated_process>();
+    auto p = std::make_unique<test::test_process>();
     g->insert(std::move(p));
     dag_controller dc{};
     dc.schedule(*g);

@@ -43,6 +43,10 @@ public:
         data_flow_object_ = std::make_unique<producer_flow>(p, this, ch, meta_, *context_);
     }
 
+    void deactivate() override {
+        meta_.reset();
+		executor::process::step::deactivate();
+    }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     context* context_{};

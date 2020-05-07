@@ -87,7 +87,7 @@ public:
     [[nodiscard]] virtual step_kind kind() const noexcept = 0;
 
     void deactivate() override {
-
+        data_flow_object_.reset();
     }
     void notify_prepared() override {
 

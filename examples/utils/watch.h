@@ -35,14 +35,12 @@ public:
         if (slot >= NUM_WRAPS) {
             std::abort();
         }
+        std::scoped_lock lk{guard_};
         initialize_this_thread();
         auto& time_slot = wraps_[std::this_thread::get_id()][slot];
         if (time_slot == Clock::time_point()) {
-            std::scoped_lock lk{guard_};
-            if (time_slot == Clock::time_point()) {
-                time_slot = Clock::now();
-                return true;
-            }
+            time_slot = Clock::now();
+            return true;
         }
         std::abort();
         return false;

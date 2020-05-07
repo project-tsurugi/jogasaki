@@ -31,7 +31,7 @@
 #include "gperftools/profiler.h"
 #endif
 
-DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
+DEFINE_int32(thread_pool_size, 10, "Thread pool size");  //NOLINT
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT

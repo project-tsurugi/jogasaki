@@ -45,16 +45,20 @@ public:
         auto* reader = reader_.reader<executor::group_reader>();
         std::size_t records = 0;
         std::size_t keys = 0;
+        std::size_t total_key = 0;
+        double total_val = 0;
         while(reader->next_group()) {
             DVLOG(2) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset);
+            total_key += reader->get_group().get_value<std::int64_t>(key_offset);
             ++keys;
             while(reader->next_member()) {
                 DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset);
                 ++records;
+                total_val += reader->get_member().get_value<double>(value_offset);
             }
         }
         watch->wrap(4);
-        LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys";
+        LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys (sum: " << total_key << " " << total_val << ")";
     }
 
 private:

@@ -25,6 +25,9 @@ namespace jogasaki::executor::exchange {
 class sink {
 public:
     sink() = default;
+    virtual ~sink() = default;
+    sink(sink const& other) = delete;
+    sink& operator=(sink const& other) = delete;
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
 

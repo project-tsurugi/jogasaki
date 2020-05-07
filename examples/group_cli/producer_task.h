@@ -35,25 +35,27 @@ public:
             model::step* src,
             executor::exchange::sink* sink,
             std::shared_ptr<meta::record_meta> meta,
-            context& c) :
+            context& c,
+            memory::monotonic_paged_memory_resource& resource
+            ) :
             task_base(channel,  src),
             sink_(sink),
             meta_(std::move(meta)),
-            context_(&c) {}
+            context_(&c),
+            resource_(&resource)
+            {}
 
     void execute() override {
         DVLOG(1) << *this << " producer_task executed. count: " << count_;
         auto& watch = context_->watch_;
         watch->wrap(0);
-        memory::page_pool pool{};
-        memory::monotonic_paged_memory_resource resource{&pool};
         auto offset_c1 = meta_->value_offset(0);
         auto offset_c2 = meta_->value_offset(1);
         initialize_writer();
         xorshift_random rnd{};
         for(std::size_t i = 0; i < context_->records_per_upstream_partition_; ++i) {
             auto sz = meta_->record_size();
-            auto ptr = resource.allocate(sz, meta_->record_alignment());
+            auto ptr = resource_->allocate(sz, meta_->record_alignment());
             auto ref = accessor::record_ref(ptr, sz);
             ref.set_value<std::int64_t>(offset_c1, rnd());
             ref.set_value<double>(offset_c2, rnd());
@@ -69,6 +71,7 @@ private:
     std::shared_ptr<meta::record_meta> meta_{};
     executor::record_writer* writer_{};
     context* context_{};
+    memory::monotonic_paged_memory_resource* resource_{};
 
     void initialize_writer() {
         if(!writer_) {

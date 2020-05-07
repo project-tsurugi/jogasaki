@@ -47,8 +47,10 @@ public:
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(context_->upstream_partitions_);
         (void)srcs;
+        resources_.reserve(sinks.size());
         for(auto& s : sinks) {
-            tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_, *context_));
+            auto& resource = resources_.emplace_back(std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool));
+            tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_, *context_, *resource));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
@@ -68,6 +70,7 @@ private:
     channel* channel_{};
     std::shared_ptr<meta::record_meta> meta_{};
     context* context_{};
+    std::vector<std::unique_ptr<memory::monotonic_paged_memory_resource>> resources_{};
 };
 
 }

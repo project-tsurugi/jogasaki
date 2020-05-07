@@ -121,6 +121,14 @@ extern "C" int main(int argc, char* argv[]) {
         s.set_core_affinity_ = false;
     }
 
+    if (s.thread_pool_size_ < s.upstream_partitions_) {
+        LOG(ERROR) << "thread pool size (" << s.thread_pool_size_ << ") needs to be larger than the number of upstream partitions(" << s.upstream_partitions_ << ")";
+        return -1;
+    }
+    if (s.thread_pool_size_ < s.downstream_partitions_) {
+        LOG(ERROR) << "thread pool size (" << s.thread_pool_size_ << ") needs to be larger than the number of downstream partitions(" << s.downstream_partitions_ << ")";
+        return -1;
+    }
     try {
         jogasaki::group_cli::run(s);  // NOLINT
     } catch (std::exception& e) {

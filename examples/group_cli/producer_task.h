@@ -53,18 +53,28 @@ public:
         auto offset_c2 = meta_->value_offset(1);
         initialize_writer();
         xorshift_random rnd{};
+        auto sz = meta_->record_size();
+        void* start = nullptr;
         for(std::size_t i = 0; i < context_->records_per_upstream_partition_; ++i) {
-            auto sz = meta_->record_size();
             auto ptr = resource_->allocate(sz, meta_->record_alignment());
+            if (i == 0) {
+                start = ptr;
+            }
             auto ref = accessor::record_ref(ptr, sz);
             ref.set_value<std::int64_t>(offset_c1, rnd());
             ref.set_value<double>(offset_c2, rnd());
             writer_->write(ref);
         }
         watch->wrap(1);
+        for(std::size_t i = 0; i < context_->records_per_upstream_partition_; ++i) {
+            auto ptr = static_cast<char*>(start) + sz*i; //NOLINT
+            auto ref = accessor::record_ref(ptr, sz);
+            writer_->write(ref);
+        }
+        watch->wrap(2);
         writer_->flush();
         writer_->release();
-        watch->wrap(2);
+        watch->wrap(3);
     }
 
 private:

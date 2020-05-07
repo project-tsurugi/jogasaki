@@ -68,11 +68,10 @@ takatori::util::sequence_view<std::unique_ptr<model::task>> flow::create_tasks()
 }
 
 flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
-    sinks_.reserve(sinks_.size() + partitions);
+    sinks_.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(std::make_unique<group::sink>(downstream_partitions_, info_));
     }
-
     sources_.reserve(downstream_partitions_);
     for(std::size_t i=0; i < downstream_partitions_; ++i) {
         sources_.emplace_back(std::make_unique<source>(info_));

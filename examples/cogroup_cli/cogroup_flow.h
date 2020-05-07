@@ -45,6 +45,7 @@ public:
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         auto srcs = dynamic_cast<exchange::group::flow&>(upstream_->data_flow_object()).sources();
+        tasks_.reserve(srcs.size());
         for(auto& s : srcs) {
             tasks_.emplace_back(std::make_unique<cogroup_task>(channel_, step_, s.acquire_reader(), meta_));
         }

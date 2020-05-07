@@ -47,15 +47,16 @@ TEST_F(shuffle_sink_test, simple) {
     monotonic_paged_memory_resource resource{&pool};
     auto offset_c1 = rec_meta->value_offset(0);
     auto offset_c2 = rec_meta->value_offset(0);
+    auto& writer = s.acquire_writer();
     for(std::size_t i = 0; i < 3; ++i) {
         auto sz = rec_meta->record_size();
         auto ptr = resource.allocate(sz, rec_meta->record_alignment());
         auto ref = accessor::record_ref(ptr, sz);
         ref.set_value<std::int64_t>(offset_c1, i);
         ref.set_value<double>(offset_c2, i);
-        auto& writer = s.acquire_writer();
         writer.write(ref);
     }
+    writer.flush();
 }
 
 }

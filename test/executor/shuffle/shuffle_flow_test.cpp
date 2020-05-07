@@ -42,7 +42,7 @@ TEST_F(shuffle_flow_test, simple) {
 
     flow f{rec_meta, std::vector<std::size_t>{0}, &ch, nullptr, 1};
     const auto& [sinks, sources] = f.setup_partitions(1);
-//    ASSERT_EQ(1, sinks[0]);
+    ASSERT_EQ(1, sinks.size());
     (void)sinks;
     (void)sources;
 }

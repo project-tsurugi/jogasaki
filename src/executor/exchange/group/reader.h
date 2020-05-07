@@ -27,7 +27,7 @@ using iterator_pair = std::pair<iterator, iterator>;
 /**
  * @brief iterator pair comparator
  * @details like std::greater, this comparator returns true when x > y, where x and y are 1st and 2nd args.
- * This is intended to be used with std::priority_queue, which
+ * This is intended to be used with std::priority_queue, which positions the greatest at the top.
  */
 class iterator_pair_comparator {
 public:

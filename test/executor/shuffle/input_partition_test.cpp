@@ -60,6 +60,7 @@ TEST_F(input_partition_test, basic) {
     partition.write(ref1);
     partition.write(ref2);
     partition.flush();
+    EXPECT_EQ(3, std::distance(partition.begin(), partition.end()));
 }
 
 TEST_F(input_partition_test, use_monotonic_resource) {
@@ -80,6 +81,8 @@ TEST_F(input_partition_test, use_monotonic_resource) {
     partition.write(ref1);
     partition.write(ref2);
     partition.flush();
+
+    EXPECT_EQ(3, std::distance(partition.begin(), partition.end()));
 }
 
 }

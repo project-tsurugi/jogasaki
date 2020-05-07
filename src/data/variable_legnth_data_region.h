@@ -29,7 +29,8 @@ class variable_length_data_region {
 public:
     using pointer = void*;
 
-    variable_length_data_region(memory::paged_memory_resource* resource, std::size_t alignment) : resource_(resource), alignment_(alignment) {}
+    variable_length_data_region(memory::paged_memory_resource* resource, std::size_t alignment) :
+            resource_(resource), alignment_(alignment) {}
 
     pointer append(std::string_view sv) {
         return append(sv.data(), sv.size());

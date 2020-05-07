@@ -46,9 +46,7 @@ public:
             info_(std::move(info)),
             pointer_table_(boost::container::pmr::polymorphic_allocator<void*>(resource_.get())),
             comparator_(info_->key_meta())
-    {
-        pointer_table_.reserve(memory::page_size / sizeof(void*));
-    }
+    {}
 
     bool write(accessor::record_ref r) {
         initialize_lazy();
@@ -85,8 +83,8 @@ private:
 
     void initialize_lazy() {
         if (records_) return;
-        records_ = std::make_unique<data::variable_length_data_region>(resource_.get(), info_->record_meta()->record_alignment());
         pointer_table_.reserve(memory::page_size/sizeof(void*));
+        records_ = std::make_unique<data::variable_length_data_region>(resource_.get(), info_->record_meta()->record_alignment());
     }
 };
 

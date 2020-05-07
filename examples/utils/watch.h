@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include<thread>
 
 namespace jogasaki::utils {
 
@@ -26,28 +27,24 @@ public:
         restart();
     }
     void restart() {
+        std::scoped_lock lk{guard_};
         begin_ = Clock::now();
-        for(int i=0; i < NUM_WRAPS; ++i) {
-            wraps_first_[i] = Clock::time_point();
-            wraps_last_[i] = Clock::time_point();
-        }
+        initialize_this_thread();
     }
     bool wrap(std::size_t slot) {
         if (slot >= NUM_WRAPS) {
             std::abort();
         }
-        auto n = Clock::now();
-        {
+        initialize_this_thread();
+        auto& time_slot = wraps_[std::this_thread::get_id()][slot];
+        if (time_slot == Clock::time_point()) {
             std::scoped_lock lk{guard_};
-            wraps_last_[slot] = Clock::now();
-        }
-        if (wraps_first_[slot] == Clock::time_point()) {
-            std::scoped_lock lk{guard_};
-            if (wraps_first_[slot] == Clock::time_point()) {
-                wraps_first_[slot] = n;
+            if (time_slot == Clock::time_point()) {
+                time_slot = Clock::now();
                 return true;
             }
         }
+        std::abort();
         return false;
     }
     Clock::time_point base() {
@@ -57,22 +54,65 @@ public:
         if (slot >= NUM_WRAPS) {
             return begin_;
         }
-        return wraps_first_[slot];
+        Clock::time_point first{Clock::time_point::max()};
+        for(auto& p : wraps_) {
+            auto& arr = p.second;
+            if (arr[slot] != Clock::time_point() && arr[slot] < first) {
+                first = arr[slot];
+            }
+        }
+        return first;
     }
+
     Clock::time_point view_last(std::size_t slot) {
         if (slot >= NUM_WRAPS) {
             return begin_;
         }
-        return wraps_last_[slot];
+        Clock::time_point last{Clock::time_point::min()};
+        for(auto& p : wraps_) {
+            auto& arr = p.second;
+            if (arr[slot] != Clock::time_point() && last < arr[slot]) {
+                last = arr[slot];
+            }
+        }
+        return last;
     }
+
     std::size_t duration(std::size_t end, std::size_t begin = -1) {
         return std::chrono::duration_cast<Duration>(view_last(end) - view_first(begin)).count();
     }
 
+    std::size_t average_duration(std::size_t end, std::size_t begin = -1) {
+        std::size_t count = 0;
+        std::size_t total = 0;
+        Clock::time_point fixed_begin = view_last(begin);
+        Clock::time_point fixed_end = view_first(end);
+        for(auto& p : wraps_) {
+            auto& arr = p.second;
+            if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue;
+            auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end];
+            auto b = arr[begin] == Clock::time_point() ? fixed_begin : arr[begin];
+            total += std::chrono::duration_cast<Duration>(e-b).count();
+            ++count;
+        }
+        if (count == 0) return 0;
+        return total / count;
+    }
+
+    void init(std::array<Clock::time_point, NUM_WRAPS>& wraps) {
+        for(int i=0; i < NUM_WRAPS; ++i) {
+            wraps[i] = Clock::time_point();
+        }
+    }
+    void initialize_this_thread() {
+        auto tid = std::this_thread::get_id();
+        if(wraps_.count(tid) == 0) {
+            init(wraps_[tid]);
+        }
+    }
 private:
     std::chrono::time_point<Clock> begin_{};
-    std::array<Clock::time_point, NUM_WRAPS> wraps_first_{};
-    std::array<Clock::time_point, NUM_WRAPS> wraps_last_{};
+    std::unordered_map<std::thread::id, std::array<Clock::time_point, NUM_WRAPS>> wraps_{};
     std::mutex guard_;
 };
 

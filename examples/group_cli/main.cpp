@@ -130,11 +130,11 @@ extern "C" int main(int argc, char* argv[]) {
 
     auto& watch = s.watch_;
     watch->wrap(5);
-    LOG(INFO) << "before produce: " << watch->duration(1,0) << "ms";
-    LOG(INFO) << "produce: " << watch->duration(2,1) << "ms";
-    LOG(INFO) << "pregroup: " << watch->duration(3,2) << "ms";
-    LOG(INFO) << "consume: " << watch->duration(4,3) << "ms";
-    LOG(INFO) << "cleanup: " << watch->duration(5,4) << "ms";
+    LOG(INFO) << "produce: total " << watch->duration(1,0) << "ms, average " << watch->average_duration(1,0) << "ms" ;
+    LOG(INFO) << "pregroup: total " << watch->duration(2,1) << "ms, average " << watch->average_duration(2,1) << "ms" ;
+    LOG(INFO) << "transfer: total " << watch->duration(3,2) << "ms, average " << watch->average_duration(3,2) << "ms" ;
+    LOG(INFO) << "consume: total " << watch->duration(4,3) << "ms, average " << watch->average_duration(4,3) << "ms" ;
+    LOG(INFO) << "finish: total " << watch->duration(5,4) << "ms, average " << watch->average_duration(5,4) << "ms" ;
     return 0;
 }
 

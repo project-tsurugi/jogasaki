@@ -35,6 +35,9 @@ namespace jogasaki::scheduler {
 using step = model::step;
 using task_kind = model::task_kind;
 
+template<auto Kind>
+using enum_tag_t = takatori::util::enum_tag_t<Kind>;
+
 /**
  * @brief Dependency Graph Scheduler
  */
@@ -53,42 +56,42 @@ public:
     /*
      * @brief handles upstream_providing event
      */
-    void operator()(upstream_providing_tag_t, event& e);
+    void operator()(enum_tag_t<event_kind::upstream_providing>, event& e);
 
     /*
      * @brief handles main_completed event
      */
-    void operator()(task_completed_tag_t, event& e);
+    void operator()(enum_tag_t<event_kind::task_completed>, event& e);
 
     /*
      * @brief handles completion_instructed event
      */
-    void operator()(completion_instructed_tag_t, event& e);
+    void operator()(enum_tag_t<event_kind::completion_instructed>, event& e);
 
     /*
      * @brief handles activate event
      */
-    void operator()(activate_tag_t, internal_event& ie, step* s);
+    void operator()(enum_tag_t<internal_event_kind::activate>, internal_event& ie, step* s);
 
     /*
      * @brief handles prepare event
      */
-    void operator()(prepare_tag_t, internal_event& ie, step* s);
+    void operator()(enum_tag_t<internal_event_kind::prepare>, internal_event& ie, step* s);
 
     /*
      * @brief handles consume event
      */
-    void operator()(consume_tag_t, internal_event& ie, step* s);
+    void operator()(enum_tag_t<internal_event_kind::consume>, internal_event& ie, step* s);
 
     /*
      * @brief handles deactivate event
      */
-    void operator()(deactivate_tag_t, internal_event& ie, step* s);
+    void operator()(enum_tag_t<internal_event_kind::deactivate>, internal_event& ie, step* s);
 
     /*
      * @brief handles propagate_downstream_completing event
      */
-    void operator()(propagate_downstream_completing_tag_t, internal_event& ie, step* s);
+    void operator()(enum_tag_t<internal_event_kind::propagate_downstream_completing>, internal_event& ie, step* s);
 
     bool all_steps_deactivated(model::graph& g) {
         for(auto&& v: g.steps()) {
@@ -345,7 +348,7 @@ void dag_controller::schedule(model::graph &g) {
     return impl_->schedule(g);
 }
 
-void dag_controller::impl::operator()(upstream_providing_tag_t, event& e) {
+void dag_controller::impl::operator()(enum_tag_t<event_kind::upstream_providing>, event& e) {
     if (auto v = graph_->find_step(e.target())) {
         DVLOG(1) << *v << " got notified upstream started providing";
         if (e.source_port_kind() == port_kind::sub) {
@@ -361,7 +364,7 @@ void dag_controller::impl::operator()(upstream_providing_tag_t, event& e) {
     throw std::domain_error("invalid event target");
 }
 
-void dag_controller::impl::operator()(task_completed_tag_t, event& e) {
+void dag_controller::impl::operator()(enum_tag_t<event_kind::task_completed>, event& e) {
     DVLOG(1) << "task[id=" << e.task() << "] completed";
     if (auto v = graph_->find_step(e.target())) {
         auto& tasks = steps_[v->id()];
@@ -374,11 +377,11 @@ void dag_controller::impl::operator()(task_completed_tag_t, event& e) {
     throw std::domain_error("invalid event target");
 }
 
-void dag_controller::impl::operator()(completion_instructed_tag_t, event& e) {
+void dag_controller::impl::operator()(enum_tag_t<event_kind::completion_instructed>, event& e) {
     (void)e;
 }
 
-void dag_controller::impl::operator()(activate_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::activate>, internal_event&, step* s) {
     auto& step = steps_[s->id()];
     if(step.state_ == step_state_kind::created) {
         s->activate();
@@ -391,15 +394,15 @@ void dag_controller::impl::operator()(activate_tag_t, internal_event&, step* s) 
     }
 }
 
-void dag_controller::impl::operator()(prepare_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::prepare>, internal_event&, step* s) {
     start_preparing(*s);
 }
 
-void dag_controller::impl::operator()(consume_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::consume>, internal_event&, step* s) {
     start_running(*s);
 }
 
-void dag_controller::impl::operator()(deactivate_tag_t, internal_event&, step* s) {
+void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::deactivate>, internal_event&, step* s) {
     auto& st = steps_[s->id()].state_;
     if(st == step_state_kind::completed) {
         s->deactivate();
@@ -407,7 +410,7 @@ void dag_controller::impl::operator()(deactivate_tag_t, internal_event&, step* s
     }
 }
 
-void dag_controller::impl::operator()(propagate_downstream_completing_tag_t, internal_event& ie, step* s) {
+void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::propagate_downstream_completing>, internal_event& ie, step* s) {
     (void)s;
     (void)ie;
 }

@@ -60,10 +60,6 @@ inline constexpr std::string_view to_string_view(event_kind value) noexcept {
 template<event_kind Kind>
 using event_kind_tag_t = takatori::util::enum_tag_t<Kind>;
 
-using upstream_providing_tag_t = event_kind_tag_t<event_kind::upstream_providing>;
-using task_completed_tag_t = event_kind_tag_t<event_kind::task_completed>;
-using completion_instructed_tag_t = event_kind_tag_t<event_kind::completion_instructed>;
-
 template<event_kind Kind>
 inline constexpr event_kind_tag_t<Kind> event_kind_tag {};
 

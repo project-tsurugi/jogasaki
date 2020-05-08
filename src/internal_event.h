@@ -47,9 +47,6 @@ class internal_event {
 public:
     using identity_type = std::size_t;
     internal_event() = default;
-    ~internal_event() = default;
-    internal_event(internal_event&& other) noexcept = default;
-    internal_event& operator=(internal_event&& other) noexcept = default;
     internal_event(internal_event_kind kind, identity_type target) : kind_(kind), target_(target) {}
 
     internal_event_kind kind() {
@@ -63,18 +60,6 @@ private:
     internal_event_kind kind_;
     identity_type target_;
 };
-
-template<internal_event_kind Kind>
-using internal_event_kind_tag_t = takatori::util::enum_tag_t<Kind>;
-
-using activate_tag_t = internal_event_kind_tag_t<internal_event_kind::activate>;
-using prepare_tag_t = internal_event_kind_tag_t<internal_event_kind::prepare>;
-using consume_tag_t = internal_event_kind_tag_t<internal_event_kind::consume>;
-using deactivate_tag_t = internal_event_kind_tag_t<internal_event_kind::deactivate>;
-using propagate_downstream_completing_tag_t = internal_event_kind_tag_t<internal_event_kind::propagate_downstream_completing>;
-
-template<internal_event_kind Kind>
-inline constexpr internal_event_kind_tag_t<Kind> internal_event_kind_tag {};
 
 template<class Callback, class... Args>
 inline auto dispatch(Callback&& callback, internal_event_kind tag_value, Args&&... args) {

@@ -23,6 +23,7 @@
 #include <executor/common/task.h>
 #include <channel.h>
 #include "task_base.h"
+#include <cli_constants.h>
 
 namespace jogasaki::group_cli {
 
@@ -37,9 +38,9 @@ public:
     ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader), context_(&c) {}
 
     void execute() override {
-        DVLOG(1) << *this << " consumer_task executed. count: " << count_;
+        VLOG(1) << *this << " consumer_task executed. count: " << count_;
         auto& watch = context_->watch_;
-        watch->wrap(4);
+        watch->wrap(time_point_consume);
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
         auto* reader = reader_.reader<executor::group_reader>();
@@ -58,7 +59,7 @@ public:
             }
         }
         reader->release();
-        watch->wrap(5);
+        watch->wrap(time_point_consumed);
         LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys (sum: " << total_key << " " << total_val << ")";
     }
 

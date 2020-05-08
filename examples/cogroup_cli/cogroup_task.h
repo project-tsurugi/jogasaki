@@ -23,6 +23,7 @@
 #include <executor/common/task.h>
 #include <channel.h>
 #include "task_base.h"
+#include <cli_constants.h>
 
 namespace jogasaki::executor {
 
@@ -36,7 +37,7 @@ public:
     ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader) {}
 
     void execute() override {
-        DVLOG(1) << *this << " cogroup_task executed. count: " << count_;
+        VLOG(1) << *this << " cogroup_task executed. count: " << count_;
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
         auto* reader = reader_.reader<group_reader>();

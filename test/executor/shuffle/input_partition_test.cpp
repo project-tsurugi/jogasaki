@@ -45,9 +45,11 @@ public:
 using kind = meta::field_type_kind;
 
 TEST_F(input_partition_test, basic) {
-    auto resource = std::make_unique<mock_memory_resource>();
+    auto resource_for_records = std::make_unique<mock_memory_resource>();
+    auto resource_for_ptr_table = std::make_unique<mock_memory_resource>();
     input_partition partition{
-            std::move(resource),
+            std::move(resource_for_records),
+            std::move(resource_for_ptr_table),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0})};
     record r1 {1, 1.0};
     record r2 {2, 2.0};
@@ -60,14 +62,18 @@ TEST_F(input_partition_test, basic) {
     partition.write(ref1);
     partition.write(ref2);
     partition.flush();
-    EXPECT_EQ(3, std::distance(partition.begin(), partition.end()));
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    EXPECT_EQ(3, std::distance(t.begin(), t.end()));
 }
 
 TEST_F(input_partition_test, use_monotonic_resource) {
     memory::page_pool pool{};
-    auto resource = std::make_unique<memory::monotonic_paged_memory_resource>(&pool);
+    auto resource_for_records = std::make_unique<mock_memory_resource>();
+    auto resource_for_ptr_table = std::make_unique<mock_memory_resource>();
     input_partition partition{
-            std::move(resource),
+            std::move(resource_for_records),
+            std::move(resource_for_ptr_table),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0})};
 
     record r1 {1, 1.0};
@@ -82,8 +88,39 @@ TEST_F(input_partition_test, use_monotonic_resource) {
     partition.write(ref2);
     partition.flush();
 
-    EXPECT_EQ(3, std::distance(partition.begin(), partition.end()));
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    EXPECT_EQ(3, std::distance(t.begin(), t.end()));
 }
 
+TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
+    auto resource_for_records = std::make_unique<mock_memory_resource>();
+    auto resource_for_ptr_table = std::make_unique<mock_memory_resource>();
+    input_partition partition{
+            std::move(resource_for_records),
+            std::move(resource_for_ptr_table),
+            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
+            2
+            };
+    record r1 {1, 1.0};
+    record r2 {2, 2.0};
+    record r3 {3, 3.0};
+    accessor::record_ref ref1{&r1, sizeof(r1)};
+    accessor::record_ref ref2{&r2, sizeof(r2)};
+    accessor::record_ref ref3{&r3, sizeof(r3)};
+
+    partition.write(ref3);
+    partition.write(ref1);
+    partition.write(ref2);
+    partition.flush();
+    ASSERT_EQ(2, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t0 = *partition.begin();
+    EXPECT_EQ(2, std::distance(t0.begin(), t0.end()));
+    EXPECT_EQ(1, accessor::record_ref(*t0.begin(), 8).get_value<std::int64_t>(0));
+    EXPECT_EQ(3, accessor::record_ref(*++t0.begin(), 8).get_value<std::int64_t>(0));
+    auto& t1 = *++partition.begin();
+    EXPECT_EQ(1, std::distance(t1.begin(), t1.end()));
+    EXPECT_EQ(2, accessor::record_ref(*t1.begin(), 8).get_value<std::int64_t>(0));
+}
 }
 

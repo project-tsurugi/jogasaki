@@ -71,6 +71,7 @@ private:
         if (partitions_[partition]) return;
         partitions_[partition] = std::make_unique<input_partition>(
                 std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool),
+                std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool),
                 info_);
     }
 };

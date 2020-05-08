@@ -76,8 +76,14 @@ public:
 
     source_list_view sources() override;
 
+    /**
+     * @brief transfer the input partitions from sinks to sources
+     */
     void transfer();
 
+    /**
+     * @copydoc
+     */
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::group;
     }

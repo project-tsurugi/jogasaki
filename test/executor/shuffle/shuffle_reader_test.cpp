@@ -59,9 +59,13 @@ TEST_F(shuffle_reader_test, basic) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            info));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+                    info));
 
     record arr[] = {
             {1, 1.0},
@@ -100,11 +104,17 @@ TEST_F(shuffle_reader_test, multiple_partitions) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            info));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            info));
     auto& p3 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            info));
 
     record arr[] = {
             {0, 5.0},
@@ -155,9 +165,13 @@ TEST_F(shuffle_reader_test, empty_partition) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            info));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
-            std::make_unique<mock_memory_resource>(), info));
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            info));
 
     record arr[] = {
             {1, 1.0},

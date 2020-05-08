@@ -40,8 +40,17 @@ public:
 
     using sinks_sources = std::pair<sink_list_view, source_list_view>;
 
+    /**
+     * @brief a function to tell the exchange data flow object about the number of partitions required
+     * @param partitions the number of partitions requested
+     * @return list view of sinks and sources newly created by this call
+     */
     virtual sinks_sources setup_partitions(std::size_t partitions) = 0;
 
+    /**
+     * @brief accessor for sources
+     * @return list view of sources held by this exchange
+     */
     virtual source_list_view sources() = 0;
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {

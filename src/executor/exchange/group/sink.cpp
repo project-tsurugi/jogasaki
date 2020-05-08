@@ -48,14 +48,4 @@ std::vector<std::unique_ptr<input_partition>>& sink::input_partitions() {
     return partitions_;
 }
 
-void sink::initialize_lazy(std::size_t partition) {
-    if (partitions_.empty()) {
-        partitions_.resize(downstream_partitions_);
-    }
-    if (partitions_[partition]) return;
-    partitions_[partition] = std::make_unique<input_partition>(
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool),
-            info_);
-}
-
 }

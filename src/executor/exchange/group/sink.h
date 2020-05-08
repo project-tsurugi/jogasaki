@@ -48,8 +48,6 @@ private:
     std::shared_ptr<shuffle_info> info_{};
     partitioner partitioner_{};
     std::unique_ptr<group::writer> writer_;
-
-    void initialize_lazy(std::size_t partition);
 };
 
 }

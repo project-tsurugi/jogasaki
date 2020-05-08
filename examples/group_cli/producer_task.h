@@ -44,33 +44,15 @@ public:
             context_(&c),
             resource_(&resource)
             {}
-
     void execute() override {
         DVLOG(1) << *this << " producer_task executed. count: " << count_;
         auto& watch = context_->watch_;
         watch->wrap(0);
-        auto offset_c1 = meta_->value_offset(0);
-        auto offset_c2 = meta_->value_offset(1);
         initialize_writer();
-        xorshift_random rnd{};
-        auto sz = meta_->record_size();
-        void* start = nullptr;
-        for(std::size_t i = 0; i < context_->records_per_upstream_partition_; ++i) {
-            auto ptr = resource_->allocate(sz, meta_->record_alignment());
-            if (i == 0) {
-                start = ptr;
-            }
-            auto ref = accessor::record_ref(ptr, sz);
-            ref.set_value<std::int64_t>(offset_c1, rnd());
-            ref.set_value<double>(offset_c2, rnd());
-            writer_->write(ref);
-        }
+        std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions
+        prepare_data(continuous_ranges);
         watch->wrap(1);
-        for(std::size_t i = 0; i < context_->records_per_upstream_partition_; ++i) {
-            auto ptr = static_cast<char*>(start) + sz*i; //NOLINT
-            auto ref = accessor::record_ref(ptr, sz);
-            writer_->write(ref);
-        }
+        produce_data(continuous_ranges);
         watch->wrap(2);
         writer_->flush();
         writer_->release();
@@ -87,6 +69,43 @@ private:
     void initialize_writer() {
         if(!writer_) {
             writer_ = &sink_->acquire_writer();
+        }
+    }
+
+    void prepare_data(std::vector<std::pair<void*, void*>>& continuous_ranges) {
+        auto offset_c1 = meta_->value_offset(0);
+        auto offset_c2 = meta_->value_offset(1);
+        xorshift_random rnd{};
+        auto sz = meta_->record_size();
+        auto recs_per_page = memory::page_size / sizeof(void*);
+        auto partitions = context_->records_per_upstream_partition_;
+        continuous_ranges.reserve( ( partitions + recs_per_page - 1)/recs_per_page);
+        void* prev = nullptr;
+        void* begin_range = nullptr;
+        for(std::size_t i = 0; i < partitions; ++i) {
+            auto ptr = resource_->allocate(sz, meta_->record_alignment());
+            if (prev == nullptr) {
+                begin_range = ptr;
+            } else if (ptr != static_cast<char*>(prev) + sz) {
+                continuous_ranges.emplace_back(begin_range, prev);
+                begin_range = ptr;
+            }
+            prev = ptr;
+            auto ref = accessor::record_ref(ptr, sz);
+            ref.set_value<std::int64_t>(offset_c1, rnd());
+            ref.set_value<double>(offset_c2, rnd());
+        }
+        if(begin_range) {
+            continuous_ranges.emplace_back(begin_range, prev);
+        }
+    }
+    void produce_data(std::vector<std::pair<void*, void*>>& continuous_ranges) {
+        auto sz = meta_->record_size();
+        for(auto range : continuous_ranges) {
+            for(char* p = static_cast<char*>(range.first); p <= range.second; p += sz) {
+                auto ref = accessor::record_ref(p, sz);
+                writer_->write(ref);
+            }
         }
     }
 };

@@ -28,7 +28,7 @@
 namespace jogasaki::executor::exchange::group {
 
 /**
- * @brief information to execute shuffle, extracting schema and record layout information and its key/value parts
+ * @brief information to execute shuffle, used to extract schema and record layout information for key/value parts
  */
 class shuffle_info {
 public:
@@ -50,29 +50,49 @@ public:
             key_indices_(std::move(key_indices)),
             group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())) {}
 
+
+    /**
+     * @brief extract key part from the input record
+     */
     [[nodiscard]] accessor::record_ref extract_key(accessor::record_ref record) const noexcept {
         return accessor::record_ref(record.data(), record_->record_size());
     }
 
+    /**
+     * @brief extract value part from the input record
+     */
     [[nodiscard]] accessor::record_ref extract_value(accessor::record_ref record) const noexcept {
         return accessor::record_ref(record.data(), record_->record_size());
     }
 
+    /**
+     * @brief returns metadata for whole record
+     */
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& record_meta() const noexcept {
         return record_;
     }
 
+    /**
+     * @brief returns metadata for key part
+     */
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& key_meta() const noexcept {
         return group_->key_shared();
     }
 
+    /**
+     * @brief returns metadata for value part
+     */
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& value_meta() const noexcept {
         return group_->value_shared();
     }
 
+    /**
+     * @brief returns metadata for key/value parts at once
+     */
     [[nodiscard]] std::shared_ptr<meta::group_meta> const& group_meta() const noexcept {
         return group_;
     }
+
 private:
     std::shared_ptr<meta::record_meta> record_{};
     std::vector<field_index_type> key_indices_{};

@@ -21,7 +21,7 @@
 
 namespace jogasaki::executor::exchange::group {
 
-using iterator = input_partition::iterator;
+using iterator = input_partition::table_iterator;
 using iterator_pair = std::pair<iterator, iterator>;
 
 /**
@@ -75,8 +75,11 @@ public:
             buf_(std::make_unique<char[]>(record_size_)),
             key_comparator_(info_->key_meta()) {
         for(auto& p : partitions_) {
-            if (p && p->begin() != p->end()) {
-                queue_.emplace(p->begin(), p->end());
+            if (!p) continue;
+            for(auto& t : *p) {
+                if (t.begin() != t.end()) {
+                    queue_.emplace(t.begin(), t.end());
+                }
             }
         }
     }

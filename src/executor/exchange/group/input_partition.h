@@ -29,62 +29,116 @@
 namespace jogasaki::executor::exchange::group {
 
 /**
- * @brief partitioned input data processed in upper phase in shuffle
+ * @brief partitioned input data handled in upper phase in shuffle
+ * @details This object represents group exchange input data after partition.
+ * This object is transferred between sinks and sources when transfer is instructed to the exchange.
+ * No limit to the number of records stored in this object.
+ * After populating input data (by write() and flush()), this object provides iterators to the internal pointer tables
+ * (each of which needs to fit page size defined by memory allocator, e.g. 2MB for huge page)
+ * which contain sorted pointers.
  */
 class input_partition {
 public:
     using pointer_table_type = boost::container::pmr::vector<void*>;
-    using iterator = pointer_table_type::iterator;
+    using pointer_tables_type = std::vector<pointer_table_type>;
+    using iterator = pointer_tables_type::iterator;
+    using table_iterator = pointer_table_type::iterator;
+    constexpr static std::size_t ptr_table_size = memory::page_size/sizeof(void*);
 
     input_partition() = default;
     ~input_partition() = default;
     input_partition(input_partition&& other) noexcept = delete;
     input_partition& operator=(input_partition&& other) noexcept = delete;
 
-    input_partition(std::unique_ptr<memory::paged_memory_resource> resource, std::shared_ptr<shuffle_info> info) :
-            resource_(std::move(resource)),
+    /**
+     * @brief create new instance
+     * @param resource
+     * @param info
+     */
+    input_partition(
+            std::unique_ptr<memory::paged_memory_resource> resource_for_records,
+            std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
+            std::shared_ptr<shuffle_info> info,
+            [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
+            ) :
+            resource_for_records_(std::move(resource_for_records)),
+            resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
             info_(std::move(info)),
-            pointer_table_(boost::container::pmr::polymorphic_allocator<void*>(resource_.get())),
-            comparator_(info_->key_meta())
+            comparator_(info_->key_meta()),
+            max_pointers_(pointer_table_size)
     {}
 
-    bool write(accessor::record_ref r) {
+    /**
+     * @brief write record to the input partition
+     * @param record
+     * @return whether flushing pointer table happens or not
+     */
+    bool write(accessor::record_ref record) {
         initialize_lazy();
-        pointer_table_.emplace_back(records_->append(r.data(), info_->record_meta()->record_size()));
-        if (pointer_table_.capacity() == pointer_table_.size()) {
+        auto& table = pointer_tables_.back();
+        table.emplace_back(records_->append(record.data(), info_->record_meta()->record_size()));
+        if (table.capacity() == table.size()) {
             flush();
             return true;
         }
         return false;
     }
 
+    /**
+     * @brief finish current pointer table
+     * @details the current internal pointer table is finalized and next write() will create one.
+     */
     void flush() {
+        if(!current_pointer_table_active_) return;
         auto sz = info_->record_meta()->record_size();
-        std::sort(pointer_table_.begin(), pointer_table_.end(), [&](auto const&x, auto const& y){
+        auto& table = pointer_tables_.back();
+        std::sort(table.begin(), table.end(), [&](auto const&x, auto const& y){
             return comparator_(info_->extract_key(accessor::record_ref(x, sz)),
                     info_->extract_key(accessor::record_ref(y, sz))) < 0;
         });
+        current_pointer_table_active_ = false;
     }
 
+    /**
+     * @brief beginning iterator for pointer tables
+     */
     iterator begin() {
-        return pointer_table_.begin();
+        return pointer_tables_.begin();
     }
 
+    /**
+     * @brief ending iterator for pointer tables
+     */
     iterator end() {
-        return pointer_table_.end();
+        return pointer_tables_.end();
+    }
+
+    /**
+     * @brief returns the number of pointer tables
+     */
+    [[nodiscard]] std::size_t tables_count() const noexcept {
+        return pointer_tables_.size();
     }
 
 private:
-    std::unique_ptr<memory::paged_memory_resource> resource_{};
-    std::shared_ptr<shuffle_info> info_;
+    std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
+    std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
+    std::shared_ptr<shuffle_info> info_{};
     std::unique_ptr<data::variable_length_data_region> records_{};
-    boost::container::pmr::vector<void*> pointer_table_{};
+    pointer_tables_type pointer_tables_{};
     comparator comparator_{};
+    bool current_pointer_table_active_{false};
+    std::size_t max_pointers_{};
 
     void initialize_lazy() {
-        if (records_) return;
-        pointer_table_.reserve(memory::page_size/sizeof(void*));
-        records_ = std::make_unique<data::variable_length_data_region>(resource_.get(), info_->record_meta()->record_alignment());
+        if (!records_) {
+            records_ = std::make_unique<data::variable_length_data_region>(resource_for_records_.get(), info_->record_meta()->record_alignment());
+        }
+        if(!current_pointer_table_active_) {
+            auto& t = pointer_tables_.emplace_back(resource_for_ptr_tables_.get());
+            t.reserve(max_pointers_);
+            current_pointer_table_active_ = true;
+        }
     }
 };
 

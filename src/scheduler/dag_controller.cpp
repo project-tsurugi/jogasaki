@@ -54,9 +54,9 @@ public:
     impl& operator=(impl&& other) = delete;
 
     /*
-     * @brief handles upstream_providing event
+     * @brief handles providing event
      */
-    void operator()(enum_tag_t<event_kind::upstream_providing>, event& e);
+    void operator()(enum_tag_t<event_kind::providing>, event& e);
 
     /*
      * @brief handles main_completed event
@@ -348,7 +348,7 @@ void dag_controller::schedule(model::graph &g) {
     return impl_->schedule(g);
 }
 
-void dag_controller::impl::operator()(enum_tag_t<event_kind::upstream_providing>, event& e) {
+void dag_controller::impl::operator()(enum_tag_t<event_kind::providing>, event& e) {
     if (auto v = graph_->find_step(e.target())) {
         DVLOG(1) << *v << " got notified upstream started providing";
         if (e.source_port_kind() == port_kind::sub) {

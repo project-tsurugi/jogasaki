@@ -31,7 +31,7 @@ public:
 
     void notify_prepared() override {
         // check if main inputs are already available
-        // raise upstream_providing to start main tasks running soon
+        // raise providing to start main tasks running soon
     }
     void notify_completed() override {
         // destroy process buffer

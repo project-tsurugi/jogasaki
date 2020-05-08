@@ -31,9 +31,9 @@ namespace jogasaki {
 enum class event_kind {
     /*
      * @brief upstream step start sending data to downstream
-     * Valid only when downstream step is not blocking exchange such as shuffle
+     * Valid only when downstream step is not blocking exchange
      */
-    upstream_providing,
+    providing,
 
     /*
      * @brief a task completed
@@ -50,7 +50,7 @@ inline constexpr std::string_view to_string_view(event_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = event_kind;
     switch (value) {
-        case kind::upstream_providing: return "upstream_providing"sv;
+        case kind::providing: return "providing"sv;
         case kind::task_completed: return "task_completed"sv;
         case kind::completion_instructed: return "completion_instructed"sv;
     }
@@ -67,7 +67,7 @@ template<class Callback, class... Args>
 inline auto dispatch(Callback&& callback, event_kind tag_value, Args&&... args) {
     using kind = event_kind;
     switch (tag_value) {
-        case kind::upstream_providing: return takatori::util::enum_tag_callback<kind::upstream_providing>(std::forward<Callback>(callback), std::forward<Args>(args)...);
+        case kind::providing: return takatori::util::enum_tag_callback<kind::providing>(std::forward<Callback>(callback), std::forward<Args>(args)...);
         case kind::task_completed: return takatori::util::enum_tag_callback<kind::task_completed>(std::forward<Callback>(callback), std::forward<Args>(args)...);
         case kind::completion_instructed: return takatori::util::enum_tag_callback<kind::completion_instructed>(std::forward<Callback>(callback), std::forward<Args>(args)...);
     }
@@ -86,7 +86,7 @@ public:
     event(event&& other) noexcept = default;
     event& operator=(event&& other) noexcept = default;
     event(event_kind_tag_t<event_kind::task_completed> tag, identity_type step, model::task::identity_type task) : kind_(tag), target_(step), task_(task) {}
-    event(event_kind_tag_t<event_kind::upstream_providing> tag, identity_type step, port_kind pkind, port_index_type pindex) : kind_(tag), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
+    event(event_kind_tag_t<event_kind::providing> tag, identity_type step, port_kind pkind, port_index_type pindex) : kind_(tag), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
 
     event_kind kind() {
         return kind_;

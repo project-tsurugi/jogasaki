@@ -63,12 +63,12 @@ protected:
                 for(auto& o : oport->opposites()) {
                     auto* downstream = o->owner();
                     if(dynamic_cast<exchange::group::step*>(downstream)) {
-                        // blocking exchange should not raise upstream_providing
+                        // blocking exchange should not raise providing
                         continue;
                     }
                     model::step::port_index_type index = o->kind() == port_kind::main ? input_port_index(*o->owner(), *o) : subinput_port_index(
                             *o->owner(), *o);
-                    channel_->emplace(event_kind_tag<event_kind::upstream_providing>, downstream->id(), o->kind(), index);
+                    channel_->emplace(event_kind_tag<event_kind::providing>, downstream->id(), o->kind(), index);
                 }
             }
         }

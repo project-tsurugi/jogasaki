@@ -28,6 +28,8 @@ class source : public exchange::source {
 public:
     source();
     ~source();
+    source(source const& other) = delete;
+    source& operator=(source const& other) = delete;
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
     explicit source(std::shared_ptr<shuffle_info> info);

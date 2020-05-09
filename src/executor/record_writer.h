@@ -42,11 +42,46 @@ public:
      */
     virtual void flush() = 0;
 
-    virtual void release() = 0;
     /**
-     * @brief destructor
+     * @brief declare ending use of this object and return to owner
+     */
+    virtual void release() = 0;
+
+    /**
+     * @brief creates a new instance.
+     */
+    record_writer() = default;
+
+    /**
+     * @brief destroys this object.
      */
     virtual ~record_writer() = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    record_writer(record_writer const& other) = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    record_writer& operator=(record_writer const& other) = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    record_writer(record_writer&& other) noexcept = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    record_writer& operator=(record_writer&& other) noexcept = default;
 };
 
 /**

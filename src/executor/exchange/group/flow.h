@@ -42,7 +42,9 @@ class flow : public exchange::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    ~flow();
+    ~flow() override;
+    flow(flow const& other) = default;
+    flow& operator=(flow const& other) = default;
     flow(flow&& other) noexcept = default;
     flow& operator=(flow&& other) noexcept = default;
 

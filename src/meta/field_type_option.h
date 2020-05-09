@@ -27,9 +27,9 @@ namespace jogasaki::meta {
 // placeholders for optional information for types
 // TODO implement for production
 // add == operators to suppress compile errors
-struct date_field_option { explicit date_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; };
-struct time_point_field_option { explicit time_point_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; };
-struct array_field_option { explicit array_field_option(std::size_t size) : size_(size) {} std::size_t size_; };
+struct date_field_option { explicit date_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; }; //NOLINT
+struct time_point_field_option { explicit time_point_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; }; //NOLINT
+struct array_field_option { explicit array_field_option(std::size_t size) : size_(size) {} std::size_t size_; }; //NOLINT
 struct record_field_option {};
 struct unknown_field_option {};
 struct row_reference_field_option {};

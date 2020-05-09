@@ -28,6 +28,9 @@ namespace jogasaki::executor::exchange::group {
 
 class writer : public record_writer {
 public:
+    ~writer() override = default;
+    writer(writer const& other) = delete;
+    writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
     writer(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions, group::sink& owner) :

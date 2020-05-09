@@ -46,9 +46,6 @@ public:
     constexpr static std::size_t ptr_table_size = memory::page_size/sizeof(void*);
 
     input_partition() = default;
-    ~input_partition() = default;
-    input_partition(input_partition&& other) noexcept = delete;
-    input_partition& operator=(input_partition&& other) noexcept = delete;
 
     /**
      * @brief create new instance

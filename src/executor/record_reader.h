@@ -59,11 +59,46 @@ public:
      */
     [[nodiscard]] virtual accessor::record_ref get_record() const = 0;
 
-    virtual void release() = 0;
     /**
-     * @brief destructor
+     * @brief declare ending use of this object and return to owner
+     */
+    virtual void release() = 0;
+
+    /**
+     * @brief creates a new instance.
+     */
+    record_reader() = default;
+
+    /**
+     * @brief destroys this object.
      */
     virtual ~record_reader() = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    record_reader(record_reader const& other) = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    record_reader& operator=(record_reader const& other) = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    record_reader(record_reader&& other) noexcept = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    record_reader& operator=(record_reader&& other) noexcept = default;
 };
 
 /**

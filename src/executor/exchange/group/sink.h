@@ -32,6 +32,9 @@ class sink : public exchange::sink {
 public:
     friend class writer;
     sink() = default;
+    ~sink() override = default;
+    sink(sink const& other) = delete;
+    sink& operator=(sink const& other) = delete;
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
     sink(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info);

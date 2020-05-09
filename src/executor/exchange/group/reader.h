@@ -64,6 +64,9 @@ enum class reader_state {
  */
 class reader : public group_reader {
 public:
+    ~reader() override = default;
+    reader(reader const& other) = delete;
+    reader& operator=(reader const& other) = delete;
     reader(reader&& other) noexcept = delete;
     reader& operator=(reader&& other) noexcept = delete;
 

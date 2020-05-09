@@ -118,6 +118,18 @@ public:
     }
 
     /**
+     * @brief getter for option information without checking field type kind being consistent with content
+     */
+    template <field_type_kind Kind>
+    [[nodiscard]] option_type<Kind> const& option_unsafe() const noexcept {
+        try {
+            return option<Kind>();
+        } catch (std::bad_variant_access&) {
+            std::abort();
+        }
+    }
+
+    /**
      * @return true if field type is valid
      * @return false otherwise
      */
@@ -204,14 +216,13 @@ private:
     entity_type entity_{};
 };
 
-// TODO do not use anonymous name sp in .h
-namespace {
+namespace impl {
 
 template <field_type_kind Kind, class = void>
 struct eq {
     bool operator()(field_type const& a, field_type const& b) const noexcept {
-        auto&& r1 = a.option<Kind>();
-        auto&& r2 = b.option<Kind>();
+        auto&& r1 = a.option_unsafe<Kind>();
+        auto&& r2 = b.option_unsafe<Kind>();
         return r1 == r2;
     }
 };
@@ -224,8 +235,8 @@ struct eq<
                         decltype(*std::declval<field_type::option_type<Kind>>()),
                         decltype(*std::declval<field_type::option_type<Kind>>())>>> {
     bool operator()(field_type const& a, field_type const& b) const noexcept {
-        auto&& r1 = a.option<Kind>();
-        auto&& r2 = b.option<Kind>();
+        auto&& r1 = a.option_unsafe<Kind>();
+        auto&& r2 = b.option_unsafe<Kind>();
         return *r1 == *r2;
     }
 };
@@ -240,15 +251,15 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
     }
     using kind = field_type_kind;
     switch (a.kind()) {
-        case kind::date: return eq<kind::date>()(a, b);
-        case kind::time_point: return eq<kind::time_point>()(a, b);
-        case kind::array: return eq<kind::array>()(a, b);
-        case kind::record: return eq<kind::record>()(a, b);
-        case kind::unknown: return eq<kind::unknown>()(a, b);
-        case kind::row_reference: return eq<kind::row_reference>()(a, b);
-        case kind::row_id: return eq<kind::row_id>()(a, b);
-        case kind::declared: return eq<kind::declared>()(a, b);
-        case kind::extension: return eq<kind::extension>()(a, b);
+        case kind::date: return impl::eq<kind::date>()(a, b);
+        case kind::time_point: return impl::eq<kind::time_point>()(a, b);
+        case kind::array: return impl::eq<kind::array>()(a, b);
+        case kind::record: return impl::eq<kind::record>()(a, b);
+        case kind::unknown: return impl::eq<kind::unknown>()(a, b);
+        case kind::row_reference: return impl::eq<kind::row_reference>()(a, b);
+        case kind::row_id: return impl::eq<kind::row_id>()(a, b);
+        case kind::declared: return impl::eq<kind::declared>()(a, b);
+        case kind::extension: return impl::eq<kind::extension>()(a, b);
         default:
             return true;
     }

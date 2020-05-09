@@ -132,10 +132,24 @@ public:
         assert(data_flow_object_ != nullptr); //NOLINT
         return data_flow_object_->create_pretask(subinput);
     }
-    flow& data_flow_object() const noexcept {
+
+    [[nodiscard]] flow& data_flow_object() const noexcept {
         return *data_flow_object_;
     }
+
 protected:
+    void data_flow_object(std::unique_ptr<flow> p) noexcept {
+        data_flow_object_ = std::move(p);
+    }
+
+    [[nodiscard]] class channel* channel() const noexcept {
+        if (graph_) {
+            return &graph_->get_channel();
+        }
+        return nullptr;
+    }
+
+private:
     identity_type id_{};
     std::vector<std::unique_ptr<model::port>> main_input_ports_{};
     std::vector<std::unique_ptr<model::port>> sub_input_ports_{};
@@ -147,8 +161,6 @@ protected:
         using namespace std::string_view_literals;
         return out << to_string_view(kind()) << "[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;
     };
-    // data flow context below
-
 };
 
 }

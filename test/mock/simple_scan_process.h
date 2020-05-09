@@ -33,12 +33,11 @@ public:
     simple_scan_process(simple_scan_process&& other) noexcept = default;
     simple_scan_process& operator=(simple_scan_process&& other) noexcept = default;
     simple_scan_process(model::graph* owner) {
-        graph_ = owner;
+        set_owner(owner);
     }
     void activate() override {
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object_ = std::make_unique<simple_scan_process_flow>(p, this, ch);
+        data_flow_object(std::make_unique<simple_scan_process_flow>(p, this, channel()));
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

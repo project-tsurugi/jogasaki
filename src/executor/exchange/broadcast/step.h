@@ -27,7 +27,7 @@ public:
     step() : exchange::step(1, 1) {}
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         // exchange task is nop
-        tasks_.emplace_back(std::make_unique<exchange::task>(&graph_->get_channel(), this));
+        tasks_.emplace_back(std::make_unique<exchange::task>(channel(), this));
         return tasks_;
     }
     [[nodiscard]] common::step_kind kind() const noexcept override {

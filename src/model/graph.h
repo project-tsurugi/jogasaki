@@ -42,7 +42,7 @@ public:
     /**
      * @return channel used to communicate events from step graphs to dag controller
      */
-    virtual channel& get_channel() = 0;
+    [[nodiscard]] virtual channel& get_channel() const = 0;
 
     /**
      * @brief find the step for the given identity in this graph

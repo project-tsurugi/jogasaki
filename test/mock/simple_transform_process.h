@@ -32,7 +32,7 @@ public:
     simple_transform_process(simple_transform_process&& other) noexcept = default;
     simple_transform_process& operator=(simple_transform_process&& other) noexcept = default;
     simple_transform_process(model::graph* owner) {
-        graph_ = owner;
+        set_owner(owner);
     }
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
@@ -40,7 +40,7 @@ public:
         auto initial_count = tasks_.size();
         if (tasks_.size() < partitions) {
             for(std::size_t i = 0; i < partitions; ++i) {
-                tasks_.emplace_back(std::make_unique<simple_transform_process_task>(&graph_->get_channel(), this));
+                tasks_.emplace_back(std::make_unique<simple_transform_process_task>(channel(), this));
             }
         }
         return takatori::util::sequence_view{&*(tasks_.begin()+initial_count), &*(tasks_.end())};
@@ -50,13 +50,12 @@ public:
         if (subinput+1 > pretasks_.size()) {
             pretasks_.resize(subinput + 1);
         }
-        pretasks_[subinput] = std::make_unique<simple_transform_process_pretask>(&graph_->get_channel(), this);
+        pretasks_[subinput] = std::make_unique<simple_transform_process_pretask>(channel(), this);
         return takatori::util::sequence_view{&pretasks_[subinput]};
     }
     void activate() override {
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object_ = std::make_unique<simple_transform_process_flow>(p, this, ch);
+        data_flow_object(std::make_unique<simple_transform_process_flow>(p, this, channel()));
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

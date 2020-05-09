@@ -87,7 +87,7 @@ private:
             auto ptr = resource_->allocate(sz, meta_->record_alignment());
             if (prev == nullptr) {
                 begin_range = ptr;
-            } else if (ptr != static_cast<char*>(prev) + sz) {
+            } else if (ptr != static_cast<char*>(prev) + sz) { //NOLINT
                 continuous_ranges.emplace_back(begin_range, prev);
                 begin_range = ptr;
             }
@@ -103,7 +103,7 @@ private:
     void produce_data(std::vector<std::pair<void*, void*>>& continuous_ranges) {
         auto sz = meta_->record_size();
         for(auto range : continuous_ranges) {
-            for(char* p = static_cast<char*>(range.first); p <= range.second; p += sz) {
+            for(char* p = static_cast<char*>(range.first); p <= range.second; p += sz) { //NOLINT
                 auto ref = accessor::record_ref(p, sz);
                 writer_->write(ref);
             }

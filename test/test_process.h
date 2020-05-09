@@ -69,12 +69,11 @@ public:
     test_process(test_process&& other) noexcept = default;
     test_process& operator=(test_process&& other) noexcept = default;
     test_process(model::graph* owner) {
-        graph_ = owner;
+        set_owner(owner);
     }
 
     void activate() override {
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        data_flow_object_ = std::make_unique<test_process_flow>(nullptr, this, ch);
+        data_flow_object(std::make_unique<test_process_flow>(nullptr, this, channel()));
     }
     void deactivate() override {
 

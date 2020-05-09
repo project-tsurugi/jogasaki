@@ -32,7 +32,7 @@ public:
     }
 
     void activate() override {
-        data_flow_object_ = std::make_unique<flow>(&graph_->get_channel(), this);
+        data_flow_object(std::make_unique<flow>(channel(), this));
     }
 private:
 };

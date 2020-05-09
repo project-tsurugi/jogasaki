@@ -32,13 +32,11 @@ public:
     simple_cogroup_process(simple_cogroup_process&& other) noexcept = default;
     simple_cogroup_process& operator=(simple_cogroup_process&& other) noexcept = default;
     simple_cogroup_process(model::graph* owner) {
-        graph_ = owner;
+        set_owner(owner);
     }
 
     void activate() override {
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
-//        auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object_ = std::make_unique<simple_cogroup_process_flow>(nullptr, this, ch);
+        data_flow_object(std::make_unique<simple_cogroup_process_flow>(nullptr, this, channel()));
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

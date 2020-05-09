@@ -42,10 +42,10 @@ public:
     virtual void execute() = 0;
 
 protected:
-    channel* channel_{};
-    model::step* src_{};
-    bool is_pretask_{false};
-    std::size_t count_{0};
+    channel* channel_{}; //NOLINT
+    model::step* src_{}; //NOLINT
+    bool is_pretask_{false}; //NOLINT
+    std::size_t count_{0}; //NOLINT
 };
 
 }

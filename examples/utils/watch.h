@@ -98,8 +98,8 @@ public:
     }
 
     void init(std::array<Clock::time_point, NUM_WRAPS>& wraps) {
-        for(int i=0; i < NUM_WRAPS; ++i) {
-            wraps[i] = Clock::time_point();
+        for(auto& s : wraps) {
+            s = Clock::time_point();
         }
     }
     void initialize_this_thread() {
@@ -111,7 +111,7 @@ public:
 private:
     std::chrono::time_point<Clock> begin_{};
     std::unordered_map<std::thread::id, std::array<Clock::time_point, NUM_WRAPS>> wraps_{};
-    std::mutex guard_;
+    std::mutex guard_{};
 };
 
 } // namespace

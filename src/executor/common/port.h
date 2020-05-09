@@ -50,7 +50,7 @@ public:
         target->opposites_.emplace_back(this);
     }
 
-protected:
+private:
     port_direction direction_{};
     port_kind kind_{};
     std::vector<model::port*> opposites_{};

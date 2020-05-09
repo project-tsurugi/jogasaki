@@ -34,13 +34,12 @@ public:
             std::shared_ptr<meta::record_meta> meta,
             context& c) : step(0, 1),
     meta_(std::move(meta)), context_(&c) {
-        graph_ = owner;
+        set_owner(owner);
     }
 
     void activate() override {
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
         auto p = dynamic_cast<executor::exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object_ = std::make_unique<producer_flow>(p, this, ch, meta_, *context_);
+        data_flow_object(std::make_unique<producer_flow>(p, this, channel(), meta_, *context_));
     }
 
     void deactivate() override {

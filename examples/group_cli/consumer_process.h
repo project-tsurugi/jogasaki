@@ -29,13 +29,12 @@ public:
     consumer_process() = default;
     explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta, context& c) :
             step(1, 1), meta_(std::move(meta)), context_(&c) {
-        graph_ = owner;
+        set_owner(owner);
     }
 
     void activate() override {
         auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        data_flow_object_ = std::make_unique<consumer_flow>(p, this, ch, meta_, *context_);
+        data_flow_object(std::make_unique<consumer_flow>(p, this, channel(), meta_, *context_));
     }
 
     [[nodiscard]] std::size_t partitions() const noexcept override {

@@ -63,20 +63,19 @@ public:
     void activate() override {
         auto* down = downstream(0);
         auto downstream_partitions = down ? down->partitions() : default_partitions;
-        auto ch = graph_ ? &graph_->get_channel() : nullptr;
-        data_flow_object_ = std::make_unique<group::flow>(info_, ch, this, downstream_partitions);
+        data_flow_object(std::make_unique<group::flow>(info_, channel(), this, downstream_partitions));
     }
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept {
-        if (output_ports_.empty()) return nullptr;
-        if (output_ports_[0]->opposites().size() <= index) return nullptr;
-        return dynamic_cast<process::step*>(output_ports_[0]->opposites()[index]->owner());
+        if (output_ports().empty()) return nullptr;
+        if (output_ports()[0]->opposites().size() <= index) return nullptr;
+        return dynamic_cast<process::step*>(output_ports()[0]->opposites()[index]->owner());
     }
 
     [[nodiscard]] process::step* upstream(std::size_t index) const noexcept {
-        if (main_input_ports_.empty()) return nullptr;
-        if (main_input_ports_[0]->opposites().size() <= index) return nullptr;
-        return dynamic_cast<process::step*>(main_input_ports_[0]->opposites()[index]->owner());
+        if (input_ports().empty()) return nullptr;
+        if (input_ports()[0]->opposites().size() <= index) return nullptr;
+        return dynamic_cast<process::step*>(input_ports()[0]->opposites()[index]->owner());
     }
 
 private:

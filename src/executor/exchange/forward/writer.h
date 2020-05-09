@@ -26,8 +26,6 @@ namespace jogasaki::executor::exchange::forward {
 
 class writer : public record_writer {
 public:
-    writer(writer&& other) noexcept = delete;
-    writer& operator=(writer&& other) noexcept = delete;
     writer() = default;
 
     bool write(accessor::record_ref rec) override {

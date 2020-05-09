@@ -19,9 +19,6 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-source::source() = default;
-source::~source() = default;
-
 reader_container source::acquire_reader() {
     return {};
 }

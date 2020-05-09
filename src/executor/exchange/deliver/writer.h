@@ -25,9 +25,12 @@ namespace jogasaki::executor::exchange::deliver {
 
 class writer : public record_writer {
 public:
+    writer() = default;
+    ~writer() override = default;
+    writer(writer const& other) = delete;
+    writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
-    writer() = default;
 
     bool write(accessor::record_ref rec) override {
         (void)rec;

@@ -36,6 +36,8 @@ public:
 
     task_scheduler() = default;
     virtual ~task_scheduler() = default;
+    task_scheduler(task_scheduler const& other) = delete;
+    task_scheduler& operator=(task_scheduler const& other) = delete;
     task_scheduler(task_scheduler&& other) noexcept = delete;
     task_scheduler& operator=(task_scheduler&& other) noexcept = delete;
 

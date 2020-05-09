@@ -46,11 +46,6 @@ class port {
 public:
     using opposites_type = std::vector<port*>;
 
-    port() = default;
-    virtual ~port() = default;
-    port(port&& other) noexcept = default;
-    port& operator=(port&& other) noexcept = default;
-
     /**
      * @return the opposite ports connected with this port
      */
@@ -75,6 +70,42 @@ public:
      * @brief set the owner step of this port
      */
     virtual void set_owner(step* arg) = 0;
+
+    /**
+     * @brief creates a new instance.
+     */
+    port() = default;
+
+    /**
+     * @brief destroys this object.
+     */
+    virtual ~port() = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    port(port const& other) = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    port& operator=(port const& other) = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    port(port&& other) noexcept = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    port& operator=(port&& other) noexcept = default;
 };
 
 /**

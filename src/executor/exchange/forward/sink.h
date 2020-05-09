@@ -29,8 +29,6 @@ class writer;
 class sink : public exchange::sink {
 public:
     sink() noexcept;
-    sink(sink&& other) noexcept = delete;
-    sink& operator=(sink&& other) noexcept = delete;
 
     record_writer& acquire_writer() override;
 

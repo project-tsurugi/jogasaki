@@ -29,11 +29,6 @@ namespace jogasaki::scheduler {
  */
 class single_thread_task_scheduler : public task_scheduler {
 public:
-    single_thread_task_scheduler() = default;
-    ~single_thread_task_scheduler() override = default;
-    single_thread_task_scheduler(single_thread_task_scheduler&& other) noexcept = delete;
-    single_thread_task_scheduler& operator=(single_thread_task_scheduler&& other) noexcept = delete;
-
     void schedule_task(model::task* t) override {
         tasks_.emplace(t);
     }

@@ -27,11 +27,6 @@ class channel {
 public:
     using element_type = event;
 
-    channel() = default;
-    virtual ~channel() = default;
-    channel(channel&& other) noexcept = default;
-    channel& operator=(channel&& other) noexcept = default;
-
     template <typename ... Args>
     void emplace(Args&& ... args) {
         events_->emplace(std::forward<Args>(args)...);

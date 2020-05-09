@@ -82,9 +82,6 @@ public:
     using identity_type = model::step::identity_type;
     using port_index_type = model::step::port_index_type;
     event() = default;
-    ~event() = default;
-    event(event&& other) noexcept = default;
-    event& operator=(event&& other) noexcept = default;
     event(event_kind_tag_t<event_kind::task_completed> tag, identity_type step, model::task::identity_type task) : kind_(tag), target_(step), task_(task) {}
     event(event_kind_tag_t<event_kind::providing> tag, identity_type step, port_kind pkind, port_index_type pindex) : kind_(tag), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
 

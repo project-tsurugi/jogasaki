@@ -37,9 +37,40 @@ public:
      */
     using port_index_type = std::size_t;
 
+    /**
+     * @brief creates a new instance.
+     */
     step() = default;
+
+    /**
+     * @brief destroys this object.
+     */
     virtual ~step() = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    step(step const& other) = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    step& operator=(step const& other) = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
     step(step&& other) noexcept = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
     step& operator=(step&& other) noexcept = default;
 
     /**

@@ -49,9 +49,6 @@ public:
             executor_(cfg_->single_thread_task_scheduler_ ?
                     task_scheduler_factory::create(task_scheduler_kind::single_thread) :
                     task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(cfg_))) {}
-    ~impl() = default;
-    impl(impl&& other) = delete;
-    impl& operator=(impl&& other) = delete;
 
     /*
      * @brief handles providing event

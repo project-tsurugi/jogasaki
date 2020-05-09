@@ -25,13 +25,9 @@ namespace jogasaki::executor::exchange::forward {
 
 class step : public exchange::step {
 public:
-    ~step() override = default;
-    step(step&& other) noexcept = default;
-    step& operator=(step&& other) noexcept = default;
-
     step() : exchange::step(1, 1){}
 
-    step(std::shared_ptr<meta::record_meta> input_meta) : input_meta_(std::move(input_meta)) {}
+    explicit step(std::shared_ptr<meta::record_meta> input_meta) : input_meta_(std::move(input_meta)) {}
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         // exchange task is nop

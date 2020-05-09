@@ -52,9 +52,40 @@ public:
     using identity_type = std::size_t;
 
     [[nodiscard]] virtual identity_type id() const = 0;
+    /**
+     * @brief creates a new instance.
+     */
     task() = default;
+
+    /**
+     * @brief destroys this object.
+     */
     virtual ~task() = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    task(task const& other) = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    task& operator=(task const& other) = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
     task(task&& other) noexcept = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
     task& operator=(task&& other) noexcept = default;
 
     /**

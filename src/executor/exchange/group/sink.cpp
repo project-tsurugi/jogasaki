@@ -16,7 +16,6 @@
 #include "sink.h"
 
 #include <executor/global.h>
-#include <memory/monotonic_paged_memory_resource.h>
 #include <executor/record_writer.h>
 #include "input_partition.h"
 #include "shuffle_info.h"

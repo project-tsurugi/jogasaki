@@ -24,7 +24,7 @@ namespace jogasaki::executor::exchange {
 class source {
 public:
     source() = default;
-    ~source() = default;
+    virtual ~source() = default;
     source(source const& other) = delete;
     source& operator=(source const& other) = delete;
     source(source&& other) noexcept = delete;

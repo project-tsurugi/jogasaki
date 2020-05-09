@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "step.h"
-
 namespace jogasaki::executor::process {
 
 }

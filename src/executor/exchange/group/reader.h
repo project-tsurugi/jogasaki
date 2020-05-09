@@ -75,7 +75,7 @@ public:
             info_(std::move(info)),
             queue_(iterator_pair_comparator(info_)),
             record_size_(info_->record_meta()->record_size()),
-            buf_(std::make_unique<char[]>(record_size_)),
+            buf_(std::make_unique<char[]>(record_size_)), //NOLINT
             key_comparator_(info_->key_meta()) {
         for(auto& p : partitions_) {
             if (!p) continue;
@@ -158,7 +158,7 @@ private:
     std::shared_ptr<shuffle_info> info_{};
     std::priority_queue<iterator_pair, std::vector<iterator_pair>, iterator_pair_comparator> queue_;
     std::size_t record_size_{};
-    std::unique_ptr<char[]> buf_{};
+    std::unique_ptr<char[]> buf_{}; //NOLINT
     reader_state state_{reader_state::init};
     comparator key_comparator_{};
 };

@@ -26,10 +26,6 @@ class reader;
 
 class source : public exchange::source {
 public:
-    source();
-    ~source();
-    source(source&& other) noexcept = delete;
-    source& operator=(source&& other) noexcept = delete;
     reader_container acquire_reader() override;
 
 private:

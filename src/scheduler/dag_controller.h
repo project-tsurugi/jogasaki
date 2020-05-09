@@ -25,11 +25,50 @@ namespace jogasaki::scheduler {
  */
 class dag_controller {
 public:
+    /**
+     * @brief creates a new instance.
+     */
     dag_controller();
+
+    /**
+     * @brief destroys this object.
+     */
+    virtual ~dag_controller();
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    dag_controller(dag_controller const& other) = delete;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    dag_controller& operator=(dag_controller const& other) = delete;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    dag_controller(dag_controller&& other) noexcept = delete;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    dag_controller& operator=(dag_controller&& other) noexcept = delete;
+
+    /**
+     * @brief creates a new instance with given configuration
+     */
     explicit dag_controller(configuration const* cfg);
-    ~dag_controller();
-    dag_controller(dag_controller&& other) = delete;
-    dag_controller& operator=(dag_controller&& other) = delete;
+
+    /**
+     * @brief schedule the graph to run
+     */
     void schedule(model::graph &g);
 
 private:

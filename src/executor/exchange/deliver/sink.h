@@ -28,6 +28,9 @@ class writer;
 class sink : public exchange::sink {
 public:
     sink() noexcept;
+    ~sink() override = default;
+    sink(sink const& other) = delete;
+    sink& operator=(sink const& other) = delete;
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
 

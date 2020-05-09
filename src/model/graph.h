@@ -28,11 +28,6 @@ using optional_ptr = takatori::util::optional_ptr<T>;
 
 class graph {
 public:
-    graph() = default;
-    virtual ~graph() = default;
-    graph(graph const& other) = default;
-    graph& operator=(graph const& other) = default;
-
     /**
      * @return steps owned by this graph
      * Multiple calls return the steps in the same order, but the order is not meaningful (e.g. not ensured to be topologically sorted)
@@ -49,6 +44,42 @@ public:
      * @return step if found
      */
     virtual optional_ptr<step> find_step(step::identity_type id) = 0;
+
+    /**
+     * @brief creates a new instance.
+     */
+    graph() = default;
+
+    /**
+     * @brief destroys this object.
+     */
+    virtual ~graph() = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    graph(graph const& other) = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    graph& operator=(graph const& other) = default;
+
+    /**
+     * @brief creates a new instance.
+     * @param other the source object
+     */
+    graph(graph&& other) noexcept = default;
+
+    /**
+     * @brief assigns the given object.
+     * @param other the source object
+     * @return this
+     */
+    graph& operator=(graph&& other) noexcept = default;
 };
 
 }

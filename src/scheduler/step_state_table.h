@@ -41,7 +41,7 @@ public:
     /*
      * @brief primary state of the step
      */
-    step_state_kind state_;
+    step_state_kind state_; //NOLINT
 
     /*
      * @brief reserve more n slots to keep the task state

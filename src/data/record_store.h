@@ -66,7 +66,7 @@ public:
         auto sz = meta_->record_size();
         auto* p = resource_->allocate(meta_->record_size(), meta_->record_alignment());
         if (!p) std::abort();
-        copier_.copy(record, p, sz);
+        copier_(p, sz, record);
         ++count_;
         return p;
     }

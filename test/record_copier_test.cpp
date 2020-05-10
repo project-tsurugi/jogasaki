@@ -72,7 +72,7 @@ TEST_F(record_copier_test, simple) {
     record_copier copier{meta};
     S dst{};
     record_ref t{&dst, sizeof(dst)};
-    copier.copy(r, t);
+    copier(t, r);
 
     EXPECT_EQ(1, *t.get_if<std::int32_t>(nullity_bit_base+0, 0));
     EXPECT_EQ(2, *t.get_if<std::int64_t>(nullity_bit_base+1, 8));
@@ -115,7 +115,7 @@ TEST_F(record_copier_test, text) {
 
     S dst{};
     record_ref t{&dst, sizeof(dst)};
-    copier.copy(r, t);
+    copier(t, r);
     ASSERT_EQ(32, resource.total_);
 
     EXPECT_EQ(1, t.get_value<std::int32_t>(0));

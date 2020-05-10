@@ -52,18 +52,19 @@ public:
         }
     }
 
-    void copy(accessor::record_ref src, void* dst, std::size_t size) {
+    void operator()(void* dst, std::size_t size, accessor::record_ref src) {
         std::memcpy(dst, src.data(), size);
         for(auto& i : text_field_offsets_) {
+            assert(resource_ != nullptr); //NOLINT
             auto t = src.get_value<accessor::text>(i);
             auto sv = static_cast<std::string_view>(t);
             text copied{resource_, sv.data(), sv.size()};
-            std::memcpy(static_cast<unsigned char*>(dst)+i, &copied, sizeof(text));
+            std::memcpy(static_cast<unsigned char*>(dst)+i, &copied, sizeof(text)); //NOLINT
         }
     }
 
-    void copy(accessor::record_ref src, accessor::record_ref dst) {
-        copy(src, dst.data(), meta_->record_size());
+    void operator()(accessor::record_ref dst, accessor::record_ref src) {
+        operator()(dst.data(), meta_->record_size(), src);
     }
 
 private:

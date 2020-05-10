@@ -40,10 +40,6 @@ public:
     record_store(memory::paged_memory_resource* resource, std::shared_ptr<meta::record_meta> meta) :
             resource_(resource), meta_(std::move(meta)), copier_(meta_) {}
 
-    pointer append(std::string_view sv) {
-        return append(sv.data());
-    }
-
     pointer append(accessor::record_ref record) {
         auto sz = meta_->record_size();
         auto* p = resource_->allocate(meta_->record_size(), meta_->record_alignment());

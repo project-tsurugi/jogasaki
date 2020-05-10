@@ -114,8 +114,9 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
     ASSERT_EQ(2, std::distance(partition.begin(), partition.end())); //number of tables
     auto& t0 = *partition.begin();
     EXPECT_EQ(2, std::distance(t0.begin(), t0.end()));
-    EXPECT_EQ(1, accessor::record_ref(*t0.begin(), 8).get_value<std::int64_t>(0));
-    EXPECT_EQ(3, accessor::record_ref(*++t0.begin(), 8).get_value<std::int64_t>(0));
+    auto it = t0.begin();
+    EXPECT_EQ(1, accessor::record_ref(*it, 8).get_value<std::int64_t>(0));
+    EXPECT_EQ(3, accessor::record_ref(*++it, 8).get_value<std::int64_t>(0));
     auto& t1 = *++partition.begin();
     EXPECT_EQ(1, std::distance(t1.begin(), t1.end()));
     EXPECT_EQ(2, accessor::record_ref(*t1.begin(), 8).get_value<std::int64_t>(0));

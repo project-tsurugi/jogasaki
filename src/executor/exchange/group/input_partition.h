@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <boost/container/pmr/vector.hpp>
 #include <takatori/util/universal_extractor.h>
 #include <takatori/util/reference_list_view.h>
 
@@ -24,6 +23,7 @@
 #include <executor/global.h>
 #include <executor/record_writer.h>
 #include <executor/exchange/group/shuffle_info.h>
+#include <executor/exchange/group/pointer_table.h>
 #include <memory/page_pool.h>
 
 namespace jogasaki::executor::exchange::group {
@@ -39,7 +39,7 @@ namespace jogasaki::executor::exchange::group {
  */
 class input_partition {
 public:
-    using pointer_table_type = boost::container::pmr::vector<void*>;
+    using pointer_table_type = pointer_table;
     using pointer_tables_type = std::vector<pointer_table_type>;
     using iterator = pointer_tables_type::iterator;
     using table_iterator = pointer_table_type::iterator;
@@ -138,8 +138,7 @@ private:
                     info_->record_meta());
         }
         if(!current_pointer_table_active_) {
-            auto& t = pointer_tables_.emplace_back(resource_for_ptr_tables_.get());
-            t.reserve(max_pointers_);
+            pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);
             current_pointer_table_active_ = true;
         }
     }

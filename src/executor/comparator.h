@@ -85,6 +85,7 @@ private:
             case meta::field_type_kind::int8: return field_comparator<kind::int8>{}(a, b, offset);
             case meta::field_type_kind::float4: return field_comparator<kind::float4>{}(a, b, offset);
             case meta::field_type_kind::float8: return field_comparator<kind::float8>{}(a, b, offset);
+            case meta::field_type_kind::character: return field_comparator<kind::character>{}(a, b, offset);
             default:
                 // TODO implement other types
                 std::abort();

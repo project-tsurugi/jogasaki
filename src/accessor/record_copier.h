@@ -19,6 +19,7 @@
 #include <cstring>
 
 #include <meta/record_meta.h>
+#include <accessor/record_ref.h>
 
 namespace jogasaki::accessor {
 

@@ -20,7 +20,6 @@
 #include <takatori/util/reference_list_view.h>
 
 #include <accessor/record_ref.h>
-#include <data/variable_legnth_buffer.h>
 #include <data/record_store.h>
 #include <executor/global.h>
 #include <executor/record_writer.h>

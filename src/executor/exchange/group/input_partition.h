@@ -56,11 +56,13 @@ public:
     input_partition(
             std::unique_ptr<memory::paged_memory_resource> resource_for_records,
             std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
+            std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
             std::shared_ptr<shuffle_info> info,
             [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
             ) :
             resource_for_records_(std::move(resource_for_records)),
             resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
+            resource_for_varlen_data_(std::move(resource_for_varlen_data)),
             info_(std::move(info)),
             comparator_(info_->key_meta()),
             max_pointers_(pointer_table_size)
@@ -121,6 +123,7 @@ public:
 private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
+    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
     std::shared_ptr<shuffle_info> info_{};
     std::unique_ptr<data::record_store> records_{};
     pointer_tables_type pointer_tables_{};
@@ -132,6 +135,7 @@ private:
         if (!records_) {
             records_ = std::make_unique<data::record_store>(
                     resource_for_records_.get(),
+                    resource_for_varlen_data_.get(),
                     info_->record_meta());
         }
         if(!current_pointer_table_active_) {

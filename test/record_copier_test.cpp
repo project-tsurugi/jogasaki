@@ -116,11 +116,11 @@ TEST_F(record_copier_test, text) {
     S dst{};
     record_ref t{&dst, sizeof(dst)};
     copier.copy(r, t);
+    ASSERT_EQ(32, resource.total_);
 
     EXPECT_EQ(1, t.get_value<std::int32_t>(0));
     EXPECT_EQ(src.t1_, t.get_value<text>(8));
     EXPECT_EQ(src.t2_, t.get_value<text>(24));
-
 }
 
 

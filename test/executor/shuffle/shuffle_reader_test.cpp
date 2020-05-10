@@ -61,8 +61,10 @@ TEST_F(shuffle_reader_test, basic) {
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             info));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
+            std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
                     info));
@@ -106,12 +108,15 @@ TEST_F(shuffle_reader_test, multiple_partitions) {
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             info));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             info));
     auto& p3 = partitions.emplace_back(std::make_unique<input_partition>(
+            std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info));
@@ -167,8 +172,10 @@ TEST_F(shuffle_reader_test, empty_partition) {
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             info));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
+            std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info));

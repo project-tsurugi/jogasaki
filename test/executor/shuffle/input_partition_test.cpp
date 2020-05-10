@@ -45,11 +45,10 @@ public:
 using kind = meta::field_type_kind;
 
 TEST_F(input_partition_test, basic) {
-    auto resource_for_records = std::make_unique<mock_memory_resource>();
-    auto resource_for_ptr_table = std::make_unique<mock_memory_resource>();
     input_partition partition{
-            std::move(resource_for_records),
-            std::move(resource_for_ptr_table),
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0})};
     record r1 {1, 1.0};
     record r2 {2, 2.0};
@@ -69,11 +68,10 @@ TEST_F(input_partition_test, basic) {
 
 TEST_F(input_partition_test, use_monotonic_resource) {
     memory::page_pool pool{};
-    auto resource_for_records = std::make_unique<mock_memory_resource>();
-    auto resource_for_ptr_table = std::make_unique<mock_memory_resource>();
     input_partition partition{
-            std::move(resource_for_records),
-            std::move(resource_for_ptr_table),
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0})};
 
     record r1 {1, 1.0};
@@ -94,11 +92,10 @@ TEST_F(input_partition_test, use_monotonic_resource) {
 }
 
 TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
-    auto resource_for_records = std::make_unique<mock_memory_resource>();
-    auto resource_for_ptr_table = std::make_unique<mock_memory_resource>();
     input_partition partition{
-            std::move(resource_for_records),
-            std::move(resource_for_ptr_table),
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
+            std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
             2
             };

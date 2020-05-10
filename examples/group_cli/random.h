@@ -20,6 +20,7 @@ namespace jogasaki::group_cli {
 class xorshift_random {
 public:
     xorshift_random() = default;
+
     explicit xorshift_random(std::uint32_t seed) : x_{seed} {
         if (seed == 0) {
             std::abort();

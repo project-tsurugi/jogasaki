@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <data/variable_legnth_data_region.h>
+#include <data/variable_legnth_buffer.h>
 
 #include <gtest/gtest.h>
 #include <mock_memory_resource.h>
@@ -34,11 +34,11 @@ public:
 
 TEST_F(variable_length_region_test, basic) {
     mock_memory_resource memory{};
-    variable_length_data_region r{&memory, 8};
+    variable_length_buffer r{&memory, 8};
     r.append("A"sv);
     r.append("AB"sv);
     r.append("ABC"sv);
-    ASSERT_EQ(3, r.size());
+    ASSERT_EQ(3, r.count());
 }
 
 }

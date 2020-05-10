@@ -20,7 +20,8 @@
 #include <takatori/util/reference_list_view.h>
 
 #include <accessor/record_ref.h>
-#include <data/variable_legnth_data_region.h>
+#include <data/variable_legnth_buffer.h>
+#include <data/record_store.h>
 #include <executor/global.h>
 #include <executor/record_writer.h>
 #include <executor/exchange/group/shuffle_info.h>
@@ -73,7 +74,7 @@ public:
     bool write(accessor::record_ref record) {
         initialize_lazy();
         auto& table = pointer_tables_.back();
-        table.emplace_back(records_->append(record.data(), info_->record_meta()->record_size()));
+        table.emplace_back(records_->append(record));
         if (table.capacity() == table.size()) {
             flush();
             return true;
@@ -121,7 +122,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::shared_ptr<shuffle_info> info_{};
-    std::unique_ptr<data::variable_length_data_region> records_{};
+    std::unique_ptr<data::record_store> records_{};
     pointer_tables_type pointer_tables_{};
     comparator comparator_{};
     bool current_pointer_table_active_{false};
@@ -129,7 +130,9 @@ private:
 
     void initialize_lazy() {
         if (!records_) {
-            records_ = std::make_unique<data::variable_length_data_region>(resource_for_records_.get(), info_->record_meta()->record_alignment());
+            records_ = std::make_unique<data::record_store>(
+                    resource_for_records_.get(),
+                    info_->record_meta());
         }
         if(!current_pointer_table_active_) {
             auto& t = pointer_tables_.emplace_back(resource_for_ptr_tables_.get());

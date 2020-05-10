@@ -25,11 +25,16 @@
 
 namespace jogasaki::data {
 
-class variable_length_data_region {
+/**
+ * @brief auto-expanding container to store variable length data fragments
+ * @details This container can store any number of fragments with any length.
+ * No iterator is provided for the stored data. References for each fragment needs to be kept and managed outside the container.
+ */
+class variable_length_buffer {
 public:
     using pointer = void*;
 
-    variable_length_data_region(memory::paged_memory_resource* resource, std::size_t alignment) :
+    variable_length_buffer(memory::paged_memory_resource* resource, std::size_t alignment) :
             resource_(resource), alignment_(alignment) {}
 
     pointer append(std::string_view sv) {
@@ -39,23 +44,29 @@ public:
     pointer append(void const* ptr, size_t size) {
         auto* p = resource_->allocate(size, alignment_);
         if (!p) std::abort();
-        // TODO deep copy varlen
         std::memcpy(p, ptr, size);
-        ++size_;
+        ++count_;
         return p;
     }
 
-    [[nodiscard]] std::size_t size() const noexcept {
-        return size_;
+    /**
+     * @brief getter for the number of data count added to this region
+     * @return the number of data
+     */
+    [[nodiscard]] std::size_t count() const noexcept {
+        return count_;
     }
 
+    /**
+     * @return whether the region is empty or not
+     */
     [[nodiscard]] bool empty() const noexcept {
-        return size_ == 0;
+        return count_ == 0;
     }
 
 private:
     memory::paged_memory_resource* resource_{};
-    std::size_t size_{};
+    std::size_t count_{};
     std::size_t alignment_{};
 };
 

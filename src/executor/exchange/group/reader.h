@@ -22,7 +22,15 @@
 namespace jogasaki::executor::exchange::group {
 
 using iterator = input_partition::table_iterator;
-using iterator_pair = std::pair<iterator, iterator>;
+
+struct iterator_pair {
+    iterator_pair(iterator x, iterator y) : first(x), second(y) {}
+    iterator first;
+    iterator second;
+};
+
+static_assert(std::is_trivially_copyable_v<iterator>);
+static_assert(std::is_trivially_copyable_v<iterator_pair>);
 
 /**
  * @brief iterator pair comparator

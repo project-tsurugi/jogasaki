@@ -42,7 +42,6 @@ public:
             time_slot = Clock::now();
             return true;
         }
-        std::abort();
         return false;
     }
     Clock::time_point base() {

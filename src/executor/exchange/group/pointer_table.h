@@ -32,6 +32,8 @@ namespace jogasaki::executor::exchange::group {
  * No iterator is provided for the stored data. Reference for each record needs to be kept and managed outside the container.
  * This container support variable length data such as text field, whose non-SSO data are backed by another paged
  * memory resource.
+ * Resources referenced from this object (e.g. head_) are owned and managed by backing paged_memory_resource, so
+ * this object doesn't clean up or release them on destruction. Their lifetime is defined by the backing memory resource.
  */
 class pointer_table {
 public:
@@ -50,7 +52,7 @@ public:
      * @param meta record metadata
      */
     pointer_table(memory::paged_memory_resource* resource, std::size_t capacity) : resource_(resource), capacity_(capacity) {
-        head_ = static_cast<void**>(resource_->allocate(sizeof(void*)*capacity_, alignof(void*)));
+        head_ = static_cast<iterator>(resource_->allocate(sizeof(pointer)*capacity_, alignof(pointer)));
     }
 
     /**
@@ -89,12 +91,14 @@ public:
     [[nodiscard]] iterator begin() const noexcept {
         return head_;
     }
+
     [[nodiscard]] iterator end() const noexcept {
         return head_+size_;
     }
+
 private:
     memory::paged_memory_resource* resource_{};
-    void** head_{};
+    iterator head_{};
     std::size_t size_{0};
     std::size_t capacity_{0};
 };

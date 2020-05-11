@@ -43,7 +43,7 @@ find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS filesystem thread system container
+        COMPONENTS filesystem thread system container stacktrace_backtrace
         REQUIRED
         )
 find_package(TBB REQUIRED)

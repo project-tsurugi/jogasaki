@@ -54,10 +54,9 @@ public:
         prepare_data(continuous_ranges);
         watch->set_point(time_point_produce, id());
         produce_data(continuous_ranges);
-        watch->set_point(time_point_pregroup, id());
         writer_->flush();
         writer_->release();
-        watch->set_point(time_point_pregrouped, id());
+        watch->set_point(time_point_produced, id());
     }
 
 private:

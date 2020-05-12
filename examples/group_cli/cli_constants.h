@@ -22,10 +22,9 @@ namespace jogasaki::group_cli {
 
 constexpr static std::size_t time_point_prepare = 0;
 constexpr static std::size_t time_point_produce = 1;
-constexpr static std::size_t time_point_pregroup = 2;
-constexpr static std::size_t time_point_pregrouped = 3;
-constexpr static std::size_t time_point_consume = 4;
-constexpr static std::size_t time_point_consumed = 5;
-constexpr static std::size_t time_point_main_completed = 6;
+constexpr static std::size_t time_point_produced = 2;
+constexpr static std::size_t time_point_consume = 3;
+constexpr static std::size_t time_point_consumed = 4;
+constexpr static std::size_t time_point_main_completed = 5;
 
 }

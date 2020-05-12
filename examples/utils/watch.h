@@ -120,11 +120,11 @@ public:
         return std::chrono::duration_cast<Duration>(view_first(end) - view_last(begin)).count();
     }
 
-    std::size_t average_duration(point_in_code begin, point_in_code end, bool complementary = false) {
+    std::size_t average_duration(point_in_code begin, point_in_code end) {
         std::size_t count = 0;
         std::size_t total = 0;
-        Clock::time_point fixed_begin = complementary ? view_last(begin) : view_first(begin);
-        Clock::time_point fixed_end = complementary ? view_first(end) : view_last(end);
+        Clock::time_point fixed_begin = view_first(begin);
+        Clock::time_point fixed_end = view_last(end);
         for(auto& p : records_) {
             auto& arr = p.second;
             if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue;

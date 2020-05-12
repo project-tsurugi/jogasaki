@@ -142,9 +142,9 @@ extern "C" int main(int argc, char* argv[]) {
     LOG(INFO) << "prepare: total " << watch->duration(time_point_prepare, time_point_produce) << "ms, average " << watch->average_duration(time_point_prepare, time_point_produce) << "ms" ;
     LOG(INFO) << "produce: total " << watch->duration(time_point_produce, time_point_pregroup) << "ms, average " << watch->average_duration(time_point_produce, time_point_pregroup) << "ms" ;
     LOG(INFO) << "pregroup: total " << watch->duration(time_point_pregroup, time_point_pregrouped) << "ms, average " << watch->average_duration(time_point_pregroup, time_point_pregrouped) << "ms" ;
-    LOG(INFO) << "transfer: total " << watch->duration(time_point_pregrouped, time_point_consume, true) << "ms, average " << watch->average_duration(time_point_pregrouped, time_point_consume, true) << "ms" ;
+    LOG(INFO) << "transfer: total " << watch->duration(time_point_pregrouped, time_point_consume, true) << "ms" ;
     LOG(INFO) << "consume: total " << watch->duration(time_point_consume, time_point_consumed) << "ms, average " << watch->average_duration(time_point_consume, time_point_consumed) << "ms" ;
-    LOG(INFO) << "finish: total " << watch->duration(time_point_consumed, time_point_main_completed, true) << "ms, average " << watch->average_duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
+    LOG(INFO) << "finish: total " << watch->duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
     return 0;
 }
 

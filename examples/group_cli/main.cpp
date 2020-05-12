@@ -124,12 +124,10 @@ extern "C" int main(int argc, char* argv[]) {
     }
 
     if (s.thread_pool_size_ < s.upstream_partitions_) {
-        LOG(ERROR) << "thread pool size (" << s.thread_pool_size_ << ") needs to be larger than the number of upstream partitions(" << s.upstream_partitions_ << ")";
-        return -1;
+        LOG(WARNING) << "thread pool size (" << s.thread_pool_size_ << ") is smaller than the number of upstream partitions(" << s.upstream_partitions_ << ") Not all of them are processed concurrently.";
     }
     if (s.thread_pool_size_ < s.downstream_partitions_) {
-        LOG(ERROR) << "thread pool size (" << s.thread_pool_size_ << ") needs to be larger than the number of downstream partitions(" << s.downstream_partitions_ << ")";
-        return -1;
+        LOG(WARNING) << "thread pool size (" << s.thread_pool_size_ << ") is smaller than the number of downstream partitions(" << s.downstream_partitions_ << ") Not all of them are processed concurrently.";
     }
     try {
         jogasaki::group_cli::run(s);  // NOLINT

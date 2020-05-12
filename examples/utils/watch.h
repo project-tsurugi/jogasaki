@@ -25,6 +25,11 @@ public:
     using Duration = std::chrono::milliseconds;
 
     /**
+     * @brief identifier to distinguish workers
+     */
+    using worker_id = std::size_t;
+
+    /**
      * @brief identifier for the point in source code
      */
     using point_in_code = std::size_t;
@@ -46,16 +51,15 @@ public:
     void restart() {
         std::scoped_lock lk{guard_};
         begin_ = Clock::now();
-        initialize_this_thread();
     }
 
-    bool set_point(point_in_code loc) {
+    bool set_point(point_in_code loc, worker_id worker = -1) {
         if (loc >= num_points) {
             std::abort();
         }
         std::scoped_lock lk{guard_};
-        initialize_this_thread();
-        auto& time_slot = records_[std::this_thread::get_id()][loc];
+        initialize_worker(worker);
+        auto& time_slot = records_[worker][loc];
         if (time_slot == Clock::time_point()) {
             time_slot = Clock::now();
             return true;
@@ -105,22 +109,22 @@ public:
      * @brief calculate duration between two time point
      * @param begin time point defining beginning of the interval
      * @param end time point defining end of the interval
-     * @param complemental if false, interval begins when first thread comes and ends when last leaves
+     * @param complementary if false, interval begins when first thread comes and ends when last leaves
      * if true, interval begins when last thread comes and ends when first leaves
      * @return duration
      */
-    std::size_t duration(point_in_code begin, point_in_code end, bool complemental = false) {
-        if (!complemental) {
+    std::size_t duration(point_in_code begin, point_in_code end, bool complementary = false) {
+        if (!complementary) {
             return std::chrono::duration_cast<Duration>(view_last(end) - view_first(begin)).count();
         }
         return std::chrono::duration_cast<Duration>(view_first(end) - view_last(begin)).count();
     }
 
-    std::size_t average_duration(point_in_code begin, point_in_code end, bool complemental = false) {
+    std::size_t average_duration(point_in_code begin, point_in_code end, bool complementary = false) {
         std::size_t count = 0;
         std::size_t total = 0;
-        Clock::time_point fixed_begin = complemental ? view_last(begin) : view_first(begin);
-        Clock::time_point fixed_end = complemental ? view_first(end) : view_last(end);
+        Clock::time_point fixed_begin = complementary ? view_last(begin) : view_first(begin);
+        Clock::time_point fixed_end = complementary ? view_first(end) : view_last(end);
         for(auto& p : records_) {
             auto& arr = p.second;
             if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue;
@@ -135,7 +139,7 @@ public:
 
 private:
     std::chrono::time_point<Clock> begin_{};
-    std::unordered_map<std::thread::id, std::array<Clock::time_point, num_points>> records_{};
+    std::unordered_map<worker_id, std::array<Clock::time_point, num_points>> records_{};
     std::mutex guard_{};
 
     void init(std::array<Clock::time_point, num_points>& records) {
@@ -144,10 +148,9 @@ private:
         }
     }
 
-    void initialize_this_thread() {
-        auto tid = std::this_thread::get_id();
-        if(records_.count(tid) == 0) {
-            init(records_[tid]);
+    void initialize_worker(worker_id worker) {
+        if(records_.count(worker) == 0) {
+            init(records_[worker]);
         }
     }
 };

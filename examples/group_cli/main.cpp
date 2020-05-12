@@ -138,13 +138,13 @@ extern "C" int main(int argc, char* argv[]) {
 
     auto& watch = s.watch_;
     using namespace jogasaki::group_cli;
-    watch->wrap(time_point_main_completed);
-    LOG(INFO) << "prepare: total " << watch->duration(time_point_produce,time_point_prepare) << "ms, average " << watch->average_duration(time_point_produce,time_point_prepare) << "ms" ;
-    LOG(INFO) << "produce: total " << watch->duration(time_point_pregroup,time_point_produce) << "ms, average " << watch->average_duration(time_point_pregroup,time_point_produce) << "ms" ;
-    LOG(INFO) << "pregroup: total " << watch->duration(time_point_pregrouped, time_point_pregroup) << "ms, average " << watch->average_duration(time_point_pregrouped, time_point_pregroup) << "ms" ;
-    LOG(INFO) << "transfer: total " << watch->duration(time_point_consume, time_point_pregrouped) << "ms, average " << watch->average_duration(time_point_consume, time_point_pregrouped) << "ms" ;
-    LOG(INFO) << "consume: total " << watch->duration(time_point_consumed, time_point_consume) << "ms, average " << watch->average_duration(time_point_consumed, time_point_consume) << "ms" ;
-    LOG(INFO) << "finish: total " << watch->duration(time_point_main_completed,time_point_consumed) << "ms, average " << watch->average_duration(time_point_main_completed,time_point_consumed) << "ms" ;
+    watch->set_point(time_point_main_completed);
+    LOG(INFO) << "prepare: total " << watch->duration(time_point_prepare, time_point_produce) << "ms, average " << watch->average_duration(time_point_prepare, time_point_produce) << "ms" ;
+    LOG(INFO) << "produce: total " << watch->duration(time_point_produce, time_point_pregroup) << "ms, average " << watch->average_duration(time_point_produce, time_point_pregroup) << "ms" ;
+    LOG(INFO) << "pregroup: total " << watch->duration(time_point_pregroup, time_point_pregrouped) << "ms, average " << watch->average_duration(time_point_pregroup, time_point_pregrouped) << "ms" ;
+    LOG(INFO) << "transfer: total " << watch->duration(time_point_pregrouped, time_point_consume, true) << "ms, average " << watch->average_duration(time_point_pregrouped, time_point_consume, true) << "ms" ;
+    LOG(INFO) << "consume: total " << watch->duration(time_point_consume, time_point_consumed) << "ms, average " << watch->average_duration(time_point_consume, time_point_consumed) << "ms" ;
+    LOG(INFO) << "finish: total " << watch->duration(time_point_consumed, time_point_main_completed, true) << "ms, average " << watch->average_duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
     return 0;
 }
 

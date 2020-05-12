@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+
 #include<thread>
 
 namespace jogasaki::utils {
@@ -22,69 +23,105 @@ class watch {
 public:
     using Clock = std::chrono::steady_clock;
     using Duration = std::chrono::milliseconds;
-    const static int NUM_WRAPS = 10;
+
+    /**
+     * @brief identifier for the point in source code
+     */
+    using point_in_code = std::size_t;
+
+    /**
+     * @brief virtual id for the very beginning of this watch
+     */
+    static constexpr point_in_code npos = static_cast<point_in_code>(-1);
+
+    /**
+     * @brief the number of points in source code to be recorded
+     */
+    const static int num_points = 10;
+
     watch() {
         restart();
     }
+
     void restart() {
         std::scoped_lock lk{guard_};
         begin_ = Clock::now();
         initialize_this_thread();
     }
-    bool wrap(std::size_t slot) {
-        if (slot >= NUM_WRAPS) {
+
+    bool set_point(point_in_code loc) {
+        if (loc >= num_points) {
             std::abort();
         }
         std::scoped_lock lk{guard_};
         initialize_this_thread();
-        auto& time_slot = wraps_[std::this_thread::get_id()][slot];
+        auto& time_slot = records_[std::this_thread::get_id()][loc];
         if (time_slot == Clock::time_point()) {
             time_slot = Clock::now();
             return true;
         }
         return false;
     }
+
     Clock::time_point base() {
         return begin_;
     }
-    Clock::time_point view_first(std::size_t slot) {
-        if (slot >= NUM_WRAPS) {
+
+    /**
+     * @brief retrieve the time when first comes at the point of code
+     */
+    Clock::time_point view_first(point_in_code loc) {
+        if (loc == npos) {
             return begin_;
         }
         Clock::time_point first{Clock::time_point::max()};
-        for(auto& p : wraps_) {
+        for(auto& p : records_) {
             auto& arr = p.second;
-            if (arr[slot] != Clock::time_point() && arr[slot] < first) {
-                first = arr[slot];
+            if (arr[loc] != Clock::time_point() && arr[loc] < first) {
+                first = arr[loc];
             }
         }
         return first;
     }
 
-    Clock::time_point view_last(std::size_t slot) {
-        if (slot >= NUM_WRAPS) {
+    /**
+     * @brief retrieve the time when last leaves the point of code
+     */
+    Clock::time_point view_last(point_in_code loc) {
+        if (loc == npos) {
             return begin_;
         }
         Clock::time_point last{Clock::time_point::min()};
-        for(auto& p : wraps_) {
+        for(auto& p : records_) {
             auto& arr = p.second;
-            if (arr[slot] != Clock::time_point() && last < arr[slot]) {
-                last = arr[slot];
+            if (arr[loc] != Clock::time_point() && last < arr[loc]) {
+                last = arr[loc];
             }
         }
         return last;
     }
 
-    std::size_t duration(std::size_t end, std::size_t begin = -1) {
-        return std::chrono::duration_cast<Duration>(view_last(end) - view_first(begin)).count();
+    /**
+     * @brief calculate duration between two time point
+     * @param begin time point defining beginning of the interval
+     * @param end time point defining end of the interval
+     * @param complemental if false, interval begins when first thread comes and ends when last leaves
+     * if true, interval begins when last thread comes and ends when first leaves
+     * @return duration
+     */
+    std::size_t duration(point_in_code begin, point_in_code end, bool complemental = false) {
+        if (!complemental) {
+            return std::chrono::duration_cast<Duration>(view_last(end) - view_first(begin)).count();
+        }
+        return std::chrono::duration_cast<Duration>(view_first(end) - view_last(begin)).count();
     }
 
-    std::size_t average_duration(std::size_t end, std::size_t begin = -1) {
+    std::size_t average_duration(point_in_code begin, point_in_code end, bool complemental = false) {
         std::size_t count = 0;
         std::size_t total = 0;
-        Clock::time_point fixed_begin = view_last(begin);
-        Clock::time_point fixed_end = view_first(end);
-        for(auto& p : wraps_) {
+        Clock::time_point fixed_begin = complemental ? view_last(begin) : view_first(begin);
+        Clock::time_point fixed_end = complemental ? view_first(end) : view_last(end);
+        for(auto& p : records_) {
             auto& arr = p.second;
             if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue;
             auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end];
@@ -96,21 +133,23 @@ public:
         return total / count;
     }
 
-    void init(std::array<Clock::time_point, NUM_WRAPS>& wraps) {
-        for(auto& s : wraps) {
+private:
+    std::chrono::time_point<Clock> begin_{};
+    std::unordered_map<std::thread::id, std::array<Clock::time_point, num_points>> records_{};
+    std::mutex guard_{};
+
+    void init(std::array<Clock::time_point, num_points>& records) {
+        for(auto& s : records) {
             s = Clock::time_point();
         }
     }
+
     void initialize_this_thread() {
         auto tid = std::this_thread::get_id();
-        if(wraps_.count(tid) == 0) {
-            init(wraps_[tid]);
+        if(records_.count(tid) == 0) {
+            init(records_[tid]);
         }
     }
-private:
-    std::chrono::time_point<Clock> begin_{};
-    std::unordered_map<std::thread::id, std::array<Clock::time_point, NUM_WRAPS>> wraps_{};
-    std::mutex guard_{};
 };
 
 } // namespace

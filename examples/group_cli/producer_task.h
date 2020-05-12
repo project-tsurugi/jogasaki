@@ -48,16 +48,16 @@ public:
     void execute() override {
         VLOG(1) << *this << " producer_task executed. count: " << count_;
         auto& watch = context_->watch_;
-        watch->wrap(time_point_prepare);
+        watch->set_point(time_point_prepare);
         initialize_writer();
         std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions
         prepare_data(continuous_ranges);
-        watch->wrap(time_point_produce);
+        watch->set_point(time_point_produce);
         produce_data(continuous_ranges);
-        watch->wrap(time_point_pregroup);
+        watch->set_point(time_point_pregroup);
         writer_->flush();
         writer_->release();
-        watch->wrap(time_point_pregrouped);
+        watch->set_point(time_point_pregrouped);
     }
 
 private:

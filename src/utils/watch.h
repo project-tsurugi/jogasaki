@@ -15,7 +15,9 @@
  */
 #pragma once
 
-#include<thread>
+#include<mutex>
+#include<unordered_map>
+#include<chrono>
 
 namespace jogasaki::utils {
 

@@ -16,6 +16,9 @@
 #pragma once
 
 #include <queue>
+
+#include <glog/logging.h>
+
 #include "executor/group_reader.h"
 #include <executor/exchange/group/input_partition.h>
 
@@ -93,6 +96,7 @@ public:
                 }
             }
         }
+        VLOG(1) << "reader initialized to merge " << queue_.size() << " pointer tables";
     }
 
     inline void read_and_pop(iterator it, iterator end) { //NOLINT

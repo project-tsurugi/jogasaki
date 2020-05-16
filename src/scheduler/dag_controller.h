@@ -64,7 +64,7 @@ public:
     /**
      * @brief creates a new instance with given configuration
      */
-    explicit dag_controller(configuration const* cfg);
+    explicit dag_controller(std::shared_ptr<configuration> cfg);
 
     /**
      * @brief schedule the graph to run

@@ -25,8 +25,8 @@ public:
     explicit thread_params(std::size_t threads, bool set_core_affinity = true, std::size_t initial_core = 1) :
             threads_(threads), set_core_affinity_(set_core_affinity), initial_core_(initial_core) {}
 
-    explicit thread_params(configuration const* cfg) :
-            thread_params(cfg->thread_pool_size_, cfg->set_core_affinity_, cfg->initial_core_) {}
+    explicit thread_params(std::shared_ptr<configuration> cfg) :
+            thread_params(cfg->thread_pool_size(), cfg->core_affinity(), cfg->initial_core()) {}
 
     [[nodiscard]] std::size_t threads() const noexcept {
         return threads_;

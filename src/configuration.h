@@ -17,17 +17,76 @@
 
 namespace jogasaki {
 
+/**
+ * @brief database environment global configuration
+ */
 class configuration {
 public:
+    [[nodiscard]] bool single_thread() const {
+        return single_thread_task_scheduler_;
+    }
+
+    void single_thread(bool arg) {
+        single_thread_task_scheduler_ = arg;
+    }
+
+    [[nodiscard]] size_t thread_pool_size() const {
+        return thread_pool_size_;
+    }
+
+    void thread_pool_size(size_t arg) {
+        thread_pool_size_ = arg;
+    }
+
+    [[nodiscard]] size_t default_partitions() const {
+        return default_process_partitions_;
+    }
+
+    void default_partitions(size_t arg) {
+        default_process_partitions_ = arg;
+    }
+
+    [[nodiscard]] size_t default_scan_process_partitions() const {
+        return default_scan_process_partitions_;
+    }
+
+    void default_scan_process_partitions(size_t arg) {
+        default_scan_process_partitions_ = arg;
+    }
+
+    [[nodiscard]] bool core_affinity() const {
+        return set_core_affinity_;
+    }
+
+    void core_affinity(bool arg) {
+        set_core_affinity_ = arg;
+    }
+
+    [[nodiscard]] size_t initial_core() const {
+        return initial_core_;
+    }
+
+    void initial_core(size_t arg) {
+        initial_core_ = arg;
+    }
+
+    [[nodiscard]] bool use_sorted_vector() const {
+        return use_sorted_vector_reader_;
+    }
+
+    void use_sorted_vector(bool arg) {
+        use_sorted_vector_reader_ = arg;
+    }
+
+private:
     bool single_thread_task_scheduler_ = true;
     std::size_t thread_pool_size_ = 5;
     std::size_t default_process_partitions_ = 5;
     std::size_t default_scan_process_partitions_ = 5;
     bool set_core_affinity_ = false;
     std::size_t initial_core_ = 1;
+    bool use_sorted_vector_reader_ = false;
 };
-
-static constexpr configuration default_configuration{};
 
 }
 

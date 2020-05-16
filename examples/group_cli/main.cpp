@@ -80,14 +80,14 @@ static int run(context& s) {
     g->insert(std::move(emit));
     g->insert(std::move(dvr));
 
-    configuration cfg;
-    cfg.thread_pool_size_ = s.thread_pool_size_;
-    cfg.single_thread_task_scheduler_ = !s.use_multithread;
-    cfg.default_process_partitions_ = s.downstream_partitions_;
-    cfg.default_scan_process_partitions_ = s.upstream_partitions_;
-    cfg.set_core_affinity_ = s.set_core_affinity_;
-    cfg.initial_core_ = s.initial_core_;
-    dag_controller dc{&cfg};
+    auto cfg = std::make_shared<configuration>();
+    cfg->thread_pool_size(s.thread_pool_size_);
+    cfg->single_thread(!s.use_multithread);
+    cfg->default_partitions(s.downstream_partitions_);
+    cfg->default_scan_process_partitions(s.upstream_partitions_);
+    cfg->core_affinity(s.set_core_affinity_);
+    cfg->initial_core(s.initial_core_);
+    dag_controller dc{std::move(cfg)};
     dc.schedule(*g);
     return 0;
 }

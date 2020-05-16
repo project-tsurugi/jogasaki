@@ -51,10 +51,10 @@ TEST_F(multithread_test, simple_forward) {
     g->insert(std::move(fwd));
     g->insert(std::move(emit));
     g->insert(std::move(dvr));
-    configuration cfg;
-    cfg.thread_pool_size_ = 1;
-    cfg.single_thread_task_scheduler_ = false;
-    dag_controller dc{&cfg};
+    auto cfg = std::make_shared<configuration>();
+    cfg->thread_pool_size(1);
+    cfg->single_thread(false);
+    dag_controller dc{cfg};
     dc.schedule(*g);
     ASSERT_TRUE(true);
 }
@@ -72,10 +72,10 @@ TEST_F(multithread_test, simple_shuffle) {
     g->insert(std::move(xch));
     g->insert(std::move(emit));
     g->insert(std::move(dvr));
-    configuration cfg;
-    cfg.thread_pool_size_ = 1;
-    cfg.single_thread_task_scheduler_ = false;
-    dag_controller dc{&cfg};
+    auto cfg = std::make_shared<configuration>();
+    cfg->thread_pool_size(1);
+    cfg->single_thread(false);
+    dag_controller dc{cfg};
     dc.schedule(*g);
     ASSERT_TRUE(true);
 }
@@ -101,10 +101,10 @@ TEST_F(multithread_test, cogroup) {
     g->insert(std::move(cgrp));
     g->insert(std::move(dvr));
 
-    configuration cfg;
-    cfg.thread_pool_size_ = 1;
-    cfg.single_thread_task_scheduler_ = false;
-    dag_controller dc{&cfg};
+    auto cfg = std::make_shared<configuration>();
+    cfg->thread_pool_size(1);
+    cfg->single_thread(false);
+    dag_controller dc{cfg};
     dc.schedule(*g);
     ASSERT_TRUE(true);
 }

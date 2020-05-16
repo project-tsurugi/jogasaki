@@ -45,8 +45,8 @@ class dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
-    explicit impl(configuration const* cfg) : cfg_(cfg),
-            executor_(cfg_->single_thread_task_scheduler_ ?
+    explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)),
+            executor_(cfg_->single_thread() ?
                     task_scheduler_factory::create(task_scheduler_kind::single_thread) :
                     task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(cfg_))) {}
 
@@ -329,7 +329,7 @@ public:
     }
 
 private:
-    configuration const* cfg_{};
+    std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};
     steps_status steps_{};
     std::queue<internal_event> internal_events_{};
@@ -337,8 +337,8 @@ private:
     std::unique_ptr<task_scheduler> executor_{};
 };
 
-dag_controller::dag_controller() : dag_controller(&default_configuration) {}
-dag_controller::dag_controller(configuration const* cfg) : impl_(std::make_unique<impl>(cfg)) {};
+dag_controller::dag_controller() : dag_controller(std::make_shared<configuration>()) {}
+dag_controller::dag_controller(std::shared_ptr<configuration> cfg) : impl_(std::make_unique<impl>(std::move(cfg))) {};
 dag_controller::~dag_controller() = default;
 
 void dag_controller::schedule(model::graph &g) {

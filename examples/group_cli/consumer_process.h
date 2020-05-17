@@ -20,14 +20,14 @@
 #include <constants.h>
 #include <executor/process/step.h>
 #include "consumer_flow.h"
-#include "context.h"
+#include "params.h"
 
 namespace jogasaki::group_cli {
 
 class consumer_process : public executor::process::step {
 public:
     consumer_process() = default;
-    explicit consumer_process(model::graph* graph, std::shared_ptr<meta::group_meta> meta, context& c) :
+    explicit consumer_process(model::graph* graph, std::shared_ptr<meta::group_meta> meta, params& c) :
             step(1, 1), meta_(std::move(meta)), context_(&c) {
         owner(graph);
     }
@@ -43,7 +43,7 @@ public:
 
 private:
     std::shared_ptr<meta::group_meta> meta_{};
-    context* context_{};
+    params* context_{};
 };
 
 }

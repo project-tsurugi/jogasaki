@@ -34,7 +34,7 @@ public:
             model::step* src,
             executor::reader_container reader,
             std::shared_ptr<meta::group_meta> meta,
-            context& c
+            params& c
     ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader), context_(&c) {}
 
     void execute() override {
@@ -66,7 +66,7 @@ public:
 private:
     std::shared_ptr<meta::group_meta> meta_{};
     executor::reader_container reader_{};
-    context* context_{};
+    params* context_{};
 };
 
 }

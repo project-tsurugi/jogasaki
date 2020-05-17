@@ -19,7 +19,7 @@
 
 namespace jogasaki::group_cli {
 
-class context {
+class params {
 public:
     bool use_multithread = true;
 

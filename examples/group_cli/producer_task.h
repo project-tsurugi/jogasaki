@@ -23,7 +23,7 @@
 #include <channel.h>
 #include <meta/record_meta.h>
 #include "task_base.h"
-#include "context.h"
+#include "params.h"
 #include "random.h"
 #include <cli_constants.h>
 
@@ -36,7 +36,7 @@ public:
             model::step* src,
             executor::exchange::sink* sink,
             std::shared_ptr<meta::record_meta> meta,
-            context& c,
+            params& c,
             memory::monotonic_paged_memory_resource& resource
             ) :
             task_base(channel,  src),
@@ -63,7 +63,7 @@ private:
     executor::exchange::sink* sink_{};
     std::shared_ptr<meta::record_meta> meta_{};
     executor::record_writer* writer_{};
-    context* context_{};
+    params* context_{};
     memory::monotonic_paged_memory_resource* resource_{};
 
     void initialize_writer() {

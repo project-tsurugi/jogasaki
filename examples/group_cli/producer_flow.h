@@ -22,7 +22,7 @@
 #include <constants.h>
 #include <executor/process/step.h>
 #include "producer_task.h"
-#include "context.h"
+#include "params.h"
 
 namespace jogasaki::group_cli {
 
@@ -37,7 +37,7 @@ public:
             model::step* step,
             channel* ch,
             std::shared_ptr<meta::record_meta> meta,
-            context& c) :
+            params& c) :
             downstream_(downstream),
             step_(step),
             channel_(ch),
@@ -70,7 +70,7 @@ private:
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::record_meta> meta_{};
-    context* context_{};
+    params* context_{};
     std::vector<std::unique_ptr<memory::monotonic_paged_memory_resource>> resources_{};
 };
 

@@ -1,6 +1,7 @@
 file(GLOB SOURCES
         "*.cpp"
         "executor/*.cpp"
+        "executor/common/*.cpp"
         "executor/process/*.cpp"
         "executor/exchange/*.cpp"
         "executor/exchange/broadcast/*.cpp"

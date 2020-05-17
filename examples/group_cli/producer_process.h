@@ -23,7 +23,7 @@
 #include <executor/process/step.h>
 #include "producer_task.h"
 #include "producer_flow.h"
-#include "context.h"
+#include "params.h"
 
 namespace jogasaki::group_cli {
 
@@ -32,7 +32,7 @@ public:
     producer_process() = default;
     producer_process(model::graph* graph,
             std::shared_ptr<meta::record_meta> meta,
-            context& c) : step(0, 1),
+            params& c) : step(0, 1),
     meta_(std::move(meta)), context_(&c) {
         owner(graph);
     }
@@ -48,7 +48,7 @@ public:
     }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    context* context_{};
+    params* context_{};
 };
 
 }

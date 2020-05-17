@@ -25,7 +25,7 @@
 #include <executor/exchange/group/shuffle_info.h>
 #include "producer_process.h"
 #include "consumer_process.h"
-#include "context.h"
+#include "params.h"
 #include "constants.h"
 #include <cli_constants.h>
 
@@ -63,7 +63,7 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }
 
-static int run(context& s) {
+static int run(params& s) {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
     auto g = std::make_unique<common::graph>();
@@ -104,7 +104,7 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::SetUsageMessage("group cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    jogasaki::group_cli::context s{};
+    jogasaki::group_cli::params s{};
     s.use_multithread = FLAGS_use_multithread;
     s.thread_pool_size_ = FLAGS_thread_pool_size;
     s.upstream_partitions_ = FLAGS_upstream_partitions;

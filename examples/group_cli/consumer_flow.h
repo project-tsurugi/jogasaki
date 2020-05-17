@@ -23,7 +23,7 @@
 #include <executor/process/step.h>
 #include <zconf.h>
 #include "consumer_task.h"
-#include "context.h"
+#include "params.h"
 
 namespace jogasaki::group_cli {
 
@@ -38,7 +38,7 @@ public:
             model::step* step,
             channel* ch,
             std::shared_ptr<meta::group_meta> meta,
-            context& c
+            params& c
     ) :
             upstream_(upstream),
             step_(step),
@@ -70,7 +70,7 @@ private:
     model::step* step_{};
     channel* channel_{};
     std::shared_ptr<meta::group_meta> meta_{};
-    context* context_{};
+    params* context_{};
 };
 
 }

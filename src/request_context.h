@@ -15,22 +15,48 @@
  */
 #pragma once
 
+#include <configuration.h>
+#include <channel.h>
+
 namespace jogasaki {
 
 /**
  * @brief context object for the request scope
+ * @details this class represents context information in the scope of the execution request
  */
 class request_context {
 public:
-    request_context() = default;
-    ~request_context() = default;
-    request_context(request_context const& other) = default;
-    request_context& operator=(request_context const& other) = default;
-    request_context(request_context&& other) noexcept = default;
-    request_context& operator=(request_context&& other) noexcept = default;
+    /**
+     * @brief create default context object
+     */
+    request_context() : channel_(std::make_shared<class channel>()), config_(std::make_shared<class configuration>()) {};
 
-    std::shared_ptr<channel> channel_{};
-    std::shared_ptr<configuration> config_{};
+    /**
+     * @brief create new context object
+     * @param ch channel used for the scope objects to communicate with scheduler
+     * @param config global configuration
+     */
+    request_context(std::shared_ptr<class channel> ch, std::shared_ptr<class configuration> config) : channel_(std::move(ch)), config_(std::move(config)) {}
+
+    /**
+     * @brief accessor for the communication channel
+     * @return channel to communicate with the scheduler handling the request
+     */
+    [[nodiscard]] std::shared_ptr<class channel> const& channel() const {
+        return channel_;
+    }
+
+    /**
+     * @brief accessor for the gloabl configuration
+     * @return global configuration
+     */
+    [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const {
+        return config_;
+    }
+
+private:
+    std::shared_ptr<class channel> channel_{};
+    std::shared_ptr<class configuration> config_{};
 };
 
 }

@@ -20,15 +20,20 @@
 
 #include <takatori/util/optional_ptr.h>
 #include <model/graph.h>
+#include <request_context.h>
 #include <executor/common/step.h>
 
 namespace jogasaki::executor::common {
 
+/**
+ * @brief graph common implementation
+ */
 class graph : public model::graph {
 public:
-    graph() : channel_(std::make_shared<channel>()) {};
+    graph() : context_(std::make_shared<request_context>()) {};
 
-    explicit graph(std::vector<std::unique_ptr<model::step>>&& steps) : steps_(std::move(steps)), channel_(std::make_shared<channel>()) {
+    explicit graph(std::vector<std::unique_ptr<model::step>>&& steps, std::shared_ptr<request_context> context) :
+            steps_(std::move(steps)), context_(std::move(context)) {
         for(auto&& s: steps_) {
             static_cast<step*>(s.get())->set_owner(this); //NOLINT
         }
@@ -47,8 +52,8 @@ public:
         return takatori::util::optional_ptr<model::step>{};
     }
 
-    [[nodiscard]] channel& get_channel() const override {
-        return *channel_;
+    [[nodiscard]] std::shared_ptr<request_context> const& context() const override {
+        return context_;
     }
 
     void insert(std::unique_ptr<model::step>&& step) {
@@ -61,7 +66,7 @@ public:
 private:
     std::size_t steps_count_{};
     std::vector<std::unique_ptr<model::step>> steps_{};
-    std::shared_ptr<channel> channel_{};
+    std::shared_ptr<request_context> context_{};
 };
 
 }

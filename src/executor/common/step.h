@@ -144,7 +144,7 @@ protected:
 
     [[nodiscard]] class channel* channel() const noexcept {
         if (graph_) {
-            return &graph_->get_channel();
+            return graph_->context()->channel().get();
         }
         return nullptr;
     }

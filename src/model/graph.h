@@ -18,7 +18,7 @@
 #include <vector>
 #include <memory>
 #include <takatori/util/optional_ptr.h>
-#include <channel.h>
+#include <request_context.h>
 #include "step.h"
 
 namespace jogasaki::model {
@@ -26,6 +26,9 @@ namespace jogasaki::model {
 template <class T>
 using optional_ptr = takatori::util::optional_ptr<T>;
 
+/**
+ * @brief step graph represents the model of the requested statement
+ */
 class graph {
 public:
     /**
@@ -35,9 +38,9 @@ public:
     [[nodiscard]] virtual sequence_view<std::unique_ptr<step> const> steps() const = 0;
 
     /**
-     * @return channel used to communicate events from step graphs to dag controller
+     * @return request context associated with this step graph
      */
-    [[nodiscard]] virtual channel& get_channel() const = 0;
+    [[nodiscard]] virtual std::shared_ptr<request_context> const& context() const = 0;
 
     /**
      * @brief find the step for the given identity in this graph

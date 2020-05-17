@@ -279,7 +279,7 @@ public:
                 internal_events_.pop();
             }
             // watch external event channel after internal ones complete
-            auto& ch = g.get_channel();
+            auto& ch = *g.context()->channel();
             event ev{};
             if(ch.pop(ev)) {
                 dispatch(*this, ev.kind(), ev);

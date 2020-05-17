@@ -34,53 +34,97 @@ using namespace jogasaki::scheduler;
 class step_test : public test_root {};
 
 TEST_F(step_test, basic) {
-    auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::test_process>(g.get());
-    p->activate();
-    g->insert(std::move(p));
-    for(auto&& v : g->steps()) {
+    common::graph g{};
+    auto& p = g.emplace<test::test_process>();
+    p.activate();
+    for(auto&& v : g.steps()) {
         for(auto&& t : v->create_tasks()) {
             t->operator()();
         }
     }
+    p.deactivate();
     ASSERT_TRUE(true);
 }
 
-TEST_F(step_test, simple_forward) {
-    auto g = std::make_unique<common::graph>();
-    auto p = std::make_unique<test::test_process>(g.get());
-    g->insert(std::move(p));
-    for(auto&& v : g->steps()) {
-        v->activate();
-        for(auto&& t : v->create_tasks()) {
-            t->operator()();
-        }
+TEST_F(step_test, create_find_step) {
+    common::graph g{};
+    auto& p0 = g.emplace<test::test_process>();
+    auto& p1 = g.emplace<test::test_process>();
+    auto& p2 = g.emplace<test::test_process>();
+
+    // unique ids assigned
+    ASSERT_NE(p0.id(), p1.id());
+    ASSERT_NE(p1.id(), p2.id());
+    ASSERT_NE(p2.id(), p0.id());
+
+    auto step = g.find_step(p1.id());
+    ASSERT_TRUE(step);
+    EXPECT_EQ(*step, p1);
+
+    auto owner = p1.owner();
+    ASSERT_TRUE(owner);
+    EXPECT_EQ(g, *owner);
+}
+
+TEST_F(step_test, insert_step) {
+    common::graph g{};
+    auto& p0 = g.insert(std::make_unique<test::test_process>());
+    auto& p1 = g.insert(std::make_unique<test::test_process>());
+    auto& p2 = g.insert(std::make_unique<test::test_process>());
+
+    // unique ids assigned
+    ASSERT_NE(p0.id(), p1.id());
+    ASSERT_NE(p1.id(), p2.id());
+    ASSERT_NE(p2.id(), p0.id());
+
+    auto step = g.find_step(p1.id());
+    ASSERT_TRUE(step);
+    EXPECT_EQ(*step, p1);
+
+    auto owner = p1.owner();
+    ASSERT_TRUE(owner);
+    EXPECT_EQ(g, *owner);
+}
+
+TEST_F(step_test, steps) {
+    common::graph g{};
+    auto& p0 = g.emplace<test::test_process>();
+    auto& p1 = g.emplace<test::test_process>();
+    auto& p2 = g.emplace<test::test_process>();
+    std::set<model::step*> steps{};
+    ASSERT_EQ(3, g.steps().size());
+    for(auto&& s : g.steps()) {
+        steps.emplace(s.get());
     }
-    ASSERT_TRUE(true);
+    EXPECT_EQ(std::set<model::step*>({&p0, &p1, &p2}), steps);
+}
+
+TEST_F(step_test, clear) {
+    common::graph g{};
+    g.emplace<test::test_process>();
+    g.emplace<test::test_process>();
+    ASSERT_EQ(2, g.size());
+    g.clear();
+    ASSERT_EQ(0, g.size());
+    auto v = g.steps();
+    ASSERT_EQ(0, v.size());
 }
 
 TEST_F(step_test, cogroup) {
-    auto g = std::make_unique<common::graph>();
-    auto scan1 = std::make_unique<simple_scan_process>(g.get());
-    auto scan2 = std::make_unique<simple_scan_process>(g.get());
-    auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
-    auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
-    auto cgrp = std::make_unique<simple_cogroup_process>(g.get());
-    auto dvr = std::make_unique<deliver::step>();
-    *scan1 >> *xch1;
-    *scan2 >> *xch2;
-    *xch1 >> *cgrp;
-    *xch2 >> *cgrp;
-    *cgrp >> *dvr;
-    // step id are assigned from 0 to 5
-    g->insert(std::move(scan1));
-    g->insert(std::move(xch1));
-    g->insert(std::move(scan2));
-    g->insert(std::move(xch2));
-    g->insert(std::move(cgrp));
-    g->insert(std::move(dvr));
+    common::graph g{};
+    auto& scan1 = g.emplace<simple_scan_process>();
+    auto& scan2 = g.emplace<simple_scan_process>();
+    auto& xch1 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
+    auto& xch2 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
+    auto& cgrp = g.emplace<simple_cogroup_process>();
+    auto& dvr = g.emplace<deliver::step>();
+    scan1 >> xch1;
+    scan2 >> xch2;
+    xch1 >> cgrp;
+    xch2 >> cgrp;
+    cgrp >> dvr;
     dag_controller dc{};
-    dc.schedule(*g);
+    dc.schedule(g);
     ASSERT_TRUE(true);
 }
 

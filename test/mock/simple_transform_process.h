@@ -31,9 +31,6 @@ public:
     ~simple_transform_process() override = default;
     simple_transform_process(simple_transform_process&& other) noexcept = default;
     simple_transform_process& operator=(simple_transform_process&& other) noexcept = default;
-    explicit simple_transform_process(model::graph* arg) {
-        owner(arg);
-    }
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         std::size_t partitions = default_partitions;

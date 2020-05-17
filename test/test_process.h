@@ -68,9 +68,6 @@ public:
     ~test_process() = default;
     test_process(test_process&& other) noexcept = default;
     test_process& operator=(test_process&& other) noexcept = default;
-    test_process(model::graph* arg) {
-        owner(arg);
-    }
 
     void activate() override {
         data_flow_object(std::make_unique<test_process_flow>(nullptr, this, channel()));

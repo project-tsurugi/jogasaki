@@ -30,9 +30,6 @@ public:
     ~simple_emit_process() override = default;
     simple_emit_process(simple_emit_process&& other) noexcept = default;
     simple_emit_process& operator=(simple_emit_process&& other) noexcept = default;
-    explicit simple_emit_process(model::graph* arg) {
-        owner(arg);
-    }
 
     void activate() override {
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());

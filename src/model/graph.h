@@ -85,6 +85,20 @@ public:
     graph& operator=(graph&& other) noexcept = default;
 };
 
+/**
+ * @brief equality comparison operator
+ */
+inline bool operator==(graph const& a, graph const& b) noexcept {
+    return std::addressof(a) == std::addressof(b);
+}
+
+/**
+ * @brief inequality comparison operator
+ */
+inline bool operator!=(graph const& a, graph const& b) noexcept {
+    return !(a == b);
+}
+
 }
 
 

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <vector>
+#include <unordered_set>
 #include <optional>
 
 #include <takatori/util/optional_ptr.h>
@@ -32,42 +32,55 @@ class graph : public model::graph {
 public:
     graph() : context_(std::make_shared<request_context>()) {};
 
-    explicit graph(std::vector<std::unique_ptr<model::step>>&& steps, std::shared_ptr<request_context> context) :
-            steps_(std::move(steps)), context_(std::move(context)) {
-        for(auto&& s: steps_) {
-            static_cast<step *>(s.get())->owner(this); //NOLINT
-        }
-    }
+    explicit graph(std::shared_ptr<request_context> context) noexcept : context_(std::move(context)) {}
 
-    [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::step> const> steps() const override {
+    [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::step> const> steps() const noexcept override {
         return takatori::util::sequence_view(steps_);
     }
 
-    takatori::util::optional_ptr<model::step> find_step(model::step::identity_type id) override {
-        for(auto&& x : steps_) {
-            if (x->id() == id) {
-                return takatori::util::optional_ptr<model::step>(*x);
-            }
+    takatori::util::optional_ptr<model::step> find_step(model::step::identity_type id) noexcept override {
+        if (id < steps_.size()) {
+            return takatori::util::optional_ptr<model::step>(steps_[id].get());
         }
         return takatori::util::optional_ptr<model::step>{};
     }
 
-    [[nodiscard]] std::shared_ptr<request_context> const& context() const override {
+    [[nodiscard]] std::shared_ptr<request_context> const& context() const noexcept override {
         return context_;
     }
 
-    void insert(std::unique_ptr<model::step>&& step) {
+    model::step& insert(std::unique_ptr<model::step> step) {
         auto impl = static_cast<common::step*>(step.get()); //NOLINT
         impl->owner(this);
-        impl->id(steps_count_++);
-        steps_.emplace_back(std::move(step));
+        impl->id(steps_.size());
+        auto& p = steps_.emplace_back(std::move(step));
+        return *p;
     }
 
+    template <class T, class ... Args>
+    T& emplace(Args&& ... args) {
+        auto n = steps_.size();
+        auto& step = steps_.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
+        auto* impl = static_cast<T*>(step.get()); //NOLINT
+        impl->owner(this);
+        impl->id(n);
+        return *impl;
+    }
+
+    void reserve(std::size_t n) {
+        steps_.reserve(n);
+    }
+
+    void clear() noexcept {
+        steps_.clear();
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return steps_.size();
+    }
 private:
-    std::size_t steps_count_{};
     std::vector<std::unique_ptr<model::step>> steps_{};
     std::shared_ptr<request_context> context_{};
 };
-
 
 }

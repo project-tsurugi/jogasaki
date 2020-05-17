@@ -37,9 +37,9 @@ public:
 
     [[nodiscard]] identity_type id() const override;
 
-    void set_main_input_ports(std::vector<std::unique_ptr<model::port>>&& arg);
-    void set_sub_input_ports(std::vector<std::unique_ptr<model::port>>&& arg);
-    void set_output_ports(std::vector<std::unique_ptr<model::port>>&& arg);
+//    void set_main_input_ports(std::vector<std::unique_ptr<model::port>>&& arg);
+//    void set_sub_input_ports(std::vector<std::unique_ptr<model::port>>&& arg);
+//    void set_output_ports(std::vector<std::unique_ptr<model::port>>&& arg);
 
     [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> input_ports() const override;
     [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> subinput_ports() const override;

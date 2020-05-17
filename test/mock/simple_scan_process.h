@@ -32,9 +32,6 @@ public:
     ~simple_scan_process() override = default;
     simple_scan_process(simple_scan_process&& other) noexcept = default;
     simple_scan_process& operator=(simple_scan_process&& other) noexcept = default;
-    explicit simple_scan_process(model::graph* arg) {
-        owner(arg);
-    }
     void activate() override {
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
         data_flow_object(std::make_unique<simple_scan_process_flow>(p, this, channel()));

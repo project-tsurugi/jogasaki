@@ -31,9 +31,6 @@ public:
     ~simple_cogroup_process() override = default;
     simple_cogroup_process(simple_cogroup_process&& other) noexcept = default;
     simple_cogroup_process& operator=(simple_cogroup_process&& other) noexcept = default;
-    explicit simple_cogroup_process(model::graph* arg) {
-        owner(arg);
-    }
 
     void activate() override {
         data_flow_object(std::make_unique<simple_cogroup_process_flow>(nullptr, this, channel()));

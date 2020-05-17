@@ -42,6 +42,7 @@ step::identity_type step::id() const {
     return id_;
 }
 
+/*
 void step::set_main_input_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
     main_input_ports_ = std::move(arg);
     for(auto&& p: main_input_ports_) {
@@ -60,6 +61,7 @@ void step::set_output_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
         p->owner(this);
     }
 }
+ */
 
 [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> step::input_ports() const {
     return main_input_ports_;

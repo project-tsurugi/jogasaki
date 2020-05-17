@@ -39,7 +39,7 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class shuffle_reader_test : public test_root {
+class priority_queue_reader_test : public test_root {
 public:
 };
 
@@ -55,19 +55,24 @@ auto get_value = [](group_reader& r) {
     return r.get_member().get_value<double>(info->value_meta()->value_offset(0));
 };
 
-TEST_F(shuffle_reader_test, basic) {
+TEST_F(priority_queue_reader_test, basic) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
-    partitions.reserve(10); // avoid relocation when using references into vector
+            partitions.reserve(10); // avoid relocation when using references into vector
+    auto context = std::make_shared<request_context>();
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            info));
+            info,
+            context
+            ));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-                    info));
+            info,
+            context
+    ));
 
     record arr[] = {
             {1, 1.0},
@@ -102,24 +107,31 @@ TEST_F(shuffle_reader_test, basic) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(shuffle_reader_test, multiple_partitions) {
+TEST_F(priority_queue_reader_test, multiple_partitions) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
+    auto context = std::make_shared<request_context>();
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            info));
+            info,
+            context
+            ));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            info));
+            info,
+            context
+            ));
     auto& p3 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            info));
+            info,
+            context
+            ));
 
     record arr[] = {
             {0, 5.0},
@@ -166,19 +178,24 @@ TEST_F(shuffle_reader_test, multiple_partitions) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(shuffle_reader_test, empty_partition) {
+TEST_F(priority_queue_reader_test, empty_partition) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
+    auto context = std::make_shared<request_context>();
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            info));
+            info,
+            context
+    ));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            info));
+            info,
+            context
+    ));
 
     record arr[] = {
             {1, 1.0},

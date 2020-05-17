@@ -18,6 +18,7 @@
 #include <takatori/util/universal_extractor.h>
 #include <takatori/util/reference_list_view.h>
 
+#include <request_context.h>
 #include <accessor/record_ref.h>
 #include <data/record_store.h>
 #include <executor/global.h>
@@ -57,12 +58,14 @@ public:
             std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
             std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
             std::shared_ptr<shuffle_info> info,
+            std::shared_ptr<request_context> context,
             [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
             ) :
             resource_for_records_(std::move(resource_for_records)),
             resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
             resource_for_varlen_data_(std::move(resource_for_varlen_data)),
             info_(std::move(info)),
+            context_(std::move(context)),
             comparator_(info_->key_meta()),
             max_pointers_(pointer_table_size)
     {}
@@ -89,6 +92,7 @@ public:
      */
     void flush() {
         if(!current_pointer_table_active_) return;
+        if(context_->configuration()->noop_pregroup()) return;
         auto sz = info_->record_meta()->record_size();
         auto& table = pointer_tables_.back();
         std::sort(table.begin(), table.end(), [&](auto const&x, auto const& y){
@@ -124,6 +128,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
     std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<request_context> context_{std::make_shared<request_context>()};
     std::unique_ptr<data::record_store> records_{};
     pointer_tables_type pointer_tables_{};
     comparator comparator_{};

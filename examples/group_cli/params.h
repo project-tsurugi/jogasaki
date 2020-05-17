@@ -37,6 +37,9 @@ public:
 
     std::shared_ptr<utils::watch> watch_ = std::make_shared<utils::watch>();
 
+    bool use_sorted_vector_reader_ = false;
+
+    bool noop_pregroup_ = false;
 };
 
 }

@@ -44,6 +44,8 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
+DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
+DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
 
 namespace jogasaki::group_cli {
 
@@ -66,14 +68,6 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 static int run(params& s) {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
-    common::graph g{};
-    auto& scan = g.emplace<producer_process>(meta, s);
-    auto& xch = g.emplace<group::step>(info);
-    auto& emit = g.emplace<consumer_process>(info->group_meta(), s);
-    auto& dvr = g.emplace<deliver::step>();
-    scan >> xch;
-    xch >> emit;
-    emit >> dvr;
 
     auto cfg = std::make_shared<configuration>();
     cfg->thread_pool_size(s.thread_pool_size_);
@@ -82,6 +76,21 @@ static int run(params& s) {
     cfg->default_scan_process_partitions(s.upstream_partitions_);
     cfg->core_affinity(s.set_core_affinity_);
     cfg->initial_core(s.initial_core_);
+    cfg->use_sorted_vector(s.use_sorted_vector_reader_);
+    cfg->noop_pregroup(s.noop_pregroup_);
+
+    auto channel = std::make_shared<class channel>();
+    auto context = std::make_shared<request_context>(channel, cfg);
+
+    common::graph g{context};
+    auto& scan = g.emplace<producer_process>(meta, s);
+    auto& xch = g.emplace<group::step>(info);
+    auto& emit = g.emplace<consumer_process>(info->group_meta(), s);
+    auto& dvr = g.emplace<deliver::step>();
+    scan >> xch;
+    xch >> emit;
+    emit >> dvr;
+
     dag_controller dc{std::move(cfg)};
     dc.schedule(g);
     return 0;
@@ -107,6 +116,12 @@ extern "C" int main(int argc, char* argv[]) {
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
     s.initial_core_ = FLAGS_initial_core;
     s.set_core_affinity_ = FLAGS_core_affinity;
+    s.noop_pregroup_ = FLAGS_noop_pregroup;
+
+    if (FLAGS_shuffle_uses_sorted_vector) {
+        s.use_sorted_vector_reader_ = true;
+        s.noop_pregroup_ = true;
+    }
 
     if (FLAGS_minimum) {
         s.use_multithread = false;

@@ -46,11 +46,12 @@ public:
 using kind = meta::field_type_kind;
 
 TEST_F(input_partition_test, basic) {
+    auto context = std::make_shared<request_context>();
     input_partition partition{
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0})};
+            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}), context};
     record r1 {1, 1.0};
     record r2 {2, 2.0};
     record r3 {3, 3.0};
@@ -69,11 +70,14 @@ TEST_F(input_partition_test, basic) {
 
 TEST_F(input_partition_test, use_monotonic_resource) {
     memory::page_pool pool{};
+    auto context = std::make_shared<request_context>();
     input_partition partition{
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0})};
+            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
+            context,
+            };
 
     record r1 {1, 1.0};
     record r2 {2, 2.0};
@@ -93,11 +97,13 @@ TEST_F(input_partition_test, use_monotonic_resource) {
 }
 
 TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
+    auto context = std::make_shared<request_context>();
     input_partition partition{
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
+            context,
             2
             };
     record r1 {1, 1.0};
@@ -123,11 +129,14 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
 }
 
 TEST_F(input_partition_test, text) {
+    auto context = std::make_shared<request_context>();
     input_partition partition{
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta2(), std::vector<std::size_t>{0})};
+            std::make_shared<shuffle_info>(test_record_meta2(), std::vector<std::size_t>{0}),
+            context,
+            };
 
     struct S {
         text t1_{};

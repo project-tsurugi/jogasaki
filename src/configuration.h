@@ -81,6 +81,13 @@ public:
         use_sorted_vector_reader_ = arg;
     }
 
+    [[nodiscard]] bool noop_pregroup() const {
+        return noop_pregroup_;
+    }
+
+    void noop_pregroup(bool arg) {
+        noop_pregroup_ = arg;
+    }
 private:
     bool single_thread_task_scheduler_ = true;
     std::size_t thread_pool_size_ = 5;
@@ -89,6 +96,7 @@ private:
     bool set_core_affinity_ = false;
     std::size_t initial_core_ = 1;
     bool use_sorted_vector_reader_ = false;
+    bool noop_pregroup_ = false;
 };
 
 }

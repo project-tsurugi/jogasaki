@@ -76,7 +76,9 @@ private:
                 std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool),
                 std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool),
                 std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool),
-                info_);
+                info_,
+                owner_->context_
+                );
     }
 };
 

@@ -16,21 +16,28 @@
 #include "source.h"
 
 #include <executor/reader_container.h>
-#include "reader.h"
+#include "priority_queue_reader.h"
+#include "sorted_vector_reader.h"
 
 namespace jogasaki::executor::exchange::group {
 
 source::source() = default;
 source::~source() = default;
 
-source::source(std::shared_ptr<shuffle_info> info) : info_(std::move(info)) {}
+source::source(std::shared_ptr<shuffle_info> info,
+        std::shared_ptr<request_context> context
+) : info_(std::move(info)), context_(std::move(context)) {}
 
 void source::receive(std::unique_ptr<input_partition> in) {
     partitions_.emplace_back(std::move(in));
 }
 
 reader_container source::acquire_reader() {
-    return reader_container(readers_.emplace_back(std::make_unique<reader>(info_, partitions_)).get());
+    if (context_->configuration()->use_sorted_vector()) {
+        return reader_container(readers_.emplace_back(std::make_unique<sorted_vector_reader>(info_, partitions_)).get());
+    }
+    return reader_container(readers_.emplace_back(std::make_unique<priority_queue_reader>(info_, partitions_)).get());
+
 }
 
 }

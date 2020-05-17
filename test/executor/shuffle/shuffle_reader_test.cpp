@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <executor/exchange/group/reader.h>
+#include <executor/exchange/group/priority_queue_reader.h>
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
@@ -83,7 +83,7 @@ TEST_F(shuffle_reader_test, basic) {
     p2->flush();
 
 
-    reader r{info, partitions};
+    priority_queue_reader r{info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
@@ -139,7 +139,7 @@ TEST_F(shuffle_reader_test, multiple_partitions) {
     p2->flush();
     p3->flush();
 
-    reader r{info, partitions};
+    priority_queue_reader r{info, partitions};
 
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(0, get_key(r));
@@ -193,7 +193,7 @@ TEST_F(shuffle_reader_test, empty_partition) {
     p1->flush();
     p2->flush();
 
-    reader r{info, partitions};
+    priority_queue_reader r{info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));

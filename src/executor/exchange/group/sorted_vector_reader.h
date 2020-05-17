@@ -27,144 +27,44 @@
 
 namespace jogasaki::executor::exchange::group {
 
-using iterator = input_partition::table_iterator;
-
-using pointer = pointer_table::pointer;
-
-static_assert(std::is_trivially_copyable_v<iterator>);
-
-enum class reader_state {
-    init,
-    before_member,
-    on_member,
-    after_group,
-    eof,
-};
-
 /**
  * @brief reader non-priority queue implementation
  * @attention readers for shuffle should be acquired after transfer completed
  */
 class sorted_vector_reader : public group_reader {
 public:
+    enum class reader_state {
+        init,
+        before_member,
+        on_member,
+        after_group,
+        eof,
+    };
+
+    using iterator = input_partition::table_iterator;
+
+    using pointer = pointer_table::pointer;
+
+    static_assert(std::is_trivially_copyable_v<iterator>);
+
     ~sorted_vector_reader() override = default;
     sorted_vector_reader(sorted_vector_reader const& other) = delete;
     sorted_vector_reader& operator=(sorted_vector_reader const& other) = delete;
     sorted_vector_reader(sorted_vector_reader&& other) noexcept = delete;
     sorted_vector_reader& operator=(sorted_vector_reader&& other) noexcept = delete;
 
-    sorted_vector_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
-            partitions_(partitions),
-            info_(std::move(info)),
-            record_size_(info_->record_meta()->record_size()),
-            buf_(std::make_unique<char[]>(record_size_)), //NOLINT
-            key_comparator_(info_->key_meta()) {
-        std::size_t count = 0;
-        for(auto& p : partitions_) {
-            if (!p) continue;
-            count += p->tables_count();
-        }
-        VLOG(1) << "reader initialized to merge " << count << " pointer tables";
-    }
+    sorted_vector_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
 
-    inline void read_and_pop() { //NOLINT
-        memcpy(buf_.get(), *current_, record_size_);
-        ++current_;
-    }
+    bool next_group() override;
 
-    bool next_group() override {
-        init_aggregated_table();
-        if (state_ == reader_state::init || state_ == reader_state::after_group) {
-            if (current_ == aggregated_pointer_table_.end()) {
-                state_ = reader_state::eof;
-                return false;
-            }
-            read_and_pop();
-            state_ = reader_state::before_member;
-            return true;
-        }
-        std::abort();
-    }
+    [[nodiscard]] accessor::record_ref get_group() const override;
 
-    [[nodiscard]] accessor::record_ref get_group() const override {
-        if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
-            return info_->extract_key(accessor::record_ref(buf_.get(), record_size_));
-        }
-        std::abort();
-    }
+    bool next_member() override;
 
-    bool next_member() override {
-        init_aggregated_table();
-        if (state_ == reader_state::before_member) {
-            state_ = reader_state::on_member;
-            return true;
-        }
-        if(state_ == reader_state::on_member) {
-            if (current_ == aggregated_pointer_table_.end()) {
-                state_ = reader_state::after_group;
-                return false;
-            }
-            if (key_comparator_(
-                    info_->extract_key(accessor::record_ref(buf_.get(), record_size_)),
-                    info_->extract_key(accessor::record_ref(*current_, record_size_))) == 0) {
-                read_and_pop();
-                return true;
-            }
-            state_ = reader_state::after_group;
-            return false;
-        }
-        std::abort();
-    }
+    [[nodiscard]] accessor::record_ref get_member() const override;
 
-    [[nodiscard]] accessor::record_ref get_member() const override {
-        if (state_ == reader_state::on_member) {
-            return info_->extract_value(accessor::record_ref(buf_.get(), record_size_));
-        }
-        std::abort();
-    }
+    void release() override;
 
-    void release() override {
-        // TODO when multiple readers exist for a source, wait for all readers to complete
-        partitions_.clear();
-    }
-
-    void init_aggregated_table() {
-        if(!aggregated_pointer_table_initialized) {
-            utils::watch w{};
-            w.set_point(0);
-            std::size_t count = 0;
-            for(auto& p : partitions_) {
-                if (!p) continue;
-                for(auto& t : *p) {
-                    count += std::distance(t.begin(), t.end());
-                }
-            }
-            VLOG(1) << "init_aggregated_table: reserving " << count << " pointers";
-            aggregated_pointer_table_.reserve(count);
-            for(auto& p : partitions_) {
-                if (!p) continue;
-                for(auto& t : *p) {
-                    if (t.begin() != t.end()) {
-                        for(auto ptr : t) {
-                            aggregated_pointer_table_.emplace_back(ptr);
-                        }
-                    }
-                }
-            }
-            w.set_point(1);
-            auto sz = info_->record_meta()->record_size();
-            std::sort(aggregated_pointer_table_.begin(), aggregated_pointer_table_.end(), [&](auto const&x, auto const& y){
-                return key_comparator_(info_->extract_key(accessor::record_ref(x, sz)),
-                        info_->extract_key(accessor::record_ref(y, sz))) < 0;
-            });
-            current_ = aggregated_pointer_table_.begin();
-            aggregated_pointer_table_initialized = true;
-
-            w.set_point(2);
-            VLOG(1) << "aggregate: total " << w.duration(0, 1) << "ms";
-            VLOG(1) << "sort: total " << w.duration(1, 2) << "ms";
-        }
-    }
 private:
     std::vector<std::unique_ptr<input_partition>>& partitions_;
     std::shared_ptr<shuffle_info> info_{};
@@ -175,6 +75,9 @@ private:
     std::vector<pointer> aggregated_pointer_table_{};
     bool aggregated_pointer_table_initialized = false;
     std::vector<pointer>::iterator current_{};
+
+    inline void read_and_pop();
+    void init_aggregated_table();
 };
 
 }

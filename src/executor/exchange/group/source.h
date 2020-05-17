@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <request_context.h>
 #include <executor/exchange/source.h>
 #include <executor/exchange/group/shuffle_info.h>
 #include <executor/exchange/group/input_partition.h>
@@ -22,24 +23,26 @@
 
 namespace jogasaki::executor::exchange::group {
 
-class reader;
-
 class source : public exchange::source {
 public:
     source();
-    ~source();
+    ~source() override;
     source(source const& other) = delete;
     source& operator=(source const& other) = delete;
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
-    explicit source(std::shared_ptr<shuffle_info> info);
+    explicit source(
+            std::shared_ptr<shuffle_info> info,
+            std::shared_ptr<request_context> context
+            );
     void receive(std::unique_ptr<input_partition> in);
 
     reader_container acquire_reader() override;
 
 private:
-    std::vector<std::unique_ptr<group::reader>> readers_;
+    std::vector<std::unique_ptr<group_reader>> readers_;
     std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<request_context> context_{};
     std::vector<std::unique_ptr<input_partition>> partitions_{};
 };
 

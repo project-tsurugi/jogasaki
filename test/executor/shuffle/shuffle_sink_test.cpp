@@ -40,7 +40,8 @@ TEST_F(shuffle_sink_test, simple) {
             field_type(enum_tag<kind::float8>),
     },boost::dynamic_bitset<std::uint64_t>("00"s));
     auto info = std::make_shared<shuffle_info>(rec_meta, std::vector<std::size_t>{0});
-    sink s{1UL, info};
+    auto context = std::make_shared<request_context>();
+    sink s{1UL, info, context};
     auto key_meta = info->key_meta();
 
     page_pool pool{};

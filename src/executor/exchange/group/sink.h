@@ -16,6 +16,7 @@
 #pragma once
 
 #include <constants.h>
+#include <request_context.h>
 #include <executor/global.h>
 #include <memory/monotonic_paged_memory_resource.h>
 #include <executor/record_writer.h>
@@ -37,7 +38,10 @@ public:
     sink& operator=(sink const& other) = delete;
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
-    sink(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info);
+    sink(std::size_t downstream_partitions,
+            std::shared_ptr<shuffle_info> info,
+            std::shared_ptr<request_context> context
+            );
 
     record_writer& acquire_writer() override;
 
@@ -49,6 +53,7 @@ private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>> partitions_{};
     std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<request_context> context_{};
     partitioner partitioner_{};
     std::unique_ptr<group::writer> writer_;
 };

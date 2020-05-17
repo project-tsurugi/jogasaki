@@ -15,10 +15,13 @@
  */
 #pragma once
 
+#include <cstddef>
+
 namespace jogasaki {
 
 /**
  * @brief database environment global configuration
+ * @details getters specified with const are thread safe
  */
 class configuration {
 public:
@@ -30,27 +33,27 @@ public:
         single_thread_task_scheduler_ = arg;
     }
 
-    [[nodiscard]] size_t thread_pool_size() const {
+    [[nodiscard]] std::size_t thread_pool_size() const {
         return thread_pool_size_;
     }
 
-    void thread_pool_size(size_t arg) {
+    void thread_pool_size(std::size_t arg) {
         thread_pool_size_ = arg;
     }
 
-    [[nodiscard]] size_t default_partitions() const {
+    [[nodiscard]] std::size_t default_partitions() const {
         return default_process_partitions_;
     }
 
-    void default_partitions(size_t arg) {
+    void default_partitions(std::size_t arg) {
         default_process_partitions_ = arg;
     }
 
-    [[nodiscard]] size_t default_scan_process_partitions() const {
+    [[nodiscard]] std::size_t default_scan_process_partitions() const {
         return default_scan_process_partitions_;
     }
 
-    void default_scan_process_partitions(size_t arg) {
+    void default_scan_process_partitions(std::size_t arg) {
         default_scan_process_partitions_ = arg;
     }
 
@@ -62,11 +65,11 @@ public:
         set_core_affinity_ = arg;
     }
 
-    [[nodiscard]] size_t initial_core() const {
+    [[nodiscard]] std::size_t initial_core() const {
         return initial_core_;
     }
 
-    void initial_core(size_t arg) {
+    void initial_core(std::size_t arg) {
         initial_core_ = arg;
     }
 

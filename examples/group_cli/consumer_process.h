@@ -27,9 +27,9 @@ namespace jogasaki::group_cli {
 class consumer_process : public executor::process::step {
 public:
     consumer_process() = default;
-    explicit consumer_process(model::graph* owner, std::shared_ptr<meta::group_meta> meta, context& c) :
+    explicit consumer_process(model::graph* graph, std::shared_ptr<meta::group_meta> meta, context& c) :
             step(1, 1), meta_(std::move(meta)), context_(&c) {
-        set_owner(owner);
+        owner(graph);
     }
 
     void activate() override {

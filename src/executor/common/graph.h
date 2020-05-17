@@ -35,7 +35,7 @@ public:
     explicit graph(std::vector<std::unique_ptr<model::step>>&& steps, std::shared_ptr<request_context> context) :
             steps_(std::move(steps)), context_(std::move(context)) {
         for(auto&& s: steps_) {
-            static_cast<step*>(s.get())->set_owner(this); //NOLINT
+            static_cast<step *>(s.get())->owner(this); //NOLINT
         }
     }
 
@@ -58,8 +58,8 @@ public:
 
     void insert(std::unique_ptr<model::step>&& step) {
         auto impl = static_cast<common::step*>(step.get()); //NOLINT
-        impl->set_owner(this);
-        impl->set_id(steps_count_++);
+        impl->owner(this);
+        impl->id(steps_count_++);
         steps_.emplace_back(std::move(step));
     }
 

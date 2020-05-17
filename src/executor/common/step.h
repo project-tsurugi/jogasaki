@@ -24,23 +24,27 @@
 
 namespace jogasaki::executor::common {
 
+/**
+ * @brief step common implementation
+ * @details represents connectivity among steps
+ */
 class step : public model::step {
 public:
-    using size_type = std::size_t;
+    using number_of_ports = std::size_t;
 
-    using port_index_type = std::size_t;
+    using port_index = std::size_t;
 
-    explicit step(size_type inputs = 1, size_type outputs = 1, size_type subinputs = 0) {
+    explicit step(number_of_ports inputs = 1, number_of_ports outputs = 1, number_of_ports subinputs = 0) {
         main_input_ports_.reserve(inputs);
         sub_input_ports_.reserve(subinputs);
         output_ports_.reserve(outputs);
-        for(std::size_t i=0; i < inputs; ++i) {
+        for(number_of_ports i=0; i < inputs; ++i) {
             main_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::main, this));
         }
-        for(std::size_t i=0; i < subinputs; ++i) {
+        for(number_of_ports i=0; i < subinputs; ++i) {
             sub_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::sub, this));
         }
-        for(std::size_t i=0; i < outputs; ++i) {
+        for(number_of_ports i=0; i < outputs; ++i) {
             output_ports_.emplace_back(std::make_unique<port>(port_direction::output, port_kind::main, this));
         }
     }
@@ -48,42 +52,60 @@ public:
     [[nodiscard]] identity_type id() const override {
         return id_;
     }
+
     void set_main_input_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
         main_input_ports_ = std::move(arg);
         for(auto&& p: main_input_ports_) {
-            p->set_owner(this);
+            p->owner(this);
         }
     }
     void set_sub_input_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
         sub_input_ports_ = std::move(arg);
         for(auto&& p: sub_input_ports_) {
-            p->set_owner(this);
+            p->owner(this);
         }
     }
     void set_output_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
         output_ports_ = std::move(arg);
         for(auto&& p: output_ports_) {
-            p->set_owner(this);
+            p->owner(this);
         }
     }
+
     [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> input_ports() const override {
         return main_input_ports_;
     }
+
     [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> subinput_ports() const override {
         return sub_input_ports_;
     }
+
     [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> output_ports() const override {
         return output_ports_;
     }
+
+    /**
+     * @brief accessor to owner graph of this step
+     * @return owner graph
+     */
     [[nodiscard]] model::graph* owner() const override {
-        return graph_;
+        return owner_;
     }
-    void set_owner(model::graph* g) noexcept {
-        graph_ = g;
+
+    /**
+     * @brief setter of owner graph of this step
+     */
+    void owner(model::graph* g) noexcept {
+        owner_ = g;
     }
-    void set_id(identity_type id) noexcept {
+
+    /**
+     * @brief setter of owner graph of this step
+     */
+    void id(identity_type id) noexcept {
         id_ = id;
     }
+
     [[nodiscard]] virtual step_kind kind() const noexcept = 0;
 
     void deactivate() override {
@@ -96,21 +118,21 @@ public:
         return !sub_input_ports_.empty();
     }
 
-    port_index_type sub_input_port_index(step const* source) {
-        for(port_index_type i=0; i < sub_input_ports_.size(); ++i) {
+    port_index sub_input_port_index(step const* source) {
+        for(port_index i=0; i < sub_input_ports_.size(); ++i) {
             auto* s = sub_input_ports_[i]->opposites()[0]->owner();
             if (source->id() == s->id()) {
                 return i;
             }
         }
-        return port_index_type(-1);
+        return port_index(-1);
     }
 
-    void connect_to(step& downstream, port_index_type src = 0, port_index_type target = 0) {
+    void connect_to(step& downstream, port_index src = 0, port_index target = 0) {
         dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.main_input_ports_[target].get()));
     }
 
-    void connect_to_sub(step& downstream, port_index_type src = 0, port_index_type target = 0) {
+    void connect_to_sub(step& downstream, port_index src = 0, port_index target = 0) {
         dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.sub_input_ports_[target].get()));
     }
 
@@ -128,7 +150,7 @@ public:
         return data_flow_object_->create_tasks();
     }
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type subinput) override {
+    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index subinput) override {
         assert(data_flow_object_ != nullptr); //NOLINT
         return data_flow_object_->create_pretask(subinput);
     }
@@ -143,8 +165,8 @@ protected:
     }
 
     [[nodiscard]] class channel* channel() const noexcept {
-        if (graph_) {
-            return graph_->context()->channel().get();
+        if (owner_) {
+            return owner_->context()->channel().get();
         }
         return nullptr;
     }
@@ -154,7 +176,7 @@ private:
     std::vector<std::unique_ptr<model::port>> main_input_ports_{};
     std::vector<std::unique_ptr<model::port>> sub_input_ports_{};
     std::vector<std::unique_ptr<model::port>> output_ports_{};
-    model::graph* graph_{};
+    model::graph* owner_{};
     std::unique_ptr<flow> data_flow_object_{};
 
     std::ostream& write_to(std::ostream& out) const override {

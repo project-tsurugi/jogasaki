@@ -33,7 +33,7 @@ public:
     void set_opposites(std::vector<model::port*>&& arg) {
         opposites_ = std::move(arg);
     }
-    void set_owner(model::step* arg) override {
+    void owner(model::step* arg) override {
         owner_ = arg;
     }
     [[nodiscard]] port_kind kind() const override {

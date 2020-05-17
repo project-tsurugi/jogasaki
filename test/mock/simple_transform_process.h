@@ -28,11 +28,11 @@ namespace jogasaki::executor {
 class simple_transform_process : public process::step {
 public:
     simple_transform_process() : step(1, 1, 1) {};
-    ~simple_transform_process() = default;
+    ~simple_transform_process() override = default;
     simple_transform_process(simple_transform_process&& other) noexcept = default;
     simple_transform_process& operator=(simple_transform_process&& other) noexcept = default;
-    simple_transform_process(model::graph* owner) {
-        set_owner(owner);
+    explicit simple_transform_process(model::graph* arg) {
+        owner(arg);
     }
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
@@ -46,7 +46,7 @@ public:
         return takatori::util::sequence_view{&*(tasks_.begin()+initial_count), &*(tasks_.end())};
     }
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type subinput) override {
+    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index subinput) override {
         if (subinput+1 > pretasks_.size()) {
             pretasks_.resize(subinput + 1);
         }

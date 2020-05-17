@@ -27,7 +27,7 @@ namespace jogasaki::executor::process {
 
 class step : public common::step {
 public:
-    explicit step(size_type inputs = 1, size_type outputs = 1, size_type subinputs = 0) : common::step(inputs, outputs, subinputs) {}
+    explicit step(number_of_ports inputs = 1, number_of_ports outputs = 1, number_of_ports subinputs = 0) : common::step(inputs, outputs, subinputs) {}
 
     void notify_prepared() override {
         // check if main inputs are already available

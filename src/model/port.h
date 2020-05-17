@@ -69,7 +69,7 @@ public:
     /**
      * @brief set the owner step of this port
      */
-    virtual void set_owner(step* arg) = 0;
+    virtual void owner(step* arg) = 0;
 
     /**
      * @brief creates a new instance.

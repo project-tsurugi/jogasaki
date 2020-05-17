@@ -68,8 +68,8 @@ public:
     ~test_process() = default;
     test_process(test_process&& other) noexcept = default;
     test_process& operator=(test_process&& other) noexcept = default;
-    test_process(model::graph* owner) {
-        set_owner(owner);
+    test_process(model::graph* arg) {
+        owner(arg);
     }
 
     void activate() override {

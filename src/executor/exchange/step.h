@@ -24,7 +24,7 @@ namespace jogasaki::executor::exchange {
 class step : public common::step {
 public:
     step() : common::step(0, 0, 0) {}
-    step(size_type inputs, size_type outputs) : common::step(inputs, outputs, 0) {}
+    step(number_of_ports inputs, number_of_ports outputs) : common::step(inputs, outputs, 0) {}
     void notify_prepared() override {
         // no-op for exchange
     }

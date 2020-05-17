@@ -30,11 +30,11 @@ namespace jogasaki::group_cli {
 class producer_process : public executor::process::step {
 public:
     producer_process() = default;
-    producer_process(model::graph* owner,
+    producer_process(model::graph* graph,
             std::shared_ptr<meta::record_meta> meta,
             context& c) : step(0, 1),
     meta_(std::move(meta)), context_(&c) {
-        set_owner(owner);
+        owner(graph);
     }
 
     void activate() override {

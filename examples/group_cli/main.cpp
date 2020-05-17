@@ -66,19 +66,14 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 static int run(params& s) {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
-    auto g = std::make_unique<common::graph>();
-    auto scan = std::make_unique<producer_process>(g.get(), meta, s);
-    auto xch = std::make_unique<group::step>(info);
-    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta(), s);
-    auto dvr = std::make_unique<deliver::step>();
-    *scan >> *xch;
-    *xch >> *emit;
-    *emit >> *dvr;
-    // step id are assigned from 0 to 3
-    g->insert(std::move(scan));
-    g->insert(std::move(xch));
-    g->insert(std::move(emit));
-    g->insert(std::move(dvr));
+    common::graph g{};
+    auto& scan = g.emplace<producer_process>(meta, s);
+    auto& xch = g.emplace<group::step>(info);
+    auto& emit = g.emplace<consumer_process>(info->group_meta(), s);
+    auto& dvr = g.emplace<deliver::step>();
+    scan >> xch;
+    xch >> emit;
+    emit >> dvr;
 
     auto cfg = std::make_shared<configuration>();
     cfg->thread_pool_size(s.thread_pool_size_);
@@ -88,7 +83,7 @@ static int run(params& s) {
     cfg->core_affinity(s.set_core_affinity_);
     cfg->initial_core(s.initial_core_);
     dag_controller dc{std::move(cfg)};
-    dc.schedule(*g);
+    dc.schedule(g);
     return 0;
 }
 

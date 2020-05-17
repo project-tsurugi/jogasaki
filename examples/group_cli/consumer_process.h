@@ -27,10 +27,8 @@ namespace jogasaki::group_cli {
 class consumer_process : public executor::process::step {
 public:
     consumer_process() = default;
-    explicit consumer_process(model::graph* graph, std::shared_ptr<meta::group_meta> meta, params& c) :
-            step(1, 1), meta_(std::move(meta)), params_(&c) {
-        owner(graph);
-    }
+    explicit consumer_process(std::shared_ptr<meta::group_meta> meta, params& c) :
+            step(1, 1), meta_(std::move(meta)), params_(&c) {}
 
     void activate() override {
         auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());

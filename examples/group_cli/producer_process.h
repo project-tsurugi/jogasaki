@@ -33,13 +33,13 @@ public:
     producer_process(model::graph* graph,
             std::shared_ptr<meta::record_meta> meta,
             params& c) : step(0, 1),
-    meta_(std::move(meta)), context_(&c) {
+    meta_(std::move(meta)), params_(&c) {
         owner(graph);
     }
 
     void activate() override {
         auto p = dynamic_cast<executor::exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<producer_flow>(p, this, channel(), meta_, *context_));
+        data_flow_object(std::make_unique<producer_flow>(p, this, context(), meta_, *params_));
     }
 
     void deactivate() override {
@@ -48,7 +48,7 @@ public:
     }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    params* context_{};
+    params* params_{};
 };
 
 }

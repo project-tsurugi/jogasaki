@@ -28,22 +28,22 @@ class consumer_process : public executor::process::step {
 public:
     consumer_process() = default;
     explicit consumer_process(model::graph* graph, std::shared_ptr<meta::group_meta> meta, params& c) :
-            step(1, 1), meta_(std::move(meta)), context_(&c) {
+            step(1, 1), meta_(std::move(meta)), params_(&c) {
         owner(graph);
     }
 
     void activate() override {
         auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<consumer_flow>(p, this, channel(), meta_, *context_));
+        data_flow_object(std::make_unique<consumer_flow>(p, this, context(), meta_, *params_));
     }
 
     [[nodiscard]] std::size_t partitions() const noexcept override {
-        return context_->downstream_partitions_;
+        return params_->downstream_partitions_;
     }
 
 private:
     std::shared_ptr<meta::group_meta> meta_{};
-    params* context_{};
+    params* params_{};
 };
 
 }

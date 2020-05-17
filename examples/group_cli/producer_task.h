@@ -32,22 +32,22 @@ namespace jogasaki::group_cli {
 class producer_task : public task_base {
 public:
     producer_task() = delete;
-    producer_task(channel* channel,
+    producer_task(std::shared_ptr<request_context> context,
             model::step* src,
             executor::exchange::sink* sink,
             std::shared_ptr<meta::record_meta> meta,
             params& c,
             memory::monotonic_paged_memory_resource& resource
             ) :
-            task_base(channel,  src),
+            task_base(std::move(context),  src),
             sink_(sink),
             meta_(std::move(meta)),
-            context_(&c),
+            params_(&c),
             resource_(&resource)
             {}
     void execute() override {
         VLOG(1) << *this << " producer_task executed. count: " << count_;
-        auto& watch = context_->watch_;
+        auto& watch = params_->watch_;
         watch->set_point(time_point_prepare, id());
         initialize_writer();
         std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions
@@ -63,7 +63,7 @@ private:
     executor::exchange::sink* sink_{};
     std::shared_ptr<meta::record_meta> meta_{};
     executor::record_writer* writer_{};
-    params* context_{};
+    params* params_{};
     memory::monotonic_paged_memory_resource* resource_{};
 
     void initialize_writer() {
@@ -78,7 +78,7 @@ private:
         xorshift_random rnd{};
         auto sz = meta_->record_size();
         auto recs_per_page = memory::page_size / sizeof(void*);
-        auto partitions = context_->records_per_upstream_partition_;
+        auto partitions = params_->records_per_upstream_partition_;
         continuous_ranges.reserve( ( partitions + recs_per_page - 1)/recs_per_page);
         void* prev = nullptr;
         void* begin_range = nullptr;

@@ -36,22 +36,22 @@ public:
     consumer_flow(
             executor::exchange::step* upstream,
             model::step* step,
-            channel* ch,
+            std::shared_ptr<request_context> context,
             std::shared_ptr<meta::group_meta> meta,
             params& c
     ) :
             upstream_(upstream),
             step_(step),
-            channel_(ch),
+            context_(std::move(context)),
             meta_(std::move(meta)),
-            context_(&c)
+            params_(&c)
     {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         auto srcs = dynamic_cast<executor::exchange::group::flow&>(upstream_->data_flow_object()).sources();
         tasks_.reserve(srcs.size());
         for(auto& s : srcs) {
-            tasks_.emplace_back(std::make_unique<consumer_task>(channel_, step_, s.acquire_reader(), meta_, *context_));
+            tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, s.acquire_reader(), meta_, *params_));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
@@ -68,9 +68,9 @@ private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
     executor::exchange::step* upstream_{};
     model::step* step_{};
-    channel* channel_{};
+    std::shared_ptr<request_context> context_{};
     std::shared_ptr<meta::group_meta> meta_{};
-    params* context_{};
+    params* params_{};
 };
 
 }

@@ -33,7 +33,7 @@ public:
 
     void activate() override {
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<simple_emit_process_flow>(p, this, channel()));
+        data_flow_object(std::make_unique<simple_emit_process_flow>(p, this, context()));
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

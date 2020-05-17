@@ -30,16 +30,17 @@ namespace jogasaki::group_cli {
 class consumer_task : public task_base {
 public:
     consumer_task() = default;
-    consumer_task(channel* channel,
+    consumer_task(
+            std::shared_ptr<request_context> context,
             model::step* src,
             executor::reader_container reader,
             std::shared_ptr<meta::group_meta> meta,
             params& c
-    ) : task_base(channel, src), meta_(std::move(meta)), reader_(reader), context_(&c) {}
+    ) : task_base(std::move(context), src), meta_(std::move(meta)), reader_(reader), params_(&c) {}
 
     void execute() override {
         VLOG(1) << *this << " consumer_task executed. count: " << count_;
-        auto& watch = context_->watch_;
+        auto& watch = params_->watch_;
         watch->set_point(time_point_consume, id());
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
@@ -66,7 +67,7 @@ public:
 private:
     std::shared_ptr<meta::group_meta> meta_{};
     executor::reader_container reader_{};
-    params* context_{};
+    params* params_{};
 };
 
 }

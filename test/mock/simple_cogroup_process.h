@@ -33,7 +33,7 @@ public:
     simple_cogroup_process& operator=(simple_cogroup_process&& other) noexcept = default;
 
     void activate() override {
-        data_flow_object(std::make_unique<simple_cogroup_process_flow>(nullptr, this, channel()));
+        data_flow_object(std::make_unique<simple_cogroup_process_flow>(nullptr, this, context()));
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

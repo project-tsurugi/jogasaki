@@ -29,13 +29,13 @@ class simple_cogroup_process_flow : public common::flow {
 public:
     simple_cogroup_process_flow() = default;
     ~simple_cogroup_process_flow() = default;
-    simple_cogroup_process_flow(exchange::step* downstream, model::step* step, channel* ch) : downstream_(downstream), step_(step), channel_(ch) {}
+    simple_cogroup_process_flow(exchange::step* downstream, model::step* step, std::shared_ptr<request_context> context) : downstream_(downstream), step_(step), context_(std::move(context)) {}
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         std::size_t partitions = default_partitions;
         auto initial_count = tasks_.size();
         if (tasks_.size() < partitions) {
             for(std::size_t i = 0; i < partitions; ++i) {
-                tasks_.emplace_back(std::make_unique<simple_transform_process_task>(channel_, step_));
+                tasks_.emplace_back(std::make_unique<simple_transform_process_task>(context_, step_));
             }
         }
         return takatori::util::sequence_view{&*(tasks_.begin()+initial_count), &*(tasks_.end())};
@@ -52,7 +52,7 @@ private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
     exchange::step* downstream_{};
     model::step* step_{};
-    channel* channel_{};
+    std::shared_ptr<request_context> context_{};
 };
 
 }

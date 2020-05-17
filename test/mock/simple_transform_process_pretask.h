@@ -21,7 +21,6 @@
 #include <model/step.h>
 #include <mock/mock_task.h>
 #include <executor/common/task.h>
-#include <channel.h>
 
 namespace jogasaki::executor {
 
@@ -33,7 +32,7 @@ public:
     simple_transform_process_pretask(simple_transform_process_pretask&& other) noexcept = default;
     simple_transform_process_pretask& operator=(simple_transform_process_pretask&& other) noexcept = default;
 
-    simple_transform_process_pretask(channel* channel, model::step* src) : mock_task(channel, src, true) {}
+    simple_transform_process_pretask(std::shared_ptr<request_context> context, model::step* src) : mock_task(std::move(context), src, true) {}
     void execute() override {
         LOG(INFO) << *this << " simple_transform_process_pretask executed. count: " << count_;
     }

@@ -21,7 +21,6 @@
 #include <model/step.h>
 #include <executor/common/task.h>
 #include <mock/mock_task.h>
-#include <channel.h>
 
 namespace dc::executor {
 
@@ -33,7 +32,7 @@ public:
     simple_cogroup_process_task(simple_cogroup_process_task&& other) noexcept = default;
     simple_cogroup_process_task& operator=(simple_cogroup_process_task&& other) noexcept = default;
 
-    simple_cogroup_process_task(channel* channel, step* src) : mock_task(channel,  src) {}
+    simple_cogroup_process_task(std::shared_ptr<request_context> context, step* src) : mock_task(std::move(context),  src) {}
     void execute() override {
         LOG(INFO) << *this << " simple_cogroup_process_task executed. count: " << count_;
     }

@@ -22,7 +22,6 @@
 #include <model/step.h>
 #include <executor/common/task.h>
 #include <mock/mock_task.h>
-#include <channel.h>
 
 namespace jogasaki::executor {
 
@@ -32,7 +31,7 @@ public:
     ~simple_emit_process_task() override = default;
     simple_emit_process_task(simple_emit_process_task&& other) noexcept = default;
     simple_emit_process_task& operator=(simple_emit_process_task&& other) noexcept = default;
-    simple_emit_process_task(channel* channel, model::step* src) : mock_task(channel, src) {}
+    simple_emit_process_task(std::shared_ptr<request_context> context, model::step* src) : mock_task(std::move(context), src) {}
     void execute() override {
         LOG(INFO) << *this << " simple_emit_process_main_task executed. count: " << count_;
     }

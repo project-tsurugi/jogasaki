@@ -30,19 +30,19 @@ namespace jogasaki::group_cli {
 class task_base : public executor::common::task {
 public:
     task_base() = default;
-    task_base(channel* channel, model::step* src, bool is_pretask = false) : channel_(channel), src_(src), is_pretask_(is_pretask) {}
+    task_base(std::shared_ptr<request_context> context, model::step* src, bool is_pretask = false) : context_(std::move(context)), src_(src), is_pretask_(is_pretask) {}
 
     model::task_result operator()() override {
         execute();
         ++count_;
-        channel_->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
+        context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     };
 
     virtual void execute() = 0;
 
 protected:
-    channel* channel_{}; //NOLINT
+    std::shared_ptr<request_context> context_{}; //NOLINT
     model::step* src_{}; //NOLINT
     bool is_pretask_{false}; //NOLINT
     std::size_t count_{0}; //NOLINT

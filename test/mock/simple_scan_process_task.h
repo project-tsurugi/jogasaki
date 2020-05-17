@@ -21,7 +21,6 @@
 #include <model/step.h>
 #include <executor/common/task.h>
 #include <mock/mock_task.h>
-#include <channel.h>
 #include <meta/record_meta.h>
 
 namespace jogasaki::executor {
@@ -32,7 +31,7 @@ public:
     ~simple_scan_process_task() override = default;
     simple_scan_process_task(simple_scan_process_task&& other) noexcept = default;
     simple_scan_process_task& operator=(simple_scan_process_task&& other) noexcept = default;
-    simple_scan_process_task(channel* channel, model::step* src, record_writer* writer) : mock_task(channel,  src), writer_(writer) {}
+    simple_scan_process_task(std::shared_ptr<request_context> context, model::step* src, record_writer* writer) : mock_task(std::move(context),  src), writer_(writer) {}
 
     record_writer* writer_{};
 

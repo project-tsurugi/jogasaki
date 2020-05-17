@@ -36,7 +36,10 @@ public:
     ~mock_task() override = default;
     mock_task(mock_task&& other) noexcept = default;
     mock_task& operator=(mock_task&& other) noexcept = default;
-    mock_task(channel* channel, model::step* src, bool is_pretask = false) : channel_(channel), src_(src), is_pretask_(is_pretask) {}
+    mock_task(std::shared_ptr<request_context> context,
+            model::step* src,
+            bool is_pretask = false) : context_(std::move(context)), src_(src), is_pretask_(is_pretask) {}
+
     model::task_result operator()() override {
         execute();
         if (count_ == 0) {
@@ -45,13 +48,13 @@ public:
         ++count_;
         bool has_next = count_ < limit_;
         if (!has_next) {
-            channel_->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
+            context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
         }
         return has_next ? model::task_result::proceed : model::task_result::complete;
     };
     virtual void execute() = 0;
 protected:
-    channel* channel_{};
+    std::shared_ptr<request_context> context_{};
     model::step* src_{};
     bool is_pretask_{false};
     std::size_t count_{0};
@@ -68,7 +71,7 @@ protected:
                     }
                     model::step::port_index_type index = o->kind() == port_kind::main ? input_port_index(*o->owner(), *o) : subinput_port_index(
                             *o->owner(), *o);
-                    channel_->emplace(event_kind_tag<event_kind::providing>, downstream->id(), o->kind(), index);
+                    context_->channel()->emplace(event_kind_tag<event_kind::providing>, downstream->id(), o->kind(), index);
                 }
             }
         }

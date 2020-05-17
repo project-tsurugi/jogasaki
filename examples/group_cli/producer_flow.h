@@ -35,23 +35,23 @@ public:
     producer_flow() = default;
     producer_flow(executor::exchange::step* downstream,
             model::step* step,
-            channel* ch,
+            std::shared_ptr<request_context> context,
             std::shared_ptr<meta::record_meta> meta,
-            params& c) :
+            params& p) :
             downstream_(downstream),
             step_(step),
-            channel_(ch),
+            context_(std::move(context)),
             meta_(std::move(meta)),
-            context_(&c) {}
+            params_(&p) {}
 
     sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(context_->upstream_partitions_);
+        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(params_->upstream_partitions_);
         (void)srcs;
         resources_.reserve(sinks.size());
         tasks_.reserve(sinks.size());
         for(auto& s : sinks) {
             auto& resource = resources_.emplace_back(std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool));
-            tasks_.emplace_back(std::make_unique<producer_task>(channel_, step_, &s, meta_, *context_, *resource));
+            tasks_.emplace_back(std::make_unique<producer_task>(context_, step_, &s, meta_, *params_, *resource));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
@@ -68,9 +68,9 @@ private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
     executor::exchange::step* downstream_{};
     model::step* step_{};
-    channel* channel_{};
+    std::shared_ptr<request_context> context_{};
     std::shared_ptr<meta::record_meta> meta_{};
-    params* context_{};
+    params* params_{};
     std::vector<std::unique_ptr<memory::monotonic_paged_memory_resource>> resources_{};
 };
 

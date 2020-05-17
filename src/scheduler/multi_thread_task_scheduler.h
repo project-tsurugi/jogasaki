@@ -22,7 +22,6 @@
 #include <boost/thread.hpp>
 
 #include <model/task.h>
-#include <channel.h>
 #include <executor/common/task.h>
 #include <utils.h>
 #include "task_scheduler.h"

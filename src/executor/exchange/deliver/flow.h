@@ -36,7 +36,7 @@ class flow : public exchange::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    flow(channel* ch, model::step* step);
+    flow(std::shared_ptr<request_context> context, model::step* step);
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
 
@@ -52,7 +52,7 @@ private:
     std::shared_ptr<meta::record_meta> input_meta_{};
     std::vector<std::unique_ptr<deliver::sink>> sinks_;
     std::vector<std::unique_ptr<deliver::source>> sources_;
-    channel* channel_{};
+    std::shared_ptr<request_context> context_{};
     model::step* owner_{};
 };
 

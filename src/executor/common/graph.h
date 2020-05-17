@@ -78,6 +78,7 @@ public:
     [[nodiscard]] std::size_t size() const noexcept {
         return steps_.size();
     }
+
 private:
     std::vector<std::unique_ptr<model::step>> steps_{};
     std::shared_ptr<request_context> context_{};

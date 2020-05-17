@@ -63,7 +63,7 @@ public:
     void activate() override {
         auto* down = downstream(0);
         auto downstream_partitions = down ? down->partitions() : default_partitions;
-        data_flow_object(std::make_unique<group::flow>(info_, channel(), this, downstream_partitions));
+        data_flow_object(std::make_unique<group::flow>(info_, context(), this, downstream_partitions));
     }
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept {

@@ -31,7 +31,7 @@ public:
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
         // exchange task is nop
-        tasks_.emplace_back(std::make_unique<exchange::task>(channel(), this));
+        tasks_.emplace_back(std::make_unique<exchange::task>(context(), this));
         return tasks_;
     }
 
@@ -41,7 +41,7 @@ public:
 
     void activate() override {
         // create data flow object
-        data_flow_object(std::make_unique<forward::flow>(input_meta_, channel()));
+        data_flow_object(std::make_unique<forward::flow>(input_meta_, context()));
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

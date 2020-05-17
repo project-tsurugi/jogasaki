@@ -18,7 +18,6 @@
 #include <unordered_set>
 
 #include <model/task.h>
-#include <channel.h>
 
 namespace jogasaki::scheduler {
 

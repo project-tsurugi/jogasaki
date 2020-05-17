@@ -20,7 +20,6 @@
 #include <model/task.h>
 #include <model/step.h>
 #include <executor/common/task.h>
-#include <channel.h>
 #include <meta/record_meta.h>
 #include "task_base.h"
 #include "params.h"

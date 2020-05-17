@@ -21,7 +21,6 @@
 #include <model/task.h>
 #include <model/step.h>
 #include <executor/common/task.h>
-#include <channel.h>
 #include "task_base.h"
 #include <cli_constants.h>
 

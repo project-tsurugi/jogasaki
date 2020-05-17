@@ -20,6 +20,9 @@
 #include <takatori/util/universal_extractor.h>
 #include <takatori/util/reference_list_view.h>
 
+#include <model/step.h>
+#include <model/port.h>
+
 namespace jogasaki {
 
 inline model::step::port_index_type find_port_index(model::port const& p, takatori::util::sequence_view<std::unique_ptr<model::port> const> sv) {
@@ -51,6 +54,7 @@ inline bool set_core_affinity(boost::thread* t, std::size_t cpu) {
     return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
 }
 
+/*
 template <typename T, typename U>
 takatori::util::reference_list_view<takatori::util::universal_extractor<T>> reference_list_from_pointer_vector(std::vector<std::unique_ptr<U>>& vp) {
     takatori::util::universal_extractor<T> ext {
@@ -63,6 +67,7 @@ takatori::util::reference_list_view<takatori::util::universal_extractor<T>> refe
     };
     return takatori::util::reference_list_view<takatori::util::universal_extractor<T>>{ vp, ext };
 }
+ */
 
 }
 

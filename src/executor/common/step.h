@@ -81,7 +81,6 @@ public:
 
 protected:
     void data_flow_object(std::unique_ptr<flow> p) noexcept;
-    [[nodiscard]] class channel* channel() const noexcept;
     [[nodiscard]] std::shared_ptr<class request_context> const& context() const noexcept;
 
 private:

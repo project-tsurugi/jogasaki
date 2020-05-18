@@ -75,7 +75,7 @@ private:
     };
 
     [[nodiscard]] int compare_field(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t field_index) const {
-        auto type = meta_->at(field_index);
+        auto& type = meta_->at(field_index);
         auto offset = meta_->value_offset(field_index);
         switch(type.kind()) {
             case meta::field_type_kind::boolean: return field_comparator<kind::boolean>{}(a, b, offset);

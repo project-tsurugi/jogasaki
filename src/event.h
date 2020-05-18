@@ -113,5 +113,7 @@ private:
     port_index_type source_port_index_{};
 };
 
+static_assert(std::is_trivially_copyable_v<event>);
+
 }
 

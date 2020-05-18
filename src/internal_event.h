@@ -61,6 +61,8 @@ private:
     identity_type target_;
 };
 
+static_assert(std::is_trivially_copyable_v<internal_event>);
+
 template<class Callback, class... Args>
 inline auto dispatch(Callback&& callback, internal_event_kind tag_value, Args&&... args) {
     using kind = internal_event_kind;

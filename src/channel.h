@@ -33,7 +33,7 @@ public:
     }
 
     void push(element_type e) {
-        events_->push(std::move(e));
+        events_->push(e);
     }
 
     bool pop(element_type& e) {

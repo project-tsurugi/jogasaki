@@ -50,7 +50,7 @@ inline bool set_core_affinity(boost::thread* t, std::size_t cpu) {
     pthread_t x = t->native_handle();
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);
+    CPU_SET(cpu, &cpuset);  //NOLINT
     return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
 }
 

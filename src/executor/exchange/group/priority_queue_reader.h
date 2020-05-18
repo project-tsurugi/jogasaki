@@ -30,8 +30,8 @@ using iterator = input_partition::table_iterator;
 
 struct iterator_pair {
     iterator_pair(iterator x, iterator y) : first(x), second(y) {}
-    iterator first;
-    iterator second;
+    iterator first; //NOLINT
+    iterator second; //NOLINT
 };
 
 static_assert(std::is_trivially_copyable_v<iterator>);

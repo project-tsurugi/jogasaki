@@ -83,8 +83,8 @@ public:
         Clock::time_point first{Clock::time_point::max()};
         for(auto& p : records_) {
             auto& arr = p.second;
-            if (arr[loc] != Clock::time_point() && arr[loc] < first) {
-                first = arr[loc];
+            if (arr[loc] != Clock::time_point() && arr[loc] < first) { //NOLINT
+                first = arr[loc]; //NOLINT
             }
         }
         return first;
@@ -100,8 +100,8 @@ public:
         Clock::time_point last{Clock::time_point::min()};
         for(auto& p : records_) {
             auto& arr = p.second;
-            if (arr[loc] != Clock::time_point() && last < arr[loc]) {
-                last = arr[loc];
+            if (arr[loc] != Clock::time_point() && last < arr[loc]) { //NOLINT
+                last = arr[loc]; //NOLINT
             }
         }
         return last;
@@ -129,9 +129,9 @@ public:
         Clock::time_point fixed_end = view_last(end);
         for(auto& p : records_) {
             auto& arr = p.second;
-            if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue;
-            auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end];
-            auto b = arr[begin] == Clock::time_point() ? fixed_begin : arr[begin];
+            if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue; //NOLINT
+            auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end]; //NOLINT
+            auto b = arr[begin] == Clock::time_point() ? fixed_begin : arr[begin]; //NOLINT
             total += std::chrono::duration_cast<Duration>(e-b).count();
             ++count;
         }

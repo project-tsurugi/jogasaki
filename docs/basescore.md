@@ -33,6 +33,10 @@ shuffle後段のpost group処理 - 下流プロスがreaderを取得し全件rea
 
 ## 測定結果
 
+### シングルスレッド、シングルパーティション
+
+1 partition, 1 thread
+
 単位(ms)
 |  項目| 10M recs/partition  | 100M recs/partition | コメント |
 | ---- | ---- | --- | -- |
@@ -43,4 +47,46 @@ shuffle後段のpost group処理 - 下流プロスがreaderを取得し全件rea
 |  consume sorted vector|5794  | 83442  | |
 |  consume priority queue|2428  | 33162  | |
 
+### シングルスレッド、マルチパーティション
 
+100 partition, 1 thread
+10M recs/partition
+
+<!-- 
+sorted
+単位(ms)
+|  項目| 全スレッド  | スレッド平均 | コメント |
+| ---- | ---- | --- | -- |
+|  prepare |63611  | 186  | |
+|  produce(write) |63845 | -  | |
+|  produce(sort) | |     | consume priority queueの場合のみ発生 |
+|  transfer | 1 | - |  |
+|  consume sorted vector|502806|5027   | |
+|  consume priority queue|| | |
+
+priority queue
+-->
+単位(ms)
+|  項目| 全スレッド  | スレッド平均 | コメント |
+| ---- | ---- | --- | -- |
+|  prepare |257704 | 185 | |
+|  produce(write) |63845 | NA  | 差を使って計算しているので平均はNot Available |
+|  produce(sort) |196047 | NA    | consume priority queueの場合のみ発生 差を使って計算しているので平均はNot Available |
+|  transfer | 7 | - |  |
+|  consume sorted vector|502806|5027   | |
+|  consume priority queue|232484|2324 | |
+
+### マルチスレッド、マルチパーティション
+
+100 partition, 100 thread
+10M recs/partition
+
+単位(ms)
+|  項目| 全スレッド  | スレッド平均 | コメント |
+| ---- | ---- | --- | -- |
+|  prepare |  7505  | 5841  | |
+|  produce(write) |4949 | NA  | 差を使って計算しているので平均はNot Available|
+|  produce(sort) |3444 | NA    | consume priority queueの場合のみ発生 差を使って計算しているので平均はNot Available |
+|  transfer | 7 | - |  |
+|  consume sorted vector|14428|12968   | |
+|  consume priority queue|676708|629976 | **sorted vectorに比べてかなり遅い** |

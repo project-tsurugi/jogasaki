@@ -21,6 +21,7 @@
 
 #include "executor/group_reader.h"
 #include <executor/exchange/group/input_partition.h>
+#include <utils/aligned_unique_ptr.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -103,7 +104,7 @@ private:
     std::shared_ptr<shuffle_info> info_{};
     std::priority_queue<impl::iterator_pair, std::vector<impl::iterator_pair>, impl::iterator_pair_comparator> queue_;
     std::size_t record_size_{};
-    std::unique_ptr<char[]> buf_{}; //NOLINT
+    utils::aligned_array<char> buf_;
     impl::reader_state state_{impl::reader_state::init};
     comparator key_comparator_{};
 

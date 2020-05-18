@@ -19,12 +19,14 @@ namespace jogasaki::executor::exchange::group {
 
 using namespace impl;
 
+static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
+
 priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
         partitions_(partitions),
         info_(std::move(info)),
         queue_(iterator_pair_comparator(info_)),
         record_size_(info_->record_meta()->record_size()),
-        buf_(std::make_unique<char[]>(record_size_)), //NOLINT
+        buf_(utils::make_aligned_array<char>(hardware_destructive_interference_size, record_size_)), //NOLINT
         key_comparator_(info_->key_meta()) {
     for(auto& p : partitions_) {
         if (!p) continue;

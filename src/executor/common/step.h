@@ -79,6 +79,7 @@ public:
 
     [[nodiscard]] flow& data_flow_object() const noexcept;
 
+    std::ostream& write_to(std::ostream& out) const override;
 protected:
     void data_flow_object(std::unique_ptr<flow> p) noexcept;
     [[nodiscard]] std::shared_ptr<class request_context> const& context() const noexcept;
@@ -90,8 +91,6 @@ private:
     std::vector<std::unique_ptr<model::port>> output_ports_{};
     model::graph* owner_{};
     std::unique_ptr<flow> data_flow_object_{};
-
-    std::ostream& write_to(std::ostream& out) const override;
 };
 
 step& operator<<(step& downstream, step& upstream);

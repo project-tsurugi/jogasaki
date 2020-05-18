@@ -143,15 +143,20 @@ public:
      * @return whether the step has sub input ports
      */
     virtual bool has_subinput() = 0;
-protected:
+
+    /**
+     * @brief dump step information
+     */
     virtual std::ostream& write_to(std::ostream& out) const = 0;
 
-public:
-    friend std::ostream& operator<<(std::ostream& out, step const& value) {
-        return value.write_to(out);
-    }
-
 };
+
+/**
+ * @brief dump step information to output stream
+ */
+inline std::ostream& operator<<(std::ostream& out, step const& value) {
+    return value.write_to(out);
+}
 
 /**
  * @brief equality comparison operator

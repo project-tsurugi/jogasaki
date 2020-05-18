@@ -51,4 +51,8 @@ std::vector<std::unique_ptr<input_partition>>& sink::input_partitions() {
     return partitions_;
 }
 
+std::shared_ptr<request_context> const& sink::context() const noexcept {
+    return context_;
+}
+
 }

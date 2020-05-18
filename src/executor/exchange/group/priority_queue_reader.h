@@ -74,7 +74,8 @@ private:
 } // namespace impl
 
 /**
- * @brief reader for grouped records
+ * @brief priority queue based reader for grouped records
+ * @details pregrouped pointer tables are k-way merged using priority queue
  * @attention readers for shuffle should be acquired after transfer completed
  */
 class priority_queue_reader : public group_reader {

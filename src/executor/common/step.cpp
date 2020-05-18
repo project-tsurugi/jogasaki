@@ -144,7 +144,7 @@ void step::data_flow_object(std::unique_ptr<flow> p) noexcept {
 }
 
 [[nodiscard]] std::shared_ptr<class request_context> const& step::context() const noexcept {
-    assert(owner_);
+    assert(owner_); //NOLINT
     return owner_->context();
 }
 

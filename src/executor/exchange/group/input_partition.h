@@ -92,6 +92,7 @@ public:
      */
     void flush() {
         if(!current_pointer_table_active_) return;
+        current_pointer_table_active_ = false;
         if(context_->configuration()->noop_pregroup()) return;
         auto sz = info_->record_meta()->record_size();
         auto& table = pointer_tables_.back();
@@ -99,7 +100,6 @@ public:
             return comparator_(info_->extract_key(accessor::record_ref(x, sz)),
                     info_->extract_key(accessor::record_ref(y, sz))) < 0;
         });
-        current_pointer_table_active_ = false;
     }
 
     /**

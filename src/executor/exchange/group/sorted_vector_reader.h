@@ -28,7 +28,8 @@
 namespace jogasaki::executor::exchange::group {
 
 /**
- * @brief reader non-priority queue implementation
+ * @brief sorted vector based reader implementation
+ * @details no pregroup is needed and all pointer tables are merged and sorted at once
  * @attention readers for shuffle should be acquired after transfer completed
  */
 class sorted_vector_reader : public group_reader {

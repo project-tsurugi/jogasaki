@@ -31,7 +31,6 @@ class writer;
 
 class sink : public exchange::sink {
 public:
-    friend class writer;
     sink() = default;
     ~sink() override = default;
     sink(sink const& other) = delete;
@@ -49,6 +48,7 @@ public:
 
     std::vector<std::unique_ptr<input_partition>>& input_partitions();
 
+    std::shared_ptr<request_context> const& context() const noexcept;
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>> partitions_{};

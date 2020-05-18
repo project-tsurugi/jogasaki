@@ -19,10 +19,6 @@ namespace jogasaki::executor::exchange::group {
 
 using namespace impl;
 
-/**
- * @brief reader for grouped records
- * @attention readers for shuffle should be acquired after transfer completed
- */
 priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
         partitions_(partitions),
         info_(std::move(info)),

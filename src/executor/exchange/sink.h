@@ -17,7 +17,6 @@
 
 #include <constants.h>
 #include <executor/global.h>
-#include <memory/monotonic_paged_memory_resource.h>
 #include <executor/record_writer.h>
 
 namespace jogasaki::executor::exchange {

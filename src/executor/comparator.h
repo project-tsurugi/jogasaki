@@ -34,8 +34,9 @@ public:
     /**
      * @brief construct new object
      * @param meta schema information for the records to be compared
+     * @attention record_meta is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    explicit comparator(std::shared_ptr<meta::record_meta> meta) noexcept : meta_(std::move(meta)) {}
+    explicit comparator(meta::record_meta const* meta) noexcept : meta_(meta) {}
 
     /**
      * @brief compare function
@@ -56,7 +57,7 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    meta::record_meta const* meta_{};
 
     template <meta::field_type_kind Kind>
     using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;

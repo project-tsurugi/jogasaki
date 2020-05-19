@@ -66,7 +66,7 @@ public:
             resource_for_varlen_data_(std::move(resource_for_varlen_data)),
             info_(std::move(info)),
             context_(std::move(context)),
-            comparator_(info_->key_meta()),
+            comparator_(info_->key_meta().get()),
             max_pointers_(pointer_table_size)
     {}
 

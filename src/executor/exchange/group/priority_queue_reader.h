@@ -53,10 +53,15 @@ enum class reader_state {
  */
 class iterator_pair_comparator {
 public:
-    explicit iterator_pair_comparator(std::shared_ptr<shuffle_info> info) :
-            info_(std::move(info)),
+    /**
+     * @brief construct new object
+     * @param info shuffle information
+     * @attention info is kept and used by the comparator. The caller must ensure it outlives this object.
+     */
+    explicit iterator_pair_comparator(shuffle_info const* info) :
+            info_(info),
             record_size_(info_->record_meta()->record_size()),
-            key_comparator_(info_->key_meta()) {}
+            key_comparator_(info_->key_meta().get()) {}
 
     bool operator()(iterator_pair const& x, iterator_pair const& y) {
         auto& it_x = x.first;
@@ -67,7 +72,7 @@ public:
     }
 
 private:
-    std::shared_ptr<shuffle_info> info_{};
+    shuffle_info const* info_{};
     std::size_t record_size_{};
     comparator key_comparator_{};
 };

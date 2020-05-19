@@ -23,7 +23,7 @@ sorted_vector_reader::sorted_vector_reader(std::shared_ptr<shuffle_info> info, s
         info_(std::move(info)),
         record_size_(info_->record_meta()->record_size()),
         buf_(std::make_unique<char[]>(record_size_)), //NOLINT
-        key_comparator_(info_->key_meta()) {
+        key_comparator_(info_->key_meta().get()) {
     std::size_t count = 0;
     for(auto& p : partitions_) {
         if (!p) continue;

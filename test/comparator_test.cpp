@@ -38,7 +38,7 @@ TEST_F(comparator_test, simple) {
             },
             boost::dynamic_bitset<std::uint64_t>{"00"s});
 
-    executor::comparator comp{std::move(meta)};
+    executor::comparator comp{meta.get()};
     struct {
         std::int32_t x_;
         std::int64_t y_;

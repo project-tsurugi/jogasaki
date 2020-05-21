@@ -26,7 +26,7 @@
 #include <memory/monotonic_paged_memory_resource.h>
 #include "test_root.h"
 
-namespace jogasaki::executor::exchange::group {
+namespace jogasaki::executor::process {
 
 //using namespace data;
 using namespace executor;
@@ -43,8 +43,6 @@ class process_executor_test : public test_root {};
 
 TEST_F(process_executor_test, basic) {
     process_executor exec{};
-    exec.
-
 }
 
 }

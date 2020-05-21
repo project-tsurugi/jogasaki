@@ -17,10 +17,16 @@
 
 #include <vector>
 
+#include <takatori/util/sequence_view.h>
+
 #include <executor/process/step.h>
 #include <executor/reader_container.h>
+#include <executor/record_writer.h>
 
 namespace jogasaki::executor::process {
+
+template <class T>
+using sequence_view = takatori::util::sequence_view<T>;
 
 /**
  * @brief processor context
@@ -28,14 +34,34 @@ namespace jogasaki::executor::process {
  */
 class processor_context {
 public:
+    using readers_list = sequence_view<reader_container>;
+    using writers_list = sequence_view<record_writer>;
     /**
      * @brief initialize the context for the current environment(e.g. asssigned thread)
+     * @details all other member functions are accessible only after initialized
+     * @note context knows the partition that the associated processor belongs to
      */
     void initialize();
 
-    std::vector<reader_container> readers();
+    /**
+     * @brief accessor to main input readers
+     * @return readers list lining up with the order of input ports
+     */
+    readers_list readers();
 
+    /**
+     * @brief accessor to sub-input readers
+     * @return readers list lining up with the order of sub-input ports
+     */
+    readers_list subinput_readers();
 
+    /**
+     * @brief accessor to output writers
+     * @return writers list lining up with the order of output ports
+     */
+    writers_list writers();
+
+    //TODO provide output for emit/writer
 };
 
 /**
@@ -45,7 +71,6 @@ public:
 class processor {
 public:
     void initialize(processor_context& context);
-
 };
 
 /**
@@ -54,9 +79,16 @@ public:
  */
 class process_executor {
 public:
+    /**
+     * @brief construct new instance
+     * @param partition index of the partition where the executor conduct
+     */
+    process_executor() {};
 
+    void run() {
+
+    }
 };
-
 
 }
 

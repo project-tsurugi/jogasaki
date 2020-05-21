@@ -16,6 +16,7 @@
 #pragma once
 
 #include <boost/thread/thread.hpp>
+#include <numa.h>
 
 #include <takatori/util/universal_extractor.h>
 #include <takatori/util/reference_list_view.h>
@@ -46,12 +47,8 @@ inline model::step::port_index_type output_port_index(model::step const& s, mode
     return find_port_index(p, s.output_ports());
 }
 
-inline bool set_core_affinity(boost::thread* t, std::size_t cpu) {
-    pthread_t x = t->native_handle();
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);  //NOLINT
-    return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
+inline bool set_core_affinity([[maybe_unused]] boost::thread* t, std::size_t cpu) {
+    return 0 == numa_run_on_node(cpu % (numa_max_node()+1));
 }
 
 /*

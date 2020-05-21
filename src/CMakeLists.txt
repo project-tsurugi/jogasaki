@@ -24,6 +24,7 @@ target_include_directories(jogasaki
 target_link_libraries(jogasaki
         PRIVATE takatori
         PRIVATE tbb
+        PRIVATE numa
         PRIVATE Boost::boost
         PRIVATE Boost::filesystem
         PRIVATE Boost::thread

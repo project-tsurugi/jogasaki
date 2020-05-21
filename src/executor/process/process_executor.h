@@ -83,7 +83,7 @@ public:
      * @brief construct new instance
      * @param partition index of the partition where the executor conduct
      */
-    process_executor() {};
+    process_executor();
 
     void run() {
 

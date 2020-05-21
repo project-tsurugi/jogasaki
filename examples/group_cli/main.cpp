@@ -46,6 +46,7 @@ DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
+DEFINE_bool(assign_nume_nodes_uniformly, false, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 
 namespace jogasaki::group_cli {
 
@@ -78,6 +79,7 @@ static int run(params& s) {
     cfg->initial_core(s.initial_core_);
     cfg->use_sorted_vector(s.use_sorted_vector_reader_);
     cfg->noop_pregroup(s.noop_pregroup_);
+    cfg->assign_nume_nodes_uniformly(s.assign_nume_nodes_uniformly_);
 
     auto channel = std::make_shared<class channel>();
     auto context = std::make_shared<request_context>(channel, cfg);
@@ -117,6 +119,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.initial_core_ = FLAGS_initial_core;
     s.set_core_affinity_ = FLAGS_core_affinity;
     s.noop_pregroup_ = FLAGS_noop_pregroup;
+    s.assign_nume_nodes_uniformly_ = FLAGS_assign_nume_nodes_uniformly;
 
     if (FLAGS_shuffle_uses_sorted_vector) {
         s.use_sorted_vector_reader_ = true;
@@ -131,6 +134,10 @@ extern "C" int main(int argc, char* argv[]) {
         s.records_per_upstream_partition_ = 1;
         s.initial_core_ = 1;
         s.set_core_affinity_ = false;
+    }
+
+    if (s.assign_nume_nodes_uniformly_) {
+        s.set_core_affinity_ = true;
     }
 
     if (s.thread_pool_size_ < s.upstream_partitions_) {

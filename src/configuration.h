@@ -25,59 +25,59 @@ namespace jogasaki {
  */
 class configuration {
 public:
-    [[nodiscard]] bool single_thread() const {
+    [[nodiscard]] bool single_thread() const noexcept {
         return single_thread_task_scheduler_;
     }
 
-    void single_thread(bool arg) {
+    void single_thread(bool arg) noexcept {
         single_thread_task_scheduler_ = arg;
     }
 
-    [[nodiscard]] std::size_t thread_pool_size() const {
+    [[nodiscard]] std::size_t thread_pool_size() const noexcept {
         return thread_pool_size_;
     }
 
-    void thread_pool_size(std::size_t arg) {
+    void thread_pool_size(std::size_t arg) noexcept {
         thread_pool_size_ = arg;
     }
 
-    [[nodiscard]] std::size_t default_partitions() const {
+    [[nodiscard]] std::size_t default_partitions() const noexcept {
         return default_process_partitions_;
     }
 
-    void default_partitions(std::size_t arg) {
+    void default_partitions(std::size_t arg) noexcept {
         default_process_partitions_ = arg;
     }
 
-    [[nodiscard]] std::size_t default_scan_process_partitions() const {
+    [[nodiscard]] std::size_t default_scan_process_partitions() const noexcept {
         return default_scan_process_partitions_;
     }
 
-    void default_scan_process_partitions(std::size_t arg) {
+    void default_scan_process_partitions(std::size_t arg) noexcept {
         default_scan_process_partitions_ = arg;
     }
 
-    [[nodiscard]] bool core_affinity() const {
+    [[nodiscard]] bool core_affinity() const noexcept {
         return set_core_affinity_;
     }
 
-    void core_affinity(bool arg) {
+    void core_affinity(bool arg) noexcept {
         set_core_affinity_ = arg;
     }
 
-    [[nodiscard]] std::size_t initial_core() const {
+    [[nodiscard]] std::size_t initial_core() const noexcept {
         return initial_core_;
     }
 
-    void initial_core(std::size_t arg) {
+    void initial_core(std::size_t arg) noexcept {
         initial_core_ = arg;
     }
 
-    [[nodiscard]] bool use_sorted_vector() const {
+    [[nodiscard]] bool use_sorted_vector() const noexcept {
         return use_sorted_vector_reader_;
     }
 
-    void use_sorted_vector(bool arg) {
+    void use_sorted_vector(bool arg) noexcept {
         use_sorted_vector_reader_ = arg;
     }
 
@@ -85,9 +85,18 @@ public:
         return noop_pregroup_;
     }
 
-    void noop_pregroup(bool arg) {
+    void noop_pregroup(bool arg) noexcept {
         noop_pregroup_ = arg;
     }
+
+    [[nodiscard]] bool assign_nume_nodes_uniformly() const noexcept {
+        return assign_nume_nodes_uniformly_;
+    }
+
+    void assign_nume_nodes_uniformly(bool arg) noexcept {
+        assign_nume_nodes_uniformly_ = arg;
+    }
+
 private:
     bool single_thread_task_scheduler_ = true;
     std::size_t thread_pool_size_ = 5;
@@ -97,6 +106,7 @@ private:
     std::size_t initial_core_ = 1;
     bool use_sorted_vector_reader_ = false;
     bool noop_pregroup_ = false;
+    bool assign_nume_nodes_uniformly_ = false;
 };
 
 }

@@ -22,11 +22,19 @@ class thread_params {
 public:
     thread_params() = default;
 
-    explicit thread_params(std::size_t threads, bool set_core_affinity = true, std::size_t initial_core = 1) :
-            threads_(threads), set_core_affinity_(set_core_affinity), initial_core_(initial_core) {}
+    explicit thread_params(
+            std::size_t threads,
+            bool set_core_affinity = true,
+            std::size_t initial_core = 1,
+            bool assign_nume_nodes_uniformly = false
+    ) :
+            threads_(threads),
+            set_core_affinity_(set_core_affinity),
+            initial_core_(initial_core),
+            assign_nume_nodes_uniformly_(assign_nume_nodes_uniformly) {}
 
     explicit thread_params(std::shared_ptr<configuration> cfg) :
-            thread_params(cfg->thread_pool_size(), cfg->core_affinity(), cfg->initial_core()) {}
+            thread_params(cfg->thread_pool_size(), cfg->core_affinity(), cfg->initial_core(), cfg->assign_nume_nodes_uniformly()) {}
 
     [[nodiscard]] std::size_t threads() const noexcept {
         return threads_;
@@ -40,10 +48,15 @@ public:
         return initial_core_;
     }
 
+    [[nodiscard]] bool assign_nume_nodes_uniformly() const noexcept {
+        return assign_nume_nodes_uniformly_;
+    }
+
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
     std::size_t initial_core_{};
+    bool assign_nume_nodes_uniformly_{};
 };
 
 } // namespace

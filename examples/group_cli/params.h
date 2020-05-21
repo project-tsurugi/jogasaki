@@ -40,6 +40,8 @@ public:
     bool use_sorted_vector_reader_ = false;
 
     bool noop_pregroup_ = false;
+
+    bool assign_nume_nodes_uniformly_ = false;
 };
 
 }

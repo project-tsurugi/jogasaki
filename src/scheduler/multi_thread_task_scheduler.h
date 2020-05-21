@@ -44,7 +44,8 @@ public:
             io_service_(),
             work_(std::make_unique<boost::asio::io_service::work>(io_service_)),
             set_core_affinity_(params.is_set_core_affinity()),
-            initial_core_(params.inititial_core()) {
+            initial_core_(params.inititial_core()),
+            assign_nume_nodes_uniformly_(params.assign_nume_nodes_uniformly()) {
         prepare_threads_();
     }
 
@@ -74,6 +75,7 @@ private:
     std::unique_ptr<boost::asio::io_service::work> work_{}; // work to keep service running
     bool set_core_affinity_;
     std::size_t initial_core_{};
+    bool assign_nume_nodes_uniformly_{};
 
     void prepare_threads_() {
         for(std::size_t i = 0; i < threads_; ++i) {
@@ -81,7 +83,7 @@ private:
                 io_service_.run();
             });
             if(set_core_affinity_) {
-                set_core_affinity(thread, i+initial_core_);
+                set_core_affinity(thread, i+initial_core_, assign_nume_nodes_uniformly_);
             }
             thread_group_.add_thread(thread);
         }

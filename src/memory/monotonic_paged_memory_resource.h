@@ -112,4 +112,4 @@ private:
     }
 };
 
-} // dc::memory
+} // namespace jogasaki::memory

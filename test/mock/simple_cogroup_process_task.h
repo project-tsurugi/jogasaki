@@ -22,7 +22,7 @@
 #include <executor/common/task.h>
 #include <mock/mock_task.h>
 
-namespace dc::executor {
+namespace jogasaki::executor {
 
 class simple_cogroup_process_task : public mock_task {
 public:

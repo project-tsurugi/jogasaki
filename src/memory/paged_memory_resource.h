@@ -66,4 +66,4 @@ protected:
 
 };
 
-} // namespace dc::allocator
+} // namespace jogasaki::memory

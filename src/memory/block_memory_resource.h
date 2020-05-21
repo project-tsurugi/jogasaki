@@ -247,4 +247,4 @@ private:
     block_info* active_ {};
 };
 
-} // namespace dc::memory
+} // namespace jogasaki::memory

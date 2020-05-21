@@ -22,7 +22,7 @@
 #include <executor/exchange/step.h>
 #include <executor/exchange/task.h>
 
-namespace dc::executor::process {
+namespace jogasaki::executor::process {
 
 /**
  * @brief process step data flow

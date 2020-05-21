@@ -175,4 +175,4 @@ private:
     offset_type upper_bound_offset_ {};
 };
 
-} // dc::memory
+} // namespace jogasaki::memory::details

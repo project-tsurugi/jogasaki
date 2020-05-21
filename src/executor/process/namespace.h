@@ -3,4 +3,4 @@
 /**
  * @brief data processor
  */
-namespace dc::executor::process {}
+namespace jogasaki::executor::process {}

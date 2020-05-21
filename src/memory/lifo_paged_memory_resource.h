@@ -177,4 +177,4 @@ private:
     }
 };
 
-} // dc::memory
+} // jogasaki::memory

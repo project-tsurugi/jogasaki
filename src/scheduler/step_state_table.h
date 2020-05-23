@@ -25,8 +25,9 @@
 namespace jogasaki::scheduler {
 
 /*
- * @brief responsible for managing step status gathering tasks completion state and decide if prepare/run completes.
- * Each task status is stored in a slot. Slots can be assigned before the tasks are available.
+ * @brief state table responsible for managing step status by gathering tasks completion state
+ * and decide if prepare/run phase completes.
+ * @details Each task status is stored in a slot. Slots can be assigned before the tasks are available.
  * Completion is decided based on whether the tasks in all slots for run/prepare completed.
  */
 class step_state_table {
@@ -54,15 +55,15 @@ public:
         }
     }
 
-    std::size_t slots(kind k) const {
+    [[nodiscard]] std::size_t slots(kind k) const {
         return k == kind::main ? main_slots_.size() : sub_slots_.size();
     }
 
-    std::vector<slot_index> list_uninitialized(kind k) const {
+    [[nodiscard]] std::vector<slot_index> list_uninitialized(kind k) const {
         return list_uninitialized(k == kind::main ? main_slots_ : sub_slots_);
     }
 
-    bool uninitialized_slot(kind k, slot_index ind) const {
+    [[nodiscard]] bool uninitialized_slot(kind k, slot_index ind) const {
         return uninitialized_slot(k == kind::main ? main_slots_ : sub_slots_, ind);
     }
 
@@ -84,7 +85,7 @@ public:
         throw std::domain_error("invalid identity");
     }
 
-    bool completed(kind k) const {
+    [[nodiscard]] bool completed(kind k) const {
         return k == kind::main ?
                tasks_completed(main_status_, main_slots_.size()) :
                tasks_completed(sub_status_, sub_slots_.size());
@@ -96,9 +97,9 @@ private:
     entity_type main_status_{};
     entity_type sub_status_{};
 
-    bool tasks_completed(entity_type const& status, std::size_t count) const {
+    [[nodiscard]] bool tasks_completed(entity_type const& status, std::size_t count) const {
         if (status.size() != count) {
-            return false;
+            return false; //NOLINT //bug of clang-tidy?
         }
         for(auto& p : status) {
             if (p.second != task_state_kind::completed) {
@@ -115,7 +116,7 @@ private:
         slots[slot] = id;
     }
 
-    std::vector<slot_index> list_uninitialized(slots_type const& slots) const {
+    [[nodiscard]] std::vector<slot_index> list_uninitialized(slots_type const& slots) const {
         std::vector<slot_index> v{};
         v.reserve(slots.size());
         for(slot_index i = 0; i < slots.size(); ++i) {
@@ -126,7 +127,7 @@ private:
         return v;
     }
 
-    bool uninitialized_slot(slots_type const& slots, slot_index ind) const {
+    [[nodiscard]] bool uninitialized_slot(slots_type const& slots, slot_index ind) const {
         if (ind >= slots.size()) {
             return true;
         }

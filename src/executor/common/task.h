@@ -20,18 +20,31 @@
 #include <string_view>
 
 #include <model/task.h>
+#include "step.h"
 
 namespace jogasaki::executor::common {
 
 class task : public model::task {
-
 public:
+    using step_type = class step;
+
     task() {
         id_ = id_src++;
     }
 
+    task(std::shared_ptr<request_context> context,
+            step* src) : context_(std::move(context)), src_(src) {}
+
     [[nodiscard]] identity_type id() const override {
         return id_;
+    }
+
+    [[nodiscard]] step_type* step() const {
+        return src_;
+    }
+
+    [[nodiscard]] std::shared_ptr<request_context>const& context() const {
+        return context_;
     }
 
 protected:
@@ -43,6 +56,8 @@ protected:
 private:
     static inline std::atomic_size_t id_src = 10000;
     identity_type id_{};
+    std::shared_ptr<request_context> context_{};
+    step_type* src_{};
 };
 
 }

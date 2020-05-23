@@ -19,6 +19,7 @@
 
 #include <model/port.h>
 #include <model/step.h>
+#include <meta/record_meta.h>
 #include <executor/exchange/step.h>
 #include <executor/exchange/task.h>
 
@@ -45,12 +46,11 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    explicit flow(std::shared_ptr<meta::record_meta> ) : info_(std::move(info)) {}
+//    explicit flow(std::shared_ptr<meta::record_meta> ) : info_(std::move(info)) {}
 
     /**
      * @brief create new instance
      * @param input_meta input record metadata
-     * @param key_indices indices for key fields
      */
     flow(
             record_meta_list input_meta,
@@ -63,25 +63,29 @@ public:
     {}
 
     takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
-        return tasks_;
-    }
-
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
 //        for(auto& out : output_ports_) {
 //            for(auto& opposite : out->opposites()) {
 //                dynamic_cast<exchange::input_port *>(opposite)->create_writers(default_partitions); // TODO
 //            }
 //        }
-        return do_create_tasks();
+        return {};
     }
+
+    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type subinput) override {
+        (void)subinput;
+        return {};
+    }
+
+    [[nodiscard]] common::step_kind kind() const noexcept override {
+        return common::step_kind::process;
+    }
+
 private:
     record_meta_list input_meta_{};
     record_meta_list subinput_meta_{};
     record_meta_list output_meta_{};
     std::vector<std::unique_ptr<model::task>> tasks_{};
     bool main_input_is_group_ = false;
-protected:
-    virtual takatori::util::sequence_view<std::unique_ptr<model::task>> do_create_tasks() = 0;
 };
 
 }

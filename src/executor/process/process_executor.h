@@ -36,32 +36,38 @@ class processor_context {
 public:
     using readers_list = sequence_view<reader_container>;
     using writers_list = sequence_view<record_writer>;
+
     /**
-     * @brief initialize the context for the current environment(e.g. asssigned thread)
-     * @details all other member functions are accessible only after initialized
+     * @brief initialize the context for the current environment(e.g. assigned thread)
      * @note context knows the partition that the associated processor belongs to
      */
     void initialize();
 
     /**
-     * @brief accessor to main input readers
-     * @return readers list lining up with the order of input ports
+     * @brief deinitialize the context and detach from current environment
+     */
+    void deinitialize();
+
+    /**
+     * @brief accessor to main/sub input readers
+     * @return readers list lining up with the order of main/sub input ports
+     * @pre the object is already initialized and not yet deinitialized
      */
     readers_list readers();
 
     /**
-     * @brief accessor to sub-input readers
-     * @return readers list lining up with the order of sub-input ports
+     * @brief accessor to main output writers
+     * @return writers list lining up with the order of output ports
+     * @pre the object is already initialized and not yet deinitialized
      */
-    readers_list subinput_readers();
+    writers_list downstream_writers();
 
     /**
-     * @brief accessor to output writers
-     * @return writers list lining up with the order of output ports
+     * @brief accessor to writers
+     * @return writers list lining up with the order of operators that write out records
+     * @pre the object is already initialized and not yet deinitialized
      */
-    writers_list writers();
-
-    //TODO provide output for emit/writer
+    writers_list external_writers();
 };
 
 /**
@@ -70,7 +76,11 @@ public:
  */
 class processor {
 public:
+    virtual ~processor() = 0;
+
     void initialize(processor_context& context);
+
+    void run(){};
 };
 
 /**
@@ -82,12 +92,30 @@ public:
     /**
      * @brief construct new instance
      * @param partition index of the partition where the executor conduct
+     * @param processor
      */
-    process_executor();
+    process_executor(processor_context& context){
+        (void)context;
+    };
 
     void run() {
-
+//        context_->initialize();
+//        processor
+//        context_->deinitialize();
     }
+private:
+
+};
+
+class task {
+    void operator()() {
+//        process_executor executor{context_};
+//        executor.run(*context_);
+    }
+
+private:
+    std::unique_ptr<processor_context> context_{};
+
 };
 
 }

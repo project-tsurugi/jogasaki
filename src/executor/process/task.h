@@ -17,23 +17,27 @@
 
 #include <memory>
 #include <glog/logging.h>
+
 #include <model/task.h>
 #include <model/step.h>
 #include <executor/common/task.h>
-#include <channel.h>
 
-namespace jogasaki::executor::exchange {
+namespace jogasaki::executor::process {
 
 class task : public common::task {
 public:
     task() = default;
-    task(std::shared_ptr<request_context> context, step_type* src) :
-            common::task(std::move(context), src) {}
+    task(std::shared_ptr<request_context> context,
+            step* src) : context_(std::move(context)), src_(src) {}
+
     model::task_result operator()() override {
-        VLOG(1) << *this << " exchange_task executed.";
-        context()->channel()->emplace(event_kind_tag<event_kind::task_completed>, step()->id(), id());
+        VLOG(1) << *this << " process::task executed.";
+        context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     }
+private:
+    std::shared_ptr<request_context> context_{};
+    step* src_{};
 };
 
 }

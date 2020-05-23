@@ -21,13 +21,12 @@ void processor_context::initialize() {}
 
 processor_context::readers_list processor_context::readers() { return {}; }
 
-processor_context::readers_list processor_context::subinput_readers() { return {}; }
+processor_context::writers_list processor_context::downstream_writers() { return {}; }
 
-processor_context::writers_list processor_context::writers() { return {}; }
+processor_context::writers_list processor_context::external_writers() { return {}; }
 
 void processor::initialize(processor_context& context) { (void)context; }
 
-process_executor::process_executor() {}
 
 
 }

@@ -21,7 +21,8 @@
 #include <model/step.h>
 #include <model/graph.h>
 #include <model/task.h>
-#include "executor/common/step.h"
+#include <executor/common/step.h>
+#include "flow.h"
 
 namespace jogasaki::executor::process {
 
@@ -51,6 +52,10 @@ public:
      */
     [[nodiscard]] virtual std::size_t partitions() const noexcept {
         return default_partitions;
+    }
+
+    void activate() override {
+        data_flow_object(std::make_unique<flow>());
     }
 };
 

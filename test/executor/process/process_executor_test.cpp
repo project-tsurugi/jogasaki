@@ -42,7 +42,7 @@ using namespace boost::container::pmr;
 class process_executor_test : public test_root {};
 
 TEST_F(process_executor_test, basic) {
-    process_executor exec{};
+//    process_executor exec{};
 }
 
 }

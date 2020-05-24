@@ -17,6 +17,14 @@
 
 namespace jogasaki::executor::process {
 
+void processor_context::initialize() {}
+
+processor_context::readers_list processor_context::readers() { return {}; }
+
+processor_context::writers_list processor_context::downstream_writers() { return {}; }
+
+processor_context::writers_list processor_context::external_writers() { return {}; }
+
 }
 
 

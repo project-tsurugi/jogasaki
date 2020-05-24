@@ -13,9 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "process_executor.h"
+#pragma once
+
+#include <vector>
+
+#include <takatori/util/sequence_view.h>
+
+#include <executor/process/step.h>
+#include <executor/reader_container.h>
+#include <executor/record_writer.h>
 
 namespace jogasaki::executor::process {
+
+template <class T>
+using sequence_view = takatori::util::sequence_view<T>;
+
+/**
+ * @brief processor interface
+ * @details this interface represents the sequence of procedures executed by the process
+ */
+class processor {
+public:
+    virtual ~processor() = 0;
+
+    void initialize(processor_context& context);
+
+    void run(){};
+};
 
 }
 

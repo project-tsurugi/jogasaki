@@ -28,16 +28,28 @@ class task : public common::task {
 public:
     task() = default;
     task(std::shared_ptr<request_context> context,
-            step* src) : context_(std::move(context)), src_(src) {}
+            step_type* src,
+            std::unique_ptr<processor_context> context,
+            std::unique_ptr<processor> processor
+            ) :
+            common::task(std::move(context), src),
+            processor_context_(std::move(processor_context)),
+            processor_(std::move(processor))
+            {}
 
     model::task_result operator()() override {
         VLOG(1) << *this << " process::task executed.";
+
+        process_executor executor{context_, processor_};
+        executor.run(*context_);
+
         context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     }
+
 private:
-    std::shared_ptr<request_context> context_{};
-    step* src_{};
+    std::unique_ptr<processor_context> processor_context_{};
+    std::unique_ptr<processor> processor_{};
 };
 
 }

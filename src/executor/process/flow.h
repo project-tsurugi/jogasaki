@@ -84,6 +84,7 @@ private:
     record_meta_list input_meta_{};
     record_meta_list subinput_meta_{};
     record_meta_list output_meta_{};
+    record_meta_list external_meta_{};
     std::vector<std::unique_ptr<model::task>> tasks_{};
     bool main_input_is_group_ = false;
 };

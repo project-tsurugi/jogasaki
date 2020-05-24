@@ -25,24 +25,29 @@ enum class task_kind : std::size_t {
     pre,
 };
 
+/**
+ * @brief response codes to the scheduler in order to inform how to treat the finished task
+ */
 enum class task_result : std::size_t {
     /**
-     * @brief proceed to process next input
+     * @brief proceed to continue execution, expecting scheduler to schedule the task soon
      */
     proceed,
 
     /**
-     * @brief complete the task and clean up all resources
+     * @brief complete the task and remove it from the schedule
      */
     complete,
 
     /**
-     * @brief sleep and detach thread from this task
+     * @brief sleep and detach thread from this task, the task needs wake-up to resume
+     * @attention this is future functionality and not yet supported
      */
     sleep,
 
     /**
      * @brief yield to other tasks, if any, by putting this task at the last of run queue
+     * @attention this is future functionality and not yet supported
      */
     yield,
 };
@@ -90,8 +95,7 @@ public:
 
     /**
      * @brief task body
-     * @return true when there is more work to do
-     * @return false to finish running
+     * @return task_result to instruct scheduler
      */
     virtual task_result operator()() = 0;
 

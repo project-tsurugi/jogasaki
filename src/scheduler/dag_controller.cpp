@@ -24,8 +24,8 @@
 #include <event.h>
 #include <internal_event.h>
 #include <scheduler/step_state_table.h>
-#include "task_scheduler.h"
-#include "task_scheduler_factory.h"
+#include "single_thread_task_scheduler.h"
+#include "multi_thread_task_scheduler.h"
 #include "step_state.h"
 #include "dag_controller.h"
 #include "thread_params.h"
@@ -47,8 +47,8 @@ public:
 
     explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)),
             executor_(cfg_->single_thread() ?
-                    task_scheduler_factory::create(task_scheduler_kind::single_thread) :
-                    task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(cfg_))) {}
+                    std::unique_ptr<task_scheduler>(std::make_unique<single_thread_task_scheduler>()) :
+                    std::unique_ptr<task_scheduler>(std::make_unique<multi_thread_task_scheduler>(thread_params(cfg_)))) {}
 
     /*
      * @brief handles providing event

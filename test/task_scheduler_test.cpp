@@ -16,7 +16,8 @@
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
-#include <scheduler/task_scheduler_factory.h>
+#include <scheduler/single_thread_task_scheduler.h>
+#include <scheduler/multi_thread_task_scheduler.h>
 #include <executor/common/task.h>
 
 namespace jogasaki::testing {
@@ -47,27 +48,27 @@ public:
 };
 
 TEST_F(task_scheduler_test, single) {
-    auto executor = task_scheduler_factory::create(task_scheduler_kind::single_thread);
+    single_thread_task_scheduler executor{};
     bool run = false;
     auto t = std::make_shared<task_wrapper>([&]() {
         run = true;
         return task_result::complete;
     });
-    executor->schedule_task(std::weak_ptr(t));
-    executor->wait_for_progress();
+    executor.schedule_task(std::weak_ptr(t));
+    executor.wait_for_progress();
     ASSERT_TRUE(run);
 }
 
 TEST_F(task_scheduler_test, multi) {
-    auto executor = task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(1));
+    multi_thread_task_scheduler executor{thread_params(1)};
     std::atomic_flag run = false;
     auto t = std::make_shared<task_wrapper>([&]() {
         run.test_and_set() ;
         return task_result::complete;
     });
-    executor->schedule_task(std::weak_ptr(t));
-    executor->wait_for_progress();
-    executor->stop();
+    executor.schedule_task(std::weak_ptr(t));
+    executor.wait_for_progress();
+    executor.stop();
     ASSERT_TRUE(run.test_and_set());
 }
 

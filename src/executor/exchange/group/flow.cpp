@@ -63,8 +63,8 @@ flow::flow(std::shared_ptr<meta::record_meta> input_meta,
 ) :
         flow(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)), std::move(context), owner, downstream_partitions) {}
 
-takatori::util::sequence_view<std::unique_ptr<model::task>> flow::create_tasks() {
-    tasks_.emplace_back(std::make_unique<exchange::task>(context_, owner_));
+takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
+    tasks_.emplace_back(std::make_shared<exchange::task>(context_, owner_));
     transfer();
     return tasks_;
 }

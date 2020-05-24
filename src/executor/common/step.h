@@ -73,9 +73,9 @@ public:
 
     void connect_to_sub(step& downstream, port_index src = 0, port_index target = 0);
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index subinput) override;
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index subinput) override;
 
     [[nodiscard]] flow& data_flow_object() const noexcept;
 

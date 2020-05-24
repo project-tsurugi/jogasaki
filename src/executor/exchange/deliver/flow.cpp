@@ -51,8 +51,8 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<deliver::
 
 flow::flow(std::shared_ptr<request_context> context, model::step* step) : context_(std::move(context)), owner_(step) {}
 
-takatori::util::sequence_view<std::unique_ptr<model::task>> flow::create_tasks() {
-    tasks_.emplace_back(std::make_unique<exchange::task>(context_, dynamic_cast<exchange::step*>(owner_)));
+takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
+    tasks_.emplace_back(std::make_shared<exchange::task>(context_, dynamic_cast<exchange::step*>(owner_)));
     return tasks_;
 }
 

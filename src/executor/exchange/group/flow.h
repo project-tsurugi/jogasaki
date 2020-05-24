@@ -75,7 +75,7 @@ public:
             std::size_t downstream_partitions
             );
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
     sinks_sources setup_partitions(std::size_t partitions) override;
 
@@ -97,7 +97,7 @@ public:
         return context_;
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<shuffle_info> info_{};
     std::vector<std::unique_ptr<group::sink>> sinks_;
     std::vector<std::unique_ptr<group::source>> sources_{};

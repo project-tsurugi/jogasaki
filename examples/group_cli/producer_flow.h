@@ -44,7 +44,7 @@ public:
             meta_(std::move(meta)),
             params_(&p) {}
 
-    sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+    sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(params_->upstream_partitions_);
         (void)srcs;
         resources_.reserve(sinks.size());
@@ -56,7 +56,7 @@ public:
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
 
-    sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
+    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
 
@@ -65,7 +65,7 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     executor::exchange::step* downstream_{};
     model::step* step_{};
     std::shared_ptr<request_context> context_{};

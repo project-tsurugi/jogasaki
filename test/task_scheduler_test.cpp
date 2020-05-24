@@ -29,7 +29,6 @@ using namespace takatori::util;
 class task_wrapper : public common::task {
 public:
     task_wrapper() = default;
-    ~task_wrapper() = default;
     task_wrapper(task_wrapper&& other) = delete;
     task_wrapper& operator=(task_wrapper&& other) = delete;
     task_wrapper(std::function<task_result()> original) : original_(std::move(original)) {}
@@ -50,24 +49,24 @@ public:
 TEST_F(task_scheduler_test, single) {
     auto executor = task_scheduler_factory::create(task_scheduler_kind::single_thread);
     bool run = false;
-    task_wrapper t([&]() {
+    auto t = std::make_shared<task_wrapper>([&]() {
         run = true;
         return task_result::complete;
     });
-    executor->schedule_task(&t);
-    executor->run();
+    executor->schedule_task(std::weak_ptr(t));
+    executor->proceed();
     ASSERT_TRUE(run);
 }
 
 TEST_F(task_scheduler_test, multi) {
     auto executor = task_scheduler_factory::create(task_scheduler_kind::multi_thread, thread_params(1));
     std::atomic_flag run = false;
-    task_wrapper t([&]() {
+    auto t = std::make_shared<task_wrapper>([&]() {
         run.test_and_set() ;
         return task_result::complete;
     });
-    executor->schedule_task(&t);
-    executor->run();
+    executor->schedule_task(std::weak_ptr(t));
+    executor->proceed();
     executor->stop();
     ASSERT_TRUE(run.test_and_set());
 }

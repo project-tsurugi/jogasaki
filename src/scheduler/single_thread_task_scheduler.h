@@ -16,6 +16,7 @@
 #pragma once
 
 #include <unordered_set>
+#include <memory>
 
 #include <model/task.h>
 #include "task_scheduler.h"
@@ -28,13 +29,18 @@ namespace jogasaki::scheduler {
  */
 class single_thread_task_scheduler : public task_scheduler {
 public:
-    void schedule_task(model::task* t) override {
-        tasks_.emplace(t);
+    void schedule_task(std::weak_ptr<model::task> t) override {
+        auto s = t.lock();
+        if (s) {
+            auto id = s->id();
+            tasks_.emplace(id, std::move(t));
+        }
     }
 
-    void run() override {
+    void proceed() override {
         for(auto it = tasks_.begin(); it != tasks_.end(); ) {
-            if((*it)->operator()() == model::task_result::complete) {
+            auto s = it->second.lock();
+            if (s == nullptr || s->operator()() == model::task_result::complete) {
                 it = tasks_.erase(it);
             } else {
                 ++it;
@@ -42,15 +48,19 @@ public:
         }
     }
 
-    void stop() override {
+    void start() override {
         // no-op
     }
 
-    void remove_task(model::task* t) override {
-        tasks_.erase(t);
+    void stop() override {
+        tasks_.clear();
+    }
+
+    [[nodiscard]] task_scheduler_kind kind() const noexcept override {
+        return task_scheduler_kind::single_thread;
     }
 private:
-    std::unordered_set<model::task*> tasks_{};
+    std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>> tasks_{};
 };
 
 }

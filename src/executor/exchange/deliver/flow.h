@@ -38,7 +38,7 @@ public:
 
     flow(std::shared_ptr<request_context> context, model::step* step);
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
     sinks_sources setup_partitions(std::size_t partitions) override;
 
@@ -48,7 +48,7 @@ public:
         return common::step_kind::deliver;
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<meta::record_meta> input_meta_{};
     std::vector<std::unique_ptr<deliver::sink>> sinks_;
     std::vector<std::unique_ptr<deliver::source>> sources_;

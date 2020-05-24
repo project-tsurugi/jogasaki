@@ -31,7 +31,7 @@ public:
     ~simple_transform_process_flow() = default;
     simple_transform_process_flow(exchange::step* downstream, model::step* step,
             std::shared_ptr<request_context> context) : downstream_(downstream), step_(step), context_(std::move(context)) {}
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // process with scan creates only one task
         auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(1);
         (void)srcs;
@@ -40,14 +40,14 @@ public:
         tasks_.emplace_back(std::make_unique<simple_transform_process_task>(context_, step_));
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::process;
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     exchange::step* downstream_{};
     model::step* step_{};
     std::shared_ptr<request_context> context_{};

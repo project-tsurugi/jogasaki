@@ -47,7 +47,7 @@ public:
             params_(&c)
     {}
 
-    sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+    sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         auto srcs = dynamic_cast<executor::exchange::group::flow&>(upstream_->data_flow_object()).sources();
         tasks_.reserve(srcs.size());
         for(auto& s : srcs) {
@@ -56,7 +56,7 @@ public:
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
 
-    sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
+    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
 
@@ -65,7 +65,7 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     executor::exchange::step* upstream_{};
     model::step* step_{};
     std::shared_ptr<request_context> context_{};

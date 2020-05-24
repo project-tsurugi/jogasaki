@@ -25,18 +25,20 @@ namespace jogasaki::executor::exchange::broadcast {
 class step : public exchange::step {
 public:
     step() : exchange::step(1, 1) {}
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // exchange task is nop
-        tasks_.emplace_back(std::make_unique<exchange::task>(context(), this));
+        tasks_.emplace_back(std::make_shared<exchange::task>(context(), this));
         return tasks_;
     }
+
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::broadcast;
     }
     void activate() override {
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
 };
 
 }

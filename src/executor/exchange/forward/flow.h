@@ -55,7 +55,7 @@ public:
      */
     flow(std::shared_ptr<meta::record_meta> input_meta, std::shared_ptr<request_context> context);
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override;
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
     sinks_sources setup_partitions(std::size_t partitions) override;
 
@@ -65,7 +65,7 @@ public:
         return common::step_kind::forward;
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<meta::record_meta> input_meta_{};
     std::vector<std::unique_ptr<forward::sink>> sinks_;
     std::vector<std::unique_ptr<forward::source>> sources_{};

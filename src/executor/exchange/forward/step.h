@@ -29,9 +29,9 @@ public:
 
     explicit step(std::shared_ptr<meta::record_meta> input_meta) : input_meta_(std::move(input_meta)) {}
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // exchange task is nop
-        tasks_.emplace_back(std::make_unique<exchange::task>(context(), this));
+        tasks_.emplace_back(std::make_shared<exchange::task>(context(), this));
         return tasks_;
     }
 
@@ -44,7 +44,7 @@ public:
         data_flow_object(std::make_unique<forward::flow>(input_meta_, context()));
     }
 private:
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<meta::record_meta> input_meta_{};
 };
 

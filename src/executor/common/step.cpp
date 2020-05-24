@@ -125,12 +125,12 @@ void step::connect_to_sub(step& downstream, port_index src, port_index target) {
     dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.sub_input_ports_[target].get()));
 }
 
-takatori::util::sequence_view<std::unique_ptr<model::task>> step::create_tasks() {
+takatori::util::sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
     assert(data_flow_object_ != nullptr); //NOLINT
     return data_flow_object_->create_tasks();
 }
 
-takatori::util::sequence_view<std::unique_ptr<model::task>> step::create_pretask(port_index subinput) {
+takatori::util::sequence_view<std::shared_ptr<model::task>> step::create_pretask(port_index subinput) {
     assert(data_flow_object_ != nullptr); //NOLINT
     return data_flow_object_->create_pretask(subinput);
 }

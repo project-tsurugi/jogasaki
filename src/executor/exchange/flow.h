@@ -53,7 +53,7 @@ public:
      */
     virtual source_list_view sources() = 0;
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type) override {
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
         // exchanges don't have sub input ports
         return {};
     }

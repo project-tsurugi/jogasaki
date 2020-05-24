@@ -287,7 +287,7 @@ public:
 
             // Currently we run only on single thread
             // simulate tasks execution background so that state changes and proceeds
-            executor_->run();
+            executor_->proceed();
         }
     }
 
@@ -297,7 +297,7 @@ public:
         tasks.assign_slot(task_kind::main, task_list.size());
         step_state_table::slot_index slot = 0;
         for(auto&& t : task_list) {
-            executor_->schedule_task(t.get());
+            executor_->schedule_task(std::weak_ptr(t));
             tasks.register_task(task_kind::main, slot, t->id());
             tasks.task_state(t->id(), task_state_kind::running);
             ++slot;
@@ -313,7 +313,7 @@ public:
         }
         if(auto view = v.create_pretask(index);!view.empty()) {
             auto& t = view.front();
-            executor_->schedule_task(t.get());
+            executor_->schedule_task(std::weak_ptr(t));
             tasks.register_task(task_kind::pre, index, t->id());
             tasks.task_state(t->id(), task_state_kind::running);
         }

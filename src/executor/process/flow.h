@@ -62,7 +62,7 @@ public:
             output_meta_(std::move(output_meta))
     {}
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_tasks() override {
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
 //        for(auto& out : output_ports_) {
 //            for(auto& opposite : out->opposites()) {
 //                dynamic_cast<exchange::input_port *>(opposite)->create_writers(default_partitions); // TODO
@@ -71,7 +71,7 @@ public:
         return {};
     }
 
-    takatori::util::sequence_view<std::unique_ptr<model::task>> create_pretask(port_index_type subinput) override {
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override {
         (void)subinput;
         return {};
     }

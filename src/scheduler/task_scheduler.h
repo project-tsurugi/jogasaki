@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <unordered_set>
-
 #include <model/task.h>
 
 namespace jogasaki::scheduler {
@@ -27,12 +25,10 @@ enum class task_scheduler_kind : std::int32_t {
 };
 
 /*
- * @brief task scheduler who is responsible for running task concurrently and efficiently
+ * @brief task scheduler to run tasks efficiently
  */
 class task_scheduler {
 public:
-    using kind = task_scheduler_kind;
-
     task_scheduler() = default;
     virtual ~task_scheduler() = default;
     task_scheduler(task_scheduler const& other) = delete;
@@ -40,13 +36,15 @@ public:
     task_scheduler(task_scheduler&& other) noexcept = delete;
     task_scheduler& operator=(task_scheduler&& other) noexcept = delete;
 
-    virtual void schedule_task(model::task* t) = 0;
+    virtual void schedule_task(std::weak_ptr<model::task> t) = 0;
 
-    virtual void run() = 0;
+    virtual void proceed() = 0;
+
+    virtual void start() = 0;
 
     virtual void stop() = 0;
 
-    virtual void remove_task(model::task* task) = 0;
+    virtual task_scheduler_kind kind() const noexcept = 0;
 };
 
 }

@@ -52,7 +52,7 @@ flow::flow(std::shared_ptr<meta::record_meta> input_meta,
         std::shared_ptr<request_context> context) :
         input_meta_(std::move(input_meta)), context_(std::move(context)) {}
 
-takatori::util::sequence_view<std::unique_ptr<model::task>> flow::create_tasks() {
+takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
 //        auto ch = graph_ ? &graph_->get_channel() : nullptr;
 //        tasks_.emplace_back(std::make_unique<exchange::task>(ch, this));
     return tasks_;

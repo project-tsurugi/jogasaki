@@ -24,11 +24,12 @@
 namespace jogasaki::scheduler {
 
 /*
- * @brief task scheduler who is responsible for running task concurrently and efficiently
- * Current implementation is in single thread only and simulate concurrent execution by calling run() multiple times
+ * @brief task scheduler using multiple threads
  */
 class single_thread_task_scheduler : public task_scheduler {
 public:
+    using entity_type = std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>>;
+
     void schedule_task(std::weak_ptr<model::task> t) override {
         auto s = t.lock();
         if (s) {
@@ -37,7 +38,7 @@ public:
         }
     }
 
-    void proceed() override {
+    void wait_for_progress() override {
         for(auto it = tasks_.begin(); it != tasks_.end(); ) {
             auto s = it->second.lock();
             if (s == nullptr || s->operator()() == model::task_result::complete) {
@@ -60,7 +61,7 @@ public:
         return task_scheduler_kind::single_thread;
     }
 private:
-    std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>> tasks_{};
+    entity_type tasks_{};
 };
 
 }

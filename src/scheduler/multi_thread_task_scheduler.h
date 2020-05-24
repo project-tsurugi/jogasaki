@@ -136,7 +136,7 @@ private:
 };
 
 /*
- * @brief task scheduler who is responsible for running task concurrently and efficiently
+ * @brief task scheduler using multiple threads
  */
 class multi_thread_task_scheduler : public task_scheduler {
 public:
@@ -176,7 +176,7 @@ public:
         }
     }
 
-    void proceed() override {
+    void wait_for_progress() override {
         // no-op - tasks are already running on threads
     }
 

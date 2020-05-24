@@ -287,7 +287,7 @@ public:
 
             // Currently we run only on single thread
             // simulate tasks execution background so that state changes and proceeds
-            executor_->proceed();
+            executor_->wait_for_progress();
         }
     }
 

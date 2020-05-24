@@ -24,27 +24,53 @@ enum class task_scheduler_kind : std::int32_t {
     multi_thread,
 };
 
-/*
+/**
  * @brief task scheduler to run tasks efficiently
  */
 class task_scheduler {
 public:
+    /**
+     * @brief create new object
+     */
     task_scheduler() = default;
+
+    /**
+     * @brief destroy instance
+     */
     virtual ~task_scheduler() = default;
+
     task_scheduler(task_scheduler const& other) = delete;
     task_scheduler& operator=(task_scheduler const& other) = delete;
     task_scheduler(task_scheduler&& other) noexcept = delete;
     task_scheduler& operator=(task_scheduler&& other) noexcept = delete;
 
+    /**
+     * @brief schedule the task
+     * @param t the task to schedule
+     * @pre scheduler is started
+     */
     virtual void schedule_task(std::weak_ptr<model::task> t) = 0;
 
-    virtual void proceed() = 0;
+    /**
+     * @brief wait for the scheduler to proceed
+     * @details single thread scheduler requires this to be called periodically, no-op for multi thread scheduler
+     */
+    virtual void wait_for_progress() = 0;
 
+    /**
+     * @brief start the scheduler so that it's ready to accept request
+     */
     virtual void start() = 0;
 
+    /**
+     * @brief stop the scheduler joining all the running tasks and canceling ones that are submitted but not yet executed
+     */
     virtual void stop() = 0;
 
-    virtual task_scheduler_kind kind() const noexcept = 0;
+    /**
+     * @return kind of the task scheduler
+     */
+    [[nodiscard]] virtual task_scheduler_kind kind() const noexcept = 0;
 };
 
 }

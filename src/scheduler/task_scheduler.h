@@ -49,7 +49,7 @@ public:
      * @param t the task to schedule
      * @pre scheduler is started
      */
-    virtual void schedule_task(std::weak_ptr<model::task> t) = 0;
+    virtual void schedule_task(std::shared_ptr<model::task> const& t) = 0;
 
     /**
      * @brief wait for the scheduler to proceed

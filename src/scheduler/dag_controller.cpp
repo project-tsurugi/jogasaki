@@ -292,12 +292,12 @@ public:
     }
 
     void start_running(step& v) {
-        auto&& task_list = v.create_tasks();
+        auto task_list = v.create_tasks();
         auto& tasks = steps_[v.id()];
         tasks.assign_slot(task_kind::main, task_list.size());
         step_state_table::slot_index slot = 0;
-        for(auto&& t : task_list) {
-            executor_->schedule_task(std::weak_ptr(t));
+        for(auto& t : task_list) {
+            executor_->schedule_task(t);
             tasks.register_task(task_kind::main, slot, t->id());
             tasks.task_state(t->id(), task_state_kind::running);
             ++slot;
@@ -313,7 +313,7 @@ public:
         }
         if(auto view = v.create_pretask(index);!view.empty()) {
             auto& t = view.front();
-            executor_->schedule_task(std::weak_ptr(t));
+            executor_->schedule_task(t);
             tasks.register_task(task_kind::pre, index, t->id());
             tasks.task_state(t->id(), task_state_kind::running);
         }

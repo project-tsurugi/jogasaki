@@ -30,12 +30,8 @@ class single_thread_task_scheduler : public task_scheduler {
 public:
     using entity_type = std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>>;
 
-    void schedule_task(std::weak_ptr<model::task> t) override {
-        auto s = t.lock();
-        if (s) {
-            auto id = s->id();
-            tasks_.emplace(id, std::move(t));
-        }
+    void schedule_task(std::shared_ptr<model::task> const& t) override {
+        tasks_.emplace(t->id(), t);
     }
 
     void wait_for_progress() override {

@@ -167,13 +167,9 @@ private:
     };
 
 public:
-    void schedule_task(std::weak_ptr<model::task> t) override {
-        auto s = t.lock();
-        if (s) {
-            threads_.submit(proceeding_task_wrapper(t));
-            auto id = s->id();
-            tasks_.emplace(id, t);
-        }
+    void schedule_task(std::shared_ptr<model::task> const& t) override {
+        threads_.submit(proceeding_task_wrapper(t));
+        tasks_.emplace(t->id(), t);
     }
 
     void wait_for_progress() override {

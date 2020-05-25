@@ -54,7 +54,7 @@ TEST_F(task_scheduler_test, single) {
         run = true;
         return task_result::complete;
     });
-    executor.schedule_task(std::weak_ptr(t));
+    executor.schedule_task(t);
     executor.wait_for_progress();
     ASSERT_TRUE(run);
 }
@@ -66,7 +66,7 @@ TEST_F(task_scheduler_test, multi) {
         run.test_and_set() ;
         return task_result::complete;
     });
-    executor.schedule_task(std::weak_ptr(t));
+    executor.schedule_task(t);
     executor.wait_for_progress();
     executor.stop();
     ASSERT_TRUE(run.test_and_set());

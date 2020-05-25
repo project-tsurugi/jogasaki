@@ -14,14 +14,15 @@ file(GLOB SOURCES
 )
 
 add_library(jogasaki
-    ${SOURCES}
+        ${SOURCES}
 )
 
 target_include_directories(jogasaki
-        PUBLIC .
+        PRIVATE .
 )
 
 target_link_libraries(jogasaki
+        PUBLIC api
         PRIVATE takatori
         PRIVATE tbb
         PRIVATE numa
@@ -38,6 +39,8 @@ target_compile_definitions(jogasaki PUBLIC BOOST_THREAD_VERSION=4)
 
 set_compile_options(jogasaki)
 
+install_custom(jogasaki ${export_name})
+
 # for tests
 add_library(jogasaki-impl INTERFACE)
 
@@ -47,4 +50,12 @@ target_include_directories(jogasaki-impl
 
 target_link_libraries(jogasaki-impl
         INTERFACE jogasaki
+        INTERFACE takatori
+        INTERFACE tbb
+        INTERFACE numa
+        INTERFACE Boost::boost
+        INTERFACE Boost::filesystem
+        INTERFACE Boost::thread
+        INTERFACE Boost::container
+        INTERFACE glog::glog
         )

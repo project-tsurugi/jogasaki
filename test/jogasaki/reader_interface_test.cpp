@@ -17,8 +17,8 @@
 #include <vector>
 #include <gtest/gtest.h>
 #include <executor/group_reader.h>
-#include <key_count.h>
-#include <value.h>
+#include <jogasaki/key_count.h>
+#include <jogasaki/value.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/rvalue_reference_wrapper.h>
 

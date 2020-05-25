@@ -13,39 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <executor/process/process_executor.h>
 
-#include <string>
-#include <string_view>
+#include <data/record_store.h>
 
-#include <takatori/util/object_creator.h>
-#include <gtest/gtest.h>
 #include <accessor/record_ref.h>
 
-#include <mock_memory_resource.h>
-#include <memory/monotonic_paged_memory_resource.h>
+#include <gtest/gtest.h>
+#include <jogasaki/mock_memory_resource.h>
 #include "test_root.h"
-#include "mock_processor_context.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::testing {
 
-//using namespace data;
-using namespace executor;
-//using namespace meta;
+using namespace data;
 using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
-using namespace std::string_literals;
 
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class process_executor_test : public test_root {};
+class record_store_test : public test_root {};
 
-TEST_F(process_executor_test, basic) {
-    auto context = std::make_shared<mock_processor_context>();
-    process_executor exec{};
-    exec.run();
+TEST_F(record_store_test, basic) {
+    mock_memory_resource memory{};
+    record_store r{&memory, &memory, test_record_meta1()};
+    struct S {
+        std::int64_t x_;
+        double y_;
+    };
+    ASSERT_TRUE(r.empty());
+    S buffer{};
+    buffer.x_ = 2;
+    buffer.y_ = 2.0;
+    record_ref ref{&buffer, sizeof(S)};
+    auto p1 = r.append(ref);
+    ASSERT_FALSE(r.empty());
+    buffer.x_ = 1;
+    buffer.y_ = 1.0;
+    auto p2 = r.append(ref);
+    ASSERT_EQ(2, r.count());
+    record_ref res1{p1, sizeof(S)};
+    EXPECT_EQ(2, res1.get_value<std::int64_t>(0));
+    record_ref res2{p2, sizeof(S)};
+    EXPECT_EQ(1, res2.get_value<std::int64_t>(0));
 }
 
 }

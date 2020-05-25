@@ -16,11 +16,12 @@
 
 #include <gtest/gtest.h>
 #include <executor/common/graph.h>
-#include <mock/simple_scan_process.h>
-#include <mock/simple_cogroup_process.h>
 #include <scheduler/dag_controller.h>
 #include <executor/exchange/deliver/step.h>
-#include <test_process.h>
+
+#include <jogasaki/mock/simple_scan_process.h>
+#include <jogasaki/mock/simple_cogroup_process.h>
+#include <jogasaki/test_process.h>
 #include "test_root.h"
 
 namespace jogasaki::executor {

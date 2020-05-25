@@ -39,9 +39,9 @@ public:
 
     void run() {
         // setup context
-        processor_->context(nullptr);
+//        processor_->context(nullptr);
 
-        processor_->run();
+//        processor_->run();
     }
 private:
     std::shared_ptr<processor> processor_{};

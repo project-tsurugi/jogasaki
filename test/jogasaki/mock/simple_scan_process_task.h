@@ -20,8 +20,9 @@
 #include <model/task.h>
 #include <model/step.h>
 #include <executor/common/task.h>
-#include <mock/mock_task.h>
 #include <meta/record_meta.h>
+
+#include <jogasaki/mock/mock_task.h>
 
 namespace jogasaki::executor {
 

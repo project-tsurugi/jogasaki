@@ -20,11 +20,11 @@
 #include <gtest/gtest.h>
 #include <executor/exchange/group/shuffle_info.h>
 #include <accessor/record_ref.h>
-
-#include <record.h>
-#include <mock_memory_resource.h>
 #include <memory/monotonic_paged_memory_resource.h>
-#include "test_root.h"
+
+#include <jogasaki/record.h>
+#include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::exchange::group {
 

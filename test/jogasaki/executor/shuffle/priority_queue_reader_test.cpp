@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <executor/exchange/group/sorted_vector_reader.h>
+#include <executor/exchange/group/priority_queue_reader.h>
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
@@ -22,10 +22,10 @@
 #include <executor/exchange/group/input_partition.h>
 #include <accessor/record_ref.h>
 
-#include <record.h>
-#include <mock_memory_resource.h>
+#include <jogasaki/mock_memory_resource.h>
 #include <memory/monotonic_paged_memory_resource.h>
-#include "test_root.h"
+#include <jogasaki/test_root.h>
+#include <jogasaki/record.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -39,8 +39,7 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-// copied from priority_queue_reader_test
-class sorted_vector_reader_test : public test_root {
+class priority_queue_reader_test : public test_root {
 public:
 };
 
@@ -56,7 +55,7 @@ auto get_value = [](group_reader& r) {
     return r.get_member().get_value<double>(info->value_meta()->value_offset(0));
 };
 
-TEST_F(sorted_vector_reader_test, basic) {
+TEST_F(priority_queue_reader_test, basic) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
             partitions.reserve(10); // avoid relocation when using references into vector
     auto context = std::make_shared<request_context>();
@@ -84,12 +83,12 @@ TEST_F(sorted_vector_reader_test, basic) {
 
     p1->write({&arr[2], sz});
     p1->write({&arr[1], sz});
-//    p1->flush();
+    p1->flush();
     p2->write({&arr[0], sz});
-//    p2->flush();
+    p2->flush();
 
 
-    sorted_vector_reader r{info, partitions};
+    priority_queue_reader r{info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
@@ -108,7 +107,7 @@ TEST_F(sorted_vector_reader_test, basic) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(sorted_vector_reader_test, multiple_partitions) {
+TEST_F(priority_queue_reader_test, multiple_partitions) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto context = std::make_shared<request_context>();
@@ -148,11 +147,11 @@ TEST_F(sorted_vector_reader_test, multiple_partitions) {
     p3->write({&arr[3], sz});
     p2->write({&arr[0], sz});
     p2->write({&arr[4], sz});
-//    p1->flush();
-//    p2->flush();
-//    p3->flush();
+    p1->flush();
+    p2->flush();
+    p3->flush();
 
-    sorted_vector_reader r{info, partitions};
+    priority_queue_reader r{info, partitions};
 
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(0, get_key(r));
@@ -179,7 +178,7 @@ TEST_F(sorted_vector_reader_test, multiple_partitions) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(sorted_vector_reader_test, empty_partition) {
+TEST_F(priority_queue_reader_test, empty_partition) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto context = std::make_shared<request_context>();
@@ -208,11 +207,10 @@ TEST_F(sorted_vector_reader_test, empty_partition) {
     p1->write({&arr[0], sz});
     p1->write({&arr[2], sz});
     p1->write({&arr[1], sz});
-//    p1->flush();
-//    p2->flush();
-    (void)p2;
+    p1->flush();
+    p2->flush();
 
-    sorted_vector_reader r{info, partitions};
+    priority_queue_reader r{info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));

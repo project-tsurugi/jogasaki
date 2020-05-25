@@ -37,3 +37,14 @@ target_link_libraries(jogasaki
 target_compile_definitions(jogasaki PUBLIC BOOST_THREAD_VERSION=4)
 
 set_compile_options(jogasaki)
+
+# for tests
+add_library(jogasaki-impl INTERFACE)
+
+target_include_directories(jogasaki-impl
+        INTERFACE .
+        )
+
+target_link_libraries(jogasaki-impl
+        INTERFACE jogasaki
+        )

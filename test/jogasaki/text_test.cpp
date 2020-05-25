@@ -18,7 +18,8 @@
 #include <gtest/gtest.h>
 #include <accessor/text.h>
 #include <memory/paged_memory_resource.h>
-#include <mock_memory_resource.h>
+
+#include <jogasaki/mock_memory_resource.h>
 
 namespace jogasaki::testing {
 

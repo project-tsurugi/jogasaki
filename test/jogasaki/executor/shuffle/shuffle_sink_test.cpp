@@ -18,6 +18,7 @@
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
+
 #include <executor/exchange/group/shuffle_info.h>
 #include <executor/exchange/group/writer.h>
 

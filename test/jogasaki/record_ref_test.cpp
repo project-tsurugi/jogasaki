@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <takatori/util/object_creator.h>
-#include <gtest/gtest.h>
 #include <accessor/record_ref.h>
+
+#include <gtest/gtest.h>
 
 namespace jogasaki::testing {
 
 using namespace std::string_view_literals;
 using namespace accessor;
-using namespace takatori::util;
-
-using namespace boost::container::pmr;
 
 class record_ref_test : public ::testing::Test {
 public:

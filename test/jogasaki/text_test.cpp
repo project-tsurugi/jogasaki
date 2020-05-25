@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 #include <accessor/text.h>
-#include <memory/paged_memory_resource.h>
 
 #include <jogasaki/mock_memory_resource.h>
 
@@ -26,9 +24,6 @@ namespace jogasaki::testing {
 using namespace std::string_view_literals;
 using namespace accessor;
 using namespace memory;
-using namespace takatori::util;
-
-using namespace boost::container::pmr;
 
 class text_test : public ::testing::Test {};
 

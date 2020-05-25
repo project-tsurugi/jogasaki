@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <meta/group_meta.h>
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
-#include <meta/group_meta.h>
 
 namespace jogasaki::testing {
 

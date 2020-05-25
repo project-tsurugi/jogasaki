@@ -18,12 +18,13 @@
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
+
 #include <executor/exchange/group/shuffle_info.h>
 #include <executor/exchange/group/input_partition.h>
 #include <accessor/record_ref.h>
+#include <memory/monotonic_paged_memory_resource.h>
 
 #include <jogasaki/mock_memory_resource.h>
-#include <memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/record.h>
 

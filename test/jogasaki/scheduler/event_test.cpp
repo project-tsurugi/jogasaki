@@ -21,14 +21,16 @@
 #include <executor/exchange/broadcast/step.h>
 #include <executor/exchange/deliver/step.h>
 #include <executor/common/task.h>
+#include <scheduler/dag_controller.h>
+
 #include <jogasaki/mock/simple_scan_process.h>
 #include <jogasaki/mock/simple_emit_process.h>
 #include <jogasaki/mock/simple_transform_process.h>
-#include <scheduler/dag_controller.h>
 #include <jogasaki/test_process.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::scheduler {
+
 using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;

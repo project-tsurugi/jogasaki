@@ -21,6 +21,7 @@
 #include <model/task.h>
 #include <constants.h>
 #include <executor/process/step.h>
+
 #include "simple_scan_process_task.h"
 
 namespace jogasaki::executor {

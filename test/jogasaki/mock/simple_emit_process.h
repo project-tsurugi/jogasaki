@@ -19,6 +19,7 @@
 #include <model/task.h>
 #include <constants.h>
 #include <executor/process/step.h>
+
 #include "simple_emit_process_task.h"
 #include "simple_emit_process_flow.h"
 

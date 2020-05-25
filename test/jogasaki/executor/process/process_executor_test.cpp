@@ -16,22 +16,16 @@
 #include <executor/process/process_executor.h>
 
 #include <string>
-#include <string_view>
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
-#include <accessor/record_ref.h>
 
-#include <jogasaki/mock_memory_resource.h>
-#include <memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/test_root.h>
 #include "mock_processor_context.h"
 
 namespace jogasaki::executor::process {
 
-//using namespace data;
 using namespace executor;
-//using namespace meta;
 using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;

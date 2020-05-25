@@ -16,11 +16,12 @@
 
 #include <vector>
 #include <gtest/gtest.h>
+#include <takatori/util/rvalue_reference_wrapper.h>
+
 #include <executor/group_reader.h>
+
 #include <jogasaki/key_count.h>
 #include <jogasaki/value.h>
-#include <takatori/util/sequence_view.h>
-#include <takatori/util/rvalue_reference_wrapper.h>
 
 namespace jogasaki::testing {
 using namespace std::literals::string_literals;

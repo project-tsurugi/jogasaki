@@ -18,6 +18,7 @@
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
+
 #include <executor/exchange/group/shuffle_info.h>
 #include <executor/exchange/group/input_partition.h>
 #include <accessor/record_ref.h>

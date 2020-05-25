@@ -16,11 +16,13 @@
 
 #include <data/record_store.h>
 
+#include <gtest/gtest.h>
+
 #include <accessor/record_ref.h>
 
-#include <gtest/gtest.h>
 #include <jogasaki/mock_memory_resource.h>
 #include "test_root.h"
+
 
 namespace jogasaki::testing {
 

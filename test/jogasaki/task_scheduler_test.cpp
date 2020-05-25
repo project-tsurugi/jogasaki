@@ -16,6 +16,7 @@
 
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
+
 #include <scheduler/single_thread_task_scheduler.h>
 #include <scheduler/multi_thread_task_scheduler.h>
 #include <executor/common/task.h>

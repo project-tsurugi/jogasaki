@@ -16,6 +16,7 @@
 #pragma once
 
 #include <string>
+
 #include "record.h"
 
 namespace jogasaki::data {

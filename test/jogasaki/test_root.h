@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <executor/common/graph.h>
 #include <scheduler/dag_controller.h>
 #include <meta/record_meta.h>

@@ -15,33 +15,18 @@
  */
 #pragma once
 
-#include <vector>
-
-#include <takatori/util/sequence_view.h>
-
 #include <executor/process/step.h>
 #include <executor/reader_container.h>
 #include <executor/record_writer.h>
 #include "processor_context.h"
+#include "processor.h"
 
 namespace jogasaki::executor::process {
 
 /**
- * @brief processor interface
- * @details this interface represents the sequence of procedures executed by the process
- */
-class processor {
-public:
-    virtual ~processor() = 0;
-
-    void initialize(processor_context& context);
-
-    void run(){};
-};
-
-/**
  * @brief process executor
- * @details
+ * @details process executor is responsible for set-up processor context and execute the processor in order to
+ * complete the work assigned to a processor task.
  */
 class process_executor {
 public:
@@ -50,17 +35,16 @@ public:
      * @param partition index of the partition where the executor conduct
      * @param processor
      */
-    process_executor(processor_context& context){
-        (void)context;
-    };
+    process_executor() = default;
 
     void run() {
-//        context_->initialize();
-//        processor
-//        context_->deinitialize();
+        // setup context
+        processor_->context(nullptr);
+
+        processor_->run();
     }
 private:
-
+    std::shared_ptr<processor> processor_{};
 };
 
 }

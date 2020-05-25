@@ -25,6 +25,7 @@
 #include <mock_memory_resource.h>
 #include <memory/monotonic_paged_memory_resource.h>
 #include "test_root.h"
+#include "mock_processor_context.h"
 
 namespace jogasaki::executor::process {
 
@@ -42,7 +43,9 @@ using namespace boost::container::pmr;
 class process_executor_test : public test_root {};
 
 TEST_F(process_executor_test, basic) {
-//    process_executor exec{};
+    auto context = std::make_shared<mock_processor_context>();
+    process_executor exec{};
+    exec.run();
 }
 
 }

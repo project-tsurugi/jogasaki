@@ -29,45 +29,36 @@ template <class T>
 using sequence_view = takatori::util::sequence_view<T>;
 
 /**
- * @brief processor context
+ * @brief processor context interface
  * @details this object is responsible to pass the IO objects to processor
  */
 class processor_context {
 public:
-    using readers_list = sequence_view<reader_container>;
-    using writers_list = sequence_view<record_writer>;
-
-    /**
-     * @brief initialize the context for the current environment(e.g. assigned thread)
-     * @note context knows the partition that the associated processor belongs to
-     */
-    void initialize();
-
-    /**
-     * @brief deinitialize the context and detach from current environment
-     */
-    void deinitialize();
+    using reader_index = std::size_t;
+    using writer_index = std::size_t;
 
     /**
      * @brief accessor to main/sub input readers
-     * @return readers list lining up with the order of main/sub input ports
-     * @pre the object is already initialized and not yet deinitialized
+     * @return reader corresponding to the given index
      */
-    readers_list readers();
+    virtual reader_container reader(reader_index idx) = 0;
 
     /**
      * @brief accessor to main output writers
-     * @return writers list lining up with the order of output ports
-     * @pre the object is already initialized and not yet deinitialized
+     * @return writer corresponding to the given index
      */
-    writers_list downstream_writers();
+    virtual record_writer* downstream_writer(writer_index idx) = 0;
 
     /**
-     * @brief accessor to writers
-     * @return writers list lining up with the order of operators that write out records
-     * @pre the object is already initialized and not yet deinitialized
+     * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
+     * @return external writer corresponding to the given index
      */
-    writers_list external_writers();
+    virtual record_writer* external_writer(writer_index idx) = 0;
+
+    /**
+     * @brief destroy the object
+     */
+     virtual ~processor_context() = default;
 };
 
 }

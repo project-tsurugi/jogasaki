@@ -25,20 +25,30 @@
 
 namespace jogasaki::executor::process {
 
-template <class T>
-using sequence_view = takatori::util::sequence_view<T>;
-
 /**
  * @brief processor interface
- * @details this interface represents the sequence of procedures executed by the process
+ * @details the implementation represents the sequence of procedures executed by the process
+ * The implementation is expected initialize itself with the passed context and to conduct the sequence
+ * by retrieving the necessary I/O object from context.
  */
 class processor {
 public:
-    virtual ~processor() = 0;
 
-    void initialize(processor_context& context);
+    /**
+     * @brief setter for the processor context
+     * @param context the context for this processor
+     */
+    virtual void context(std::shared_ptr<processor_context> context) = 0;
 
-    void run(){};
+    /**
+     * @brief execute the processor body
+     */
+    virtual void run() = 0;
+
+    /**
+     * @brief destroy this object
+     */
+    virtual ~processor() = default;
 };
 
 }

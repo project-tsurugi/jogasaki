@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <data/record_store.h>
+#include <jogasaki/data/record_store.h>
 
 #include <gtest/gtest.h>
 
-#include <accessor/record_ref.h>
+#include <jogasaki/accessor/record_ref.h>
 
 #include <jogasaki/mock_memory_resource.h>
 #include "test_root.h"

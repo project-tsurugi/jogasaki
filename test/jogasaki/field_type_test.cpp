@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <meta/field_type.h>
+#include <jogasaki/meta/field_type.h>
 
 #include <gtest/gtest.h>
 #include <takatori/util/enum_tag.h>

@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <jogasaki/accessor/text.h>
 
 #include <gtest/gtest.h>
-#include <accessor/text.h>
 
 #include <jogasaki/mock_memory_resource.h>
 

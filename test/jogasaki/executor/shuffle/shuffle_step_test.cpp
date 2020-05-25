@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/shuffle_info.h>
 
 namespace jogasaki::executor::exchange::group {
 

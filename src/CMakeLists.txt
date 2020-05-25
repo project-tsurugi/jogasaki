@@ -1,16 +1,16 @@
 file(GLOB SOURCES
-        "*.cpp"
-        "executor/*.cpp"
-        "executor/common/*.cpp"
-        "executor/process/*.cpp"
-        "executor/exchange/*.cpp"
-        "executor/exchange/broadcast/*.cpp"
-        "executor/exchange/deliver/*.cpp"
-        "executor/exchange/forward/*.cpp"
-        "executor/exchange/group/*.cpp"
-        "model/*.cpp"
-        "scheduler/*.cpp"
-        "data/*.cpp"
+        "jogasaki/*.cpp"
+        "jogasaki/executor/*.cpp"
+        "jogasaki/executor/common/*.cpp"
+        "jogasaki/executor/process/*.cpp"
+        "jogasaki/executor/exchange/*.cpp"
+        "jogasaki/executor/exchange/broadcast/*.cpp"
+        "jogasaki/executor/exchange/deliver/*.cpp"
+        "jogasaki/executor/exchange/forward/*.cpp"
+        "jogasaki/executor/exchange/group/*.cpp"
+        "jogasaki/model/*.cpp"
+        "jogasaki/scheduler/*.cpp"
+        "jogasaki/data/*.cpp"
 )
 
 add_library(jogasaki

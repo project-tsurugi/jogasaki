@@ -18,13 +18,13 @@
 #include <memory>
 #include <glog/logging.h>
 
-#include <model/task.h>
-#include <model/step.h>
-#include <executor/common/task.h>
-#include <executor/process/processor_context.h>
-#include <executor/reader_container.h>
-#include <channel.h>
-#include <utils.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/process/processor_context.h>
+#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/channel.h>
+#include <jogasaki/utils.h>
 
 namespace jogasaki::executor::process {
 

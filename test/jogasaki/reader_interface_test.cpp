@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 #include <takatori/util/rvalue_reference_wrapper.h>
 
-#include <executor/group_reader.h>
+#include <jogasaki/executor/group_reader.h>
 
 #include <jogasaki/key_count.h>
 #include <jogasaki/value.h>

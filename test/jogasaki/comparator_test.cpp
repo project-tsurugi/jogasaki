@@ -17,8 +17,8 @@
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <executor/partitioner.h>
-#include <executor/comparator.h>
+#include <jogasaki/executor/partitioner.h>
+#include <jogasaki/executor/comparator.h>
 
 namespace jogasaki::testing {
 

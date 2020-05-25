@@ -18,15 +18,16 @@
 
 #include <glog/logging.h>
 
-#include <executor/common/graph.h>
-#include <executor/common/port.h>
-#include <scheduler/dag_controller.h>
-#include <executor/exchange/deliver/step.h>
-#include <executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/executor/exchange/deliver/step.h>
+#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/constants.h>
+
 #include "producer_process.h"
 #include "consumer_process.h"
 #include "params.h"
-#include "constants.h"
 #include <cli_constants.h>
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS

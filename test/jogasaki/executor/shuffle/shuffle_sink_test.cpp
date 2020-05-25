@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <executor/exchange/group/sink.h>
+#include <jogasaki/executor/exchange/group/sink.h>
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <executor/exchange/group/shuffle_info.h>
-#include <executor/exchange/group/writer.h>
+#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/writer.h>
 
 namespace jogasaki::executor::exchange::group {
 

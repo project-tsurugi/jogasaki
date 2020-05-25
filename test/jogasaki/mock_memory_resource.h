@@ -17,7 +17,7 @@
 
 #include <boost/container/pmr/monotonic_buffer_resource.hpp>
 
-#include <memory/paged_memory_resource.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 
 namespace jogasaki {
 

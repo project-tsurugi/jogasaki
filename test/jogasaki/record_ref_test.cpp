@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <accessor/record_ref.h>
+#include <jogasaki/accessor/record_ref.h>
 
 #include <gtest/gtest.h>
 

@@ -17,9 +17,9 @@
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
-#include <accessor/record_ref.h>
-#include <accessor/record_copier.h>
-#include <meta/record_meta.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/meta/record_meta.h>
 
 #include "mock_memory_resource.h"
 

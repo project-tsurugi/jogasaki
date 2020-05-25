@@ -17,9 +17,9 @@
 
 #include <glog/logging.h>
 
-#include <model/task.h>
-#include <model/step.h>
-#include <executor/common/task.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/executor/common/task.h>
 
 #include <jogasaki/mock/mock_task.h>
 

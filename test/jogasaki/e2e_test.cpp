@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
-#include <executor/common/graph.h>
-#include <scheduler/dag_controller.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/scheduler/dag_controller.h>
 
 namespace jogasaki::testing {
 using namespace std::literals::string_literals;

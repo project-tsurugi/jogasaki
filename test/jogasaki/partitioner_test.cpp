@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <jogasaki/executor/partitioner.h>
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
-
-#include <executor/partitioner.h>
 
 namespace jogasaki::testing {
 

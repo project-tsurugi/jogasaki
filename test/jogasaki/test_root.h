@@ -17,9 +17,9 @@
 
 #include <gtest/gtest.h>
 
-#include <executor/common/graph.h>
-#include <scheduler/dag_controller.h>
-#include <meta/record_meta.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki {
 

@@ -17,10 +17,10 @@
 
 #include <memory>
 
-#include <model/step.h>
-#include <model/task.h>
-#include <constants.h>
-#include <executor/process/step.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/constants.h>
+#include <jogasaki/executor/process/step.h>
 
 #include "simple_scan_process_task.h"
 

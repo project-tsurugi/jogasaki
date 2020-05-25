@@ -76,9 +76,6 @@ public:
     void activate() override {
         data_flow_object(std::make_unique<test_process_flow>(nullptr, this, context()));
     }
-    void deactivate() override {
-
-    }
 private:
 };
 

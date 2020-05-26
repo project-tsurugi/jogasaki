@@ -57,7 +57,7 @@ public:
 
     /**
      * @brief accessor to main/sub input readers
-     * @details internally stored reader or newly acquired reader will be returned, no need to release them one by one, but
+     * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
      * @return reader corresponding to the given index
      */
@@ -65,7 +65,7 @@ public:
 
     /**
      * @brief accessor to main output writers
-     * @details internally stored reader or newly acquired reader will be returned, no need to release them one by one, but
+     * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
      * @return writer corresponding to the given index
      */
@@ -73,7 +73,7 @@ public:
 
     /**
      * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
-     * @details internally stored reader or newly acquired reader will be returned, no need to release them one by one, but
+     * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
      * @return external writer corresponding to the given index
      */
@@ -91,7 +91,7 @@ public:
 
     /**
      * @brief release all resource (readers/writers and working context) attached to this instance
-     * @details processor is required to call this when it ends using the context (i.e. the end of assigned work for the processor)
+     * @details processor is required to call this when it finishes using the context (i.e. the end of assigned work for the processor)
      */
     void release();
 

@@ -20,8 +20,7 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/executor/exchange/step.h>
-#include <jogasaki/executor/exchange/task.h>
+#include "task.h"
 
 namespace jogasaki::executor::process {
 
@@ -30,11 +29,10 @@ namespace jogasaki::executor::process {
  */
 class flow : public common::flow {
 public:
+
     using field_index_type = meta::record_meta::field_index_type;
+
     using record_meta_list = std::vector<std::shared_ptr<meta::record_meta>>;
-    ~flow() override = default;
-    flow(flow&& other) noexcept = default;
-    flow& operator=(flow&& other) noexcept = default;
 
     /**
      * @brief create new instance with empty schema (for testing)
@@ -63,16 +61,18 @@ public:
     {}
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-//        for(auto& out : output_ports_) {
-//            for(auto& opposite : out->opposites()) {
-//                dynamic_cast<exchange::input_port *>(opposite)->create_writers(default_partitions); // TODO
-//            }
-//        }
+        // TODO
+
+        // create processors
+
+        // create tasks supplying the processor
+
         return {};
     }
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override {
         (void)subinput;
+        // TODO create prepare task for the index
         return {};
     }
 
@@ -85,7 +85,7 @@ private:
     record_meta_list subinput_meta_{};
     record_meta_list output_meta_{};
     record_meta_list external_meta_{};
-    std::vector<std::unique_ptr<model::task>> tasks_{};
+    std::vector<std::shared_ptr<model::task>> tasks_{};
     bool main_input_is_group_ = false;
 };
 

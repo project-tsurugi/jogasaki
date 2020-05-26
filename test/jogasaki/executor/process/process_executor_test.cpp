@@ -21,7 +21,10 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>
-#include "mock_processor_context.h"
+
+#include "mock/processor_context.h"
+#include "mock/process_executor.h"
+#include "mock/processor.h"
 
 namespace jogasaki::executor::process {
 
@@ -37,8 +40,16 @@ using namespace boost::container::pmr;
 class process_executor_test : public test_root {};
 
 TEST_F(process_executor_test, basic) {
-    auto context = std::make_shared<mock_processor_context>();
-    process_executor exec{};
+    auto reader = std::make_shared<mock::record_reader>();
+    auto downstream_writer = std::make_shared<mock::record_writer>();
+    auto external_writer = std::make_shared<mock::external_writer>();
+
+    auto context = std::make_shared<mock::processor_context>(reader, downstream_writer, external_writer);
+
+    auto proc = std::make_shared<mock::processor>();
+
+    mock::process_executor exec{proc, context};
+
     exec.run();
 }
 

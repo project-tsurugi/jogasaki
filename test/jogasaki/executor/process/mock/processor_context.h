@@ -23,33 +23,50 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/process/processor_context.h>
 #include <jogasaki/executor/reader_container.h>
-#include <jogasaki/channel.h>
-#include <jogasaki/utils.h>
 
-namespace jogasaki::executor::process {
+#include "record_reader.h"
+#include "record_writer.h"
+#include "external_writer.h"
 
-class mock_processor_context : public processor_context {
+namespace jogasaki::executor::process::mock {
+
+class processor_context : public process::processor_context {
 public:
+    processor_context(
+            std::shared_ptr<executor::record_reader> reader,
+            std::shared_ptr<executor::record_writer> downstream_writer,
+            std::shared_ptr<executor::record_writer> external_writer
+            ) :
+            reader_(std::move(reader)),
+            downstream_writer_(std::move(downstream_writer)),
+            external_writer_(std::move(external_writer))
+    {}
 
     reader_container reader(reader_index idx) override {
         if (idx != 0) std::abort();
         return reader_container(reader_.get());
     }
 
-    record_writer* downstream_writer(writer_index idx) override {
+    executor::record_writer* downstream_writer(writer_index idx) override {
         if (idx != 0) std::abort();
         return downstream_writer_.get();
     }
 
-    record_writer* external_writer(writer_index idx) override {
+    executor::record_writer* external_writer(writer_index idx) override {
         if (idx != 0) std::abort();
         return external_writer_.get();
     }
 
+    void do_release() override {
+        if (reader_) reader_->release();
+        if (downstream_writer_) downstream_writer_->release();
+        if (external_writer_) external_writer_->release();
+    }
+
 private:
-    std::unique_ptr<record_reader> reader_{};
-    std::unique_ptr<record_writer> downstream_writer_{};
-    std::unique_ptr<record_writer> external_writer_{};
+    std::shared_ptr<executor::record_reader> reader_{};
+    std::shared_ptr<executor::record_writer> downstream_writer_{};
+    std::shared_ptr<executor::record_writer> external_writer_{};
 };
 
 }

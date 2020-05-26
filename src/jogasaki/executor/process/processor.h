@@ -25,11 +25,41 @@
 
 namespace jogasaki::executor::process {
 
+class processor_context;
+
+/**
+ * @brief processor return codes
+ */
+enum class status : std::size_t {
+
+    /**
+     * @brief processor completed with no errors
+     */
+    completed,
+
+    /**
+     * @brief processor completed with errors
+     */
+    completed_with_errors,
+
+    /**
+     * @brief processor suspended its task and is going to sleep
+     * @attention not yet fully supported
+     */
+    to_sleep,
+
+    /**
+     * @brief processor suspended its task and is trying to yield to others
+     * @attention not yet fully supported
+     */
+    to_yield,
+};
+
 /**
  * @brief processor interface
  * @details the implementation represents the sequence of procedures executed by the process
- * The implementation is expected initialize itself with the passed context and to conduct the sequence
- * by retrieving the necessary I/O object from context.
+ * The implementation is expected initialize itself with the supplied context and conduct the process
+ * by retrieving the necessary I/O object and working area from context.
  */
 class processor {
 public:
@@ -42,8 +72,10 @@ public:
 
     /**
      * @brief execute the processor body
+     * @pre context has been provided by context() function
+     * @return status code to notify caller of the execution status
      */
-    virtual void run() = 0;
+    virtual status run() = 0;
 
     /**
      * @brief destroy this object

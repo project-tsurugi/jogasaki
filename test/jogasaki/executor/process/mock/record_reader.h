@@ -13,23 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "process_executor.h"
+#pragma once
 
-namespace jogasaki::executor::process {
+#include <takatori/util/sequence_view.h>
 
-void processor_context::work_context(std::unique_ptr<class work_context> work_context) {
-    work_context_ = std::move(work_context);
+#include <jogasaki/accessor/record_ref.h>
+
+namespace jogasaki::executor::process::mock {
+
+class record_reader : public executor::record_reader {
+public:
+    [[nodiscard]] bool available() const override {
+        return true;
+    }
+    bool next_record() override {
+        return true;
+    }
+    [[nodiscard]] accessor::record_ref get_record() const {
+        return {};
+    }
+    void release() override {
+
+    }
+};
+
 }
-
-[[nodiscard]] class work_context* processor_context::work_context() const {
-    return work_context_.get();
-}
-
-void processor_context::release() {
-    do_release();
-    work_context_.reset();
-}
-
-}
-
 

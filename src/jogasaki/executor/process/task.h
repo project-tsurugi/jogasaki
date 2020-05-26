@@ -21,6 +21,10 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/process/processor.h>
+#include <jogasaki/executor/process/processor_context.h>
+
+#include "process_executor.h"
 
 namespace jogasaki::executor::process {
 
@@ -29,7 +33,7 @@ public:
     task() = default;
     task(std::shared_ptr<request_context> context,
             step_type* src,
-            std::unique_ptr<processor_context> context,
+            std::unique_ptr<processor_context> processor_context,
             std::unique_ptr<processor> processor
             ) :
             common::task(std::move(context), src),
@@ -40,10 +44,18 @@ public:
     model::task_result operator()() override {
         VLOG(1) << *this << " process::task executed.";
 
-        process_executor executor{context_, processor_};
-        executor.run(*context_);
+        // setup process_executor with the processor_
 
-        context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
+        // have process_executor setup the context
+
+        // run processor with the context
+
+        // map return code from the status code returned by processor::run()
+
+        // raise appropriate event if needed
+        context()->channel()->emplace(event_kind_tag<event_kind::task_completed>, id(), id());
+
+        // TODO support sleep/yield
         return model::task_result::complete;
     }
 

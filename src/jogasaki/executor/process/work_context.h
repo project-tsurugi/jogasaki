@@ -13,22 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "process_executor.h"
+#pragma once
+
+#include <vector>
+
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/record_writer.h>
 
 namespace jogasaki::executor::process {
 
-void processor_context::work_context(std::unique_ptr<class work_context> work_context) {
-    work_context_ = std::move(work_context);
-}
+/**
+ * @brief processor working context
+ * @details represents transient work area used by the running processor
+ */
+class work_context {
+public:
 
-[[nodiscard]] class work_context* processor_context::work_context() const {
-    return work_context_.get();
-}
-
-void processor_context::release() {
-    do_release();
-    work_context_.reset();
-}
+    /**
+     * @brief destroy this object
+     */
+    virtual ~work_context() = default;
+};
 
 }
 

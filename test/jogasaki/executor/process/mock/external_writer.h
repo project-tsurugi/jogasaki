@@ -13,23 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "process_executor.h"
+#pragma once
 
-namespace jogasaki::executor::process {
+#include <jogasaki/accessor/record_ref.h>
 
-void processor_context::work_context(std::unique_ptr<class work_context> work_context) {
-    work_context_ = std::move(work_context);
+namespace jogasaki::executor::process::mock {
+
+class external_writer : public executor::record_writer {
+public:
+
+    external_writer() = default;
+
+    bool write(accessor::record_ref rec) override {
+        return false;
+    }
+    void flush() override {
+        // no-op
+    }
+    void release() override {
+        // no-op
+    }
+};
+
 }
-
-[[nodiscard]] class work_context* processor_context::work_context() const {
-    return work_context_.get();
-}
-
-void processor_context::release() {
-    do_release();
-    work_context_.reset();
-}
-
-}
-
 

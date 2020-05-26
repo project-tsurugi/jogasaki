@@ -50,12 +50,29 @@ TEST_F(reader_container_test, simple) {
         EXPECT_EQ(kind::record, c.kind());
         auto* r = c.reader<record_reader>();
         static_assert(std::is_same_v<record_reader*, decltype(r)>);
+        EXPECT_TRUE(c);
     }
     {
         reader_container c{&gr};
         EXPECT_EQ(kind::group, c.kind());
         auto* r = c.reader<group_reader>();
         static_assert(std::is_same_v<group_reader*, decltype(r)>);
+        EXPECT_TRUE(c);
+    }
+}
+
+TEST_F(reader_container_test, empty_container) {
+    {
+        reader_container c{};
+        EXPECT_FALSE(c);
+    }
+    {
+        reader_container c{static_cast<record_reader*>(nullptr)};
+        EXPECT_FALSE(c);
+    }
+    {
+        reader_container c{static_cast<group_reader*>(nullptr)};
+        EXPECT_FALSE(c);
     }
 }
 

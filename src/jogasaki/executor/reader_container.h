@@ -83,6 +83,10 @@ public:
         return static_cast<T*>(reader_);
     }
 
+    explicit operator bool() const noexcept {
+        return reader_ != nullptr;
+    }
+
 private:
     void* reader_{};
     reader_kind kind_{};

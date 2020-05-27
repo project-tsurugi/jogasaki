@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <variant>
 #include <boost/thread/thread.hpp>
 #include <numa.h>
 
@@ -50,7 +51,7 @@ inline model::step::port_index_type output_port_index(model::step const& s, mode
 inline bool set_core_affinity(boost::thread* t, std::size_t cpu, bool uniform_on_nodes = false) {
     if (uniform_on_nodes) {
         static std::size_t nodes = numa_max_node()+1;
-        return 0 == numa_run_on_node(cpu % nodes);
+        return 0 == numa_run_on_node(static_cast<int>(cpu % nodes));
     }
     pthread_t x = t->native_handle();
     cpu_set_t cpuset;
@@ -59,20 +60,16 @@ inline bool set_core_affinity(boost::thread* t, std::size_t cpu, bool uniform_on
     return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
 }
 
-/*
-template <typename T, typename U>
-takatori::util::reference_list_view<takatori::util::universal_extractor<T>> reference_list_from_pointer_vector(std::vector<std::unique_ptr<U>>& vp) {
-    takatori::util::universal_extractor<T> ext {
-            [](void* cursor) -> T& {
-                return *dynamic_cast<T*>(static_cast<std::unique_ptr<U>*>(cursor)->get());
-            },
-            [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<U>*>(cursor) + offset);
-            },
-    };
-    return takatori::util::reference_list_view<takatori::util::universal_extractor<T>>{ vp, ext };
+template<class T, class Variant, std::size_t index = 0>
+constexpr std::size_t alternative_index() noexcept {
+    if constexpr (index == std::variant_size_v<Variant>) {
+        return -1;
+    } else if constexpr (std::is_same_v<std::variant_alternative_t<index, Variant>, T>) {
+        return index;
+    } else {
+        return alternative_index<T, Variant, index + 1>();
+    }
 }
- */
 
 }
 

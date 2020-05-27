@@ -17,6 +17,9 @@
 
 #include <memory>
 
+#include <takatori/util/fail.h>
+
+#include <jogasaki/utils.h>
 #include <jogasaki/executor/record_reader.h>
 #include <jogasaki/executor/group_reader.h>
 
@@ -26,6 +29,7 @@ namespace jogasaki::executor {
  * @brief reader kind
  */
 enum class reader_kind {
+    unknown,
     record,
     group,
 };
@@ -39,6 +43,7 @@ constexpr inline std::string_view to_string_view(reader_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = reader_kind;
     switch (value) {
+        case kind::unknown: return "unknown"sv;
         case kind::record: return "record"sv;
         case kind::group: return "group"sv;
     }
@@ -66,30 +71,49 @@ inline constexpr reader_kind to_kind<group_reader> = reader_kind::group;
  */
 class reader_container {
 public:
+    using entity_type = std::variant<std::monostate, record_reader*, group_reader*>;
+
+    template <class T>
+    static constexpr std::size_t index_of = alternative_index<T, entity_type>();
+
     /**
      * @brief create empty instance
      */
     constexpr reader_container() = default;
-    explicit reader_container(record_reader* reader) noexcept : reader_(reader), kind_(reader_kind::record) {}
-    explicit reader_container(group_reader* reader) noexcept : reader_(reader), kind_(reader_kind::group) {}
+    explicit reader_container(record_reader* reader) noexcept : reader_(std::in_place_type<record_reader*>, reader) {}
+    explicit reader_container(group_reader* reader) noexcept : reader_(std::in_place_type<group_reader*>, reader) {}
 
     [[nodiscard]] reader_kind kind() const noexcept {
-        return kind_;
+        switch(reader_.index()) {
+            case index_of<std::monostate>:
+                return reader_kind::unknown;
+            case index_of<record_reader*>:
+                return to_kind<record_reader>;
+            case index_of<group_reader*>:
+                return to_kind<group_reader>;
+        }
+        takatori::util::fail();
     }
 
     template<class T>
-    std::enable_if_t<std::is_same_v<T, record_reader> || std::is_same_v<T, group_reader>, T*> reader() {
-        if (kind_ != to_kind<T>) std::abort();
-        return static_cast<T*>(reader_);
+    T* reader() {
+        return std::get<T*>(reader_);
     }
 
     explicit operator bool() const noexcept {
-        return reader_ != nullptr;
+        switch(reader_.index()) {
+            case index_of<std::monostate>:
+                return false;
+            case index_of<record_reader*>:
+                return *std::get_if<record_reader*>(&reader_) != nullptr;
+            case index_of<group_reader*>:
+                return *std::get_if<group_reader*>(&reader_) != nullptr;
+        }
+        takatori::util::fail();
     }
 
 private:
-    void* reader_{};
-    reader_kind kind_{};
+    entity_type reader_{};
 };
 
 } // namespace

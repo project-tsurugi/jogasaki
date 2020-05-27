@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <memory>
+#include <vector>
 
 namespace jogasaki::utils {
 
@@ -138,6 +139,20 @@ public:
         }
         if (count == 0) return 0;
         return total / count;
+    }
+
+    std::unique_ptr<std::vector<std::size_t>> durations(point_in_code begin, point_in_code end) {
+      auto results = std::make_unique<std::vector<std::size_t>>();
+      Clock::time_point fixed_begin = view_first(begin);
+      Clock::time_point fixed_end = view_last(end);
+      for(auto& p : records_) {
+        auto& arr = p.second;
+        if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue; //NOLINT
+        auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end]; //NOLINT
+        auto b = arr[begin] == Clock::time_point() ? fixed_begin : arr[begin]; //NOLINT
+        results->emplace_back(std::chrono::duration_cast<Duration>(e-b).count());
+      }
+      return std::move(results);
     }
 
 private:

@@ -21,7 +21,7 @@ void processor_context::work_context(std::unique_ptr<class work_context> work_co
     work_context_ = std::move(work_context);
 }
 
-[[nodiscard]] class work_context* processor_context::work_context() const {
+class work_context* processor_context::work_context() const {
     return work_context_.get();
 }
 

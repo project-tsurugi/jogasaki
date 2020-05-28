@@ -55,8 +55,7 @@ enum class status : std::size_t {
  * - main input(s)
  * - a sub input
  * - scan operation
- * The first/second cases are for the process step driven by take operator and the last one is by scan operator.
- * So a process step corresponds to the following processors:
+ * So one process step corresponds to the following processors:
  * - one processor for main inputs, or data from scan operation
  * - one processor per sub input
  *

@@ -63,18 +63,6 @@ public:
         if (external_writer_) external_writer_->release();
     }
 
-    std::size_t readers_count() override {
-        return 1;
-    };
-
-    std::size_t downstream_writers_count() override {
-        return 1;
-    }
-
-    std::size_t external_writers_count() override {
-        return 1;
-    }
-
     class scan_info const* scan_info() override {
         return nullptr;
     }

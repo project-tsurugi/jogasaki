@@ -26,7 +26,7 @@ namespace jogasaki::executor::process {
  * @brief task context representing task assignment information and its running context
  * @details this object is responsible to provide scope of the work assigned to task, e.g. scan info, input data reader, and transient work area
  *
- * Depending on whether the processor logic is driven by take or scan, readers() or scan_info() functions are called to
+ * Depending on whether the processor logic is driven by main/sub input or scan, readers() or scan_info() functions are called to
  * locate/retrieve the input data for the task.
  *
  * The knowledge about the number of I/O objects and its index (i.e. what port or exchange the i-th reader/writer
@@ -60,44 +60,32 @@ public:
      * @brief accessor to main/sub input readers
      * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
+     * @param idx the requested reader's index
+     * If this context is for the task processing main input(s), the index corresponds to the index of the main input.
+     * If this context is for the task processing sub input, the parameter is ignored since only one reader/input exists.
      * @return reader corresponding to the given index
      */
     virtual reader_container reader(reader_index idx) = 0;
 
     /**
-     * @brief accessor to the number of readers
-     * @return number of readers
-     */
-    virtual std::size_t readers_count() = 0;
-
-    /**
      * @brief accessor to main output writers
      * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
+     * @param idx the requested writer's index, which corresponds to the index of output from the process step
      * @return writer corresponding to the given index
+     * @attention for the task processing sub input, this
      */
     virtual record_writer* downstream_writer(writer_index idx) = 0;
-
-    /**
-     * @brief accessor to the number of downstream writers
-     * @return number of writers
-     */
-    virtual std::size_t downstream_writers_count() = 0;
 
     /**
      * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
      * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
+     * @param idx the requested external writer's index, which corresponds to the index of external output from the process step
+     * (the knowledge on the index of external output is shared with processor impl.)
      * @return external writer corresponding to the given index
      */
     virtual record_writer* external_writer(writer_index idx) = 0;
-
-    /**
-     * @brief accessor to the number of external writers
-     * @return number of writers
-     */
-
-    virtual std::size_t external_writers_count() = 0;
 
     /**
      * @brief accessor to scan information that defines scan specification for the task

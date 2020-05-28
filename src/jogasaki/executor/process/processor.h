@@ -17,7 +17,7 @@
 
 namespace jogasaki::executor::process {
 
-class processor_context;
+class task_context;
 
 /**
  * @brief processor return codes
@@ -81,7 +81,7 @@ public:
      * @param context the context for the task conducted by this processor
      * @return status code to notify caller of the execution status
      */
-    virtual status run(processor_context* context) = 0;
+    virtual status run(task_context* context) = 0;
 
     /**
      * @brief destroy this object

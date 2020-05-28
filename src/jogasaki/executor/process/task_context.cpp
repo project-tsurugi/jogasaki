@@ -17,15 +17,15 @@
 
 namespace jogasaki::executor::process {
 
-void processor_context::work_context(std::unique_ptr<class work_context> work_context) {
+void task_context::work_context(std::unique_ptr<class work_context> work_context) {
     work_context_ = std::move(work_context);
 }
 
-class work_context* processor_context::work_context() const {
+class work_context* task_context::work_context() const {
     return work_context_.get();
 }
 
-void processor_context::release() {
+void task_context::release() {
     do_release();
     work_context_.reset();
 }

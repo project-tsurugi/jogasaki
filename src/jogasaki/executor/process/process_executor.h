@@ -18,7 +18,7 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
-#include "processor_context.h"
+#include "task_context.h"
 #include "processor.h"
 
 namespace jogasaki::executor::process {

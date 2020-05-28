@@ -21,7 +21,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/process/processor_context.h>
+#include <jogasaki/executor/process/task_context.h>
 #include <jogasaki/executor/reader_container.h>
 
 #include "record_reader.h"
@@ -30,7 +30,7 @@
 
 namespace jogasaki::executor::process::mock {
 
-class processor_context : public process::processor_context {
+class processor_context : public process::task_context {
 public:
     processor_context(
             std::shared_ptr<executor::record_reader> reader,

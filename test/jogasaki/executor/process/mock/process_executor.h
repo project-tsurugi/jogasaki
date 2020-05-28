@@ -16,7 +16,7 @@
 #pragma once
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/process/processor_context.h>
+#include <jogasaki/executor/process/task_context.h>
 #include <jogasaki/executor/process/processor.h>
 
 namespace jogasaki::executor::process::mock {

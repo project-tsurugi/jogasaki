@@ -33,7 +33,7 @@ namespace jogasaki::executor::process {
  * Depending on whether the processor logic is driven by take or scan, readers() or scan_info() functions are call to
  * locate/retrieve the input data for the task.
  */
-class processor_context {
+class task_context {
 public:
     /// @brief index used to access readers
     using reader_index = std::size_t;
@@ -44,17 +44,17 @@ public:
     /**
      * @brief create new empty instance
      */
-    processor_context() = default;
+    task_context() = default;
 
     /**
      * @brief destroy the object
      */
-    virtual ~processor_context() = default;
+    virtual ~task_context() = default;
 
-    processor_context(processor_context const& other) = delete;
-    processor_context& operator=(processor_context const& other) = delete;
-    processor_context(processor_context&& other) noexcept = delete;
-    processor_context& operator=(processor_context&& other) noexcept = delete;
+    task_context(task_context const& other) = delete;
+    task_context& operator=(task_context const& other) = delete;
+    task_context(task_context&& other) noexcept = delete;
+    task_context& operator=(task_context&& other) noexcept = delete;
 
     /**
      * @brief accessor to main/sub input readers

@@ -22,7 +22,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/process/processor.h>
-#include <jogasaki/executor/process/processor_context.h>
+#include <jogasaki/executor/process/task_context.h>
 
 #include "process_executor.h"
 
@@ -60,7 +60,7 @@ public:
     }
 
 private:
-    std::unique_ptr<processor_context> processor_context_{};
+    std::unique_ptr<task_context> processor_context_{};
     std::unique_ptr<processor> processor_{};
 };
 

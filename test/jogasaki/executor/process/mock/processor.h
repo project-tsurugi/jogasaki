@@ -29,11 +29,7 @@ namespace jogasaki::executor::process::mock {
 class processor : public process::processor {
 
 public:
-    void context(std::shared_ptr<process::task_context> context) override {
-        context_ = std::move(context);
-    }
-
-    status run() override {
+    status run(process::task_context*) override {
         return status::completed;
     }
 

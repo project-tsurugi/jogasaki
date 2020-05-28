@@ -22,7 +22,7 @@
 
 #include <jogasaki/test_root.h>
 
-#include "mock/processor_context.h"
+#include "mock/task_context.h"
 #include "mock/process_executor.h"
 #include "mock/processor.h"
 
@@ -44,7 +44,7 @@ TEST_F(process_executor_test, basic) {
     auto downstream_writer = std::make_shared<mock::record_writer>();
     auto external_writer = std::make_shared<mock::external_writer>();
 
-    auto context = std::make_shared<mock::processor_context>(reader, downstream_writer, external_writer);
+    auto context = std::make_shared<mock::task_context>(reader, downstream_writer, external_writer);
 
     auto proc = std::make_shared<mock::processor>();
 

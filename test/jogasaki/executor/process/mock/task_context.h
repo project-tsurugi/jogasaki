@@ -30,9 +30,9 @@
 
 namespace jogasaki::executor::process::mock {
 
-class processor_context : public process::task_context {
+class task_context : public process::task_context {
 public:
-    processor_context(
+    task_context(
             std::shared_ptr<executor::record_reader> reader,
             std::shared_ptr<executor::record_writer> downstream_writer,
             std::shared_ptr<executor::record_writer> external_writer
@@ -61,6 +61,22 @@ public:
         if (reader_) reader_->release();
         if (downstream_writer_) downstream_writer_->release();
         if (external_writer_) external_writer_->release();
+    }
+
+    std::size_t readers_count() override {
+        return 1;
+    };
+
+    std::size_t downstream_writers_count() override {
+        return 1;
+    }
+
+    std::size_t external_writers_count() override {
+        return 1;
+    }
+
+    class scan_info const* scan_info() override {
+        return nullptr;
     }
 
 private:

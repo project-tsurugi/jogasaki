@@ -23,15 +23,15 @@
 namespace jogasaki::executor::process {
 
 /**
- * @brief processor context representing task assignment information
- * (scope of the work assigned to task, e.g. input data from reader, scan info, and/or transient working area)
- * @details this object is responsible to provide the I/O objects, scan info and to keep the working area for processor
+ * @brief task context representing task assignment information and its running context
+ * @details this object is responsible to provide scope of the work assigned to task, e.g. scan info, input data reader, and transient work area
+ *
+ * Depending on whether the processor logic is driven by take or scan, readers() or scan_info() functions are called to
+ * locate/retrieve the input data for the task.
  *
  * The knowledge about the number of I/O objects and its index (i.e. what port or exchange the i-th reader/writer
  * corresponds to) are shared with processor.
  *
- * Depending on whether the processor logic is driven by take or scan, readers() or scan_info() functions are call to
- * locate/retrieve the input data for the task.
  */
 class task_context {
 public:
@@ -109,13 +109,13 @@ public:
 
     /**
      * @brief setter of work context
-     * @details processor impl. can store working data as work_context, which is transparent block to processor context.
+     * @details processor impl. can store working data as work_context, which is transparent block to this object.
      */
     void work_context(std::unique_ptr<work_context> work_context);
 
     /**
      * @brief getter of work context
-     * @details processor impl. can use this to save transient working data
+     * @details processor impl. can use this to access transient working area, which has been passed by the setter above
      */
     [[nodiscard]] class work_context* work_context() const;
 

@@ -33,11 +33,11 @@ public:
     task() = default;
     task(std::shared_ptr<request_context> context,
             step_type* src,
-            std::unique_ptr<processor_context> processor_context,
+            std::unique_ptr<task_context> task_context,
             std::unique_ptr<processor> processor
             ) :
             common::task(std::move(context), src),
-            processor_context_(std::move(processor_context)),
+            task_context_(std::move(task_context)),
             processor_(std::move(processor))
             {}
 
@@ -60,7 +60,7 @@ public:
     }
 
 private:
-    std::unique_ptr<task_context> processor_context_{};
+    std::unique_ptr<task_context> task_context_{};
     std::unique_ptr<processor> processor_{};
 };
 

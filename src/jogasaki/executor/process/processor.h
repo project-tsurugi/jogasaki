@@ -15,14 +15,6 @@
  */
 #pragma once
 
-#include <vector>
-
-#include <takatori/util/sequence_view.h>
-
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-
 namespace jogasaki::executor::process {
 
 class processor_context;
@@ -56,26 +48,40 @@ enum class status : std::size_t {
 };
 
 /**
- * @brief processor interface
- * @details the implementation represents the sequence of procedures executed by the process
- * The implementation is expected initialize itself with the supplied context and conduct the process
- * by retrieving the necessary I/O object and working area from context.
+ * @brief processor logic interface
+ * @details The implementation represents the data processing logic in the process step.
+ *
+ * A processor may represent a processing logic for data, that is sourced from either:
+ * - main input(s)
+ * - a sub input
+ * - scan operation
+ * The first/second cases are for the process step driven by take operator and the last one is by scan operator.
+ * So a process step corresponds to the following processors:
+ * - one processor for main inputs, or data from scan operation
+ * - one processor per sub input
+ *
+ * The implementation is expected to conduct the process task, whose scope is determined by the I/O objects(readers/writers),
+ * or scan_info retrieved from context passed with run().
+ *
+ * The processor must be re-entrant, i.e. required to allow calling run() from multiple threads for distinct tasks.
+ * To save task specific working data across run() function call boundaries, processor can generate work_context
+ * and keep it in processor_context.
  */
 class processor {
 public:
 
     /**
-     * @brief setter for the processor context
-     * @param context the context for this processor
-     */
-    virtual void context(std::shared_ptr<processor_context> context) = 0;
-
-    /**
-     * @brief execute the processor body
-     * @pre context has been provided by context() function
+     * @brief execute the processor logic to conduct a task
+     * @details execute the processor logic using the context, which gives information on assigned task
+     * (e.g. the input data provided by reader, or scan details provided by scan_info)
+     *
+     * A task can be completed by one or more calls of run() with same context. Each call may be made from different thread.
+     * But the calls for a task doesn't happen simultaneously, i.e. time interval of run() calls for a task don't over-wrap each other.
+     *
+     * @param context the context for the task conducted by this processor
      * @return status code to notify caller of the execution status
      */
-    virtual status run() = 0;
+    virtual status run(processor_context* context) = 0;
 
     /**
      * @brief destroy this object

@@ -15,22 +15,23 @@
  */
 #pragma once
 
-#include <vector>
-
-#include <takatori/util/sequence_view.h>
-
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
 #include "work_context.h"
+#include "scan_info.h"
 
 namespace jogasaki::executor::process {
 
 /**
- * @brief processor context abstract class
- * @details this object is responsible to provide the I/O objects and keep the working context for processor
+ * @brief processor context representing task assignment information
+ * (scope of the work assigned to task, e.g. input data from reader, scan info, and/or transient working area)
+ * @details this object is responsible to provide the I/O objects, scan info and to keep the working area for processor
+ *
  * The knowledge about the number of I/O objects and its index (i.e. what port or exchange the i-th reader/writer
  * corresponds to) are shared with processor.
+ *
+ * Depending on whether the processor logic is driven by take or scan, readers() or scan_info() functions are call to
+ * locate/retrieve the input data for the task.
  */
 class processor_context {
 public:
@@ -64,12 +65,24 @@ public:
     virtual reader_container reader(reader_index idx) = 0;
 
     /**
+     * @brief accessor to the number of readers
+     * @return number of readers
+     */
+    virtual std::size_t readers_count() = 0;
+
+    /**
      * @brief accessor to main output writers
      * @details internally stored object or newly acquired one will be returned, no need to release them one by one
      * use processor_context::release() function to do that at once for all resource
      * @return writer corresponding to the given index
      */
     virtual record_writer* downstream_writer(writer_index idx) = 0;
+
+    /**
+     * @brief accessor to the number of downstream writers
+     * @return number of writers
+     */
+    virtual std::size_t downstream_writers_count() = 0;
 
     /**
      * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
@@ -80,22 +93,40 @@ public:
     virtual record_writer* external_writer(writer_index idx) = 0;
 
     /**
+     * @brief accessor to the number of external writers
+     * @return number of writers
+     */
+
+    virtual std::size_t external_writers_count() = 0;
+
+    /**
+     * @brief accessor to scan information that defines scan specification for the task
+     * @details processor impl. knows the details scan_info and drives scan operation using it.
+     * The details of scan_info is transparent to processor context.
+     * @return scan info
+     */
+    virtual class scan_info const* scan_info() = 0;
+
+    /**
      * @brief setter of work context
+     * @details processor impl. can store working data as work_context, which is transparent block to processor context.
      */
     void work_context(std::unique_ptr<work_context> work_context);
 
     /**
      * @brief getter of work context
+     * @details processor impl. can use this to save transient working data
      */
     [[nodiscard]] class work_context* work_context() const;
 
     /**
-     * @brief release all resource (readers/writers and working context) attached to this instance
-     * @details processor is required to call this when it finishes using the context (i.e. the end of assigned work for the processor)
+     * @brief release all resource (readers/writers/scan_info and working context) attached to this instance
+     * @details processor is required to call this when it finishes using the context (i.e. the end of assigned work for the task)
      */
     void release();
 
 protected:
+
     /**
      * @brief request subclass to release all resource
      */

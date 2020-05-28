@@ -15,14 +15,6 @@
  */
 #pragma once
 
-#include <vector>
-
-#include <takatori/util/sequence_view.h>
-
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-
 namespace jogasaki::executor::process {
 
 /**

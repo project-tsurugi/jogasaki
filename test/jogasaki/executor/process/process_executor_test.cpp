@@ -41,9 +41,8 @@ class process_executor_test : public test_root {};
 
 TEST_F(process_executor_test, basic) {
     auto reader = std::make_shared<mock::record_reader>();
-    auto downstream_writer = std::make_shared<mock::record_writer>();
-    auto external_writer = std::make_shared<mock::external_writer>();
-
+    auto downstream_writer = std::make_shared<mock::record_writer>(test_record_meta1());
+    auto external_writer = std::make_shared<mock::external_writer>(test_record_meta1());
     auto context = std::make_shared<mock::task_context>(reader, downstream_writer, external_writer);
 
     auto proc = std::make_shared<mock::processor>();
@@ -51,6 +50,15 @@ TEST_F(process_executor_test, basic) {
     mock::process_executor exec{proc, context};
 
     exec.run();
+
+    auto& written = downstream_writer->records_;
+    auto& written2 = external_writer->records_;
+    EXPECT_EQ(3, written.size());
+    EXPECT_EQ(3, written2.size());
+
+    EXPECT_TRUE(reader->released_);
+    EXPECT_TRUE(downstream_writer->released_);
+    EXPECT_TRUE(external_writer->released_);
 }
 
 }

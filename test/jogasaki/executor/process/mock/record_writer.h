@@ -23,17 +23,33 @@ namespace jogasaki::executor::process::mock {
 class record_writer : public executor::record_writer {
 public:
 
-    record_writer() = default;
+    explicit record_writer(std::shared_ptr<meta::record_meta> meta) :
+            meta_(std::move(meta)),
+            offset_c1_(meta_->value_offset(0)),
+            offset_c2_(meta_->value_offset(1))
+    {}
 
     bool write(accessor::record_ref rec) override {
+        records_.emplace_back(
+                rec.get_value<std::int64_t>(offset_c1_),
+                rec.get_value<double>(offset_c2_)
+        );
         return false;
     }
+
     void flush() override {
         // no-op
     }
+
     void release() override {
-        // no-op
+        released_ = true;
     }
+
+    std::shared_ptr<meta::record_meta> meta_{};
+    std::vector<data::record> records_{};
+    std::size_t offset_c1_{};
+    std::size_t offset_c2_{};
+    bool released_{false};
 };
 
 }

@@ -29,12 +29,24 @@ namespace jogasaki::executor::process::mock {
 class processor : public process::processor {
 
 public:
-    status run(process::task_context*) override {
+    status run(process::task_context* ctx) override {
+
+        auto* r = ctx->reader(0).reader<executor::record_reader>();
+        auto* w = ctx->downstream_writer(0);
+        auto* e = ctx->external_writer(0);
+
+        auto meta = test_root::test_record_meta1();
+        auto offset_c1 = meta->value_offset(0);
+        auto offset_c2 = meta->value_offset(1);
+        while(r->next_record()) {
+            auto rec = r->get_record();
+            w->write(rec);
+            e->write(rec);
+        }
+
+        ctx->release();
         return status::completed;
     }
-
-private:
-    std::shared_ptr<process::task_context> context_{};
 };
 
 }

@@ -19,22 +19,33 @@
 
 #include <jogasaki/accessor/record_ref.h>
 
+#include <jogasaki/record.h>
+
 namespace jogasaki::executor::process::mock {
 
 class record_reader : public executor::record_reader {
 public:
+    static constexpr std::size_t record_count = 3;
     [[nodiscard]] bool available() const override {
         return true;
     }
-    bool next_record() override {
-        return true;
-    }
-    [[nodiscard]] accessor::record_ref get_record() const {
-        return {};
-    }
-    void release() override {
 
+    bool next_record() override {
+        record_ = data::record(count_++, count_*100);
+        return count_ <= record_count;
     }
+
+    [[nodiscard]] accessor::record_ref get_record() const {
+        return {static_cast<void*>(const_cast<data::record*>(&record_)), sizeof(data::record)};
+    }
+
+    void release() override {
+        released_ = true;
+    }
+
+    data::record record_{};
+    std::size_t count_{};
+    bool released_{false};
 };
 
 }

@@ -30,6 +30,7 @@ public:
         processor_->run(context_.get());
         return true;
     }
+
 private:
     std::shared_ptr<processor> processor_{};
     std::shared_ptr<task_context> context_{};

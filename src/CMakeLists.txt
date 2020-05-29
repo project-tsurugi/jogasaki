@@ -24,6 +24,10 @@ target_include_directories(jogasaki
 target_link_libraries(jogasaki
         PUBLIC api
         PRIVATE takatori
+        PRIVATE yugawara
+        PRIVATE mizugaki
+        PRIVATE shakujo-model
+        PRIVATE shakujo-parser
         PRIVATE tbb
         PRIVATE numa
         PRIVATE Boost::boost
@@ -51,6 +55,10 @@ target_include_directories(jogasaki-impl
 target_link_libraries(jogasaki-impl
         INTERFACE jogasaki
         INTERFACE takatori
+        INTERFACE yugawara
+        INTERFACE mizugaki
+        INTERFACE shakujo-model
+        INTERFACE shakujo-parser
         INTERFACE tbb
         INTERFACE numa
         INTERFACE Boost::boost

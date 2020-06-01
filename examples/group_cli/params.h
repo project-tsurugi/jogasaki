@@ -21,27 +21,13 @@ namespace jogasaki::group_cli {
 
 class params {
 public:
-    bool use_multithread = true;
-
-    std::size_t thread_pool_size_ = 1;
-
     std::size_t records_per_upstream_partition_ = 1000;
 
     std::size_t upstream_partitions_ = 10;
 
     std::size_t downstream_partitions_ = 10;
 
-    bool set_core_affinity_ = false;
-
-    std::size_t initial_core_ = 1;
-
     std::shared_ptr<utils::watch> watch_ = std::make_shared<utils::watch>();
-
-    bool use_sorted_vector_reader_ = false;
-
-    bool noop_pregroup_ = false;
-
-    bool assign_nume_nodes_uniformly_ = false;
 };
 
 }

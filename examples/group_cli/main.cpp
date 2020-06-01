@@ -67,20 +67,9 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }
 
-static int run(params& s) {
+static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
-
-    auto cfg = std::make_shared<configuration>();
-    cfg->thread_pool_size(s.thread_pool_size_);
-    cfg->single_thread(!s.use_multithread);
-    cfg->default_partitions(s.downstream_partitions_);
-    cfg->default_scan_process_partitions(s.upstream_partitions_);
-    cfg->core_affinity(s.set_core_affinity_);
-    cfg->initial_core(s.initial_core_);
-    cfg->use_sorted_vector(s.use_sorted_vector_reader_);
-    cfg->noop_pregroup(s.noop_pregroup_);
-    cfg->assign_nume_nodes_uniformly(s.assign_nume_nodes_uniformly_);
 
     auto channel = std::make_shared<class channel>();
     auto context = std::make_shared<request_context>(channel, cfg);
@@ -112,43 +101,47 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     jogasaki::group_cli::params s{};
-    s.use_multithread = FLAGS_use_multithread;
-    s.thread_pool_size_ = FLAGS_thread_pool_size;
+    auto cfg = std::make_shared<jogasaki::configuration>();
+    cfg->single_thread(!FLAGS_use_multithread);
+    cfg->thread_pool_size(FLAGS_thread_pool_size);
+
     s.upstream_partitions_ = FLAGS_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
-    s.initial_core_ = FLAGS_initial_core;
-    s.set_core_affinity_ = FLAGS_core_affinity;
-    s.noop_pregroup_ = FLAGS_noop_pregroup;
-    s.assign_nume_nodes_uniformly_ = FLAGS_assign_nume_nodes_uniformly;
+
+    cfg->core_affinity(FLAGS_core_affinity);
+    cfg->initial_core(FLAGS_initial_core);
+    cfg->assign_nume_nodes_uniformly(FLAGS_assign_nume_nodes_uniformly);
+    cfg->noop_pregroup(FLAGS_noop_pregroup);
 
     if (FLAGS_shuffle_uses_sorted_vector) {
-        s.use_sorted_vector_reader_ = true;
-        s.noop_pregroup_ = true;
+        cfg->use_sorted_vector(true);
+        cfg->noop_pregroup(true);
     }
 
     if (FLAGS_minimum) {
-        s.use_multithread = false;
-        s.thread_pool_size_ = 1;
+        cfg->single_thread(true);
+        cfg->thread_pool_size(1);
+        cfg->initial_core(1);
+        cfg->core_affinity(false);
+
         s.upstream_partitions_ = 1;
         s.downstream_partitions_ = 1;
         s.records_per_upstream_partition_ = 1;
-        s.initial_core_ = 1;
-        s.set_core_affinity_ = false;
     }
 
-    if (s.assign_nume_nodes_uniformly_) {
-        s.set_core_affinity_ = true;
+    if (cfg->assign_nume_nodes_uniformly()) {
+        cfg->core_affinity(true);
     }
 
-    if (s.thread_pool_size_ < s.upstream_partitions_) {
-        LOG(WARNING) << "thread pool size (" << s.thread_pool_size_ << ") is smaller than the number of upstream partitions(" << s.upstream_partitions_ << ") Not all of them are processed concurrently.";
+    if (cfg->thread_pool_size() < s.upstream_partitions_) {
+        LOG(WARNING) << "thread pool size (" << cfg->thread_pool_size() << ") is smaller than the number of upstream partitions(" << s.upstream_partitions_ << ") Not all of them are processed concurrently.";
     }
-    if (s.thread_pool_size_ < s.downstream_partitions_) {
-        LOG(WARNING) << "thread pool size (" << s.thread_pool_size_ << ") is smaller than the number of downstream partitions(" << s.downstream_partitions_ << ") Not all of them are processed concurrently.";
+    if (cfg->thread_pool_size() < s.downstream_partitions_) {
+        LOG(WARNING) << "thread pool size (" << cfg->thread_pool_size() << ") is smaller than the number of downstream partitions(" << s.downstream_partitions_ << ") Not all of them are processed concurrently.";
     }
     try {
-        jogasaki::group_cli::run(s);  // NOLINT
+        jogasaki::group_cli::run(s, cfg);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

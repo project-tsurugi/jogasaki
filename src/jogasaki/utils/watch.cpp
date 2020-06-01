@@ -13,17 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "watch.h"
 
-namespace jogasaki::group_cli {
+namespace jogasaki::utils {
 
-class params {
-public:
-    std::size_t records_per_upstream_partition_ = 1000;
+std::unique_ptr<watch> watch_{};
 
-    std::size_t upstream_partitions_ = 10;
-
-    std::size_t downstream_partitions_ = 10;
-};
-
+void initialize_watch() {
+    watch_ = std::make_unique<watch>();
 }
+
+} // namespace

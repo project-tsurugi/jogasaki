@@ -15,9 +15,10 @@
  */
 #pragma once
 
-#include<mutex>
-#include<unordered_map>
-#include<chrono>
+#include <mutex>
+#include <unordered_map>
+#include <chrono>
+#include <memory>
 
 namespace jogasaki::utils {
 
@@ -46,8 +47,8 @@ public:
      */
     const static int num_points = 10;
 
-    watch() {
-        restart();
+    watch() noexcept {
+        begin_ = Clock::now();
     }
 
     void restart() {
@@ -156,5 +157,9 @@ private:
         }
     }
 };
+
+extern std::unique_ptr<watch> watch_;
+
+void initialize_watch();
 
 } // namespace

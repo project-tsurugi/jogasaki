@@ -21,6 +21,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/watch.h>
 #include "task_base.h"
 #include "params.h"
 #include "random.h"
@@ -46,7 +47,7 @@ public:
             {}
     void execute() override {
         VLOG(1) << *this << " producer_task executed. count: " << count_;
-        auto& watch = params_->watch_;
+        auto& watch = utils::watch_;
         watch->set_point(time_point_prepare, id());
         initialize_writer();
         std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions

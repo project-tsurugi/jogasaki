@@ -11,6 +11,7 @@ file(GLOB SOURCES
         "jogasaki/model/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/data/*.cpp"
+        "jogasaki/utils/*.cpp"
 )
 
 add_library(jogasaki

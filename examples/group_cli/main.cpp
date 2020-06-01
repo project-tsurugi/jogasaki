@@ -24,6 +24,7 @@
 #include <jogasaki/executor/exchange/deliver/step.h>
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/utils/watch.h>
 
 #include "producer_process.h"
 #include "consumer_process.h"
@@ -99,6 +100,7 @@ extern "C" int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("group cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    jogasaki::utils::initialize_watch();
 
     jogasaki::group_cli::params s{};
     auto cfg = std::make_shared<jogasaki::configuration>();
@@ -147,7 +149,7 @@ extern "C" int main(int argc, char* argv[]) {
         return -1;
     }
 
-    auto& watch = s.watch_;
+    auto& watch = jogasaki::utils::watch_;
     using namespace jogasaki::group_cli;
     watch->set_point(time_point_main_completed);
     LOG(INFO) << "prepare: total " << watch->duration(time_point_prepare, time_point_produce) << "ms, average " << watch->average_duration(time_point_prepare, time_point_produce) << "ms" ;

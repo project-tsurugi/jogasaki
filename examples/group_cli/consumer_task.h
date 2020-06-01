@@ -39,7 +39,7 @@ public:
 
     void execute() override {
         VLOG(1) << *this << " consumer_task executed. count: " << count_;
-        auto& watch = params_->watch_;
+        auto& watch = utils::watch_;
         watch->set_point(time_point_consume, id());
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);

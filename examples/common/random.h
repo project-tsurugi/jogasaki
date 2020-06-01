@@ -15,7 +15,7 @@
  */
 #pragma once
 
-namespace jogasaki::group_cli {
+namespace jogasaki::common_cli {
 
 class xorshift_random {
 public:

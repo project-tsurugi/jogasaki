@@ -15,11 +15,13 @@
  */
 #pragma once
 
-#include "../common/producer_process.h"
-#include "params.h"
+#include <memory>
 
-namespace jogasaki::group_cli {
+#include "../common/producer_flow.h"
+#include "producer_params.h"
 
-using producer_process = common_cli::producer_process<params>;
+namespace jogasaki::cogroup_cli {
+
+using producer_flow = common_cli::producer_flow<producer_params>;
 
 }

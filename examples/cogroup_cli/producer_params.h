@@ -15,16 +15,13 @@
  */
 #pragma once
 
-#include <limits>
-#include <cstdint>
+namespace jogasaki::cogroup_cli {
 
-namespace jogasaki::group_cli {
+class producer_params {
+public:
+    std::size_t records_per_upstream_partition_ = 1000;
 
-constexpr static std::size_t time_point_prepare = 0;
-constexpr static std::size_t time_point_produce = 1;
-constexpr static std::size_t time_point_produced = 2;
-constexpr static std::size_t time_point_consume = 3;
-constexpr static std::size_t time_point_consumed = 4;
-constexpr static std::size_t time_point_main_completed = 5;
+    std::size_t upstream_partitions_ = 5;
+};
 
 }

@@ -21,12 +21,12 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include "task_base.h"
-#include <cli_constants.h>
+#include "../common/task_base.h"
+#include "../common/cli_constants.h"
 
 namespace jogasaki::group_cli {
 
-class consumer_task : public task_base {
+class consumer_task : public common_cli::task_base {
 public:
     consumer_task() = default;
     consumer_task(

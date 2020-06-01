@@ -15,11 +15,16 @@
  */
 #pragma once
 
-#include "../common/producer_process.h"
-#include "params.h"
+#include <limits>
+#include <cstdint>
 
-namespace jogasaki::group_cli {
+namespace jogasaki::cogroup_cli {
 
-using producer_process = common_cli::producer_process<params>;
+constexpr static std::size_t time_point_prepare = 0;
+constexpr static std::size_t time_point_produce = 1;
+constexpr static std::size_t time_point_produced = 2;
+constexpr static std::size_t time_point_consume = 3;
+constexpr static std::size_t time_point_consumed = 4;
+constexpr static std::size_t time_point_main_completed = 5;
 
 }

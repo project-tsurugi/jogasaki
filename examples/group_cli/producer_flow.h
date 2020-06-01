@@ -17,61 +17,11 @@
 
 #include <memory>
 
-#include <jogasaki/model/step.h>
-#include <jogasaki/model/task.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/executor/process/step.h>
-#include "producer_task.h"
+#include "../common/producer_flow.h"
 #include "params.h"
 
 namespace jogasaki::group_cli {
 
-
-template<class T>
-using sequence_view = takatori::util::sequence_view<T>;
-
-class producer_flow : public executor::common::flow {
-public:
-    producer_flow() = default;
-    producer_flow(executor::exchange::step* downstream,
-            model::step* step,
-            std::shared_ptr<request_context> context,
-            std::shared_ptr<meta::record_meta> meta,
-            params& p) :
-            downstream_(downstream),
-            step_(step),
-            context_(std::move(context)),
-            meta_(std::move(meta)),
-            params_(&p) {}
-
-    sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(params_->upstream_partitions_);
-        (void)srcs;
-        resources_.reserve(sinks.size());
-        tasks_.reserve(sinks.size());
-        for(auto& s : sinks) {
-            auto& resource = resources_.emplace_back(std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool));
-            tasks_.emplace_back(std::make_unique<producer_task>(context_, step_, &s, meta_, *params_, *resource));
-        }
-        return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
-    }
-
-    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
-        return {};
-    }
-
-    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
-        return executor::common::step_kind::process;
-    }
-
-private:
-    std::vector<std::shared_ptr<model::task>> tasks_{};
-    executor::exchange::step* downstream_{};
-    model::step* step_{};
-    std::shared_ptr<request_context> context_{};
-    std::shared_ptr<meta::record_meta> meta_{};
-    params* params_{};
-    std::vector<std::unique_ptr<memory::monotonic_paged_memory_resource>> resources_{};
-};
+using producer_flow = common_cli::producer_flow<params>;
 
 }

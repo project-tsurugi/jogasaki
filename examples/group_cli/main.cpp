@@ -29,7 +29,7 @@
 #include "producer_process.h"
 #include "consumer_process.h"
 #include "params.h"
-#include <cli_constants.h>
+#include "../common/cli_constants.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"

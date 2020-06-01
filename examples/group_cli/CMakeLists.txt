@@ -18,7 +18,6 @@ target_include_directories(group-cli
 
 target_link_libraries(group-cli
         PRIVATE jogasaki-impl
-        PRIVATE takatori
         PRIVATE glog::glog
         PRIVATE gflags::gflags
 )

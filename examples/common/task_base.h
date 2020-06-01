@@ -25,7 +25,7 @@
 #include <jogasaki/channel.h>
 #include <jogasaki/utils.h>
 
-namespace jogasaki::group_cli {
+namespace jogasaki::common_cli {
 
 class task_base : public executor::common::task {
 public:

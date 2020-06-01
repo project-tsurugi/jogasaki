@@ -18,13 +18,38 @@
 
 #include <glog/logging.h>
 
-#include <executor/common/graph.h>
-#include <executor/common/port.h>
-#include <scheduler/dag_controller.h>
-#include <executor/exchange/deliver/step.h>
-#include <executor/exchange/group/shuffle_info.h>
-#include "../common/producer_process.h"
-#include "cogroup_process.h"
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/executor/exchange/deliver/step.h>
+#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/constants.h>
+#include <jogasaki/utils/watch.h>
+
+#include "params.h"
+#include "producer_process.h"
+#include "consumer_process.h"
+#include "../common/cli_constants.h"
+
+#ifdef ENABLE_GOOGLE_PERFTOOLS
+#include "gperftools/profiler.h"
+#endif
+
+DEFINE_int32(thread_pool_size, 10, "Thread pool size");  //NOLINT
+DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
+DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
+DEFINE_int32(left_upstream_partitions, 5, "Number of left upstream partitions");  //NOLINT
+DEFINE_int32(right_upstream_partitions, 5, "Number of rifht upstream partitions");  //NOLINT
+DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
+DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
+DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
+DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
+DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
+DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
+DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
+DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
+DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
+DEFINE_bool(assign_nume_nodes_uniformly, false, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 
@@ -35,16 +60,6 @@ using namespace jogasaki::executor::exchange;
 using namespace jogasaki::executor::exchange::group;
 using namespace jogasaki::scheduler;
 
-DEFINE_int32(thread_pool_size, 5, "Thread pool size");  //NOLINT
-DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
-DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
-DEFINE_int32(words_per_slice, 100000, "Number of words per slice");  //NOLINT
-DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
-DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
-DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
-DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
-
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{
@@ -54,36 +69,30 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }
 
-static int run() {
+static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
 
-    auto g = std::make_unique<common::graph>();
-    auto scan1 = std::make_unique<producer_process>(g.get(), meta, FLAGS_upstream_partitions);
-    auto scan2 = std::make_unique<producer_process>(g.get(), meta, FLAGS_upstream_partitions);
-    auto xch1 = std::make_unique<group::step>(info);
-    auto xch2 = std::make_unique<group::step>(info);
-    auto cgrp = std::make_unique<cogroup_process>();
-//    auto emit = std::make_unique<consumer_process>(g.get(), info->group_meta());
-    auto dvr = std::make_unique<deliver::step>();
-    *scan1 >> *xch1;
-    *scan2 >> *xch2;
-    *xch1 >> *cgrp;
-    *xch2 >> *cgrp;
-    *cgrp >> *dvr;
-    // step id are assigned from 0 to 5
-    g->insert(std::move(scan1));
-    g->insert(std::move(xch1));
-    g->insert(std::move(scan2));
-    g->insert(std::move(xch2));
-    g->insert(std::move(cgrp));
-    g->insert(std::move(dvr));
+    auto channel = std::make_shared<class channel>();
+    auto context = std::make_shared<request_context>(channel, cfg);
 
-    configuration cfg;
-    cfg.thread_pool_size = 1;
-    cfg.single_thread_task_scheduler = true;
-    dag_controller dc{&cfg};
-    dc.schedule(*g);
+    common::graph g{context};
+    producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_ };
+    producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_ };
+    auto& scan1 = g.emplace<producer_process>(meta, l_params);
+    auto& scan2 = g.emplace<producer_process>(meta, r_params);
+    auto& xch1 = g.emplace<group::step>(info);
+    auto& xch2 = g.emplace<group::step>(info);
+    auto& cgrp = g.emplace<consumer_process>(info->group_meta(), s);
+    auto& dvr = g.emplace<deliver::step>();
+    scan1 >> xch1;
+    scan2 >> xch2;
+    xch1 >> cgrp;
+    xch2 >> cgrp;
+    cgrp >> dvr;
+
+    dag_controller dc{std::move(cfg)};
+    dc.schedule(g);
     return 0;
 }
 
@@ -98,11 +107,65 @@ extern "C" int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("cogroup cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    jogasaki::utils::initialize_watch();
+
+    jogasaki::cogroup_cli::params s{};
+    auto cfg = std::make_shared<jogasaki::configuration>();
+    cfg->single_thread(!FLAGS_use_multithread);
+    cfg->thread_pool_size(FLAGS_thread_pool_size);
+
+    s.left_upstream_partitions_ = FLAGS_left_upstream_partitions;
+    s.right_upstream_partitions_ = FLAGS_right_upstream_partitions;
+    s.downstream_partitions_ = FLAGS_downstream_partitions;
+    s.records_per_upstream_partition_ = FLAGS_records_per_partition;
+
+    cfg->core_affinity(FLAGS_core_affinity);
+    cfg->initial_core(FLAGS_initial_core);
+    cfg->assign_nume_nodes_uniformly(FLAGS_assign_nume_nodes_uniformly);
+    cfg->noop_pregroup(FLAGS_noop_pregroup);
+
+    if (FLAGS_shuffle_uses_sorted_vector) {
+        cfg->use_sorted_vector(true);
+        cfg->noop_pregroup(true);
+    }
+
+    if (FLAGS_minimum) {
+        cfg->single_thread(true);
+        cfg->thread_pool_size(1);
+        cfg->initial_core(1);
+        cfg->core_affinity(false);
+
+        s.left_upstream_partitions_ = 1;
+        s.right_upstream_partitions_ = 1;
+        s.downstream_partitions_ = 1;
+        s.records_per_upstream_partition_ = 1;
+    }
+
+    if (cfg->assign_nume_nodes_uniformly()) {
+        cfg->core_affinity(true);
+    }
+
+    if (cfg->thread_pool_size() < s.left_upstream_partitions_+s.right_upstream_partitions_) {
+        LOG(WARNING) << "thread pool size (" << cfg->thread_pool_size() << ") is smaller than the number of upstream partitions(" << s.left_upstream_partitions_+s.right_upstream_partitions_ << ") Not all of them are processed concurrently.";
+    }
+    if (cfg->thread_pool_size() < s.downstream_partitions_) {
+        LOG(WARNING) << "thread pool size (" << cfg->thread_pool_size() << ") is smaller than the number of downstream partitions(" << s.downstream_partitions_ << ") Not all of them are processed concurrently.";
+    }
     try {
-        return jogasaki::cogroup_cli::run();  // NOLINT
+        jogasaki::cogroup_cli::run(s, cfg);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
+
+    auto& watch = jogasaki::utils::watch_;
+    using namespace jogasaki::cogroup_cli;
+    watch->set_point(time_point_main_completed);
+    LOG(INFO) << "prepare: total " << watch->duration(time_point_prepare, time_point_produce) << "ms, average " << watch->average_duration(time_point_prepare, time_point_produce) << "ms" ;
+    LOG(INFO) << "produce: total " << watch->duration(time_point_produce, time_point_produced) << "ms, average " << watch->average_duration(time_point_produce, time_point_produced) << "ms" ;
+    LOG(INFO) << "transfer: total " << watch->duration(time_point_produced, time_point_consume, true) << "ms" ;
+    LOG(INFO) << "consume: total " << watch->duration(time_point_consume, time_point_consumed) << "ms, average " << watch->average_duration(time_point_consume, time_point_consumed) << "ms" ;
+    LOG(INFO) << "finish: total " << watch->duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
+    return 0;
 }
 

@@ -15,11 +15,17 @@
  */
 #pragma once
 
-#include "../common/producer_process.h"
-#include "params.h"
+namespace jogasaki::cogroup_cli {
 
-namespace jogasaki::group_cli {
+class params {
+public:
+    std::size_t records_per_upstream_partition_ = 1000;
 
-using producer_process = common_cli::producer_process<params>;
+    std::size_t left_upstream_partitions_ = 5;
+
+    std::size_t right_upstream_partitions_ = 5;
+
+    std::size_t downstream_partitions_ = 10;
+};
 
 }

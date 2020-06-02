@@ -4,3 +4,6 @@
 [submodule "third_party/mizugaki"]
 	path = third_party/mizugaki
 	url = git@github.com:project-tsurugi/mizugaki.git
+[submodule "third_party/sharksfin"]
+	path = third_party/sharksfin
+	url = git@github.com:project-tsurugi/sharksfin.git

@@ -33,6 +33,7 @@ file(GLOB SRCS
         "jogasaki/executor/process/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/mock/*.cpp"
+        "jogasaki/storage/*.cpp"
         )
 
 foreach(file ${SRCS})

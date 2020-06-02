@@ -1,3 +1,7 @@
+if(NOT TARGET sharksfin-${SHARKSFIN_IMPLEMENTATION})
+    message(FATAL_ERROR "sharksfin implementation \"sharksfin-${SHARKSFIN_IMPLEMENTATION}\" not found")
+endif()
+
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/executor/*.cpp"
@@ -10,6 +14,7 @@ file(GLOB SOURCES
         "jogasaki/executor/exchange/group/*.cpp"
         "jogasaki/model/*.cpp"
         "jogasaki/scheduler/*.cpp"
+        "jogasaki/storage/*.cpp"
         "jogasaki/data/*.cpp"
         "jogasaki/utils/*.cpp"
 )
@@ -29,6 +34,7 @@ target_link_libraries(jogasaki
         PRIVATE mizugaki
         PRIVATE shakujo-model
         PRIVATE shakujo-parser
+        PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         PRIVATE tbb
         PRIVATE numa
         PRIVATE Boost::boost
@@ -60,6 +66,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE mizugaki
         INTERFACE shakujo-model
         INTERFACE shakujo-parser
+        INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         INTERFACE tbb
         INTERFACE numa
         INTERFACE Boost::boost

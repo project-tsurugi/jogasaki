@@ -37,10 +37,21 @@ if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")
 endif()
 
+if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
+    set(
+            SHARKSFIN_IMPLEMENTATION "memory"
+            CACHE STRING
+            "sharksfin target name to link"
+            FORCE
+    )
+endif()
+set(EXECUTOR "executor-${SHARKSFIN_IMPLEMENTATION}")
+
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
 find_package(mizugaki REQUIRED)
 find_package(shakujo REQUIRED)
+find_package(sharksfin REQUIRED)
 find_package(fpdecimal REQUIRED)
 find_package(Doxygen)
 find_package(glog REQUIRED)

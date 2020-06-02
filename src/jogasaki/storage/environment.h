@@ -13,15 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gtest/gtest.h>
-#include <glog/logging.h>
-#include <jogasaki/storage/environment.h>
+#pragma once
 
-int main(int argc, char** argv) {
-    // first consume command line options for gtest
-    ::testing::InitGoogleTest(&argc, argv);
-    FLAGS_logtostderr = true;
-    jogasaki::storage::environment env{};
-    env.initialize();
-    return RUN_ALL_TESTS();
+#include <sharksfin/Environment.h>
+
+namespace jogasaki::storage {
+
+/**
+ * @brief context for the transactional storage engine
+ */
+class environment {
+public:
+    /**
+     * @brief create default context object
+     */
+    environment() = default;
+
+    /**
+     * @brief create default context object
+     */
+    ~environment() = default;
+
+    // TODO other constructors
+
+    void initialize() {
+        environment_.initialize();
+    }
+private:
+    sharksfin::Environment environment_{};
+};
+
 }
+

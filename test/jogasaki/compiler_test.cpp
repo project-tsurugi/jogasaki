@@ -49,6 +49,8 @@
 #include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
 
+#include "test_utils.h"
+
 namespace jogasaki::testing {
 
 using namespace std::string_literals;
@@ -119,39 +121,6 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
     return storages;
 }
 
-template<class T, class Port>
-inline T& next(Port& port) {
-    if (!port.opposite()) {
-        throw std::domain_error("not connected");
-    }
-    auto&& r = port.opposite()->owner();
-    if (r.kind() != T::tag) {
-        throw std::domain_error(string_builder {}
-                << r.kind()
-                << " <=> "
-                << T::tag
-                << string_builder::to_string);
-    }
-    return downcast<T>(r);
-}
-
-template<class T>
-inline T& last(::takatori::relation::graph_type& graph) {
-    for (auto&& e : graph) {
-        if (e.output_ports().empty()) {
-            return downcast<T>(e);
-        }
-    }
-    fail();
-}
-
-static void dump(yugawara::compiler_result const& r) {
-    ::takatori::serializer::json_printer printer { std::cout };
-    r.object_scanner()(
-            r.statement(),
-            ::takatori::serializer::json_printer { std::cout });
-}
-
 TEST_F(compiler_test, insert) {
     std::string sql = "insert into T0(C0, C1) values (1,1.0)";
     auto p = gen_shakujo_program(sql);
@@ -196,22 +165,6 @@ TEST_F(compiler_test, insert) {
     ASSERT_EQ(es.size(), 2);
     EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int4()));
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
-}
-
-takatori::plan::process&
-find(takatori::plan::graph_type& g, relation::expression const& e) {
-    for (auto&& s : g) {
-        if (s.kind() == takatori::plan::step_kind::process) {
-            auto&& p = downcast<takatori::plan::process>(s);
-            if (p.operators().contains(e)) {
-                return p;
-            }
-        }
-    }
-    throw std::domain_error(string_builder {}
-            << "missing process that contain: "
-            << e
-            << string_builder::to_string);
 }
 
 TEST_F(compiler_test, simple_query) {

@@ -22,6 +22,8 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
+#include <jogasaki/storage/storage_context.h>
+#include <jogasaki/storage/transaction_context.h>
 #include "scan_info.h"
 
 namespace jogasaki::executor::process {
@@ -37,23 +39,50 @@ public:
     scanner() = default;
 
     /**
-     * @brief destroy the object
+     * @brief create new object
      */
-    scanner(std::shared_prt<scan_info> info, accessor::record_ref buf) : info_(std::move(info)), buf_(buf) {
-
+    scanner(std::shared_ptr<scan_info> info,
+            std::shared_ptr<storage::storage_context> storage,
+            std::shared_ptr<meta::record_meta> meta,
+            accessor::record_ref buf) :
+            info_(std::move(info)),
+            storage_(std::move(storage)),
+            meta_(std::move(meta)),
+            buf_(buf) {
     }
 
     void open() {
-
+        tx_ = storage_->create_transaction();
+//        if (auto res = sharksfin::content_scan(tx_->handle(), &iterator_); res != sharksfin::StatusCode::OK) {
+//            takatori::util::fail();
+//        }
     }
 
     bool next() {
-
+        // TODO read from sharksfin
+        auto offset_c1 = meta_->value_offset(0);
+        auto offset_c2 = meta_->value_offset(1);
+        struct rec {
+            std::int64_t c1;
+            double c2;
+        };
+        thread_local rec r{};
+        std::memcpy(buf_.data(), &r, sizeof(rec));
+        r.c1++;
+        r.c2++;
     }
 
+    void close() {
+        tx_->commit();
+    }
 private:
     std::shared_ptr<scan_info> info_{};
+    std::shared_ptr<storage::storage_context> storage_{};
+    std::shared_ptr<meta::record_meta> meta_{};
     accessor::record_ref buf_{};
+    std::shared_ptr<storage::transaction_context> tx_{};
+
+    sharksfin::IteratorHandle iterator_{};
 };
 
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/storage/storage_context.h>
+#include <jogasaki/executor/process/scanner.h>
 
 #include <string>
 
@@ -23,7 +23,9 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/storage/transaction_context.h>
 
-namespace jogasaki::storage {
+#include <jogasaki/record.h>
+
+namespace jogasaki::executor::process {
 
 using namespace executor;
 using namespace accessor;
@@ -34,30 +36,25 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class storage_context_test : public test_root {};
+class scanner_test : public test_root {};
 
-TEST_F(storage_context_test, construct) {
-    storage_context stg{};
-}
-
-TEST_F(storage_context_test, open_close) {
-    storage_context stg{};
+TEST_F(scanner_test, simple) {
+    auto stg = std::make_shared<storage::storage_context>();
     std::map<std::string, std::string> options{};
-    ASSERT_TRUE(stg.open(options));
-    ASSERT_TRUE(stg.close());
-}
+    ASSERT_TRUE(stg->open(options));
 
-TEST_F(storage_context_test, transaction) {
-    storage_context stg{};
-    std::map<std::string, std::string> options{};
-    ASSERT_TRUE(stg.open(options));
+    data::record rec{};
+    scanner s{{}, stg, test_record_meta1(), accessor::record_ref{&rec, sizeof(rec)}};
 
-    auto tx = stg.create_transaction();
-    ASSERT_TRUE(tx->control_handle());
-    ASSERT_TRUE(tx->handle());
-    tx->abort();
+    s.open();
+    s.next();
+    ASSERT_EQ(0, rec.key());
+    s.next();
+    ASSERT_EQ(1, rec.key());
+    s.next();
+    ASSERT_EQ(2, rec.key());
+    s.close();
 
-    ASSERT_TRUE(stg.close());
 }
 
 }

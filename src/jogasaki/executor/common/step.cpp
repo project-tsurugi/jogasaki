@@ -21,9 +21,7 @@
 
 namespace jogasaki::executor::common {
 
-static inline std::shared_ptr<graph> undefined = std::make_shared<graph>();
-
-step::step(number_of_ports inputs, number_of_ports outputs, number_of_ports subinputs) : owner_(undefined.get()) {
+step::step(number_of_ports inputs, number_of_ports outputs, number_of_ports subinputs) : owner_(graph::undefined().get()) {
     main_input_ports_.reserve(inputs);
     sub_input_ports_.reserve(subinputs);
     output_ports_.reserve(outputs);

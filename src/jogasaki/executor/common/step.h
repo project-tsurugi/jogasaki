@@ -93,6 +93,7 @@ private:
     std::vector<std::unique_ptr<model::port>> output_ports_{};
     model::graph* owner_{};
     std::unique_ptr<flow> data_flow_object_{};
+
 };
 
 step& operator<<(step& downstream, step& upstream);

@@ -30,7 +30,7 @@ public:
 
     template <typename ... Args>
     void emplace(Args&& ... args) {
-        events_->emplace(std::forward<Args>(args)...);
+        events_->emplace(std::forward<Args>(args)...);  //NOLINT // clang tidy analysis failure
     }
 
     void push(element_type e) {

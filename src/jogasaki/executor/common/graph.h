@@ -79,6 +79,10 @@ public:
         return steps_.size();
     }
 
+    static std::shared_ptr<graph> const& undefined() {
+        static std::shared_ptr<graph> undefined = std::make_shared<graph>();
+        return undefined;
+    }
 private:
     std::vector<std::unique_ptr<model::step>> steps_{};
     std::shared_ptr<request_context> context_{};

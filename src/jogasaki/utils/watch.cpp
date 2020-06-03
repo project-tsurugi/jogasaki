@@ -17,10 +17,9 @@
 
 namespace jogasaki::utils {
 
-std::unique_ptr<watch> watch_{};
-
-void initialize_watch() {
-    watch_ = std::make_unique<watch>();
+class watch& get_watch() {
+    static std::unique_ptr<class watch> watch_ = std::make_unique<class watch>();
+    return *watch_;
 }
 
 } // namespace

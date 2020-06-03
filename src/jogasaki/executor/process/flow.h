@@ -42,13 +42,6 @@ public:
     /**
      * @brief create new instance
      * @param input_meta input record metadata
-     * @param key_indices indices for key fields
-     */
-//    explicit flow(std::shared_ptr<meta::record_meta> ) : info_(std::move(info)) {}
-
-    /**
-     * @brief create new instance
-     * @param input_meta input record metadata
      */
     flow(
             record_meta_list input_meta,
@@ -86,7 +79,6 @@ private:
     record_meta_list output_meta_{};
     record_meta_list external_meta_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    bool main_input_is_group_ = false;
 };
 
 }

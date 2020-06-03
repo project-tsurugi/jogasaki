@@ -158,8 +158,6 @@ private:
     }
 };
 
-extern std::unique_ptr<watch> watch_;
-
-void initialize_watch();
+watch& get_watch();
 
 } // namespace

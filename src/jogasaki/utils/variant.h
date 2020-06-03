@@ -15,21 +15,27 @@
  */
 #pragma once
 
-#include <sharksfin/Environment.h>
+#include <variant>
+#include <boost/thread/thread.hpp>
+#include <numa.h>
 
-namespace jogasaki::storage {
+#include <takatori/util/universal_extractor.h>
+#include <takatori/util/reference_list_view.h>
 
-/**
- * @brief environment to initialize base components
- */
-class environment {
-public:
-    void initialize() {
-        environment_.initialize();
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/port.h>
+
+namespace jogasaki {
+template<class T, class Variant, std::size_t index = 0>
+constexpr std::size_t alternative_index() noexcept {
+    if constexpr (index == std::variant_size_v<Variant>) {
+        return -1;
+    } else if constexpr (std::is_same_v<std::variant_alternative_t<index, Variant>, T>) {
+        return index;
+    } else {
+        return alternative_index<T, Variant, index + 1>();
     }
-private:
-    sharksfin::Environment environment_{};
-};
+}
 
 }
 

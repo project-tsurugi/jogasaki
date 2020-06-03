@@ -19,7 +19,7 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/utils.h>
+#include <jogasaki/utils/variant.h>
 #include <jogasaki/executor/record_reader.h>
 #include <jogasaki/executor/group_reader.h>
 

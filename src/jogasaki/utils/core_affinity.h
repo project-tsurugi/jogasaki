@@ -25,28 +25,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/port.h>
 
-namespace jogasaki {
-
-inline model::step::port_index_type find_port_index(model::port const& p, takatori::util::sequence_view<std::unique_ptr<model::port> const> sv) {
-    for(model::step::port_index_type i=0, n = sv.size(); i < n; ++i) {
-        if(sv[i].get() == &p) {
-            return i;
-        }
-    }
-    throw std::domain_error("port not found");
-}
-
-inline model::step::port_index_type input_port_index(model::step const& s, model::port const& p) {
-    return find_port_index(p, s.input_ports());
-}
-
-inline model::step::port_index_type subinput_port_index(model::step const& s, model::port const& p) {
-    return find_port_index(p, s.subinput_ports());
-}
-
-inline model::step::port_index_type output_port_index(model::step const& s, model::port const& p) {
-    return find_port_index(p, s.output_ports());
-}
+namespace jogasaki::utils {
 
 inline bool set_core_affinity(boost::thread* t, std::size_t cpu, bool uniform_on_nodes = false) {
     if (uniform_on_nodes) {
@@ -58,17 +37,6 @@ inline bool set_core_affinity(boost::thread* t, std::size_t cpu, bool uniform_on
     CPU_ZERO(&cpuset);
     CPU_SET(cpu, &cpuset);  //NOLINT
     return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
-}
-
-template<class T, class Variant, std::size_t index = 0>
-constexpr std::size_t alternative_index() noexcept {
-    if constexpr (index == std::variant_size_v<Variant>) {
-        return -1;
-    } else if constexpr (std::is_same_v<std::variant_alternative_t<index, Variant>, T>) {
-        return index;
-    } else {
-        return alternative_index<T, Variant, index + 1>();
-    }
 }
 
 }

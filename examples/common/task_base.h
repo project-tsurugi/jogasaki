@@ -23,7 +23,6 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/channel.h>
-#include <jogasaki/utils.h>
 
 namespace jogasaki::common_cli {
 

@@ -21,9 +21,9 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 
+#include <jogasaki/utils/core_affinity.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/utils.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
 
@@ -120,7 +120,7 @@ private:
                 io_service_.run();
             });
             if(set_core_affinity_) {
-                set_core_affinity(thread, i+initial_core_, assign_nume_nodes_uniformly_);
+                utils::set_core_affinity(thread, i+initial_core_, assign_nume_nodes_uniformly_);
             }
             thread_group_.add_thread(thread);
             threads_.emplace_back(thread);

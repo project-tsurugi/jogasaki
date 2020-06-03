@@ -23,7 +23,7 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/channel.h>
-#include <jogasaki/utils.h>
+#include <jogasaki/utils/port_indices.h>
 
 namespace jogasaki::executor {
 
@@ -69,7 +69,7 @@ protected:
                         // blocking exchange should not raise providing
                         continue;
                     }
-                    model::step::port_index_type index = o->kind() == port_kind::main ? input_port_index(*o->owner(), *o) : subinput_port_index(
+                    model::step::port_index_type index = o->kind() == port_kind::main ? utils::input_port_index(*o->owner(), *o) : utils::subinput_port_index(
                             *o->owner(), *o);
                     context_->channel()->emplace(event_kind_tag<event_kind::providing>, downstream->id(), o->kind(), index);
                 }

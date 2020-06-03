@@ -73,7 +73,7 @@ public:
     }
 
     void operator()(relation::find const& node) {
-        takatori::util::fail();
+        fail();
     }
     void operator()(relation::scan const& node) {
         LOG(INFO) << "scan";

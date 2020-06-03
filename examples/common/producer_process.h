@@ -31,7 +31,7 @@ class producer_process : public executor::process::step {
 public:
     producer_process() = default;
     producer_process(std::shared_ptr<meta::record_meta> meta,
-            Params& c) : step(0, 1),
+            Params& c) :
             meta_(std::move(meta)), params_(&c) {}
 
     void activate() override {

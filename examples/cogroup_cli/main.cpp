@@ -88,7 +88,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     scan1 >> xch1;
     scan2 >> xch2;
     xch1 >> cgrp;
-    xch2 >> cgrp;
+    xch2.connect_to(cgrp, 0, 1);
     cgrp >> dvr;
 
     dag_controller dc{std::move(cfg)};

@@ -47,7 +47,6 @@ public:
             right_reader_(right_reader),
             params_(&c) {}
 
-
     void consume_member(group_reader* reader, std::size_t& record_counter) {
         while(reader->next_member()) {
             DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
@@ -98,14 +97,15 @@ public:
                     s = state::left_members;
                     break;
                 case state::left_members:
-                    consume_member(l_reader, l_records_);
+//                    consume_member(l_reader, l_records_);
+                    s = state::eof;
                     break;
                 case state::eof_left:
-                    consume(r_reader, r_records_, r_keys_);
+//                    consume(r_reader, r_records_, r_keys_);
                     s = state::eof;
                     break;
                 case state::eof_right:
-                    consume(l_reader, l_records_, l_keys_);
+//                    consume(l_reader, l_records_, l_keys_);
                     s = state::eof;
                     break;
                 default:

@@ -28,11 +28,15 @@ endfunction (add_test_executable)
 
 file(GLOB SRCS
         "jogasaki/*.cpp"
+        "jogasaki/accessor/*.cpp"
+        "jogasaki/data/*.cpp"
         "jogasaki/executor/*.cpp"
-        "jogasaki/executor/shuffle/*.cpp"
         "jogasaki/executor/process/*.cpp"
-        "jogasaki/scheduler/*.cpp"
+        "jogasaki/executor/shuffle/*.cpp"
+        "jogasaki/memory/*.cpp"
+        "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"
+        "jogasaki/scheduler/*.cpp"
         "jogasaki/storage/*.cpp"
         )
 

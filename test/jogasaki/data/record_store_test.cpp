@@ -21,8 +21,8 @@
 #include <jogasaki/accessor/record_ref.h>
 
 #include <jogasaki/mock_memory_resource.h>
-#include "test_root.h"
 
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::testing {
 

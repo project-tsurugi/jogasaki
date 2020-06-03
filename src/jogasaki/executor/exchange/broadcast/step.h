@@ -24,7 +24,7 @@ namespace jogasaki::executor::exchange::broadcast {
 
 class step : public exchange::step {
 public:
-    step() : exchange::step(1, 1) {}
+    step() = default;
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // exchange task is nop

@@ -27,7 +27,7 @@ namespace jogasaki::executor {
 
 class simple_cogroup_process : public process::step {
 public:
-    simple_cogroup_process() : step(2, 1, 0) {};
+    simple_cogroup_process() = default;
     ~simple_cogroup_process() override = default;
     simple_cogroup_process(simple_cogroup_process&& other) noexcept = default;
     simple_cogroup_process& operator=(simple_cogroup_process&& other) noexcept = default;

@@ -25,7 +25,7 @@ namespace jogasaki::executor::exchange::forward {
 
 class step : public exchange::step {
 public:
-    step() : exchange::step(1, 1){}
+    step() = default;
 
     explicit step(std::shared_ptr<meta::record_meta> input_meta) : input_meta_(std::move(input_meta)) {}
 

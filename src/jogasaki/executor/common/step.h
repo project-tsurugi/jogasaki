@@ -33,7 +33,9 @@ public:
 
     using port_index = std::size_t;
 
-    explicit step(number_of_ports inputs = 1, number_of_ports outputs = 1, number_of_ports subinputs = 0);
+    static constexpr port_index npos = static_cast<port_index>(-1);
+
+    explicit step(number_of_ports inputs = 0, number_of_ports outputs = 0, number_of_ports subinputs = 0);
 
     [[nodiscard]] identity_type id() const override;
 
@@ -69,9 +71,9 @@ public:
 
     port_index sub_input_port_index(step const* source);
 
-    void connect_to(step& downstream, port_index src = 0, port_index target = 0);
+    void connect_to(step& downstream, port_index src = npos, port_index target = npos);
 
-    void connect_to_sub(step& downstream, port_index src = 0, port_index target = 0);
+    void connect_to_sub(step& downstream, port_index src = npos, port_index target = npos);
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 

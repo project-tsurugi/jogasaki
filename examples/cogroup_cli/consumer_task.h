@@ -115,7 +115,7 @@ public:
         l_reader->release();
         r_reader->release();
         watch->set_point(time_point_consumed, id());
-        LOG(INFO) << *this << " consumed"
+        LOG(INFO) << *this << " consumed "
                 << "left " << l_records_ << " records with unique "<< l_keys_ << " keys "
                 << "right " << r_records_ << " records with unique "<< r_keys_ << " keys "
                 << "(sum: " << total_key_ << " " << total_val_ << ")";

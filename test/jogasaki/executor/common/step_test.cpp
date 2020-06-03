@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <jogasaki/executor/common/step.h>
 
 #include <gtest/gtest.h>
 
@@ -23,7 +24,7 @@
 #include <jogasaki/mock/simple_scan_process.h>
 #include <jogasaki/mock/simple_cogroup_process.h>
 #include <jogasaki/test_process.h>
-#include "test_root.h"
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor {
 using namespace std::literals::string_literals;
@@ -34,19 +35,6 @@ using namespace jogasaki::executor::exchange;
 using namespace jogasaki::scheduler;
 
 class step_test : public test_root {};
-
-TEST_F(step_test, basic) {
-    common::graph g{};
-    auto& p = g.emplace<test::test_process>();
-    p.activate();
-    for(auto&& v : g.steps()) {
-        for(auto&& t : v->create_tasks()) {
-            t->operator()();
-        }
-    }
-    p.deactivate();
-    ASSERT_TRUE(true);
-}
 
 TEST_F(step_test, create_find_step) {
     common::graph g{};
@@ -88,7 +76,7 @@ TEST_F(step_test, insert_step) {
     EXPECT_EQ(g, *owner);
 }
 
-TEST_F(step_test, steps) {
+TEST_F(step_test, emplace_steps) {
     common::graph g{};
     auto& p0 = g.emplace<test::test_process>();
     auto& p1 = g.emplace<test::test_process>();
@@ -125,9 +113,18 @@ TEST_F(step_test, cogroup) {
     xch1 >> cgrp;
     xch2 >> cgrp;
     cgrp >> dvr;
-    dag_controller dc{};
-    dc.schedule(g);
-    ASSERT_TRUE(true);
+    ASSERT_EQ(0, scan1.input_ports().size());
+    ASSERT_EQ(1, scan1.output_ports().size());
+    ASSERT_EQ(0, scan2.input_ports().size());
+    ASSERT_EQ(1, scan2.output_ports().size());
+    ASSERT_EQ(1, xch1.input_ports().size());
+    ASSERT_EQ(1, xch1.output_ports().size());
+    ASSERT_EQ(1, xch2.input_ports().size());
+    ASSERT_EQ(1, xch2.output_ports().size());
+    ASSERT_EQ(2, cgrp.input_ports().size());
+    ASSERT_EQ(1, cgrp.output_ports().size());
+    ASSERT_EQ(1, dvr.input_ports().size());
+    ASSERT_EQ(0, dvr.output_ports().size());
 }
 
 }

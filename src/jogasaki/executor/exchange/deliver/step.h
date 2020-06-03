@@ -25,7 +25,7 @@ namespace jogasaki::executor::exchange::deliver {
 
 class step : public exchange::step {
 public:
-    step() : exchange::step(1,0) {}
+    step() = default;
 
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::deliver;

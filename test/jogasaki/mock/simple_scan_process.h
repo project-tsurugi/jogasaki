@@ -29,7 +29,7 @@ namespace jogasaki::executor {
 
 class simple_scan_process : public process::step {
 public:
-    simple_scan_process() : step(0, 1) {};
+    simple_scan_process() = default;
     ~simple_scan_process() override = default;
     simple_scan_process(simple_scan_process&& other) noexcept = default;
     simple_scan_process& operator=(simple_scan_process&& other) noexcept = default;

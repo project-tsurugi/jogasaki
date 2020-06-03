@@ -38,14 +38,14 @@ public:
     /**
      * @brief create new instance with empty schema (for testing)
      */
-    step() : exchange::step(1, 1), info_(std::make_shared<shuffle_info>()) {}
+    step() : info_(std::make_shared<shuffle_info>()) {}
 
     /**
      * @brief create new instance
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    explicit step(std::shared_ptr<shuffle_info> info) : exchange::step(1, 1), info_(std::move(info)) {}
+    explicit step(std::shared_ptr<shuffle_info> info) : info_(std::move(info)) {}
 
     /**
      * @brief create new instance

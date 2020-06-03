@@ -41,12 +41,8 @@ TEST_F(shuffle_step_test, simple) {
     },boost::dynamic_bitset<std::uint64_t>("00"s));
     step s{rec_meta, std::vector<std::size_t>{0}};
     s.activate();
-    EXPECT_EQ(1, s.input_ports().size());
-    EXPECT_EQ(1, s.output_ports().size());
-    auto& in_port = s.input_ports()[0];
-    auto& out_port = s.output_ports()[0];
-    EXPECT_EQ(s, *in_port->owner());
-    EXPECT_EQ(s, *out_port->owner());
+    EXPECT_EQ(0, s.input_ports().size());
+    EXPECT_EQ(0, s.output_ports().size());
 }
 
 }

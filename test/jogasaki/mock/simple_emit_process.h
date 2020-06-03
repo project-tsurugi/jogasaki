@@ -27,7 +27,7 @@ namespace jogasaki::executor {
 
 class simple_emit_process : public process::step {
 public:
-    simple_emit_process() : step(1, 1) {};
+    simple_emit_process() = default;
     ~simple_emit_process() override = default;
     simple_emit_process(simple_emit_process&& other) noexcept = default;
     simple_emit_process& operator=(simple_emit_process&& other) noexcept = default;

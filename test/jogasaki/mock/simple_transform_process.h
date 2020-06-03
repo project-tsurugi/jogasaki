@@ -28,7 +28,7 @@ namespace jogasaki::executor {
 
 class simple_transform_process : public process::step {
 public:
-    simple_transform_process() : step(1, 1, 1) {};
+    simple_transform_process() = default;
     ~simple_transform_process() override = default;
     simple_transform_process(simple_transform_process&& other) noexcept = default;
     simple_transform_process& operator=(simple_transform_process&& other) noexcept = default;

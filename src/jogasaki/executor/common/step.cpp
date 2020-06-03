@@ -118,10 +118,26 @@ step::port_index step::sub_input_port_index(step const* source) {
 }
 
 void step::connect_to(step& downstream, port_index src, port_index target) {
+    if (src == npos) {
+        output_ports_.emplace_back(std::make_unique<port>(port_direction::output, port_kind::main, this));
+        src = output_ports_.size() - 1;
+    }
+    if (target == npos) {
+        downstream.main_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::main, &downstream));
+        target = downstream.main_input_ports_.size() - 1;
+    }
     dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.main_input_ports_[target].get()));
 }
 
 void step::connect_to_sub(step& downstream, port_index src, port_index target) {
+    if (src == npos) {
+        output_ports_.emplace_back(std::make_unique<port>(port_direction::output, port_kind::main, this));
+        src = output_ports_.size() - 1;
+    }
+    if (target == npos) {
+        downstream.sub_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::sub, &downstream));
+        target = downstream.sub_input_ports_.size() - 1;
+    }
     dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.sub_input_ports_[target].get()));
 }
 

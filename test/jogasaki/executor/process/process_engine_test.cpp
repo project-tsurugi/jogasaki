@@ -52,6 +52,7 @@
 
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::executor::process {
 
@@ -217,7 +218,13 @@ TEST_F(process_engine_test, scan_emit) {
     auto& ops = p0.operators();
 
     auto meta = test_record_meta1();
-    engine e{ops, meta};
+
+    memory::page_pool pool;
+    memory::monotonic_paged_memory_resource record_resource{&pool};
+    memory::monotonic_paged_memory_resource varlen_resource{&pool};
+    auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
+
+    engine e{ops, meta, store};
     e.process();
 }
 

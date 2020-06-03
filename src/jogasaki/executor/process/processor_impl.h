@@ -41,7 +41,7 @@ public:
     explicit processor_impl(graph::graph<relation::expression>& operators) noexcept : operators_(operators) {}
 
     status run(task_context* context) override {
-        engine visitor{operators_, {}};
+        engine visitor{operators_, {}, {}};
         return status::completed;
     }
 

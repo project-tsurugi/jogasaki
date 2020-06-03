@@ -28,6 +28,8 @@
 #include <jogasaki/meta/record_meta.h>
 
 #include "processor.h"
+#include "scanner.h"
+#include "emitter.h"
 
 namespace jogasaki::executor::process {
 
@@ -48,9 +50,13 @@ public:
     engine(engine&& other) noexcept = default;
     engine& operator=(engine&& other) noexcept = default;
 
-    explicit engine(graph::graph<relation::expression>& operators, std::shared_ptr<meta::record_meta> meta) noexcept :
+    explicit engine(graph::graph<relation::expression>& operators,
+            std::shared_ptr<meta::record_meta> meta,
+            std::shared_ptr<data::record_store> store
+            ) noexcept :
             operators_(operators),
             meta_(std::move(meta)),
+            store_(std::move(store)),
             buf_(utils::make_aligned_array<char>(meta_->record_alignment(), meta_->record_size())) {
         //TODO prepare stack-like working area needed for this engine to complete all operators
     }
@@ -71,6 +77,10 @@ public:
     }
     void operator()(relation::scan const& node) {
         LOG(INFO) << "scan";
+        auto stg = std::make_shared<storage::storage_context>();
+        std::map<std::string, std::string> options{};
+        stg->open(options);
+        scanner s{{}, stg, meta_, accessor::record_ref{buf_.get(), meta_->record_size()}};
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::join_find const& node) {
@@ -90,6 +100,10 @@ public:
     }
     void operator()(relation::emit const& node) {
         LOG(INFO) << "emit";
+        if (!emitter_) {
+            emitter_ = std::make_shared<emitter>(meta_, store_);
+        }
+        emitter_->emit(accessor::record_ref{buf_.get(), meta_->record_size()});
     }
     void operator()(relation::write const& node) {
         fail();
@@ -132,6 +146,8 @@ private:
     std::shared_ptr<compiler_result> compiled_{};
     std::shared_ptr<meta::record_meta> meta_{};
     utils::aligned_array<char> buf_;
+    std::shared_ptr<data::record_store> store_{};
+    std::shared_ptr<emitter> emitter_{};
 };
 
 }

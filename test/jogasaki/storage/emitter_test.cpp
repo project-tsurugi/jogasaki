@@ -22,8 +22,12 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/storage/transaction_context.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 #include <jogasaki/record.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/executor/process/emitter.h>
 
 namespace jogasaki::executor::process {
 
@@ -36,26 +40,27 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class scanner_test : public test_root {};
+class emitter_test : public test_root {};
 
-TEST_F(scanner_test, simple) {
+TEST_F(emitter_test, simple) {
     auto stg = std::make_shared<storage::storage_context>();
     std::map<std::string, std::string> options{};
     ASSERT_TRUE(stg->open(options));
 
-    data::record rec{};
-    scanner s{{}, stg, test_record_meta1(), accessor::record_ref{&rec, sizeof(rec)}};
 
-    s.open();
-    s.next();
-    ASSERT_EQ(0, rec.key());
-    s.next();
-    ASSERT_EQ(1, rec.key());
-    s.next();
-    ASSERT_EQ(2, rec.key());
-    s.close();
+    memory::page_pool pool;
+    memory::monotonic_paged_memory_resource record_resource{&pool};
+    memory::monotonic_paged_memory_resource varlen_resource{&pool};
+    auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
+    emitter e{test_record_meta1(), store};
 
-    stg->close();
+    data::record rec0{0, 0.0};
+    data::record rec1{1, 1.0};
+    data::record rec2{2, 2.0};
+    e.emit(accessor::record_ref{&rec0, sizeof(data::record)});
+    e.emit(accessor::record_ref{&rec1, sizeof(data::record)});
+    e.emit(accessor::record_ref{&rec2, sizeof(data::record)});
+    ASSERT_EQ(3, store->count());
 }
 
 }

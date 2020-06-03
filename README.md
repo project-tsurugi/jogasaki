@@ -4,6 +4,13 @@
 
 * CMake `>= 3.10`
 * C++ Compiler `>= C++17`
+* access to installed dependent modules: 
+  * sharksfin
+  * takatori
+  * yugawara
+  * mizugaki
+  * shakujo (until dependency is removed)
+  * fpdecimal
 * and see *Dockerfile* section
 
 ```sh
@@ -16,9 +23,8 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:18.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev
 ```
-
 
 optional packages:
 
@@ -29,10 +35,10 @@ optional packages:
 ## How to build
 
 ```sh
-mkdir build
+mkdir -p build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
-ninja
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+cmake --build .
 ```
 
 available options:
@@ -42,11 +48,12 @@ available options:
 * `-DBUILD_TESTS=OFF` - don't build test programs
 * `-DBUILD_DOCUMENTS=OFF` - don't build documents by doxygen
 * `-DFORCE_INSTALL_RPATH=ON` - automatically configure `INSTALL_RPATH` for non-default library paths
+* `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory`, `mock`, `foedus-bridge` and `kvs` (default: `memory`)
 
 ### install 
 
 ```sh
-ninja install
+cmake --build . --target install
 ```
 
 ### run tests
@@ -58,7 +65,14 @@ ctest -V
 ### generate documents
 
 ```sh
-ninja doxygen
+cmake --build . --target doxygen
+```
+
+### Customize logging setting 
+You can customize logging in the same way as sharksfin. See sharksfin [README.md](https://github.com/project-tsurugi/sharksfin/blob/master/README.md#customize-logging-setting) for more details.
+
+```sh
+GLOG_minloglevel=0 ./group-cli --minimum 
 ```
 
 ## License

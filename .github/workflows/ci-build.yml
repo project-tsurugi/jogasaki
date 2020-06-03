@@ -1,0 +1,195 @@
+name: Jogasaki-CI
+
+on: [push, pull_request]
+
+jobs:
+  Build:
+    runs-on: [self-hosted, oltp]
+
+    steps:
+      - id: Begin
+        name: Begin
+        run: |
+          echo "Begin ${GITHUB_WORKFLOW}/${GITHUB_JOB} hostname:$(hostname)"
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - id: Install_shirakami
+        name: Install_shirakami
+        run: |
+          cd third_party/sharksfin/third_party/shirakami
+          ./bootstrap.sh
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: Install_sharksfin
+        name: Install_sharksfin
+        run: |
+          cd third_party/sharksfin
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: Install_fpdecimal
+        name: Install_fpdecimal
+        run: |
+          cd third_party/mizugaki/third_party/yugawara/third_party/takatori/third_party/fpdecimal
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: Install_takatori
+        name: Install_takatori
+        run: |
+          cd third_party/mizugaki/third_party/yugawara/third_party/takatori
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: Install_hopscotch-map
+        name: Install_hopscotch-map
+        run: |
+          cd third_party/mizugaki/third_party/hopscotch-map
+          mkdir -p ../../build-hopscotch-map
+          cd ../../build-hopscotch-map
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
+          cmake --build . --target install -- -j8
+
+      - id: Install_yugawara
+        name: Install_yugawara
+        run: |
+          cd third_party/mizugaki/third_party/yugawara
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: Install_shakujo
+        name: Install_shakujo
+        run: |
+          cd third_party/mizugaki/third_party/shakujo
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: Install_mizugaki
+        name: Install_mizugaki
+        run: |
+          cd third_party/mizugaki
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j8
+
+      - id: CMake_Build_sharksfin_memory
+        name: CMake_Build_sharksfin_memory
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target all --clean-first -- -j8
+
+      - id: CTest_sharksfin_memory
+        name: CTest_sharksfin_memory
+        continue-on-error: false
+        env:
+          GTEST_OUTPUT: xml
+          ASAN_OPTIONS: detect_stack_use_after_return=true
+        run: |
+          cd build
+          ctest --verbose
+
+      - id: CMake_Build_sharksfin_kvs
+        name: CMake_Build_sharksfin_kvs
+        run: |
+          mkdir build-kvs
+          cd build-kvs
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target all --clean-first -- -j8
+
+      - id: CTest_sharksfin_kvs
+        name: CTest_sharksfin_kvs
+        continue-on-error: false
+        env:
+          GTEST_OUTPUT: xml
+          ASAN_OPTIONS: detect_stack_use_after_return=true
+        run: |
+          cd build-kvs
+          ctest --verbose
+
+      - id: Clang-Tidy
+        name: Clang-Tidy
+        run: |
+          python tools/bin/run-clang-tidy.py -clang-tidy-binary clang-tidy-8 -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(include|src)/.*\\.h$' $(pwd)'/src/.*' 2>&1 | tee build/clang-tidy.log
+
+      - id: Doxygen
+        name: Doxygen
+        run: |
+          cd build
+          make doxygen 2> >(tee doxygen-error.log)
+          zip -q -r jogasaki-doxygen doxygen/html
+
+      - id: Upload_Doxygen_HTML
+        name: Upload_Doxygen_HTML
+        uses: actions/upload-artifact@v2
+        if: contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master')
+        with:
+          name: jogasaki-doxygen
+          path: build/jogasaki-doxygen.zip
+
+      - id: Gcovr
+        name: Gcovr
+        env:
+          GCOVR_COMMON_OPTION: -e ../third_party/ -e ../.*/test.*
+        run: |
+          cd build
+          mkdir gcovr-xml gcovr-html
+          gcovr -j4 -r .. --xml ${GCOVR_COMMON_OPTION} -o gcovr-xml/jogasaki-gcovr.xml
+          gcovr -j4 -r .. --html --html-details --html-title "jogasaki coverage" ${GCOVR_COMMON_OPTION} -o gcovr-html/jogasaki-gcovr.html
+          zip -q -r jogasaki-coverage-report gcovr-html
+
+      - id: Upload_Gcovr_HTML
+        name: Upload_Gcovr_HTML
+        uses: actions/upload-artifact@v2
+        if: contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master')
+        with:
+          name: jogasaki-coverage-report
+          path: build/jogasaki-coverage-report.zip
+
+      - id: Generate_Annotations
+        name: Generate_Annotations
+        uses: ./.github/actions/tsurugi-annotations-action
+        if: always()
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          ctest-input: '**/*_gtest_result.xml'
+
+      - id: Notify_Slack
+        name: Notify_Slack
+        uses: ./.github/actions/tsurugi-slack-action
+        if: always() && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          kind: 'job-result'
+          channel: 'tsurugi-dev'
+          status: ${{ job.status }}
+          step_context: ${{ toJson(steps) }}
+          username: ${{ github.workflow }}

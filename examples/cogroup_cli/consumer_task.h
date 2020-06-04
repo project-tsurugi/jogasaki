@@ -22,6 +22,10 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
+#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/utils/aligned_unique_ptr.h>
+
 #include "../common/task_base.h"
 #include "params.h"
 #include "../common/cli_constants.h"
@@ -32,20 +36,42 @@ using namespace jogasaki::executor;
 
 class consumer_task : public common_cli::task_base {
 public:
-    consumer_task() = default;
     consumer_task(
             std::shared_ptr<request_context> context,
             model::step* src,
             executor::reader_container left_reader,
             executor::reader_container right_reader,
-            std::shared_ptr<meta::group_meta> meta,
+            std::shared_ptr<meta::group_meta> l_meta,
+            std::shared_ptr<meta::group_meta> r_meta,
             params& c
     ) :
             task_base(std::move(context), src),
-            meta_(std::move(meta)),
-            left_reader_(left_reader),
-            right_reader_(right_reader),
-            params_(&c) {}
+            l_meta_(std::move(l_meta)),
+            r_meta_(std::move(r_meta)),
+            l_store_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::global_page_pool)),
+            l_store_varlen_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::global_page_pool)),
+            r_store_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::global_page_pool)),
+            r_store_varlen_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::global_page_pool)),
+            l_store_(std::make_unique<data::iteratable_record_store>(
+                    l_store_resource_.get(),
+                    l_store_varlen_resource_.get(),
+                    l_meta_->value_shared()
+            )),
+            r_store_(std::make_unique<data::iteratable_record_store>(
+                    r_store_resource_.get(),
+                    r_store_varlen_resource_.get(),
+                    r_meta_->value_shared()
+            )),
+            left_reader_(left_reader),  //NOLINT
+            right_reader_(right_reader),  //NOLINT
+            l_key_(utils::make_aligned_array<char>(l_meta_->key().record_alignment(), l_meta_->key().record_size())),
+            r_key_(utils::make_aligned_array<char>(r_meta_->key().record_alignment(), r_meta_->key().record_size())),
+            params_(&c),
+            key_offset_(l_meta_->key().value_offset(0)),
+            value_offset_(l_meta_->value().value_offset(0)),
+            key_comparator_(l_meta_->key_shared().get()),
+            key_size_(l_meta_->key().record_size())
+    {}
 
     void consume_member(group_reader* reader, std::size_t& record_counter) {
         while(reader->next_member()) {
@@ -64,11 +90,22 @@ public:
         }
     }
 
+    void next_left_key() {
+        auto* l_reader = left_reader_.reader<executor::group_reader>();
+        auto key = l_reader->get_group();
+        memcpy(l_key_.get(), key.data(), key.size());
+    }
+    void next_right_key() {
+        auto* r_reader = right_reader_.reader<executor::group_reader>();
+        auto key = r_reader->get_group();
+        memcpy(r_key_.get(), key.data(), key.size());
+    }
+
     void execute() override {
         VLOG(1) << *this << " consumer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_consume, id());
-        key_offset_ = meta_->key().value_offset(0);
-        value_offset_ = meta_->value().value_offset(0);
+        key_offset_ = l_meta_->key().value_offset(0);
+        value_offset_ = l_meta_->value().value_offset(0);
         auto* l_reader = left_reader_.reader<executor::group_reader>();
         auto* r_reader = right_reader_.reader<executor::group_reader>();
         l_records_ = 0;
@@ -79,36 +116,126 @@ public:
         total_val_ = 0;
         enum class state {
             init,
-            left_members,
-            right_members,
-            eof_left,
-            eof_right,
-            eof
+            did_read_left_key,
+            did_read_both_key,
+            on_left_member,
+            on_right_member,
+            left_eof,
+            filled,
+            both_consumed,
+            end,
         };
+
+        enum class read {
+            none,
+            left,
+            right,
+            both,
+        };
+        bool left_eof = false;
+        bool right_eof = false;
         state s{state::init};
-        while(s != state::eof) {
+        read r{read::none};
+        while(s != state::end) {
             switch(s) {
                 case state::init:
+                case state::both_consumed: {
                     if(!l_reader->next_group()) {
-                        s = state::eof_left;
+                        left_eof = true;
+                        s = state::left_eof;
                         break;
                     }
-                    s = state::left_members;
+                    next_left_key();
+                    s = state::did_read_left_key;
                     break;
-                case state::left_members:
-//                    consume_member(l_reader, l_records_);
-                    s = state::eof;
+                }
+                case state::did_read_left_key: {
+                    if(!r_reader->next_group()) {
+                        right_eof = true;
+                        s = state::on_left_member;
+                        break;
+                    }
+                    next_right_key();
+                    s = state::did_read_both_key;
                     break;
-                case state::eof_left:
-//                    consume(r_reader, r_records_, r_keys_);
-                    s = state::eof;
+                }
+                case state::did_read_both_key: {
+                    if (auto c = key_comparator_(accessor::record_ref(l_key_.get(), key_size_),accessor::record_ref(r_key_.get(), key_size_)); c < 0) {
+                        r = read::left;
+                        s = state::on_left_member;
+                    } else if (c > 0) {
+                        r = read::right;
+                        s = state::on_right_member;
+                    } else {
+                        r = read::both;
+                        s = state::on_left_member;
+                    }
                     break;
-                case state::eof_right:
-//                    consume(l_reader, l_records_, l_keys_);
-                    s = state::eof;
+                }
+                case state::on_left_member:
+                    consume_member(l_reader, l_records_);
+                    if (r == read::both) {
+                        s = state::on_right_member;
+                    } else {
+                        // send data
+                        s = state::filled;
+                    }
                     break;
+                case state::on_right_member:
+                    consume(r_reader, r_records_, r_keys_);
+                    // send data
+                    s = state::filled;
+                    break;
+                case state::filled:
+                    if (r == read::both) {
+                        r = read::none;
+                        s = state::both_consumed;
+                        break;
+                    }
+                    if (r == read::none) {
+                        if (left_eof) {
+                            if(!r_reader->next_group()) {
+                                right_eof = true;
+                                s = state::end;
+                                break;
+                            }
+                            next_right_key();
+                            s = state::on_right_member;
+                            break;
+                        }
+                        if (right_eof) {
+                            if(!l_reader->next_group()) {
+                                left_eof = true;
+                                s = state::end;
+                                break;
+                            }
+                            next_left_key();
+                            s = state::on_left_member;
+                            break;
+                        }
+                        std::abort();
+                    }
+                    if (r == read::left) {
+                        if(!l_reader->next_group()) {
+                            left_eof = true;
+                            s = state::on_right_member;
+                            break;
+                        }
+                        next_left_key();
+                        s = state::did_read_both_key;
+                    }
+                    if (r == read::right) {
+                        if(!r_reader->next_group()) {
+                            right_eof = true;
+                            s = state::on_left_member;
+                            break;
+                        }
+                        next_right_key();
+                        s = state::did_read_both_key;
+                    }
+                    std::abort();
                 default:
-                    break;
+                    std::abort();
             }
         }
         l_reader->release();
@@ -121,10 +248,20 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::group_meta> meta_{};
+    std::shared_ptr<meta::group_meta> l_meta_{};
+    std::shared_ptr<meta::group_meta> r_meta_{};
+    std::unique_ptr<memory::lifo_paged_memory_resource> l_store_resource_{};
+    std::unique_ptr<memory::lifo_paged_memory_resource> l_store_varlen_resource_{};
+    std::unique_ptr<memory::lifo_paged_memory_resource> r_store_resource_{};
+    std::unique_ptr<memory::lifo_paged_memory_resource> r_store_varlen_resource_{};
+    std::unique_ptr<data::iteratable_record_store> l_store_{};
+    std::unique_ptr<data::iteratable_record_store> r_store_{};
     executor::reader_container left_reader_{};
     executor::reader_container right_reader_{};
+    utils::aligned_array<char> l_key_;
+    utils::aligned_array<char> r_key_;
     params* params_{};
+
     std::size_t key_offset_;
     std::size_t value_offset_;
     std::size_t l_records_ = 0;
@@ -132,6 +269,8 @@ private:
     std::size_t l_keys_ = 0;
     std::size_t r_keys_ = 0;
     std::size_t total_key_ = 0;
+    comparator key_comparator_{};
+    std::size_t key_size_ = 0;
     double total_val_ = 0;
 };
 

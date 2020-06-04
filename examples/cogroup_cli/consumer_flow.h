@@ -54,7 +54,7 @@ public:
         tasks_.reserve(l_srcs.size());
         assert(l_srcs.size() == r_srcs.size());
         for(std::size_t i = 0, n = l_srcs.size(); i < n; ++i) {
-            tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, l_srcs[i].acquire_reader(), r_srcs[i].acquire_reader(), meta_, *params_));
+            tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, l_srcs[i].acquire_reader(), r_srcs[i].acquire_reader(), meta_, meta_,*params_));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }

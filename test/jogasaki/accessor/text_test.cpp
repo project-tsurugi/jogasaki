@@ -43,7 +43,7 @@ TEST_F(text_test, long_version) {
     EXPECT_EQ(16, sv.size());
     EXPECT_EQ(s, sv);
     EXPECT_FALSE(t.is_short());
-    EXPECT_EQ(16, resource.total_);
+    EXPECT_EQ(16, resource.total_bytes_allocated_);
 }
 
 TEST_F(text_test, short_version) {
@@ -54,7 +54,7 @@ TEST_F(text_test, short_version) {
     EXPECT_EQ(15, sv.size());
     EXPECT_EQ(s, sv);
     EXPECT_TRUE(t.is_short());
-    EXPECT_EQ(0, resource.total_);
+    EXPECT_EQ(0, resource.total_bytes_allocated_);
 }
 
 TEST_F(text_test, comparison) {

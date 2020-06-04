@@ -103,7 +103,7 @@ TEST_F(record_copier_test, text) {
     auto s2 = "ABC4567890123456"s;
     src.t1_ = text{&resource, s1.data(), s1.size()};
     src.t2_ = text{&resource, s2.data(), s2.size()};
-    ASSERT_EQ(16, resource.total_);
+    ASSERT_EQ(16, resource.total_bytes_allocated_);
 
     auto meta = std::make_shared<meta::record_meta>(
             std::vector<field_type>{
@@ -118,7 +118,7 @@ TEST_F(record_copier_test, text) {
     S dst{};
     record_ref t{&dst, sizeof(dst)};
     copier(t, r);
-    ASSERT_EQ(32, resource.total_);
+    ASSERT_EQ(32, resource.total_bytes_allocated_);
 
     EXPECT_EQ(1, t.get_value<std::int32_t>(0));
     EXPECT_EQ(src.t1_, t.get_value<text>(8));

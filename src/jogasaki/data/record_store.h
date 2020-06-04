@@ -86,6 +86,15 @@ public:
         return count_ == 0;
     }
 
+    /**
+     * @brief reset store state except the state managed by memory resource
+     * @details To keep consistency, caller needs to reset or release appropriately (e.g. deallocate to some check point)
+     * the memory resources passed to constructor when calling this function.
+     */
+    void reset() noexcept {
+        count_ = 0;
+    }
+
 private:
     memory::paged_memory_resource* resource_{};
     std::shared_ptr<meta::record_meta> meta_{};

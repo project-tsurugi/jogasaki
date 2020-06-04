@@ -21,13 +21,16 @@
 #include <cstring>
 
 #include <jogasaki/data/record_store.h>
-#include <jogasaki/record.h>
 #include <takatori/util/print_support.h>
 
 namespace jogasaki::data {
 
 /**
  * @brief record store with iterators
+ * @details This container can store any number of records, which are backed by paged memory resource.
+ * The stored records are accessible with the pointer-based iterator, which is pointer with custom increment operator
+ * treats gaps between the pages (i.e. not all records are on the same continuous memory region, but iterator allow users
+ * to iterate them sequentially as if they are continuous region)
  */
 class iteratable_record_store {
 public:
@@ -102,8 +105,8 @@ public:
 
     private:
         iteratable_record_store const* container_;
-        interval_list::iterator interval_;
         iteratable_record_store::pointer pos_{};
+        interval_list::iterator interval_;
     };
 
     using iterator = iteratable_record_store_iterator;
@@ -114,10 +117,7 @@ public:
     iteratable_record_store() = default;
 
     /**
-     * @brief create new instance
-     * @param record_resource memory resource used to store records
-     * @param varlen_resource memory resource used to store varlen data referenced from records
-     * @param meta record metadata
+     * @copydoc record_store::record_state()
      */
     iteratable_record_store(
             memory::paged_memory_resource* record_resource,
@@ -128,11 +128,7 @@ public:
     {}
 
     /**
-     * @brief copy and store the record
-     * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
-     * this object.
-     * @param record source of the record added to this container
-     * @return pointer to the stored record
+     * @copydoc record_store::append()
      */
     pointer append(accessor::record_ref record) {
         auto p = base_.append(record);
@@ -146,15 +142,14 @@ public:
     }
 
     /**
-     * @brief getter for the number of data count added to this store
-     * @return the number of records
+     * @copydoc record_store::count()
      */
     [[nodiscard]] std::size_t count() const noexcept {
         return base_.count();
     }
 
     /**
-     * @return whether the region is empty or not
+     * @copydoc record_store::empty()
      */
     [[nodiscard]] bool empty() const noexcept {
         return base_.empty();
@@ -176,6 +171,15 @@ public:
      */
     iterator end() {
         return iterator{*this, intervals_.end()};
+    }
+
+    /**
+     * @copydoc record_store::reset()
+     */
+    void reset() noexcept {
+        base_.reset();
+        prev_ = nullptr;
+        intervals_.clear();
     }
 
 private:

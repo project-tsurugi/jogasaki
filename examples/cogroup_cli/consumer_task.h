@@ -70,24 +70,83 @@ public:
             key_offset_(l_meta_->key().value_offset(0)),
             value_offset_(l_meta_->value().value_offset(0)),
             key_comparator_(l_meta_->key_shared().get()),
-            key_size_(l_meta_->key().record_size())
+            key_size_(l_meta_->key().record_size()),
+
+            l_store_resource_last_checkpoint_(l_store_resource_->get_checkpoint()),
+            l_store_varlen_resource_last_checkpoint_(l_store_varlen_resource_->get_checkpoint()),
+            r_store_resource_last_checkpoint_(r_store_resource_->get_checkpoint()),
+            r_store_varlen_resource_last_checkpoint_(r_store_varlen_resource_->get_checkpoint())
     {}
 
-    void consume_member(group_reader* reader, std::size_t& record_counter) {
+    void consume_member(group_reader* reader,
+            std::size_t& record_counter,
+            std::size_t& key_counter,
+            std::unique_ptr<data::iteratable_record_store>& store) {
+
         while(reader->next_member()) {
             DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
             ++record_counter;
             total_val_ += reader->get_member().get_value<double>(value_offset_);
+
+            auto rec = reader->get_member();
+            store->append(rec);
         }
+        key_counter++;
     }
 
-    void consume(group_reader* reader, std::size_t& record_counter, std::size_t& key_counter) {
-        while(reader->next_group()) {
-            DVLOG(2) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset_);
-            total_key_ += reader->get_group().get_value<std::int64_t>(key_offset_);
-            ++key_counter;
-            consume_member(reader, record_counter);
+    void consume(std::function<void(std::int64_t, double, double)> consumer) {
+        auto r_value_len = r_meta_->value().record_size();
+        auto r_value_offset = r_meta_->value().value_offset(0);
+        auto l_value_len = l_meta_->value().record_size();
+        auto l_value_offset = l_meta_->value().value_offset(0);
+        if(l_store_->empty()) {
+            ++keys_right_only_;
+            auto it = r_store_->begin();
+            auto end = r_store_->end();
+            while(it != end) {
+                auto rec = accessor::record_ref(*it, r_value_len);
+                consumer(reinterpret_cast<std::int64_t>(l_key_.get()) ,-1.0, rec.get_value<double>(r_value_offset));
+                ++it;
+                ++values_right_only_;
+            }
+        } else if (r_store_->empty()) {
+            ++keys_left_only_;
+            auto it = l_store_->begin();
+            auto end = l_store_->end();
+            while(it != end) {
+                auto rec = accessor::record_ref(*it, l_value_len);
+                consumer(reinterpret_cast<std::int64_t>(r_key_.get()) ,rec.get_value<double>(l_value_offset), -1.0);
+                ++it;
+                ++values_left_only_;
+            }
+        } else {
+            ++keys_matched_;
+            auto l_it = l_store_->begin();
+            auto l_end = l_store_->end();
+            auto r_end = r_store_->end();
+            while(l_it != l_end) {
+                auto r_it = r_store_->begin();
+                while(r_it != r_end) {
+                    auto l_rec = accessor::record_ref(*l_it, l_value_len);
+                    auto r_rec = accessor::record_ref(*r_it, r_value_len);
+                    consumer(reinterpret_cast<std::int64_t>(r_key_.get()) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
+                    ++r_it;
+                    ++values_matched_;
+                }
+                ++l_it;
+            }
         }
+        l_store_->reset();
+        r_store_->reset();
+        l_store_resource_->deallocate_after(l_store_resource_last_checkpoint_);
+        l_store_varlen_resource_->deallocate_after(l_store_varlen_resource_last_checkpoint_);
+        r_store_resource_->deallocate_after(r_store_resource_last_checkpoint_);
+        r_store_varlen_resource_->deallocate_after(r_store_varlen_resource_last_checkpoint_);
+
+        l_store_resource_last_checkpoint_ = l_store_resource_->get_checkpoint();
+        l_store_varlen_resource_last_checkpoint_ = l_store_varlen_resource_->get_checkpoint();
+        r_store_resource_last_checkpoint_ = r_store_resource_->get_checkpoint();
+        r_store_varlen_resource_last_checkpoint_ = r_store_varlen_resource_->get_checkpoint();
     }
 
     void next_left_key() {
@@ -173,7 +232,7 @@ public:
                     break;
                 }
                 case state::on_left_member:
-                    consume_member(l_reader, l_records_);
+                    consume_member(l_reader, l_records_, l_keys_, l_store_);
                     if (r == read::both) {
                         s = state::on_right_member;
                     } else {
@@ -182,17 +241,22 @@ public:
                     }
                     break;
                 case state::on_right_member:
-                    consume(r_reader, r_records_, r_keys_);
+                    consume_member(r_reader, r_records_, r_keys_, r_store_);
                     // send data
                     s = state::filled;
                     break;
-                case state::filled:
-                    if (r == read::both) {
-                        r = read::none;
+                case state::filled: {
+                    consume([&](std::int64_t key, double x, double y) {
+                        total_key_ += key;
+                        total_val_ += x + y;
+                    });
+                    auto prev = r;
+                    r = read::none;
+                    if (prev == read::both) {
                         s = state::both_consumed;
                         break;
                     }
-                    if (r == read::none) {
+                    if (prev == read::none) {
                         if (left_eof) {
                             if(!r_reader->next_group()) {
                                 right_eof = true;
@@ -215,7 +279,7 @@ public:
                         }
                         std::abort();
                     }
-                    if (r == read::left) {
+                    if (prev == read::left) {
                         if(!l_reader->next_group()) {
                             left_eof = true;
                             s = state::on_right_member;
@@ -223,8 +287,9 @@ public:
                         }
                         next_left_key();
                         s = state::did_read_both_key;
+                        break;
                     }
-                    if (r == read::right) {
+                    if (prev == read::right) {
                         if(!r_reader->next_group()) {
                             right_eof = true;
                             s = state::on_left_member;
@@ -232,8 +297,10 @@ public:
                         }
                         next_right_key();
                         s = state::did_read_both_key;
+                        break;
                     }
                     std::abort();
+                }
                 default:
                     std::abort();
             }
@@ -242,8 +309,11 @@ public:
         r_reader->release();
         utils::get_watch().set_point(time_point_consumed, id());
         LOG(INFO) << *this << " consumed "
-                << "left " << l_records_ << " records with unique "<< l_keys_ << " keys "
-                << "right " << r_records_ << " records with unique "<< r_keys_ << " keys "
+                << "left (" << l_keys_ << " keys "<< l_records_ << " recs) "
+                << "right (" << r_keys_ << " keys "<< r_records_ << " recs) "
+                << "matched (" << keys_matched_ << " keys " << values_matched_ << " recs) "
+                << "left only (" << keys_left_only_ << " keys " << values_left_only_ << " recs) "
+                << "right only (" << keys_right_only_ << " keys " << values_right_only_ << " recs) "
                 << "(sum: " << total_key_ << " " << total_val_ << ")";
     }
 
@@ -272,6 +342,17 @@ private:
     comparator key_comparator_{};
     std::size_t key_size_ = 0;
     double total_val_ = 0;
+    std::size_t keys_left_only_ = 0;
+    std::size_t keys_right_only_ = 0;
+    std::size_t keys_matched_ = 0;
+    std::size_t values_left_only_ = 0;
+    std::size_t values_right_only_ = 0;
+    std::size_t values_matched_ = 0;
+
+    memory::lifo_paged_memory_resource::checkpoint l_store_resource_last_checkpoint_{};
+    memory::lifo_paged_memory_resource::checkpoint l_store_varlen_resource_last_checkpoint_{};
+    memory::lifo_paged_memory_resource::checkpoint r_store_resource_last_checkpoint_{};
+    memory::lifo_paged_memory_resource::checkpoint r_store_varlen_resource_last_checkpoint_{};
 };
 
 }

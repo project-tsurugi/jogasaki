@@ -30,6 +30,7 @@
 #include "producer_process.h"
 #include "consumer_process.h"
 #include "../common/cli_constants.h"
+#include "../common/dump.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
@@ -50,6 +51,7 @@ DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
 DEFINE_bool(assign_nume_nodes_uniformly, false, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
+DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 
@@ -156,15 +158,8 @@ extern "C" int main(int argc, char* argv[]) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
+    jogasaki::common_cli::dump_perf_info(FLAGS_perf);
 
-    auto& watch = jogasaki::utils::get_watch();
-    using namespace jogasaki::cogroup_cli;
-    watch.set_point(time_point_main_completed);
-    LOG(INFO) << "prepare: total " << watch.duration(time_point_prepare, time_point_produce) << "ms, average " << watch.average_duration(time_point_prepare, time_point_produce) << "ms" ;
-    LOG(INFO) << "produce: total " << watch.duration(time_point_produce, time_point_produced) << "ms, average " << watch.average_duration(time_point_produce, time_point_produced) << "ms" ;
-    LOG(INFO) << "transfer: total " << watch.duration(time_point_produced, time_point_consume, true) << "ms" ;
-    LOG(INFO) << "consume: total " << watch.duration(time_point_consume, time_point_consumed) << "ms, average " << watch.average_duration(time_point_consume, time_point_consumed) << "ms" ;
-    LOG(INFO) << "finish: total " << watch.duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
     return 0;
 }
 

@@ -103,6 +103,7 @@ public:
             ++keys_right_only_;
             auto it = r_store_->begin();
             auto end = r_store_->end();
+            DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(r_key_.get());
             while(it != end) {
                 auto rec = accessor::record_ref(*it, r_value_len);
                 consumer(reinterpret_cast<std::int64_t>(l_key_.get()) ,-1.0, rec.get_value<double>(r_value_offset));
@@ -113,6 +114,7 @@ public:
             ++keys_left_only_;
             auto it = l_store_->begin();
             auto end = l_store_->end();
+            DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(l_key_.get());
             while(it != end) {
                 auto rec = accessor::record_ref(*it, l_value_len);
                 consumer(reinterpret_cast<std::int64_t>(r_key_.get()) ,rec.get_value<double>(l_value_offset), -1.0);
@@ -124,6 +126,7 @@ public:
             auto l_it = l_store_->begin();
             auto l_end = l_store_->end();
             auto r_end = r_store_->end();
+            DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(l_key_.get());
             while(l_it != l_end) {
                 auto r_it = r_store_->begin();
                 while(r_it != r_end) {

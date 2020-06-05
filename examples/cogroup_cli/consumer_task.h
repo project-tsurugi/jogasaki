@@ -208,6 +208,15 @@ public:
                     s = state::did_read_left_key;
                     break;
                 }
+                case state::left_eof:
+                    if(!r_reader->next_group()) {
+                        right_eof = true;
+                        s = state::end;
+                        break;
+                    }
+                    next_right_key();
+                    s = state::on_right_member;
+                    break;
                 case state::did_read_left_key: {
                     if(!r_reader->next_group()) {
                         right_eof = true;
@@ -301,8 +310,8 @@ public:
                     }
                     std::abort();
                 }
-                default:
-                    std::abort();
+                case state::end:
+                    break;
             }
         }
         l_reader->release();

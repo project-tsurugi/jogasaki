@@ -49,7 +49,7 @@ public:
         resources_.reserve(sinks.size());
         tasks_.reserve(sinks.size());
         for(auto& s : sinks) {
-            auto& resource = resources_.emplace_back(std::make_unique<memory::monotonic_paged_memory_resource>(&global::global_page_pool));
+            auto& resource = resources_.emplace_back(std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()));
             tasks_.emplace_back(std::make_unique<producer_task<Params>>(context_, step_, &s, meta_, *params_, *resource));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};

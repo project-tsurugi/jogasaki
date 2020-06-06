@@ -56,7 +56,6 @@ public:
         return h % partitions_;
     }
 
-
 private:
     std::size_t partitions_{};
     std::shared_ptr<meta::record_meta> meta_{};

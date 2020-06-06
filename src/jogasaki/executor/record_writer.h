@@ -84,16 +84,12 @@ public:
     record_writer& operator=(record_writer&& other) noexcept = default;
 };
 
-/**
- * @brief equality comparison operator
- */
+/// @brief equality comparison operator
 inline bool operator==(record_writer const& a, record_writer const& b) noexcept {
     return std::addressof(a) == std::addressof(b);
 }
 
-/**
- * @brief inequality comparison operator
- */
+/// @brief inequality comparison operator
 inline bool operator!=(record_writer const& a, record_writer const& b) noexcept {
     return !(a == b);
 }

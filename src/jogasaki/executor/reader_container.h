@@ -16,6 +16,7 @@
 #pragma once
 
 #include <memory>
+#include <variant>
 
 #include <takatori/util/fail.h>
 
@@ -60,46 +61,71 @@ inline std::ostream& operator<<(std::ostream& out, reader_kind value) {
     return out << to_string_view(value);
 }
 
+namespace impl {
+
 template <class T>
 inline constexpr reader_kind to_kind = reader_kind::record;
 
 template <>
 inline constexpr reader_kind to_kind<group_reader> = reader_kind::group;
 
+}
+
 /**
  * @brief reader container to accommodate both record/group readers by type erasure
  */
 class reader_container {
 public:
+    /// @brief entity type
     using entity_type = std::variant<std::monostate, record_reader*, group_reader*>;
-
-    template <class T>
-    static constexpr std::size_t index_of = alternative_index<T, entity_type>();
 
     /**
      * @brief create empty instance
      */
     constexpr reader_container() = default;
+
+    /**
+     * @brief create new instance holding record reader
+     * @param reader the object to hold
+     */
     explicit reader_container(record_reader* reader) noexcept : reader_(std::in_place_type<record_reader*>, reader) {}
+
+    /**
+     * @brief create new instance holding group reader
+     * @param reader the object to hold
+     */
     explicit reader_container(group_reader* reader) noexcept : reader_(std::in_place_type<group_reader*>, reader) {}
 
+    /**
+     * @brief getter for the reader kind
+     * @return kind of the reader held by this object
+     */
     [[nodiscard]] reader_kind kind() const noexcept {
         switch(reader_.index()) {
             case index_of<std::monostate>:
                 return reader_kind::unknown;
             case index_of<record_reader*>:
-                return to_kind<record_reader>;
+                return impl::to_kind<record_reader>;
             case index_of<group_reader*>:
-                return to_kind<group_reader>;
+                return impl::to_kind<group_reader>;
         }
         takatori::util::fail();
     }
 
+    /**
+     * @brief getter for the reader
+     * @tparam T type of the reader
+     * @return pointer to the reader held by this object
+     */
     template<class T>
     T* reader() {
         return std::get<T*>(reader_);
     }
 
+    /**
+     * @brief getter of the validity
+     * @return whether the container holds any reader or not
+     */
     explicit operator bool() const noexcept {
         switch(reader_.index()) {
             case index_of<std::monostate>:
@@ -114,6 +140,9 @@ public:
 
 private:
     entity_type reader_{};
+
+    template <class T>
+    static constexpr std::size_t index_of = alternative_index<T, entity_type>();
 };
 
 } // namespace

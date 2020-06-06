@@ -1,6 +1,6 @@
 #pragma once
 
 /**
- * @brief data accessors
+ * @brief data accessors and related utilities
  */
 namespace jogasaki::accessor {}

@@ -34,33 +34,60 @@ namespace jogasaki::data {
  */
 class iteratable_record_store {
 public:
-    using pointer = record_store::pointer;
+    /// @brief pointer type
+    using record_pointer = record_store::record_pointer;
 
-    struct pointers_interval {
-        pointers_interval(pointer b, pointer e) : b_(b), e_(e) {}
-        pointer b_; //NOLINT
-        pointer e_; //NOLINT
+private:
+    struct record_range {
+        record_range(record_pointer b, record_pointer e) : b_(b), e_(e) {}
+        record_pointer b_; //NOLINT
+        record_pointer e_; //NOLINT
     };
 
-    using interval_list = std::vector<pointers_interval>;
+public:
+    /// @brief type for list of ranges
+    using range_list = std::vector<record_range>;
 
-    class iteratable_record_store_iterator {
+    /**
+     * @brief iterator for the stored records
+     */
+    class iterator {
     public:
+
+        /// @brief iterator category
         using iterator_category = std::input_iterator_tag;
-        using value_type = iteratable_record_store::pointer;
+
+        /// @brief type of value
+        using value_type = iteratable_record_store::record_pointer;
+
+        /// @brief type of difference
         using difference_type = std::ptrdiff_t;
+
+        /// @brief type of pointer
         using pointer = value_type*;
+
+        /// @brief type of reference
         using reference = value_type&;
-        iteratable_record_store_iterator(iteratable_record_store const& container, interval_list::iterator interval) :
-                container_(&container), pos_(interval != container_->intervals_.end() ? interval->b_ : nullptr), interval_(interval)
+
+        /**
+         * @brief construct new iterator
+         * @param container the target record store that the constructed object iterates
+         * @param range indicates the range entry that the constructed iterator start iterating with
+         */
+        iterator(iteratable_record_store const& container, range_list::iterator range) :
+                container_(&container), pos_(range != container_->ranges_.end() ? range->b_ : nullptr), range_(range)
         {}
 
-        iteratable_record_store_iterator& operator++() {
+        /**
+         * @brief increment iterator
+         * @return reference after the increment
+         */
+        iterator& operator++() {
             pos_ = static_cast<unsigned char*>(pos_) + container_->record_size_; //NOLINT
-            if (pos_ >= interval_->e_) {
-                ++interval_;
-                if(interval_ != container_->intervals_.end()) {
-                    pos_ = interval_->b_;
+            if (pos_ >= range_->e_) {
+                ++range_;
+                if(range_ != container_->ranges_.end()) {
+                    pos_ = range_->b_;
                 } else {
                     pos_ = nullptr;
                 }
@@ -68,25 +95,31 @@ public:
             return *this;
         }
 
-        iteratable_record_store_iterator const operator++(int) { //NOLINT
+        /**
+         * @brief increment iterator
+         * @return copy of the iterator before the increment
+         */
+        iterator const operator++(int) { //NOLINT
             auto it = *this;
             this->operator++();
             return it;
         }
 
+        /**
+         * @brief dereference the iterator
+         * @return pointer to the record that the iterator is on
+         */
         reference operator*() {
             return pos_;
         }
 
-        value_type operator->() {
-            return pos_;
+        /// @brief equivalent comparison
+        constexpr bool operator==(iterator const& r) const noexcept {
+            return this->container_ == r.container_ && this->range_ == r.range_ && this->pos_ == r.pos_;
         }
 
-        constexpr bool operator==(iteratable_record_store_iterator const& r) const noexcept {
-            return this->container_ == r.container_ && this->interval_ == r.interval_ && this->pos_ == r.pos_;
-        }
-
-        constexpr bool operator!=(const iteratable_record_store_iterator& r) const noexcept {
+        /// @brief inequivalent comparison
+        constexpr bool operator!=(const iterator& r) const noexcept {
             return !(*this == r);
         }
 
@@ -96,20 +129,18 @@ public:
          * @param value the target value
          * @return the output
          */
-        friend inline std::ostream& operator<<(std::ostream& out, iteratable_record_store_iterator value) {
+        friend inline std::ostream& operator<<(std::ostream& out, iterator value) {
             return out << std::hex
                     << "container [" << value.container_
-                    <<"] interval [" << takatori::util::print_support(value.interval_)
+                    <<"] range [" << takatori::util::print_support(value.range_)
                     << "] pointer [" << value.pos_ << "]";
         }
 
     private:
         iteratable_record_store const* container_;
-        iteratable_record_store::pointer pos_{};
-        interval_list::iterator interval_;
+        iteratable_record_store::record_pointer pos_{};
+        range_list::iterator range_;
     };
-
-    using iterator = iteratable_record_store_iterator;
 
     /**
      * @brief create empty object
@@ -117,7 +148,7 @@ public:
     iteratable_record_store() = default;
 
     /**
-     * @copydoc record_store::record_state()
+     * @copydoc record_store::record_store(memory::paged_memory_resource* record_resource, memory::paged_memory_resource* varlen_resource, std::shared_ptr<meta::record_meta> meta)
      */
     iteratable_record_store(
             memory::paged_memory_resource* record_resource,
@@ -130,13 +161,13 @@ public:
     /**
      * @copydoc record_store::append()
      */
-    pointer append(accessor::record_ref record) {
+    record_pointer append(accessor::record_ref record) {
         auto p = base_.append(record);
         if (prev_ == nullptr || p != static_cast<unsigned char*>(prev_) + record_size_) { //NOLINT
-            // starting new interval
-            intervals_.emplace_back(p, nullptr);
+            // starting new range
+            ranges_.emplace_back(p, nullptr);
         }
-        intervals_.back().e_ = static_cast<unsigned char*>(p) + record_size_; //NOLINT
+        ranges_.back().e_ = static_cast<unsigned char*>(p) + record_size_; //NOLINT
         prev_ = p;
         return p;
     }
@@ -161,7 +192,7 @@ public:
      * @warning the returned iterator will be invalid when new append() is called.
      */
     iterator begin() {
-        return iterator{*this, intervals_.begin()};
+        return iterator{*this, ranges_.begin()};
     }
 
     /**
@@ -170,7 +201,7 @@ public:
      * @warning the returned iterator will be invalid when new append() is called
      */
     iterator end() {
-        return iterator{*this, intervals_.end()};
+        return iterator{*this, ranges_.end()};
     }
 
     /**
@@ -179,14 +210,14 @@ public:
     void reset() noexcept {
         base_.reset();
         prev_ = nullptr;
-        intervals_.clear();
+        ranges_.clear();
     }
 
 private:
     std::size_t record_size_{};
     record_store base_{};
-    pointer prev_{};
-    interval_list intervals_{};
+    record_pointer prev_{};
+    range_list ranges_{};
 
 };
 

@@ -35,7 +35,8 @@ namespace jogasaki::data {
  */
 class record_store {
 public:
-    using pointer = void*;
+    /// @brief type of record pointer
+    using record_pointer = void*;
 
     /**
      * @brief create empty object
@@ -62,7 +63,7 @@ public:
      * @param record source of the record added to this container
      * @return pointer to the stored record
      */
-    pointer append(accessor::record_ref record) {
+    record_pointer append(accessor::record_ref record) {
         auto sz = meta_->record_size();
         auto* p = resource_->allocate(meta_->record_size(), meta_->record_alignment());
         if (!p) std::abort();

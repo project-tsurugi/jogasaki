@@ -3,4 +3,4 @@
 /**
  * @brief executor model common implementation
  */
-namespace jogasaki::executor::exchange::common {}
+namespace jogasaki::executor::common {}

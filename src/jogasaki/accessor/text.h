@@ -29,13 +29,14 @@ namespace jogasaki::accessor {
 
 /**
  * @brief text field data object
- * Trivially copyable immutable class holding variable length text string (possibly in short format, aks SSO)
+ * @details Trivially copyable immutable class holding variable length text string (possibly in short format, aks SSO)
  * The memory to store the text string may be allocated from the paged_memory_resource, so life-time of this object
  * should be cared in pair with the paged_memory_resource. When the paged_memory_resource ends lifetime and its resource
  * is released, this object's memory area will also become invalid.
  */
 class text {
 public:
+    /// @brief size of text data in byte
     using size_type = std::size_t;
 
     /**
@@ -97,31 +98,74 @@ public:
         return sv_a.compare(sv_b);
     }
 
+    /**
+     * @brief compare contents of two text object lexicographically
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a < b
+     * @return false otherwise
+     */
     friend bool operator<(text const& a, text const& b) noexcept {
         return compare(a, b) < 0;
     }
 
+    /**
+     * @brief compare contents of two text object lexicographically
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a > b
+     * @return false otherwise
+     */
     friend bool operator>(text const& a, text const& b) noexcept {
         return compare(a, b) > 0;
     }
 
+    /**
+     * @brief compare contents of two text object lexicographically
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a <= b
+     * @return false otherwise
+     */
     friend bool operator<=(text const& a, text const& b) noexcept {
         return compare(a, b) <= 0;
     }
 
+    /**
+     * @brief compare contents of two text object lexicographically
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a >= b
+     * @return false otherwise
+     */
     friend bool operator>=(text const& a, text const& b) noexcept {
         return compare(a, b) >= 0;
     }
 
+    /**
+     * @brief compare contents of two text object lexicographically
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a == b
+     * @return false otherwise
+     */
     friend bool operator==(text const& a, text const& b) noexcept {
         std::string_view sv_a{a};
         std::string_view sv_b{b};
         return sv_a == sv_b;
     }
 
+    /**
+     * @brief compare contents of two text object lexicographically
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a != b
+     * @return false otherwise
+     */
     friend bool operator!=(text const& a, text const& b) noexcept {
         return !(a == b);
     }
+
 private:
     class long_text {
     public:

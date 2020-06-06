@@ -25,8 +25,8 @@
 namespace jogasaki::accessor {
 
 /**
- * @brief record reference provides access to record contents
- * Given underlying record represented by continuous memory region, this class gives setter/getter for field values
+ * @brief record reference providing access to record contents
+ * @details Given underlying record represented by continuous memory region, this class gives setter/getter for field values
  * or other data manipulating functions. It's assumed that a part of record metadata is shared outside of this class.
  * For example, caller/callee share the offset (for value and nullity) and runtime C++ type used for each field in the record and
  * use them with setter/getter.
@@ -34,7 +34,10 @@ namespace jogasaki::accessor {
 class record_ref {
 public:
 
+    /// @brief type for record size
     using size_type = std::size_t;
+
+    /// @brief type of value/nullity offset
     using offset_type = std::size_t;
 
     /**
@@ -69,6 +72,7 @@ public:
     /**
      * @brief set nullity
      * @param nullity_offset nullity bit offset for the field, whose nullity is to be set.
+     * @param nullity whether the field is null, or not
      * @warning this function is meaningful only when the field is nullable.
      * For non-nullable field, the nullity should be governed outside and field-level nullity should not be set.
      * @warning for nullable field, nullity has priority to existence of value, that is, even if the value is already
@@ -136,6 +140,7 @@ public:
     }
 
     /**
+     * @brief getter for record size
      * @return size of record
      */
     [[nodiscard]] size_type size() const noexcept {
@@ -143,6 +148,7 @@ public:
     }
 
     /**
+     * @brief getter for validity of record reference
      * @return whether this reference is valid or not
      */
     explicit operator bool() const noexcept {
@@ -150,6 +156,7 @@ public:
     }
 
     /**
+     * @brief getter of pointer to record data
      * @return the base pointer for the record data
      */
     [[nodiscard]] void* data() const noexcept {

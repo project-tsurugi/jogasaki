@@ -29,7 +29,10 @@ namespace jogasaki::accessor {
 class record_copier {
 public:
 
+    /// @brief type of field offset
     using offset_type = record_ref::offset_type;
+
+    /// @brief type of field index
     using field_index_type = std::size_t;
 
     /**
@@ -40,8 +43,8 @@ public:
     /**
      * @brief construct object from record metadata
      * @param meta record metadata
-     * @param resource memory resource used to copy memory resource based data item such as text
-     * (nullptr can be passed if this copier never copies such data item)
+     * @param resource memory resource to copy memory resource dependent data item (e.g. `text` field type data).
+     * Pass nullptr if this copier never copies such data item.
      */
     explicit record_copier(std::shared_ptr<meta::record_meta> meta, memory::paged_memory_resource* resource = nullptr) :
             meta_(std::move(meta)), resource_(resource) {
@@ -52,6 +55,12 @@ public:
         }
     }
 
+    /**
+     * @brief copy record content referenced by record_ref
+     * @param dst copy destination
+     * @param size size of the record content
+     * @param src copy source
+     */
     void operator()(void* dst, std::size_t size, accessor::record_ref src) {
         std::memcpy(dst, src.data(), size);
         for(auto& i : text_field_offsets_) {
@@ -63,6 +72,11 @@ public:
         }
     }
 
+    /**
+     * @brief copy record content referenced by record_ref
+     * @param dst copy destination
+     * @param src copy source
+     */
     void operator()(accessor::record_ref dst, accessor::record_ref src) {
         operator()(dst.data(), meta_->record_size(), src);
     }

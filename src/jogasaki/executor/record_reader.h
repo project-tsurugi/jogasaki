@@ -15,20 +15,19 @@
  */
 #pragma once
 
-#include <takatori/util/sequence_view.h>
-
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor {
 
 /**
  * @brief record reader interface for the process to retrieve record data
- * The data will be presented as record entry and next_record/get_record are used
+ * @details The data will be presented as record entry and next_record/get_record are used
  * to proceed the record position and to retrieve them.
  * At the beginning, initial position is set just before the first record entry (if any).
  */
 class record_reader {
 public:
+
     /**
      * @brief check whether next record entry is available
      * @return true when next data is available for reading
@@ -101,16 +100,12 @@ public:
     record_reader& operator=(record_reader&& other) noexcept = default;
 };
 
-/**
- * @brief equality comparison operator
- */
+/// @brief equality comparison operator
 inline bool operator==(record_reader const& a, record_reader const& b) noexcept {
     return std::addressof(a) == std::addressof(b);
 }
 
-/**
- * @brief inequality comparison operator
- */
+/// @brief inequality comparison operator
 inline bool operator!=(record_reader const& a, record_reader const& b) noexcept {
     return !(a == b);
 }

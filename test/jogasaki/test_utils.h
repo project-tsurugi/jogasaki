@@ -38,6 +38,8 @@
 #include <takatori/util/string_builder.h>
 #include <takatori/util/fail.h>
 
+#include <yugawara/compiler_result.h>
+
 namespace jogasaki::testing {
 
 template<class T, class Port>

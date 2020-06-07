@@ -20,6 +20,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/group_meta.h>
 
 namespace jogasaki {
 
@@ -46,6 +47,21 @@ public:
                         meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
                 },
                 boost::dynamic_bitset<std::uint64_t>{std::string("000")});
+    }
+
+    static inline std::shared_ptr<meta::group_meta> test_group_meta1() {
+        return std::make_shared<meta::group_meta>(
+                std::make_shared<meta::record_meta>(
+                        std::vector<meta::field_type>{
+                                meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
+                        },
+                        boost::dynamic_bitset<std::uint64_t>{std::string("0")}),
+                std::make_shared<meta::record_meta>(
+                        std::vector<meta::field_type>{
+                                meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
+                        },
+                        boost::dynamic_bitset<std::uint64_t>{std::string("0")})
+        );
     }
 };
 

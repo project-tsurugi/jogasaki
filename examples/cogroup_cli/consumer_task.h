@@ -94,6 +94,12 @@ public:
         key_counter++;
     }
 
+    std::int64_t read_key(utils::aligned_array<char> const& key, meta::group_meta const& meta) {
+        auto rec = accessor::record_ref(key.get(), meta.key().record_size());
+        auto offset = meta.key().value_offset(0);
+        return rec.get_value<std::int64_t>(offset);
+    }
+
     void consume(std::function<void(std::int64_t, double, double)> consumer) {
         auto r_value_len = r_meta_->value().record_size();
         auto r_value_offset = r_meta_->value().value_offset(0);
@@ -103,10 +109,10 @@ public:
             ++keys_right_only_;
             auto it = r_store_->begin();
             auto end = r_store_->end();
-            DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(r_key_.get());
+            DVLOG(2) << *this << " key : " << read_key(r_key_, *r_meta_);
             while(it != end) {
                 auto rec = accessor::record_ref(*it, r_value_len);
-                consumer(reinterpret_cast<std::int64_t>(l_key_.get()) ,-1.0, rec.get_value<double>(r_value_offset));
+                consumer(read_key(r_key_, *r_meta_), -1.0, rec.get_value<double>(r_value_offset));
                 ++it;
                 ++values_right_only_;
             }
@@ -114,10 +120,10 @@ public:
             ++keys_left_only_;
             auto it = l_store_->begin();
             auto end = l_store_->end();
-            DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(l_key_.get());
+            DVLOG(2) << *this << " key : " << read_key(l_key_, *l_meta_);
             while(it != end) {
                 auto rec = accessor::record_ref(*it, l_value_len);
-                consumer(reinterpret_cast<std::int64_t>(r_key_.get()) ,rec.get_value<double>(l_value_offset), -1.0);
+                consumer(read_key(l_key_, *l_meta_) ,rec.get_value<double>(l_value_offset), -1.0);
                 ++it;
                 ++values_left_only_;
             }
@@ -126,13 +132,13 @@ public:
             auto l_it = l_store_->begin();
             auto l_end = l_store_->end();
             auto r_end = r_store_->end();
-            DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(l_key_.get());
+            DVLOG(2) << *this << " key : " << read_key(l_key_, *l_meta_);
             while(l_it != l_end) {
                 auto r_it = r_store_->begin();
                 while(r_it != r_end) {
                     auto l_rec = accessor::record_ref(*l_it, l_value_len);
                     auto r_rec = accessor::record_ref(*r_it, r_value_len);
-                    consumer(reinterpret_cast<std::int64_t>(r_key_.get()) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
+                    consumer(read_key(r_key_, *r_meta_) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
                     ++r_it;
                     ++values_matched_;
                 }
@@ -259,6 +265,7 @@ public:
                     break;
                 case state::filled: {
                     consume([&](std::int64_t key, double x, double y) {
+                        DVLOG(2) << *this << " key: " << key << " value1 : " << x << " value2 : " << y;
                         total_key_ += key;
                         total_val_ += x + y;
                     });

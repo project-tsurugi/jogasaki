@@ -76,6 +76,9 @@ TEST_F(cogroup_test, simple) {
             }
     };
 
+    auto meta = test_group_meta1();
+    auto value_offset = meta->value().value_offset(0);
+
     cogroup cgrp{
         std::vector<group_reader*>{&r1, &r2},
         std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1()}
@@ -90,10 +93,12 @@ TEST_F(cogroup_test, simple) {
         auto& r1 = values1.emplace_back();
         auto& r2 = values2.emplace_back();
         for(auto b = values[0].first; b != values[0].second; ++b) {
-            r1.emplace_back(*reinterpret_cast<double*>(*b));
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r1.emplace_back(rec.get_value<double>(value_offset));
         }
         for(auto b = values[1].first; b != values[1].second; ++b) {
-            r2.emplace_back(*reinterpret_cast<double*>(*b));
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r2.emplace_back(rec.get_value<double>(value_offset));
         }
     };
     cgrp(consumer);
@@ -166,6 +171,9 @@ TEST_F(cogroup_test, three_inputs) {
             }
     };
 
+    auto meta = test_group_meta1();
+    auto value_offset = meta->value().value_offset(0);
+
     cogroup cgrp{
             std::vector<group_reader*>{&r1, &r2, &r3},
             std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1(), test_group_meta1()}
@@ -182,13 +190,16 @@ TEST_F(cogroup_test, three_inputs) {
         auto& r2 = values2.emplace_back();
         auto& r3 = values3.emplace_back();
         for(auto b = values[0].first; b != values[0].second; ++b) {
-            r1.emplace_back(*reinterpret_cast<double*>(*b));
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r1.emplace_back(rec.get_value<double>(value_offset));
         }
         for(auto b = values[1].first; b != values[1].second; ++b) {
-            r2.emplace_back(*reinterpret_cast<double*>(*b));
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r2.emplace_back(rec.get_value<double>(value_offset));
         }
         for(auto b = values[2].first; b != values[2].second; ++b) {
-            r3.emplace_back(*reinterpret_cast<double*>(*b));
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r3.emplace_back(rec.get_value<double>(value_offset));
         }
     };
     cgrp(consumer);

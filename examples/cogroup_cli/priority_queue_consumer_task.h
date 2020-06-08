@@ -24,7 +24,6 @@
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/data/iteratable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
 #include <jogasaki/executor/process/cogroup.h>
 
 #include "../common/task_base.h"
@@ -104,6 +103,7 @@ public:
             auto l_value_offset = l_meta_->value().value_offset(0);
 
             auto check_total = [&](std::int64_t key, double x, double y) {
+                DVLOG(2) << *this << " key: " << key << " value1 : " << x << " value2 : " << y;
                 total_key_ += key;
                 total_val_ += x + y;
             };
@@ -112,10 +112,9 @@ public:
                 ++keys_right_only_;
                 auto it = values[1].first;
                 auto end = values[1].second;
-                DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(key.data());
                 while(it != end) {
                     auto rec = accessor::record_ref(*it, r_value_len);
-                    check_total(reinterpret_cast<std::int64_t>(key.data()) ,-1.0, rec.get_value<double>(r_value_offset));
+                    check_total(key.get_value<std::int64_t>(key_offset_) ,-1.0, rec.get_value<double>(r_value_offset));
                     ++it;
                     ++values_right_only_;
                 }
@@ -123,10 +122,9 @@ public:
                 ++keys_left_only_;
                 auto it = values[0].first;
                 auto end = values[0].second;
-                DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(key.data());
                 while(it != end) {
                     auto rec = accessor::record_ref(*it, l_value_len);
-                    check_total(reinterpret_cast<std::int64_t>(key.data()) ,rec.get_value<double>(l_value_offset), -1.0);
+                    check_total(key.get_value<std::int64_t>(key_offset_) ,rec.get_value<double>(l_value_offset), -1.0);
                     ++it;
                     ++values_left_only_;
                 }
@@ -135,13 +133,12 @@ public:
                 auto l_it = values[0].first;
                 auto l_end = values[0].second;
                 auto r_end = values[1].second;
-                DVLOG(2) << *this << " key : " << reinterpret_cast<std::int64_t>(key.data());
                 while(l_it != l_end) {
                     auto r_it = values[1].first;
                     while(r_it != r_end) {
                         auto l_rec = accessor::record_ref(*l_it, l_value_len);
                         auto r_rec = accessor::record_ref(*r_it, r_value_len);
-                        check_total(reinterpret_cast<std::int64_t>(key.data()) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
+                        check_total(key.get_value<std::int64_t>(key_offset_) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
                         ++r_it;
                         ++values_matched_;
                     }

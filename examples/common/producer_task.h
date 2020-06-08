@@ -91,8 +91,11 @@ private:
             }
             prev = ptr;
             auto ref = accessor::record_ref(ptr, sz);
-            ref.set_value<std::int64_t>(offset_c1, rnd());
-            ref.set_value<double>(offset_c2, rnd());
+            std::int64_t c1 = rnd();
+            ref.set_value<std::int64_t>(offset_c1, c1);
+            double c2 = rnd();
+            ref.set_value<double>(offset_c2, c2);
+            DVLOG(2) << "c1: " << c1 << " c2: " << c2;
         }
         if(begin_range) {
             continuous_ranges.emplace_back(begin_range, prev);

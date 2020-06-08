@@ -162,6 +162,7 @@ public:
     [[nodiscard]] void* data() const noexcept {
         return data_;
     }
+
 private:
     void* data_{};
     size_type size_{};

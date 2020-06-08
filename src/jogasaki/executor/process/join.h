@@ -40,11 +40,20 @@ class join {
 public:
     using input_index = std::size_t;
 
-    join() { }
+    join(
+            std::shared_ptr<meta::record_meta> key_meta,
+            std::vector<std::shared_ptr<meta::record_meta>> records_meta,
+            std::function<void(accessor::record_ref)> downstream
+    ) :
+            key_meta_(std::move(key_meta)),
+            records_meta_(std::move(records_meta)),
+            downstream_(std::move(downstream))
+    {}
 
     void operator()(accessor::record_ref key, std::vector<impl::iterator_pair>& groups) {
         (void)key;
         (void)groups;
+
         /*
         auto r_value_len = r_meta_->value().record_size();
         auto r_value_offset = r_meta_->value().value_offset(0);
@@ -94,7 +103,9 @@ public:
     }
 
 private:
-    std::function<void(accessor::record_ref)> consumer_{};
+    std::shared_ptr<meta::record_meta> key_meta_{};
+    std::vector<std::shared_ptr<meta::record_meta>> records_meta_{};
+    std::function<void(accessor::record_ref)> downstream_{};
 };
 
 }

@@ -33,12 +33,6 @@ using namespace std::string_view_literals;
 using namespace meta;
 using namespace takatori::util;
 
-namespace type = ::takatori::type;
-namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
-
 class cogroup_test : public test_root {
 
 public:
@@ -60,19 +54,165 @@ TEST_F(cogroup_test, simple) {
                             2,
                             mock::group_entry::value_type{
                                     200.0,
-                                    201.0,
                             },
-                    }
+                    },
             }
     };
-    auto r2 = r1;
+    mock::group_reader r2 {
+            {
+                    mock::group_entry{
+                            1,
+                            mock::group_entry::value_type{
+                                    100.0,
+                                    101.0,
+                            },
+                    },
+                    mock::group_entry{
+                            3,
+                            mock::group_entry::value_type{
+                                    300.0,
+                            },
+                    },
+            }
+    };
+
     cogroup cgrp{
         std::vector<group_reader*>{&r1, &r2},
         std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1()}
     };
-    join j{};
-    auto f = std::function(j);
-//    cgrp(f);
+
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<impl::iterator_pair>&)>;
+    std::vector<std::int64_t> keys{};
+    std::vector<std::vector<double>> values1{};
+    std::vector<std::vector<double>> values2{};
+    consumer_type consumer = [&](accessor::record_ref key, std::vector<impl::iterator_pair>& values) {
+        keys.emplace_back(key.get_value<std::int64_t>(0));
+        auto& r1 = values1.emplace_back();
+        auto& r2 = values2.emplace_back();
+        for(auto b = values[0].first; b != values[0].second; ++b) {
+            r1.emplace_back(*reinterpret_cast<double*>(*b));
+        }
+        for(auto b = values[1].first; b != values[1].second; ++b) {
+            r2.emplace_back(*reinterpret_cast<double*>(*b));
+        }
+    };
+    cgrp(consumer);
+
+    auto exp = std::vector<std::int64_t>{1,2,3};
+    auto v1 = std::vector<std::vector<double>>{
+            {100.0, 101.0},
+            {200.0},
+            {}
+        };
+    auto v2 = std::vector<std::vector<double>>{
+            {100.0, 101.0},
+            {},
+            {300.0}
+    };
+    EXPECT_EQ(exp, keys);
+    EXPECT_EQ(v1, values1);
+    EXPECT_EQ(v2, values2);
+
+}
+
+TEST_F(cogroup_test, three_inputs) {
+    mock::group_reader r1 {
+            {
+                    mock::group_entry{
+                            1,
+                            mock::group_entry::value_type{
+                                    100.0,
+                            },
+                    },
+                    mock::group_entry{
+                            2,
+                            mock::group_entry::value_type{
+                                    200.0,
+                                    201.0,
+                            },
+                    },
+            }
+    };
+    mock::group_reader r2 {
+            {
+                    mock::group_entry{
+                            1,
+                            mock::group_entry::value_type{
+                                    101.0,
+                            },
+                    },
+                    mock::group_entry{
+                            2,
+                            mock::group_entry::value_type{
+                                    200.0,
+                            },
+                    },
+                    mock::group_entry{
+                            3,
+                            mock::group_entry::value_type{
+                                    300.0,
+                            },
+                    },
+            }
+    };
+    mock::group_reader r3 {
+            {
+                    mock::group_entry{
+                            3,
+                            mock::group_entry::value_type{
+                                    301.0,
+                            },
+                    },
+            }
+    };
+
+    cogroup cgrp{
+            std::vector<group_reader*>{&r1, &r2, &r3},
+            std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1(), test_group_meta1()}
+    };
+
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<impl::iterator_pair>&)>;
+    std::vector<std::int64_t> keys{};
+    std::vector<std::vector<double>> values1{};
+    std::vector<std::vector<double>> values2{};
+    std::vector<std::vector<double>> values3{};
+    consumer_type consumer = [&](accessor::record_ref key, std::vector<impl::iterator_pair>& values) {
+        keys.emplace_back(key.get_value<std::int64_t>(0));
+        auto& r1 = values1.emplace_back();
+        auto& r2 = values2.emplace_back();
+        auto& r3 = values3.emplace_back();
+        for(auto b = values[0].first; b != values[0].second; ++b) {
+            r1.emplace_back(*reinterpret_cast<double*>(*b));
+        }
+        for(auto b = values[1].first; b != values[1].second; ++b) {
+            r2.emplace_back(*reinterpret_cast<double*>(*b));
+        }
+        for(auto b = values[2].first; b != values[2].second; ++b) {
+            r3.emplace_back(*reinterpret_cast<double*>(*b));
+        }
+    };
+    cgrp(consumer);
+
+    auto exp = std::vector<std::int64_t>{1,2,3};
+    auto v1 = std::vector<std::vector<double>>{
+            {100.0},
+            {200.0, 201.0},
+            {}
+    };
+    auto v2 = std::vector<std::vector<double>>{
+            {101.0},
+            {200.0},
+            {300.0}
+    };
+    auto v3 = std::vector<std::vector<double>>{
+            {},
+            {},
+            {301.0}
+    };
+    EXPECT_EQ(exp, keys);
+    EXPECT_EQ(v1, values1);
+    EXPECT_EQ(v2, values2);
+    EXPECT_EQ(v3, values3);
 
 }
 

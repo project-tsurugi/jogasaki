@@ -89,6 +89,9 @@ private:
     memory::lifo_paged_memory_resource::checkpoint varlen_resource_last_checkpoint_{};
 };
 
+/**
+ * @brief responsible for reading from reader and filling the record store
+ */
 class cogroup_input {
 public:
     cogroup_input(
@@ -104,24 +107,9 @@ public:
             key_comparator_(meta_->key_shared().get())
     {}
 
-    [[nodiscard]] executor::group_reader& reader() const noexcept {
-        return *reader_;
-    }
-
-    [[nodiscard]] cogroup_record_store& store() const noexcept {
-        return *store_;
-    }
-
-    [[nodiscard]] utils::aligned_array<char> const& key() const noexcept {
-        return key_;
-    }
-
     [[nodiscard]] accessor::record_ref key_record() const noexcept {
+        BOOST_ASSERT(key_filled_);
         return accessor::record_ref(key_.get(), key_size_);
-    }
-
-    [[nodiscard]] std::size_t key_size() const noexcept {
-        return key_size_;
     }
 
     std::shared_ptr<meta::group_meta> const& meta() {
@@ -132,12 +120,47 @@ public:
         return reader_eof_;
     }
 
-    void eof(bool arg = true) noexcept {
-        reader_eof_ = arg;
+    [[nodiscard]] bool filled() const noexcept {
+        return values_filled_;
     }
 
-    [[nodiscard]] bool filled() const noexcept {
-        return filled_;
+    [[nodiscard]] bool key_filled() const noexcept {
+        return key_filled_;
+    }
+
+    iterator begin() {
+        return store_->begin();
+    }
+
+    iterator end() {
+        return store_->end();
+    }
+
+    bool next() {
+        if(!reader_->next_group()) {
+            key_filled_ = false;
+            reader_eof_ = true;
+            return false;
+        }
+        auto key = reader_->get_group();
+        std::memcpy(key_.get(), key.data(), key_size_);
+        key_filled_ = true;
+        return true;
+    }
+
+    void fill() noexcept {
+        while(reader_->next_member()) {
+            auto rec = reader_->get_member();
+            store_->store().append(rec);
+        }
+        values_filled_ = true;
+    }
+
+    void reset_store() {
+        if (values_filled_) {
+            store_->reset();
+            values_filled_ = false;
+        }
     }
 
 private:
@@ -148,7 +171,8 @@ private:
     utils::aligned_array<char> key_;
     comparator key_comparator_{};
     bool reader_eof_{false};
-    bool filled_{false};
+    bool values_filled_{false};
+    bool key_filled_{false};
 };
 
 /**
@@ -195,7 +219,10 @@ public:
     ) :
             readers_(std::move(readers)),
             groups_meta_(std::move(groups_meta)),
-            queue_(impl::cogroup_input_comparator(&inputs_, groups_meta_[0]->key_shared().get()))
+            queue_(impl::cogroup_input_comparator(&inputs_, groups_meta_[0]->key_shared().get())),
+            key_size_(groups_meta_[0]->key().record_size()),
+            key_comparator_(&groups_meta_[0]->key()),
+            key_buf_(utils::make_aligned_array<char>(groups_meta_[0]->key().record_alignment(), key_size_))
             // assuming key meta are common to all inputs TODO add assert
     {
         assert(readers_.size() == groups_meta_.size());
@@ -219,65 +246,62 @@ public:
         }
     }
 
-    void consume_member(group_reader* reader,
-            std::unique_ptr<data::iteratable_record_store>& store) {
-        while(reader->next_member()) {
-            auto rec = reader->get_member();
-            store->append(rec);
-        }
-    }
-
-    void consume(consumer_type& consumer) {
-        accessor::record_ref key{};
-        std::vector<impl::iterator_pair> iterators{};
-        auto inputs = inputs_.size();
-        for(input_index i = 0; i < inputs; ++i) {
-            if(!key && inputs_[i].filled()) {
-                key = inputs_[i].key_record();
-            }
-            iterators.emplace_back(inputs_[i].store().begin(), inputs_[i].store().end());
-        }
-        if (!key) {
-            takatori::util::fail();
-        }
-        consumer(key, iterators);
-
-        for(input_index i = 0; i < inputs; ++i) {
-            inputs_[i].store().reset();
-        }
-    }
-
-    void next_key(input_index idx) {
-        auto& reader = inputs_[idx].reader();
-        auto key = reader.get_group();
-        std::memcpy(inputs_[idx].key().get(), key.data(), key.size());
-    }
-
     void operator()(consumer_type& consumer) {
         enum class state {
             init,
-            did_read_left_key,
-            did_read_both_key,
-            on_left_member,
-            on_right_member,
-            left_eof,
-            filled,
-            both_consumed,
+            keys_filled,
+            values_filled,
             end,
         };
 
-        enum class read {
-            none,
-            left,
-            right,
-            both,
-        };
         state s{state::init};
-        read r{read::none};
         while(s != state::end) {
             switch(s) {
                 case state::init:
-                case state::both_consumed:
+                    for(input_index idx = 0, n = inputs_.size(); idx < n; ++idx) {
+                        auto& in = inputs_[idx];
+                        if(in.next()) {
+                            queue_.emplace(idx);
+                        } else {
+                            BOOST_ASSERT(in.eof());
+                        }
+                    }
+                    s = state::keys_filled;
+                    break;
+                case state::keys_filled: {
+                    if (queue_.empty()) {
+                        s = state::end;
+                        break;
+                    }
+                    auto idx = queue_.top();
+                    queue_.pop();
+                    inputs_[idx].fill();
+                    auto rec = inputs_[idx].key_record();
+                    std::memcpy(key_buf_.get(), rec.data(), rec.size());
+                    auto key = accessor::record_ref(key_buf_.get(), key_size_);
+                    if(inputs_[idx].next()) {
+                        queue_.emplace(idx);
+                    }
+                    while(!queue_.empty()) {
+                        auto idx2 = queue_.top();
+                        if (key_comparator_(inputs_[idx2].key_record(), key) != 0) {
+                            break;
+                        }
+                        queue_.pop();
+                        inputs_[idx2].fill();
+                        if(inputs_[idx2].next()) {
+                            queue_.emplace(idx2);
+                        }
+                    }
+                    s = state::values_filled;
+                    break;
+                }
+                case state::values_filled:
+                    consume(consumer);
+                    s = state::keys_filled;
+                    break;
+                case state::end:
+                    break;
                 default:
                     break;
             }
@@ -292,6 +316,23 @@ private:
     std::vector<std::shared_ptr<meta::group_meta>> groups_meta_{};
     std::vector<impl::cogroup_input> inputs_{};
     std::priority_queue<input_index, std::vector<input_index>, impl::cogroup_input_comparator> queue_;
+    std::size_t key_size_{};
+    comparator key_comparator_{};
+    utils::aligned_array<char> key_buf_;
+
+    void consume(consumer_type& consumer) {
+        auto key = accessor::record_ref(key_buf_.get(), key_size_);
+        std::vector<impl::iterator_pair> iterators{};
+        auto inputs = inputs_.size();
+        for(input_index i = 0; i < inputs; ++i) {
+            iterators.emplace_back(inputs_[i].begin(), inputs_[i].end());
+        }
+        consumer(key, iterators);
+        for(input_index i = 0; i < inputs; ++i) {
+            inputs_[i].reset_store();
+        }
+    }
+
 };
 
 }

@@ -26,6 +26,8 @@ public:
     std::size_t right_upstream_partitions_ = 5;
 
     std::size_t downstream_partitions_ = 10;
+
+    bool use_priority_queue = false;
 };
 
 }

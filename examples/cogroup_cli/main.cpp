@@ -52,6 +52,7 @@ DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLI
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
 DEFINE_bool(assign_nume_nodes_uniformly, false, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
+DEFINE_bool(use_priority_queue, false, "use priority_queue to conduct cogroup");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 
@@ -119,6 +120,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.right_upstream_partitions_ = FLAGS_right_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
+    s.use_priority_queue = FLAGS_use_priority_queue;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

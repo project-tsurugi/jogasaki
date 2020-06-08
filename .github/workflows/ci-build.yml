@@ -5,6 +5,7 @@ on: [push, pull_request]
 jobs:
   Build:
     runs-on: [self-hosted, oltp]
+    timeout-minutes: 30
 
     steps:
       - id: Begin
@@ -25,7 +26,7 @@ jobs:
           ./bootstrap.sh
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j8
 
       - id: Install_sharksfin
@@ -102,7 +103,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j8
 
       - id: CTest_sharksfin_memory
@@ -120,7 +121,7 @@ jobs:
         run: |
           mkdir build-kvs
           cd build-kvs
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j8
 
       - id: CTest_sharksfin_kvs
@@ -143,34 +144,6 @@ jobs:
         run: |
           cd build
           make doxygen 2> >(tee doxygen-error.log)
-          zip -q -r jogasaki-doxygen doxygen/html
-
-      - id: Upload_Doxygen_HTML
-        name: Upload_Doxygen_HTML
-        uses: actions/upload-artifact@v2
-        if: contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master')
-        with:
-          name: jogasaki-doxygen
-          path: build/jogasaki-doxygen.zip
-
-      - id: Gcovr
-        name: Gcovr
-        env:
-          GCOVR_COMMON_OPTION: -e ../third_party/ -e ../.*/test.*
-        run: |
-          cd build
-          mkdir gcovr-xml gcovr-html
-          gcovr -j4 -r .. --xml ${GCOVR_COMMON_OPTION} -o gcovr-xml/jogasaki-gcovr.xml
-          gcovr -j4 -r .. --html --html-details --html-title "jogasaki coverage" ${GCOVR_COMMON_OPTION} -o gcovr-html/jogasaki-gcovr.html
-          zip -q -r jogasaki-coverage-report gcovr-html
-
-      - id: Upload_Gcovr_HTML
-        name: Upload_Gcovr_HTML
-        uses: actions/upload-artifact@v2
-        if: contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master')
-        with:
-          name: jogasaki-coverage-report
-          path: build/jogasaki-coverage-report.zip
 
       - id: Generate_Annotations
         name: Generate_Annotations

@@ -224,6 +224,86 @@ TEST_F(cogroup_test, three_inputs) {
     EXPECT_EQ(v1, values1);
     EXPECT_EQ(v2, values2);
     EXPECT_EQ(v3, values3);
+}
+
+TEST_F(cogroup_test, key_value_reversed) {
+    mock::group_reader r1 {
+            {
+                    mock::group_entry{
+                            1,
+                            mock::group_entry::value_type{
+                                    100.0,
+                                    101.0,
+                            },
+                    },
+                    mock::group_entry{
+                            2,
+                            mock::group_entry::value_type{
+                                    200.0,
+                            },
+                    },
+            }
+    };
+    mock::group_reader r2 {
+            {
+                    mock::group_entry{
+                            1,
+                            mock::group_entry::value_type{
+                                    100.0,
+                                    101.0,
+                            },
+                    },
+                    mock::group_entry{
+                            3,
+                            mock::group_entry::value_type{
+                                    300.0,
+                            },
+                    },
+            }
+    };
+
+    auto meta = test_group_meta1_kv_reversed();
+    auto value_offset = meta->value().value_offset(0);
+    auto key_offset = meta->key().value_offset(0);
+
+    cogroup cgrp{
+            std::vector<group_reader*>{&r1, &r2},
+            std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1_kv_reversed(), test_group_meta1_kv_reversed()}
+    };
+
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<impl::iterator_pair>&)>;
+    std::vector<std::int64_t> keys{};
+    std::vector<std::vector<double>> values1{};
+    std::vector<std::vector<double>> values2{};
+    consumer_type consumer = [&](accessor::record_ref key, std::vector<impl::iterator_pair>& values) {
+        keys.emplace_back(key.get_value<std::int64_t>(key_offset));
+        auto& r1 = values1.emplace_back();
+        auto& r2 = values2.emplace_back();
+        for(auto b = values[0].first; b != values[0].second; ++b) {
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r1.emplace_back(rec.get_value<double>(value_offset));
+        }
+        for(auto b = values[1].first; b != values[1].second; ++b) {
+            auto rec = accessor::record_ref((*b), meta->value().record_size());
+            r2.emplace_back(rec.get_value<double>(value_offset));
+        }
+    };
+    cgrp(consumer);
+
+    auto exp = std::vector<std::int64_t>{1,2,3};
+    auto v1 = std::vector<std::vector<double>>{
+            {100.0, 101.0},
+            {200.0},
+            {}
+    };
+    auto v2 = std::vector<std::vector<double>>{
+            {100.0, 101.0},
+            {},
+            {300.0}
+    };
+    EXPECT_EQ(exp, keys);
+    EXPECT_EQ(v1, values1);
+    EXPECT_EQ(v2, values2);
 
 }
 

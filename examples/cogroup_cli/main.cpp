@@ -50,9 +50,9 @@ DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
-DEFINE_bool(assign_nume_nodes_uniformly, false, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
+DEFINE_bool(assign_nume_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
-DEFINE_bool(use_priority_queue, false, "use priority_queue to conduct cogroup");  //NOLINT
+DEFINE_bool(use_priority_queue, true, "use priority_queue to conduct cogroup");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 

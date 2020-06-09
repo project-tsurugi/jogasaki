@@ -27,7 +27,7 @@ public:
 
     std::size_t downstream_partitions_ = 10;
 
-    bool use_priority_queue = false;
+    bool use_priority_queue = true;
 };
 
 }

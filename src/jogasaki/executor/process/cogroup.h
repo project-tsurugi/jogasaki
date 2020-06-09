@@ -45,7 +45,7 @@ class cogroup_record_store {
 public:
     using iterator = data::iteratable_record_store::iterator;
 
-    cogroup_record_store(
+    explicit cogroup_record_store(
             std::unique_ptr<data::iteratable_record_store> store,
             std::unique_ptr<memory::lifo_paged_memory_resource> resource = {},
             std::unique_ptr<memory::lifo_paged_memory_resource> varlen_resource = {}
@@ -108,7 +108,7 @@ public:
     {}
 
     [[nodiscard]] accessor::record_ref key_record() const noexcept {
-        BOOST_ASSERT(key_filled_);
+        BOOST_ASSERT(key_filled_);  //NOLINT
         return accessor::record_ref(key_.get(), key_size_);
     }
 
@@ -225,7 +225,7 @@ public:
             key_buf_(utils::make_aligned_array<char>(groups_meta_[0]->key().record_alignment(), key_size_))
             // assuming key meta are common to all inputs TODO add assert
     {
-        assert(readers_.size() == groups_meta_.size());
+        BOOST_ASSERT(readers_.size() == groups_meta_.size());  //NOLINT
         for(std::size_t idx = 0, n = readers_.size(); idx < n; ++idx) {
             auto resource = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
             auto varlen_resource = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
@@ -263,7 +263,7 @@ public:
                         if(in.next()) {
                             queue_.emplace(idx);
                         } else {
-                            BOOST_ASSERT(in.eof());
+                            BOOST_ASSERT(in.eof());  //NOLINT
                         }
                     }
                     s = state::keys_filled;

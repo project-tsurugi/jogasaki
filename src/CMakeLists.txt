@@ -4,6 +4,7 @@ endif()
 
 file(GLOB SOURCES
         "jogasaki/*.cpp"
+        "jogasaki/accessor/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/process/*.cpp"

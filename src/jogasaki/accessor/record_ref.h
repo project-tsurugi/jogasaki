@@ -60,14 +60,7 @@ public:
      * @warning this function is meaningful only when the field is nullable.
      * For non-nullable field, the return value should not be used and ignored.
      */
-    [[nodiscard]] bool is_null(offset_type nullity_offset) const noexcept {
-        assert(nullity_offset / bits_per_byte < size_); //NOLINT
-        offset_type byte_offset = nullity_offset / bits_per_byte;
-        offset_type offset_in_byte = nullity_offset % bits_per_byte;
-        unsigned char bitmask = 1U << offset_in_byte;
-        auto p = static_cast<unsigned char*>(data_) + byte_offset; //NOLINT
-        return (*p & bitmask) != 0;
-    }
+    [[nodiscard]] bool is_null(offset_type nullity_offset) const noexcept;
 
     /**
      * @brief set nullity
@@ -78,18 +71,7 @@ public:
      * @warning for nullable field, nullity has priority to existence of value, that is, even if the value is already
      * set beforehand, and this function sets nullity = true, then the value is ignored and the field is handled as null.
      */
-    void set_null(offset_type nullity_offset, bool nullity = true) noexcept {
-        assert(nullity_offset / bits_per_byte < size_); //NOLINT
-        offset_type byte_offset = nullity_offset / bits_per_byte;
-        offset_type offset_in_byte = nullity_offset % bits_per_byte;
-        unsigned char bitmask = 1U << offset_in_byte;
-        auto p = static_cast<unsigned char*>(data_) + byte_offset; //NOLINT
-        if (nullity) {
-            *p |= bitmask;
-        } else {
-            *p &= static_cast<unsigned char>(~bitmask); // bitwise NOT of uchar promotes to int
-        }
-    }
+    void set_null(offset_type nullity_offset, bool nullity = true) noexcept;
 
     /**
      * @brief field value setter
@@ -105,6 +87,9 @@ public:
         static_assert(std::is_trivially_copy_constructible_v<T>);
         std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
     }
+
+
+
 
     /**
      * @brief field value getter
@@ -143,25 +128,19 @@ public:
      * @brief getter for record size
      * @return size of record
      */
-    [[nodiscard]] size_type size() const noexcept {
-        return size_;
-    }
+    [[nodiscard]] size_type size() const noexcept;
 
     /**
      * @brief getter for validity of record reference
      * @return whether this reference is valid or not
      */
-    explicit operator bool() const noexcept {
-        return data_ != nullptr;
-    }
+    explicit operator bool() const noexcept;
 
     /**
      * @brief getter of pointer to record data
      * @return the base pointer for the record data
      */
-    [[nodiscard]] void* data() const noexcept {
-        return data_;
-    }
+    [[nodiscard]] void* data() const noexcept;
 
 private:
     void* data_{};

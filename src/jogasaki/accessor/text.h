@@ -42,7 +42,7 @@ public:
     /**
      * @brief default constructor representing text string with 0 length
      */
-    constexpr text() noexcept : s_(nullptr) {} //NOLINT
+    constexpr text() noexcept: s_(nullptr) {}  //NOLINT
 
     /**
      * @brief construct new object allocating from the given memory resource when long format is needed
@@ -50,39 +50,24 @@ public:
      * @param data pointer to the data area that is copied into tne new object
      * @param size size of the data area
      */
-    text(memory::paged_memory_resource* resource, char const* data, size_type size) { //NOLINT
-        if (size <= short_text::max_size) {
-            s_ = short_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
-            return;
-        }
-        auto p = resource->allocate(size, 1);
-        std::memcpy(p, data, size);
-        l_ = long_text(static_cast<char*>(p), size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
-    }
+    text(memory::paged_memory_resource* resource, char const* data, size_type size);
 
     /**
      * @brief construct new object allocating from the given memory resource when long format is needed
      * @param resource memory resource used to allocate storage for long format
      * @param str text string data copied into the new object
      */
-    text(memory::paged_memory_resource* resource, std::string_view str) : text(resource, str.data(), str.size()) {}
+    text(memory::paged_memory_resource* resource, std::string_view str);
 
     /**
      * @brief implicit conversion to string_view
      */
-    explicit operator std::string_view() const noexcept {
-        if (is_short()) {
-            return {s_.data(), s_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)
-        }
-        return {l_.data(), l_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)
-    }
+    explicit operator std::string_view() const noexcept;
 
     /**
      * @brief return whether the instance is in short format
      */
-    [[nodiscard]] bool is_short() const noexcept {
-        return s_.is_short();  //NOLINT(cppcoreguidelines-pro-type-union-access)
-    }
+    [[nodiscard]] bool is_short() const noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -92,11 +77,7 @@ public:
      * @return zero if a = b
      * @return positive if a > b
      */
-    friend int compare(text const& a, text const& b) noexcept {
-        std::string_view sv_a{a};
-        std::string_view sv_b{b};
-        return sv_a.compare(sv_b);
-    }
+    friend int compare(text const& a, text const& b) noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -105,9 +86,7 @@ public:
      * @return true if a < b
      * @return false otherwise
      */
-    friend bool operator<(text const& a, text const& b) noexcept {
-        return compare(a, b) < 0;
-    }
+    friend bool operator<(text const& a, text const& b) noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -116,9 +95,7 @@ public:
      * @return true if a > b
      * @return false otherwise
      */
-    friend bool operator>(text const& a, text const& b) noexcept {
-        return compare(a, b) > 0;
-    }
+    friend bool operator>(text const& a, text const& b) noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -127,9 +104,7 @@ public:
      * @return true if a <= b
      * @return false otherwise
      */
-    friend bool operator<=(text const& a, text const& b) noexcept {
-        return compare(a, b) <= 0;
-    }
+    friend bool operator<=(text const& a, text const& b) noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -138,9 +113,7 @@ public:
      * @return true if a >= b
      * @return false otherwise
      */
-    friend bool operator>=(text const& a, text const& b) noexcept {
-        return compare(a, b) >= 0;
-    }
+    friend bool operator>=(text const& a, text const& b) noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -149,11 +122,7 @@ public:
      * @return true if a == b
      * @return false otherwise
      */
-    friend bool operator==(text const& a, text const& b) noexcept {
-        std::string_view sv_a{a};
-        std::string_view sv_b{b};
-        return sv_a == sv_b;
-    }
+    friend bool operator==(text const& a, text const& b) noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically
@@ -162,9 +131,7 @@ public:
      * @return true if a != b
      * @return false otherwise
      */
-    friend bool operator!=(text const& a, text const& b) noexcept {
-        return !(a == b);
-    }
+    friend bool operator!=(text const& a, text const& b) noexcept;
 
 private:
     class long_text {
@@ -173,20 +140,11 @@ private:
         static constexpr size_type size_mask = max_size;
 
         long_text() = default;
-        long_text(char* allocated_data, size_type size) noexcept
-                : data_(allocated_data)
-                , size_(size & max_size)
-        {
-            assert(size <= max_size); // NOLINT
-        }
+        long_text(char* allocated_data, size_type size) noexcept;
 
-        [[nodiscard]] char const* data() const noexcept {
-            return data_;
-        }
+        [[nodiscard]] char const* data() const noexcept;
 
-        [[nodiscard]] size_type size() const noexcept {
-            return size_;
-        }
+        [[nodiscard]] size_type size() const noexcept;
 
     private:
         char* data_;
@@ -204,25 +162,14 @@ private:
         static constexpr size_type max_size = (sizeof(long_text) - 1) & 0x7f; // NOLINT
 
         short_text() = default;
-        explicit constexpr short_text(std::nullptr_t) noexcept : data_(), size_and_is_short_(is_short_mask) {}
-        short_text(char const* data, short_size_type size) noexcept // NOLINT
-                : size_and_is_short_(size | is_short_mask)
-        {
-            assert(size <= max_size); // NOLINT
-            std::memcpy(&data_[0], data, size & size_mask);
-        }
+        explicit constexpr short_text(std::nullptr_t) noexcept: data_(), size_and_is_short_(is_short_mask) {}
+        short_text(char const* data, short_size_type size) noexcept;
 
-        [[nodiscard]] bool is_short() const noexcept {
-            return (size_and_is_short_ & is_short_mask) != 0;
-        }
+        [[nodiscard]] bool is_short() const noexcept;
 
-        [[nodiscard]] char const* data() const noexcept {
-            return &data_[0];
-        }
+        [[nodiscard]] char const* data() const noexcept;
 
-        [[nodiscard]] size_type size() const noexcept {
-            return size_and_is_short_ & size_mask;
-        }
+        [[nodiscard]] size_type size() const noexcept;
 
     private:
         char data_[max_size]; // NOLINT

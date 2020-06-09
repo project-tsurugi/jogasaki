@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <map>
+#include <unordered_map>
 
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
@@ -47,49 +47,19 @@ public:
     /*
      * @brief reserve more n slots to keep the task state
      */
-    void assign_slot(kind k, std::size_t n) {
-        if (k == kind::main) {
-            main_slots_.resize(main_slots_.size() + n, uninitialized_task_identity);
-        } else {
-            sub_slots_.resize(sub_slots_.size() + n, uninitialized_task_identity);
-        }
-    }
+    void assign_slot(kind k, std::size_t n);
 
-    [[nodiscard]] std::size_t slots(kind k) const {
-        return k == kind::main ? main_slots_.size() : sub_slots_.size();
-    }
+    [[nodiscard]] std::size_t slots(kind k) const;
 
-    [[nodiscard]] std::vector<slot_index> list_uninitialized(kind k) const {
-        return list_uninitialized(k == kind::main ? main_slots_ : sub_slots_);
-    }
+    [[nodiscard]] std::vector<slot_index> list_uninitialized(kind k) const;
 
-    [[nodiscard]] bool uninitialized_slot(kind k, slot_index ind) const {
-        return uninitialized_slot(k == kind::main ? main_slots_ : sub_slots_, ind);
-    }
+    [[nodiscard]] bool uninitialized_slot(kind k, slot_index ind) const;
 
-    void register_task(kind k, slot_index slot, model::task::identity_type id) {
-        register_task(k == kind::main ? main_slots_ : sub_slots_, slot, id);
-    }
+    void register_task(kind k, slot_index slot, model::task::identity_type id);
 
-    kind task_state(model::task::identity_type id, task_state_kind st) {
-        auto it = std::find(main_slots_.begin(), main_slots_.end(), id);
-        if (it != main_slots_.end()) {
-            main_status_[*it] = st;
-            return kind::main;
-        }
-        it = std::find(sub_slots_.begin(), sub_slots_.end(), id);
-        if (it != sub_slots_.end()) {
-            sub_status_[*it] = st;
-            return kind::pre;
-        }
-        throw std::domain_error("invalid identity");
-    }
+    kind task_state(model::task::identity_type id, task_state_kind st);
 
-    [[nodiscard]] bool completed(kind k) const {
-        return k == kind::main ?
-               tasks_completed(main_status_, main_slots_.size()) :
-               tasks_completed(sub_status_, sub_slots_.size());
-    }
+    [[nodiscard]] bool completed(kind k) const;
 
 private:
     slots_type main_slots_{};
@@ -97,42 +67,13 @@ private:
     entity_type main_status_{};
     entity_type sub_status_{};
 
-    [[nodiscard]] bool tasks_completed(entity_type const& status, std::size_t count) const {
-        if (status.size() != count) {
-            return false; //NOLINT //bug of clang-tidy?
-        }
-        for(auto& p : status) {
-            if (p.second != task_state_kind::completed) {
-                return false;
-            }
-        }
-        return true;
-    }
+    [[nodiscard]] bool tasks_completed(entity_type const& status, std::size_t count) const;
 
-    void register_task(slots_type & slots, slot_index slot, model::task::identity_type id) {
-        if (slot >= slots.size()) {
-            throw std::domain_error("insufficient slots");
-        }
-        slots[slot] = id;
-    }
+    void register_task(slots_type & slots, slot_index slot, model::task::identity_type id);
 
-    [[nodiscard]] std::vector<slot_index> list_uninitialized(slots_type const& slots) const {
-        std::vector<slot_index> v{};
-        v.reserve(slots.size());
-        for(slot_index i = 0; i < slots.size(); ++i) {
-            if (slots[i] == uninitialized_task_identity) {
-                v.emplace_back(i);
-            }
-        }
-        return v;
-    }
+    [[nodiscard]] std::vector<slot_index> list_uninitialized(slots_type const& slots) const;
 
-    [[nodiscard]] bool uninitialized_slot(slots_type const& slots, slot_index ind) const {
-        if (ind >= slots.size()) {
-            return true;
-        }
-        return slots[ind] == uninitialized_task_identity;
-    }
+    [[nodiscard]] bool uninitialized_slot(slots_type const& slots, slot_index ind) const;
 };
 
 }

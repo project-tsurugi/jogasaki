@@ -1,3 +1,18 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #pragma once
 
 #include <algorithm>
@@ -22,11 +37,7 @@ public:
         : page_pool_(pool)
     {}
 
-    ~lifo_paged_memory_resource() override {
-        for (const auto& p : pages_) {
-            page_pool_->release_page(p.head());
-        }
-    }
+    ~lifo_paged_memory_resource() override;
 
     lifo_paged_memory_resource(lifo_paged_memory_resource const& other) = delete;
     lifo_paged_memory_resource(lifo_paged_memory_resource&& other) = delete;
@@ -37,9 +48,7 @@ public:
      * @brief returned the number of holding pages.
      * @return the number of holding pages
      */
-    [[nodiscard]] std::size_t count_pages() const noexcept {
-        return pages_.size();
-    }
+    [[nodiscard]] std::size_t count_pages() const noexcept;
 
     /**
      * @brief the checkpoint of allocated region.
@@ -55,51 +64,15 @@ public:
      * @brief returns a checkpoint of the current allocated region.
      * @return the checkpoint
      */
-    [[nodiscard]] checkpoint get_checkpoint() const noexcept {
-        if (pages_.empty()) {
-            return { nullptr, 0 };
-        }
-        auto& current = pages_.back();
-        return { current.head(), current.upper_bound_offset() };
-    }
+    [[nodiscard]] checkpoint get_checkpoint() const noexcept;
 
     /**
      * @brief releases the allocated region before the given checkpoint.
      * @param point the checkpoint
      */
-    void deallocate_after(checkpoint const& point) {
-        if (point.head_ == nullptr) {
-            return;
-        }
-        while (!pages_.empty()) {
-            auto&& page = pages_.back();
-            if (page.head() == point.head_) {
-                // LB <= offset <= UB
-                if (point.offset_ < page.lower_bound_offset()
-                        || point.offset_ > page.upper_bound_offset()) {
-                    std::abort();
-                }
-                page.upper_bound_offset(point.offset_);
-                if (page.empty()) {
-                    page_pool_->release_page(page.head());
-                    pages_.pop_back();
-                }
-                break;
-            }
-            page_pool_->release_page(page.head());
-            pages_.pop_back();
-        }
-    }
+    void deallocate_after(checkpoint const& point);
 
-    void end_current_page() noexcept override {
-        if (!pages_.empty()) {
-            if (pages_.back().remaining(1) == page_size) {
-                return;
-            }
-        }
-        // allocate a new page
-        acquire_new_page();
-    }
+    void end_current_page() noexcept override;
 
 protected:
     /**
@@ -109,23 +82,7 @@ protected:
      * @return pointer to the allocated buffer
      * @throws std::bad_alloc if allocation was failed
      */
-    void* do_allocate(std::size_t bytes, std::size_t alignment) override {
-        // try acquire in the current page
-        if (!pages_.empty()) {
-            auto&& current = pages_.back();
-            if (auto* ptr = current.try_allocate_back(bytes, alignment); ptr != nullptr) {
-                return ptr;
-            }
-        }
-
-        // then use a new page
-        auto&& current = acquire_new_page();
-        if (auto* ptr = current.try_allocate_back(bytes, alignment); ptr != nullptr) {
-            return ptr;
-        }
-
-        throw std::bad_alloc();
-    }
+    void* do_allocate(std::size_t bytes, std::size_t alignment) override;
 
     /**
      * @brief deallocates the buffer previously allocated by this resource.
@@ -136,45 +93,17 @@ protected:
      * @param alignment the alignment size of the head of buffer
      * @warning undefined behavior if the given memory fragment is not the eldest one
      */
-    void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override {
-        if (pages_.empty()) {
-            std::abort();
-        }
+    void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override;
 
-        auto&& last = pages_.back();
-        if (!last.try_deallocate_back(p, bytes, alignment)) {
-            std::abort();
-        }
+    [[nodiscard]] bool do_is_equal(const memory_resource& other) const noexcept override;
 
-        // release if the page is empty
-        if (last.empty()) {
-            page_pool_->release_page(last.head());
-            pages_.pop_back();
-        }
-    }
-
-    [[nodiscard]] bool do_is_equal(const memory_resource& other) const noexcept override {
-        return this == &other;
-    }
-
-    [[nodiscard]] std::size_t do_page_remaining(std::size_t alignment) const noexcept override {
-        if (pages_.empty()) {
-            return 0;
-        }
-        return pages_.back().remaining(alignment);
-    }
+    [[nodiscard]] std::size_t do_page_remaining(std::size_t alignment) const noexcept override;
 
 private:
     page_pool *page_pool_{};
     std::deque<details::page_allocation_info> pages_{};
 
-    details::page_allocation_info& acquire_new_page() {
-        void* new_page = page_pool_->acquire_page();
-        if (new_page == nullptr) {
-            throw std::bad_alloc();
-        }
-        return pages_.emplace_back(new_page);
-    }
+    details::page_allocation_info& acquire_new_page();
 };
 
 } // jogasaki::memory

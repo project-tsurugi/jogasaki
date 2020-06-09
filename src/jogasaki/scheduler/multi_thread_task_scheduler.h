@@ -37,7 +37,7 @@ public:
     /**
      * @brief create default object with single thread
      */
-    thread_pool() : thread_pool(thread_params(1)) {};
+    thread_pool();;
 
     thread_pool(thread_pool const& other) = delete;
     thread_pool& operator=(thread_pool const& other) = delete;
@@ -48,30 +48,17 @@ public:
      * @brief create new object
      * @param params thread configuration parameters
      */
-    explicit thread_pool(thread_params params) :
-            max_threads_(params.threads()),
-            io_service_(),
-            work_(std::make_unique<boost::asio::io_service::work>(io_service_)),
-            set_core_affinity_(params.is_set_core_affinity()),
-            initial_core_(params.inititial_core()),
-            assign_numa_nodes_uniformly_(params.assign_numa_nodes_uniformly()) {
-        start();
-    }
+    explicit thread_pool(thread_params params);
 
     /**
      * @brief destroy the object stopping all running threads
      */
-    ~thread_pool() noexcept {
-        stop();
-    }
+    ~thread_pool() noexcept;
 
     /**
      * @brief join all the running threads
      */
-    void join() {
-        work_.reset();
-        thread_group_.join_all();
-    }
+    void join();
 
     /**
      * @brief submit task for schedule
@@ -83,24 +70,9 @@ public:
         io_service_.post(std::forward<F>(f));
     }
 
-    void start() {
-        if (started_) return;
-        prepare_threads_();
-        started_ = true;
-    }
+    void start();
 
-    void stop() {
-        if (!started_) return;
-        try {
-            join();
-            io_service_.stop();
-        } catch (...) {
-            LOG(ERROR) << "error on finishing thread pool";
-        }
-        cleanup_threads_();
-        assert(thread_group_.size() == 0); //NOLINT
-        started_ = false;
-    }
+    void stop();
 
 private:
     std::size_t max_threads_{};
@@ -113,26 +85,8 @@ private:
     bool assign_numa_nodes_uniformly_{};
     bool started_{false};
 
-    void prepare_threads_() {
-        threads_.reserve(max_threads_);
-        for(std::size_t i = 0; i < max_threads_; ++i) {
-            auto thread = new boost::thread([this]() {
-                io_service_.run();
-            });
-            if(set_core_affinity_) {
-                utils::set_core_affinity(thread, i+initial_core_, assign_numa_nodes_uniformly_);
-            }
-            thread_group_.add_thread(thread);
-            threads_.emplace_back(thread);
-        }
-    }
-
-    void cleanup_threads_() {
-        for(auto* t : threads_) {
-            thread_group_.remove_thread(t);
-            delete t; //NOLINT thread_group handles raw pointer
-        }
-    }
+    void prepare_threads_();
+    void cleanup_threads_();
 };
 
 /*
@@ -146,8 +100,7 @@ public:
     multi_thread_task_scheduler& operator=(multi_thread_task_scheduler const& other) = delete;
     multi_thread_task_scheduler(multi_thread_task_scheduler&& other) noexcept = delete;
     multi_thread_task_scheduler& operator=(multi_thread_task_scheduler&& other) noexcept = delete;
-    explicit multi_thread_task_scheduler(thread_params params) :
-            threads_(params) {}
+    explicit multi_thread_task_scheduler(thread_params params);
 
 private:
     /**
@@ -155,38 +108,23 @@ private:
      */
     class proceeding_task_wrapper {
     public:
-        explicit proceeding_task_wrapper(std::weak_ptr<model::task> original) : original_(std::move(original)) {}
+        explicit proceeding_task_wrapper(std::weak_ptr<model::task> original);
 
-        void operator()() {
-            auto s = original_.lock();
-            if (!s) return;
-            while(s->operator()() == model::task_result::proceed) {}
-        }
+        void operator()();
     private:
         std::weak_ptr<model::task> original_{};
     };
 
 public:
-    void schedule_task(std::shared_ptr<model::task> const& t) override {
-        threads_.submit(proceeding_task_wrapper(t));
-        tasks_.emplace(t->id(), t);
-    }
+    void schedule_task(std::shared_ptr<model::task> const& t) override;
 
-    void wait_for_progress() override {
-        // no-op - tasks are already running on threads
-    }
+    void wait_for_progress() override;
 
-    void start() override {
-        threads_.start();
-    }
+    void start() override;
 
-    void stop() override {
-        threads_.stop();
-    }
+    void stop() override;
 
-    [[nodiscard]] task_scheduler_kind kind() const noexcept override {
-        return task_scheduler_kind::multi_thread;
-    }
+    [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 private:
     std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>> tasks_{};
     thread_pool threads_{};

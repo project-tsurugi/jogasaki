@@ -15,7 +15,6 @@
  */
 #pragma once
 
-
 #include <iostream>
 #include <vector>
 #include <mutex>
@@ -66,50 +65,20 @@ public:
     /**
      * @brief destruct page_pool
      */
-    ~page_pool() {
-        for (const auto& c : free_pages_) {
-            if (munmap(c, page_size) < 0) {
-                std::abort();
-            }
-        }
-    }
+    ~page_pool();
 
     /**
      * @brief acquire page from the pool
      * @return pointer to the acquired pool
      * @return nullptr if page allocation failed
      */
-    void* acquire_page() {
-        void* page;
-        {
-            std::lock_guard<std::mutex> lock(page_mtx_);
-            if (!free_pages_.empty()) {
-                auto it = free_pages_.begin();
-                page = *it;
-                free_pages_.erase(it);
-                return page;
-            }
-        }
-        page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
-                    (MAP_SHARED | MAP_ANON | MAP_HUGETLB), -1, 0); //NOLINT
-        if (page == MAP_FAILED) { //NOLINT
-            page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
-                        (MAP_SHARED | MAP_ANON), -1, 0); //NOLINT
-            if (page == MAP_FAILED) { //NOLINT
-                return nullptr;
-            }
-        }
-        return page;
-    }
+    void* acquire_page();
 
     /**
      * @brief release page to the pool
      * @param page pointer retrieved from the pool by calling acquire()
      */
-    void release_page(void* page) noexcept {
-        std::lock_guard<std::mutex> lock(page_mtx_);
-        free_pages_.emplace_back(page);
-    }
+    void release_page(void* page) noexcept;
 
 private:
     std::vector<void *> free_pages_{};

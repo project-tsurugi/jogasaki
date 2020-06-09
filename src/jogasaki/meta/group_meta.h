@@ -33,7 +33,7 @@ public:
     /**
      * @brief construct empty object
      */
-    group_meta() : key_meta_(std::make_shared<meta::record_meta>()), value_meta_(std::make_shared<meta::record_meta>()) {}
+    group_meta();
 
     /**
      * @brief construct new object
@@ -43,7 +43,7 @@ public:
     group_meta(
             record_meta_type key_meta,
             record_meta_type value_meta
-    ) : key_meta_(std::move(key_meta)), value_meta_(std::move(value_meta)) {}
+    );
 
     /**
      * @brief construct new object by copying given metadata
@@ -53,39 +53,31 @@ public:
     group_meta(
             record_meta const& key_meta,
             record_meta const& value_meta
-    ) : group_meta(std::make_shared<record_meta>(key_meta), std::make_shared<record_meta>(value_meta)) {}
+    );
 
     /**
      * @brief key metadata accessor
      * @return record metadata of key part
      */
-    [[nodiscard]] record_meta const& key() const noexcept {
-        return *key_meta_;
-    }
+    [[nodiscard]] record_meta const& key() const noexcept;
 
     /**
      * @brief key metadata accessor
      * @return record metadata of key part
      */
-    [[nodiscard]] record_meta_type const& key_shared() const noexcept {
-        return key_meta_;
-    }
+    [[nodiscard]] record_meta_type const& key_shared() const noexcept;
 
     /**
      * @brief value metadata accessor
      * @return record metadata of value part
      */
-    [[nodiscard]] record_meta const& value() const noexcept {
-        return *value_meta_;
-    }
+    [[nodiscard]] record_meta const& value() const noexcept;
 
     /**
      * @brief value metadata accessor
      * @return record metadata of value part
      */
-    [[nodiscard]] record_meta_type const& value_shared() const noexcept {
-        return value_meta_;
-    }
+    [[nodiscard]] record_meta_type const& value_shared() const noexcept;
 private:
     record_meta_type key_meta_{};
     record_meta_type value_meta_{};

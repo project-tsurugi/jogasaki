@@ -48,66 +48,23 @@ public:
      */
     const static int num_points = 10;
 
-    watch() noexcept {
-        begin_ = Clock::now();
-    }
+    watch() noexcept;
 
-    void restart() {
-        std::scoped_lock lk{guard_};
-        begin_ = Clock::now();
-    }
+    void restart();
 
-    bool set_point(point_in_code loc, worker_id worker = -1) {
-        if (loc >= num_points) {
-            std::abort();
-        }
-        std::scoped_lock lk{guard_};
-        initialize_worker(worker);
-        auto& time_slot = records_[worker][loc];
-        if (time_slot == Clock::time_point()) {
-            time_slot = Clock::now();
-            return true;
-        }
-        return false;
-    }
+    bool set_point(point_in_code loc, worker_id worker = -1);
 
-    Clock::time_point base() {
-        return begin_;
-    }
+    Clock::time_point base();
 
     /**
      * @brief retrieve the time when first comes at the point of code
      */
-    Clock::time_point view_first(point_in_code loc) {
-        if (loc == npos) {
-            return begin_;
-        }
-        Clock::time_point first{Clock::time_point::max()};
-        for(auto& p : records_) {
-            auto& arr = p.second;
-            if (arr[loc] != Clock::time_point() && arr[loc] < first) { //NOLINT
-                first = arr[loc]; //NOLINT
-            }
-        }
-        return first;
-    }
+    Clock::time_point view_first(point_in_code loc);
 
     /**
      * @brief retrieve the time when last leaves the point of code
      */
-    Clock::time_point view_last(point_in_code loc) {
-        if (loc == npos) {
-            return begin_;
-        }
-        Clock::time_point last{Clock::time_point::min()};
-        for(auto& p : records_) {
-            auto& arr = p.second;
-            if (arr[loc] != Clock::time_point() && last < arr[loc]) { //NOLINT
-                last = arr[loc]; //NOLINT
-            }
-        }
-        return last;
-    }
+    Clock::time_point view_last(point_in_code loc);
 
     /**
      * @brief calculate duration between two time point
@@ -117,60 +74,19 @@ public:
      * if true, interval begins when last thread comes and ends when first leaves
      * @return duration
      */
-    std::size_t duration(point_in_code begin, point_in_code end, bool complementary = false) {
-        if (!complementary) {
-            return std::chrono::duration_cast<Duration>(view_last(end) - view_first(begin)).count();
-        }
-        return std::chrono::duration_cast<Duration>(view_first(end) - view_last(begin)).count();
-    }
+    std::size_t duration(point_in_code begin, point_in_code end, bool complementary = false);
 
-    std::size_t average_duration(point_in_code begin, point_in_code end) {
-        std::size_t count = 0;
-        std::size_t total = 0;
-        Clock::time_point fixed_begin = view_first(begin);
-        Clock::time_point fixed_end = view_last(end);
-        for(auto& p : records_) {
-            auto& arr = p.second;
-            if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue; //NOLINT
-            auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end]; //NOLINT
-            auto b = arr[begin] == Clock::time_point() ? fixed_begin : arr[begin]; //NOLINT
-            total += std::chrono::duration_cast<Duration>(e-b).count();
-            ++count;
-        }
-        if (count == 0) return 0;
-        return total / count;
-    }
+    std::size_t average_duration(point_in_code begin, point_in_code end);
 
-    std::unique_ptr<std::vector<std::size_t>> durations(point_in_code begin, point_in_code end) {
-        auto results = std::make_unique<std::vector<std::size_t>>();
-        Clock::time_point fixed_begin = view_first(begin);
-        Clock::time_point fixed_end = view_last(end);
-        for(auto& p : records_) {
-            auto& arr = p.second;
-            if (arr[begin] == Clock::time_point() && arr[end] == Clock::time_point()) continue; //NOLINT
-            auto e = arr[end] == Clock::time_point() ? fixed_end : arr[end]; //NOLINT
-            auto b = arr[begin] == Clock::time_point() ? fixed_begin : arr[begin]; //NOLINT
-            results->emplace_back(std::chrono::duration_cast<Duration>(e-b).count());
-        }
-        return results;
-    }
+    std::unique_ptr<std::vector<std::size_t>> durations(point_in_code begin, point_in_code end);
 
 private:
     std::chrono::time_point<Clock> begin_{};
     std::unordered_map<worker_id, std::array<Clock::time_point, num_points>> records_{};
     std::mutex guard_{};
 
-    void init(std::array<Clock::time_point, num_points>& records) {
-        for(auto& s : records) {
-            s = Clock::time_point();
-        }
-    }
-
-    void initialize_worker(worker_id worker) {
-        if(records_.count(worker) == 0) {
-            init(records_[worker]);
-        }
-    }
+    void init(std::array<Clock::time_point, num_points>& records);
+    void initialize_worker(worker_id worker);
 };
 
 watch& get_watch();

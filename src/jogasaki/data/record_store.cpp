@@ -13,20 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "record_store.h"
 
-#include <jogasaki/model/step.h>
-#include <jogasaki/model/port.h>
+namespace jogasaki::data {
 
-namespace jogasaki::utils {
-
-model::step::port_index_type find_port_index(model::port const& p, takatori::util::sequence_view<std::unique_ptr<model::port> const> sv);
-
-model::step::port_index_type input_port_index(model::step const& s, model::port const& p);
-
-model::step::port_index_type subinput_port_index(model::step const& s, model::port const& p);
-
-model::step::port_index_type output_port_index(model::step const& s, model::port const& p);
-
+record_store::record_pointer record_store::append(accessor::record_ref record) {
+    auto sz = meta_->record_size();
+    auto* p = resource_->allocate(meta_->record_size(), meta_->record_alignment());
+    if (!p) std::abort();
+    copier_(p, sz, record);
+    ++count_;
+    return p;
 }
 
+std::size_t record_store::count() const noexcept {
+    return count_;
+}
+
+bool record_store::empty() const noexcept {
+    return count_ == 0;
+}
+
+void record_store::reset() noexcept {
+    count_ = 0;
+}
+
+} // namespace

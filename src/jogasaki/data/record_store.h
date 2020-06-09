@@ -15,9 +15,6 @@
  */
 #pragma once
 
-#include <takatori/util/object_creator.h>
-
-#include <array>
 #include <vector>
 #include <cstring>
 
@@ -63,38 +60,25 @@ public:
      * @param record source of the record added to this container
      * @return pointer to the stored record
      */
-    record_pointer append(accessor::record_ref record) {
-        auto sz = meta_->record_size();
-        auto* p = resource_->allocate(meta_->record_size(), meta_->record_alignment());
-        if (!p) std::abort();
-        copier_(p, sz, record);
-        ++count_;
-        return p;
-    }
+    record_pointer append(accessor::record_ref record);
 
     /**
      * @brief getter for the number of data count added to this store
      * @return the number of records
      */
-    [[nodiscard]] std::size_t count() const noexcept {
-        return count_;
-    }
+    [[nodiscard]] std::size_t count() const noexcept;
 
     /**
      * @return whether the region is empty or not
      */
-    [[nodiscard]] bool empty() const noexcept {
-        return count_ == 0;
-    }
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
      * @brief reset store state except the state managed by memory resource
      * @details To keep consistency, caller needs to reset or release appropriately (e.g. deallocate to some check point)
      * the memory resources passed to constructor when calling this function.
      */
-    void reset() noexcept {
-        count_ = 0;
-    }
+    void reset() noexcept;
 
 private:
     memory::paged_memory_resource* resource_{};

@@ -1,3 +1,18 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #pragma once
 
 #include <algorithm>
@@ -22,11 +37,7 @@ public:
         : page_pool_(pool)
     {}
 
-    ~monotonic_paged_memory_resource() override {
-        for (const auto& p : pages_) {
-            page_pool_->release_page(p.head());
-        }
-    }
+    ~monotonic_paged_memory_resource() override;
 
     monotonic_paged_memory_resource(monotonic_paged_memory_resource const& other) = delete;
     monotonic_paged_memory_resource(monotonic_paged_memory_resource&& other) = delete;
@@ -37,19 +48,9 @@ public:
      * @brief returned the number of holding pages.
      * @return the number of holding pages
      */
-    [[nodiscard]] std::size_t count_pages() const noexcept {
-        return pages_.size();
-    }
+    [[nodiscard]] std::size_t count_pages() const noexcept;
 
-    void end_current_page() noexcept override {
-        if (!pages_.empty()) {
-            if (pages_.back().remaining(1) == page_size) {
-                return;
-            }
-        }
-        // allocate a new page
-        acquire_new_page();
-    }
+    void end_current_page() noexcept override;
 
 protected:
     /**
@@ -59,23 +60,7 @@ protected:
      * @return pointer to the allocated buffer
      * @throws std::bad_alloc if allocation was failed
      */
-    void* do_allocate(std::size_t bytes, std::size_t alignment) override {
-        // try acquire in the current page
-        if (!pages_.empty()) {
-            auto&& current = pages_.back();
-            if (auto* ptr = current.try_allocate_back(bytes, alignment); ptr != nullptr) {
-                return ptr;
-            }
-        }
-
-        // then use a new page
-        auto&& current = acquire_new_page();
-        if (auto* ptr = current.try_allocate_back(bytes, alignment); ptr != nullptr) {
-            return ptr;
-        }
-
-        throw std::bad_alloc();
-    }
+    void* do_allocate(std::size_t bytes, std::size_t alignment) override;
 
     /**
      * @brief do nothing for monotonic memory resource.
@@ -84,32 +69,17 @@ protected:
      * @param bytes the buffer size in bytes
      * @param alignment the alignment size of the head of buffer
      */
-    void do_deallocate([[maybe_unused]] void* p, [[maybe_unused]] std::size_t bytes, [[maybe_unused]] std::size_t alignment) override {
-        // do nothing
-    }
+    void do_deallocate([[maybe_unused]] void* p, [[maybe_unused]] std::size_t bytes, [[maybe_unused]] std::size_t alignment) override;
 
-    [[nodiscard]] bool do_is_equal(const memory_resource& other) const noexcept override {
-        return this == &other;
-    }
+    [[nodiscard]] bool do_is_equal(const memory_resource& other) const noexcept override;
 
-    [[nodiscard]] std::size_t do_page_remaining(std::size_t alignment) const noexcept override {
-        if (pages_.empty()) {
-            return 0;
-        }
-        return pages_.back().remaining(alignment);
-    }
+    [[nodiscard]] std::size_t do_page_remaining(std::size_t alignment) const noexcept override;
 
 private:
     page_pool *page_pool_{};
     std::deque<details::page_allocation_info> pages_{};
 
-    details::page_allocation_info& acquire_new_page() {
-        void* new_page = page_pool_->acquire_page();
-        if (new_page == nullptr) {
-            throw std::bad_alloc();
-        }
-        return pages_.emplace_back(new_page);
-    }
+    details::page_allocation_info& acquire_new_page();
 };
 
 } // namespace jogasaki::memory

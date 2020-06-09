@@ -5,6 +5,7 @@ endif()
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"
+        "jogasaki/data/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/process/*.cpp"
@@ -13,10 +14,12 @@ file(GLOB SOURCES
         "jogasaki/executor/exchange/deliver/*.cpp"
         "jogasaki/executor/exchange/forward/*.cpp"
         "jogasaki/executor/exchange/group/*.cpp"
+        "jogasaki/memory/*.cpp"
+        "jogasaki/memory/details/*.cpp"
+        "jogasaki/meta/*.cpp"
         "jogasaki/model/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/storage/*.cpp"
-        "jogasaki/data/*.cpp"
         "jogasaki/utils/*.cpp"
 )
 

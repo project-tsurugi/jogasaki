@@ -15,7 +15,6 @@
  */
 #pragma once
 
-
 #include <array>
 #include <vector>
 #include <cstring>
@@ -74,36 +73,19 @@ public:
          * @param container the target record store that the constructed object iterates
          * @param range indicates the range entry that the constructed iterator start iterating with
          */
-        iterator(iteratable_record_store const& container, range_list::iterator range) :
-                container_(&container), pos_(range != container_->ranges_.end() ? range->b_ : nullptr), range_(range)
-        {}
+        iterator(iteratable_record_store const& container, range_list::iterator range);
 
         /**
          * @brief increment iterator
          * @return reference after the increment
          */
-        iterator& operator++() {
-            pos_ = static_cast<unsigned char*>(pos_) + container_->record_size_; //NOLINT
-            if (pos_ >= range_->e_) {
-                ++range_;
-                if(range_ != container_->ranges_.end()) {
-                    pos_ = range_->b_;
-                } else {
-                    pos_ = nullptr;
-                }
-            }
-            return *this;
-        }
+        iterator& operator++();
 
         /**
          * @brief increment iterator
          * @return copy of the iterator before the increment
          */
-        iterator const operator++(int) { //NOLINT
-            auto it = *this;
-            this->operator++();
-            return it;
-        }
+        iterator const operator++(int);
 
         /**
          * @brief dereference the iterator
@@ -153,65 +135,41 @@ public:
     iteratable_record_store(
             memory::paged_memory_resource* record_resource,
             memory::paged_memory_resource* varlen_resource,
-            std::shared_ptr<meta::record_meta> meta) :
-            record_size_(meta->record_size()),
-            base_(record_resource, varlen_resource, std::move(meta))
-    {}
+            std::shared_ptr<meta::record_meta> meta);
 
     /**
      * @copydoc record_store::append()
      */
-    record_pointer append(accessor::record_ref record) {
-        auto p = base_.append(record);
-        if (prev_ == nullptr || p != static_cast<unsigned char*>(prev_) + record_size_) { //NOLINT
-            // starting new range
-            ranges_.emplace_back(p, nullptr);
-        }
-        ranges_.back().e_ = static_cast<unsigned char*>(p) + record_size_; //NOLINT
-        prev_ = p;
-        return p;
-    }
+    record_pointer append(accessor::record_ref record);
 
     /**
      * @copydoc record_store::count()
      */
-    [[nodiscard]] std::size_t count() const noexcept {
-        return base_.count();
-    }
+    [[nodiscard]] std::size_t count() const noexcept;
 
     /**
      * @copydoc record_store::empty()
      */
-    [[nodiscard]] bool empty() const noexcept {
-        return base_.empty();
-    }
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
      * @brief getter of begin iterator
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
-    iterator begin() {
-        return iterator{*this, ranges_.begin()};
-    }
+    iterator begin();
 
     /**
      * @brief getter of end iterator
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    iterator end() {
-        return iterator{*this, ranges_.end()};
-    }
+    iterator end();
 
     /**
      * @copydoc record_store::reset()
      */
-    void reset() noexcept {
-        base_.reset();
-        prev_ = nullptr;
-        ranges_.clear();
-    }
+    void reset() noexcept;
 
 private:
     std::size_t record_size_{};

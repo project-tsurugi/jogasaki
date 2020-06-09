@@ -15,6 +15,8 @@
  */
 #include "text.h"
 
+#include <cassert>
+
 namespace jogasaki::accessor {
 
 text::text(memory::paged_memory_resource *resource, const char *data, text::size_type size) { //NOLINT

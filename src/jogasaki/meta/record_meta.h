@@ -99,25 +99,14 @@ public:
             value_offset_table_type value_offset_table,
             nullity_offset_table_type nullity_offset_table,
             std::size_t record_alignment,
-            std::size_t record_size) :
-            entity_(std::move(entity)), nullability_(std::move(nullability)), field_count_(entity_.size()),
-            value_offset_table_(std::move(value_offset_table)), nullity_offset_table_(std::move(nullity_offset_table)),
-            record_alignment_(record_alignment), record_size_(record_size) {
-        assert(field_count_ == nullability_.size()); // NOLINT
-        assert(field_count_ == value_offset_table_.size()); // NOLINT
-        assert(field_count_ == nullity_offset_table_.size()); // NOLINT
-    }
+            std::size_t record_size);
 
     /**
      * @brief construct new object
      * @param entity ordered list of field types
      * @param nullability ordered list of nullability bits, whose size must be equal to number of fields in the record
      */
-    record_meta(value_entity_type entity, nullability_entity_type nullability) :
-            entity_(std::move(entity)), nullability_(std::move(nullability)), field_count_(entity_.size()) {
-        assert(field_count_ == nullability_.size()); // NOLINT
-        calculate_default_layout_offset();
-    }
+    record_meta(value_entity_type entity, nullability_entity_type nullability);
 
     /**
      * @brief getter for field type
@@ -125,9 +114,7 @@ public:
      * @return field type
      * @warning if index is not in valid range, the behavior is undefined
      */
-    field_type const& operator[](field_index_type index) const noexcept {
-        return entity_[index];
-    }
+    field_type const& operator[](field_index_type index) const noexcept;
 
     /**
      * @brief getter for field type - same as operator[] but friendly style for pointers
@@ -135,9 +122,7 @@ public:
      * @return field type
      * @warning if index is not in valid range, the behavior is undefined
      */
-    [[nodiscard]] field_type const& at(field_index_type index) const noexcept {
-        return entity_[index];
-    }
+    [[nodiscard]] field_type const& at(field_index_type index) const noexcept;
 
     /**
      * @brief getter for byte offset for field value
@@ -145,9 +130,7 @@ public:
      * @return byte offset of the field value, which can be used through accessor api (e.g. set_value/get_value of record_ref)
      * @warning if index is not in valid range, the behavior is undefined
      */
-    [[nodiscard]] value_offset_type value_offset(field_index_type index) const noexcept {
-        return value_offset_table_[index];
-    }
+    [[nodiscard]] value_offset_type value_offset(field_index_type index) const noexcept;
 
     /**
      * @brief getter for the nullity bit offset for the field
@@ -155,9 +138,7 @@ public:
      * @return nullity offset, which can be used through accessor api (e.g. set_null/is_null of record_ref)
      * @warning the return value is valid only when the field specified by the index is nullable
      */
-    [[nodiscard]] nullity_offset_type nullity_offset(field_index_type index) const noexcept {
-        return nullity_offset_table_[index];
-    }
+    [[nodiscard]] nullity_offset_type nullity_offset(field_index_type index) const noexcept;
 
     /**
      * @brief getter for the nullability for the field
@@ -166,33 +147,25 @@ public:
      * @return false otherwise
      * @warning if index is not in valid range, the behavior is undefined
      */
-    [[nodiscard]] bool nullable(field_index_type index) const noexcept {
-        return nullability_[index];
-    }
+    [[nodiscard]] bool nullable(field_index_type index) const noexcept;
 
     /**
      * @brief retrieve alignment of the record
      * @return alignment of the record
      */
-    [[nodiscard]] std::size_t record_alignment() const noexcept {
-        return record_alignment_;
-    }
+    [[nodiscard]] std::size_t record_alignment() const noexcept;
 
     /**
      * @brief retrieve size of the record
      * @return size of the record
      */
-    [[nodiscard]] std::size_t record_size() const noexcept {
-        return record_size_;
-    }
+    [[nodiscard]] std::size_t record_size() const noexcept;
 
     /**
      * @brief retrieve number of fields in the record
      * @return number of the fields
      */
-    [[nodiscard]] std::size_t field_count() const noexcept {
-        return field_count_;
-    }
+    [[nodiscard]] std::size_t field_count() const noexcept;
 
 private:
     value_entity_type entity_{};
@@ -208,32 +181,7 @@ private:
      * respecting alignment of each runtime type. (The field order has been given to record_meta via constructor.) Then,
      * nullity bits field follows, whose alignment is 1 byte and its size is the ceiling of number of fields divided by 8(bits_per_byte).
      */
-    void calculate_default_layout_offset() {
-        std::size_t cur = 0;
-        std::size_t record_max_align = 1;
-        for(std::size_t i = 0; i < field_count_; ++i) {
-            auto&& field = entity_[i];
-            auto alignment = field.runtime_type_alignment();
-            record_max_align = std::max(record_max_align, alignment);
-            cur = (cur + alignment - 1) / alignment * alignment;
-            value_offset_table_.emplace_back(cur);
-            cur += field.runtime_type_size();
-        }
-        std::size_t nullity_offset = cur * bits_per_byte;
-        for(std::size_t i = 0; i < field_count_; ++i) {
-            std::size_t pos = npos;
-            if (nullability_[i]) {
-                pos = nullity_offset;
-                ++nullity_offset;
-            }
-            nullity_offset_table_.emplace_back(pos);
-        }
-        cur += (nullability_.count() + bits_per_byte - 1) / bits_per_byte;
-        record_alignment_ = record_max_align;
-        record_size_ = (cur + record_alignment_ - 1) / record_alignment_ * record_alignment_;
-        assert(record_max_align <= max_alignment); //NOLINT
-        assert(max_alignment % record_max_align == 0); //NOLINT
-    }
+    void calculate_default_layout_offset();
 };
 
 /**

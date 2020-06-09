@@ -26,6 +26,7 @@
 #include <jogasaki/model/port.h>
 
 namespace jogasaki {
+
 template<class T, class Variant, std::size_t index = 0>
 constexpr std::size_t alternative_index() noexcept {
     if constexpr (index == std::variant_size_v<Variant>) {

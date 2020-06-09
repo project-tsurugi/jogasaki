@@ -17,7 +17,6 @@
 #pragma once
 
 #include <limits>
-#include <cassert>
 #include <memory>
 #include <cstddef>
 #include <cstring>
@@ -143,9 +142,7 @@ private:
         long_text(char* allocated_data, size_type size) noexcept;
 
         [[nodiscard]] char const* data() const noexcept;
-
         [[nodiscard]] size_type size() const noexcept;
-
     private:
         char* data_;
         size_type size_;
@@ -166,11 +163,8 @@ private:
         short_text(char const* data, short_size_type size) noexcept;
 
         [[nodiscard]] bool is_short() const noexcept;
-
         [[nodiscard]] char const* data() const noexcept;
-
         [[nodiscard]] size_type size() const noexcept;
-
     private:
         char data_[max_size]; // NOLINT
         short_size_type size_and_is_short_;

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <unordered_set>
+#include <unordered_map>
 #include <memory>
 
 #include <jogasaki/model/task.h>
@@ -30,32 +30,15 @@ class single_thread_task_scheduler : public task_scheduler {
 public:
     using entity_type = std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>>;
 
-    void schedule_task(std::shared_ptr<model::task> const& t) override {
-        tasks_.emplace(t->id(), t);
-    }
+    void schedule_task(std::shared_ptr<model::task> const& t) override;
 
-    void wait_for_progress() override {
-        for(auto it = tasks_.begin(); it != tasks_.end(); ) {
-            auto s = it->second.lock();
-            if (s == nullptr || s->operator()() == model::task_result::complete) {
-                it = tasks_.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
+    void wait_for_progress() override;
 
-    void start() override {
-        // no-op
-    }
+    void start() override;
 
-    void stop() override {
-        tasks_.clear();
-    }
+    void stop() override;
 
-    [[nodiscard]] task_scheduler_kind kind() const noexcept override {
-        return task_scheduler_kind::single_thread;
-    }
+    [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 private:
     entity_type tasks_{};
 };

@@ -151,7 +151,7 @@ jobs:
         if: always()
         with:
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          ctest-input: '**/*_gtest_result.xml'
+          ctest-input: 'build*/**/*_gtest_result.xml'
 
       - id: Notify_Slack
         name: Notify_Slack

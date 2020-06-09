@@ -89,12 +89,12 @@ public:
         noop_pregroup_ = arg;
     }
 
-    [[nodiscard]] bool assign_nume_nodes_uniformly() const noexcept {
-        return assign_nume_nodes_uniformly_;
+    [[nodiscard]] bool assign_numa_nodes_uniformly() const noexcept {
+        return assign_numa_nodes_uniformly_;
     }
 
-    void assign_nume_nodes_uniformly(bool arg) noexcept {
-        assign_nume_nodes_uniformly_ = arg;
+    void assign_numa_nodes_uniformly(bool arg) noexcept {
+        assign_numa_nodes_uniformly_ = arg;
     }
 
 private:
@@ -106,7 +106,7 @@ private:
     std::size_t initial_core_ = 1;
     bool use_sorted_vector_reader_ = false;
     bool noop_pregroup_ = false;
-    bool assign_nume_nodes_uniformly_ = false;
+    bool assign_numa_nodes_uniformly_ = false;
 };
 
 }

@@ -49,7 +49,7 @@ DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
-DEFINE_bool(assign_nume_nodes_uniformly, false, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
+DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 
 namespace jogasaki::group_cli {
@@ -113,7 +113,7 @@ extern "C" int main(int argc, char* argv[]) {
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);
-    cfg->assign_nume_nodes_uniformly(FLAGS_assign_nume_nodes_uniformly);
+    cfg->assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
     cfg->noop_pregroup(FLAGS_noop_pregroup);
 
     if (FLAGS_shuffle_uses_sorted_vector) {
@@ -132,7 +132,7 @@ extern "C" int main(int argc, char* argv[]) {
         s.records_per_upstream_partition_ = 1;
     }
 
-    if (cfg->assign_nume_nodes_uniformly()) {
+    if (cfg->assign_numa_nodes_uniformly()) {
         cfg->core_affinity(true);
     }
 

@@ -88,9 +88,6 @@ public:
         std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
     }
 
-
-
-
     /**
      * @brief field value getter
      * @tparam T runtime type of each field

@@ -22,12 +22,41 @@
 
 namespace jogasaki::accessor {
 
+using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace jogasaki::meta;
 using namespace takatori::util;
 
 class record_printer_test : public ::testing::Test {
 };
+
+TEST_F(record_printer_test, simple) {
+    struct {
+        std::int64_t x_;
+    } buffer;
+    record_ref r{&buffer, sizeof(buffer)};
+    ASSERT_EQ(8, r.size());
+    buffer.x_ = 1;
+
+    using kind = field_type_kind;
+    record_meta meta{
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{1}};
+    EXPECT_EQ(1, meta.field_count());
+    EXPECT_EQ(1, r.get_value<std::int64_t>(0));
+
+    std::stringstream ss{};
+    ss << r << meta;
+    ASSERT_EQ("(0:int8)[1]", ss.str());
+
+    std::stringstream ss2{};
+    auto printer = ss2 << r;
+    ASSERT_EQ("", ss2.str());
+    printer << meta;
+    ASSERT_EQ("(0:int8)[1]", ss2.str());
+}
 
 TEST_F(record_printer_test, basic) {
     struct {
@@ -54,10 +83,10 @@ TEST_F(record_printer_test, basic) {
     EXPECT_EQ(2, r.get_value<std::int64_t>(8));
     EXPECT_EQ(3, r.get_value<std::int64_t>(16));
 
-    std::cout << r << meta;
     std::stringstream ss{};
     ss << r << meta;
     ASSERT_EQ("(0:int8)[1] (1:int8)[2] (2:int8)[3]", ss.str());
+    std::stringstream ss2{};
 }
 
 TEST_F(record_printer_test, integers) {
@@ -152,4 +181,56 @@ TEST_F(record_printer_test, text) {
     ASSERT_EQ("(0:int4)[1] (1:character)[A234567890123456] (2:int8)[3] (3:character)[A23456789012345]", ss.str());
 }
 
+TEST_F(record_printer_test, nullable) {
+    struct {
+        std::int64_t x_;
+        std::int64_t y_;
+        std::int64_t z_;
+        std::int64_t nullity_;
+    } buffer;
+    record_ref r{&buffer, sizeof(buffer)};
+    ASSERT_EQ(32, r.size());
+    buffer.x_ = 1;
+    buffer.y_ = 2;
+    buffer.z_ = 3;
+    buffer.nullity_ = 1;
+
+    using kind = field_type_kind;
+    record_meta meta{
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>)
+        },
+        boost::dynamic_bitset<std::uint64_t>{"101"s}};
+    EXPECT_EQ(3, meta.field_count());
+    EXPECT_EQ(1, r.get_value<std::int64_t>(0));
+    EXPECT_EQ(2, r.get_value<std::int64_t>(8));
+    EXPECT_EQ(3, r.get_value<std::int64_t>(16));
+
+    std::stringstream ss{};
+    ss << r << meta;
+    ASSERT_EQ("(0:int8*)[-] (1:int8)[2] (2:int8*)[3]", ss.str());
 }
+
+TEST_F(record_printer_test, empty_object) {
+    record_ref r{};
+    ASSERT_EQ(0, r.size());
+
+    using kind = field_type_kind;
+    record_meta meta{};
+    EXPECT_EQ(0, meta.field_count());
+
+    std::stringstream ss{};
+    ss << r << meta;
+    ASSERT_EQ("", ss.str());
+
+    std::stringstream ss2{};
+    auto printer = ss2 << r;
+    ASSERT_EQ("", ss2.str());
+    printer << meta;
+    ASSERT_EQ("", ss2.str());
+}
+
+}
+

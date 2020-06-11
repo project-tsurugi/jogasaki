@@ -13,8 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <jogasaki/api/database.h>
 
-namespace jogasaki {
+#include <string_view>
+
+namespace jogasaki::api {
+
+class database::impl {
+public:
+    void execute(std::string_view sql);
+};
+
+void database::impl::execute(std::string_view sql) {
+    (void)sql;
+};
+
+database::database() : impl_(std::make_unique<database::impl>()) {}
+database::~database() = default;
+
+void database::execute(std::string_view sql) {
+    impl_->execute(sql);
+}
 
 }

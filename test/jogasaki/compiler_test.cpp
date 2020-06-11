@@ -98,9 +98,9 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
             = std::make_shared<::yugawara::storage::configurable_provider>();
 
     std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
-            "T1",
+            "T0",
             {
-                    { "C0", type::int4() },
+                    { "C0", type::int8() },
                     { "C1", type::float8 () },
             },
     });
@@ -254,8 +254,8 @@ TEST_F(compiler_test, simple_query) {
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
     EXPECT_EQ(emit.columns()[1].source(), c1p0);
 
-    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int4());
-    EXPECT_EQ(result.type_of(c0p0), type::int4());
+    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
+    EXPECT_EQ(result.type_of(c0p0), type::int8());
     EXPECT_EQ(result.type_of(bindings(t0c1)), type::float8());
     EXPECT_EQ(result.type_of(c1p0), type::float8());
 
@@ -359,8 +359,8 @@ TEST_F(compiler_test, filter) {
     ASSERT_EQ(emit.columns().size(), 1);
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int4());
-    EXPECT_EQ(result.type_of(c0p0), type::int4());
+    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
+    EXPECT_EQ(result.type_of(c0p0), type::int8());
 }
 
 TEST_F(compiler_test, project_filter) {
@@ -465,8 +465,8 @@ TEST_F(compiler_test, project_filter) {
     ASSERT_EQ(emit.columns().size(), 3);
 //    EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int4());
-//    EXPECT_EQ(result.type_of(c0p0), type::int4());
+//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
+//    EXPECT_EQ(result.type_of(c0p0), type::int8());
 }
 
 }

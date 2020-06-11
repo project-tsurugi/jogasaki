@@ -75,6 +75,7 @@ public:
     void operator()(relation::find const& node) {
         fail();
     }
+
     void operator()(relation::scan const& node) {
         LOG(INFO) << "scan";
         auto stg = std::make_shared<storage::storage_context>();

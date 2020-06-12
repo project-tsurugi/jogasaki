@@ -71,13 +71,7 @@ using namespace ::mizugaki;
 using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
 
-namespace type = ::takatori::type;
-namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-namespace relation = ::takatori::relation;
 namespace statement = ::takatori::statement;
-
-namespace tinfo = ::shakujo::common::core::type;
 
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser;
@@ -105,7 +99,6 @@ void create_step_graph(std::string_view sql, compiler_context& ctx) {
 
     placeholder_map placeholders;
     ::takatori::document::document_map documents;
-    ::shakujo::model::IRFactory ir;
     ::yugawara::binding::factory bindings { options.get_object_creator() };
 
     auto r = translator(options, *p->main(), documents, placeholders);

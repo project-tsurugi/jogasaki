@@ -55,7 +55,13 @@ public:
     }
 
     void activate() override {
-        data_flow_object(std::make_unique<flow>());
+        data_flow_object(std::make_unique<flow>(
+            flow::record_meta_list {},
+            flow::record_meta_list {},
+            flow::record_meta_list {},
+            context(),
+            this
+        ));
     }
 };
 

@@ -29,10 +29,14 @@ namespace jogasaki::api {
  */
 class database {
 public:
-    void execute(std::string_view sql);
-
     database();
     ~database();
+    database(database const& other) = delete;
+    database& operator=(database const& other) = delete;
+    database(database&& other) noexcept = delete;
+    database& operator=(database&& other) noexcept = delete;
+
+    void execute(std::string_view sql);
 
 private:
     class impl;

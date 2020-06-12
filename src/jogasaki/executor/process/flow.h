@@ -46,11 +46,15 @@ public:
     flow(
             record_meta_list input_meta,
             record_meta_list subinput_meta,
-            record_meta_list output_meta
+            record_meta_list output_meta,
+            std::shared_ptr<request_context> context,
+            common::step* step
     ) :
             input_meta_(std::move(input_meta)),
             subinput_meta_(std::move(subinput_meta)),
-            output_meta_(std::move(output_meta))
+            output_meta_(std::move(output_meta)),
+            context_(std::move(context)),
+            step_(step)
     {}
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
@@ -60,7 +64,10 @@ public:
 
         // create tasks supplying the processor
 
-        return {};
+        std::unique_ptr<task_context> task_context{};
+        std::unique_ptr<processor> processor{};
+        tasks_.emplace_back(std::make_unique<task>(context_, step_, std::move(task_context), std::move(processor)));
+        return tasks_;
     }
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override {
@@ -78,7 +85,9 @@ private:
     record_meta_list subinput_meta_{};
     record_meta_list output_meta_{};
     record_meta_list external_meta_{};
+    std::shared_ptr<request_context> context_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
+    common::step* step_{};
 };
 
 }

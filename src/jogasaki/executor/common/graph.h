@@ -45,6 +45,11 @@ public:
         return takatori::util::optional_ptr<model::step>{};
     }
 
+    // TODO graph should have request context?
+    void context(std::shared_ptr<request_context> context) {
+        context_ = std::move(context);
+    }
+
     [[nodiscard]] std::shared_ptr<request_context> const& context() const noexcept override {
         return context_;
     }

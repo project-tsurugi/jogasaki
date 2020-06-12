@@ -16,16 +16,71 @@
 #include <jogasaki/api/database.h>
 
 #include <string_view>
+#include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/compiler.h>
+#include <jogasaki/scheduler/dag_controller.h>
 
 namespace jogasaki::api {
 
+using configurable_provider = ::yugawara::storage::configurable_provider;
+
 class database::impl {
 public:
+    impl() : impl(std::make_shared<configuration>()) {}
+    explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)), scheduler_{cfg_} {
+        add_default_table_defs(storage_provider_.get());
+    }
     void execute(std::string_view sql);
+
+private:
+    std::shared_ptr<configuration> cfg_{};
+    scheduler::dag_controller scheduler_{};
+    std::shared_ptr<configurable_provider> storage_provider_{std::make_shared<configurable_provider>()};
+
+    void add_default_table_defs(configurable_provider* provider) {
+        namespace type = ::takatori::type;
+//        namespace value = ::takatori::value;
+//        namespace scalar = ::takatori::scalar;
+//        namespace relation = ::takatori::relation;
+//        namespace statement = ::takatori::statement;
+//        namespace tinfo = ::shakujo::common::core::type;
+
+        std::shared_ptr<::yugawara::storage::table> t0 = provider->add_table("T0", {
+            "T0",
+            {
+                { "C0", type::int8() },
+                { "C1", type::float8 () },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i0 = provider->add_index("I0", {
+            t0,
+            "I0",
+            {
+                t0->columns()[0],
+            },
+            {},
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        });
+    }
 };
 
 void database::impl::execute(std::string_view sql) {
-    (void)sql;
+    plan::compiler_context ctx{};
+    ctx.storage_provider(storage_provider_);
+    plan::compile(sql, ctx);
+
+    auto channel = std::make_shared<class channel>();
+    // TODO redesign how request context is passed
+    auto* g = ctx.step_graph();
+    dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_));
+    scheduler_.schedule(*g);
+
+    // get the result
 };
 
 database::database() : impl_(std::make_unique<database::impl>()) {}

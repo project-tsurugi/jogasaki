@@ -34,5 +34,5 @@ endif()
 
 add_test(
         NAME compile-cli
-        COMMAND compile-cli --minimum
+        COMMAND compile-cli
 )

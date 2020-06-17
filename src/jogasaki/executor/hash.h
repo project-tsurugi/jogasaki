@@ -49,8 +49,8 @@ public:
     hash_value operator()(accessor::record_ref const& record) const noexcept {
         hash_value h{};
         for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
-            hash_value res = hash_field(record, i);
-            h ^= res; // TODO
+            h *= 31;
+            h += hash_field(record, i);
         }
         return h;
     }

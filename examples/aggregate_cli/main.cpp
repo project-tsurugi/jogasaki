@@ -42,14 +42,10 @@ DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
-DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
-DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
-DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 
@@ -71,9 +67,26 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }
 
+using key_type = std::int64_t;
+using value_type = double;
+
 static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
-    auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
+    struct access {
+        value_type get_value(accessor::record_ref value) {
+            return value.get_value<value_type>(value_meta_->value_offset(0));
+        }
+        void set_value(accessor::record_ref value, value_type arg) {
+            value.set_value<value_type>(value_meta_->value_offset(0), arg);
+        }
+        meta::record_meta const* value_meta_{};
+    };
+    auto aggregator = std::make_shared<shuffle_info::aggregator_type>([&](meta::record_meta const* meta, accessor::record_ref target, accessor::record_ref source){
+        access acc{meta};
+        auto new_value = acc.get_value(target) + acc.get_value(source);
+        acc.set_value(target, new_value);
+    });
+    auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}, aggregator);
 
     auto channel = std::make_shared<class channel>();
     auto context = std::make_shared<request_context>(channel, cfg);
@@ -115,12 +128,6 @@ extern "C" int main(int argc, char* argv[]) {
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);
     cfg->assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
-    cfg->noop_pregroup(FLAGS_noop_pregroup);
-
-    if (FLAGS_shuffle_uses_sorted_vector) {
-        cfg->use_sorted_vector(true);
-        cfg->noop_pregroup(true);
-    }
 
     if (FLAGS_minimum) {
         cfg->single_thread(true);

@@ -27,7 +27,6 @@ reader::reader(std::shared_ptr<shuffle_info> info,
     info_(std::move(info)),
     key_size_(info_->key_meta()->record_size()),
     value_size_(info_->value_meta()->record_size()),
-    buf_(utils::make_aligned_array<char>(hardware_destructive_interference_size, key_size_)), //NOLINT
     key_comparator_(info_->key_meta().get()),
     aggregator_(aggregator)
 {
@@ -71,7 +70,7 @@ bool reader::next_group() {
     auto value = iterated_map_->value();
     for(auto map = iterated_map_+1; map != maps_.end(); ++map) {
         if(auto it = map->find(key); it != map->end()) {
-            aggregator_(value, accessor::record_ref(it->second, value_size_));
+            aggregator_(info_->value_meta().get(), value, accessor::record_ref(it->second, value_size_));
             map->erase(it);
         }
     }

@@ -34,14 +34,14 @@ class shuffle_info {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    using aggregator_type = std::function<void (accessor::record_ref, accessor::record_ref)>;
+    using aggregator_type = std::function<void (meta::record_meta const*, accessor::record_ref, accessor::record_ref)>;
     /**
      * @brief construct empty object
      */
     shuffle_info() :
         record_(std::make_shared<meta::record_meta>()),
         group_(std::make_shared<meta::group_meta>()),
-        aggregator_(std::make_shared<aggregator_type>([](accessor::record_ref, accessor::record_ref) {}))
+        aggregator_(std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
     {};
 
     /**
@@ -54,7 +54,7 @@ public:
         record_(std::move(record)),
         key_indices_(std::move(key_indices)),
         group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),
-        aggregator_(aggregator ? std::move(aggregator) : std::make_shared<aggregator_type>([](accessor::record_ref, accessor::record_ref) {}))
+        aggregator_(aggregator ? std::move(aggregator) : std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
     {}
 
 

@@ -58,7 +58,6 @@ private:
     std::shared_ptr<shuffle_info> info_{};
     std::size_t key_size_{};
     std::size_t value_size_{};
-    utils::aligned_array<char> buf_;
     comparator key_comparator_{};
     iteratable_maps_type maps_{};
     iteratable_maps_type::iterator iterated_map_{};

@@ -108,7 +108,7 @@ public:
         auto value = info_->extract_value(record);
         if (auto it = table.find(key.data()); it != table.end()) {
             auto& aggregator = *info_->aggregator();
-            aggregator(accessor::record_ref(it->second, value_size_), value);
+            aggregator(info_->value_meta().get(), accessor::record_ref(it->second, value_size_), value);
         } else {
             table.emplace(keys_->append(key), values_->append(value));
             if (table.load_factor() > load_factor_bound) {  // TODO avoid reallocation completely

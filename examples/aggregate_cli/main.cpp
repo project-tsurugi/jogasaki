@@ -81,12 +81,12 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
         }
         meta::record_meta const* value_meta_{};
     };
-    auto aggregator = std::make_shared<shuffle_info::aggregator_type>([&](meta::record_meta const* meta, accessor::record_ref target, accessor::record_ref source){
+    auto aggregator = std::make_shared<shuffle_info::aggregator_type>([](meta::record_meta const* meta, accessor::record_ref target, accessor::record_ref source){
         access acc{meta};
         auto new_value = acc.get_value(target) + acc.get_value(source);
         acc.set_value(target, new_value);
     });
-    auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}, aggregator);
+    auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}, std::move(aggregator));
 
     auto channel = std::make_shared<class channel>();
     auto context = std::make_shared<request_context>(channel, cfg);

@@ -16,10 +16,12 @@
 #pragma once
 
 #include <tsl/hopscotch_map.h>
+#include <boost/container/pmr/polymorphic_allocator.hpp>
 
 #include <takatori/util/universal_extractor.h>
 #include <takatori/util/reference_list_view.h>
 
+#include <jogasaki/utils/round.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
@@ -57,15 +59,21 @@ namespace impl {
  */
 class input_partition {
 public:
+
     using key_pointer = void*;
     using value_pointer = void*;
-    using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq>; //TODO allocator
+    using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<std::pair<key_pointer, value_pointer>, 62, false>;
+    using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
+    using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq, hash_table_allocator>;
     using hash_tables = std::vector<hash_table>;
     using iterator = hash_tables::iterator;
 
-    //TODO verifiy the table size
-    constexpr static std::size_t default_initial_hash_table_size = memory::page_size / (sizeof(hash_table::value_type) + 8); // 8 bytes for neighborhood bits
+    constexpr static std::size_t default_initial_hash_table_size = utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
+
     static_assert(sizeof(hash_table::value_type) == 16);  // two pointers
+    static_assert(alignof(hash_table::value_type) == 8);
+    static_assert(sizeof(bucket_type::neighborhood_bitmap) == 8);
+    static_assert(alignof(bucket_type::neighborhood_bitmap) == 8);
 
     ///@brief upper bound of load factor to flush()
     constexpr static float load_factor_bound = 0.7;
@@ -81,6 +89,7 @@ public:
         std::unique_ptr<memory::paged_memory_resource> resource_for_keys,
         std::unique_ptr<memory::paged_memory_resource> resource_for_values,
         std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
+        std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables,
         std::shared_ptr<shuffle_info> info,
         std::shared_ptr<request_context> context,
         [[maybe_unused]] std::size_t initial_hash_table_size = default_initial_hash_table_size
@@ -88,6 +97,7 @@ public:
         resource_for_keys_(std::move(resource_for_keys)),
         resource_for_values_(std::move(resource_for_values)),
         resource_for_varlen_data_(std::move(resource_for_varlen_data)),
+        resource_for_hash_tables_(std::move(resource_for_hash_tables)),
         info_(std::move(info)),
         context_(std::move(context)),
         comparator_(info_->key_meta().get()),
@@ -195,6 +205,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_keys_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_values_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
+    std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables_{};
     std::shared_ptr<shuffle_info> info_{};
     std::shared_ptr<request_context> context_{std::make_shared<request_context>()};
     std::unique_ptr<data::record_store> keys_{};
@@ -220,7 +231,11 @@ private:
                 info_->value_meta());
         }
         if(!current_table_active_) {
-            maps_.emplace_back(initial_hash_table_size_, hash{info_->key_meta().get()}, impl::key_eq{comparator_, key_size_});
+            maps_.emplace_back(initial_hash_table_size_,
+                hash{info_->key_meta().get()},
+                impl::key_eq{comparator_, key_size_},
+                hash_table_allocator{resource_for_hash_tables_.get()}
+                );
             current_table_active_ = true;
         }
     }

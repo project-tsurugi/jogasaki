@@ -73,12 +73,13 @@ private:
         }
         if (partitions_[partition]) return;
         partitions_[partition] = std::make_unique<input_partition>(
-                std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-                std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-                std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-                info_,
-                owner_->context()
-                );
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            info_,
+            owner_->context()
+        );
     }
 };
 

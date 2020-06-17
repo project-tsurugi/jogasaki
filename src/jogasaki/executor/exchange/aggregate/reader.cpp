@@ -32,6 +32,7 @@ reader::reader(std::shared_ptr<shuffle_info> info,
 {
     std::size_t count = 0;
     for(auto& p : partitions_) {
+        if (!p) continue;
         for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
             if(! p->maps(idx).empty()) {
                 ++count;
@@ -40,6 +41,7 @@ reader::reader(std::shared_ptr<shuffle_info> info,
     }
     maps_.reserve(count);
     for(auto& p : partitions_) {
+        if (!p) continue;
         for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
             if(! p->maps(idx).empty()) {
                 maps_.emplace_back(p->maps(idx));

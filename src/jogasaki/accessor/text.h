@@ -183,3 +183,19 @@ static_assert(std::alignment_of_v<text> == 8);
 static_assert(sizeof(text) == 16);
 
 }
+
+/**
+ * @brief std::hash specialization for text
+ */
+template<>
+struct std::hash<jogasaki::accessor::text> {
+    /**
+     * @brief compute hash of the given object.
+     * @param value the target object
+     * @return computed hash code
+     */
+    std::size_t operator()(jogasaki::accessor::text const& value) const noexcept {
+        return std::hash<std::string_view>{}(static_cast<std::string_view>(value));
+    }
+};
+

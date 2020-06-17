@@ -50,7 +50,7 @@ public:
      * @param data base pointer indicating record body
      * @param size record size
      */
-    record_ref(void* data, size_type size) : data_(data), size_(size) {}
+    record_ref(void* data, size_type size) noexcept : data_(data), size_(size) {}
 
     /**
      * @brief retrieve nullity

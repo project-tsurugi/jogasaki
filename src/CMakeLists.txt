@@ -11,6 +11,7 @@ file(GLOB SOURCES
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/process/*.cpp"
         "jogasaki/executor/exchange/*.cpp"
+        "jogasaki/executor/exchange/aggregate/*.cpp"
         "jogasaki/executor/exchange/broadcast/*.cpp"
         "jogasaki/executor/exchange/deliver/*.cpp"
         "jogasaki/executor/exchange/forward/*.cpp"
@@ -42,6 +43,7 @@ target_link_libraries(jogasaki
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         PRIVATE tbb
         PRIVATE numa
+        PRIVATE tsl::hopscotch_map
         PRIVATE Boost::boost
         PRIVATE Boost::filesystem
         PRIVATE Boost::thread
@@ -74,6 +76,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         INTERFACE tbb
         INTERFACE numa
+        INTERFACE tsl::hopscotch_map
         INTERFACE Boost::boost
         INTERFACE Boost::filesystem
         INTERFACE Boost::thread

@@ -1,0 +1,70 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include <queue>
+
+#include <glog/logging.h>
+
+#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/exchange/aggregate/input_partition.h>
+#include <jogasaki/utils/aligned_unique_ptr.h>
+
+namespace jogasaki::executor::exchange::aggregate {
+
+/**
+ * @brief reader for aggregate exchange
+ */
+class reader : public group_reader {
+public:
+    using iteratable_maps_type = std::vector<input_partition::iteratable_map>;
+    using aggregator_type = shuffle_info::aggregator_type;
+    ~reader() override = default;
+    reader(reader const& other) = delete;
+    reader& operator=(reader const& other) = delete;
+    reader(reader&& other) noexcept = delete;
+    reader& operator=(reader&& other) noexcept = delete;
+
+    reader(std::shared_ptr<shuffle_info> info,
+        std::vector<std::unique_ptr<input_partition>>& partitions,
+        aggregator_type const& aggregator
+        );
+
+    bool next_group() override;
+
+    [[nodiscard]] accessor::record_ref get_group() const override;
+
+    bool next_member() override;
+
+    [[nodiscard]] accessor::record_ref get_member() const override;
+
+    void release() override;
+
+private:
+    std::vector<std::unique_ptr<input_partition>>& partitions_;
+    std::shared_ptr<shuffle_info> info_{};
+    std::size_t key_size_{};
+    std::size_t value_size_{};
+    utils::aligned_array<char> buf_;
+    comparator key_comparator_{};
+    iteratable_maps_type maps_{};
+    iteratable_maps_type::iterator iterated_map_{};
+    bool on_member_{false};
+
+    aggregator_type const& aggregator_;
+};
+
+}

@@ -18,9 +18,6 @@
 #include <tsl/hopscotch_map.h>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 
-#include <takatori/util/universal_extractor.h>
-#include <takatori/util/reference_list_view.h>
-
 #include <jogasaki/utils/round.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -101,9 +98,7 @@ public:
         info_(std::move(info)),
         context_(std::move(context)),
         comparator_(info_->key_meta().get()),
-        initial_hash_table_size_(initial_hash_table_size),
-        key_size_(info_->key_meta()->record_size()),
-        value_size_(info_->value_meta()->record_size())
+        initial_hash_table_size_(initial_hash_table_size)
     {}
 
     /**
@@ -113,12 +108,12 @@ public:
      */
     bool write(accessor::record_ref record) {
         initialize_lazy();
-        auto& table = maps_.back();
+        auto& table = tables_.back();
         auto key = info_->extract_key(record);
         auto value = info_->extract_value(record);
         if (auto it = table.find(key.data()); it != table.end()) {
             auto& aggregator = *info_->aggregator();
-            aggregator(info_->value_meta().get(), accessor::record_ref(it->second, value_size_), value);
+            aggregator(info_->value_meta().get(), accessor::record_ref(it->second, info_->value_meta()->record_size()), value);
         } else {
             table.emplace(keys_->append(key), values_->append(value));
             if (table.load_factor() > load_factor_bound) {  // TODO avoid reallocation completely
@@ -130,8 +125,8 @@ public:
     }
 
     /**
-     * @brief finish current pointer table
-     * @details the current internal pointer table is finalized and next write() will create one.
+     * @brief finish current hash table
+     * @details the current internal hash table is finalized and next write() will create new one.
      */
     void flush() {
         if(!current_table_active_) return;
@@ -142,20 +137,24 @@ public:
      * @brief returns the number of hash tables
      */
     [[nodiscard]] std::size_t tables_count() const noexcept {
-        return maps_.size();
+        return tables_.size();
     }
 
     /**
-     * @brief hash table access interface
+     * @brief hash table access interface with iterator
+     * @details this object represents a reference to a hash table with an iterator on it
      */
-    class iteratable_map {
+    class iteratable_hash_table {
     public:
-        using iterator = input_partition::hash_table::iterator;
+        using iterator = hash_table::iterator;
 
-        iteratable_map(input_partition* owner, input_partition::hash_table& table) : owner_(owner), table_(std::addressof(table)), it_(table_->begin()) {}
+        iteratable_hash_table(hash_table& table,
+            std::size_t key_size,
+            std::size_t value_size
+        ) noexcept : table_(std::addressof(table)), key_size_(key_size), value_size_(value_size), it_(table_->end()) {}
 
         bool next() noexcept {
-            if (! initialized_) {
+            if (it_ == table_->end()) {
                 reset();
             } else {
                 ++it_;
@@ -165,15 +164,14 @@ public:
 
         void reset() noexcept {
             it_ = table_->begin();
-            initialized_ = true;
         }
 
         [[nodiscard]] accessor::record_ref key() const noexcept {
-            return accessor::record_ref(it_->first, owner_->key_size_);
+            return accessor::record_ref(it_->first, key_size_);
         }
 
         accessor::record_ref value() noexcept {
-            return accessor::record_ref(it_->second, owner_->value_size_);
+            return accessor::record_ref(it_->second, value_size_);
         }
 
         iterator find(accessor::record_ref key) {
@@ -205,14 +203,20 @@ public:
         }
 
     private:
-        input_partition* owner_{};
-        input_partition::hash_table* table_;
-        input_partition::hash_table::iterator it_{};
-        bool initialized_{false};
+        hash_table* table_{};
+        std::size_t key_size_{};
+        std::size_t value_size_{};
+        iterator it_{};
     };
 
-    iteratable_map maps(std::size_t index) {
-        return iteratable_map(this, maps_[index]);
+    [[nodiscard]] bool empty(std::size_t index) const noexcept {
+        return tables_[index].empty();
+    }
+
+    iteratable_hash_table table_at(std::size_t index) {
+        return iteratable_hash_table(tables_[index],
+            info_->key_meta()->record_size(),
+            info_->value_meta()->record_size());
     }
 
 private:
@@ -224,12 +228,10 @@ private:
     std::shared_ptr<request_context> context_{std::make_shared<request_context>()};
     std::unique_ptr<data::record_store> keys_{};
     std::unique_ptr<data::record_store> values_{};
-    hash_tables maps_{};
+    hash_tables tables_{};
     comparator comparator_{};
     bool current_table_active_{false};
     std::size_t initial_hash_table_size_{};
-    std::size_t key_size_{};
-    std::size_t value_size_{};
 
     void initialize_lazy() {
         if (!keys_) {
@@ -245,9 +247,9 @@ private:
                 info_->value_meta());
         }
         if(!current_table_active_) {
-            maps_.emplace_back(initial_hash_table_size_,
+            tables_.emplace_back(initial_hash_table_size_,
                 hash{info_->key_meta().get()},
-                impl::key_eq{comparator_, key_size_},
+                impl::key_eq{comparator_, info_->key_meta()->record_size()},
                 hash_table_allocator{resource_for_hash_tables_.get()}
                 );
             current_table_active_ = true;

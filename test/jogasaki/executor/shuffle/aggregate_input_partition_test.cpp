@@ -16,7 +16,6 @@
 
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
@@ -86,21 +85,21 @@ TEST_F(aggregate_input_partition_test, basic) {
     partition.write(ref2);
     partition.flush();
     ASSERT_EQ(1, partition.tables_count());
-    auto map = partition.maps(0);
-    EXPECT_EQ(3, map.size());
+    auto table = partition.table_at(0);
+    EXPECT_EQ(3, table.size());
 
     std::set<key_type> keys{};
     std::set<value_type> values{};
-    ASSERT_TRUE(map.next());
-    keys.emplace(get_key(map.key()));
-    values.emplace(get_value(map.value()));
-    ASSERT_TRUE(map.next());
-    keys.emplace(get_key(map.key()));
-    values.emplace(get_value(map.value()));
-    ASSERT_TRUE(map.next());
-    keys.emplace(get_key(map.key()));
-    values.emplace(get_value(map.value()));
-    ASSERT_FALSE(map.next());
+    ASSERT_TRUE(table.next());
+    keys.emplace(get_key(table.key()));
+    values.emplace(get_value(table.value()));
+    ASSERT_TRUE(table.next());
+    keys.emplace(get_key(table.key()));
+    values.emplace(get_value(table.value()));
+    ASSERT_TRUE(table.next());
+    keys.emplace(get_key(table.key()));
+    values.emplace(get_value(table.value()));
+    ASSERT_FALSE(table.next());
     std::set<key_type> keys_exp{1,2,3};
     std::set<value_type> values_exp{1.0,4.0,3.0};
     ASSERT_EQ(keys_exp, keys);
@@ -131,10 +130,10 @@ TEST_F(aggregate_input_partition_test, multiple_hash_tables) {
     partition.write(ref2);
     partition.flush();
     ASSERT_EQ(2, partition.tables_count());
-    auto map0 = partition.maps(0);
-    auto map1 = partition.maps(1);
-    EXPECT_EQ(3, map0.size());
-    EXPECT_EQ(3, map1.size());
+    auto table0 = partition.table_at(0);
+    auto table1 = partition.table_at(1);
+    EXPECT_EQ(3, table0.size());
+    EXPECT_EQ(3, table1.size());
 
     auto key_size = info_->key_meta()->record_size();
     auto value_size = info_->value_meta()->record_size();
@@ -143,41 +142,41 @@ TEST_F(aggregate_input_partition_test, multiple_hash_tables) {
     std::set<value_type> values0{}, values1{};
 
     {
-        ASSERT_TRUE(map0.next());
-        keys0.emplace(get_key(map0.key()));
-        values0.emplace(get_value(map0.value()));
-        auto e1 = map1.find(map0.key());
-        ASSERT_NE(map1.end(), e1);
+        ASSERT_TRUE(table0.next());
+        keys0.emplace(get_key(table0.key()));
+        values0.emplace(get_value(table0.value()));
+        auto e1 = table1.find(table0.key());
+        ASSERT_NE(table1.end(), e1);
         keys1.emplace(get_key(accessor::record_ref(e1->first, key_size)));
         values1.emplace(get_key(accessor::record_ref(e1->second, value_size)));
-        map1.erase(e1);
+        table1.erase(e1);
     }
     {
-        ASSERT_TRUE(map0.next());
-        keys0.emplace(get_key(map0.key()));
-        values0.emplace(get_value(map0.value()));
-        auto e2 = map1.find(map0.key());
-        ASSERT_NE(map1.end(), e2);
+        ASSERT_TRUE(table0.next());
+        keys0.emplace(get_key(table0.key()));
+        values0.emplace(get_value(table0.value()));
+        auto e2 = table1.find(table0.key());
+        ASSERT_NE(table1.end(), e2);
         keys1.emplace(get_key(accessor::record_ref(e2->first, key_size)));
         values1.emplace(get_key(accessor::record_ref(e2->second, value_size)));
-        map1.erase(e2);
+        table1.erase(e2);
     }
 
     {
-        ASSERT_TRUE(map0.next());
-        keys0.emplace(get_key(map0.key()));
-        values0.emplace(get_value(map0.value()));
-        auto e3 = map1.find(map0.key());
-        ASSERT_NE(map1.end(), e3);
+        ASSERT_TRUE(table0.next());
+        keys0.emplace(get_key(table0.key()));
+        values0.emplace(get_value(table0.value()));
+        auto e3 = table1.find(table0.key());
+        ASSERT_NE(table1.end(), e3);
         keys1.emplace(get_key(accessor::record_ref(e3->first, key_size)));
         values1.emplace(get_key(accessor::record_ref(e3->second, value_size)));
-        map1.erase(e3);
+        table1.erase(e3);
     }
 
-    ASSERT_FALSE(map0.next());
-    ASSERT_FALSE(map1.next());
-    EXPECT_EQ(3, map0.size());
-    EXPECT_EQ(0, map1.size());
+    ASSERT_FALSE(table0.next());
+    ASSERT_FALSE(table1.next());
+    EXPECT_EQ(3, table0.size());
+    EXPECT_EQ(0, table1.size());
     std::set<key_type> keys_exp{1,2,3};
     std::set<value_type> values_exp{1.0,2.0,3.0};
     ASSERT_EQ(keys_exp, keys0);

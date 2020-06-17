@@ -54,7 +54,7 @@ public:
         record_(std::move(record)),
         key_indices_(std::move(key_indices)),
         group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),
-        aggregator_(aggregator ? std::move(aggregator) : std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
+        aggregator_(aggregator != nullptr ? std::move(aggregator) : std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
     {}
 
 

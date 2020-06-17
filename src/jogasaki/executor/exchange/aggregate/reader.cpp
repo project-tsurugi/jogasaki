@@ -15,6 +15,8 @@
  */
 #include "reader.h"
 
+#include <glog/logging.h>
+
 namespace jogasaki::executor::exchange::aggregate {
 
 reader::reader(std::shared_ptr<shuffle_info> info,
@@ -31,7 +33,7 @@ reader::reader(std::shared_ptr<shuffle_info> info,
     for(auto& p : partitions_) {
         if (!p) continue;
         for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
-            if(! p->maps(idx).empty()) {
+            if(!p->empty(idx)) {
                 ++count;
             }
         }
@@ -40,8 +42,8 @@ reader::reader(std::shared_ptr<shuffle_info> info,
     for(auto& p : partitions_) {
         if (!p) continue;
         for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
-            if(! p->maps(idx).empty()) {
-                maps_.emplace_back(p->maps(idx));
+            if(!p->empty(idx)) {
+                maps_.emplace_back(p->table_at(idx));
             }
         }
     }

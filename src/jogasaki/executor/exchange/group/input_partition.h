@@ -15,9 +15,6 @@
  */
 #pragma once
 
-#include <takatori/util/universal_extractor.h>
-#include <takatori/util/reference_list_view.h>
-
 #include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>

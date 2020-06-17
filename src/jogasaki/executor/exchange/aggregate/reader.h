@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <glog/logging.h>
-
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
 
@@ -27,7 +25,7 @@ namespace jogasaki::executor::exchange::aggregate {
  */
 class reader : public group_reader {
 public:
-    using iteratable_maps_type = std::vector<input_partition::iteratable_map>;
+    using iteratable_maps_type = std::vector<input_partition::iteratable_hash_table>;
     using aggregator_type = shuffle_info::aggregator_type;
     ~reader() override = default;
     reader(reader const& other) = delete;

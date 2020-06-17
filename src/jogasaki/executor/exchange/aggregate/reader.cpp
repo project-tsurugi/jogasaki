@@ -23,10 +23,9 @@ reader::reader(std::shared_ptr<shuffle_info> info,
 ) :
     partitions_(partitions),
     info_(std::move(info)),
+    aggregator_(aggregator),
     key_size_(info_->key_meta()->record_size()),
-    value_size_(info_->value_meta()->record_size()),
-    key_comparator_(info_->key_meta().get()),
-    aggregator_(aggregator)
+    value_size_(info_->value_meta()->record_size())
 {
     std::size_t count = 0;
     for(auto& p : partitions_) {
@@ -68,8 +67,9 @@ bool reader::next_group() {
     }
     auto key = iterated_map_->key();
     auto value = iterated_map_->value();
+    std::size_t precalculated_hash = iterated_map_->calculate_hash(key);
     for(auto map = iterated_map_+1; map != maps_.end(); ++map) {
-        if(auto it = map->find(key); it != map->end()) {
+        if(auto it = map->find(key, precalculated_hash); it != map->end()) {
             aggregator_(info_->value_meta().get(), value, accessor::record_ref(it->second, value_size_));
             map->erase(it);
         }

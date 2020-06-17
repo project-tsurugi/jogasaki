@@ -15,13 +15,10 @@
  */
 #pragma once
 
-#include <queue>
-
 #include <glog/logging.h>
 
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -56,14 +53,12 @@ public:
 private:
     std::vector<std::unique_ptr<input_partition>>& partitions_;
     std::shared_ptr<shuffle_info> info_{};
+    aggregator_type const& aggregator_;
     std::size_t key_size_{};
     std::size_t value_size_{};
-    comparator key_comparator_{};
     iteratable_maps_type maps_{};
     iteratable_maps_type::iterator iterated_map_{};
     bool on_member_{false};
-
-    aggregator_type const& aggregator_;
 };
 
 }

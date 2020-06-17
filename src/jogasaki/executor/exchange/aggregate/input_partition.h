@@ -48,14 +48,15 @@ namespace impl {
         std::size_t key_size_{};
     };
 }
+
 /**
  * @brief partitioned input data handled in upper phase in shuffle
- * @details This object represents group exchange input data after partition.
+ * @details This object represents aggregate exchange input data after partition.
  * This object is transferred between sinks and sources when transfer is instructed to the exchange.
  * No limit to the number of records stored in this object.
- * After populating input data (by write() and flush()), this object provides iterators to the internal pointer tables
+ * After populating input data (by write() and flush()), this object provides iterable hash maps
  * (each of which needs to fit page size defined by memory allocator, e.g. 2MB for huge page)
- * which contain sorted pointers.
+ * which contain (locally pre-aggregated) key-value pairs.
  */
 class input_partition {
 public:
@@ -66,7 +67,6 @@ public:
     using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
     using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq, hash_table_allocator>;
     using hash_tables = std::vector<hash_table>;
-    using iterator = hash_tables::iterator;
 
     constexpr static std::size_t default_initial_hash_table_size = utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
 
@@ -139,12 +139,15 @@ public:
     }
 
     /**
-     * @brief returns the number of pointer tables
+     * @brief returns the number of hash tables
      */
     [[nodiscard]] std::size_t tables_count() const noexcept {
         return maps_.size();
     }
 
+    /**
+     * @brief hash table access interface
+     */
     class iteratable_map {
     public:
         using iterator = input_partition::hash_table::iterator;
@@ -159,10 +162,12 @@ public:
             }
             return it_ != table_->end();
         }
+
         void reset() noexcept {
             it_ = table_->begin();
             initialized_ = true;
         }
+
         [[nodiscard]] accessor::record_ref key() const noexcept {
             return accessor::record_ref(it_->first, owner_->key_size_);
         }
@@ -173,6 +178,10 @@ public:
 
         iterator find(accessor::record_ref key) {
             return table_->find(key.data());
+        }
+
+        iterator find(accessor::record_ref key, std::size_t precalculated_hash) {
+            return table_->find(key.data(), precalculated_hash);
         }
 
         [[nodiscard]] iterator end() const noexcept {
@@ -190,6 +199,11 @@ public:
         [[nodiscard]] bool empty() const noexcept {
             return table_->empty();
         }
+
+        [[nodiscard]] std::size_t calculate_hash(accessor::record_ref key) const noexcept {
+            return table_->hash_function()(key.data());
+        }
+
     private:
         input_partition* owner_{};
         input_partition::hash_table* table_;

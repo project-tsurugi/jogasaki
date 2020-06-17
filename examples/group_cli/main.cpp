@@ -51,7 +51,7 @@ DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLI
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
-DEFINE_int32(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
+DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::group_cli {
 

@@ -53,7 +53,7 @@ DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector ins
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 DEFINE_bool(use_priority_queue, true, "use priority_queue to conduct cogroup");  //NOLINT
-DEFINE_int32(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
+DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 

@@ -17,8 +17,6 @@
 
 namespace jogasaki::executor::exchange::aggregate {
 
-static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
-
 reader::reader(std::shared_ptr<shuffle_info> info,
     std::vector<std::unique_ptr<input_partition>>& partitions,
     aggregator_type const& aggregator

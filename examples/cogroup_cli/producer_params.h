@@ -22,6 +22,8 @@ public:
     std::size_t records_per_upstream_partition_ = 1000;
 
     std::size_t upstream_partitions_ = 5;
+
+    std::size_t key_modulo_ = -1;
 };
 
 }

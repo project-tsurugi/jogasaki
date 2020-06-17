@@ -53,6 +53,7 @@ DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector ins
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 DEFINE_bool(use_priority_queue, true, "use priority_queue to conduct cogroup");  //NOLINT
+DEFINE_int32(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 
@@ -80,8 +81,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto context = std::make_shared<request_context>(channel, cfg);
 
     common::graph g{context};
-    producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_ };
-    producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_ };
+    producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.key_modulo_ };
+    producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.key_modulo_ };
     auto& scan1 = g.emplace<producer_process>(meta, l_params);
     auto& scan2 = g.emplace<producer_process>(meta, r_params);
     auto& xch1 = g.emplace<group::step>(info);
@@ -120,7 +121,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.right_upstream_partitions_ = FLAGS_right_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
-    s.use_priority_queue = FLAGS_use_priority_queue;
+    s.key_modulo_ = FLAGS_key_modulo;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

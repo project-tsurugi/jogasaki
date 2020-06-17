@@ -92,6 +92,7 @@ private:
             prev = ptr;
             auto ref = accessor::record_ref(ptr, sz);
             std::int64_t c1 = rnd();
+            c1 = (params_->key_modulo_ == static_cast<std::size_t>(-1)) ? c1 : c1 % params_->key_modulo_;
             ref.set_value<std::int64_t>(offset_c1, c1);
             double c2 = rnd();
             ref.set_value<double>(offset_c2, c2);

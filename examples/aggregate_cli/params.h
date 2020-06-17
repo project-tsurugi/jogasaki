@@ -24,6 +24,8 @@ public:
     std::size_t upstream_partitions_ = 10;
 
     std::size_t downstream_partitions_ = 10;
+
+    std::size_t key_modulo_ = -1;
 };
 
 }

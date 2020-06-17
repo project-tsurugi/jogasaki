@@ -48,6 +48,7 @@ DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
+DEFINE_int32(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::aggregate_cli {
 
@@ -124,10 +125,12 @@ extern "C" int main(int argc, char* argv[]) {
     s.upstream_partitions_ = FLAGS_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
+    s.key_modulo_ = FLAGS_key_modulo;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);
     cfg->assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+
 
     if (FLAGS_minimum) {
         cfg->single_thread(true);

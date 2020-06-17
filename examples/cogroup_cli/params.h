@@ -28,6 +28,8 @@ public:
     std::size_t downstream_partitions_ = 10;
 
     bool use_priority_queue = true;
+
+    std::size_t key_modulo_ = -1;
 };
 
 }

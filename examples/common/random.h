@@ -42,5 +42,30 @@ private:
     std::uint32_t x_=123456789;
 };
 
+class xorshift_random64 {
+public:
+    xorshift_random64() = default;
+
+    explicit xorshift_random64(std::uint64_t seed) : x_{seed} {
+        if (seed == 0) {
+            std::abort();
+        }
+    }
+    std::uint64_t operator()() {
+        x_ ^= x_ << 13;
+        x_ ^= x_ >> 7;
+        x_ ^= x_ << 17;
+        return x_;
+    }
+    void seed(std::uint64_t seed) {
+        if (seed == 0) {
+            std::abort();
+        }
+        x_ = seed;
+    }
+private:
+    std::uint64_t x_= 88172645463325252ULL;
+};
+
 } //namespace
 

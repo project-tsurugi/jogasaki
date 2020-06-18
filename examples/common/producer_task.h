@@ -74,7 +74,7 @@ private:
     void prepare_data(std::vector<std::pair<void*, void*>>& continuous_ranges) {
         auto offset_c1 = meta_->value_offset(0);
         auto offset_c2 = meta_->value_offset(1);
-        xorshift_random rnd{static_cast<std::uint32_t>(id()+1)};
+        xorshift_random64 rnd{static_cast<std::uint64_t>(id()+1)};
         auto sz = meta_->record_size();
         auto recs_per_page = memory::page_size / sizeof(void*);
         auto partitions = params_->records_per_upstream_partition_;
@@ -91,8 +91,8 @@ private:
             }
             prev = ptr;
             auto ref = accessor::record_ref(ptr, sz);
-            std::int64_t c1 = rnd();
-            c1 = (params_->key_modulo_ == static_cast<std::size_t>(-1)) ? c1 : c1 % params_->key_modulo_;
+            std::int64_t c1 = (params_->key_modulo_ == static_cast<std::size_t>(-1)) ? rnd() : rnd() % params_->key_modulo_;
+            c1 = (c1 > 0) ? c1 : -c1;
             ref.set_value<std::int64_t>(offset_c1, c1);
             double c2 = rnd();
             ref.set_value<double>(offset_c2, c2);

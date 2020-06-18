@@ -31,6 +31,7 @@
 #include "consumer_process.h"
 #include "params.h"
 #include "../common/cli_constants.h"
+#include "../common/aggregator.h"
 #include "../common/dump.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
@@ -73,20 +74,7 @@ using value_type = double;
 
 static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
-    struct access {
-        value_type get_value(accessor::record_ref value) {
-            return value.get_value<value_type>(value_meta_->value_offset(0));
-        }
-        void set_value(accessor::record_ref value, value_type arg) {
-            value.set_value<value_type>(value_meta_->value_offset(0), arg);
-        }
-        meta::record_meta const* value_meta_{};
-    };
-    auto aggregator = std::make_shared<shuffle_info::aggregator_type>([](meta::record_meta const* meta, accessor::record_ref target, accessor::record_ref source){
-        access acc{meta};
-        auto new_value = acc.get_value(target) + acc.get_value(source);
-        acc.set_value(target, new_value);
-    });
+    auto aggregator = common_cli::create_aggregator();
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}, std::move(aggregator));
 
     auto channel = std::make_shared<class channel>();

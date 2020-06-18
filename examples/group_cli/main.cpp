@@ -52,6 +52,7 @@ DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector ins
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
+DEFINE_bool(aggregate_group, false, "whether the result group will be aggregated");  //NOLINT
 
 namespace jogasaki::group_cli {
 
@@ -112,6 +113,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
     s.key_modulo_ = FLAGS_key_modulo;
+    s.aggregate_group_ = FLAGS_aggregate_group;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

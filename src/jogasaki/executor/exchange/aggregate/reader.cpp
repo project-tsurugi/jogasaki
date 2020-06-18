@@ -38,42 +38,42 @@ reader::reader(std::shared_ptr<shuffle_info> info,
             }
         }
     }
-    maps_.reserve(count);
+    tables_.reserve(count);
     for(auto& p : partitions_) {
         if (!p) continue;
         for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
             if(!p->empty(idx)) {
-                maps_.emplace_back(p->table_at(idx));
+                tables_.emplace_back(p->table_at(idx));
             }
         }
     }
-    iterated_map_ = maps_.begin();
-    while(iterated_map_ != maps_.end() && iterated_map_->empty()) {
-        ++iterated_map_;
+    iterated_table_ = tables_.begin();
+    while(iterated_table_ != tables_.end() && iterated_table_->empty()) {
+        ++iterated_table_;
     }
     VLOG(1) << "reader initialized to merge " << count << " hash tables";
 }
 
 bool reader::next_group() {
-    if (iterated_map_ == maps_.end()) {
+    if (iterated_table_ == tables_.end()) {
         return false;
     }
-    if (!iterated_map_->next()) {
+    if (!iterated_table_->next()) {
         do {
-            ++iterated_map_;
-        } while(iterated_map_ != maps_.end() && iterated_map_->empty());
-        if (iterated_map_ == maps_.end()) {
+            ++iterated_table_;
+        } while(iterated_table_ != tables_.end() && iterated_table_->empty());
+        if (iterated_table_ == tables_.end()) {
             return false;
         }
-        iterated_map_->next(); // must be successful
+        iterated_table_->next(); // must be successful
     }
-    auto key = iterated_map_->key();
-    auto value = iterated_map_->value();
-    std::size_t precalculated_hash = iterated_map_->calculate_hash(key);
-    for(auto map = iterated_map_+1; map != maps_.end(); ++map) {
-        if(auto it = map->find(key, precalculated_hash); it != map->end()) {
+    auto key = iterated_table_->key();
+    auto value = iterated_table_->value();
+    std::size_t precalculated_hash = iterated_table_->calculate_hash(key);
+    for(auto table = iterated_table_+1; table != tables_.end(); ++table) {
+        if(auto it = table->find(key, precalculated_hash); it != table->end()) {
             aggregator_(info_->value_meta().get(), value, accessor::record_ref(it->second, value_size_));
-            map->erase(it);
+            table->erase(it);
         }
     }
     on_member_ = false;
@@ -81,7 +81,7 @@ bool reader::next_group() {
 }
 
 [[nodiscard]] accessor::record_ref reader::get_group() const {
-    return iterated_map_->key();
+    return iterated_table_->key();
 }
 
 bool reader::next_member() {
@@ -93,7 +93,7 @@ bool reader::next_member() {
 }
 
 [[nodiscard]] accessor::record_ref reader::get_member() const {
-    return iterated_map_->value();
+    return iterated_table_->value();
 }
 
 void reader::release() {

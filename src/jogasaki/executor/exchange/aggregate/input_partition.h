@@ -51,7 +51,7 @@ namespace impl {
  * @details This object represents aggregate exchange input data after partition.
  * This object is transferred between sinks and sources when transfer is instructed to the exchange.
  * No limit to the number of records stored in this object.
- * After populating input data (by write() and flush()), this object provides iterable hash maps
+ * After populating input data (by write() and flush()), this object provides iterable hash tables
  * (each of which needs to fit page size defined by memory allocator, e.g. 2MB for huge page)
  * which contain (locally pre-aggregated) key-value pairs.
  */
@@ -65,6 +65,7 @@ public:
     using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq, hash_table_allocator>;
     using hash_tables = std::vector<hash_table>;
 
+    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two, so round down here to avoid going over allocator limit
     constexpr static std::size_t default_initial_hash_table_size = utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
 
     static_assert(sizeof(hash_table::value_type) == 16);  // two pointers
@@ -90,7 +91,7 @@ public:
         std::shared_ptr<shuffle_info> info,
         std::shared_ptr<request_context> context,
         [[maybe_unused]] std::size_t initial_hash_table_size = default_initial_hash_table_size
-    ) :
+    ) noexcept :
         resource_for_keys_(std::move(resource_for_keys)),
         resource_for_values_(std::move(resource_for_values)),
         resource_for_varlen_data_(std::move(resource_for_varlen_data)),
@@ -104,7 +105,7 @@ public:
     /**
      * @brief write record to the input partition
      * @param record
-     * @return whether flushing pointer table happens or not
+     * @return whether flushing happens or not
      */
     bool write(accessor::record_ref record) {
         initialize_lazy();
@@ -116,10 +117,11 @@ public:
             aggregator(info_->value_meta().get(), accessor::record_ref(it->second, info_->value_meta()->record_size()), value);
         } else {
             table.emplace(keys_->append(key), values_->append(value));
-            if (table.load_factor() > load_factor_bound) {  // TODO avoid reallocation completely
+            if (table.load_factor() > load_factor_bound) {
                 flush();
                 return true;
             }
+            // TODO predict and avoid unexpected reallocation (e.g. all neighbors occupied) where memory allocator raises bad_alloc
         }
         return false;
     }
@@ -128,7 +130,7 @@ public:
      * @brief finish current hash table
      * @details the current internal hash table is finalized and next write() will create new one.
      */
-    void flush() {
+    void flush() noexcept {
         if(!current_table_active_) return;
         current_table_active_ = false;
     }
@@ -141,7 +143,7 @@ public:
     }
 
     /**
-     * @brief hash table access interface with iterator
+     * @brief hash table read access interface with iterator
      * @details this object represents a reference to a hash table with an iterator on it
      */
     class iteratable_hash_table {
@@ -153,6 +155,10 @@ public:
             std::size_t value_size
         ) noexcept : table_(std::addressof(table)), key_size_(key_size), value_size_(value_size), it_(table_->end()) {}
 
+        /**
+         * @brief proceed the internal iterator
+         * @return whether the value on the forwarded iterator is available or not
+         */
         bool next() noexcept {
             if (it_ == table_->end()) {
                 reset();
@@ -162,30 +168,64 @@ public:
             return it_ != table_->end();
         }
 
+        /**
+         * @brief reset the internal iterator position to beginning
+         */
         void reset() noexcept {
             it_ = table_->begin();
         }
 
+        /**
+         * @brief access key on the internal iterator
+         * @return key record
+         */
         [[nodiscard]] accessor::record_ref key() const noexcept {
             return accessor::record_ref(it_->first, key_size_);
         }
 
-        accessor::record_ref value() noexcept {
+        /**
+         * @brief access value on the internal iterator
+         * @return value record
+         */
+        [[nodiscard]] accessor::record_ref value() const noexcept {
             return accessor::record_ref(it_->second, value_size_);
         }
 
+        /**
+         * @brief find key/value on the hash table
+         * @param key the record to find
+         * @return iterator on the found record
+         * @return end() when not found
+         * @note this doesn't change the state of internal iterator. No const is specified as hopscotch doesn't either.
+         */
         iterator find(accessor::record_ref key) {
             return table_->find(key.data());
         }
 
+        /**
+         * @brief find key/value on the hash table
+         * @param key the record to find
+         * @param precalculated_hash precalulated hash corresponding to the key
+         * @return iterator on the found record
+         * @return end() when not found
+         * @note this doesn't change the state of internal iterator. No const is specified as hopscotch doesn't either.
+         */
         iterator find(accessor::record_ref key, std::size_t precalculated_hash) {
             return table_->find(key.data(), precalculated_hash);
         }
 
+        /**
+         * @brief end iterator
+         * @return iterator at the end of this hash map
+         */
         [[nodiscard]] iterator end() const noexcept {
             return table_->end();
         }
 
+        /**
+         * @brief erase the element from the hash map
+         * @param it iterator indicating the element for removal
+         */
         void erase(iterator it) {
             table_->erase(it);
         }
@@ -198,7 +238,12 @@ public:
             return table_->empty();
         }
 
-        [[nodiscard]] std::size_t calculate_hash(accessor::record_ref key) const noexcept {
+        /**
+         * @brief calculate the hash for given key
+         * @param key the record used to calculate the hash
+         * @return the hash value
+         */
+        [[nodiscard]] std::size_t calculate_hash(accessor::record_ref key) const {
             return table_->hash_function()(key.data());
         }
 
@@ -209,10 +254,22 @@ public:
         iterator it_{};
     };
 
+    /**
+     * @brief check whether the hash table is empty or not
+     * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
+     * @return true if the hash table is empty
+     * @return false otherwise
+     * @attention the behavior is undefined if given index is invalid
+     */
     [[nodiscard]] bool empty(std::size_t index) const noexcept {
         return tables_[index].empty();
     }
 
+    /**
+     * @brief retrieve the hash table access object
+     * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
+     * @return the object to access hash table with iterator
+     */
     iteratable_hash_table table_at(std::size_t index) {
         return iteratable_hash_table(tables_[index],
             info_->key_meta()->record_size(),

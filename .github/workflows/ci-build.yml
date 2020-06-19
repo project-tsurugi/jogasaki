@@ -124,7 +124,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
-          ctest --verbose
+          sudo ctest --verbose
 
       - id: CMake_Build_sharksfin_kvs
         name: CMake_Build_sharksfin_kvs
@@ -142,7 +142,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build-kvs
-          ctest --verbose
+          sudo ctest --verbose
 
       - id: Clang-Tidy
         name: Clang-Tidy

@@ -124,7 +124,10 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
-          sudo ctest --verbose
+          cat /proc/sys/kernel/perf_event_paranoid > perf_event_paranoid
+          sudo sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
+          ctest --verbose
+          sudo sh -c 'cat perf_event_paranoid > /proc/sys/kernel/perf_event_paranoid'
 
       - id: CMake_Build_sharksfin_kvs
         name: CMake_Build_sharksfin_kvs
@@ -142,7 +145,10 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build-kvs
-          sudo ctest --verbose
+          cat /proc/sys/kernel/perf_event_paranoid > perf_event_paranoid
+          sudo sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
+          ctest --verbose
+          sudo sh -c 'cat perf_event_paranoid > /proc/sys/kernel/perf_event_paranoid'
 
       - id: Clang-Tidy
         name: Clang-Tidy

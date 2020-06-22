@@ -17,9 +17,7 @@
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
-#include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/partitioner.h>
 #include <jogasaki/executor/comparator.h>
 
 #include <shakujo/parser/Parser.h>

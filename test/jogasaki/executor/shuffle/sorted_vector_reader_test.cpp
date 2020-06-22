@@ -16,13 +16,11 @@
 
 #include <jogasaki/executor/exchange/group/sorted_vector_reader.h>
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 #include <jogasaki/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>

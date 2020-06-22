@@ -20,7 +20,6 @@
 
 #include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 #include <jogasaki/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>

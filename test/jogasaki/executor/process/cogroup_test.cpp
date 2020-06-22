@@ -18,9 +18,7 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
-#include <jogasaki/test_utils.h>
 #include <jogasaki/test_root.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 #include <jogasaki/executor/process/join.h>
 

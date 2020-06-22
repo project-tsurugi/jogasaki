@@ -16,7 +16,6 @@
 
 #include <jogasaki/executor/exchange/group/input_partition.h>
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/exchange/group/shuffle_info.h>

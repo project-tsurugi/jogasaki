@@ -21,6 +21,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
+#include <jogasaki/basic_record.h>
 
 namespace jogasaki {
 
@@ -31,12 +32,8 @@ public:
      * @brief providing typical record metadata
      */
     static inline std::shared_ptr<meta::record_meta> test_record_meta1() {
-        return std::make_shared<meta::record_meta>(
-                std::vector<meta::field_type>{
-                        meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-                        meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
-                },
-                boost::dynamic_bitset<std::uint64_t>{std::string("00")});
+        testing::record r1{};
+        return r1.record_meta();
     }
 
     static inline std::shared_ptr<meta::record_meta> test_record_meta2() {

@@ -31,15 +31,11 @@ class small_record_store {
 public:
     /// @brief type of record pointer
     using record_pointer = void*;
-    /**
-     * @brief create new object store single record
-     */
-    small_record_store() = default;
 
     /**
      * @brief create new instance
      */
-    small_record_store(
+    explicit small_record_store(
         std::shared_ptr<meta::record_meta> meta,
         std::size_t capacity = 1,
         memory::paged_memory_resource* varlen_resource = nullptr

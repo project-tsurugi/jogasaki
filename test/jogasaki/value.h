@@ -17,13 +17,13 @@
 
 #include <string>
 
-#include "record.h"
+#include "basic_record.h"
 
 namespace jogasaki::data {
 
 class value {
 public:
-    using value_type = record::value_type;
+    using value_type = testing::record::value_type;
 
     value(value_type v) : value_(v) {}
 

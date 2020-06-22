@@ -45,7 +45,7 @@ public:
     }
 
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<data::record> records_{};
+    std::vector<record> records_{};
     std::size_t offset_c1_{};
     std::size_t offset_c2_{};
     bool released_{false};

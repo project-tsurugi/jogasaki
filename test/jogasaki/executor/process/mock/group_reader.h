@@ -19,7 +19,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 
 namespace jogasaki::executor::process::mock {
 

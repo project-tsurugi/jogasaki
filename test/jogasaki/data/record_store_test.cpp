@@ -24,7 +24,7 @@
 
 #include <jogasaki/test_root.h>
 
-namespace jogasaki::testing {
+namespace jogasaki::data {
 
 using namespace data;
 using namespace accessor;

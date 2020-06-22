@@ -13,31 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-
-#include <string>
-
 #include "basic_record.h"
 
-namespace jogasaki::data {
+#include "test_root.h"
 
-class key_count {
-public:
-    using key_type = testing::record::key_type;
-    using count_type = std::size_t;
+namespace jogasaki::testing {
 
-    key_count(key_type key, count_type count) : key_(key), count_(count) {}
+using namespace std::string_literals;
+using namespace std::string_view_literals;
+using namespace meta;
+using namespace takatori::util;
 
-    key_type const& body() const noexcept {
-        return key_;
-    }
-    count_type count() const noexcept {
-        return count_;
-    }
+class basic_record_test : public test_root {};
 
-private:
-    key_type key_;
-    count_type count_;
-};
+using kind = field_type_kind;
+
+TEST_F(basic_record_test, simple) {
+    basic_record<kind::int4> r{2};
+
+    record rec{1, 100.0};
+    EXPECT_EQ(1, rec.key());
+    EXPECT_EQ(100.0, rec.value());
+}
 
 }
+

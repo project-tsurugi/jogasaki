@@ -23,12 +23,13 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::exchange::group {
 
+using namespace testing;
 using namespace data;
 using namespace executor;
 using namespace meta;
@@ -99,11 +100,12 @@ TEST_F(input_partition_test, use_monotonic_resource) {
 
 TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
     auto context = std::make_shared<request_context>();
+    auto meta = test_record_meta1();
     input_partition partition{
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
+            std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}),
             context,
             2
             };
@@ -118,15 +120,19 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
     partition.write(ref1);
     partition.write(ref2);
     partition.flush();
+
+    auto record_size = meta->record_size();
+    auto c1_offset = meta->value_offset(0);
+    auto c2_offset = meta->value_offset(1);
     ASSERT_EQ(2, std::distance(partition.begin(), partition.end())); //number of tables
     auto& t0 = *partition.begin();
     EXPECT_EQ(2, std::distance(t0.begin(), t0.end()));
     auto it = t0.begin();
-    EXPECT_EQ(1, accessor::record_ref(*it, 8).get_value<std::int64_t>(0));
-    EXPECT_EQ(3, accessor::record_ref(*++it, 8).get_value<std::int64_t>(0));
+    EXPECT_EQ(1, accessor::record_ref(*it, record_size).get_value<std::int64_t>(c1_offset));
+    EXPECT_EQ(3, accessor::record_ref(*++it, record_size).get_value<std::int64_t>(c1_offset));
     auto& t1 = *++partition.begin();
     EXPECT_EQ(1, std::distance(t1.begin(), t1.end()));
-    EXPECT_EQ(2, accessor::record_ref(*t1.begin(), 8).get_value<std::int64_t>(0));
+    EXPECT_EQ(2, accessor::record_ref(*t1.begin(), record_size).get_value<std::int64_t>(c1_offset));
 }
 
 TEST_F(input_partition_test, text) {

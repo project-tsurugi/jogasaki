@@ -19,9 +19,11 @@
 
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 
 namespace jogasaki::executor::process::mock {
+
+using namespace testing;
 
 class record_reader : public executor::record_reader {
 public:
@@ -31,19 +33,19 @@ public:
     }
 
     bool next_record() override {
-        record_ = data::record(count_++, count_*100);
+        record_ = record(count_++, count_*100);
         return count_ <= record_count;
     }
 
     [[nodiscard]] accessor::record_ref get_record() const {
-        return {static_cast<void*>(const_cast<data::record*>(&record_)), sizeof(data::record)};
+        return {static_cast<void*>(const_cast<record*>(&record_)), sizeof(record)};
     }
 
     void release() override {
         released_ = true;
     }
 
-    data::record record_{};
+    record record_{};
     std::size_t count_{};
     bool released_{false};
 };

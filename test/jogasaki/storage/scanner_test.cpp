@@ -23,10 +23,11 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/storage/transaction_context.h>
 
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 
 namespace jogasaki::executor::process {
 
+using namespace testing;
 using namespace executor;
 using namespace accessor;
 using namespace takatori::util;
@@ -43,16 +44,16 @@ TEST_F(scanner_test, simple) {
     std::map<std::string, std::string> options{};
     ASSERT_TRUE(stg->open(options));
 
-    data::record rec{};
-    scanner s{{}, stg, test_record_meta1(), accessor::record_ref{&rec, sizeof(rec)}};
+    record rec{};
+    scanner s{{}, stg, test_record_meta1(), rec.ref()};
 
     s.open();
-    s.next();
-    ASSERT_EQ(0, rec.key());
     s.next();
     ASSERT_EQ(1, rec.key());
     s.next();
     ASSERT_EQ(2, rec.key());
+    s.next();
+    ASSERT_EQ(3, rec.key());
     s.close();
 
     stg->close();

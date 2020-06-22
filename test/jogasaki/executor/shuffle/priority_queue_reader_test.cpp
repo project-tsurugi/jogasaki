@@ -26,10 +26,11 @@
 
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 
 namespace jogasaki::executor::exchange::group {
 
+using namespace testing;
 using namespace data;
 using namespace executor;
 using namespace meta;
@@ -75,7 +76,7 @@ TEST_F(priority_queue_reader_test, basic) {
             context
     ));
 
-    record arr[] = {
+    testing::record arr[] = {
             {1, 1.0},
             {1, 2.0},
             {3, 3.0},

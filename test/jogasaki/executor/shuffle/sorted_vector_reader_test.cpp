@@ -24,12 +24,13 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::exchange::group {
 
+using namespace testing;
 using namespace data;
 using namespace executor;
 using namespace meta;

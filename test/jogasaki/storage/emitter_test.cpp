@@ -25,12 +25,13 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-#include <jogasaki/record.h>
+#include <jogasaki/basic_record.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/process/emitter.h>
 
 namespace jogasaki::executor::process {
 
+using namespace testing;
 using namespace executor;
 using namespace accessor;
 using namespace takatori::util;
@@ -54,12 +55,12 @@ TEST_F(emitter_test, simple) {
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
     emitter e{test_record_meta1(), store};
 
-    data::record rec0{0, 0.0};
-    data::record rec1{1, 1.0};
-    data::record rec2{2, 2.0};
-    e.emit(accessor::record_ref{&rec0, sizeof(data::record)});
-    e.emit(accessor::record_ref{&rec1, sizeof(data::record)});
-    e.emit(accessor::record_ref{&rec2, sizeof(data::record)});
+    record rec0{0, 0.0};
+    record rec1{1, 1.0};
+    record rec2{2, 2.0};
+    e.emit(accessor::record_ref{&rec0, sizeof(record)});
+    e.emit(accessor::record_ref{&rec1, sizeof(record)});
+    e.emit(accessor::record_ref{&rec2, sizeof(record)});
     ASSERT_EQ(3, store->count());
 }
 

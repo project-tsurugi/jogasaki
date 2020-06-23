@@ -29,11 +29,17 @@ namespace jogasaki::data {
  */
 class small_record_store {
 public:
+    static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
+
     /// @brief type of record pointer
     using record_pointer = void*;
 
     /**
      * @brief create new instance
+     * @param meta the record metadata
+     * @param capacity the capacity of the container
+     * @param varlen_resource memory resource used to store the varlen data referenced from the records stored in this
+     * instance. nullptr is allowed if this instance stores only the copy of reference to varlen data (shallow copy.)
      */
     explicit small_record_store(
         std::shared_ptr<meta::record_meta> meta,
@@ -44,7 +50,9 @@ public:
         capacity_(capacity),
         varlen_resource_(varlen_resource),
         copier_(meta_, varlen_resource_),
-        data_(utils::make_aligned_array<char>(meta_->record_alignment(), meta_->record_size()*capacity_))
+        data_(utils::make_aligned_array<std::byte>(
+            std::max(meta_->record_alignment(), hardware_destructive_interference_size),
+            meta_->record_size()*capacity_))
     {}
 
     /**
@@ -52,6 +60,7 @@ public:
      * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
      * this object.
      * @param record source of the record added to this container
+     * @param index the index for the record to be stored. Must be less than the capacity.
      * @return pointer to the stored record
      */
     record_pointer set(accessor::record_ref record, std::size_t index = 0) {
@@ -71,15 +80,11 @@ public:
     }
 
     /**
-     * @brief reset store state except the state managed by memory resource
-     * @details To keep consistency, caller needs to reset or release appropriately (e.g. deallocate to some check point)
-     * the memory resources passed to constructor when calling this function.
+     * @brief get accessor to N-th record
+     * @param index the index for the record
+     * @return the accessor to the record specified by the index
      */
-    void reset() noexcept {
-        // no-op
-    }
-
-    accessor::record_ref ref(std::size_t index = 0) {
+    [[nodiscard]] accessor::record_ref ref(std::size_t index = 0) const noexcept {
         return accessor::record_ref(data_.get()+meta_->record_size()*index, meta_->record_size());
     }
 
@@ -87,8 +92,8 @@ private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::size_t capacity_{};
     memory::paged_memory_resource* varlen_resource_{};
-    utils::aligned_array<char> data_;
     accessor::record_copier copier_{};
+    utils::aligned_array<std::byte> data_;
 };
 
 } // namespace

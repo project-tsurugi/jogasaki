@@ -27,9 +27,9 @@
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/data/iteratable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/data/small_record_store.h>
 
 #include "impl/iterator_pair.h"
 
@@ -103,13 +103,13 @@ public:
             store_(std::move(store)),
             meta_(std::move(meta)),
             key_size_(meta_->key().record_size()),
-            key_(utils::make_aligned_array<char>(meta_->key().record_alignment(), key_size_)),
+            key_(meta_->key_shared()),
             key_comparator_(meta_->key_shared().get())
     {}
 
     [[nodiscard]] accessor::record_ref key_record() const noexcept {
         BOOST_ASSERT(key_filled_);  //NOLINT
-        return accessor::record_ref(key_.get(), key_size_);
+        return key_.ref();
     }
 
     std::shared_ptr<meta::group_meta> const& meta() {
@@ -142,8 +142,7 @@ public:
             reader_eof_ = true;
             return false;
         }
-        auto key = reader_->get_group();
-        std::memcpy(key_.get(), key.data(), key_size_);
+        key_.set(reader_->get_group());
         key_filled_ = true;
         return true;
     }
@@ -168,7 +167,7 @@ private:
     std::unique_ptr<cogroup_record_store> store_;
     std::shared_ptr<meta::group_meta> meta_{};
     std::size_t key_size_ = 0;
-    utils::aligned_array<char> key_;
+    data::small_record_store key_; // shallow copy of key (varlen body is held by reader)
     comparator key_comparator_{};
     bool reader_eof_{false};
     bool values_filled_{false};
@@ -222,7 +221,7 @@ public:
             queue_(impl::cogroup_input_comparator(&inputs_, groups_meta_[0]->key_shared().get())),
             key_size_(groups_meta_[0]->key().record_size()),
             key_comparator_(&groups_meta_[0]->key()),
-            key_buf_(utils::make_aligned_array<char>(groups_meta_[0]->key().record_alignment(), key_size_))
+            key_buf_(groups_meta_[0]->key_shared())
             // assuming key meta are common to all inputs TODO add assert
     {
         BOOST_ASSERT(readers_.size() == groups_meta_.size());  //NOLINT
@@ -276,9 +275,8 @@ public:
                     auto idx = queue_.top();
                     queue_.pop();
                     inputs_[idx].fill();
-                    auto rec = inputs_[idx].key_record();
-                    std::memcpy(key_buf_.get(), rec.data(), rec.size());
-                    auto key = accessor::record_ref(key_buf_.get(), key_size_);
+                    key_buf_.set(inputs_[idx].key_record());
+                    auto key = key_buf_.ref();
                     if(inputs_[idx].next()) {
                         queue_.emplace(idx);
                     }
@@ -318,10 +316,10 @@ private:
     std::priority_queue<input_index, std::vector<input_index>, impl::cogroup_input_comparator> queue_;
     std::size_t key_size_{};
     comparator key_comparator_{};
-    utils::aligned_array<char> key_buf_;
+    data::small_record_store key_buf_; // shallow copy of key (varlen body is held by reader)
 
     void consume(consumer_type& consumer) {
-        auto key = accessor::record_ref(key_buf_.get(), key_size_);
+        auto key = key_buf_.ref();
         std::vector<impl::iterator_pair> iterators{};
         auto inputs = inputs_.size();
         for(input_index i = 0; i < inputs; ++i) {

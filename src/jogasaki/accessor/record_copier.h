@@ -25,6 +25,8 @@ namespace jogasaki::accessor {
 
 /**
  * @brief record copy utility
+ * @details this copier copies the record content to target record region considering memory resource dependent data
+ * item such as accessor::text. Both deep/shallow copy on such data items are supported.
  */
 class record_copier {
 public:
@@ -44,7 +46,8 @@ public:
      * @brief construct object from record metadata
      * @param meta record metadata
      * @param resource memory resource to copy memory resource dependent data item (e.g. `text` field type data).
-     * Pass nullptr if this copier never copies such data item.
+     * Pass nullptr if this copier never copies such data item, or shallow copy is sufficient (i.e. only reference to
+     * memory resource is copied)
      */
     explicit record_copier(std::shared_ptr<meta::record_meta> meta, memory::paged_memory_resource* resource = nullptr);
 

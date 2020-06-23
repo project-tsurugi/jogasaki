@@ -28,12 +28,13 @@ record_copier::record_copier(std::shared_ptr<meta::record_meta> meta, memory::pa
 
 void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref src) {
     std::memcpy(dst, src.data(), size);
-    for(auto& i : text_field_offsets_) {
-        assert(resource_ != nullptr); //NOLINT
-        auto t = src.get_value<accessor::text>(i);
-        auto sv = static_cast<std::string_view>(t);
-        text copied{resource_, sv.data(), sv.size()};
-        std::memcpy(static_cast<unsigned char*>(dst)+i, &copied, sizeof(text)); //NOLINT
+    if (resource_ != nullptr) {
+        for(auto& i : text_field_offsets_) {
+            auto t = src.get_value<accessor::text>(i);
+            auto sv = static_cast<std::string_view>(t);
+            text copied{resource_, sv.data(), sv.size()};
+            std::memcpy(static_cast<unsigned char*>(dst)+i, &copied, sizeof(text)); //NOLINT
+        }
     }
 }
 

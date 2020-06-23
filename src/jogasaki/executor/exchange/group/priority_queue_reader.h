@@ -21,7 +21,7 @@
 
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
+#include <jogasaki/data/small_record_store.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -109,7 +109,11 @@ private:
     std::shared_ptr<shuffle_info> info_{};
     std::priority_queue<impl::iterator_pair, std::vector<impl::iterator_pair>, impl::iterator_pair_comparator> queue_;
     std::size_t record_size_{};
-    utils::aligned_array<char> buf_;
+
+    // buffer for shallow copy. Not associated with varlen memory resource because this is temporary for comparison
+    // and the ownership is held on original in the input partition
+    data::small_record_store buf_;
+
     impl::reader_state state_{impl::reader_state::init};
     comparator key_comparator_{};
 

@@ -43,7 +43,8 @@ public:
     /**
      * @brief create new instance
      * @param record_resource memory resource used to store records
-     * @param varlen_resource memory resource used to store varlen data referenced from records
+     * @param varlen_resource memory resource used to store varlen data referenced from records.
+     * nullptr is allowed if this instance stores only the copy of reference to varlen data (shallow copy.)
      * @param meta record metadata
      */
     record_store(
@@ -56,7 +57,7 @@ public:
     /**
      * @brief copy and store the record
      * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
-     * this object.
+     * this object unless it's nullptr.
      * @param record source of the record added to this container
      * @return pointer to the stored record
      */

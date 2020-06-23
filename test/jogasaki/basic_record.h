@@ -97,4 +97,27 @@ static_assert(sizeof(record) == 32);
 static_assert(alignof(record) == 8);
 static_assert(!std::is_trivially_copyable_v<record>);
 
+class record_f4f8ch : public basic_record<kind::float8, kind::int4, kind::character> {
+public:
+    using key_type = std::int32_t;
+    using f4_value_type = double;
+    using ch_value_type = meta::field_type_traits<kind::character>::runtime_type;
+
+    record_f4f8ch() noexcept : basic_record(0.0, 0, ch_value_type{}) {};
+
+    record_f4f8ch(f4_value_type f4_value, key_type key, ch_value_type ch_value) : basic_record(f4_value, key, ch_value) {}
+
+    [[nodiscard]] key_type const& key() const noexcept {
+        return std::get<1>(entity_);
+    }
+
+    [[nodiscard]] f4_value_type const& f4_value() const noexcept {
+        return std::get<0>(entity_);
+    }
+
+    [[nodiscard]] ch_value_type const& ch_value() const noexcept {
+        return std::get<2>(entity_);
+    }
+};
+
 }

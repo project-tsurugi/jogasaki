@@ -24,7 +24,6 @@
 #include <takatori/util/string_builder.h>
 #include <takatori/util/fail.h>
 
-#include <jogasaki/utils/aligned_unique_ptr.h>
 #include <jogasaki/meta/record_meta.h>
 
 #include "processor.h"
@@ -57,7 +56,7 @@ public:
             operators_(operators),
             meta_(std::move(meta)),
             store_(std::move(store)),
-            buf_(utils::make_aligned_array<char>(meta_->record_alignment(), meta_->record_size())) {
+            buf_(meta_) {
         //TODO prepare stack-like working area needed for this engine to complete all operators
     }
 
@@ -81,7 +80,7 @@ public:
         auto stg = std::make_shared<storage::storage_context>();
         std::map<std::string, std::string> options{};
         stg->open(options);
-        scanner s{{}, stg, meta_, accessor::record_ref{buf_.get(), meta_->record_size()}};
+        scanner s{{}, stg, meta_, buf_.ref()};
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::join_find const& node) {
@@ -104,7 +103,7 @@ public:
         if (!emitter_) {
             emitter_ = std::make_shared<emitter>(meta_, store_);
         }
-        emitter_->emit(accessor::record_ref{buf_.get(), meta_->record_size()});
+        emitter_->emit(buf_.ref());
     }
     void operator()(relation::write const& node) {
         fail();
@@ -146,7 +145,7 @@ private:
     graph::graph<relation::expression>& operators_;
     std::shared_ptr<compiler_result> compiled_{};
     std::shared_ptr<meta::record_meta> meta_{};
-    utils::aligned_array<char> buf_;
+    data::small_record_store buf_;
     std::shared_ptr<data::record_store> store_{};
     std::shared_ptr<emitter> emitter_{};
 };

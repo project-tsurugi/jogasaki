@@ -19,14 +19,13 @@ namespace jogasaki::executor::exchange::group {
 
 using namespace impl;
 
-static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
 
 priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
         partitions_(partitions),
         info_(std::move(info)),
         queue_(iterator_pair_comparator(info_.get())),
         record_size_(info_->record_meta()->record_size()),
-        buf_(utils::make_aligned_array<char>(hardware_destructive_interference_size, record_size_)), //NOLINT
+        buf_(info_->record_meta()), //NOLINT
         key_comparator_(info_->key_meta().get()) {
     for(auto& p : partitions_) {
         if (!p) continue;
@@ -41,7 +40,7 @@ priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info,
 
 void priority_queue_reader::read_and_pop(iterator it, iterator end) { //NOLINT
     queue_.pop();
-    memcpy(buf_.get(), *it, record_size_);
+    buf_.set(accessor::record_ref(*it, record_size_));
     if (++it != end) {
         queue_.emplace(it, end);
     }
@@ -64,7 +63,7 @@ bool priority_queue_reader::next_group() {
 
 [[nodiscard]] accessor::record_ref priority_queue_reader::get_group() const {
     if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
-        return info_->extract_key(accessor::record_ref(buf_.get(), record_size_));
+        return info_->extract_key(buf_.ref());
     }
     std::abort();
 }
@@ -82,7 +81,7 @@ bool priority_queue_reader::next_member() {
         auto it = queue_.top().first;
         auto end = queue_.top().second;
         if (key_comparator_(
-                info_->extract_key(accessor::record_ref(buf_.get(), record_size_)),
+                info_->extract_key(buf_.ref()),
                 info_->extract_key(accessor::record_ref(*it, record_size_))) == 0) {
             read_and_pop(it, end);
             return true;
@@ -95,7 +94,7 @@ bool priority_queue_reader::next_member() {
 
 [[nodiscard]] accessor::record_ref priority_queue_reader::get_member() const {
     if (state_ == reader_state::on_member) {
-        return info_->extract_value(accessor::record_ref(buf_.get(), record_size_));
+        return info_->extract_value(accessor::record_ref(buf_.ref()));
     }
     std::abort();
 }

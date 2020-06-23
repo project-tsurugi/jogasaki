@@ -113,16 +113,30 @@ TEST_F(record_copier_test, text) {
             },
             boost::dynamic_bitset<std::uint64_t>{"000"s});
     ASSERT_EQ(40, meta->record_size());
-    record_copier copier{meta, &resource};
+    {
+        record_copier copier{meta, &resource};
 
-    S dst{};
-    record_ref t{&dst, sizeof(dst)};
-    copier(t, r);
-    ASSERT_EQ(32, resource.total_bytes_allocated_);
+        S dst{};
+        record_ref t{&dst, sizeof(dst)};
+        copier(t, r);
+        ASSERT_EQ(32, resource.total_bytes_allocated_);
 
-    EXPECT_EQ(1, t.get_value<std::int32_t>(0));
-    EXPECT_EQ(src.t1_, t.get_value<text>(8));
-    EXPECT_EQ(src.t2_, t.get_value<text>(24));
+        EXPECT_EQ(1, t.get_value<std::int32_t>(0));
+        EXPECT_EQ(src.t1_, t.get_value<text>(8));
+        EXPECT_EQ(src.t2_, t.get_value<text>(24));
+    }
+    {
+        record_copier shallow_copier{meta};
+
+        S dst{};
+        record_ref t{&dst, sizeof(dst)};
+        shallow_copier(t, r);
+        ASSERT_EQ(32, resource.total_bytes_allocated_);
+
+        EXPECT_EQ(1, t.get_value<std::int32_t>(0));
+        EXPECT_EQ(src.t1_, t.get_value<text>(8));
+        EXPECT_EQ(src.t2_, t.get_value<text>(24));
+    }
 }
 
 

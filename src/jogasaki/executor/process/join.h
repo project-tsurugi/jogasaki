@@ -26,7 +26,6 @@
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/data/iteratable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
 

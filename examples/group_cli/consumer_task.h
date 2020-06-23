@@ -21,7 +21,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
+#include <jogasaki/data/small_record_store.h>
 #include "../common/task_base.h"
 #include "../common/aggregator.h"
 #include "../common/cli_constants.h"
@@ -54,13 +54,11 @@ public:
 
     void aggregate_group(executor::group_reader* reader) {
         auto aggregator = common_cli::create_aggregator();
-        auto key_size = meta_->key().record_size();
-        auto value_size = meta_->value().record_size();
-        utils::aligned_array<char> key = utils::make_aligned_array<char>(meta_->key().record_alignment(), key_size);
-        utils::aligned_array<char> value = utils::make_aligned_array<char>(meta_->value().record_alignment(), value_size);
+        data::small_record_store key{meta_->key_shared()};
+        data::small_record_store value{meta_->value_shared()};
         accessor::record_copier key_copier{meta_->key_shared()};
-        accessor::record_ref value_ref(value.get(), value_size);
-        accessor::record_ref key_ref(key.get(), key_size);
+        accessor::record_ref value_ref(value.ref());
+        accessor::record_ref key_ref(key.ref());
 
         while(reader->next_group()) {
             key_copier(key_ref, reader->get_group());

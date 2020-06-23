@@ -24,7 +24,7 @@
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/data/iteratable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/aligned_unique_ptr.h>
+#include <jogasaki/data/small_record_store.h>
 
 #include "../common/task_base.h"
 #include "params.h"
@@ -64,8 +64,8 @@ public:
             )),
             left_reader_(left_reader),  //NOLINT
             right_reader_(right_reader),  //NOLINT
-            l_key_(utils::make_aligned_array<char>(l_meta_->key().record_alignment(), l_meta_->key().record_size())),
-            r_key_(utils::make_aligned_array<char>(r_meta_->key().record_alignment(), r_meta_->key().record_size())),
+            l_key_(l_meta_->key_shared()),
+            r_key_(r_meta_->key_shared()),
             params_(&c),
             key_offset_(l_meta_->key().value_offset(0)),
             value_offset_(l_meta_->value().value_offset(0)),
@@ -94,8 +94,8 @@ public:
         key_counter++;
     }
 
-    std::int64_t read_key(utils::aligned_array<char> const& key, meta::group_meta const& meta) {
-        auto rec = accessor::record_ref(key.get(), meta.key().record_size());
+    std::int64_t read_key(data::small_record_store const& key, meta::group_meta const& meta) {
+        auto rec = key.ref();
         auto offset = meta.key().value_offset(0);
         return rec.get_value<std::int64_t>(offset);
     }
@@ -161,12 +161,12 @@ public:
     void next_left_key() {
         auto* l_reader = left_reader_.reader<executor::group_reader>();
         auto key = l_reader->get_group();
-        memcpy(l_key_.get(), key.data(), key.size());
+        l_key_.set(key);
     }
     void next_right_key() {
         auto* r_reader = right_reader_.reader<executor::group_reader>();
         auto key = r_reader->get_group();
-        memcpy(r_key_.get(), key.data(), key.size());
+        r_key_.set(key);
     }
 
     void execute() override {
@@ -237,7 +237,7 @@ public:
                     break;
                 }
                 case state::did_read_both_key: {
-                    if (auto c = key_comparator_(accessor::record_ref(l_key_.get(), key_size_),accessor::record_ref(r_key_.get(), key_size_)); c < 0) {
+                    if (auto c = key_comparator_(l_key_.ref(),r_key_.ref()); c < 0) {
                         r = read::left;
                         s = state::on_left_member;
                     } else if (c > 0) {
@@ -347,8 +347,8 @@ private:
     std::unique_ptr<data::iteratable_record_store> r_store_{};
     executor::reader_container left_reader_{};
     executor::reader_container right_reader_{};
-    utils::aligned_array<char> l_key_;
-    utils::aligned_array<char> r_key_;
+    data::small_record_store l_key_;
+    data::small_record_store r_key_;
     params* params_{};
 
     std::size_t key_offset_;

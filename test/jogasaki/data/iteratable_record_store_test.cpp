@@ -62,20 +62,22 @@ TEST_F(iteratable_record_store_test, empty) {
 
 TEST_F(iteratable_record_store_test, basic) {
     mock_memory_resource memory{};
-    iteratable_record_store r{&memory, &memory, test_record_meta1()};
+    testing::record rec{2, 2.0};
+    auto meta = rec.record_meta();
+    iteratable_record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());
-    auto buffer = create_record(2, 2.0);
-    auto ref = buffer.ref();
-    auto p1 = r.append(ref);
+    auto p1 = r.append(rec.ref());
     ASSERT_FALSE(r.empty());
-    buffer.x_ = 1;
-    buffer.y_ = 1.0;
-    auto p2 = r.append(ref);
+    rec.key(1);
+    rec.value(1.0);
+    auto p2 = r.append(rec.ref());
     ASSERT_EQ(2, r.count());
-    record_ref res1{p1, sizeof(S)};
-    EXPECT_EQ(2, res1.get_value<std::int64_t>(0));
-    record_ref res2{p2, sizeof(S)};
-    EXPECT_EQ(1, res2.get_value<std::int64_t>(0));
+    auto sz = rec.record_meta()->record_size();
+    record_ref res1{p1, sz};
+    auto offset_c0 = meta->value_offset(0);
+    EXPECT_EQ(2, res1.get_value<std::int64_t>(offset_c0));
+    record_ref res2{p2, sz};
+    EXPECT_EQ(1, res2.get_value<std::int64_t>(offset_c0));
 
     // iterate
     auto it = r.begin();
@@ -105,18 +107,16 @@ TEST_F(iteratable_record_store_test, basic) {
 
 TEST_F(iteratable_record_store_test, multiple_pointer_intervals) {
     mock_memory_resource memory{0, 1};
-    iteratable_record_store r{&memory, &memory, test_record_meta1()};
-    auto b2 = create_record(2, 2.0);
-    auto ref2 = b2.ref();
-    auto p2 = r.append(ref2);
+    testing::record rec2{2, 2.0};
+    auto meta = rec2.record_meta();
+    iteratable_record_store r{&memory, &memory, meta};
+    auto p2 = r.append(rec2.ref());
 
-    auto b1 = create_record(1, 1.0);
-    auto ref1 = b1.ref();
-    auto p1 = r.append(ref1);
+    testing::record rec1{1, 1.0};
+    auto p1 = r.append(rec1.ref());
 
-    auto b3 = create_record(3, 3.0);
-    auto ref3 = b3.ref();
-    auto p3 = r.append(ref3);
+    testing::record rec3{3, 3.0};
+    auto p3 = r.append(rec3.ref());
     ASSERT_EQ(3, r.count());
 
     // iterate

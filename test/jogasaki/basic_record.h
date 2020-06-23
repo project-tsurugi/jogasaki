@@ -88,8 +88,16 @@ public:
         return std::get<0>(entity_);
     }
 
+    void key(key_type arg) noexcept {
+        std::get<0>(entity_) = arg;
+    }
+
     [[nodiscard]] value_type const& value() const noexcept {
         return std::get<1>(entity_);
+    }
+
+    void value(value_type arg) noexcept {
+        std::get<1>(entity_) = arg;
     }
 };
 

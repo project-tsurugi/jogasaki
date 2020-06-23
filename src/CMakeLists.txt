@@ -51,6 +51,14 @@ target_link_libraries(jogasaki
         PRIVATE glog::glog
 )
 
+if (PERFORMANCE_TOOLS)
+    target_link_libraries(jogasaki
+            PRIVATE performance-tools::api
+            PRIVATE performance-tools::lib
+            )
+    target_compile_definitions(jogasaki PUBLIC PERFORMANCE_TOOLS)
+endif()
+
 # Boost.Thread doesn't seem to allow multiple versions to coexist.
 # This version definition should be shared with caller at least.
 target_compile_definitions(jogasaki PUBLIC BOOST_THREAD_VERSION=4)
@@ -83,3 +91,11 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         )
+
+if (PERFORMANCE_TOOLS)
+    target_link_libraries(jogasaki-impl
+            INTERFACE performance-tools::api
+            INTERFACE performance-tools::lib
+            )
+    target_compile_definitions(jogasaki-impl INTERFACE PERFORMANCE_TOOLS)
+endif()

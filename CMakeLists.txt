@@ -33,6 +33,8 @@ option(BUILD_EXAMPLES "Build example programs" ON)
 option(BUILD_DOCUMENTS "build documents" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(ENABLE_GOOGLE_PERFTOOLS "Enable Google Perftools" OFF)
+option(PERFORMANCE_TOOLS "Enable tooling to measure engine performance" OFF)
+
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")
 endif()
@@ -63,8 +65,9 @@ find_package(Boost
         REQUIRED
         )
 find_package(TBB REQUIRED)
-find_package(gperftools)
-
+if(PERFORMANCE_TOOLS)
+    find_package(performance-tools REQUIRED)
+endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)

@@ -89,6 +89,6 @@ private:
     void initialize_worker(worker_id worker);
 };
 
-watch& get_watch();
+
 
 } // namespace

@@ -21,6 +21,15 @@ target_link_libraries(cogroup-cli
         PRIVATE glog::glog
         PRIVATE gflags::gflags
 )
+
+if (PERFORMANCE_TOOLS)
+    target_link_libraries(cogroup-cli
+            PRIVATE performance-tools::api
+            PRIVATE performance-tools::lib
+            )
+    target_compile_definitions(cogroup-cli PUBLIC PERFORMANCE_TOOLS)
+endif()
+
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(cogroup-cli
             PRIVATE gperftools::gperftools

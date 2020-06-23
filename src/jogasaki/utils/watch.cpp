@@ -19,11 +19,6 @@
 
 namespace jogasaki::utils {
 
-class watch& get_watch() {
-    static std::unique_ptr<class watch> watch_ = std::make_unique<class watch>();
-    return *watch_;
-}
-
 watch::watch() noexcept {
     begin_ = Clock::now();
 }

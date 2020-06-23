@@ -25,7 +25,7 @@
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/utils/watch.h>
+#include <jogasaki/utils/performance_tools.h>
 
 #include "producer_process.h"
 #include "consumer_process.h"
@@ -48,7 +48,6 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
-DEFINE_bool(perf, false, "output verbose performance information");  //NOLINT
 DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::aggregate_cli {
@@ -147,7 +146,7 @@ extern "C" int main(int argc, char* argv[]) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
-    jogasaki::common_cli::dump_perf_info(FLAGS_perf);
+    jogasaki::common_cli::dump_perf_info();
 
     return 0;
 }

@@ -11,6 +11,7 @@
   * mizugaki
   * shakujo (until dependency is removed)
   * fpdecimal
+  * performance-tools (optional)
 * and see *Dockerfile* section
 
 ```sh
@@ -49,6 +50,7 @@ available options:
 * `-DBUILD_DOCUMENTS=OFF` - don't build documents by doxygen
 * `-DFORCE_INSTALL_RPATH=ON` - automatically configure `INSTALL_RPATH` for non-default library paths
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory`, `mock`, `foedus-bridge` and `kvs` (default: `memory`)
+* `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 
 ### install 
 

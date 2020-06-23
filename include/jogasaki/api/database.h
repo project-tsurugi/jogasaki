@@ -23,6 +23,7 @@
  */
 namespace jogasaki::api {
 
+class result_set;
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
  * @attention under development
@@ -36,7 +37,7 @@ public:
     database(database&& other) noexcept = delete;
     database& operator=(database&& other) noexcept = delete;
 
-    void execute(std::string_view sql);
+    std::unique_ptr<result_set> execute(std::string_view sql);
 
 private:
     class impl;

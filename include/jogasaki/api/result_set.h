@@ -13,29 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/result_set.h>
+#pragma once
 
-#include <gtest/gtest.h>
-#include <glog/logging.h>
+#include <memory>
 
-#include <jogasaki/test_utils.h>
-
-namespace jogasaki::testing {
-
-using namespace std::string_literals;
-using namespace std::string_view_literals;
+namespace jogasaki::api {
 
 /**
- * @brief test database api
- * TOOO this is temporary
+ * @brief result set interface to provide iterator/disposal method
+ * @attention under development
  */
-class database_test : public ::testing::Test {};
+class result_set {
+public:
+    class iterator;
 
-TEST_F(database_test, simple) {
-    std::string sql = "select * from T0";
-    api::database db{};
-    auto rs = db.execute(sql);
-}
+    result_set();
+    ~result_set();
+    result_set(result_set const& other) = delete;
+    result_set& operator=(result_set const& other) = delete;
+    result_set(result_set&& other) noexcept = delete;
+    result_set& operator=(result_set&& other) noexcept = delete;
+
+    iterator begin();
+    iterator end();
+    void close();
+private:
+    class impl;
+    std::unique_ptr<impl> impl_;
+};
 
 }

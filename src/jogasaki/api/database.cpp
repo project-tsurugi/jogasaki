@@ -16,6 +16,8 @@
 #include <jogasaki/api/database.h>
 
 #include <string_view>
+
+#include <jogasaki/api/result_set.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/dag_controller.h>
@@ -30,7 +32,7 @@ public:
     explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)), scheduler_{cfg_} {
         add_default_table_defs(storage_provider_.get());
     }
-    void execute(std::string_view sql);
+    std::unique_ptr<result_set> execute(std::string_view sql);
 
 private:
     std::shared_ptr<configuration> cfg_{};
@@ -69,7 +71,7 @@ private:
     }
 };
 
-void database::impl::execute(std::string_view sql) {
+std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     plan::compiler_context ctx{};
     ctx.storage_provider(storage_provider_);
     plan::compile(sql, ctx);
@@ -80,14 +82,14 @@ void database::impl::execute(std::string_view sql) {
     dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_));
     scheduler_.schedule(*g);
 
-    // get the result
-};
+    return {};
+}
 
 database::database() : impl_(std::make_unique<database::impl>()) {}
 database::~database() = default;
 
-void database::execute(std::string_view sql) {
-    impl_->execute(sql);
+std::unique_ptr<result_set> database::execute(std::string_view sql) {
+    return impl_->execute(sql);
 }
 
 }

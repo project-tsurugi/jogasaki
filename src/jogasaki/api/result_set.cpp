@@ -13,29 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/database.h>
 #include <jogasaki/api/result_set.h>
 
-#include <gtest/gtest.h>
-#include <glog/logging.h>
+namespace jogasaki::api {
 
-#include <jogasaki/test_utils.h>
+class result_set::iterator {
 
-namespace jogasaki::testing {
+};
 
-using namespace std::string_literals;
-using namespace std::string_view_literals;
+class result_set::impl {
+public:
+    impl() = default;
 
-/**
- * @brief test database api
- * TOOO this is temporary
- */
-class database_test : public ::testing::Test {};
+    iterator begin();
+    iterator end();
 
-TEST_F(database_test, simple) {
-    std::string sql = "select * from T0";
-    api::database db{};
-    auto rs = db.execute(sql);
+    void close();
+};
+
+result_set::iterator result_set::impl::begin() {
+    return {};
+}
+
+result_set::iterator result_set::impl::end() {
+    return {};
+}
+
+void result_set::impl::close() {
+
+};
+
+result_set::result_set() : impl_(std::make_unique<result_set::impl>()) {}
+result_set::~result_set() = default;
+
+result_set::iterator result_set::begin() {
+    return impl_->begin();
+}
+
+result_set::iterator result_set::end() {
+    return impl_->begin();
+}
+
+void result_set::close() {
+    impl_->close();
 }
 
 }

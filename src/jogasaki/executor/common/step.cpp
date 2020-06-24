@@ -40,57 +40,26 @@ step::identity_type step::id() const {
     return id_;
 }
 
-/*
-void step::set_main_input_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
-    main_input_ports_ = std::move(arg);
-    for(auto&& p: main_input_ports_) {
-        p->owner(this);
-    }
-}
-void step::set_sub_input_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
-    sub_input_ports_ = std::move(arg);
-    for(auto&& p: sub_input_ports_) {
-        p->owner(this);
-    }
-}
-void step::set_output_ports(std::vector<std::unique_ptr<model::port>>&& arg) {
-    output_ports_ = std::move(arg);
-    for(auto&& p: output_ports_) {
-        p->owner(this);
-    }
-}
- */
-
-[[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> step::input_ports() const {
+takatori::util::sequence_view<std::unique_ptr<model::port> const> step::input_ports() const {
     return main_input_ports_;
 }
 
-[[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> step::subinput_ports() const {
+takatori::util::sequence_view<std::unique_ptr<model::port> const> step::subinput_ports() const {
     return sub_input_ports_;
 }
 
-[[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> step::output_ports() const {
+takatori::util::sequence_view<std::unique_ptr<model::port> const> step::output_ports() const {
     return output_ports_;
 }
 
-/**
- * @brief accessor to owner graph of this step
- * @return owner graph
- */
-[[nodiscard]] model::graph* step::owner() const {
+model::graph* step::owner() const {
     return owner_;
 }
 
-/**
- * @brief setter of owner graph of this step
- */
 void step::owner(model::graph* g) noexcept {
     owner_ = g;
 }
 
-/**
- * @brief setter of owner graph of this step
- */
 void step::id(identity_type id) noexcept {
     id_ = id;
 }
@@ -149,7 +118,7 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> step::create_pretask
     return data_flow_object_->create_pretask(subinput);
 }
 
-[[nodiscard]] flow& step::data_flow_object() const noexcept {
+flow& step::data_flow_object() const noexcept {
     return *data_flow_object_;
 }
 
@@ -157,7 +126,7 @@ void step::data_flow_object(std::unique_ptr<flow> p) noexcept {
     data_flow_object_ = std::move(p);
 }
 
-[[nodiscard]] std::shared_ptr<class request_context> const& step::context() const noexcept {
+std::shared_ptr<class request_context> const& step::context() const noexcept {
     assert(owner_); //NOLINT
     return owner_->context();
 }

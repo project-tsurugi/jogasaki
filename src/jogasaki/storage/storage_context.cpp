@@ -45,7 +45,7 @@ bool storage_context::close() {
     return true;
 }
 
-[[nodiscard]] sharksfin::DatabaseHandle storage_context::handle() const noexcept {
+sharksfin::DatabaseHandle storage_context::handle() const noexcept {
     return db_;
 }
 

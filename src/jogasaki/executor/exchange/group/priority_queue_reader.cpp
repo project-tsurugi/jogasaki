@@ -61,7 +61,7 @@ bool priority_queue_reader::next_group() {
     std::abort();
 }
 
-[[nodiscard]] accessor::record_ref priority_queue_reader::get_group() const {
+accessor::record_ref priority_queue_reader::get_group() const {
     if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
         return info_->extract_key(buf_.ref());
     }
@@ -92,7 +92,7 @@ bool priority_queue_reader::next_member() {
     std::abort();
 }
 
-[[nodiscard]] accessor::record_ref priority_queue_reader::get_member() const {
+accessor::record_ref priority_queue_reader::get_member() const {
     if (state_ == reader_state::on_member) {
         return info_->extract_value(accessor::record_ref(buf_.ref()));
     }

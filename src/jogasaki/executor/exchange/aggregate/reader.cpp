@@ -80,7 +80,7 @@ bool reader::next_group() {
     return true;
 }
 
-[[nodiscard]] accessor::record_ref reader::get_group() const {
+accessor::record_ref reader::get_group() const {
     return iterated_table_->key();
 }
 
@@ -92,7 +92,7 @@ bool reader::next_member() {
     return true;
 }
 
-[[nodiscard]] accessor::record_ref reader::get_member() const {
+accessor::record_ref reader::get_member() const {
     return iterated_table_->value();
 }
 

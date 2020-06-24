@@ -52,6 +52,10 @@ template<kind ...Kinds>
 class basic_record {
 public:
     basic_record() = default;
+
+    /**
+     * @brief construct new object with non-nullable fields
+     */
     explicit basic_record(to_runtime_type_t<Kinds>...args) : entity_(args...) {
         meta_ = std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
@@ -63,7 +67,23 @@ public:
         );
     }
 
-    std::shared_ptr<meta::record_meta> record_meta() {
+    /**
+     * @brief construct new objects with given nullability offsets
+     */
+    explicit basic_record(boost::dynamic_bitset<std::uint64_t> nullability,
+        std::vector<std::size_t> nullity_offset_table,
+        to_runtime_type_t<Kinds>...args) : entity_(args...) {
+        meta_ = std::make_shared<meta::record_meta>(
+            std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
+            std::move(nullability),
+            std::vector<std::size_t>{offsets<Kinds...>(entity_)},
+            std::move(nullity_offset_table),
+            alignof(std::tuple<to_runtime_type_t<Kinds>...>),
+            sizeof(entity_)
+        );
+    }
+
+    std::shared_ptr<meta::record_meta> const& record_meta() {
         return meta_;
     }
 

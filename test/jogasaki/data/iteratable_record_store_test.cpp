@@ -36,21 +36,6 @@ using namespace boost::container::pmr;
 
 class iteratable_record_store_test : public test_root {};
 
-struct S {
-    std::int64_t x_;
-    double y_;
-    accessor::record_ref ref() {
-        return accessor::record_ref{this, sizeof(S)};
-    }
-};
-
-S create_record(int x, double y) {
-    S buffer{};
-    buffer.x_ = x;
-    buffer.y_ = y;
-    return buffer;
-}
-
 TEST_F(iteratable_record_store_test, empty) {
     mock_memory_resource memory{};
     iteratable_record_store r{&memory, &memory, test_record_meta1()};

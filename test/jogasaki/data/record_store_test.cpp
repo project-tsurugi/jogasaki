@@ -38,26 +38,22 @@ class record_store_test : public test_root {};
 
 TEST_F(record_store_test, basic) {
     mock_memory_resource memory{};
-    record_store r{&memory, &memory, test_record_meta1()};
-    struct S {
-        std::int64_t x_;
-        double y_;
-    };
+    testing::record rec{2, 2.0};
+    auto meta = rec.record_meta();
+    record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());
-    S buffer{};
-    buffer.x_ = 2;
-    buffer.y_ = 2.0;
-    record_ref ref{&buffer, sizeof(S)};
-    auto p1 = r.append(ref);
+    auto p1 = r.append(rec.ref());
     ASSERT_FALSE(r.empty());
-    buffer.x_ = 1;
-    buffer.y_ = 1.0;
-    auto p2 = r.append(ref);
+    rec.key(1);
+    rec.value(1.0);
+    auto p2 = r.append(rec.ref());
     ASSERT_EQ(2, r.count());
-    record_ref res1{p1, sizeof(S)};
-    EXPECT_EQ(2, res1.get_value<std::int64_t>(0));
-    record_ref res2{p2, sizeof(S)};
-    EXPECT_EQ(1, res2.get_value<std::int64_t>(0));
+    auto sz = meta->record_size();
+    record_ref res1{p1, sz};
+    auto offset = meta->value_offset(0);
+    EXPECT_EQ(2, res1.get_value<std::int64_t>(offset));
+    record_ref res2{p2, sz};
+    EXPECT_EQ(1, res2.get_value<std::int64_t>(offset));
 }
 
 }

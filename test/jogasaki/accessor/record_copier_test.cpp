@@ -22,6 +22,7 @@
 #include <jogasaki/meta/record_meta.h>
 
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/basic_record.h>
 
 namespace jogasaki::testing {
 
@@ -80,6 +81,39 @@ TEST_F(record_copier_test, simple) {
     EXPECT_EQ(2, *t.get_if<std::int64_t>(nullity_bit_base+1, 8));
     EXPECT_FALSE( t.get_if<float>(nullity_bit_base+2, 16));
     EXPECT_DOUBLE_EQ(200.0,  *t.get_if<double>(nullity_bit_base+3, 24));
+
+    EXPECT_FALSE(t.is_null(nullity_bit_base+0));
+    EXPECT_FALSE(t.is_null(nullity_bit_base+1));
+    EXPECT_TRUE(t.is_null(nullity_bit_base+2));
+    EXPECT_FALSE(t.is_null(nullity_bit_base+3));
+}
+
+TEST_F(record_copier_test, non_standard_layout_record) {
+    using kind = meta::field_type_kind;
+    testing::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> rec{
+        record_meta::nullability_entity_type{"11110"s},
+        record_meta::nullity_offset_table_type{0, 1, 2, 3, 4}, // last int1 is for nullity bits
+        1, 2, 100.0, 200.0, 0};
+    auto r{rec.ref()};
+    ASSERT_EQ(40, r.size());
+    auto meta = rec.record_meta();
+
+    std::size_t nullity_bit_base = meta->nullity_offset(0);
+    r.set_null(nullity_bit_base + 0, false);
+    r.set_null(nullity_bit_base + 1, false);
+    r.set_null(nullity_bit_base + 2, true);
+    r.set_null(nullity_bit_base + 3, false);
+
+    ASSERT_EQ(40, meta->record_size());
+    record_copier copier{meta};
+    testing::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> dst{};
+    record_ref t{dst.ref()};
+    copier(t, r);
+
+    EXPECT_EQ(1, *t.get_if<std::int32_t>(nullity_bit_base+0, meta->value_offset(0)));
+    EXPECT_EQ(2, *t.get_if<std::int64_t>(nullity_bit_base+1, meta->value_offset(1)));
+    EXPECT_FALSE( t.get_if<float>(nullity_bit_base+2, meta->value_offset(2)));
+    EXPECT_DOUBLE_EQ(200.0,  *t.get_if<double>(nullity_bit_base+3, meta->value_offset(3)));
 
     EXPECT_FALSE(t.is_null(nullity_bit_base+0));
     EXPECT_FALSE(t.is_null(nullity_bit_base+1));

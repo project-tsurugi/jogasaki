@@ -75,6 +75,7 @@ TEST_F(cogroup_test, simple) {
     };
 
     auto meta = test_group_meta1();
+    auto key_offset = meta->key().value_offset(0);
     auto value_offset = meta->value().value_offset(0);
 
     cogroup cgrp{
@@ -87,7 +88,7 @@ TEST_F(cogroup_test, simple) {
     std::vector<std::vector<double>> values1{};
     std::vector<std::vector<double>> values2{};
     consumer_type consumer = [&](accessor::record_ref key, std::vector<impl::iterator_pair>& values) {
-        keys.emplace_back(key.get_value<std::int64_t>(0));
+        keys.emplace_back(key.get_value<std::int64_t>(key_offset));
         auto& r1 = values1.emplace_back();
         auto& r2 = values2.emplace_back();
         for(auto b = values[0].first; b != values[0].second; ++b) {
@@ -170,6 +171,7 @@ TEST_F(cogroup_test, three_inputs) {
     };
 
     auto meta = test_group_meta1();
+    auto key_offset = meta->key().value_offset(0);
     auto value_offset = meta->value().value_offset(0);
 
     cogroup cgrp{
@@ -183,7 +185,7 @@ TEST_F(cogroup_test, three_inputs) {
     std::vector<std::vector<double>> values2{};
     std::vector<std::vector<double>> values3{};
     consumer_type consumer = [&](accessor::record_ref key, std::vector<impl::iterator_pair>& values) {
-        keys.emplace_back(key.get_value<std::int64_t>(0));
+        keys.emplace_back(key.get_value<std::int64_t>(key_offset));
         auto& r1 = values1.emplace_back();
         auto& r2 = values2.emplace_back();
         auto& r3 = values3.emplace_back();

@@ -9,6 +9,7 @@
   * takatori
   * yugawara
   * mizugaki
+    * `bison` (`>= 3.6` see [doc](https://github.com/project-tsurugi/mizugaki/blob/master/README.md#gnu-bison--36) for build/install)
   * shakujo (until dependency is removed)
   * fpdecimal
   * performance-tools (optional)
@@ -24,7 +25,7 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:18.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev flex
 ```
 
 optional packages:

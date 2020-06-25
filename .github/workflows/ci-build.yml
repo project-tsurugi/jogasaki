@@ -6,6 +6,8 @@ jobs:
   Build:
     runs-on: [self-hosted, oltp]
     timeout-minutes: 30
+    env:
+      BISON_DIR: /opt/bison-3.6.2
 
     steps:
       - id: Begin
@@ -95,7 +97,7 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j8
 
       - id: CMake_Build_sharksfin_memory
@@ -103,7 +105,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target all --clean-first -- -j8
 
       - id: CTest_sharksfin_memory
@@ -121,7 +123,7 @@ jobs:
         run: |
           mkdir build-kvs
           cd build-kvs
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target all --clean-first -- -j8
 
       - id: CTest_sharksfin_kvs

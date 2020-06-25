@@ -44,8 +44,6 @@
 #include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
 
-DEFINE_string(sql, "", "The SQL statement to compile");  //NOLINT
-
 namespace jogasaki::compile_cli {
 
 using namespace std::string_literals;
@@ -127,12 +125,6 @@ static int run(std::string_view sql) {
         {},
     };
 
-    placeholder_map placeholders;
-    ::takatori::document::document_map documents;
-    auto r = translator(options, *p->main(), documents, placeholders);
-    auto ptr = r.release<result_kind::execution_plan>();
-    auto&& graph = *ptr;
-
     yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
@@ -142,8 +134,32 @@ static int run(std::string_view sql) {
         runtime_features,
         options.get_object_creator(),
     };
-    auto result = yugawara::compiler()(c_options, std::move(graph));
 
+    placeholder_map placeholders;
+    ::takatori::document::document_map documents;
+    auto r = translator(options, *p->main(), documents, placeholders);
+    if (!r.is_valid()) {
+        auto error = r.release<result_kind::diagnostics>();
+        for(auto e : error) {
+            std::cerr << e.message() << "; code " << e.code() << std::endl;
+        }
+        return -1;
+    }
+    yugawara::compiler_result result{};
+    switch(r.kind()) {
+        case result_kind::execution_plan: {
+            auto ptr = r.release<result_kind::execution_plan>();
+            result = yugawara::compiler()(c_options, std::move(*ptr));
+            break;
+        }
+        case result_kind::statement: {
+            auto ptr = r.release<result_kind::statement>();
+            result = yugawara::compiler()(c_options, std::move(*ptr));
+            break;
+        }
+        default:
+            std::abort();
+    }
     dump(result);
 
     // TODO display jogasaki graph info too.
@@ -162,12 +178,17 @@ extern "C" int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("compile cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    if (argc != 2) {
+        gflags::ShowUsageWithFlags(argv[0]); // NOLINT
+        return -1;
+    }
+
+    std::string_view source { argv[1] }; // NOLINT
     try {
-        jogasaki::compile_cli::run(FLAGS_sql);  // NOLINT
+        jogasaki::compile_cli::run(source);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
-
     return 0;
 }

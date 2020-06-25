@@ -105,7 +105,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j8
 
       - id: CTest_sharksfin_memory
@@ -123,7 +123,7 @@ jobs:
         run: |
           mkdir build-kvs
           cd build-kvs
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j8
 
       - id: CTest_sharksfin_kvs

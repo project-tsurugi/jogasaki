@@ -225,7 +225,6 @@ TEST_F(compiler_test, simple_query) {
 //    std::shared_ptr<yugawara::storage::index> i0 = storages->add_index("I0", { t0, "I0", });
 
     yugawara::compiler_options c_options{
-            storages,
             indices,
             runtime_features,
             options.get_object_creator(),
@@ -320,7 +319,6 @@ TEST_F(compiler_test, filter) {
 //    std::shared_ptr<yugawara::storage::index> i0 = storages->add_index("I0", { t0, "I0", });
 
     yugawara::compiler_options c_options{
-            storages,
             indices,
             runtime_features,
             options.get_object_creator(),
@@ -422,7 +420,6 @@ TEST_F(compiler_test, project_filter) {
 //    std::shared_ptr<yugawara::storage::index> i0 = storages->add_index("I0", { t0, "I0", });
 
     yugawara::compiler_options c_options{
-            storages,
             indices,
             runtime_features,
             options.get_object_creator(),

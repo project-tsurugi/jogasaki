@@ -109,7 +109,6 @@ void create_step_graph(std::string_view sql, compiler_context& ctx) {
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
     yugawara::compiler_options c_options{
-        ctx.storage_provider(),
         indices,
         runtime_features,
         options.get_object_creator(),

@@ -129,7 +129,6 @@ static int run(std::string_view sql) {
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
     yugawara::compiler_options c_options{
-        storages,
         indices,
         runtime_features,
         options.get_object_creator(),

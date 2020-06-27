@@ -20,35 +20,72 @@
 #include <jogasaki/accessor/record_ref.h>
 
 #include <jogasaki/basic_record.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::process::mock {
 
 using namespace testing;
 
-class record_reader : public executor::record_reader {
+using kind = meta::field_type_kind;
+
+template <kind ... Types>
+class basic_record_reader : public executor::record_reader {
 public:
-    static constexpr std::size_t record_count = 3;
+    using record_type = basic_record<Types...>;
+    using records_type = std::vector<record_type>;
+
+    basic_record_reader() = default;
+
+    explicit basic_record_reader(records_type records) : records_(std::move(records)) {}
+
     [[nodiscard]] bool available() const override {
-        return true;
+        return it_ != records_.end() && it_+1 != records_.end();
     }
 
     bool next_record() override {
-        record_ = record(count_++, count_*100);
-        return count_ <= record_count;
+        if (!initialized_) {
+            it_ = records_.begin();
+            initialized_ = true;
+        } else {
+            if (it_ == records_.end()) {
+                return false;
+            }
+            ++it_;
+        }
+        return it_ != records_.end();
     }
 
     [[nodiscard]] accessor::record_ref get_record() const {
-        return {static_cast<void*>(const_cast<record*>(&record_)), sizeof(record)};
+        return it_->ref();
     }
 
     void release() override {
+        records_.clear();
         released_ = true;
     }
 
-    record record_{};
-    std::size_t count_{};
+    std::shared_ptr<meta::record_meta> const& meta() {
+        static record_type rec{};
+        return rec.record_meta();
+    }
+
+private:
+    records_type records_{};
+    bool initialized_{false};
     bool released_{false};
+    typename records_type::iterator it_{};
 };
+
+using record_reader = basic_record_reader<kind::int8, kind::float8>;
+
+template <kind ... Types, typename T = std::enable_if<sizeof...(Types) != 0, executor::record_reader>>
+basic_record_reader<Types...>* unwrap(T* reader) {
+    return static_cast<basic_record_reader<Types...>*>(reader);
+}
+
+inline record_reader* unwrap_record_reader(executor::record_reader* reader) {
+    return unwrap<kind::int8, kind::float8>(reader);
+}
 
 }
 

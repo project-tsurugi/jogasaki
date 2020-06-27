@@ -21,7 +21,6 @@ namespace jogasaki::executor::process::mock {
 
 class external_writer : public executor::record_writer {
 public:
-
     explicit external_writer(std::shared_ptr<meta::record_meta> meta) :
             meta_(std::move(meta)),
             offset_c1_(meta_->value_offset(0)),

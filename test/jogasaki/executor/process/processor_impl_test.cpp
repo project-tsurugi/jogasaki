@@ -42,8 +42,8 @@ class processor_impl_test : public test_root {};
 TEST_F(processor_impl_test, basic) {
     auto reader = std::make_shared<mock::record_reader>();
     reader_container r{reader.get()};
-    auto downstream_writer = std::make_shared<mock::record_writer>(test_record_meta1());
-    auto external_writer = std::make_shared<mock::external_writer>(test_record_meta1());
+    auto downstream_writer = std::make_shared<mock::record_writer>();
+    auto external_writer = std::make_shared<mock::record_writer>();
     auto context = std::make_shared<mock::task_context>(r, downstream_writer, external_writer);
 
 //    auto proc = std::make_shared<processor_impl>();

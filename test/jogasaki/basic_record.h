@@ -48,14 +48,36 @@ std::vector<std::size_t> offsets(std::tuple<to_runtime_type_t<Kinds>...>& entity
     return offsets<Kinds...>(entity, std::make_index_sequence<sizeof...(Kinds)>());
 }
 
+template <kind ...Kinds, size_t ... Is>
+std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, meta::record_meta& meta, std::index_sequence<Is...>) {
+    return std::tuple<to_runtime_type_t<Kinds>...>{ ref.get_value<to_runtime_type_t<Kinds>>(meta.value_offset(Is))...};
+}
+
+template <kind ...Kinds>
+std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, meta::record_meta& meta) {
+    return values<Kinds...>(ref, meta, std::make_index_sequence<sizeof...(Kinds)>());
+}
+
 template<kind ...Kinds>
 class basic_record {
 public:
-    basic_record() = default;
+    using entity_type = std::tuple<to_runtime_type_t<Kinds>...>;
+
+    basic_record() {
+        meta_ = std::make_shared<meta::record_meta>(
+            std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
+            boost::dynamic_bitset<std::uint64_t>{sizeof...(Kinds)},  // all fields non-nullable
+            std::vector<std::size_t>{offsets<Kinds...>(entity_)},
+            std::vector<std::size_t>{(void(Kinds), 0)...},
+            alignof(std::tuple<to_runtime_type_t<Kinds>...>),
+            sizeof(entity_type)
+        );
+    }
 
     /**
      * @brief construct new object with non-nullable fields
      */
+    template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
     explicit basic_record(to_runtime_type_t<Kinds>...args) : entity_(args...) {
         meta_ = std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
@@ -83,6 +105,10 @@ public:
         );
     }
 
+    explicit basic_record(accessor::record_ref ref) : basic_record() {
+        entity_ = values<Kinds...>(ref, *meta_);
+    }
+
     std::shared_ptr<meta::record_meta> const& record_meta() {
         return meta_;
     }
@@ -91,7 +117,7 @@ public:
         return accessor::record_ref(std::addressof(entity_), sizeof(entity_));
     }
 protected:
-    std::tuple<to_runtime_type_t<Kinds>...> entity_{};
+    entity_type entity_{};
     std::shared_ptr<meta::record_meta> meta_{};
 };
 

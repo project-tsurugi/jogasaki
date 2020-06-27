@@ -138,6 +138,20 @@ public:
         takatori::util::fail();
     }
 
+    void release() {
+        if (!*this) return;
+        switch(reader_.index()) {
+            case index_of<std::monostate>:
+                return;
+            case index_of<record_reader*>:
+                std::get<record_reader*>(reader_)->release();
+                return;
+            case index_of<group_reader*>:
+                std::get<group_reader*>(reader_)->release();
+                return;
+        }
+        takatori::util::fail();
+    }
 private:
     entity_type reader_{};
 

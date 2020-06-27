@@ -46,7 +46,6 @@ struct external_writer_info {
 
 }
 
-
 /**
  * @brief task context implementation for production
  */
@@ -60,6 +59,19 @@ public:
 
     task_context(partition_index partition) :
         partition_(partition)
+    {}
+
+    task_context(partition_index partition,
+        std::vector<reader_info> readers,
+        std::vector<writer_info> writers,
+        std::vector<writer_info> external_writers,
+        std::unique_ptr<abstract::scan_info> scan_info
+    ) :
+        partition_(partition),
+        readers_(std::move(readers)),
+        writers_(std::move(writers)),
+        external_writers_(std::move(external_writers)),
+        scan_info_(std::move(scan_info))
     {}
 
     reader_container reader(reader_index idx) override {
@@ -118,9 +130,10 @@ protected:
 
 private:
     std::size_t partition_{};
-    std::unordered_map<std::size_t, reader_info> readers_{};
-    std::unordered_map<std::size_t, writer_info> writers_{};
-    std::unordered_map<std::size_t, writer_info> external_writers_{};
+    std::vector<reader_info> readers_{};
+    std::vector<writer_info> writers_{};
+    std::vector<writer_info> external_writers_{};
+    std::unique_ptr<abstract::scan_info> scan_info_{};
 };
 
 }

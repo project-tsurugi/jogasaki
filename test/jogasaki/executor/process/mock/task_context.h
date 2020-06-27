@@ -32,35 +32,57 @@ namespace jogasaki::executor::process::mock {
 
 class task_context : public abstract::task_context {
 public:
-    task_context(
-            std::shared_ptr<executor::record_reader> reader,
-            std::shared_ptr<executor::record_writer> downstream_writer,
-            std::shared_ptr<executor::record_writer> external_writer
-            ) :
-            reader_(std::move(reader)),
-            downstream_writer_(std::move(downstream_writer)),
-            external_writer_(std::move(external_writer))
+    explicit task_context(
+        std::vector<reader_container> readers = {},
+        std::vector<std::shared_ptr<executor::record_writer>> downstream_writers = {},
+        std::vector<std::shared_ptr<executor::record_writer>> external_writers = {},
+        std::shared_ptr<abstract::scan_info> info = {}
+    ) :
+        readers_(std::move(readers)),
+        downstream_writers_(std::move(downstream_writers)),
+        external_writers_(std::move(external_writers)),
+        scan_info_(std::move(info))
+    {}
+
+    explicit task_context(
+        reader_container reader,
+        std::shared_ptr<executor::record_writer> downstream_writer = {},
+        std::shared_ptr<executor::record_writer> external_writer = {},
+        std::shared_ptr<abstract::scan_info> info = {}
+    ) :
+        readers_({std::move(reader)}),
+        downstream_writers_({std::move(downstream_writer)}),
+        external_writers_({std::move(external_writer)}),
+        scan_info_(std::move(info))
     {}
 
     reader_container reader(reader_index idx) override {
-        if (idx != 0) std::abort();
-        return reader_container(reader_.get());
+        return readers_.at(idx);
     }
 
     executor::record_writer* downstream_writer(writer_index idx) override {
-        if (idx != 0) std::abort();
-        return downstream_writer_.get();
+        return downstream_writers_.at(idx).get();
     }
 
     executor::record_writer* external_writer(writer_index idx) override {
-        if (idx != 0) std::abort();
-        return external_writer_.get();
+        return external_writers_.at(idx).get();
     }
 
     void do_release() override {
-        if (reader_) reader_->release();
-        if (downstream_writer_) downstream_writer_->release();
-        if (external_writer_) external_writer_->release();
+        for(auto r : readers_) {
+            r.release();
+        }
+        for(auto& w : downstream_writers_) {
+            if (w) {
+                w->release();
+            }
+        }
+        for(auto& w : external_writers_) {
+            if (w) {
+                w->release();
+            }
+        }
+        scan_info_.reset();
     }
 
     class abstract::scan_info const* scan_info() override {
@@ -68,9 +90,10 @@ public:
     }
 
 private:
-    std::shared_ptr<executor::record_reader> reader_{};
-    std::shared_ptr<executor::record_writer> downstream_writer_{};
-    std::shared_ptr<executor::record_writer> external_writer_{};
+    std::vector<reader_container> readers_{};
+    std::vector<std::shared_ptr<executor::record_writer>> downstream_writers_{};
+    std::vector<std::shared_ptr<executor::record_writer>> external_writers_{};
+    std::shared_ptr<abstract::scan_info> scan_info_{};
 };
 
 }

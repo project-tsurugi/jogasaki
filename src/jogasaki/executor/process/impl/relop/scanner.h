@@ -87,7 +87,6 @@ private:
     accessor::record_ref buf_{};
     std::shared_ptr<storage::transaction_context> tx_{};
     data::small_record_store store_;
-    sharksfin::IteratorHandle iterator_{};
 };
 
 }

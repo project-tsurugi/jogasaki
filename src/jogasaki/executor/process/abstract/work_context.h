@@ -25,9 +25,19 @@ class work_context {
 public:
 
     /**
+     * @brief create new object
+     */
+    work_context() = default;
+
+    /**
      * @brief destroy this object
      */
     virtual ~work_context() = default;
+
+    work_context(work_context const& other) = delete;
+    work_context& operator=(work_context const& other) = delete;
+    work_context(work_context&& other) noexcept = delete;
+    work_context& operator=(work_context&& other) noexcept = delete;
 };
 
 }

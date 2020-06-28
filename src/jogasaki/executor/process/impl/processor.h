@@ -32,14 +32,7 @@ namespace relation = takatori::relation;
  */
 class processor : public process::abstract::processor {
 public:
-    using compiler_result = yugawara::compiler_result;
-
     processor() = default;
-    ~processor() override = default;
-    processor(processor const& other) = default;
-    processor& operator=(processor const& other) = default;
-    processor(processor&& other) noexcept = default;
-    processor& operator=(processor&& other) noexcept = default;
 
     explicit processor(graph::graph<relation::expression>& operators) noexcept : operators_(std::addressof(operators)) {}
 
@@ -50,7 +43,7 @@ public:
     }
 
 private:
-    graph::graph<relation::expression>* operators_;
+    graph::graph<relation::expression>* operators_{};
 };
 
 }

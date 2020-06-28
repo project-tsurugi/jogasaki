@@ -25,26 +25,22 @@
 
 namespace jogasaki::executor::process::impl {
 
-namespace {
-
 struct reader_info {
-    executor::exchange::step* step_;
-    reader_container reader_;
+    executor::exchange::step* step_{};
+    reader_container reader_{};
     bool reader_acquired_{};
 };
 
 struct writer_info {
-    executor::exchange::step* step_;
-    record_writer* writer_;
+    executor::exchange::step* step_{};
+    record_writer* writer_{};
     bool writer_acquired_{};
 };
 
 struct external_writer_info {
-    record_writer* writer_;
+    record_writer* writer_{};
     bool writer_acquired_{};
 };
-
-}
 
 /**
  * @brief task context implementation for production
@@ -57,7 +53,7 @@ public:
      */
     task_context() = default;
 
-    task_context(partition_index partition) :
+    explicit task_context(partition_index partition) :
         partition_(partition)
     {}
 

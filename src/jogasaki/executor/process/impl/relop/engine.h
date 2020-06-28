@@ -42,12 +42,12 @@ class engine {
 public:
     using compiler_result = yugawara::compiler_result;
 
-    engine() = default;
+    engine() = delete;
     ~engine() = default;
-    engine(engine const& other) = default;
-    engine& operator=(engine const& other) = default;
-    engine(engine&& other) noexcept = default;
-    engine& operator=(engine&& other) noexcept = default;
+    engine(engine const& other) = delete;
+    engine& operator=(engine const& other) = delete;
+    engine(engine&& other) noexcept = delete;
+    engine& operator=(engine&& other) noexcept = delete;
 
     explicit engine(graph::graph<relation::expression>& operators,
         std::shared_ptr<meta::record_meta> meta,

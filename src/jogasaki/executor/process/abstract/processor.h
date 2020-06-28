@@ -85,9 +85,19 @@ public:
     virtual status run(task_context* context) = 0;
 
     /**
+     * @brief create new object
+     */
+    processor() = default;
+
+    /**
      * @brief destroy this object
      */
     virtual ~processor() = default;
+
+    processor(processor const& other) = delete;
+    processor& operator=(processor const& other) = delete;
+    processor(processor&& other) noexcept = delete;
+    processor& operator=(processor&& other) noexcept = delete;
 };
 
 }

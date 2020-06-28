@@ -21,7 +21,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/process/task_context.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/reader_container.h>
 
 #include "record_reader.h"
@@ -30,7 +30,7 @@
 
 namespace jogasaki::executor::process::mock {
 
-class task_context : public process::task_context {
+class task_context : public abstract::task_context {
 public:
     task_context(
             std::shared_ptr<executor::record_reader> reader,
@@ -63,7 +63,7 @@ public:
         if (external_writer_) external_writer_->release();
     }
 
-    class scan_info const* scan_info() override {
+    class abstract::scan_info const* scan_info() override {
         return nullptr;
     }
 

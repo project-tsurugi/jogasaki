@@ -16,14 +16,14 @@
 #pragma once
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/process/task_context.h>
-#include <jogasaki/executor/process/processor.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/abstract/processor.h>
 
 namespace jogasaki::executor::process::mock {
 
 class process_executor {
 public:
-    process_executor(std::shared_ptr<processor> processor, std::shared_ptr<task_context> context) :
+    process_executor(std::shared_ptr<abstract::processor> processor, std::shared_ptr<task_context> context) :
             processor_(std::move(processor)), context_(std::move(context)) {}
 
     bool run() {
@@ -32,7 +32,7 @@ public:
     }
 
 private:
-    std::shared_ptr<processor> processor_{};
+    std::shared_ptr<abstract::processor> processor_{};
     std::shared_ptr<task_context> context_{};
 };
 

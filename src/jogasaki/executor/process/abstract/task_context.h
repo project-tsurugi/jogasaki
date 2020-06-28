@@ -20,7 +20,7 @@
 #include "work_context.h"
 #include "scan_info.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::abstract {
 
 /**
  * @brief task context representing task assignment information and its running context

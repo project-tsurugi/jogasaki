@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/scanner.h>
+#include <jogasaki/executor/process/impl/relop/scanner.h>
 
 #include <string>
 
@@ -26,9 +26,9 @@
 
 #include <jogasaki/basic_record.h>
 #include <jogasaki/memory/page_pool.h>
-#include <jogasaki/executor/process/emitter.h>
+#include <jogasaki/executor/process/impl/relop/emitter.h>
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl::relop {
 
 using namespace testing;
 using namespace executor;

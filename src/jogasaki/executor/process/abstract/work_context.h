@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "task_context.h"
+#pragma once
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::abstract {
 
-void task_context::work_context(std::unique_ptr<class work_context> work_context) {
-    work_context_ = std::move(work_context);
-}
+/**
+ * @brief processor working context
+ * @details represents transient work area used by the running processor
+ */
+class work_context {
+public:
 
-class work_context* task_context::work_context() const {
-    return work_context_.get();
-}
-
-void task_context::release() {
-    do_release();
-    work_context_.reset();
-}
+    /**
+     * @brief destroy this object
+     */
+    virtual ~work_context() = default;
+};
 
 }
 

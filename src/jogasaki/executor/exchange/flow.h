@@ -49,6 +49,12 @@ public:
     virtual sinks_sources setup_partitions(std::size_t partitions) = 0;
 
     /**
+     * @brief accessor for sinks
+     * @return list view of sinks held by this exchange
+     */
+    virtual sink_list_view sinks() = 0;
+
+    /**
      * @brief accessor for sources
      * @return list view of sources held by this exchange
      */

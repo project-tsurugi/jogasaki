@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/engine.h>
+#include <jogasaki/executor/process/impl/relop/engine.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -52,7 +52,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl::relop {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

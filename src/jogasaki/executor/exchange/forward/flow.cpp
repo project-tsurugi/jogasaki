@@ -73,6 +73,10 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
             impl::cast_to_exchange_source(sources_));
 }
 
+flow::sink_list_view flow::sinks() {
+    return impl::cast_to_exchange_sink(sinks_);
+}
+
 flow::source_list_view flow::sources() {
     return impl::cast_to_exchange_source(sources_);
 }

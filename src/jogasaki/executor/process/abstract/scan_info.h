@@ -22,38 +22,30 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/data/record_store.h>
-#include "scan_info.h"
+#include "work_context.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::abstract {
 
 /**
- * @brief emitter
+ * @brief scan info
+ * @details this instance provides specification of scan (e.g. definition of the range of scanned records)
  */
-class emitter {
+class scan_info {
 public:
     /**
      * @brief create empty object
      */
-    emitter() = default;
+    scan_info() = default;
 
     /**
-     * @brief create new object
+     * @brief destroy the object
      */
-    emitter(
-            std::shared_ptr<meta::record_meta> meta,
-            std::shared_ptr<data::record_store> store) :
-            meta_(std::move(meta)),
-            store_(std::move(store)) {
-    }
+    virtual ~scan_info() = default;
 
-    void emit(accessor::record_ref record) {
-        store_->append(record);
-    }
-
-private:
-    std::shared_ptr<meta::record_meta> meta_{};
-    std::shared_ptr<data::record_store> store_{};
+    scan_info(scan_info const& other) = default;
+    scan_info& operator=(scan_info const& other) = default;
+    scan_info(scan_info&& other) noexcept = default;
+    scan_info& operator=(scan_info&& other) noexcept = default;
 };
 
 }

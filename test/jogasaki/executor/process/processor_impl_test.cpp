@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/processor_impl.h>
+#include <jogasaki/executor/process/impl/processor.h>
 
 #include <string>
 
@@ -26,7 +26,7 @@
 #include "mock/process_executor.h"
 #include "mock/processor.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl {
 
 using namespace executor;
 using namespace accessor;

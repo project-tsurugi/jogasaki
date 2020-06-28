@@ -35,6 +35,11 @@ public:
     using record_pointer = void*;
 
     /**
+     * @brief create empty object
+     */
+    small_record_store() = default;
+
+    /**
      * @brief create new instance
      * @param meta the record metadata
      * @param capacity the capacity of the container
@@ -93,7 +98,7 @@ private:
     std::size_t capacity_{};
     memory::paged_memory_resource* varlen_resource_{};
     accessor::record_copier copier_{};
-    utils::aligned_array<std::byte> data_;
+    utils::aligned_array<std::byte> data_ = utils::make_aligned_array<std::byte>(0UL, 0UL);
 };
 
 } // namespace

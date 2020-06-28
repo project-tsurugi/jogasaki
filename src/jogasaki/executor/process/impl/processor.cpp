@@ -13,32 +13,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-
-#include <jogasaki/executor/record_writer.h>
-
-namespace jogasaki::executor::exchange::broadcast {
-
-class sink : public record_writer {
-public:
-    ~sink() override = default;
-    sink(sink&& other) noexcept = delete;
-    sink& operator=(sink&& other) noexcept = delete;
-    sink() {}
-    bool write(accessor::record_ref) override {
-        return false;
-    }
-    void flush() override {}
-
-    /**
-     * @brief sources setter
-     * @param sources
-     */
-    void target_source(source& source) {
-        source_ = &source;
-    }
-private:
-    source* source_{};
-};
-
-}
+#include "processor.h"

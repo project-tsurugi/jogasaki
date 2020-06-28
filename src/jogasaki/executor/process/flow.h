@@ -20,10 +20,13 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include "task.h"
 
 namespace jogasaki::executor::process {
 
+using namespace jogasaki::model;
 /**
  * @brief process step data flow
  */
@@ -64,8 +67,8 @@ public:
 
         // create tasks supplying the processor
 
-        std::unique_ptr<task_context> task_context{};
-        std::unique_ptr<processor> processor{};
+        std::unique_ptr<abstract::task_context> task_context{};
+        std::unique_ptr<abstract::processor> processor{};
         tasks_.emplace_back(std::make_unique<task>(context_, step_, std::move(task_context), std::move(processor)));
         return tasks_;
     }

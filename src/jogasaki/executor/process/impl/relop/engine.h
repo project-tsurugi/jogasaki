@@ -26,11 +26,11 @@
 
 #include <jogasaki/meta/record_meta.h>
 
-#include "processor.h"
+#include <jogasaki/executor/process/abstract/processor.h>
 #include "scanner.h"
 #include "emitter.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl::relop {
 
 namespace graph = takatori::graph;
 namespace relation = takatori::relation;
@@ -50,13 +50,13 @@ public:
     engine& operator=(engine&& other) noexcept = default;
 
     explicit engine(graph::graph<relation::expression>& operators,
-            std::shared_ptr<meta::record_meta> meta,
-            std::shared_ptr<data::record_store> store
-            ) noexcept :
-            operators_(operators),
-            meta_(std::move(meta)),
-            store_(std::move(store)),
-            buf_(meta_) {
+        std::shared_ptr<meta::record_meta> meta,
+        std::shared_ptr<data::record_store> store
+    ) noexcept :
+        operators_(operators),
+        meta_(std::move(meta)),
+        buf_(meta_),
+        store_(std::move(store)) {
         //TODO prepare stack-like working area needed for this engine to complete all operators
     }
 
@@ -72,6 +72,7 @@ public:
     }
 
     void operator()(relation::find const& node) {
+        (void)node;
         fail();
     }
 
@@ -84,21 +85,27 @@ public:
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::join_find const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::join_scan const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::project const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::filter const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::buffer const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::emit const& node) {
+        (void)node;
         LOG(INFO) << "emit";
         if (!emitter_) {
             emitter_ = std::make_shared<emitter>(meta_, store_);
@@ -106,34 +113,44 @@ public:
         emitter_->emit(buf_.ref());
     }
     void operator()(relation::write const& node) {
+        (void)node;
         fail();
     }
 
     void operator()(relation::step::join const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::aggregate const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::intersection const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::difference const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::flatten const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::take_flat const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::take_group const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::take_cogroup const& node) {
+        (void)node;
         fail();
     }
     void operator()(relation::step::offer const& node) {
+        (void)node;
         fail();
     }
 

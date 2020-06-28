@@ -21,8 +21,8 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/process/processor.h>
-#include <jogasaki/executor/process/task_context.h>
+#include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 
 #include "process_executor.h"
 
@@ -33,8 +33,8 @@ public:
     task() = default;
     task(std::shared_ptr<request_context> context,
             step_type* src,
-            std::unique_ptr<task_context> task_context,
-            std::unique_ptr<processor> processor
+            std::unique_ptr<abstract::task_context> task_context,
+            std::unique_ptr<abstract::processor> processor
             ) :
             common::task(std::move(context), src),
             task_context_(std::move(task_context)),
@@ -56,12 +56,12 @@ public:
         context()->channel()->emplace(event_kind_tag<event_kind::task_completed>, id(), id());
 
         // TODO support sleep/yield
-        return model::task_result::complete;
+        return jogasaki::model::task_result::complete;
     }
 
 private:
-    std::unique_ptr<task_context> task_context_{};
-    std::unique_ptr<processor> processor_{};
+    std::unique_ptr<abstract::task_context> task_context_{};
+    std::unique_ptr<abstract::processor> processor_{};
 };
 
 }

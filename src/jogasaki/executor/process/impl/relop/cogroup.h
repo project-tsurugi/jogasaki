@@ -31,9 +31,9 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/data/small_record_store.h>
 
-#include "impl/iterator_pair.h"
+#include "../iterator_pair.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl::relop {
 
 using namespace jogasaki::executor;
 
@@ -210,7 +210,7 @@ public:
 
     using queue_type = std::priority_queue<input_index, std::vector<input_index>, impl::cogroup_input_comparator>;
 
-    using consumer_type = std::function<void(accessor::record_ref, std::vector<impl::iterator_pair>&)>;
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<iterator_pair>&)>;
 
     cogroup(
             std::vector<executor::group_reader*> readers,
@@ -320,7 +320,7 @@ private:
 
     void consume(consumer_type& consumer) {
         auto key = key_buf_.ref();
-        std::vector<impl::iterator_pair> iterators{};
+        std::vector<iterator_pair> iterators{};
         auto inputs = inputs_.size();
         for(input_index i = 0; i < inputs; ++i) {
             iterators.emplace_back(inputs_[i].begin(), inputs_[i].end());

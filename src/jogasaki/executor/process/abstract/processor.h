@@ -15,7 +15,9 @@
  */
 #pragma once
 
-namespace jogasaki::executor::process {
+#include <cstddef>
+
+namespace jogasaki::executor::process::abstract {
 
 class task_context;
 

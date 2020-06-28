@@ -25,9 +25,9 @@
 #include <jogasaki/storage/storage_context.h>
 #include <jogasaki/storage/transaction_context.h>
 #include <jogasaki/data/small_record_store.h>
-#include "scan_info.h"
+#include <jogasaki/executor/process/abstract/scan_info.h>
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl::relop {
 
 /**
  * @brief scanner
@@ -42,15 +42,15 @@ public:
     /**
      * @brief create new object
      */
-    scanner(std::shared_ptr<scan_info> info,
-            std::shared_ptr<storage::storage_context> storage,
-            std::shared_ptr<meta::record_meta> meta,
-            accessor::record_ref buf) :
-            info_(std::move(info)),
-            storage_(std::move(storage)),
-            meta_(std::move(meta)),
-            store_(meta_),
-            buf_(buf) {
+    scanner(std::shared_ptr<abstract::scan_info> info,
+        std::shared_ptr<storage::storage_context> storage,
+        std::shared_ptr<meta::record_meta> meta,
+        accessor::record_ref buf) :
+        info_(std::move(info)),
+        storage_(std::move(storage)),
+        meta_(std::move(meta)),
+        buf_(buf),
+        store_(meta_) {
         auto rec = store_.ref();
         auto offset_c1 = meta_->value_offset(0);
         auto offset_c2 = meta_->value_offset(1);
@@ -73,6 +73,7 @@ public:
         rec.set_value<std::int64_t>(offset_c1,rec.get_value<std::int64_t>(offset_c1)+1);
         rec.set_value<double>(offset_c2,rec.get_value<double>(offset_c2)+1);
         std::memcpy(buf_.data(), rec.data(), rec.size());
+        return true;
     }
 
     void close() {
@@ -80,7 +81,7 @@ public:
     }
 
 private:
-    std::shared_ptr<scan_info> info_{};
+    std::shared_ptr<abstract::scan_info> info_{};
     std::shared_ptr<storage::storage_context> storage_{};
     std::shared_ptr<meta::record_meta> meta_{};
     accessor::record_ref buf_{};

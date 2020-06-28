@@ -18,8 +18,9 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
-#include "task_context.h"
-#include "processor.h"
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/abstract/processor.h>
+#include "impl/task_context_pool.h"
 
 namespace jogasaki::executor::process {
 
@@ -29,22 +30,33 @@ namespace jogasaki::executor::process {
  * complete the work assigned to a processor task.
  */
 class process_executor {
+    using status = abstract::status;
 public:
     /**
      * @brief construct new instance
-     * @param partition index of the partition where the executor conduct
-     * @param processor
      */
     process_executor() = default;
 
-    void run() {
-        // setup context
-//        processor_->context(nullptr);
+    explicit process_executor(std::shared_ptr<abstract::processor> processor,
+        std::shared_ptr<impl::task_context_pool> contexts) : processor_(std::move(processor)), contexts_(std::move(contexts)) {}
 
-//        processor_->run();
+    status run() {
+        // assign context
+        auto context = contexts_->pop();
+
+        // execute task
+        auto rc = processor_->run(context.get());
+
+        if (rc != status::completed && rc != status::completed_with_errors) {
+            // task is suspended in the middle, put the current context back
+            contexts_->push(context);
+        }
+        return rc;
     }
+
 private:
-    std::shared_ptr<processor> processor_{};
+    std::shared_ptr<abstract::processor> processor_{};
+    std::shared_ptr<impl::task_context_pool> contexts_{};
 };
 
 }

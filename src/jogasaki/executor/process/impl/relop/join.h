@@ -29,9 +29,9 @@
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
 
-#include "impl/iterator_pair.h"
+#include "../iterator_pair.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl::relop {
 
 using namespace jogasaki::executor;
 
@@ -49,7 +49,7 @@ public:
             downstream_(std::move(downstream))
     {}
 
-    void operator()(accessor::record_ref key, std::vector<impl::iterator_pair>& groups) {
+    void operator()(accessor::record_ref key, std::vector<iterator_pair>& groups) {
         (void)key;
         (void)groups;
 

@@ -15,30 +15,18 @@
  */
 #pragma once
 
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/process/abstract/work_context.h>
 
-namespace jogasaki::executor::exchange::broadcast {
+namespace jogasaki::executor::process::impl {
 
-class sink : public record_writer {
+/**
+ * @brief processor working context implementation for production
+ */
+class work_context : public process::abstract::work_context {
 public:
-    ~sink() override = default;
-    sink(sink&& other) noexcept = delete;
-    sink& operator=(sink&& other) noexcept = delete;
-    sink() {}
-    bool write(accessor::record_ref) override {
-        return false;
-    }
-    void flush() override {}
 
-    /**
-     * @brief sources setter
-     * @param sources
-     */
-    void target_source(source& source) {
-        source_ = &source;
-    }
-private:
-    source* source_{};
 };
 
 }
+
+

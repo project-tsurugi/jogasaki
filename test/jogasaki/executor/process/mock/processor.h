@@ -22,14 +22,15 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/executor/process/processor.h>
+#include <jogasaki/executor/process/abstract/processor.h>
 
 namespace jogasaki::executor::process::mock {
 
-class processor : public process::processor {
+class processor : public abstract::processor {
 
+    using status = abstract::status;
 public:
-    status run(process::task_context* ctx) override {
+    status run(abstract::task_context* ctx) override {
 
         auto* r = ctx->reader(0).reader<executor::record_reader>();
         auto* w = ctx->downstream_writer(0);

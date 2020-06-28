@@ -79,6 +79,8 @@ public:
 
     sinks_sources setup_partitions(std::size_t partitions) override;
 
+    sink_list_view sinks() override;
+
     source_list_view sources() override;
 
     /**

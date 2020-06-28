@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/processor.h>
+#include <jogasaki/executor/process/impl/task_context_pool.h>
 
 #include <string>
 
@@ -34,32 +34,30 @@ using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
+using namespace testing;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class processor_impl_test : public test_root {};
+class task_context_pool_test : public test_root {};
 
-TEST_F(processor_impl_test, basic) {
-    auto reader = std::make_shared<mock::record_reader>();
-    reader_container r{reader.get()};
-    auto downstream_writer = std::make_shared<mock::record_writer>();
-    auto external_writer = std::make_shared<mock::record_writer>();
-    auto context = std::make_shared<mock::task_context>(r, downstream_writer, external_writer);
+using kind = meta::field_type_kind;
 
-//    auto proc = std::make_shared<processor_impl>();
+TEST_F(task_context_pool_test, basic) {
+    auto context1 = std::make_shared<mock::task_context>();
+    auto context2 = std::make_shared<mock::task_context>();
+    auto context3 = std::make_shared<mock::task_context>();
 
-//    mock::process_executor exec{proc, context};
+    task_context_pool pool{};
+    pool.push(context1);
+    pool.push(context2);
+    pool.push(context3);
 
-//    exec.run();
-
-//    auto& written = downstream_writer->records_;
-//    auto& written2 = external_writer->records_;
-//    EXPECT_EQ(3, written.size());
-//    EXPECT_EQ(3, written2.size());
-//
-//    EXPECT_TRUE(reader->released_);
-//    EXPECT_TRUE(downstream_writer->released_);
-//    EXPECT_TRUE(external_writer->released_);
+    auto pop1 = pool.pop();
+    auto pop2 = pool.pop();
+    auto pop3 = pool.pop();
+    EXPECT_EQ(*pop1, *context1);
+    EXPECT_EQ(*pop2, *context2);
+    EXPECT_EQ(*pop3, *context3);
 }
 
 }

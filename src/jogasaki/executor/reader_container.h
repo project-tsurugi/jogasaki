@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& out, reader_kind value) {
     return out << to_string_view(value);
 }
 
-namespace impl {
+namespace details {
 
 template <class T>
 inline constexpr reader_kind to_kind = reader_kind::record;
@@ -105,9 +105,9 @@ public:
             case index_of<std::monostate>:
                 return reader_kind::unknown;
             case index_of<record_reader*>:
-                return impl::to_kind<record_reader>;
+                return details::to_kind<record_reader>;
             case index_of<group_reader*>:
-                return impl::to_kind<group_reader>;
+                return details::to_kind<group_reader>;
         }
         takatori::util::fail();
     }

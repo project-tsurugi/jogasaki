@@ -124,6 +124,20 @@ private:
     std::unique_ptr<class work_context> work_context_{};
 };
 
+/**
+ * @brief equality comparison operator
+ */
+inline bool operator==(task_context const& a, task_context const& b) noexcept {
+    return std::addressof(a) == std::addressof(b);
+}
+
+/**
+ * @brief inequality comparison operator
+ */
+inline bool operator!=(task_context const& a, task_context const& b) noexcept {
+    return !(a == b);
+}
+
 }
 
 

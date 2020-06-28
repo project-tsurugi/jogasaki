@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-#include <jogasaki/executor/process/abstract/work_context.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <memory>
+
+#include <tbb/concurrent_queue.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 
 namespace jogasaki::executor::process::impl {
 

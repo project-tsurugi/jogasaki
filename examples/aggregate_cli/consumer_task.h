@@ -40,7 +40,7 @@ public:
     void execute() override {
         VLOG(1) << *this << " consumer_task executed. count: " << count_;
         //        utils::get_watch().set_point(time_point_consume, id());
-        watch->set_point(time_point_consume, id());
+        performance_tools::get_watch().set_point(time_point_consume, id());
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
         auto* reader = reader_.reader<executor::group_reader>();
@@ -60,7 +60,7 @@ public:
         }
         reader->release();
         //        utils::get_watch().set_point(time_point_consumed, id());
-        watch->set_point(time_point_consumed, id());
+        performance_tools::get_watch().set_point(time_point_consumed, id());
         LOG(INFO) << *this << " consumed " << records << " records with unique "<< keys << " keys (sum: " << total_key << " " << total_val << ")";
     }
 

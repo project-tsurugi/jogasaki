@@ -81,7 +81,7 @@ public:
     void execute() override {
         VLOG(1) << *this << " consumer_task executed. count: " << count_;
         //        utils::get_watch().set_point(time_point_consume, id());
-        watch->set_point(time_point_consume, id());
+        performance_tools::get_watch().set_point(time_point_consume, id());
         key_offset_ = l_meta_->key().value_offset(0);
         value_offset_ = l_meta_->value().value_offset(0);
 
@@ -150,7 +150,7 @@ public:
         cgrp(consumer);
 
         //        utils::get_watch().set_point(time_point_consumed, id());
-        watch->set_point(time_point_consumed, id());
+        performance_tools::get_watch().set_point(time_point_consumed, id());
         LOG(INFO) << *this << " consumed "
                 << "left (" << l_keys_ << " keys "<< l_records_ << " recs) "
                 << "right (" << r_keys_ << " keys "<< r_records_ << " recs) "

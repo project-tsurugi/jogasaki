@@ -21,8 +21,11 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/meta/record_meta.h>
-//#include <jogasaki/utils/watch.h>
-#include <performance-tools/wall_clock.h>
+// #include <jogasaki/utils/watch.h>
+
+// #include <performance-tools/wall_clock.h>
+// #include <performance-tools/proc_self.h>
+#include <performance-tools/perf_counter.h>
 #include <performance-tools/lap_counter.h>
 #include "task_base.h"
 #include "random.h"
@@ -50,17 +53,17 @@ public:
     void execute() override {
         VLOG(1) << *this << " producer_task executed. count: " << count_;
         //        utils::get_watch().set_point(time_point_prepare, id());
-        watch->set_point(time_point_prepare, id());
+        performance_tools::get_watch().set_point(time_point_prepare, id());
         initialize_writer();
         std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions
         prepare_data(continuous_ranges);
         //        utils::get_watch().set_point(time_point_produce, id());
-        watch->set_point(time_point_produce, id());
+        performance_tools::get_watch().set_point(time_point_produce, id());
         produce_data(continuous_ranges);
         writer_->flush();
         writer_->release();
         //        utils::get_watch().set_point(time_point_produced, id());
-        watch->set_point(time_point_produced, id());
+        performance_tools::get_watch().set_point(time_point_produced, id());
     }
 
 private:

@@ -31,11 +31,6 @@
 #include <performance-tools/perf_counter.h>
 #include <performance-tools/lap_counter.h>
 
-// using watch_class = performance_tools::lap_counter<wperformance_tools::all_clock, 6>;
-// using watch_class = performance_tools::lap_counter<performance_tools::ProcSelfCounter, 6>;
-using watch_class = performance_tools::lap_counter<performance_tools::PerfCounter, 6>;
-std::unique_ptr<watch_class> watch;
-
 #include "producer_process.h"
 #include "consumer_process.h"
 #include "params.h"
@@ -106,8 +101,6 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
 }  // namespace
 
 extern "C" int main(int argc, char* argv[]) {
-    watch = std::make_unique<watch_class>();
-    
     // ignore log level
     if (FLAGS_log_dir.empty()) {
         FLAGS_logtostderr = true;
@@ -165,15 +158,15 @@ extern "C" int main(int argc, char* argv[]) {
         return -1;
     }
     //    jogasaki::common_cli::dump_perf_info(FLAGS_perf);
-        auto results = watch->laps(time_point_prepare, time_point_produce);
+        auto results = performance_tools::get_watch().laps(time_point_prepare, time_point_produce);
         for(auto r : *results.get()) {
             LOG(INFO) << "prepare\t" << r << " ms" ;
         }
-        results = watch->laps(time_point_produce, time_point_produced);
+        results = performance_tools::get_watch().laps(time_point_produce, time_point_produced);
         for(auto r : *results.get()) {
             LOG(INFO) << "produce\t" << r << " ms" ;
         }
-        results = watch->laps(time_point_consume, time_point_consumed);
+        results = performance_tools::get_watch().laps(time_point_consume, time_point_consumed);
         for(auto r : *results.get()) {
             LOG(INFO) << "consume\t" << r << " ms" ;
         }

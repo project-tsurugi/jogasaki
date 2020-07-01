@@ -24,11 +24,12 @@
 namespace jogasaki::utils {
 
 #ifdef PERFORMANCE_TOOLS
-using watch_class = performance_tools::lap_counter<performance_tools::PerfCounter, 6>;
+using watch_class = performance_tools::lap_counter_class;
 #else
 using watch_class = jogasaki::utils::watch;
 #endif
 
 watch_class& get_watch();
+void dump_info(watch_class&, watch_class::point_in_code, watch_class::point_in_code, std::string_view);
 
 } // namespace

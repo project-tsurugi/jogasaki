@@ -16,34 +16,22 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <jogasaki/utils/watch.h>
+#include <jogasaki/utils/performance_tools.h>
 
 namespace jogasaki::common_cli {
 
 void dump_perf_info() {
     auto& watch = utils::get_watch();
     watch.set_point(time_point_main_completed);
-#ifdef PERFORMANCE_TOOLS
-    auto results = watch.laps(time_point_prepare, time_point_produce);
-    for(auto r : *results.get()) {
-        LOG(INFO) << "prepare\t" << r << " ms" ;
-    }
-    results = watch.laps(time_point_produce, time_point_produced);
-    for(auto r : *results.get()) {
-        LOG(INFO) << "produce\t" << r << " ms" ;
-    }
-    results = watch.laps(time_point_consume, time_point_consumed);
-    for(auto r : *results.get()) {
-        LOG(INFO) << "consume\t" << r << " ms" ;
-    }
-#else
-    LOG(INFO) << "prepare: total " << watch.duration(time_point_prepare, time_point_produce) << "ms, average " << watch.average_duration(time_point_prepare, time_point_produce) << "ms" ;
-    LOG(INFO) << "produce: total " << watch.duration(time_point_produce, time_point_produced) << "ms, average " << watch.average_duration(time_point_produce, time_point_produced) << "ms" ;
+    jogasaki::utils::dump_info(watch, time_point_prepare, time_point_produce, "prepare");
+    jogasaki::utils::dump_info(watch, time_point_produce, time_point_produced, "produce");
+#ifndef PERFORMANCE_TOOLS
     LOG(INFO) << "transfer: total " << watch.duration(time_point_produced, time_point_consume, true) << "ms" ;
-    LOG(INFO) << "consume: total " << watch.duration(time_point_consume, time_point_consumed) << "ms, average " << watch.average_duration(time_point_consume, time_point_consumed) << "ms" ;
+#endif
+    jogasaki::utils::dump_info(watch, time_point_consume, time_point_consumed, "consume");
+#ifndef PERFORMANCE_TOOLS
     LOG(INFO) << "finish: total " << watch.duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
 #endif
 }
 
 } //namespace
-

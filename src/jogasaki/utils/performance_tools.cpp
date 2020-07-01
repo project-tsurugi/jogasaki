@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <glog/logging.h>
 #include "performance_tools.h"
 
 #include <memory>
@@ -20,8 +21,25 @@
 namespace jogasaki::utils {
 
 watch_class& get_watch() {
+#ifdef PERFORMANCE_TOOLS
+    return performance_tools::get_watch();
+#else
     static std::unique_ptr<watch_class> watch_ = std::make_unique<watch_class>();
     return *watch_;
+#endif
 }
+
+#ifdef PERFORMANCE_TOOLS
+void dump_info(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
+    auto results = result.laps(bgn, end);
+    for(auto r : *results.get()) {
+        LOG(INFO) << label << "\t" << r;
+    }
+}
+#else
+void dump_info(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
+    LOG(INFO) << label << ": total " << result.duration(bgn, end) << "ms, average " << result.average_duration(bgn, end) << "ms" ;
+}
+#endif
 
 } // namespace

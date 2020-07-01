@@ -28,10 +28,10 @@ using namespace testing;
 
 using kind = meta::field_type_kind;
 
-template <kind ... Types>
+template <class Record>
 class basic_record_reader : public executor::record_reader {
 public:
-    using record_type = basic_record<Types...>;
+    using record_type = Record;
     using records_type = std::vector<record_type>;
 
     basic_record_reader() = default;
@@ -76,15 +76,15 @@ private:
     typename records_type::iterator it_{};
 };
 
-using record_reader = basic_record_reader<kind::int8, kind::float8>;
+using record_reader = basic_record_reader<basic_record<kind::int8, kind::float8>>;
 
-template <kind ... Types, typename T = std::enable_if<sizeof...(Types) != 0, executor::record_reader>>
-basic_record_reader<Types...>* unwrap(T* reader) {
-    return static_cast<basic_record_reader<Types...>*>(reader);
+template <class Record>
+basic_record_reader<Record>* unwrap(executor::record_reader* reader) {
+    return static_cast<basic_record_reader<Record>*>(reader);
 }
 
 inline record_reader* unwrap_record_reader(executor::record_reader* reader) {
-    return unwrap<kind::int8, kind::float8>(reader);
+    return unwrap<record_reader::record_type>(reader);
 }
 
 }

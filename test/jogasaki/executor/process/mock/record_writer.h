@@ -22,12 +22,12 @@ namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 
-template <kind ... Types>
+template <class Record>
 class basic_record_writer : public executor::record_writer {
 public:
 
-    using record_type = basic_record<Types...>;
-    using records_type = std::vector<record_type, std::allocator<record_type>>;
+    using record_type = Record;
+    using records_type = std::vector<record_type>;
 
     basic_record_writer() = default;
 
@@ -53,15 +53,15 @@ private:
     bool released_{false};
 };
 
-using record_writer = basic_record_writer<kind::int8, kind::float8>;
+using record_writer = basic_record_writer<basic_record<kind::int8, kind::float8>>;
 
-template <kind ... Types, typename T = std::enable_if<sizeof...(Types) != 0, void>>
-basic_record_writer<Types...>* unwrap(executor::record_writer* writer) {
-    return static_cast<basic_record_writer<Types...>*>(writer);
+template <class Record>
+basic_record_writer<Record>* unwrap(executor::record_writer* writer) {
+    return static_cast<basic_record_writer<Record>*>(writer);
 }
 
 inline record_writer* unwrap_record_writer(executor::record_writer* writer) {
-    return unwrap<kind::int8, kind::float8>(writer);
+    return unwrap<record_writer::record_type>(writer);
 }
 
 }

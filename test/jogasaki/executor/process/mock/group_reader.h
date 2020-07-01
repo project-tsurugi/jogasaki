@@ -106,6 +106,5 @@ public:
 };
 
 using group_reader = basic_group_reader<testing::basic_record<kind::int8>, testing::basic_record<kind::float8>>;
-using group_entry = group_reader::group_type;
 }
 

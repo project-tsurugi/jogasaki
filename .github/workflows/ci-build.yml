@@ -6,6 +6,8 @@ jobs:
   Build:
     runs-on: [self-hosted, oltp]
     timeout-minutes: 30
+    env:
+      BISON_DIR: /opt/bison-3.6.2
 
     steps:
       - id: Begin
@@ -95,7 +97,7 @@ jobs:
           mkdir -p build
           cd build
           rm -f CMakeCache.txt
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j8
 
       - id: Install_sandbox-performance-tools
@@ -124,10 +126,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
-          cat /proc/sys/kernel/perf_event_paranoid > perf_event_paranoid
-          sudo sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
           ctest --verbose
-          sudo sh -c 'cat perf_event_paranoid > /proc/sys/kernel/perf_event_paranoid'
 
       - id: CMake_Build_sharksfin_kvs
         name: CMake_Build_sharksfin_kvs
@@ -145,10 +144,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build-kvs
-          cat /proc/sys/kernel/perf_event_paranoid > perf_event_paranoid
-          sudo sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
           ctest --verbose
-          sudo sh -c 'cat perf_event_paranoid > /proc/sys/kernel/perf_event_paranoid'
 
       - id: Clang-Tidy
         name: Clang-Tidy

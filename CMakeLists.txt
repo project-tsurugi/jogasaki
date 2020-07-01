@@ -63,8 +63,9 @@ find_package(Boost
         REQUIRED
         )
 find_package(TBB REQUIRED)
-find_package(gperftools)
-
+if(PERFORMANCE_TOOLS)
+    find_package(performance-tools REQUIRED)
+endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)

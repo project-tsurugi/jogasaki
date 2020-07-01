@@ -113,9 +113,10 @@ public:
         return meta_;
     }
 
-    accessor::record_ref ref() {
-        return accessor::record_ref(std::addressof(entity_), sizeof(entity_));
+    accessor::record_ref ref() const noexcept {
+        return accessor::record_ref(const_cast<entity_type*>(std::addressof(entity_)), sizeof(entity_)); //FIXME
     }
+
 protected:
     entity_type entity_{};
     std::shared_ptr<meta::record_meta> meta_{};

@@ -38,40 +38,44 @@ public:
 
 };
 
+using group_type = mock::group_reader::group_type;
+using keys_type = group_type::keys_type;
+using values_type = group_type::values_type;
+
 TEST_F(cogroup_test, simple) {
     mock::group_reader r1 {
-            {
-                    mock::group_entry{
-                            1,
-                            mock::group_entry::value_type{
-                                    100.0,
-                                    101.0,
-                            },
-                    },
-                    mock::group_entry{
-                            2,
-                            mock::group_entry::value_type{
-                                    200.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{1},
+                {
+                    values_type{100.0},
+                    values_type{101.0},
+                },
+            },
+            group_type{
+                keys_type{2},
+                {
+                    values_type{200.0},
+                },
+            },
+        }
     };
     mock::group_reader r2 {
-            {
-                    mock::group_entry{
-                            1,
-                            mock::group_entry::value_type{
-                                    100.0,
-                                    101.0,
-                            },
-                    },
-                    mock::group_entry{
-                            3,
-                            mock::group_entry::value_type{
-                                    300.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{1},
+                {
+                    values_type{100.0},
+                    values_type{101.0},
+                },
+            },
+            group_type{
+                keys_type{3},
+                {
+                    values_type{300.0},
+                },
+            },
+        }
     };
 
     auto meta = test_group_meta1();
@@ -121,53 +125,53 @@ TEST_F(cogroup_test, simple) {
 
 TEST_F(cogroup_test, three_inputs) {
     mock::group_reader r1 {
-            {
-                    mock::group_entry{
-                            1,
-                            mock::group_entry::value_type{
-                                    100.0,
-                            },
-                    },
-                    mock::group_entry{
-                            2,
-                            mock::group_entry::value_type{
-                                    200.0,
-                                    201.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{1},
+                {
+                    values_type{100.0},
+                },
+            },
+            group_type{
+                keys_type{2},
+                {
+                    values_type{200.0},
+                    values_type{201.0},
+                },
+            },
+        }
     };
     mock::group_reader r2 {
-            {
-                    mock::group_entry{
-                            1,
-                            mock::group_entry::value_type{
-                                    101.0,
-                            },
-                    },
-                    mock::group_entry{
-                            2,
-                            mock::group_entry::value_type{
-                                    200.0,
-                            },
-                    },
-                    mock::group_entry{
-                            3,
-                            mock::group_entry::value_type{
-                                    300.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{1},
+                {
+                    values_type{101.0},
+                },
+            },
+            group_type{
+                keys_type{2},
+                {
+                    values_type{200.0},
+                },
+            },
+            group_type{
+                keys_type{3},
+                {
+                    values_type{300.0},
+                },
+            },
+        }
     };
     mock::group_reader r3 {
-            {
-                    mock::group_entry{
-                            3,
-                            mock::group_entry::value_type{
-                                    301.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{3},
+                {
+                    values_type{301.0},
+                },
+            },
+        }
     };
 
     auto meta = test_group_meta1();
@@ -228,38 +232,38 @@ TEST_F(cogroup_test, three_inputs) {
 
 TEST_F(cogroup_test, key_value_reversed) {
     mock::group_reader r1 {
-            {
-                    mock::group_entry{
-                            1,
-                            mock::group_entry::value_type{
-                                    100.0,
-                                    101.0,
-                            },
-                    },
-                    mock::group_entry{
-                            2,
-                            mock::group_entry::value_type{
-                                    200.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{1},
+                {
+                    values_type{100.0},
+                    values_type{101.0},
+                },
+            },
+            group_type{
+                keys_type{2},
+                {
+                    values_type{200.0},
+                },
+            },
+        }
     };
     mock::group_reader r2 {
-            {
-                    mock::group_entry{
-                            1,
-                            mock::group_entry::value_type{
-                                    100.0,
-                                    101.0,
-                            },
-                    },
-                    mock::group_entry{
-                            3,
-                            mock::group_entry::value_type{
-                                    300.0,
-                            },
-                    },
-            }
+        {
+            group_type{
+                keys_type{1},
+                {
+                    values_type{100.0},
+                    values_type{101.0},
+                },
+            },
+            group_type{
+                keys_type{3},
+                {
+                    values_type{300.0},
+                },
+            },
+        }
     };
 
     auto meta = test_group_meta1_kv_reversed();

@@ -23,24 +23,36 @@
 
 namespace jogasaki::executor::process::mock {
 
-class group_entry {
-public:
-    using value_type = std::vector<double>;
-    group_entry(
-            std::int64_t key,
-            std::vector<double> values
-    ) : key_(key), values_(std::move(values)) {}
+using kind = meta::field_type_kind;
 
-    std::int64_t key_{};
-    value_type values_{};
+template <class Keys, class Values>
+class basic_group_entry {
+public:
+    using keys_type = Keys;
+    using values_type = Values;
+    using values_groups = std::vector<Values>;
+    explicit basic_group_entry(Keys keys, values_groups values) : keys_(keys), values_(std::move(values)) {}
+
+    [[nodiscard]] accessor::record_ref keys() const noexcept {
+        return keys_.ref();
+    }
+
+    [[nodiscard]] values_groups const& values() const noexcept {
+        return values_;
+    }
+private:
+    keys_type keys_{};
+    values_groups values_{};
 };
 
-class group_reader : public executor::group_reader {
+template <class Keys, class Values>
+class basic_group_reader : public executor::group_reader {
 public:
-    using group_type = std::vector<group_entry>;
+    using group_type = basic_group_entry<Keys, Values>;
+    using groups_type = std::vector<group_type>;
 
-    group_reader(
-            group_type groups
+    basic_group_reader(
+            groups_type groups
             ) : groups_(std::move(groups)){}
 
     bool next_group() override {
@@ -56,21 +68,21 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_group() const override {
-        return accessor::record_ref(&current_group_->key_, sizeof(std::int64_t));
+        return current_group_->keys();
     }
 
     bool next_member() override {
         if (!on_member_) {
-            current_member_ = current_group_->values_.begin();
+            current_member_ = const_cast<typename group_type::values_groups&>(current_group_->values()).begin(); //FIXME
             on_member_ = true;
         } else {
             ++current_member_;
         }
-        return current_member_ != current_group_->values_.end();
+        return current_member_ != current_group_->values().end();
     }
 
     [[nodiscard]] accessor::record_ref get_member() const override {
-        return accessor::record_ref(&*current_member_, sizeof(double));
+        return current_member_->ref();
     }
 
     void release() override {
@@ -79,19 +91,21 @@ public:
         initialized_ = false;
     }
 
-    ~group_reader() override = default;
-    group_reader(group_reader const& other) = default;
-    group_reader& operator=(group_reader const& other) = default;
-    group_reader(group_reader&& other) noexcept = default;
-    group_reader& operator=(group_reader&& other) noexcept = default;
+    ~basic_group_reader() override = default;
+    basic_group_reader(basic_group_reader const& other) = default;
+    basic_group_reader& operator=(basic_group_reader const& other) = default;
+    basic_group_reader(basic_group_reader&& other) noexcept = default;
+    basic_group_reader& operator=(basic_group_reader&& other) noexcept = default;
 
-    group_type groups_{};
-    group_type::iterator current_group_{};
-    group_entry::value_type::iterator current_member_{};
+    groups_type groups_{};
+    typename groups_type::iterator current_group_{};
+    typename group_type::values_groups::iterator current_member_{};
     bool initialized_{false};
     bool released_{false};
     bool on_member_{false};
 };
 
+using group_reader = basic_group_reader<testing::basic_record<kind::int8>, testing::basic_record<kind::float8>>;
+using group_entry = group_reader::group_type;
 }
 

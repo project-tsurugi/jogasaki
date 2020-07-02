@@ -19,8 +19,11 @@
 #include <memory>
 #include <takatori/util/optional_ptr.h>
 
-#include <jogasaki/request_context.h>
 #include "step.h"
+
+namespace jogasaki {
+class request_context;
+}
 
 namespace jogasaki::model {
 

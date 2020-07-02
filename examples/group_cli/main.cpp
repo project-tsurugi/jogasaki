@@ -76,7 +76,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
 
     auto channel = std::make_shared<class channel>();
-    auto context = std::make_shared<request_context>(channel, cfg);
+    auto compiler_context = std::make_shared<plan::compiler_context>();
+    auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
 
     common::graph g{context};
     auto& scan = g.emplace<producer_process>(meta, s);

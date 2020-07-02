@@ -23,6 +23,7 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/request_context.h>
 
 #include "process_executor.h"
 

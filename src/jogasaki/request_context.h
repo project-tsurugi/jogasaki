@@ -18,6 +18,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/channel.h>
 #include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/plan/compiler_context.h>
 
 namespace jogasaki {
 
@@ -30,7 +31,7 @@ public:
     /**
      * @brief create default context object
      */
-    request_context() : channel_(std::make_shared<class channel>()), config_(std::make_shared<class configuration>()) {};
+    request_context() = default;
 
     /**
      * @brief create new context object
@@ -40,9 +41,10 @@ public:
      */
     request_context(std::shared_ptr<class channel> ch,
         std::shared_ptr<class configuration> config,
+        std::shared_ptr<plan::compiler_context> compiler_context,
         std::shared_ptr<data::iteratable_record_store> result_store = {}
     ) :
-        channel_(std::move(ch)), config_(std::move(config)), result_store_(std::move(result_store))
+        channel_(std::move(ch)), config_(std::move(config)), compiler_context_(std::move(compiler_context)), result_store_(std::move(result_store))
     {}
 
     /**
@@ -68,9 +70,19 @@ public:
     [[nodiscard]] std::shared_ptr<data::iteratable_record_store> const& result_store() const {
         return result_store_;
     }
+
+    /**
+     * @brief accessor for the compiler context
+     * @return compiler context for this request
+     */
+    [[nodiscard]] std::shared_ptr<plan::compiler_context> const& compiler_context() const {
+        return compiler_context_;
+    }
+
 private:
-    std::shared_ptr<class channel> channel_{};
-    std::shared_ptr<class configuration> config_{};
+    std::shared_ptr<class channel> channel_{std::make_shared<class channel>()};
+    std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
+    std::shared_ptr<plan::compiler_context> compiler_context_{std::make_shared<plan::compiler_context>()};
     std::shared_ptr<data::iteratable_record_store> result_store_{};
 };
 

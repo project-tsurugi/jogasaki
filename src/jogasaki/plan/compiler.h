@@ -74,8 +74,8 @@ using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
-    shakujo::parser::Parser parser;
-    std::unique_ptr<shakujo::model::program::Program> program;
+    shakujo::parser::Parser parser{};
+    std::unique_ptr<shakujo::model::program::Program> program{};
     try {
         std::stringstream ss{std::string(sql)};
         program = parser.parse_program("compiler_test", ss);
@@ -99,7 +99,6 @@ void create_step_graph(std::string_view sql, compiler_context& ctx) {
 
     placeholder_map placeholders;
     ::takatori::document::document_map documents;
-    ::yugawara::binding::factory bindings { options.get_object_creator() };
 
     auto r = translator(options, *p->main(), documents, placeholders);
     auto ptr = r.release<result_kind::execution_plan>();

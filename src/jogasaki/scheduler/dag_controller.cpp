@@ -24,6 +24,7 @@
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
 #include <jogasaki/internal_event.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
 #include "single_thread_task_scheduler.h"
 #include "multi_thread_task_scheduler.h"

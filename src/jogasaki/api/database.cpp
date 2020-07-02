@@ -19,6 +19,7 @@
 
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_impl.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/dag_controller.h>
@@ -68,15 +69,17 @@ private:
 };
 
 std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
-    plan::compiler_context ctx{};
-    ctx.storage_provider(storage_provider_);
-    plan::compile(sql, ctx);
+    auto ctx = std::make_shared<plan::compiler_context>();
+    ctx->storage_provider(storage_provider_);
+    plan::compile(sql, *ctx);
 
     auto result_store = std::make_shared<data::iteratable_record_store>();
+    // TODO specify memory stores
+
     auto channel = std::make_shared<class channel>();
     // TODO redesign how request context is passed
-    auto* g = ctx.step_graph();
-    dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_, result_store));
+    auto* g = ctx->step_graph();
+    dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_, std::move(ctx), result_store));
     scheduler_.schedule(*g);
     return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(result_store)));
 }

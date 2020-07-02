@@ -171,6 +171,14 @@ public:
      */
     void reset() noexcept;
 
+    /**
+     * @brief getter of stored record size
+     * @return record size
+     */
+    [[nodiscard]] std::size_t record_size() const noexcept {
+        return record_size_;
+    }
+
 private:
     std::size_t record_size_{};
     record_store base_{};

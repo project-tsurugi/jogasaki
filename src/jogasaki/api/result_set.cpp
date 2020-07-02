@@ -15,35 +15,24 @@
  */
 #include <jogasaki/api/result_set.h>
 
+#include "result_set_impl.h"
+
 namespace jogasaki::api {
 
-class result_set::iterator {
-
-};
-
-class result_set::impl {
-public:
-    impl() = default;
-
-    iterator begin();
-    iterator end();
-
-    void close();
-};
-
 result_set::iterator result_set::impl::begin() {
-    return {};
+    return refs_.begin();
 }
 
 result_set::iterator result_set::impl::end() {
-    return {};
+    return refs_.end();
 }
 
 void result_set::impl::close() {
-
+    refs_.clear();
+    store_.reset();
 };
 
-result_set::result_set() : impl_(std::make_unique<result_set::impl>()) {}
+result_set::result_set(std::unique_ptr<result_set::impl> i) : impl_(std::move(i)) {}
 result_set::~result_set() = default;
 
 result_set::iterator result_set::begin() {

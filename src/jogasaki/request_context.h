@@ -17,6 +17,7 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/channel.h>
+#include <jogasaki/data/iteratable_record_store.h>
 
 namespace jogasaki {
 
@@ -35,8 +36,14 @@ public:
      * @brief create new context object
      * @param ch channel used for the scope objects to communicate with scheduler
      * @param config global configuration
+     * @param result_store store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
-    request_context(std::shared_ptr<class channel> ch, std::shared_ptr<class configuration> config) : channel_(std::move(ch)), config_(std::move(config)) {}
+    request_context(std::shared_ptr<class channel> ch,
+        std::shared_ptr<class configuration> config,
+        std::shared_ptr<data::iteratable_record_store> result_store = {}
+    ) :
+        channel_(std::move(ch)), config_(std::move(config)), result_store_(std::move(result_store))
+    {}
 
     /**
      * @brief accessor for the communication channel
@@ -54,9 +61,17 @@ public:
         return config_;
     }
 
+    /**
+     * @brief accessor for the result store
+     * @return result store
+     */
+    [[nodiscard]] std::shared_ptr<data::iteratable_record_store> const& result_store() const {
+        return result_store_;
+    }
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
+    std::shared_ptr<data::iteratable_record_store> result_store_{};
 };
 
 }

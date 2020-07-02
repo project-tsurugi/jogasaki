@@ -15,34 +15,29 @@
  */
 #pragma once
 
-#include <memory>
-#include <vector>
-
-#include <jogasaki/accessor/record_ref.h> // FIXME using internal accessor temporarily
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/data/iteratable_record_store.h>
 
 namespace jogasaki::api {
 
-/**
- * @brief result set interface to provide iterator/disposal method
- * @attention under development
- */
-class result_set {
+class result_set::impl {
 public:
-    class impl;
-    using iterator = std::vector<accessor::record_ref>::iterator;
-
-    explicit result_set(std::unique_ptr<impl> i);
-    ~result_set();
-    result_set(result_set const& other) = delete;
-    result_set& operator=(result_set const& other) = delete;
-    result_set(result_set&& other) noexcept = delete;
-    result_set& operator=(result_set&& other) noexcept = delete;
+    explicit impl(std::shared_ptr<data::iteratable_record_store> store) noexcept : store_(std::move(store)) {
+        //FIXME temp. implementation for client access
+        refs_.reserve(store_->count());
+        auto sz = store_->record_size();
+        for(auto it : *store_) {
+            refs_.emplace_back(it, sz);
+        }
+    }
 
     iterator begin();
     iterator end();
     void close();
+
 private:
-    std::unique_ptr<impl> impl_;
+    std::shared_ptr<data::iteratable_record_store> store_{};
+    std::vector<accessor::record_ref> refs_{}; //FIXME
 };
 
 }

@@ -18,6 +18,7 @@
 #include <string_view>
 
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/api/result_set_impl.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/dag_controller.h>
@@ -41,11 +42,6 @@ private:
 
     void add_default_table_defs(configurable_provider* provider) {
         namespace type = ::takatori::type;
-//        namespace value = ::takatori::value;
-//        namespace scalar = ::takatori::scalar;
-//        namespace relation = ::takatori::relation;
-//        namespace statement = ::takatori::statement;
-//        namespace tinfo = ::shakujo::common::core::type;
 
         std::shared_ptr<::yugawara::storage::table> t0 = provider->add_table("T0", {
             "T0",
@@ -76,13 +72,13 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     ctx.storage_provider(storage_provider_);
     plan::compile(sql, ctx);
 
+    auto result_store = std::make_shared<data::iteratable_record_store>();
     auto channel = std::make_shared<class channel>();
     // TODO redesign how request context is passed
     auto* g = ctx.step_graph();
-    dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_));
+    dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_, result_store));
     scheduler_.schedule(*g);
-
-    return {};
+    return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(result_store)));
 }
 
 database::database() : impl_(std::make_unique<database::impl>()) {}

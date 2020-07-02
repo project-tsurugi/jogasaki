@@ -52,7 +52,6 @@ using rgraph = ::takatori::graph::graph<relation::expression>;
 
 TEST_F(processor_variables_test, basic) {
     factory f;
-
     ::takatori::plan::forward f1 {
         f.exchange_column(),
         f.exchange_column(),

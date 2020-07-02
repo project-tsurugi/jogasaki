@@ -15,20 +15,30 @@
  */
 #pragma once
 
-#include <jogasaki/executor/process/abstract/work_context.h>
-#include "processor_variables.h"
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/meta/record_meta.h>
+#include "variable_value_map.h"
 
 namespace jogasaki::executor::process::impl {
 
 /**
- * @brief processor working context implementation for production
+ * @brief variables data region scoped by a basic block
  */
-class work_context : public process::abstract::work_context {
+class block_variables {
 public:
-    work_context() = default;
+    block_variables() = default;
+
+    explicit block_variables(
+        std::unique_ptr<data::small_record_store> variables,
+        std::unique_ptr<variable_value_map> value_map,
+        std::shared_ptr<meta::record_meta> meta
+    ) : variables_(std::move(variables)), value_map_(std::move(value_map)), meta_(std::move(meta))
+    {}
 
 private:
-    processor_variables variables_{};
+    std::unique_ptr<data::small_record_store> variables_{};
+    std::unique_ptr<variable_value_map> value_map_{};
+    std::shared_ptr<meta::record_meta> meta_{};
 };
 
 }

@@ -13,24 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <jogasaki/executor/process/impl/processor_variables.h>
 
-#include <jogasaki/executor/process/abstract/work_context.h>
-#include "processor_variables.h"
+#include <string>
+
+#include <yugawara/binding/factory.h>
+#include <gtest/gtest.h>
+
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::process::impl {
 
-/**
- * @brief processor working context implementation for production
- */
-class work_context : public process::abstract::work_context {
-public:
-    work_context() = default;
+using namespace executor;
+using namespace accessor;
+using namespace takatori::util;
+using namespace std::string_view_literals;
+using namespace std::string_literals;
 
-private:
-    processor_variables variables_{};
+using namespace jogasaki::memory;
+using namespace boost::container::pmr;
+using namespace yugawara::binding;
+
+class processor_variables_test : public test_root {
+
 };
 
+TEST_F(processor_variables_test, basic) {
+    factory f;
+
+    processor_variables v{};
 }
 
+}
 

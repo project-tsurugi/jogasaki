@@ -84,7 +84,7 @@ public:
     std::ostream& write_to(std::ostream& out) const override;
 protected:
     void data_flow_object(std::unique_ptr<flow> p) noexcept;
-    [[nodiscard]] std::shared_ptr<class request_context> const& context() const noexcept;
+    [[nodiscard]] class request_context* context() const noexcept;
 
 private:
     identity_type id_{};

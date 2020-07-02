@@ -36,9 +36,9 @@ public:
     ~mock_task() override = default;
     mock_task(mock_task&& other) noexcept = default;
     mock_task& operator=(mock_task&& other) noexcept = default;
-    mock_task(std::shared_ptr<request_context> context,
+    mock_task(request_context* context,
             model::step* src,
-            bool is_pretask = false) : context_(std::move(context)), src_(src), is_pretask_(is_pretask) {}
+            bool is_pretask = false) : context_(context), src_(src), is_pretask_(is_pretask) {}
 
     model::task_result operator()() override {
         execute();
@@ -54,7 +54,7 @@ public:
     };
     virtual void execute() = 0;
 protected:
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     model::step* src_{};
     bool is_pretask_{false};
     std::size_t count_{0};

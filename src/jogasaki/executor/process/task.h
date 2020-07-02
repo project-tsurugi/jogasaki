@@ -32,12 +32,12 @@ namespace jogasaki::executor::process {
 class task : public common::task {
 public:
     task() = default;
-    task(std::shared_ptr<request_context> context,
+    task(request_context* context,
             step_type* src,
             std::unique_ptr<abstract::task_context> task_context,
             std::unique_ptr<abstract::processor> processor
             ) :
-            common::task(std::move(context), src),
+            common::task(context, src),
             task_context_(std::move(task_context)),
             processor_(std::move(processor))
             {}

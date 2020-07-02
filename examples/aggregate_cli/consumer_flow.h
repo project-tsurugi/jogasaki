@@ -35,13 +35,13 @@ public:
     consumer_flow(
             executor::exchange::step* upstream,
             model::step* step,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             std::shared_ptr<meta::group_meta> meta,
             params& c
     ) :
             upstream_(upstream),
             step_(step),
-            context_(std::move(context)),
+            context_(context),
             meta_(std::move(meta)),
             params_(&c)
     {}
@@ -67,7 +67,7 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     executor::exchange::step* upstream_{};
     model::step* step_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     std::shared_ptr<meta::group_meta> meta_{};
     params* params_{};
 };

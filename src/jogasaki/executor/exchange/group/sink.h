@@ -39,7 +39,7 @@ public:
     sink& operator=(sink&& other) noexcept = delete;
     sink(std::size_t downstream_partitions,
             std::shared_ptr<shuffle_info> info,
-            std::shared_ptr<request_context> context
+            request_context* context
             );
 
     record_writer& acquire_writer() override;
@@ -48,12 +48,12 @@ public:
 
     std::vector<std::unique_ptr<input_partition>>& input_partitions();
 
-    [[nodiscard]] std::shared_ptr<request_context> const& context() const noexcept;
+    [[nodiscard]] request_context* context() const noexcept;
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>> partitions_{};
     std::shared_ptr<shuffle_info> info_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     partitioner partitioner_{};
     std::unique_ptr<group::writer> writer_;
 };

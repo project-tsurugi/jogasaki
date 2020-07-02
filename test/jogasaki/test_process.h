@@ -26,8 +26,8 @@ public:
     test_process_task(test_process_task&& other) noexcept = default;
     test_process_task& operator=(test_process_task&& other) noexcept = default;
     test_process_task(
-            std::shared_ptr<request_context> context,
-            model::step* src) : context_(std::move(context)), src_(src) {}
+            request_context* context,
+            model::step* src) : context_(context), src_(src) {}
     model::task_result operator()() override {
         LOG(INFO) << "test_process_task executed. count: " << count_;
         context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
@@ -35,7 +35,7 @@ public:
         return count_ < limit_ ? model::task_result::proceed : model::task_result::complete;
     }
 private:
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     model::step* src_{};
     std::size_t count_{0};
     std::size_t limit_{3};
@@ -47,7 +47,7 @@ public:
     ~test_process_flow() = default;
     test_process_flow(exchange::step* downstream,
             model::step* step,
-            std::shared_ptr<request_context> context) : downstream_(downstream), step_(step), context_(std::move(context)) {}
+            request_context* context) : downstream_(downstream), step_(step), context_(context) {}
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         tasks_.emplace_back(std::make_unique<test_process_task>(context_, step_));
         return tasks_;
@@ -63,7 +63,7 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     exchange::step* downstream_{};
     model::step* step_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
 };
 
 class test_process : public process::step {

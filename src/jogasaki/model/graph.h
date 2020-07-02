@@ -44,7 +44,7 @@ public:
     /**
      * @return request context associated with this step graph
      */
-    [[nodiscard]] virtual std::shared_ptr<request_context> const& context() const = 0;
+    [[nodiscard]] virtual request_context* context() const = 0;
 
     /**
      * @brief find the step for the given identity in this graph

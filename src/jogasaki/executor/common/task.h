@@ -32,7 +32,7 @@ public:
         id_ = id_src++;
     }
 
-    task(std::shared_ptr<request_context> context,
+    task(request_context* context,
             step* src) : context_(std::move(context)), src_(src) {}
 
     [[nodiscard]] identity_type id() const override {
@@ -43,7 +43,7 @@ public:
         return src_;
     }
 
-    [[nodiscard]] std::shared_ptr<request_context>const& context() const {
+    [[nodiscard]] request_context* context() const {
         return context_;
     }
 
@@ -56,7 +56,7 @@ protected:
 private:
     static inline std::atomic_size_t id_src = 10000;
     identity_type id_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     step_type* src_{};
 };
 

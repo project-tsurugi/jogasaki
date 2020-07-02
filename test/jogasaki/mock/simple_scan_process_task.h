@@ -32,7 +32,7 @@ public:
     ~simple_scan_process_task() override = default;
     simple_scan_process_task(simple_scan_process_task&& other) noexcept = default;
     simple_scan_process_task& operator=(simple_scan_process_task&& other) noexcept = default;
-    simple_scan_process_task(std::shared_ptr<request_context> context, model::step* src, record_writer* writer) : mock_task(std::move(context),  src), writer_(writer) {}
+    simple_scan_process_task(request_context* context, model::step* src, record_writer* writer) : mock_task(context,  src), writer_(writer) {}
 
     record_writer* writer_{};
 

@@ -30,8 +30,8 @@ namespace jogasaki::executor::exchange {
 class task : public common::task {
 public:
     task() = default;
-    task(std::shared_ptr<request_context> context, step_type* src) :
-            common::task(std::move(context), src) {}
+    task(request_context* context, step_type* src) :
+            common::task(context, src) {}
     model::task_result operator()() override {
         VLOG(1) << *this << " exchange_task executed.";
         context()->channel()->emplace(event_kind_tag<event_kind::task_completed>, step()->id(), id());

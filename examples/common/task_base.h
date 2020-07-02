@@ -29,7 +29,7 @@ namespace jogasaki::common_cli {
 class task_base : public executor::common::task {
 public:
     task_base() = default;
-    task_base(std::shared_ptr<request_context> context, model::step* src, bool is_pretask = false) : context_(std::move(context)), src_(src), is_pretask_(is_pretask) {}
+    task_base(request_context* context, model::step* src, bool is_pretask = false) : context_(context), src_(src), is_pretask_(is_pretask) {}
 
     model::task_result operator()() override {
         execute();
@@ -41,7 +41,7 @@ public:
     virtual void execute() = 0;
 
 protected:
-    std::shared_ptr<request_context> context_{}; //NOLINT
+    request_context* context_{}; //NOLINT
     model::step* src_{}; //NOLINT
     bool is_pretask_{false}; //NOLINT
     std::size_t count_{0}; //NOLINT

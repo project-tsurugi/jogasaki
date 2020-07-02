@@ -30,9 +30,9 @@ namespace jogasaki::executor::common {
  */
 class graph : public model::graph {
 public:
-    graph() : context_(std::make_shared<request_context>()) {};
+    graph() = default;
 
-    explicit graph(std::shared_ptr<request_context> context) noexcept : context_(std::move(context)) {}
+    explicit graph(request_context& context) noexcept : context_(std::addressof(context)) {}
 
     [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::step> const> steps() const noexcept override {
         return takatori::util::sequence_view(steps_);
@@ -46,11 +46,11 @@ public:
     }
 
     // TODO graph should have request context?
-    void context(std::shared_ptr<request_context> context) {
-        context_ = std::move(context);
+    void context(request_context& context) {
+        context_ = std::addressof(context);
     }
 
-    [[nodiscard]] std::shared_ptr<request_context> const& context() const noexcept override {
+    [[nodiscard]] request_context* context() const noexcept override {
         return context_;
     }
 
@@ -90,7 +90,7 @@ public:
     }
 private:
     std::vector<std::unique_ptr<model::step>> steps_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
 };
 
 }

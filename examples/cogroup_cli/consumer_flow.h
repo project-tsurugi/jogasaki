@@ -37,14 +37,14 @@ public:
             executor::exchange::step* left_upstream,
             executor::exchange::step* right_upstream,
             model::step* step,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             std::shared_ptr<meta::group_meta> meta,
             params& c
     ) :
             left_upstream_(left_upstream),
             right_upstream_(right_upstream),
             step_(step),
-            context_(std::move(context)),
+            context_(context),
             meta_(std::move(meta)),
             params_(&c)
     {}
@@ -77,7 +77,7 @@ private:
     executor::exchange::step* left_upstream_{};
     executor::exchange::step* right_upstream_{};
     model::step* step_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     std::shared_ptr<meta::group_meta> meta_{};
     params* params_{};
 };

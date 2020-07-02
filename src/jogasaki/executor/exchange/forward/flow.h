@@ -53,7 +53,7 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    flow(std::shared_ptr<meta::record_meta> input_meta, std::shared_ptr<request_context> context);
+    flow(std::shared_ptr<meta::record_meta> input_meta, request_context* context);
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
@@ -71,7 +71,7 @@ private:
     std::shared_ptr<meta::record_meta> input_meta_{};
     std::vector<std::unique_ptr<forward::sink>> sinks_;
     std::vector<std::unique_ptr<forward::source>> sources_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
 };
 
 }

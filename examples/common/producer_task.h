@@ -32,7 +32,7 @@ template <class Params>
 class producer_task : public task_base {
 public:
     producer_task() = delete;
-    producer_task(std::shared_ptr<request_context> context,
+    producer_task(request_context* context,
             model::step* src,
             executor::exchange::sink* sink,
             std::shared_ptr<meta::record_meta> meta,

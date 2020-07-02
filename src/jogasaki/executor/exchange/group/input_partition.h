@@ -55,14 +55,14 @@ public:
             std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
             std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
             std::shared_ptr<shuffle_info> info,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
             ) :
             resource_for_records_(std::move(resource_for_records)),
             resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
             resource_for_varlen_data_(std::move(resource_for_varlen_data)),
             info_(std::move(info)),
-            context_(std::move(context)),
+            context_(context),
             comparator_(info_->key_meta().get()),
             max_pointers_(pointer_table_size)
     {}
@@ -125,7 +125,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
     std::shared_ptr<shuffle_info> info_{};
-    std::shared_ptr<request_context> context_{std::make_shared<request_context>()};
+    request_context* context_{};
     std::unique_ptr<data::record_store> records_{};
     pointer_tables_type pointer_tables_{};
     comparator comparator_{};

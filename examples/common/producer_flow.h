@@ -34,12 +34,12 @@ public:
     producer_flow() = default;
     producer_flow(executor::exchange::step* downstream,
             model::step* step,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             std::shared_ptr<meta::record_meta> meta,
             Params& p) :
             downstream_(downstream),
             step_(step),
-            context_(std::move(context)),
+            context_(context),
             meta_(std::move(meta)),
             params_(&p) {}
 
@@ -67,7 +67,7 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     executor::exchange::step* downstream_{};
     model::step* step_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     std::shared_ptr<meta::record_meta> meta_{};
     Params* params_{};
     std::vector<std::unique_ptr<memory::monotonic_paged_memory_resource>> resources_{};

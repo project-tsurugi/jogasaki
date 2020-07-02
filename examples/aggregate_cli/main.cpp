@@ -80,7 +80,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto compiler_context = std::make_shared<plan::compiler_context>();
     auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
 
-    common::graph g{context};
+    common::graph g{*context};
     auto& scan = g.emplace<producer_process>(meta, s);
     auto& xch = g.emplace<aggregate::step>(info);
     auto& emit = g.emplace<consumer_process>(info->group_meta(), s);

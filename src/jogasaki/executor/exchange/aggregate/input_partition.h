@@ -89,7 +89,7 @@ public:
         std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
         std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables,
         std::shared_ptr<shuffle_info> info,
-        std::shared_ptr<request_context> context,
+        request_context* context,
         [[maybe_unused]] std::size_t initial_hash_table_size = default_initial_hash_table_size
     ) noexcept :
         resource_for_keys_(std::move(resource_for_keys)),
@@ -97,7 +97,7 @@ public:
         resource_for_varlen_data_(std::move(resource_for_varlen_data)),
         resource_for_hash_tables_(std::move(resource_for_hash_tables)),
         info_(std::move(info)),
-        context_(std::move(context)),
+        context_(context),
         comparator_(info_->key_meta().get()),
         initial_hash_table_size_(initial_hash_table_size)
     {}
@@ -282,7 +282,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables_{};
     std::shared_ptr<shuffle_info> info_{};
-    std::shared_ptr<request_context> context_{std::make_shared<request_context>()};
+    request_context* context_{};
     std::unique_ptr<data::record_store> keys_{};
     std::unique_ptr<data::record_store> values_{};
     hash_tables tables_{};

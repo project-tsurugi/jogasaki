@@ -30,7 +30,7 @@ class simple_emit_process_flow : public common::flow {
 public:
     simple_emit_process_flow() = default;
     ~simple_emit_process_flow() = default;
-    simple_emit_process_flow(exchange::step* downstream, model::step* step, std::shared_ptr<request_context> context) : downstream_(downstream), step_(step), context_(std::move(context)) {}
+    simple_emit_process_flow(exchange::step* downstream, model::step* step, request_context* context) : downstream_(downstream), step_(step), context_(context) {}
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         auto initial_count = tasks_.size();
         if (tasks_.size() < default_partitions) {
@@ -51,7 +51,7 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     exchange::step* downstream_{};
     model::step* step_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
 };
 
 }

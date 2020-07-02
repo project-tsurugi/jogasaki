@@ -59,7 +59,7 @@ public:
      * @param key_indices indices for key fields
      */
     flow(std::shared_ptr<shuffle_info> info,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             step* owner,
             std::size_t downstream_partitions);
 
@@ -70,7 +70,7 @@ public:
      */
     flow(std::shared_ptr<meta::record_meta> input_meta,
             std::vector<field_index_type> key_indices,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             step* owner,
             std::size_t downstream_partitions
             );
@@ -95,7 +95,7 @@ public:
         return common::step_kind::group;
     }
 
-    [[nodiscard]] std::shared_ptr<class request_context> const& context() const noexcept {
+    [[nodiscard]] class request_context* context() const noexcept {
         return context_;
     }
 private:
@@ -103,7 +103,7 @@ private:
     std::shared_ptr<shuffle_info> info_{};
     std::vector<std::unique_ptr<aggregate::sink>> sinks_;
     std::vector<std::unique_ptr<aggregate::source>> sources_{};
-    std::shared_ptr<class request_context> context_{};
+    class request_context* context_{};
     step* owner_{};
     std::size_t downstream_partitions_{default_partitions};
 };

@@ -51,17 +51,17 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<group::si
 flow::~flow() = default;
 flow::flow() : info_(std::make_shared<shuffle_info>()) {}
 flow::flow(std::shared_ptr<shuffle_info> info,
-        std::shared_ptr<request_context> context,
+        request_context* context,
         step* owner, std::size_t downstream_partitions) :
-        info_(std::move(info)), context_(std::move(context)), owner_(owner), downstream_partitions_(downstream_partitions) {}
+        info_(std::move(info)), context_(context), owner_(owner), downstream_partitions_(downstream_partitions) {}
 
 flow::flow(std::shared_ptr<meta::record_meta> input_meta,
         std::vector<field_index_type> key_indices,
-        std::shared_ptr<request_context> context,
+        request_context* context,
         step* owner,
         std::size_t downstream_partitions
 ) :
-        flow(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)), std::move(context), owner, downstream_partitions) {}
+        flow(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)), context, owner, downstream_partitions) {}
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     tasks_.emplace_back(std::make_shared<exchange::task>(context_, owner_));

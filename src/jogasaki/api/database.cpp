@@ -79,7 +79,8 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto channel = std::make_shared<class channel>();
     // TODO redesign how request context is passed
     auto* g = ctx->step_graph();
-    dynamic_cast<executor::common::graph*>(g)->context(std::make_shared<request_context>(channel, cfg_, std::move(ctx), result_store));
+    auto request_ctx = std::make_shared<request_context>(channel, cfg_, std::move(ctx), result_store);
+    dynamic_cast<executor::common::graph*>(g)->context(*request_ctx);
     scheduler_.schedule(*g);
     return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(result_store)));
 }

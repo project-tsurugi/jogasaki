@@ -38,7 +38,7 @@ using namespace jogasaki::executor::process;
 class priority_queue_consumer_task : public common_cli::task_base {
 public:
     priority_queue_consumer_task(
-            std::shared_ptr<request_context> context,
+            request_context* context,
             model::step* src,
             executor::reader_container left_reader,
             executor::reader_container right_reader,
@@ -46,7 +46,7 @@ public:
             std::shared_ptr<meta::group_meta> r_meta,
             params& c
     ) :
-            task_base(std::move(context), src),
+            task_base(context, src),
             l_meta_(std::move(l_meta)),
             r_meta_(std::move(r_meta)),
             l_store_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())),

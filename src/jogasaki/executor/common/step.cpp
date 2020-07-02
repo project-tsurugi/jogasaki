@@ -126,7 +126,7 @@ void step::data_flow_object(std::unique_ptr<flow> p) noexcept {
     data_flow_object_ = std::move(p);
 }
 
-std::shared_ptr<class request_context> const& step::context() const noexcept {
+class request_context* step::context() const noexcept {
     assert(owner_); //NOLINT
     return owner_->context();
 }

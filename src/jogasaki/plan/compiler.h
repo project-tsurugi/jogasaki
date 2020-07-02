@@ -120,7 +120,6 @@ void create_step_graph(std::string_view sql, compiler_context& ctx) {
 }
 
 void create_mirror(compiler_context& ctx) {
-    (void)ctx;
     auto& statement = ctx.compiler_result().statement();
     using statement_kind = takatori::statement::statement_kind;
     switch(statement.kind()) {

@@ -59,7 +59,7 @@ public:
         set_value(target, new_value);
     });
 
-    std::unique_ptr<input_partition> create_input_partition(std::shared_ptr<request_context> context, std::vector<std::pair<std::int64_t, double>> const& map) {
+    std::unique_ptr<input_partition> create_input_partition(request_context* context, std::vector<std::pair<std::int64_t, double>> const& map) {
         auto partition = std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
@@ -120,11 +120,11 @@ TEST_F(aggregate_reader_test, basic) {
         {3, 300.0},
     };
     std::vector<std::unique_ptr<input_partition>> partitions{};
-    partitions.emplace_back(create_input_partition(context, v0));
-    partitions.emplace_back(create_input_partition(context, v1));
-    partitions.emplace_back(create_input_partition(context, v2));
-    partitions.emplace_back(create_input_partition(context, empty));
-    partitions.emplace_back(create_input_partition(context, v3));
+    partitions.emplace_back(create_input_partition(context.get(), v0));
+    partitions.emplace_back(create_input_partition(context.get(), v1));
+    partitions.emplace_back(create_input_partition(context.get(), v2));
+    partitions.emplace_back(create_input_partition(context.get(), empty));
+    partitions.emplace_back(create_input_partition(context.get(), v3));
 
     reader r{info_, partitions, *aggregator_};
 

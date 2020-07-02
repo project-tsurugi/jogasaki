@@ -40,7 +40,8 @@ using namespace jogasaki::scheduler;
 class multithread_test : public test_root {};
 
 TEST_F(multithread_test, simple_forward) {
-    auto g = std::make_unique<common::graph>();
+    auto ctx = std::make_shared<request_context>();
+    auto g = std::make_unique<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto fwd = std::make_unique<forward::step>();
@@ -61,7 +62,8 @@ TEST_F(multithread_test, simple_forward) {
 }
 
 TEST_F(multithread_test, simple_shuffle) {
-    auto g = std::make_unique<common::graph>();
+    auto ctx = std::make_shared<request_context>();
+    auto g = std::make_unique<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
@@ -82,7 +84,8 @@ TEST_F(multithread_test, simple_shuffle) {
 }
 
 TEST_F(multithread_test, cogroup) {
-    auto g = std::make_unique<common::graph>();
+    auto ctx = std::make_shared<request_context>();
+    auto g = std::make_unique<common::graph>(*ctx);
     auto scan1 = std::make_unique<simple_scan_process>();
     auto scan2 = std::make_unique<simple_scan_process>();
     auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});

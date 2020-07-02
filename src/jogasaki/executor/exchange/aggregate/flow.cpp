@@ -51,13 +51,13 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<aggregate
 flow::~flow() = default;
 flow::flow() : info_(std::make_shared<shuffle_info>()) {}
 flow::flow(std::shared_ptr<shuffle_info> info,
-        std::shared_ptr<request_context> context,
+        request_context* context,
         step* owner, std::size_t downstream_partitions) :
-        info_(std::move(info)), context_(std::move(context)), owner_(owner), downstream_partitions_(downstream_partitions) {}
+        info_(std::move(info)), context_(context), owner_(owner), downstream_partitions_(downstream_partitions) {}
 
 flow::flow(std::shared_ptr<meta::record_meta> input_meta,
         std::vector<field_index_type> key_indices,
-        std::shared_ptr<request_context> context,
+        request_context* context,
         step* owner,
         std::size_t downstream_partitions
 ) :

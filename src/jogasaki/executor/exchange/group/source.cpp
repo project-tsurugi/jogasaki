@@ -25,8 +25,8 @@ source::source() = default;
 source::~source() = default;
 
 source::source(std::shared_ptr<shuffle_info> info,
-        std::shared_ptr<request_context> context
-) : info_(std::move(info)), context_(std::move(context)) {}
+        request_context* context
+) : info_(std::move(info)), context_(context) {}
 
 void source::receive(std::unique_ptr<input_partition> in) {
     partitions_.emplace_back(std::move(in));

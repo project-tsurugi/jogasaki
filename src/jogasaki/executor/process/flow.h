@@ -50,13 +50,13 @@ public:
             record_meta_list input_meta,
             record_meta_list subinput_meta,
             record_meta_list output_meta,
-            std::shared_ptr<request_context> context,
+            request_context* context,
             common::step* step
     ) :
             input_meta_(std::move(input_meta)),
             subinput_meta_(std::move(subinput_meta)),
             output_meta_(std::move(output_meta)),
-            context_(std::move(context)),
+            context_(context),
             step_(step)
     {}
 
@@ -88,7 +88,7 @@ private:
     record_meta_list subinput_meta_{};
     record_meta_list output_meta_{};
     record_meta_list external_meta_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
     common::step* step_{};
 };

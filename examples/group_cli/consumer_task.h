@@ -32,12 +32,12 @@ class consumer_task : public common_cli::task_base {
 public:
     consumer_task() = default;
     consumer_task(
-            std::shared_ptr<request_context> context,
+            request_context* context,
             model::step* src,
             executor::reader_container reader,
             std::shared_ptr<meta::group_meta> meta,
             params& c
-    ) : task_base(std::move(context), src), meta_(std::move(meta)), reader_(reader), params_(&c) {}
+    ) : task_base(context, src), meta_(std::move(meta)), reader_(reader), params_(&c) {}
 
     void consume_record(executor::group_reader* reader) {
         while(reader->next_group()) {

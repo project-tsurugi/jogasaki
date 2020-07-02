@@ -52,7 +52,7 @@ TEST_F(input_partition_test, basic) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}), context};
+            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}), context.get()};
     record r1 {1, 1.0};
     record r2 {2, 2.0};
     record r3 {3, 3.0};
@@ -77,7 +77,7 @@ TEST_F(input_partition_test, use_monotonic_resource) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
-            context,
+            context.get(),
             };
 
     record r1 {1, 1.0};
@@ -105,7 +105,7 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}),
-            context,
+            context.get(),
             2
             };
     record r1 {1, 1.0};
@@ -141,7 +141,7 @@ TEST_F(input_partition_test, text) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta2(), std::vector<std::size_t>{0}),
-            context,
+            context.get(),
             };
 
     struct S {

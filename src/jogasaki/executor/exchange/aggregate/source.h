@@ -33,7 +33,7 @@ public:
     source& operator=(source&& other) noexcept = delete;
     explicit source(
             std::shared_ptr<shuffle_info> info,
-            std::shared_ptr<request_context> context
+            request_context* context
             );
     void receive(std::unique_ptr<input_partition> in);
 
@@ -42,7 +42,7 @@ public:
 private:
     std::vector<std::unique_ptr<group_reader>> readers_;
     std::shared_ptr<shuffle_info> info_{};
-    std::shared_ptr<request_context> context_{};
+    request_context* context_{};
     std::vector<std::unique_ptr<input_partition>> partitions_{};
 };
 

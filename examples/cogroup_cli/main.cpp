@@ -80,7 +80,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto compiler_context = std::make_shared<plan::compiler_context>();
     auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
 
-    common::graph g{context};
+    common::graph g{*context};
     producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.key_modulo_ };
     producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.key_modulo_ };
     auto& scan1 = g.emplace<producer_process>(meta, l_params);

@@ -25,11 +25,11 @@ namespace jogasaki::executor::exchange::group {
 
 sink::sink(std::size_t downstream_partitions,
         std::shared_ptr<shuffle_info> info,
-        std::shared_ptr<request_context> context
+        request_context* context
 ) :
         downstream_partitions_(downstream_partitions),
         info_(std::move(info)),
-        context_(std::move(context)),
+        context_(context),
         partitioner_(downstream_partitions_, info_->key_meta())
 {}
 
@@ -51,7 +51,7 @@ std::vector<std::unique_ptr<input_partition>>& sink::input_partitions() {
     return partitions_;
 }
 
-std::shared_ptr<request_context> const& sink::context() const noexcept {
+request_context* sink::context() const noexcept {
     return context_;
 }
 

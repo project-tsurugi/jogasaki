@@ -65,14 +65,14 @@ TEST_F(sorted_vector_reader_test, basic) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
             ));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
     ));
 
     record arr[] = {
@@ -117,21 +117,21 @@ TEST_F(sorted_vector_reader_test, multiple_partitions) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
             ));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
             ));
     auto& p3 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
             ));
 
     record arr[] = {
@@ -188,14 +188,14 @@ TEST_F(sorted_vector_reader_test, empty_partition) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
     ));
     auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             info,
-            context
+            context.get()
     ));
 
     record arr[] = {

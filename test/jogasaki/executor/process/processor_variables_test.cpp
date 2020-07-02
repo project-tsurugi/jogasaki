@@ -21,6 +21,10 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>
+#include <takatori/plan/forward.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/buffer.h>
+#include <takatori/relation/step/take_flat.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -38,10 +42,57 @@ class processor_variables_test : public test_root {
 
 };
 
+namespace relation = ::takatori::relation;
+//namespace scalar = ::takatori::scalar;
+using take = relation::step::take_flat;
+using offer = relation::step::offer;
+using buffer = relation::buffer;
+
+using rgraph = ::takatori::graph::graph<relation::expression>;
+
 TEST_F(processor_variables_test, basic) {
     factory f;
 
-    processor_variables v{};
+    ::takatori::plan::forward f1 {
+        f.exchange_column(),
+        f.exchange_column(),
+        f.exchange_column(),
+    };
+    ::takatori::plan::forward f2 {
+        f.exchange_column(),
+        f.exchange_column(),
+        f.exchange_column(),
+    };
+
+    rgraph rg;
+
+    auto&& c1 = f.stream_variable("c1");
+    auto&& c2 = f.stream_variable("c2");
+    auto&& c3 = f.stream_variable("c3");
+    auto&& r1 = rg.insert(take {
+        f.exchange(f1),
+        {
+            { f1.columns()[0], c1 },
+            { f1.columns()[1], c2 },
+            { f1.columns()[2], c3 },
+        },
+    });
+    auto&& r2 = rg.insert(offer {
+        f.exchange(f2),
+        {
+            { c2, f2.columns()[0] },
+            { c1, f2.columns()[1] },
+            { c1, f2.columns()[2] },
+        },
+    });
+    r1.output() >> r2.input();
+
+    processor_variables v{rg};
+
+    ASSERT_EQ(1, v.block_variables().size());
+    auto& b = v.block_variables()[0];
+    auto meta = b.meta();
+    ASSERT_EQ(2, meta->field_count());
 }
 
 }

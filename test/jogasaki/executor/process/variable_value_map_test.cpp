@@ -18,7 +18,9 @@
 #include <string>
 
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/configurable_provider.h>
 #include <takatori/util/object_creator.h>
+#include <takatori/type/int.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>
@@ -37,6 +39,9 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 using namespace yugawara::binding;
+using namespace yugawara;
+
+namespace t = ::takatori::type;
 
 class variable_value_map_test : public test_root {
 
@@ -45,7 +50,31 @@ class variable_value_map_test : public test_root {
 TEST_F(variable_value_map_test, basic) {
     factory f;
     auto v1 = f.stream_variable("v1");
-    auto v2 = f.stream_variable("v2");
+    auto v2 = f.exchange_column("v2");
+    variable_value_map::entity_type map{};
+    map[v1] = value_info{1, 1};
+    map[v2] = value_info{2,2};
+
+    variable_value_map m{std::move(map)};
+    auto& i1 = m.at(v1);
+    ASSERT_EQ(1, i1.value_offset());
+    auto& i2 = m.at(v2);
+    ASSERT_EQ(2, i2.value_offset());
+}
+
+TEST_F(variable_value_map_test, table_column) {
+    storage::configurable_provider storages_;
+    auto t1 = storages_.add_table("T1", storage::table {
+        "T1",
+        {
+            { "C1", t::int4() },
+        },
+    });
+    auto&& cols = t1->columns();
+
+    factory f;
+    auto v1 = f.stream_variable("v1");
+    auto v2 = f.table_column(cols[0]);
     variable_value_map::entity_type map{};
     map[v1] = value_info{1, 1};
     map[v2] = value_info{2,2};

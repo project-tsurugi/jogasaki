@@ -29,14 +29,26 @@ public:
     block_variables() = default;
 
     explicit block_variables(
-        std::unique_ptr<data::small_record_store> variables,
+        std::unique_ptr<data::small_record_store> store,
         std::unique_ptr<variable_value_map> value_map,
         std::shared_ptr<meta::record_meta> meta
-    ) : variables_(std::move(variables)), value_map_(std::move(value_map)), meta_(std::move(meta))
+    ) : store_(std::move(store)), value_map_(std::move(value_map)), meta_(std::move(meta))
     {}
 
+    [[nodiscard]] data::small_record_store& store() const noexcept {
+        return *store_;
+    }
+
+    [[nodiscard]] variable_value_map& value_map() const noexcept {
+        return *value_map_;
+    }
+
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+        return meta_;
+    }
+
 private:
-    std::unique_ptr<data::small_record_store> variables_{};
+    std::unique_ptr<data::small_record_store> store_{};
     std::unique_ptr<variable_value_map> value_map_{};
     std::shared_ptr<meta::record_meta> meta_{};
 };

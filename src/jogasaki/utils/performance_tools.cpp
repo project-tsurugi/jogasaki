@@ -13,33 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <glog/logging.h>
 #include "performance_tools.h"
 
 #include <memory>
+#include <sstream>
 
 namespace jogasaki::utils {
 
-watch_class& get_watch() {
 #ifdef PERFORMANCE_TOOLS
+
+watch_class& get_watch() {
     return performance_tools::get_watch();
-#else
-    static std::unique_ptr<watch_class> watch_ = std::make_unique<watch_class>();
-    return *watch_;
-#endif
 }
 
-#ifdef PERFORMANCE_TOOLS
-void dump_info(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
+std::string textualize(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
+    std::stringstream ss;
+
+    ss << "performance counter result for " << label << std::endl;
     auto results = result.laps(bgn, end);
     for(auto r : *results.get()) {
-        LOG(INFO) << label << "\t" << r;
+        ss << label << "\t" << r << std::endl;
     }
+    return ss.str();
 }
+
 #else
-void dump_info(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
-    LOG(INFO) << label << ": total " << result.duration(bgn, end) << "ms, average " << result.average_duration(bgn, end) << "ms" ;
+
+watch_class& get_watch() {
+    static std::unique_ptr<watch_class> watch_ = std::make_unique<watch_class>();
+    return *watch_;
 }
+
+std::string textualize(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
+    std::stringstream ss;
+    ss << label << ": total " << result.duration(bgn, end) << "ms, average " << result.average_duration(bgn, end) << "ms" ;
+    return ss.str();
+}
+
 #endif
 
 } // namespace

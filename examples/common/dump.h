@@ -23,12 +23,12 @@ namespace jogasaki::common_cli {
 void dump_perf_info() {
     auto& watch = utils::get_watch();
     watch.set_point(time_point_main_completed);
-    jogasaki::utils::dump_info(watch, time_point_prepare, time_point_produce, "prepare");
-    jogasaki::utils::dump_info(watch, time_point_produce, time_point_produced, "produce");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_produce, "prepare");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_produce, time_point_produced, "produce");
 #ifndef PERFORMANCE_TOOLS
     LOG(INFO) << "transfer: total " << watch.duration(time_point_produced, time_point_consume, true) << "ms" ;
 #endif
-    jogasaki::utils::dump_info(watch, time_point_consume, time_point_consumed, "consume");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_consume, time_point_consumed, "consume");
 #ifndef PERFORMANCE_TOOLS
     LOG(INFO) << "finish: total " << watch.duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
 #endif

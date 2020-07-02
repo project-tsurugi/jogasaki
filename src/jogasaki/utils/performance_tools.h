@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <string>
 #ifdef PERFORMANCE_TOOLS
 #include <performance-tools/perf_counter.h>
 #include <performance-tools/lap_counter.h>
@@ -30,6 +31,6 @@ using watch_class = jogasaki::utils::watch;
 #endif
 
 watch_class& get_watch();
-void dump_info(watch_class&, watch_class::point_in_code, watch_class::point_in_code, std::string_view);
+std::string textualize(watch_class&, watch_class::point_in_code, watch_class::point_in_code, std::string_view);
 
 } // namespace

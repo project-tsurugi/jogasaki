@@ -100,7 +100,9 @@ public:
         context_(context),
         comparator_(info_->key_meta().get()),
         initial_hash_table_size_(initial_hash_table_size)
-    {}
+    {
+        (void)context_;
+    }
 
     /**
      * @brief write record to the input partition

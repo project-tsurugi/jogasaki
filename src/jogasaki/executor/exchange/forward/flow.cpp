@@ -50,7 +50,9 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::
 
 flow::flow(std::shared_ptr<meta::record_meta> input_meta,
         request_context* context) :
-        input_meta_(std::move(input_meta)), context_(context) {}
+        input_meta_(std::move(input_meta)), context_(context) {
+    (void)context_;
+}
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
 //        auto ch = graph_ ? &graph_->get_channel() : nullptr;

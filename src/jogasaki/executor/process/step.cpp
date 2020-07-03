@@ -13,7 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "step.h"
+
+#include <memory>
+#include "flow.h"
 
 namespace jogasaki::executor::process {
 
+step::step(std::shared_ptr<impl::processor_info> info, step::number_of_ports inputs, step::number_of_ports outputs,
+    step::number_of_ports subinputs) : common::step(inputs, outputs, subinputs), info_(std::move(info)) {}
+
+common::step_kind step::kind() const noexcept {
+    return common::step_kind::process;
+}
+
+std::size_t step::partitions() const noexcept {
+    return default_partitions;
+}
+
+void step::activate() {
+    data_flow_object(std::make_unique<flow>(
+        flow::record_meta_list {},
+        flow::record_meta_list {},
+        flow::record_meta_list {},
+        context(),
+        this,
+        info_
+    ));
+}
 }

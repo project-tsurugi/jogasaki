@@ -22,13 +22,19 @@
 #include <jogasaki/model/graph.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/process/impl/processor_info.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
 
 class step : public common::step {
 public:
-    explicit step(number_of_ports inputs = 0, number_of_ports outputs = 0, number_of_ports subinputs = 0) : common::step(inputs, outputs, subinputs) {}
+    step() = default;
+
+    explicit step(std::shared_ptr<impl::processor_info> info,
+        number_of_ports inputs = 0,
+        number_of_ports outputs = 0,
+        number_of_ports subinputs = 0);
 
     void notify_prepared() override {
         // check if main inputs are already available
@@ -38,9 +44,7 @@ public:
         // destroy process buffer
     }
 
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::process;
-    }
+    [[nodiscard]] common::step_kind kind() const noexcept override;
 
     /**
      * @brief declare the number of partitions
@@ -50,19 +54,11 @@ public:
      * Subclass should override the default implementation to handle specific cases limiting the number of partitions.
      * @return the number of partitions
      */
-    [[nodiscard]] virtual std::size_t partitions() const noexcept {
-        return default_partitions;
-    }
+    [[nodiscard]] virtual std::size_t partitions() const noexcept;
 
-    void activate() override {
-        data_flow_object(std::make_unique<flow>(
-            flow::record_meta_list {},
-            flow::record_meta_list {},
-            flow::record_meta_list {},
-            context(),
-            this
-        ));
-    }
+    void activate() override;
+private:
+    std::shared_ptr<impl::processor_info> info_{};
 };
 
 }

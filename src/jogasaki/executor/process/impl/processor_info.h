@@ -19,28 +19,37 @@
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
 
-#include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/impl/relop/engine.h>
-#include "processor_info.h"
-
 namespace jogasaki::executor::process::impl {
 
 namespace graph = takatori::graph;
 namespace relation = takatori::relation;
 
 /**
- * @brief processor implementation for production
+ * @brief processor specification
  */
-class processor : public process::abstract::processor {
+class processor_info {
 public:
-    processor() = default;
+    processor_info() = default;
 
-    explicit processor(std::shared_ptr<processor_info> info) noexcept;
+    explicit processor_info(
+        graph::graph<relation::expression>& operators,
+        yugawara::compiled_info const& info
+    ) noexcept :
+        operators_(std::addressof(operators)),
+        info_(std::addressof(info))
+    {}
 
-    abstract::status run(abstract::task_context* context) override;
+    [[nodiscard]] graph::graph<relation::expression> const& operators() {
+        return *operators_;
+    }
+
+    [[nodiscard]] yugawara::compiled_info const* compiled_info() {
+        return info_;
+    }
 
 private:
-    std::shared_ptr<processor_info> info_{};
+    graph::graph<relation::expression>* operators_{};
+    yugawara::compiled_info const* info_{};
 };
 
 }

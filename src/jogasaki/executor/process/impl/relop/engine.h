@@ -16,18 +16,17 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <yugawara/compiler_result.h>
 #include <takatori/relation/graph.h>
 #include <takatori/relation/scan.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/step/dispatch.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/data/small_record_store.h>
 
-#include <jogasaki/executor/process/abstract/processor.h>
-#include "scanner.h"
 #include "emitter.h"
 
 namespace jogasaki::executor::process::impl::relop {
@@ -52,111 +51,31 @@ public:
     explicit engine(graph::graph<relation::expression>& operators,
         std::shared_ptr<meta::record_meta> meta,
         std::shared_ptr<data::record_store> store
-    ) noexcept :
-        operators_(operators),
-        meta_(std::move(meta)),
-        buf_(meta_),
-        store_(std::move(store)) {
-        //TODO prepare stack-like working area needed for this engine to complete all operators
-    }
+    ) noexcept;
 
-    relation::expression& head() {
-        relation::expression* result = nullptr;
-        takatori::relation::enumerate_top(operators_, [&](relation::expression& v) {
-            result = &v;
-        });
-        if (result != nullptr) {
-            return *result;
-        }
-        fail();
-    }
+    relation::expression& head();
 
-    void operator()(relation::find const& node) {
-        (void)node;
-        fail();
-    }
+    void operator()(relation::find const& node);
 
-    void operator()(relation::scan const& node) {
-        LOG(INFO) << "scan";
-        auto stg = std::make_shared<storage::storage_context>();
-        std::map<std::string, std::string> options{};
-        stg->open(options);
-        scanner s{{}, stg, meta_, buf_.ref()};
-        dispatch(*this, node.output().opposite()->owner());
-    }
-    void operator()(relation::join_find const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::join_scan const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::project const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::filter const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::buffer const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::emit const& node) {
-        (void)node;
-        LOG(INFO) << "emit";
-        if (!emitter_) {
-            emitter_ = std::make_shared<emitter>(meta_, store_);
-        }
-        emitter_->emit(buf_.ref());
-    }
-    void operator()(relation::write const& node) {
-        (void)node;
-        fail();
-    }
+    void operator()(relation::scan const& node);
+    void operator()(relation::join_find const& node);
+    void operator()(relation::join_scan const& node);
+    void operator()(relation::project const& node);
+    void operator()(relation::filter const& node);
+    void operator()(relation::buffer const& node);
+    void operator()(relation::emit const& node);
+    void operator()(relation::write const& node);
+    void operator()(relation::step::join const& node);
+    void operator()(relation::step::aggregate const& node);
+    void operator()(relation::step::intersection const& node);
+    void operator()(relation::step::difference const& node);
+    void operator()(relation::step::flatten const& node);
+    void operator()(relation::step::take_flat const& node);
+    void operator()(relation::step::take_group const& node);
+    void operator()(relation::step::take_cogroup const& node);
+    void operator()(relation::step::offer const& node);
 
-    void operator()(relation::step::join const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::aggregate const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::intersection const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::difference const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::flatten const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::take_flat const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::take_group const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::take_cogroup const& node) {
-        (void)node;
-        fail();
-    }
-    void operator()(relation::step::offer const& node) {
-        (void)node;
-        fail();
-    }
-
-    void process() {
-        dispatch(*this, head());
-    }
+    void process();
 
 private:
     graph::graph<relation::expression>& operators_;

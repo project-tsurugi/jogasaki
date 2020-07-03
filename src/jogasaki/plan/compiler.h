@@ -127,10 +127,33 @@ void create_mirror(compiler_context& ctx) {
             auto&& c = downcast<statement::execute>(statement);
             auto& g = c.execution_plan();
             auto mirror = std::make_shared<executor::common::graph>();
-            takatori::plan::enumerate_top(g, [&mirror](takatori::plan::step const& s){
-                // TODO implement others than process
-                (void)s;
-                mirror->emplace<executor::process::step>();
+            executor::common::step* prev{};
+            takatori::plan::enumerate_top(g, [&mirror, &prev, &ctx](takatori::plan::step const& s){
+                // TODO implement
+                executor::common::step* cur{};
+                switch(s.kind()) {
+                    case takatori::plan::step_kind::process: {
+                        auto& process = static_cast<takatori::plan::process const&>(s);
+                        auto info = std::make_shared<executor::process::impl::processor_info>(
+                            const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
+                        cur = &mirror->emplace<executor::process::step>(std::move(info));
+                        break;
+                    }
+                    case takatori::plan::step_kind::forward:
+                        break;
+                    case takatori::plan::step_kind::group:
+                        break;
+                    case takatori::plan::step_kind::aggregate:
+                        break;
+                    case takatori::plan::step_kind::broadcast:
+                        break;
+                    case takatori::plan::step_kind::discard:
+                        break;
+                }
+                if (prev != nullptr) {
+                    *prev >> *cur;
+                }
+                prev = cur;
             });
             ctx.step_graph(std::move(mirror));
             break;

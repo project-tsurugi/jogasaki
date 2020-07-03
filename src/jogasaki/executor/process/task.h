@@ -33,14 +33,14 @@ class task : public common::task {
 public:
     task() = default;
     task(request_context* context,
-            step_type* src,
-            std::unique_ptr<abstract::task_context> task_context,
-            std::unique_ptr<abstract::processor> processor
-            ) :
-            common::task(context, src),
-            task_context_(std::move(task_context)),
-            processor_(std::move(processor))
-            {}
+        step_type* src,
+        std::unique_ptr<abstract::task_context> task_context,
+        std::shared_ptr<abstract::processor> processor
+    ) :
+        common::task(context, src),
+        task_context_(std::move(task_context)),
+        processor_(std::move(processor))
+    {}
 
     model::task_result operator()() override {
         VLOG(1) << *this << " process::task executed.";
@@ -62,7 +62,7 @@ public:
 
 private:
     std::unique_ptr<abstract::task_context> task_context_{};
-    std::unique_ptr<abstract::processor> processor_{};
+    std::shared_ptr<abstract::processor> processor_{};
 };
 
 }

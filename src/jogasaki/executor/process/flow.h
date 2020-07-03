@@ -16,12 +16,14 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/processor.h>
+#include <jogasaki/executor/process/impl/processor_info.h>
 #include "task.h"
 
 namespace jogasaki::executor::process {
@@ -51,37 +53,15 @@ public:
             record_meta_list subinput_meta,
             record_meta_list output_meta,
             request_context* context,
-            common::step* step
-    ) :
-            input_meta_(std::move(input_meta)),
-            subinput_meta_(std::move(subinput_meta)),
-            output_meta_(std::move(output_meta)),
-            context_(context),
-            step_(step)
-    {}
+            common::step* step,
+            std::shared_ptr<impl::processor_info> info
+    );
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        // TODO
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-        // create processors
+    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override;
 
-        // create tasks supplying the processor
-
-        std::unique_ptr<abstract::task_context> task_context{};
-        std::unique_ptr<abstract::processor> processor{};
-        tasks_.emplace_back(std::make_unique<task>(context_, step_, std::move(task_context), std::move(processor)));
-        return tasks_;
-    }
-
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override {
-        (void)subinput;
-        // TODO create prepare task for the index
-        return {};
-    }
-
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::process;
-    }
+    [[nodiscard]] common::step_kind kind() const noexcept override;
 
 private:
     record_meta_list input_meta_{};
@@ -91,6 +71,7 @@ private:
     request_context* context_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
     common::step* step_{};
+    std::shared_ptr<impl::processor_info> info_{};
 };
 
 }

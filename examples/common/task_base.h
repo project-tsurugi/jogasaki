@@ -34,7 +34,7 @@ public:
     model::task_result operator()() override {
         execute();
         ++count_;
-        context_->channel()->emplace(event_kind_tag<event_kind::task_completed>, src_->id(), id());
+        context_->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     };
 

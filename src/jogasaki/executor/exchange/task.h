@@ -34,7 +34,7 @@ public:
             common::task(context, src) {}
     model::task_result operator()() override {
         VLOG(1) << *this << " exchange_task executed.";
-        context()->channel()->emplace(event_kind_tag<event_kind::task_completed>, step()->id(), id());
+        context()->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, step()->id(), id());
         return model::task_result::complete;
     }
 };

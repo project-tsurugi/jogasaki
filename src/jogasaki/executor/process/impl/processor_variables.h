@@ -22,7 +22,12 @@
 #include <yugawara/analyzer/block_builder.h>
 #include <yugawara/analyzer/block_algorithm.h>
 #include <yugawara/analyzer/variable_liveness_analyzer.h>
+#include <takatori/relation/emit.h>
+#include <takatori/relation/step/offer.h>
+#include <yugawara/compiled_info.h>
+
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/utils/field_types.h>
 #include "block_variables.h"
 
 namespace jogasaki::executor::process::impl {
@@ -34,16 +39,58 @@ class processor_variables {
 public:
     processor_variables() = default;
 
-    std::vector<meta::field_type> target_fields(yugawara::analyzer::block blk) {
-        auto& back = blk.back();
-        if (back.kind() != takatori::relation::expression_kind::buffer) {
+    explicit processor_variables(
+        takatori::graph::graph<takatori::relation::expression>& operators,
+        yugawara::compiled_info& info,
+        memory::paged_memory_resource* resource = nullptr) : block_variables_(create_block_variables(operators, info, resource))
+    {}
 
-        }
-        return {};
+    [[nodiscard]] std::vector<class block_variables> const& block_variables() const noexcept {
+        return block_variables_;
     }
 
-    explicit processor_variables(takatori::graph::graph<takatori::relation::expression>& operators,
-        memory::paged_memory_resource* resource = nullptr) {
+private:
+    std::vector<class block_variables> block_variables_{};
+
+    void process_target_fields(yugawara::analyzer::block const& blk,
+        yugawara::compiled_info& info,
+        std::vector<meta::field_type>& fields,
+        std::vector<takatori::descriptor::variable>& variables,
+        std::unordered_map<takatori::descriptor::variable, value_info>& map
+    ) {
+        auto& back = blk.back();
+        switch(back.kind()) {
+            case takatori::relation::expression_kind::buffer:
+                return;
+            case takatori::relation::expression_kind::emit: {
+                auto& emit = static_cast<takatori::relation::emit const&>(back);
+                for(auto &c : emit.columns()) {
+                    auto& v = c.source();
+                    variables.emplace_back(v);
+                    map[v] = value_info{};
+                    fields.emplace_back(utils::type_for(info, v));
+                }
+                break;
+            }
+            case takatori::relation::expression_kind::offer: {
+                auto& offer = static_cast<takatori::relation::step::offer const&>(back);
+                for(auto &c : offer.columns()) {
+                    auto& v = c.destination();
+                    variables.emplace_back(v);
+                    map[v] = value_info{};
+                    fields.emplace_back(utils::type_for(info, v));
+                }
+                break;
+            }
+            default:
+                takatori::util::fail();
+        }
+    }
+    std::vector<class block_variables> create_block_variables(
+        takatori::graph::graph<takatori::relation::expression>& operators,
+        yugawara::compiled_info& info,
+        memory::paged_memory_resource* resource) {
+
         // analyze liveness
         // for each basic block, define a block_variables region with
         // result fields + defined fields (except killed in the same basic block)
@@ -61,17 +108,19 @@ public:
         auto& killed = n0.kill();
         std::unordered_map<takatori::descriptor::variable, value_info> map{};
         std::vector<meta::field_type> fields{};
-        // TODO add target meta
-        fields.reserve(n0.define().size());
         std::vector<takatori::descriptor::variable> variables{};
+        process_target_fields(*b0, info, fields, variables, map);
+
+        fields.reserve(n0.define().size());
         for(auto& v : n0.define()) {
             if (killed.count(v) == 0) {
-                fields.emplace_back(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>)); // TODO fetch type
+                fields.emplace_back(utils::type_for(info, v));
                 map[v] = value_info{};
                 variables.emplace_back(v);
             }
         }
         boost::dynamic_bitset<std::uint64_t> nullability{};
+
         nullability.resize(fields.size()); // TODO fetch nullability
         auto meta = std::make_shared<meta::record_meta>(std::move(fields), std::move(nullability));
         assert(meta->field_count() == variables.size());
@@ -79,18 +128,13 @@ public:
             auto& v = variables[i];
             map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
         }
-        block_variables_.emplace_back(
+        std::vector<class block_variables> ret{};
+        ret.emplace_back(
             std::make_unique<data::small_record_store>(meta, 1, resource),
             std::make_unique<variable_value_map>(std::move(map)),
             meta);
+        return ret;
     }
-
-    [[nodiscard]] std::vector<class block_variables> const& block_variables() const noexcept {
-        return block_variables_;
-    }
-
-private:
-    std::vector<class block_variables> block_variables_{};
 };
 
 }

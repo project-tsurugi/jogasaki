@@ -57,12 +57,6 @@ inline constexpr std::string_view to_string_view(event_kind value) noexcept {
     std::abort();
 }
 
-template<event_kind Kind>
-using event_kind_tag_t = takatori::util::enum_tag_t<Kind>;
-
-template<event_kind Kind>
-inline constexpr event_kind_tag_t<Kind> event_kind_tag {};
-
 template<class Callback, class... Args>
 inline auto dispatch(Callback&& callback, event_kind tag_value, Args&&... args) {
     using kind = event_kind;
@@ -82,8 +76,8 @@ public:
     using identity_type = model::step::identity_type;
     using port_index_type = model::step::port_index_type;
     event() = default;
-    event(event_kind_tag_t<event_kind::task_completed> tag, identity_type step, model::task::identity_type task) : kind_(tag), target_(step), task_(task) {}
-    event(event_kind_tag_t<event_kind::providing> tag, identity_type step, port_kind pkind, port_index_type pindex) : kind_(tag), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
+    event(takatori::util::enum_tag_t<event_kind::task_completed>, identity_type step, model::task::identity_type task) : kind_(event_kind::task_completed), target_(step), task_(task) {}
+    event(takatori::util::enum_tag_t<event_kind::providing>, identity_type step, port_kind pkind, port_index_type pindex) : kind_(event_kind::providing), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
 
     event_kind kind() {
         return kind_;

@@ -54,7 +54,7 @@ public:
         // map return code from the status code returned by processor::run()
 
         // raise appropriate event if needed
-        context()->channel()->emplace(event_kind_tag<event_kind::task_completed>, id(), id());
+        context()->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, id(), id());
 
         // TODO support sleep/yield
         return jogasaki::model::task_result::complete;

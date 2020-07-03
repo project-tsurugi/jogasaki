@@ -49,6 +49,8 @@
 #include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
 
+#include <takatori/util/enum_tag.h>
+#include <jogasaki/utils/field_types.h>
 #include "test_utils.h"
 
 namespace jogasaki::testing {
@@ -259,6 +261,10 @@ TEST_F(compiler_test, simple_query) {
     EXPECT_EQ(result.type_of(c1p0), type::float8());
 
     dump(result);
+
+    // test utils
+    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(result.info(), c0p0));
+    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(result.info(), c1p0));
 }
 
 TEST_F(compiler_test, filter) {

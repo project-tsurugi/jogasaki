@@ -15,10 +15,14 @@
  */
 #include "flow.h"
 
+#include <memory>
+
+#include <jogasaki/executor/process/impl/task_context.h>
+
 namespace jogasaki::executor::process {
 
 flow::flow(flow::record_meta_list input_meta, flow::record_meta_list subinput_meta, flow::record_meta_list output_meta,
-    request_context *context, common::step *step, std::shared_ptr<impl::processor_info> info) :
+    request_context *context, process::step* step, std::shared_ptr<impl::processor_info> info) :
     input_meta_(std::move(input_meta)),
     subinput_meta_(std::move(subinput_meta)),
     output_meta_(std::move(output_meta)),
@@ -30,7 +34,6 @@ flow::flow(flow::record_meta_list input_meta, flow::record_meta_list subinput_me
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     auto& res = context_->compiler_context()->compiler_result();
     auto& stmt = res.statement();
-    std::unique_ptr<abstract::task_context> task_context{};
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:
@@ -41,7 +44,20 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
         default:
             takatori::util::fail();
     }
-    tasks_.emplace_back(std::make_unique<task>(context_, step_, std::move(task_context), std::move(proc)));
+    auto task_contexts = std::make_shared<impl::task_context_pool>();
+
+    for (std::size_t i=0; i < step_->partitions(); ++i) {
+        task_contexts->push(std::make_shared<impl::task_context>(
+            i
+            //TODO
+//        std::vector<reader_info> readers,
+//        std::vector<writer_info> writers,
+//        std::vector<writer_info> external_writers,
+//        std::unique_ptr<abstract::scan_info> scan_info
+
+            ));
+        tasks_.emplace_back(std::make_unique<task>(context_, step_, task_contexts, std::move(proc)));
+    }
     return tasks_;
 }
 

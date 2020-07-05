@@ -16,13 +16,11 @@
 #pragma once
 
 #include <memory>
-#include <glog/logging.h>
 
-#include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/task_context_pool.h>
 #include <jogasaki/request_context.h>
 
 #include "process_executor.h"
@@ -34,34 +32,15 @@ public:
     task() = default;
     task(request_context* context,
         step_type* src,
-        std::unique_ptr<abstract::task_context> task_context,
+        std::shared_ptr<impl::task_context_pool> task_contexts,
         std::shared_ptr<abstract::processor> processor
-    ) :
-        common::task(context, src),
-        task_context_(std::move(task_context)),
-        processor_(std::move(processor))
-    {}
+    );
 
-    model::task_result operator()() override {
-        VLOG(1) << *this << " process::task executed.";
 
-        // setup process_executor with the processor_
-
-        // have process_executor setup the context
-
-        // run processor with the context
-
-        // map return code from the status code returned by processor::run()
-
-        // raise appropriate event if needed
-        context()->channel()->emplace(event_enum_tag<event_kind::task_completed>, id(), id());
-
-        // TODO support sleep/yield
-        return jogasaki::model::task_result::complete;
-    }
+    model::task_result operator()() override;
 
 private:
-    std::unique_ptr<abstract::task_context> task_context_{};
+    std::shared_ptr<impl::task_context_pool> task_contexts_;
     std::shared_ptr<abstract::processor> processor_{};
 };
 

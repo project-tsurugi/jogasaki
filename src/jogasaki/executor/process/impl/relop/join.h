@@ -33,8 +33,6 @@
 
 namespace jogasaki::executor::process::impl::relop {
 
-using namespace jogasaki::executor;
-
 class join {
 public:
     using input_index = std::size_t;

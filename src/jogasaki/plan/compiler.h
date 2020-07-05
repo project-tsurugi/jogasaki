@@ -60,9 +60,7 @@ namespace jogasaki::plan {
 ///@private
 namespace impl {
 
-using namespace std::string_literals;
-using namespace std::string_view_literals;
-using namespace meta;
+// TODO avoid using namespace
 using namespace takatori::util;
 
 using namespace ::mizugaki::translator;
@@ -70,7 +68,6 @@ using namespace ::mizugaki;
 
 using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
-
 namespace statement = ::takatori::statement;
 
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {

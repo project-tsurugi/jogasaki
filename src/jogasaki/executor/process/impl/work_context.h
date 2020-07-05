@@ -27,6 +27,16 @@ class work_context : public process::abstract::work_context {
 public:
     work_context() = default;
 
+    work_context(
+        takatori::graph::graph<takatori::relation::expression>& operators,
+        yugawara::compiled_info& info,
+        memory::paged_memory_resource* resource = nullptr) :
+        variables_(operators, info, resource)
+    {}
+
+    [[nodiscard]] processor_variables const& variables() const noexcept {
+        return variables_;
+    }
 private:
     processor_variables variables_{};
 };

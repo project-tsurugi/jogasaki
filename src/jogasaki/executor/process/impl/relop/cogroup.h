@@ -35,8 +35,6 @@
 
 namespace jogasaki::executor::process::impl::relop {
 
-using namespace jogasaki::executor;
-
 namespace impl {
 
 using checkpoint = memory::lifo_paged_memory_resource::checkpoint;

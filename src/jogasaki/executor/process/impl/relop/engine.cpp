@@ -27,14 +27,11 @@ namespace relation = takatori::relation;
 using takatori::util::fail;
 using takatori::relation::step::dispatch;
 
-
-engine::engine(graph::graph<relation::expression> &operators, std::shared_ptr<meta::record_meta> meta,
-    std::shared_ptr<data::record_store> store) noexcept:
+engine::engine(graph::graph<relation::expression> &operators
+    ) noexcept :
     operators_(operators),
-    meta_(std::move(meta)),
+    processor_variables& variables_{};
     buf_(meta_),
-    store_(std::move(store)) {
-    //TODO prepare stack-like working area needed for this engine to complete all operators
 }
 
 relation::expression &engine::head() {

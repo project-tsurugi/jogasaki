@@ -49,7 +49,7 @@ public:
 
         if (rc != status::completed && rc != status::completed_with_errors) {
             // task is suspended in the middle, put the current context back
-            contexts_->push(context);
+            contexts_->push(std::move(context));
         }
         return rc;
     }

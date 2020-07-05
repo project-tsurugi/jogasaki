@@ -19,8 +19,6 @@
 #include <memory>
 
 #include <jogasaki/request_context.h>
-#include <jogasaki/model/port.h>
-#include <jogasaki/model/step.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/process/impl/processor.h>
 #include <jogasaki/executor/process/impl/processor_info.h>
@@ -28,7 +26,8 @@
 
 namespace jogasaki::executor::process {
 
-using namespace jogasaki::model;
+class step;
+
 /**
  * @brief process step data flow
  */
@@ -53,7 +52,7 @@ public:
             record_meta_list subinput_meta,
             record_meta_list output_meta,
             request_context* context,
-            common::step* step,
+            process::step* step,
             std::shared_ptr<impl::processor_info> info
     );
 
@@ -70,7 +69,7 @@ private:
     record_meta_list external_meta_{};
     request_context* context_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    common::step* step_{};
+    step* step_{};
     std::shared_ptr<impl::processor_info> info_{};
 };
 

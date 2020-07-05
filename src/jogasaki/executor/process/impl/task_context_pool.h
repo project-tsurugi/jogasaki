@@ -34,7 +34,7 @@ public:
      */
     task_context_pool() = default;
 
-    void push(std::shared_ptr<abstract::task_context> context) {
+    void push(std::shared_ptr<abstract::task_context>&& context) {
         contexts_.emplace(std::move(context));
     }
 

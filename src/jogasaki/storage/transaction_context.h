@@ -22,6 +22,8 @@
 
 namespace jogasaki::storage {
 
+using ::takatori::util::fail;
+
 /**
  * @brief context for the transaction
  */
@@ -33,7 +35,7 @@ public:
     transaction_context(storage_context const& stg) {
         sharksfin::TransactionOptions txopts{};
         if(auto res = sharksfin::transaction_begin(stg.handle(), txopts, &tx_); res != sharksfin::StatusCode::OK) {
-            takatori::util::fail();
+            fail();
         }
     }
 
@@ -68,7 +70,7 @@ public:
     sharksfin::TransactionHandle handle() noexcept {
         if (!handle_) {
             if(auto res = sharksfin::transaction_borrow_handle(tx_, &handle_); res != sharksfin::StatusCode::OK) {
-                takatori::util::fail();
+                fail();
             }
         }
         return handle_;

@@ -27,6 +27,8 @@
 
 namespace jogasaki::utils {
 
+using ::takatori::util::fail;
+
 inline meta::field_type type_for(yugawara::compiled_info& info, ::takatori::descriptor::variable const& var) {
     auto const& type = info.type_of(var);
     using t = takatori::type::type_kind;
@@ -42,9 +44,9 @@ inline meta::field_type type_for(yugawara::compiled_info& info, ::takatori::desc
         case t::decimal: return meta::field_type(takatori::util::enum_tag<k::decimal>);
         case t::character: return meta::field_type(takatori::util::enum_tag<k::character>);
         case t::bit: return meta::field_type(takatori::util::enum_tag<k::bit>);
-        case t::date: takatori::util::fail();
+        case t::date: fail();
         case t::time_of_day: return meta::field_type(takatori::util::enum_tag<k::time_of_day>);
-        case t::time_point: takatori::util::fail();
+        case t::time_point: fail();
         case t::datetime_interval: return meta::field_type(takatori::util::enum_tag<k::time_interval>);
 
         case t::array:
@@ -54,9 +56,9 @@ inline meta::field_type type_for(yugawara::compiled_info& info, ::takatori::desc
         case t::row_id:
         case t::declared:
         case t::extension:
-            takatori::util::fail();
+            fail();
     }
-    takatori::util::fail();
+    fail();
 }
 
 }

@@ -42,6 +42,8 @@
 
 namespace jogasaki::testing {
 
+using ::takatori::util::fail;
+
 template<class T, class Port>
 inline T& next(Port& port) {
     if (!port.opposite()) {
@@ -65,7 +67,7 @@ inline T& last(::takatori::relation::graph_type& graph) {
             return takatori::util::downcast<T>(e);
         }
     }
-    takatori::util::fail();
+    fail();
 }
 
 template<class T>

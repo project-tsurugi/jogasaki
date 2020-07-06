@@ -26,6 +26,8 @@
 
 namespace jogasaki::executor {
 
+using takatori::util::fail;
+
 /**
  * @brief reader kind
  */
@@ -109,7 +111,7 @@ public:
             case index_of<group_reader*>:
                 return details::to_kind<group_reader>;
         }
-        takatori::util::fail();
+        fail();
     }
 
     /**
@@ -135,7 +137,7 @@ public:
             case index_of<group_reader*>:
                 return *std::get_if<group_reader*>(&reader_) != nullptr;
         }
-        takatori::util::fail();
+        fail();
     }
 
     void release() {
@@ -150,7 +152,7 @@ public:
                 std::get<group_reader*>(reader_)->release();
                 return;
         }
-        takatori::util::fail();
+        fail();
     }
 private:
     entity_type reader_{};

@@ -22,6 +22,8 @@
 
 namespace jogasaki::accessor {
 
+using takatori::util::fail;
+
 template <auto Kind>
 using traits = meta::field_type_traits<Kind>;
 
@@ -60,7 +62,7 @@ void print_field(std::ostream& os, accessor::record_ref record, meta::field_type
 //        case kind::declared: os << record.get_value<traits<kind::declared>::runtime_type>(offset); break;
 //        case kind::extension: os << record.get_value<traits<kind::extension>::runtime_type>(offset); break;
         default:
-            takatori::util::fail();
+            fail();
     }
 }
 

@@ -32,6 +32,8 @@
 
 namespace jogasaki::executor::process::impl {
 
+using ::takatori::util::fail;
+
 /**
  * @brief variables data regions used in a processor
  */
@@ -83,7 +85,7 @@ private:
                 break;
             }
             default:
-                takatori::util::fail();
+                fail();
         }
     }
     std::vector<class block_variables> create_block_variables(
@@ -101,7 +103,7 @@ private:
         auto b0 = find_unique_head(bg);
         if (!b0) {
             // TODO multiple heads supported?
-            takatori::util::fail();
+            fail();
         }
         auto&& n0 = analyzer.inspect(*b0);
 

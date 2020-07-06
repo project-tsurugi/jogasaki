@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 #include "performance_tools.h"
+#ifdef PERFORMANCE_TOOLS
+#include <performance-tools/lap_counter_init.h>
+#endif
 
 #include <memory>
 #include <sstream>

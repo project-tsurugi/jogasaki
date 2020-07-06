@@ -27,16 +27,19 @@ namespace relation = takatori::relation;
 using takatori::util::fail;
 using takatori::relation::step::dispatch;
 
-engine::engine(graph::graph<relation::expression> &operators
-    ) noexcept :
-    operators_(operators),
-    processor_variables& variables_{};
-    buf_(meta_),
-}
+engine::engine(
+    graph::graph<relation::expression>& relations,
+    std::shared_ptr<compiled_info> compiled_info,
+    std::shared_ptr<impl::processor_variables> variables
+) noexcept :
+    relations_(relations),
+    compiled_info_(std::move(compiled_info)),
+    variables_(std::move(variables))
+{}
 
 relation::expression &engine::head() {
     relation::expression* result = nullptr;
-    takatori::relation::enumerate_top(operators_, [&](relation::expression& v) {
+    takatori::relation::enumerate_top(relations_, [&](relation::expression& v) {
         result = &v;
     });
     if (result != nullptr) {
@@ -52,10 +55,13 @@ void engine::operator()(const relation::find &node) {
 
 void engine::operator()(const relation::scan &node) {
     LOG(INFO) << "scan";
-    auto stg = std::make_shared<storage::storage_context>();
-    std::map<std::string, std::string> options{};
-    stg->open(options);
-    scanner s{{}, stg, meta_, buf_.ref()};
+    if (operators_.count(std::addressof(node)) == 0) {
+        auto stg = std::make_shared<storage::storage_context>();
+        std::map<std::string, std::string> options{};
+        stg->open(options);
+        operators_[std::addressof(node)] = std::make_unique<scanner>();
+    }
+    auto&s = *static_cast<scanner*>(operators_[std::addressof(node)].get());
     dispatch(*this, node.output().opposite()->owner());
 }
 

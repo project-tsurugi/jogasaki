@@ -26,13 +26,14 @@
 #include <jogasaki/storage/transaction_context.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include "base.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
 /**
  * @brief scanner
  */
-class scanner {
+class scanner : public base {
 public:
     /**
      * @brief create empty object
@@ -80,6 +81,9 @@ public:
         tx_->commit();
     }
 
+    relop_kind kind() override {
+        return relop_kind::emitter;
+    }
 private:
     std::shared_ptr<abstract::scan_info> info_{};
     std::shared_ptr<storage::storage_context> storage_{};

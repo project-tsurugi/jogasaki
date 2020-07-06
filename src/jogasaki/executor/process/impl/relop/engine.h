@@ -26,6 +26,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/impl/processor_variables.h>
 
 #include "emitter.h"
 
@@ -36,11 +37,10 @@ namespace relation = takatori::relation;
 
 using takatori::util::fail;
 using takatori::relation::step::dispatch;
+using yugawara::compiled_info;
 
 class engine {
 public:
-    using compiler_result = yugawara::compiler_result;
-
     engine() = delete;
     ~engine() = default;
     engine(engine const& other) = delete;
@@ -48,15 +48,15 @@ public:
     engine(engine&& other) noexcept = delete;
     engine& operator=(engine&& other) noexcept = delete;
 
-    explicit engine(graph::graph<relation::expression>& operators,
-        std::shared_ptr<meta::record_meta> meta,
-        std::shared_ptr<data::record_store> store
+    engine(
+        graph::graph<relation::expression>& relations,
+        std::shared_ptr<compiled_info> compiled_info,
+        std::shared_ptr<impl::processor_variables> variables
     ) noexcept;
 
     relation::expression& head();
 
     void operator()(relation::find const& node);
-
     void operator()(relation::scan const& node);
     void operator()(relation::join_find const& node);
     void operator()(relation::join_scan const& node);
@@ -79,12 +79,10 @@ public:
     void process();
 
 private:
-    graph::graph<relation::expression>& operators_;
-    std::shared_ptr<compiler_result> compiled_{};
-    std::shared_ptr<meta::record_meta> meta_{};
-    data::small_record_store buf_;
-    std::shared_ptr<data::record_store> store_{};
-    std::shared_ptr<emitter> emitter_{};
+    graph::graph<relation::expression>& relations_;
+    std::shared_ptr<compiled_info> compiled_info_{};
+    std::shared_ptr<processor_variables> variables_;
+    std::unordered_map<relation::expression const*, std::unique_ptr<base>> operators_{};
 };
 
 }

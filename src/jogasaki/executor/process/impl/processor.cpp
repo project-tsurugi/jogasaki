@@ -20,6 +20,7 @@ namespace jogasaki::executor::process::impl {
 processor::processor(std::shared_ptr<processor_info> info) noexcept:
     info_(std::move(info))
 {}
+
 abstract::status processor::run(abstract::task_context *context) {
     (void) context;
     impl::relop::engine visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), {}, {}};

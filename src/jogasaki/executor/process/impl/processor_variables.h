@@ -28,6 +28,7 @@
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
+#include "processor_info.h"
 #include "block_variables.h"
 
 namespace jogasaki::executor::process::impl {
@@ -42,9 +43,8 @@ public:
     processor_variables() = default;
 
     explicit processor_variables(
-        takatori::graph::graph<takatori::relation::expression>& operators,
-        yugawara::compiled_info& info,
-        memory::paged_memory_resource* resource = nullptr) : block_variables_(create_block_variables(operators, info, resource))
+        std::shared_ptr<processor_info> info,
+        memory::paged_memory_resource* resource = nullptr) : block_variables_(create_block_variables(info->operators(), *info->compiled_info(), resource))
     {}
 
     [[nodiscard]] std::vector<class block_variables> const& block_variables() const noexcept {
@@ -55,7 +55,7 @@ private:
     std::vector<class block_variables> block_variables_{};
 
     void process_target_fields(yugawara::analyzer::block const& blk,
-        yugawara::compiled_info& info,
+        yugawara::compiled_info const& info,
         std::vector<meta::field_type>& fields,
         std::vector<takatori::descriptor::variable>& variables,
         std::unordered_map<takatori::descriptor::variable, value_info>& map
@@ -90,7 +90,7 @@ private:
     }
     std::vector<class block_variables> create_block_variables(
         takatori::graph::graph<takatori::relation::expression>& operators,
-        yugawara::compiled_info& info,
+        yugawara::compiled_info const& info,
         memory::paged_memory_resource* resource) {
 
         // analyze liveness

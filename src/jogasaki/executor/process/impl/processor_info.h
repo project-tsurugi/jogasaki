@@ -39,7 +39,7 @@ public:
         info_(std::addressof(info))
     {}
 
-    [[nodiscard]] graph::graph<relation::expression> const& operators() {
+    [[nodiscard]] graph::graph<relation::expression>& operators() {
         return *operators_;
     }
 

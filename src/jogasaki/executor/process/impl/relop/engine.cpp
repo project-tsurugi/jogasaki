@@ -62,6 +62,7 @@ void engine::operator()(const relation::scan &node) {
         operators_[std::addressof(node)] = std::make_unique<scanner>();
     }
     auto&s = *static_cast<scanner*>(operators_[std::addressof(node)].get());
+    (void)s;
     dispatch(*this, node.output().opposite()->owner());
 }
 

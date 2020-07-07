@@ -26,7 +26,7 @@ namespace jogasaki::executor::process {
 
 /**
  * @brief process executor
- * @details process executor is responsible for set-up processor context and execute the processor in order to
+ * @details process executor is responsible for set-up task context and execute the processor in order to
  * complete the work assigned to a processor task.
  */
 class process_executor {

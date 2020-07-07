@@ -40,15 +40,15 @@ step::identity_type step::id() const {
     return id_;
 }
 
-takatori::util::sequence_view<std::unique_ptr<model::port> const> step::input_ports() const {
+sequence_view<std::unique_ptr<model::port> const> step::input_ports() const {
     return main_input_ports_;
 }
 
-takatori::util::sequence_view<std::unique_ptr<model::port> const> step::subinput_ports() const {
+sequence_view<std::unique_ptr<model::port> const> step::subinput_ports() const {
     return sub_input_ports_;
 }
 
-takatori::util::sequence_view<std::unique_ptr<model::port> const> step::output_ports() const {
+sequence_view<std::unique_ptr<model::port> const> step::output_ports() const {
     return output_ports_;
 }
 
@@ -108,12 +108,12 @@ void step::connect_to_sub(step& downstream, port_index src, port_index target) {
     dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.sub_input_ports_[target].get()));
 }
 
-takatori::util::sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
+sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
     assert(data_flow_object_ != nullptr); //NOLINT
     return data_flow_object_->create_tasks();
 }
 
-takatori::util::sequence_view<std::shared_ptr<model::task>> step::create_pretask(port_index subinput) {
+sequence_view<std::shared_ptr<model::task>> step::create_pretask(port_index subinput) {
     assert(data_flow_object_ != nullptr); //NOLINT
     return data_flow_object_->create_pretask(subinput);
 }

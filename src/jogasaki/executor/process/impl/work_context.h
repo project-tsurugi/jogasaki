@@ -28,10 +28,9 @@ public:
     work_context() = default;
 
     work_context(
-        takatori::graph::graph<takatori::relation::expression>& operators,
-        yugawara::compiled_info& info,
+        std::shared_ptr<processor_info> info,
         memory::paged_memory_resource* resource = nullptr) :
-        variables_(operators, info, resource)
+        variables_(std::move(info), resource)
     {}
 
     [[nodiscard]] processor_variables const& variables() const noexcept {

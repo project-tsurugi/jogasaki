@@ -21,6 +21,7 @@
 
 namespace jogasaki::executor::common {
 
+using ::takatori::util::sequence_view;
 /**
  * @brief group step data flow
  */
@@ -41,14 +42,14 @@ public:
      * @return list of 0 or more tasks that should be newly executed to process main input
      * The tasks are owned by the step.
      */
-    virtual takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() = 0;
+    virtual sequence_view<std::shared_ptr<model::task>> create_tasks() = 0;
 
     /**
      * @brief request step to create prepare task to process input to the given sub-input port
      * @return list of 0 or a task that should be newly executed to process sub input
      * The tasks are owned by the step.
      */
-    virtual takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) = 0;
+    virtual sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) = 0;
 };
 
 }

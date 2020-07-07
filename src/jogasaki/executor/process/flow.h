@@ -22,10 +22,12 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/process/impl/processor.h>
 #include <jogasaki/executor/process/impl/processor_info.h>
+#include <jogasaki/executor/process/impl/task_context.h>
 #include "task.h"
 
 namespace jogasaki::executor::process {
 
+using ::takatori::util::sequence_view;
 class step;
 
 /**
@@ -56,9 +58,9 @@ public:
             std::shared_ptr<impl::processor_info> info
     );
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
+    sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override;
+    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override;
 
     [[nodiscard]] common::step_kind kind() const noexcept override;
 
@@ -71,6 +73,8 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     step* step_{};
     std::shared_ptr<impl::processor_info> info_{};
+
+    std::shared_ptr<impl::task_context> create_task_context(std::size_t partition);
 };
 
 }

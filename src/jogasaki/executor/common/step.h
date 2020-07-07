@@ -23,6 +23,7 @@
 
 namespace jogasaki::executor::common {
 
+using ::takatori::util::sequence_view;
 /**
  * @brief step common implementation
  * @details represents connectivity among steps
@@ -38,9 +39,9 @@ public:
     explicit step(number_of_ports inputs = 0, number_of_ports outputs = 0, number_of_ports subinputs = 0);
 
     [[nodiscard]] identity_type id() const override;
-    [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> input_ports() const override;
-    [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> subinput_ports() const override;
-    [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::port> const> output_ports() const override;
+    [[nodiscard]] sequence_view<std::unique_ptr<model::port> const> input_ports() const override;
+    [[nodiscard]] sequence_view<std::unique_ptr<model::port> const> subinput_ports() const override;
+    [[nodiscard]] sequence_view<std::unique_ptr<model::port> const> output_ports() const override;
 
     /**
      * @brief accessor to owner graph of this step
@@ -70,9 +71,9 @@ public:
 
     void connect_to_sub(step& downstream, port_index src = npos, port_index target = npos);
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
+    sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index subinput) override;
+    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index subinput) override;
 
     [[nodiscard]] flow& data_flow_object() const noexcept;
 

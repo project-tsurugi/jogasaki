@@ -31,7 +31,7 @@ flow::flow(flow::record_meta_list input_meta, flow::record_meta_list subinput_me
     info_(std::move(info))
 {}
 
-takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
+sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     auto& res = context_->compiler_context()->compiler_result();
     auto& stmt = res.statement();
     std::shared_ptr<impl::processor> proc{};
@@ -47,21 +47,13 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
     auto task_contexts = std::make_shared<impl::task_context_pool>();
 
     for (std::size_t i=0; i < step_->partitions(); ++i) {
-        task_contexts->push(std::make_shared<impl::task_context>(
-            i
-            //TODO
-//        std::vector<reader_info> readers,
-//        std::vector<writer_info> writers,
-//        std::vector<writer_info> external_writers,
-//        std::unique_ptr<abstract::scan_info> scan_info
-
-            ));
+        task_contexts->push(create_task_context(i));
         tasks_.emplace_back(std::make_unique<task>(context_, step_, task_contexts, std::move(proc)));
     }
     return tasks_;
 }
 
-takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_pretask(flow::port_index_type subinput) {
+sequence_view<std::shared_ptr<model::task>> flow::create_pretask(flow::port_index_type subinput) {
     (void)subinput;
     // TODO create prepare task for the index
     return {};
@@ -69,6 +61,23 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_pretask
 
 common::step_kind flow::kind() const noexcept {
     return common::step_kind::process;
+}
+
+std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition) {
+    std::vector<impl::reader_info> readers{};
+    std::vector<impl::writer_info> writers{};
+    std::vector<impl::writer_info> external_writers{};
+    std::unique_ptr<abstract::scan_info> sinfo{};
+
+    //TODO implement mapping
+
+    return std::make_shared<impl::task_context>(
+        partition,
+        std::move(readers),
+        std::move(writers),
+        std::move(external_writers),
+        std::move(sinfo)
+    );
 }
 }
 

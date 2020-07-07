@@ -48,6 +48,7 @@ model::task_result task::operator()() {
     context()->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, id(), id());
     return jogasaki::model::task_result::complete;
 }
+
 }
 
 

@@ -59,5 +59,4 @@ private:
     std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider_{};
 };
 
-
 }

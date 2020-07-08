@@ -73,7 +73,9 @@ inline auto dispatch(Callback&& callback, event_kind tag_value, Args&&... args) 
 // The rest of the event/dag_controller still uses original enum_tag_t and its dispatcher because translation units are separated and no compile error occurs.
 // The problem doesn't happen on gcc 8 or newer. When moving to new gcc, remove these tags and recover use of original enum_tag_t.
 template<auto Kind>
-struct event_enum_tag_t {};
+struct event_enum_tag_t {
+    explicit event_enum_tag_t() = default;
+};
 template<auto Kind>
 inline constexpr event_enum_tag_t<Kind> event_enum_tag {};
 

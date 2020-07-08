@@ -22,7 +22,7 @@
 #include <jogasaki/model/graph.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/process/impl/processor_info.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
@@ -31,7 +31,7 @@ class step : public common::step {
 public:
     step() = default;
 
-    explicit step(std::shared_ptr<impl::processor_info> info,
+    explicit step(std::shared_ptr<processor_info> info,
         number_of_ports inputs = 0,
         number_of_ports outputs = 0,
         number_of_ports subinputs = 0);
@@ -58,7 +58,7 @@ public:
 
     void activate() override;
 private:
-    std::shared_ptr<impl::processor_info> info_{};
+    std::shared_ptr<processor_info> info_{};
 };
 
 }

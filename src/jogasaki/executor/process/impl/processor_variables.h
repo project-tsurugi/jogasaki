@@ -28,7 +28,7 @@
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
-#include "processor_info.h"
+#include <jogasaki/executor/process/processor_info.h>
 #include "block_variables.h"
 
 namespace jogasaki::executor::process::impl {

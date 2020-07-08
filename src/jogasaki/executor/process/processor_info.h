@@ -19,7 +19,7 @@
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::executor::process {
 
 namespace graph = takatori::graph;
 namespace relation = takatori::relation;

@@ -20,7 +20,7 @@
 
 namespace jogasaki::executor::process {
 
-step::step(std::shared_ptr<impl::processor_info> info, step::number_of_ports inputs, step::number_of_ports outputs,
+step::step(std::shared_ptr<processor_info> info, step::number_of_ports inputs, step::number_of_ports outputs,
     step::number_of_ports subinputs) : common::step(inputs, outputs, subinputs), info_(std::move(info)) {}
 
 common::step_kind step::kind() const noexcept {

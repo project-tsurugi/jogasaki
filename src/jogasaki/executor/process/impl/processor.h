@@ -21,7 +21,7 @@
 
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/executor/process/impl/relop/engine.h>
-#include "processor_info.h"
+#include <jogasaki/executor/process/processor_info.h>
 
 namespace jogasaki::executor::process::impl {
 

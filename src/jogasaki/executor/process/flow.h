@@ -21,7 +21,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/process/impl/processor.h>
-#include <jogasaki/executor/process/impl/processor_info.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/task_context.h>
 #include "task.h"
 
@@ -55,7 +55,7 @@ public:
             record_meta_list output_meta,
             request_context* context,
             process::step* step,
-            std::shared_ptr<impl::processor_info> info
+            std::shared_ptr<processor_info> info
     );
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override;
@@ -72,7 +72,7 @@ private:
     request_context* context_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
     step* step_{};
-    std::shared_ptr<impl::processor_info> info_{};
+    std::shared_ptr<processor_info> info_{};
 
     std::shared_ptr<impl::task_context> create_task_context(std::size_t partition);
 };

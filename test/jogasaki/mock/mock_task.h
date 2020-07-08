@@ -48,7 +48,7 @@ public:
         ++count_;
         bool has_next = count_ < limit_;
         if (!has_next) {
-            context_->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, src_->id(), id());
+            context_->channel()->emplace(event_enum_tag<event_kind::task_completed>, src_->id(), id());
         }
         return has_next ? model::task_result::proceed : model::task_result::complete;
     };
@@ -71,7 +71,7 @@ protected:
                     }
                     model::step::port_index_type index = o->kind() == port_kind::main ? utils::input_port_index(*o->owner(), *o) : utils::subinput_port_index(
                             *o->owner(), *o);
-                    context_->channel()->emplace(takatori::util::enum_tag<event_kind::providing>, downstream->id(), o->kind(), index);
+                    context_->channel()->emplace(event_enum_tag<event_kind::providing>, downstream->id(), o->kind(), index);
                 }
             }
         }

@@ -30,7 +30,7 @@ public:
             model::step* src) : context_(context), src_(src) {}
     model::task_result operator()() override {
         LOG(INFO) << "test_process_task executed. count: " << count_;
-        context_->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, src_->id(), id());
+        context_->channel()->emplace(event_enum_tag<event_kind::task_completed>, src_->id(), id());
         ++count_;
         return count_ < limit_ ? model::task_result::proceed : model::task_result::complete;
     }

@@ -68,6 +68,15 @@ inline auto dispatch(Callback&& callback, event_kind tag_value, Args&&... args) 
     std::abort();
 }
 
+// gcc7 confuses when enum_tag_t is used with different kind, e.g. field_type_kind and event_kind, and raises compile error.
+// For workaround, define local enum_tag_t like struct and use it for event constructor to avoid type conflict.
+// The rest of the event/dag_controller still uses original enum_tag_t and its dispatcher because translation units are separated and no compile error occurs.
+// The problem doesn't happen on gcc 8 or newer. When moving to new gcc, remove these tags and recover use of original enum_tag_t.
+template<auto Kind>
+struct event_enum_tag_t {};
+template<auto Kind>
+inline constexpr event_enum_tag_t<Kind> event_enum_tag {};
+
 /*
  * @brief detailed information about external event
  */
@@ -76,8 +85,10 @@ public:
     using identity_type = model::step::identity_type;
     using port_index_type = model::step::port_index_type;
     event() = default;
-    event(takatori::util::enum_tag_t<event_kind::task_completed>, identity_type step, model::task::identity_type task) : kind_(event_kind::task_completed), target_(step), task_(task) {}
-    event(takatori::util::enum_tag_t<event_kind::providing>, identity_type step, port_kind pkind, port_index_type pindex) : kind_(event_kind::providing), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
+
+    // FIXME use enum_tag_t instead of event_enum_tag_t when gcc is fixed (see comment for event_enum_tag_t)
+    event(event_enum_tag_t<event_kind::task_completed>, identity_type step, model::task::identity_type task) : kind_(event_kind::task_completed), target_(step), task_(task) {}
+    event(event_enum_tag_t<event_kind::providing>, identity_type step, port_kind pkind, port_index_type pindex) : kind_(event_kind::providing), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
 
     event_kind kind() {
         return kind_;

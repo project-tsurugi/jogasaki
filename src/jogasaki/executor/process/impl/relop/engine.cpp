@@ -101,6 +101,10 @@ void engine::operator()(const relation::write &node) {
     fail();
 }
 
+void engine::operator()(const relation::values &node) {
+    (void)node;
+    fail();
+}
 void engine::operator()(const relation::step::join &node) {
     (void)node;
     fail();

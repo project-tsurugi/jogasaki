@@ -65,6 +65,7 @@ public:
     void operator()(relation::buffer const& node);
     void operator()(relation::emit const& node);
     void operator()(relation::write const& node);
+    void operator()(relation::values const& node);
     void operator()(relation::step::join const& node);
     void operator()(relation::step::aggregate const& node);
     void operator()(relation::step::intersection const& node);

@@ -45,7 +45,7 @@ model::task_result task::operator()() {
             takatori::util::fail();
     }
     // raise appropriate event if needed
-    context()->channel()->emplace(takatori::util::enum_tag<event_kind::task_completed>, id(), id());
+    context()->channel()->emplace(event_enum_tag<event_kind::task_completed>, id(), id());
     return jogasaki::model::task_result::complete;
 }
 

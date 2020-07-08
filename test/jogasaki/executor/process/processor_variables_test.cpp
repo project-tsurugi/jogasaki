@@ -89,7 +89,9 @@ TEST_F(processor_variables_test, DISABLED_basic) {
     auto expression_mapping = std::make_shared<yugawara::analyzer::expression_mapping const>();
     auto variable_mapping = std::make_shared<yugawara::analyzer::variable_mapping const>();
     yugawara::compiled_info info{expression_mapping, variable_mapping};
-    processor_variables v{rg, info};
+
+    auto pinfo = std::make_shared<processor_info>(rg, info);
+    processor_variables v{pinfo};
 
     ASSERT_EQ(1, v.block_variables().size());
     auto& b = v.block_variables()[0];

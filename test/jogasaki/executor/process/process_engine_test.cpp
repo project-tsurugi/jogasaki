@@ -221,7 +221,7 @@ TEST_F(process_engine_test, scan_emit) {
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
 
-    engine e{ops, meta, store};
+    engine e{ops, {}, {}}; //TODO
     e.process();
 }
 

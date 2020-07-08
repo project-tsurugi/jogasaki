@@ -16,11 +16,12 @@
 #pragma once
 
 #include <jogasaki/configuration.h>
-#include <jogasaki/channel.h>
 #include <jogasaki/data/iteratable_record_store.h>
 #include <jogasaki/plan/compiler_context.h>
 
 namespace jogasaki {
+
+class channel;
 
 /**
  * @brief context object for the request scope
@@ -31,7 +32,7 @@ public:
     /**
      * @brief create default context object
      */
-    request_context() = default;
+    request_context();
 
     /**
      * @brief create new context object
@@ -43,46 +44,36 @@ public:
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
         std::shared_ptr<data::iteratable_record_store> result_store = {}
-    ) :
-        channel_(std::move(ch)), config_(std::move(config)), compiler_context_(std::move(compiler_context)), result_store_(std::move(result_store))
-    {}
+    );
 
     /**
      * @brief accessor for the communication channel
      * @return channel to communicate with the scheduler handling the request
      */
-    [[nodiscard]] std::shared_ptr<class channel> const& channel() const {
-        return channel_;
-    }
+    [[nodiscard]] std::shared_ptr<class channel> const& channel() const;
 
     /**
      * @brief accessor for the gloabl configuration
      * @return global configuration
      */
-    [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const {
-        return config_;
-    }
+    [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const;
 
     /**
      * @brief accessor for the result store
      * @return result store
      */
-    [[nodiscard]] std::shared_ptr<data::iteratable_record_store> const& result_store() const {
-        return result_store_;
-    }
+    [[nodiscard]] std::shared_ptr<data::iteratable_record_store> const& result_store() const;
 
     /**
      * @brief accessor for the compiler context
      * @return compiler context for this request
      */
-    [[nodiscard]] std::shared_ptr<plan::compiler_context> const& compiler_context() const {
-        return compiler_context_;
-    }
+    [[nodiscard]] std::shared_ptr<plan::compiler_context> const& compiler_context() const;
 
 private:
-    std::shared_ptr<class channel> channel_{std::make_shared<class channel>()};
-    std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
-    std::shared_ptr<plan::compiler_context> compiler_context_{std::make_shared<plan::compiler_context>()};
+    std::shared_ptr<class channel> channel_{};
+    std::shared_ptr<class configuration> config_{};
+    std::shared_ptr<plan::compiler_context> compiler_context_{};
     std::shared_ptr<data::iteratable_record_store> result_store_{};
 };
 

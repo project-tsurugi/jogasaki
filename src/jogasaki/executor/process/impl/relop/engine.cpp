@@ -18,6 +18,7 @@
 #include <jogasaki/storage/storage_context.h>
 
 #include "scanner.h"
+#include "emitter.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -94,10 +95,14 @@ void engine::operator()(const relation::buffer &node) {
 void engine::operator()(const relation::emit &node) {
     (void)node;
     LOG(INFO) << "emit";
-    if (!emitter_) {
-        emitter_ = std::make_shared<emitter>(meta_, store_);
+    if (operators_.count(std::addressof(node)) == 0) {
+        auto stg = std::make_shared<storage::storage_context>();
+        std::map<std::string, std::string> options{};
+        stg->open(options);
+        operators_[std::addressof(node)] = std::make_unique<emitter>();
     }
-    emitter_->emit(buf_.ref());
+    auto& emitter = *static_cast<class emitter*>(operators_[std::addressof(node)].get());
+    emitter.emit({});
 }
 
 void engine::operator()(const relation::write &node) {

@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+//#include <jogasaki/executor/exchange/group/shuffle_info.h>
 
 namespace jogasaki::executor::exchange::group {
 

@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
 
 #include <jogasaki/mock/simple_scan_process.h>

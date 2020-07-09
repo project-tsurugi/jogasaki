@@ -75,9 +75,43 @@ public:
         }
         return handle_;
     }
+
+    void open_scan() {
+        if(sharksfin::StatusCode res = sharksfin::content_scan(handle_, nullptr, {}, sharksfin::EndPointKind::EXCLUSIVE,
+            {}, sharksfin::EndPointKind::EXCLUSIVE, &iterator_); res != sharksfin::StatusCode::OK) {
+            fail();
+        }
+    }
+
+    bool next_scan() {
+        sharksfin::StatusCode res = sharksfin::iterator_next(iterator_);
+        if (res == sharksfin::StatusCode::OK) {
+            sharksfin::Slice key{};
+            sharksfin::Slice value{};
+            if(sharksfin::StatusCode res2 = sharksfin::iterator_get_key(iterator_, &key);res2 != sharksfin::StatusCode::OK) {
+                fail();
+            }
+            if(sharksfin::StatusCode res2 = sharksfin::iterator_get_value(iterator_, &value);res2 != sharksfin::StatusCode::OK) {
+                fail();
+            }
+            // TODO fill result
+            return true;
+        }
+        if (res == sharksfin::StatusCode::NOT_FOUND) {
+            return false;
+        }
+        fail();
+    }
+
+    void close_scan() {
+        if(sharksfin::StatusCode res = sharksfin::iterator_dispose(iterator_); res != sharksfin::StatusCode::OK) {
+            fail();
+        }
+    }
 private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
+    sharksfin::IteratorHandle iterator_{};
     bool active_{true};
 };
 

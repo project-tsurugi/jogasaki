@@ -42,7 +42,7 @@ public:
     /**
      * @brief create default context object
      */
-    bool open(std::map<std::string, std::string> const& options);
+    bool open(std::map<std::string, std::string> const& options = {});
 
     bool close();
 

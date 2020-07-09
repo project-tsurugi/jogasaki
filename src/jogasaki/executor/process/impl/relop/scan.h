@@ -27,6 +27,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include "operator_base.h"
+#include "scan_context.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -35,6 +36,7 @@ namespace jogasaki::executor::process::impl::relop {
  */
 class scan : public operator_base {
 public:
+    friend class scan_context;
     /**
      * @brief create empty object
      */
@@ -44,41 +46,36 @@ public:
      * @brief create new object
      */
     scan(std::shared_ptr<abstract::scan_info> info,
-        std::shared_ptr<storage::storage_context> storage,
-        std::shared_ptr<meta::record_meta> meta,
-        accessor::record_ref buf) :
+        std::shared_ptr<meta::record_meta> meta
+    ) :
         info_(std::move(info)),
-        storage_(std::move(storage)),
-        meta_(std::move(meta)),
-        buf_(buf),
-        store_(meta_) {
-        auto rec = store_.ref();
-        auto offset_c1 = meta_->value_offset(0);
-        auto offset_c2 = meta_->value_offset(1);
-        rec.set_value(offset_c1,0L);
-        rec.set_value(offset_c2,0.0);
+        meta_(std::move(meta))
+    {}
+
+    void operator()(scan_context& ctx) {
+        if (! ctx.tx_) {
+            open(ctx);
+        }
+        if(!next(ctx)) {
+            close(ctx);
+        }
     }
 
-    void open() {
-        tx_ = storage_->create_transaction();
-//        if (auto res = sharksfin::content_scan(tx_->handle(), &iterator_); res != sharksfin::StatusCode::OK) {
-//            takatori::util::fail();
-//        }
+    void open(scan_context& ctx) {
+        if(! ctx.storage_->open()) {
+            fail();
+        }
+        ctx.tx_ = ctx.storage_->create_transaction();
+        ctx.tx_->open_scan();
     }
 
-    bool next() {
-        // TODO read from sharksfin
-        auto offset_c1 = meta_->value_offset(0);
-        auto offset_c2 = meta_->value_offset(1);
-        auto rec = store_.ref();
-        rec.set_value<std::int64_t>(offset_c1,rec.get_value<std::int64_t>(offset_c1)+1);
-        rec.set_value<double>(offset_c2,rec.get_value<double>(offset_c2)+1);
-        std::memcpy(buf_.data(), rec.data(), rec.size());
-        return true;
+    bool next(scan_context& ctx) {
+        return ctx.tx_->next_scan();
     }
 
-    void close() {
-        tx_->commit();
+    void close(scan_context& ctx) {
+        ctx.tx_->close_scan();
+        ctx.tx_->commit();
     }
 
     operator_kind kind() override {
@@ -87,11 +84,7 @@ public:
 
 private:
     std::shared_ptr<abstract::scan_info> info_{};
-    std::shared_ptr<storage::storage_context> storage_{};
     std::shared_ptr<meta::record_meta> meta_{};
-    accessor::record_ref buf_{};
-    std::shared_ptr<storage::transaction_context> tx_{};
-    data::small_record_store store_;
 };
 
 }

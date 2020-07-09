@@ -35,6 +35,7 @@ namespace jogasaki::executor::process::impl::relop {
  */
 class scan_context : public context_base {
 public:
+    friend class scan;
     /**
      * @brief create empty object
      */
@@ -43,32 +44,18 @@ public:
     /**
      * @brief create new object
      */
-    scan_context(std::shared_ptr<abstract::scan_info> info,
-        std::shared_ptr<storage::storage_context> storage,
-        std::shared_ptr<meta::record_meta> meta,
-        accessor::record_ref buf) :
-        info_(std::move(info)),
-        storage_(std::move(storage)),
-        meta_(std::move(meta)),
-        buf_(buf),
-        store_(meta_) {
-        auto rec = store_.ref();
-        auto offset_c1 = meta_->value_offset(0);
-        auto offset_c2 = meta_->value_offset(1);
-        rec.set_value(offset_c1,0L);
-        rec.set_value(offset_c2,0.0);
-    }
+    explicit scan_context(
+        std::shared_ptr<storage::storage_context> storage
+    ) :
+        storage_(std::move(storage))
+    {}
 
     operator_kind kind() override {
         return operator_kind::scan;
     }
 private:
-    std::shared_ptr<abstract::scan_info> info_{};
     std::shared_ptr<storage::storage_context> storage_{};
-    std::shared_ptr<meta::record_meta> meta_{};
-    accessor::record_ref buf_{};
     std::shared_ptr<storage::transaction_context> tx_{};
-    data::small_record_store store_;
 };
 
 }

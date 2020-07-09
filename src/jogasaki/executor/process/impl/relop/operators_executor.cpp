@@ -19,7 +19,9 @@
 #include <jogasaki/executor/process/impl/work_context.h>
 
 #include "scan.h"
+#include "scan_context.h"
 #include "emit.h"
+#include "emit_context.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -58,10 +60,14 @@ void operators_executor::operator()(const relation::find &node) {
 }
 
 void operators_executor::operator()(const relation::scan &node) {
-    LOG(INFO) << "scan op executed";
+    DLOG(INFO) << "scan op executed";
     auto&s = to<scan>(node);
-    auto b = s.block_index();
-    (void)b;
+    auto* ctx = find_context<scan_context>(&s);
+    if (! ctx) {
+        auto stg = std::make_shared<storage::storage_context>();
+        ctx = make_context<scan_context>(&s, std::move(stg));
+    }
+    s(*ctx);
     dispatch(*this, node.output().opposite()->owner());
 }
 
@@ -91,7 +97,7 @@ void operators_executor::operator()(const relation::buffer &node) {
 }
 
 void operators_executor::operator()(const relation::emit &node) {
-    LOG(INFO) << "emit op executed";
+    DLOG(INFO) << "emit op executed";
     auto&s = to<emit>(node);
     auto* ctx = find_context<emit_context>(&s);
     if (! ctx) {
@@ -157,6 +163,7 @@ void operators_executor::operator()(const relation::step::offer &node) {
 void operators_executor::process() {
     dispatch(*this, head());
 }
+
 }
 
 

@@ -73,7 +73,7 @@ namespace statement = ::takatori::statement;
 
 namespace tinfo = ::shakujo::common::core::type;
 
-class process_engine_test : public test_root {
+class operators_executor_test : public test_root {
 
 public:
     using kind = field_type_kind;
@@ -121,7 +121,7 @@ public:
 
 };
 
-TEST_F(process_engine_test, scan_emit) {
+TEST_F(operators_executor_test, scan_emit) {
     std::string sql = "select * from T0";
     auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();

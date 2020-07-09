@@ -60,7 +60,7 @@
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/relop/relational_operator_builder.h>
+#include <jogasaki/executor/process/impl/relop/relational_operators_builder.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -92,7 +92,7 @@ using buffer = relation::buffer;
 
 using rgraph = ::takatori::graph::graph<relation::expression>;
 
-class block_variables_builder_test : public test_root {
+class block_variables_info_builder_test : public test_root {
 public:
 
     std::unique_ptr<shakujo::model::program::Program> gen_shakujo_program(std::string_view sql) {
@@ -139,7 +139,7 @@ public:
 };
 
 
-TEST_F(block_variables_builder_test, DISABLED_basic) {
+TEST_F(block_variables_info_builder_test, DISABLED_basic) {
     factory f;
     ::takatori::plan::forward f1 {
         f.exchange_column(),
@@ -195,7 +195,7 @@ TEST_F(block_variables_builder_test, DISABLED_basic) {
     ASSERT_EQ(2, meta->field_count());
 }
 
-TEST_F(block_variables_builder_test, temp) {
+TEST_F(block_variables_info_builder_test, temp) {
     std::string sql = "select * from T0";
     auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();
@@ -285,7 +285,7 @@ TEST_F(block_variables_builder_test, temp) {
     }
 
     // additionally test relop builder
-    auto ops = relop::relational_operator_builder{pinfo}();
+    auto ops = relop::relational_operators_builder{pinfo}();
 
     ASSERT_EQ(2, ops.operators().size());
     for(auto&& [e, o] : ops.operators()) {

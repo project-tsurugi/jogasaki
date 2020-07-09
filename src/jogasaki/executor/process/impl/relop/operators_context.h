@@ -15,33 +15,35 @@
  */
 #pragma once
 
-#include <memory>
-#include <jogasaki/executor/process/abstract/work_context.h>
-#include <jogasaki/executor/process/impl/relop/operators_context.h>
+#include <jogasaki/executor/process/impl/relop/operator_base.h>
+#include <jogasaki/executor/process/impl/relop/context_base.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::executor::process::impl::relop {
+
+namespace relation = takatori::relation;
 
 /**
- * @brief processor working context implementation for production
+ * @brief relational operators container
  */
-class work_context : public process::abstract::work_context {
+class operators_context {
 public:
-    using variables_type = std::vector<block_variables>;
+    using contexts_type = std::unordered_map<relop::operator_base const*, std::unique_ptr<relop::context_base>>;
 
-    work_context() = default;
+    operators_context() = default;
 
-    [[nodiscard]] relop::operators_context& contexts() noexcept {
+    explicit operators_context(
+        contexts_type operators
+    ) :
+        contexts_(std::move(operators))
+    {}
+
+    [[nodiscard]] contexts_type const& contexts() const noexcept {
         return contexts_;
-    }
-    [[nodiscard]] variables_type& variables() noexcept {
-        return variables_;
     }
 
 private:
-    relop::operators_context contexts_{};
-    variables_type variables_{};
+    contexts_type contexts_{};
 };
 
 }
-
 

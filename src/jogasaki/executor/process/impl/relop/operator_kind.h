@@ -54,5 +54,3 @@ using operator_kind_set = takatori::util::enum_set<
     operator_kind::emit,
     operator_kind::scan>;
 }
-
-

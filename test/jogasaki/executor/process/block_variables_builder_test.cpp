@@ -187,8 +187,8 @@ TEST_F(block_variables_builder_test, DISABLED_basic) {
     auto pinfo = std::make_shared<processor_info>(rg, info);
     auto v = block_variables_info_builder{pinfo}();
 
-    ASSERT_EQ(1, v.size());
-    auto& b = v[0];
+    ASSERT_EQ(1, v.first.size());
+    auto& b = v.first[0];
     auto meta = b.meta();
     ASSERT_EQ(2, meta->field_count());
 }
@@ -254,10 +254,11 @@ TEST_F(block_variables_builder_test, temp) {
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
     auto v = block_variables_info_builder{pinfo}();
 
-    ASSERT_EQ(1, v.size());
-    auto& b = v[0];
+    ASSERT_EQ(1, v.first.size());
+    auto& b = v.first[0];
     auto meta = b.meta();
     ASSERT_EQ(2, meta->field_count());
+
 
     auto& map = b.value_map();
 
@@ -274,6 +275,12 @@ TEST_F(block_variables_builder_test, temp) {
     // TODO conform to column ordering rule
     EXPECT_EQ(8, map.at(c0p0).value_offset());
     EXPECT_EQ(0, map.at(c1p0).value_offset());
+
+    auto& inds = v.second;
+    ASSERT_EQ(2, inds.size());
+    for(auto&& ind : inds) {
+        EXPECT_EQ(0, ind.second);
+    }
 }
 
 }

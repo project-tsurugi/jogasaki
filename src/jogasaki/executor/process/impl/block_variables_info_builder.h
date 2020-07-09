@@ -45,19 +45,23 @@ class block_variables_info_builder {
 public:
     using entity_type = std::vector<class block_variables_info>;
 
+    using block_indices_type = std::unordered_map<takatori::relation::expression*, std::size_t>;
+
     block_variables_info_builder() = default;
 
     explicit block_variables_info_builder(
         std::shared_ptr<processor_info> info,
-        memory::paged_memory_resource* resource = nullptr) : entity_(create_block_variables(info->operators(), *info->compiled_info(), resource))
-    {}
+        memory::paged_memory_resource* resource = nullptr) {
+        create_block_variables(info->operators(), *info->compiled_info(), resource);
+    }
 
-    [[nodiscard]] entity_type operator()() && {
-        return std::move(entity_);
+    [[nodiscard]] std::pair<entity_type, block_indices_type> operator()() && {
+        return {std::move(entity_), std::move(indices_)};
     }
 private:
     std::shared_ptr<processor_info> info_{};
     entity_type entity_{};
+    block_indices_type indices_{};
 
     void process_target_fields(yugawara::analyzer::block const& blk,
         yugawara::compiled_info const& info,
@@ -94,7 +98,7 @@ private:
         }
     }
 
-    entity_type create_block_variables(
+    void create_block_variables(
         takatori::graph::graph<takatori::relation::expression>& operators,
         yugawara::compiled_info const& info,
         memory::paged_memory_resource* resource) {
@@ -104,6 +108,7 @@ private:
         // result fields + defined fields (except killed in the same basic block)
         auto bg = yugawara::analyzer::block_builder::build(operators);
         yugawara::analyzer::variable_liveness_analyzer analyzer { bg };
+        std::size_t block_index = 0;
 
         // FIXME support multiple blocks
         auto b0 = find_unique_head(bg);
@@ -136,15 +141,19 @@ private:
             auto& v = variables[i];
             map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
         }
-        entity_type ret{};
-        ret.emplace_back(
+
+        entity_.emplace_back(
             std::make_unique<variable_value_map>(std::move(map)),
             meta);
-        return ret;
+
+        for(auto&& e : *b0) {
+            indices_[&e] = block_index;
+        }
+        ++block_index;
     }
 };
 
-block_variables_info_builder::entity_type create_block_variables(
+std::pair<block_variables_info_builder::entity_type, block_variables_info_builder::block_indices_type> create_block_variables(
     std::shared_ptr<processor_info> info,
     memory::paged_memory_resource* resource = nullptr
 ) {

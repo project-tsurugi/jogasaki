@@ -53,7 +53,7 @@ public:
     }
 
     operator_kind kind() override {
-        return operator_kind::emitter;
+        return operator_kind::emit;
     }
 
 private:

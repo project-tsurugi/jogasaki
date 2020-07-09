@@ -31,7 +31,7 @@
 namespace jogasaki::executor::process::impl::relop {
 
 /**
- * @brief scanner
+ * @brief scan context
  */
 class scan_context : public context_base {
 public:

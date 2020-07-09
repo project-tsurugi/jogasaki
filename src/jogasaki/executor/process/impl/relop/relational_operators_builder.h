@@ -151,5 +151,12 @@ private:
     operators_type operators_{};
 };
 
+inline relational_operators create_relational_operators(
+    std::shared_ptr<processor_info> info,
+    memory::paged_memory_resource* resource = nullptr
+) {
+    return relational_operators_builder{info, resource}();
+}
+
 }
 

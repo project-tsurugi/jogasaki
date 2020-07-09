@@ -36,9 +36,9 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class scanner_test : public test_root {};
+class scan_test : public test_root {};
 
-TEST_F(scanner_test, simple) {
+TEST_F(scan_test, simple) {
     auto stg = std::make_shared<storage::storage_context>();
     std::map<std::string, std::string> options{};
     ASSERT_TRUE(stg->open(options));

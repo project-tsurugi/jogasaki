@@ -30,6 +30,8 @@ class relational_operators {
 public:
     using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<relop::operator_base>>;
 
+    relational_operators() = default;
+
     explicit relational_operators(
         operators_type operators
     ) :

@@ -22,6 +22,8 @@
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/executor/process/impl/relop/operators_executor.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/impl/block_variables_info.h>
+#include <jogasaki/executor/process/impl/relop/relational_operators.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -41,6 +43,8 @@ public:
 
 private:
     std::shared_ptr<processor_info> info_{};
+    std::vector<block_variables_info> variables_info_{};
+    relop::relational_operators operators_{};
 };
 
 }

@@ -52,8 +52,8 @@ public:
 
     operators_executor(
         graph::graph<relation::expression>& relations,
-        std::shared_ptr<compiled_info> compiled_info,
-        std::shared_ptr<relational_operators> operators,
+        compiled_info const* compiled_info,
+        relational_operators* operators,
         abstract::task_context *context
     ) noexcept;
 
@@ -104,8 +104,8 @@ public:
 
 private:
     graph::graph<relation::expression>& relations_;
-    std::shared_ptr<compiled_info> compiled_info_{};
-    std::shared_ptr<relational_operators> operators_{};
+    compiled_info const* compiled_info_{};
+    relational_operators* operators_{};
     abstract::task_context *context_{};
 };
 

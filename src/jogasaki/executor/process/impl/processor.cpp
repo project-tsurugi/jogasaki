@@ -14,15 +14,24 @@
  * limitations under the License.
  */
 #include "processor.h"
+#include "block_variables_info_builder.h"
+#include "relop/relational_operators_builder.h"
 
 namespace jogasaki::executor::process::impl {
 
 processor::processor(std::shared_ptr<processor_info> info) noexcept:
     info_(std::move(info))
-{}
+{
+    auto [e, indices] = create_block_variables(info_);
+    variables_info_ = std::move(e);
+    auto ops = relop::create_relational_operators(info_);
+    ops.set_block_index(indices);
+    operators_ = std::move(ops);
+}
 
 abstract::status processor::run(abstract::task_context *context) {
-    relop::operators_executor visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), {}, {}, context};
+    relop::operators_executor visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), info_->compiled_info(), &operators_, context};
+    visitor.process();
     return abstract::status::completed;
 }
 

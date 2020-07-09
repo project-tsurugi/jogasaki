@@ -82,7 +82,7 @@ public:
     }
 
     operator_kind kind() override {
-        return operator_kind::emit;
+        return operator_kind::scan;
     }
 
 private:

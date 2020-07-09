@@ -257,7 +257,7 @@ TEST_F(block_variables_builder_test, temp) {
     ASSERT_EQ(1, v.size());
     auto& b = v[0];
     auto meta = b.meta();
-    ASSERT_EQ(4, meta->field_count());
+    ASSERT_EQ(2, meta->field_count());
 
     auto& map = b.value_map();
 
@@ -271,8 +271,9 @@ TEST_F(block_variables_builder_test, temp) {
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
     EXPECT_EQ(emit.columns()[1].source(), c1p0);
 
-    EXPECT_EQ(16, map.at(c0p0).value_offset());
-    EXPECT_EQ(24, map.at(c1p0).value_offset());
+    // TODO conform to column ordering rule
+    EXPECT_EQ(8, map.at(c0p0).value_offset());
+    EXPECT_EQ(0, map.at(c1p0).value_offset());
 }
 
 }

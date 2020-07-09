@@ -117,7 +117,7 @@ private:
         std::unordered_map<takatori::descriptor::variable, value_info> map{};
         std::vector<meta::field_type> fields{};
         std::vector<takatori::descriptor::variable> variables{};
-        process_target_fields(*b0, info, fields, variables, map);
+//        process_target_fields(*b0, info, fields, variables, map); // TODO remove the function completely
 
         fields.reserve(n0.define().size());
         for(auto& v : n0.define()) {

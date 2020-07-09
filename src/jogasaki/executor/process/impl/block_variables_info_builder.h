@@ -18,41 +18,46 @@
 #include <cassert>
 
 #include <takatori/relation/expression.h>
+#include <takatori/relation/emit.h>
+#include <takatori/relation/scan.h>
+#include <takatori/relation/step/offer.h>
 #include <takatori/util/fail.h>
 #include <yugawara/analyzer/block_builder.h>
 #include <yugawara/analyzer/block_algorithm.h>
 #include <yugawara/analyzer/variable_liveness_analyzer.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/step/offer.h>
 #include <yugawara/compiled_info.h>
+#include <yugawara/compiler_result.h>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/executor/process/processor_info.h>
-#include "block_variables.h"
+#include <jogasaki/executor/process/impl/relop/operator_base.h>
+#include <jogasaki/executor/process/impl/block_variables_info.h>
 
 namespace jogasaki::executor::process::impl {
 
-using ::takatori::util::fail;
+using takatori::util::fail;
 
 /**
- * @brief variables data regions used in a processor
+ * @brief generator for relational operators
  */
-class processor_variables {
+class block_variables_info_builder {
 public:
-    processor_variables() = default;
+    using entity_type = std::vector<class block_variables_info>;
 
-    explicit processor_variables(
+    block_variables_info_builder() = default;
+
+    explicit block_variables_info_builder(
         std::shared_ptr<processor_info> info,
-        memory::paged_memory_resource* resource = nullptr) : block_variables_(create_block_variables(info->operators(), *info->compiled_info(), resource))
+        memory::paged_memory_resource* resource = nullptr) : entity_(create_block_variables(info->operators(), *info->compiled_info(), resource))
     {}
 
-    [[nodiscard]] std::vector<class block_variables> const& block_variables() const noexcept {
-        return block_variables_;
+    [[nodiscard]] entity_type operator()() && {
+        return std::move(entity_);
     }
-
 private:
-    std::vector<class block_variables> block_variables_{};
+    std::shared_ptr<processor_info> info_{};
+    entity_type entity_{};
 
     void process_target_fields(yugawara::analyzer::block const& blk,
         yugawara::compiled_info const& info,
@@ -88,7 +93,8 @@ private:
                 fail();
         }
     }
-    std::vector<class block_variables> create_block_variables(
+
+    entity_type create_block_variables(
         takatori::graph::graph<takatori::relation::expression>& operators,
         yugawara::compiled_info const& info,
         memory::paged_memory_resource* resource) {
@@ -130,14 +136,20 @@ private:
             auto& v = variables[i];
             map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
         }
-        std::vector<class block_variables> ret{};
+        entity_type ret{};
         ret.emplace_back(
-            std::make_unique<data::small_record_store>(meta, 1, resource),
             std::make_unique<variable_value_map>(std::move(map)),
             meta);
         return ret;
     }
 };
+
+block_variables_info_builder::entity_type create_block_variables(
+    std::shared_ptr<processor_info> info,
+    memory::paged_memory_resource* resource = nullptr
+) {
+    return block_variables_info_builder{info, resource}();
+}
 
 }
 

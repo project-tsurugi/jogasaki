@@ -74,6 +74,7 @@ private:
     step* step_{};
     std::shared_ptr<processor_info> info_{};
 
+
     std::shared_ptr<impl::task_context> create_task_context(std::size_t partition);
 };
 

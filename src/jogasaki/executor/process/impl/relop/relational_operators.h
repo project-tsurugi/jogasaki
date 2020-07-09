@@ -15,32 +15,32 @@
  */
 #pragma once
 
-#include <memory>
-#include <jogasaki/executor/process/abstract/work_context.h>
-#include <jogasaki/executor/process/impl/relop/relational_operators.h>
+#include <takatori/relation/expression.h>
+#include <jogasaki/executor/process/impl/relop/operator_base.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::executor::process::impl::relop {
+
+namespace relation = takatori::relation;
 
 /**
- * @brief processor working context implementation for production
+ * @brief relational operators container
  */
-class work_context : public process::abstract::work_context {
+class relational_operators {
 public:
-    work_context() = default;
+    using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<relop::operator_base>>;
 
-    explicit work_context(
-        std::shared_ptr<relop::relational_operators> operators
+    relational_operators(
+        operators_type operators
     ) :
         operators_(std::move(operators))
     {}
 
-    [[nodiscard]] std::shared_ptr<relop::relational_operators> const& operators() const noexcept {
+    [[nodiscard]] operators_type const& operators() const noexcept {
         return operators_;
     }
 private:
-    std::shared_ptr<relop::relational_operators> operators_{};
+    operators_type operators_{};
 };
 
 }
-
 

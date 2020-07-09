@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relop/scanner.h>
+#include <jogasaki/executor/process/impl/relop/scan.h>
 
 #include <string>
 
@@ -26,7 +26,7 @@
 
 #include <jogasaki/basic_record.h>
 #include <jogasaki/memory/page_pool.h>
-#include <jogasaki/executor/process/impl/relop/emitter.h>
+#include <jogasaki/executor/process/impl/relop/emit.h>
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -52,14 +52,14 @@ TEST_F(emitter_test, simple) {
     memory::monotonic_paged_memory_resource record_resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
-    emitter e{test_record_meta1(), store};
+    emit e{test_record_meta1(), store};
 
     record rec0{0, 0.0};
     record rec1{1, 1.0};
     record rec2{2, 2.0};
-    e.emit(accessor::record_ref{&rec0, sizeof(record)});
-    e.emit(accessor::record_ref{&rec1, sizeof(record)});
-    e.emit(accessor::record_ref{&rec2, sizeof(record)});
+    e.write(accessor::record_ref{&rec0, sizeof(record)});
+    e.write(accessor::record_ref{&rec1, sizeof(record)});
+    e.write(accessor::record_ref{&rec2, sizeof(record)});
     ASSERT_EQ(3, store->count());
 }
 

@@ -24,41 +24,43 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
-#include "base.h"
+#include <jogasaki/executor/process/impl/block_variables.h>
+#include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
 /**
- * @brief emitter
+ * @brief relational operator base class
  */
-class emitter : public base {
+class context_base {
 public:
     /**
      * @brief create empty object
      */
-    emitter() = default;
+    context_base() = default;
 
     /**
      * @brief create new object
      */
-    emitter(
-            std::shared_ptr<meta::record_meta> meta,
-            std::shared_ptr<data::record_store> store) :
-            meta_(std::move(meta)),
-            store_(std::move(store)) {
+    context_base(
+        std::shared_ptr<block_variables> variables
+    ) :
+        variables_(std::move(variables))
+    {}
+
+    virtual ~context_base() = default;
+
+    virtual operator_kind kind() = 0;
+
+    block_variables const& variables() {
+        return *variables_;
     }
 
-    void emit(accessor::record_ref record) {
-        store_->append(record);
+    void variables(std::shared_ptr<block_variables> variables) {
+        variables_ = std::move(variables);
     }
-
-    relop_kind kind() override {
-        return relop_kind::emitter;
-    }
-
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
-    std::shared_ptr<data::record_store> store_{};
+    std::shared_ptr<block_variables> variables_{};
 };
 
 }

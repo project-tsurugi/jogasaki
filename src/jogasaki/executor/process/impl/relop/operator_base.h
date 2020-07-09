@@ -13,18 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "processor.h"
+#pragma once
 
-namespace jogasaki::executor::process::impl {
+#include "operator_kind.h"
 
-processor::processor(std::shared_ptr<processor_info> info) noexcept:
-    info_(std::move(info))
-{}
+namespace jogasaki::executor::process::impl::relop {
 
-abstract::status processor::run(abstract::task_context *context) {
-    (void) context;
-    relop::executor visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), {}, {}};
-    return abstract::status::completed;
+/**
+ * @brief relational operator base class
+ */
+class operator_base {
+public:
+    /**
+     * @brief create empty object
+     */
+    operator_base() = default;
+
+    virtual ~operator_base() = default;
+
+    virtual operator_kind kind() = 0;
+
+    [[nodiscard]] std::size_t const& block_index() const noexcept {
+        return block_index_;
+    }
+
+    void block_index(std::size_t index) {
+        block_index_ = index;
+    }
+private:
+    std::size_t block_index_{};
+};
+
 }
 
-}
+

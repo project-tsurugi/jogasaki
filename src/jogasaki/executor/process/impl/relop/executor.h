@@ -26,9 +26,9 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/processor_variables.h>
+#include <jogasaki/executor/process/impl/relop/relational_operators.h>
 
-#include "emitter.h"
+#include "emit.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -39,22 +39,27 @@ using takatori::util::fail;
 using takatori::relation::step::dispatch;
 using yugawara::compiled_info;
 
-class engine {
+class executor {
 public:
-    engine() = delete;
-    ~engine() = default;
-    engine(engine const& other) = delete;
-    engine& operator=(engine const& other) = delete;
-    engine(engine&& other) noexcept = delete;
-    engine& operator=(engine&& other) noexcept = delete;
+    executor() = delete;
+    ~executor() = default;
+    executor(executor const& other) = delete;
+    executor& operator=(executor const& other) = delete;
+    executor(executor&& other) noexcept = delete;
+    executor& operator=(executor&& other) noexcept = delete;
 
-    engine(
+    executor(
         graph::graph<relation::expression>& relations,
         std::shared_ptr<compiled_info> compiled_info,
-        std::shared_ptr<impl::processor_variables> variables
+        std::shared_ptr<relational_operators> operators
     ) noexcept;
 
     relation::expression& head();
+
+    template <class T>
+    T& to(const relation::expression &node) {
+        return *static_cast<T*>((operators_->operators()).at(std::addressof(node)).get());
+    }
 
     void operator()(relation::find const& node);
     void operator()(relation::scan const& node);
@@ -81,8 +86,7 @@ public:
 private:
     graph::graph<relation::expression>& relations_;
     std::shared_ptr<compiled_info> compiled_info_{};
-    std::shared_ptr<processor_variables> variables_;
-    std::unordered_map<relation::expression const*, std::unique_ptr<base>> operators_{};
+    std::shared_ptr<relational_operators> operators_{};
 };
 
 }

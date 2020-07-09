@@ -20,7 +20,7 @@
 #include <yugawara/compiler_result.h>
 
 #include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/impl/relop/engine.h>
+#include <jogasaki/executor/process/impl/relop/executor.h>
 #include <jogasaki/executor/process/processor_info.h>
 
 namespace jogasaki::executor::process::impl {

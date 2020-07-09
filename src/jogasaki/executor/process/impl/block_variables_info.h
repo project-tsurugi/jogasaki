@@ -18,38 +18,33 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/meta/record_meta.h>
 #include "variable_value_map.h"
-#include "block_variables_info.h"
 
 namespace jogasaki::executor::process::impl {
 
 /**
- * @brief variables data region scoped by a basic block
+ * @brief block variables meta data shared by multiple threads
  */
-class block_variables {
+class block_variables_info {
 public:
-    block_variables() = default;
+    block_variables_info() = default;
 
-    explicit block_variables(
-        std::unique_ptr<data::small_record_store> store,
-        block_variables_info const& info
-    ) : store_(std::move(store)), info_(std::addressof(info))
+    explicit block_variables_info(
+        std::unique_ptr<variable_value_map> value_map,
+        std::shared_ptr<meta::record_meta> meta
+    ) : value_map_(std::move(value_map)), meta_(std::move(meta))
     {}
 
-    [[nodiscard]] data::small_record_store& store() const noexcept {
-        return *store_;
-    }
-
     [[nodiscard]] variable_value_map& value_map() const noexcept {
-        return info_->value_map();
+        return *value_map_;
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
-        return info_->meta();
+        return meta_;
     }
 
 private:
-    std::unique_ptr<data::small_record_store> store_{};
-    block_variables_info const* info_{};
+    std::unique_ptr<variable_value_map> value_map_{};
+    std::shared_ptr<meta::record_meta> meta_{};
 };
 
 }

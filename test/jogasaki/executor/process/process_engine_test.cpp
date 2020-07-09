@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relop/engine.h>
+#include <jogasaki/executor/process/impl/relop/executor.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -221,7 +221,7 @@ TEST_F(process_engine_test, scan_emit) {
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
 
-    engine e{ops, {}, {}}; //TODO
+    executor e{ops, {}, {}}; //TODO
     e.process();
 }
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relop/scanner.h>
+#include <jogasaki/executor/process/impl/relop/scan.h>
 
 #include <string>
 
@@ -44,7 +44,7 @@ TEST_F(scanner_test, simple) {
     ASSERT_TRUE(stg->open(options));
 
     record rec{};
-    scanner s{{}, stg, test_record_meta1(), rec.ref()};
+    scan s{{}, stg, test_record_meta1(), rec.ref()};
 
     s.open();
     s.next();

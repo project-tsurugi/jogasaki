@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/processor_variables.h>
+#include <jogasaki/executor/process/impl/block_variables_info_builder.h>
 
 #include <string>
 
@@ -25,6 +25,7 @@
 #include <takatori/relation/step/offer.h>
 #include <takatori/relation/buffer.h>
 #include <takatori/relation/step/take_flat.h>
+#include <jogasaki/executor/process/processor_info.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -38,7 +39,7 @@ using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 using namespace yugawara::binding;
 
-class processor_variables_test : public test_root {
+class block_variables_builder_test : public test_root {
 
 };
 
@@ -50,7 +51,7 @@ using buffer = relation::buffer;
 
 using rgraph = ::takatori::graph::graph<relation::expression>;
 
-TEST_F(processor_variables_test, DISABLED_basic) {
+TEST_F(block_variables_builder_test, basic) {
     factory f;
     ::takatori::plan::forward f1 {
         f.exchange_column(),
@@ -91,10 +92,10 @@ TEST_F(processor_variables_test, DISABLED_basic) {
     yugawara::compiled_info info{expression_mapping, variable_mapping};
 
     auto pinfo = std::make_shared<processor_info>(rg, info);
-    processor_variables v{pinfo};
+    auto v = block_variables_info_builder{pinfo}();
 
-    ASSERT_EQ(1, v.block_variables().size());
-    auto& b = v.block_variables()[0];
+    ASSERT_EQ(1, v.size());
+    auto& b = v[0];
     auto meta = b.meta();
     ASSERT_EQ(2, meta->field_count());
 }

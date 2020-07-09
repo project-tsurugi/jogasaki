@@ -82,6 +82,7 @@ public:
         (void)node;
     }
     void operator()(relation::scan const& node) {
+        LOG(INFO) << "scan op created";
         if (operators_.count(std::addressof(node)) == 0) {
             auto stg = std::make_shared<storage::storage_context>();
             std::map<std::string, std::string> options{};
@@ -106,7 +107,7 @@ public:
         (void)node;
     }
     void operator()(relation::emit const& node) {
-        LOG(INFO) << "emit";
+        LOG(INFO) << "emit op created";
         if (operators_.count(std::addressof(node)) == 0) {
             operators_[std::addressof(node)] = std::make_unique<emit>();
         }

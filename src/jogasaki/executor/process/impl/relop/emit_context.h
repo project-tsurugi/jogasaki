@@ -29,16 +29,16 @@ public:
     /**
      * @brief create empty object
      */
-//    emit_context() = default;
+    emit_context() = default;
 
     /**
      * @brief create new object
      */
     emit_context(
-    )
-    {
-
-    }
+        std::shared_ptr<meta::record_meta> meta
+    ) :
+    store_(std::move(meta))
+    {}
 
     operator_kind kind() override {
         return operator_kind::emit;

@@ -62,6 +62,9 @@ public:
         return operator_kind::emit;
     }
 
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+        return meta_;
+    }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
 };

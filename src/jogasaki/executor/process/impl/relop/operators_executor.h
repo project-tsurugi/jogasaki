@@ -67,13 +67,16 @@ public:
     template<class T>
     T* find_context(relop::operator_base const* p) {
         auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();
+        if (contexts.contexts().count(p) == 0) {
+            return nullptr;
+        }
         return static_cast<T*>(contexts.contexts().at(p).get());
     }
 
     template<class T, class ... Args>
     T* make_context(relop::operator_base const* p, Args&&...args) {
         auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();
-        auto [it, b] = contexts.contexts().emplace(p, std::make_unique<T>(std::forward(args)...));
+        auto [it, b] = contexts.contexts().emplace(p, std::make_unique<T>(std::forward<Args>(args)...));
         if (!b) {
             return nullptr;
         }

@@ -30,6 +30,11 @@ processor::processor(std::shared_ptr<processor_info> info) noexcept:
 }
 
 abstract::status processor::run(abstract::task_context *context) {
+    // initialize work_context
+    auto* work = static_cast<work_context*>(context->work_context());
+    for(auto& blk : variables_info_) {
+        work->variables().emplace_back(blk);
+    }
     relop::operators_executor visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), info_->compiled_info(), &operators_, context};
     visitor.process();
     return abstract::status::completed;

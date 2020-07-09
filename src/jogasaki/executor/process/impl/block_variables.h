@@ -30,9 +30,8 @@ public:
     block_variables() = default;
 
     explicit block_variables(
-        std::unique_ptr<data::small_record_store> store,
         block_variables_info const& info
-    ) : store_(std::move(store)), info_(std::addressof(info))
+    ) : info_(std::addressof(info)), store_(std::make_unique<data::small_record_store>(info.meta()))
     {}
 
     [[nodiscard]] data::small_record_store& store() const noexcept {
@@ -48,8 +47,8 @@ public:
     }
 
 private:
-    std::unique_ptr<data::small_record_store> store_{};
     block_variables_info const* info_{};
+    std::unique_ptr<data::small_record_store> store_{};
 };
 
 }

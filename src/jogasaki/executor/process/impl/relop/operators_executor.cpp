@@ -58,7 +58,7 @@ void operators_executor::operator()(const relation::find &node) {
 }
 
 void operators_executor::operator()(const relation::scan &node) {
-    LOG(INFO) << "scan";
+    LOG(INFO) << "scan op executed";
     auto&s = to<scan>(node);
     auto b = s.block_index();
     (void)b;
@@ -91,10 +91,11 @@ void operators_executor::operator()(const relation::buffer &node) {
 }
 
 void operators_executor::operator()(const relation::emit &node) {
+    LOG(INFO) << "emit op executed";
     auto&s = to<emit>(node);
     auto* ctx = find_context<emit_context>(&s);
     if (! ctx) {
-        ctx = make_context<emit_context>(&s);  // TODO fill args
+        ctx = make_context<emit_context>(&s, s.meta());
     }
     s(*ctx);
 }

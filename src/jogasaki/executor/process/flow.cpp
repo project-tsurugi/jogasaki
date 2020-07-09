@@ -71,13 +71,15 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
 
     //TODO implement mapping
 
-    return std::make_shared<impl::task_context>(
+    auto ctx = std::make_shared<impl::task_context>(
         partition,
         std::move(readers),
         std::move(writers),
         std::move(external_writers),
         std::move(sinfo)
     );
+    ctx->work_context(std::make_unique<impl::work_context>());
+    return ctx;
 }
 }
 

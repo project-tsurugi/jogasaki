@@ -64,7 +64,7 @@ public:
 
     relational_operators operator()() && {
         dispatch(*this, head());
-        return {std::move(operators_)};
+        return relational_operators{std::move(operators_)};
     }
 
     relation::expression& head() {

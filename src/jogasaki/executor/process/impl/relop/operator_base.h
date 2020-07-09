@@ -24,6 +24,7 @@ namespace jogasaki::executor::process::impl::relop {
  */
 class operator_base {
 public:
+    static constexpr std::size_t npos = static_cast<std::size_t>(-1);
     /**
      * @brief create empty object
      */
@@ -41,7 +42,7 @@ public:
         block_index_ = index;
     }
 private:
-    std::size_t block_index_{};
+    std::size_t block_index_{npos};
 };
 
 }

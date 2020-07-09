@@ -17,6 +17,7 @@
 
 #include <takatori/relation/expression.h>
 #include <jogasaki/executor/process/impl/relop/operator_base.h>
+#include <jogasaki/executor/process/impl/block_variables_info_builder.h>
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -29,7 +30,7 @@ class relational_operators {
 public:
     using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<relop::operator_base>>;
 
-    relational_operators(
+    explicit relational_operators(
         operators_type operators
     ) :
         operators_(std::move(operators))
@@ -37,6 +38,12 @@ public:
 
     [[nodiscard]] operators_type const& operators() const noexcept {
         return operators_;
+    }
+
+    void set_block_index(block_variables_info_builder::block_indices_type const& indices) {
+        for(auto& [e, o] : operators_) {
+            o->block_index(indices.at(e));
+        }
     }
 private:
     operators_type operators_{};

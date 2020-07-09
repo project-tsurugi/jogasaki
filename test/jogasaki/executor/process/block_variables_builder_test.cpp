@@ -60,6 +60,8 @@
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/impl/relop/relational_operator_builder.h>
+
 namespace jogasaki::executor::process::impl {
 
 using namespace std::string_literals;
@@ -280,6 +282,18 @@ TEST_F(block_variables_builder_test, temp) {
     ASSERT_EQ(2, inds.size());
     for(auto&& ind : inds) {
         EXPECT_EQ(0, ind.second);
+    }
+
+    // additionally test relop builder
+    auto ops = relop::relational_operator_builder{pinfo}();
+
+    ASSERT_EQ(2, ops.operators().size());
+    for(auto&& [e, o] : ops.operators()) {
+        EXPECT_EQ(-1, o->block_index());
+    }
+    ops.set_block_index(inds);
+    for(auto&& [e, o] : ops.operators()) {
+        EXPECT_EQ(0, o->block_index());
     }
 }
 

@@ -45,7 +45,7 @@ class block_variables_info_builder {
 public:
     using entity_type = std::vector<class block_variables_info>;
 
-    using block_indices_type = std::unordered_map<takatori::relation::expression*, std::size_t>;
+    using block_indices_type = std::unordered_map<takatori::relation::expression const*, std::size_t>;
 
     block_variables_info_builder() = default;
 
@@ -102,6 +102,7 @@ private:
         takatori::graph::graph<takatori::relation::expression>& operators,
         yugawara::compiled_info const& info,
         memory::paged_memory_resource* resource) {
+        (void)resource;
 
         // analyze liveness
         // for each basic block, define a block_variables region with
@@ -153,7 +154,7 @@ private:
     }
 };
 
-std::pair<block_variables_info_builder::entity_type, block_variables_info_builder::block_indices_type> create_block_variables(
+inline std::pair<block_variables_info_builder::entity_type, block_variables_info_builder::block_indices_type> create_block_variables(
     std::shared_ptr<processor_info> info,
     memory::paged_memory_resource* resource = nullptr
 ) {

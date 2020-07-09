@@ -15,7 +15,7 @@
  */
 #include "process_executor.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl {
 
 }
 

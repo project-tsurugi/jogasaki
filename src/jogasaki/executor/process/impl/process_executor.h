@@ -20,9 +20,9 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
-#include "impl/task_context_pool.h"
+#include "task_context_pool.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl {
 
 /**
  * @brief process executor

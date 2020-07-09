@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/process_executor.h>
+#include <jogasaki/executor/process/impl/process_executor.h>
 
 #include <string>
 
@@ -26,7 +26,7 @@
 #include "mock/process_executor.h"
 #include "mock/processor.h"
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::process::impl {
 
 using namespace executor;
 using namespace accessor;
@@ -58,7 +58,7 @@ TEST_F(process_executor_test, basic) {
     auto proc = std::make_shared<mock::processor>();
     auto contexts = std::make_shared<impl::task_context_pool>();
     contexts->push(context);
-    process::process_executor exec{proc, contexts};
+    process_executor exec{proc, contexts};
     exec.run();
 
     auto written = unwrap_record_writer(downstream_writer.get())->size();

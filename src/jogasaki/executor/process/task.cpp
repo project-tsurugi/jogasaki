@@ -18,7 +18,7 @@
 #include <takatori/util/enum_tag.h>
 
 #include <jogasaki/executor/process/impl/task_context.h>
-#include <jogasaki/executor/process/process_executor.h>
+#include <jogasaki/executor/process/impl/process_executor.h>
 
 namespace jogasaki::executor::process {
 
@@ -31,7 +31,7 @@ task::task(request_context *context, task::step_type *src, std::shared_ptr<impl:
 
 model::task_result task::operator()() {
     VLOG(1) << *this << " process::task executed.";
-    process_executor executor{processor_, task_contexts_};
+    impl::process_executor executor{processor_, task_contexts_};
     auto status = executor.run();
     switch (status) {
         case abstract::status::completed:

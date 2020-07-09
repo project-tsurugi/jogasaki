@@ -23,8 +23,6 @@
 #include <jogasaki/executor/process/impl/task_context_pool.h>
 #include <jogasaki/request_context.h>
 
-#include "process_executor.h"
-
 namespace jogasaki::executor::process {
 
 class task : public common::task {

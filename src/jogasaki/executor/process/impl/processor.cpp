@@ -22,8 +22,7 @@ processor::processor(std::shared_ptr<processor_info> info) noexcept:
 {}
 
 abstract::status processor::run(abstract::task_context *context) {
-    (void) context;
-    relop::operators_executor visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), {}, {}};
+    relop::operators_executor visitor{const_cast<graph::graph<relation::expression>&>(info_->operators()), {}, {}, context};
     return abstract::status::completed;
 }
 

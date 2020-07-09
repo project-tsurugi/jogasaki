@@ -84,6 +84,7 @@ public:
     operator_kind kind() override {
         return operator_kind::emit;
     }
+
 private:
     std::shared_ptr<abstract::scan_info> info_{};
     std::shared_ptr<storage::storage_context> storage_{};

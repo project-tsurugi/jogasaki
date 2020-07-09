@@ -15,43 +15,37 @@
  */
 #pragma once
 
-#include "operator_kind.h"
+#include <jogasaki/data/small_record_store.h>
+#include "context_base.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
-class block_variables;
 /**
- * @brief relational operator base class
+ * @brief emit context
  */
-class context_base {
+class emit_context : public context_base {
 public:
+    friend class emit;
     /**
      * @brief create empty object
      */
-    context_base() = default;
+//    emit_context() = default;
 
     /**
      * @brief create new object
      */
-    context_base(
-        std::shared_ptr<block_variables> variables
-    ) :
-        variables_(std::move(variables))
-    {}
+    emit_context(
+    )
+    {
 
-    virtual ~context_base() = default;
-
-    virtual operator_kind kind() = 0;
-
-    block_variables const& variables() {
-        return *variables_;
     }
 
-    void variables(std::shared_ptr<block_variables> variables) {
-        variables_ = std::move(variables);
+    operator_kind kind() override {
+        return operator_kind::emit;
     }
 private:
-    std::shared_ptr<block_variables> variables_{};
+    data::small_record_store store_{};
+    record_writer* writer_{};
 };
 
 }

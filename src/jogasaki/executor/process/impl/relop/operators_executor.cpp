@@ -16,6 +16,7 @@
 #include "operators_executor.h"
 
 #include <jogasaki/storage/storage_context.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 
 #include "scan.h"
 #include "emit.h"
@@ -31,11 +32,13 @@ using takatori::relation::step::dispatch;
 operators_executor::operators_executor(
     graph::graph<relation::expression>& relations,
     std::shared_ptr<compiled_info> compiled_info,
-    std::shared_ptr<relational_operators> operators
+    std::shared_ptr<relational_operators> operators,
+    abstract::task_context *context
 ) noexcept :
     relations_(relations),
     compiled_info_(std::move(compiled_info)),
-    operators_(std::move(operators))
+    operators_(std::move(operators)),
+    context_(context)
 {}
 
 relation::expression &operators_executor::head() {
@@ -89,7 +92,11 @@ void operators_executor::operator()(const relation::buffer &node) {
 
 void operators_executor::operator()(const relation::emit &node) {
     auto&s = to<emit>(node);
-    s.write({});
+    auto* ctx = find_context<emit_context>(&s);
+    if (! ctx) {
+        ctx = make_context<emit_context>(&s);  // TODO fill args
+    }
+    s(*ctx);
 }
 
 void operators_executor::operator()(const relation::write &node) {

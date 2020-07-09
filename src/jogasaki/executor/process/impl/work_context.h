@@ -18,6 +18,7 @@
 #include <memory>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/relop/operators_context.h>
+#include <jogasaki/executor/process/impl/block_variables.h>
 
 namespace jogasaki::executor::process::impl {
 

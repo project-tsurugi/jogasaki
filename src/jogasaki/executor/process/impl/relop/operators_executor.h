@@ -27,6 +27,8 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/impl/relop/relational_operators.h>
+#include <jogasaki/executor/process/impl/work_context.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 
 #include "emit.h"
 
@@ -51,7 +53,8 @@ public:
     operators_executor(
         graph::graph<relation::expression>& relations,
         std::shared_ptr<compiled_info> compiled_info,
-        std::shared_ptr<relational_operators> operators
+        std::shared_ptr<relational_operators> operators,
+        abstract::task_context *context
     ) noexcept;
 
     relation::expression& head();
@@ -59,6 +62,22 @@ public:
     template <class T>
     T& to(const relation::expression &node) {
         return *static_cast<T*>((operators_->operators()).at(std::addressof(node)).get());
+    }
+
+    template<class T>
+    T* find_context(relop::operator_base const* p) {
+        auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();
+        return static_cast<T*>(contexts.contexts().at(p).get());
+    }
+
+    template<class T, class ... Args>
+    T* make_context(relop::operator_base const* p, Args&&...args) {
+        auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();
+        auto [it, b] = contexts.contexts().emplace(p, std::make_unique<T>(std::forward(args)...));
+        if (!b) {
+            return nullptr;
+        }
+        return static_cast<T*>(it->second.get());
     }
 
     void operator()(relation::find const& node);
@@ -87,6 +106,7 @@ private:
     graph::graph<relation::expression>& relations_;
     std::shared_ptr<compiled_info> compiled_info_{};
     std::shared_ptr<relational_operators> operators_{};
+    abstract::task_context *context_{};
 };
 
 }

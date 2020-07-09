@@ -25,14 +25,16 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include "operator_base.h"
+#include "emit_context.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
 /**
- * @brief emitter
+ * @brief emit operator
  */
 class emit : public operator_base {
 public:
+    friend class emit_context;
     /**
      * @brief create empty object
      */
@@ -42,14 +44,18 @@ public:
      * @brief create new object
      */
     emit(
-            std::shared_ptr<meta::record_meta> meta,
-            std::shared_ptr<data::record_store> store) :
-            meta_(std::move(meta)),
-            store_(std::move(store)) {
-    }
+        std::shared_ptr<meta::record_meta> meta
+    ) :
+        meta_(std::move(meta))
+    {}
 
-    void write(accessor::record_ref record) {
-        store_->append(record);
+    void operator()(emit_context& ctx) {
+        auto rec = ctx.store_.ref();
+        // fill destination variables
+        if (! ctx.writer_) {
+
+        }
+        ctx.writer_->write(rec);
     }
 
     operator_kind kind() override {
@@ -58,7 +64,6 @@ public:
 
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::shared_ptr<data::record_store> store_{};
 };
 
 }

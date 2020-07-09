@@ -15,12 +15,12 @@
  */
 #pragma once
 
+#include <unordered_map>
+
 #include <jogasaki/executor/process/impl/relop/operator_base.h>
 #include <jogasaki/executor/process/impl/relop/context_base.h>
 
 namespace jogasaki::executor::process::impl::relop {
-
-namespace relation = takatori::relation;
 
 /**
  * @brief relational operators container
@@ -37,7 +37,7 @@ public:
         contexts_(std::move(operators))
     {}
 
-    [[nodiscard]] contexts_type const& contexts() const noexcept {
+    [[nodiscard]] contexts_type& contexts() noexcept {
         return contexts_;
     }
 

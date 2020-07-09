@@ -78,7 +78,9 @@ public:
         fail();
     }
 
-    void operator()(relation::find const& node);
+    void operator()(relation::find const& node) {
+        (void)node;
+    }
     void operator()(relation::scan const& node) {
         if (operators_.count(std::addressof(node)) == 0) {
             auto stg = std::make_shared<storage::storage_context>();
@@ -86,33 +88,64 @@ public:
             stg->open(options);
             operators_[std::addressof(node)] = std::make_unique<scan>();
         }
+        dispatch(*this, node.output().opposite()->owner());
     }
-    void operator()(relation::join_find const& node);
-    void operator()(relation::join_scan const& node);
-    void operator()(relation::project const& node);
-    void operator()(relation::filter const& node);
-    void operator()(relation::buffer const& node);
+    void operator()(relation::join_find const& node) {
+        (void)node;
+    }
+    void operator()(relation::join_scan const& node) {
+        (void)node;
+    }
+    void operator()(relation::project const& node) {
+        (void)node;
+    }
+    void operator()(relation::filter const& node) {
+        (void)node;
+    }
+    void operator()(relation::buffer const& node) {
+        (void)node;
+    }
     void operator()(relation::emit const& node) {
         LOG(INFO) << "emit";
         if (operators_.count(std::addressof(node)) == 0) {
-            auto stg = std::make_shared<storage::storage_context>();
-            std::map<std::string, std::string> options{};
-            stg->open(options);
             operators_[std::addressof(node)] = std::make_unique<emit>();
         }
     }
 
-    void operator()(relation::write const& node);
-    void operator()(relation::values const& node);
-    void operator()(relation::step::join const& node);
-    void operator()(relation::step::aggregate const& node);
-    void operator()(relation::step::intersection const& node);
-    void operator()(relation::step::difference const& node);
-    void operator()(relation::step::flatten const& node);
-    void operator()(relation::step::take_flat const& node);
-    void operator()(relation::step::take_group const& node);
-    void operator()(relation::step::take_cogroup const& node);
-    void operator()(relation::step::offer const& node);
+    void operator()(relation::write const& node) {
+        (void)node;
+    }
+    void operator()(relation::values const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::join const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::aggregate const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::intersection const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::difference const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::flatten const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::take_flat const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::take_group const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::take_cogroup const& node) {
+        (void)node;
+    }
+    void operator()(relation::step::offer const& node) {
+        (void)node;
+    }
+
 private:
     std::shared_ptr<processor_info> info_{};
     operators_type operators_{};

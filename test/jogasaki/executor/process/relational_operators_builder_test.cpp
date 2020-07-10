@@ -85,7 +85,6 @@ namespace statement = ::takatori::statement;
 namespace tinfo = ::shakujo::common::core::type;
 
 using take = relation::step::take_flat;
-using offer = relation::step::offer;
 using buffer = relation::buffer;
 
 using rgraph = ::takatori::graph::graph<relation::expression>;

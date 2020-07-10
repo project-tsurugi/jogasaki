@@ -37,6 +37,8 @@
 #include "relational_operators.h"
 #include "scan.h"
 #include "emit.h"
+#include "take_group.h"
+#include "offer.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -139,13 +141,18 @@ public:
         (void)node;
     }
     void operator()(relation::step::take_group const& node) {
-        (void)node;
+        if (operators_.count(std::addressof(node)) == 0) {
+            operators_[std::addressof(node)] = std::make_unique<take_group>();
+        }
+        dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::step::take_cogroup const& node) {
         (void)node;
     }
     void operator()(relation::step::offer const& node) {
-        (void)node;
+        if (operators_.count(std::addressof(node)) == 0) {
+            operators_[std::addressof(node)] = std::make_unique<offer>();
+        }
     }
 
 private:

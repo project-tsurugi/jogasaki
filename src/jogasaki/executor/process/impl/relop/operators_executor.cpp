@@ -21,6 +21,8 @@
 #include "scan_context.h"
 #include "emit.h"
 #include "emit_context.h"
+#include "take_group.h"
+#include "offer.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -145,8 +147,13 @@ void operators_executor::operator()(const relation::step::take_flat &node) {
 }
 
 void operators_executor::operator()(const relation::step::take_group &node) {
-    (void)node;
-    fail();
+    auto&s = to<take_group>(node);
+    auto* ctx = find_context<take_group_context>(&s);
+    if (! ctx) {
+        ctx = make_context<take_group_context>(&s);
+    }
+    s(*ctx);
+    dispatch(*this, node.output().opposite()->owner());
 }
 
 void operators_executor::operator()(const relation::step::take_cogroup &node) {
@@ -155,8 +162,12 @@ void operators_executor::operator()(const relation::step::take_cogroup &node) {
 }
 
 void operators_executor::operator()(const relation::step::offer &node) {
-    (void)node;
-    fail();
+    auto&s = to<offer>(node);
+    auto* ctx = find_context<offer_context>(&s);
+    if (! ctx) {
+        ctx = make_context<offer_context>(&s, s.meta());
+    }
+    s(*ctx);
 }
 
 void operators_executor::process() {

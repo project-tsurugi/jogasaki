@@ -18,13 +18,12 @@
 #include <glog/logging.h>
 #include <takatori/util/fail.h>
 #include <sharksfin/api.h>
-#include <sharksfin/Environment.h>
-#include "storage_context.h"
 
 namespace jogasaki::storage {
 
 using ::takatori::util::fail;
 
+class storage_context;
 /**
  * @brief context for the transaction
  */
@@ -33,85 +32,31 @@ public:
     /**
      * @brief create default context object
      */
-    explicit transaction_context(storage_context& stg) : parent_(std::addressof(stg)) {
-        sharksfin::TransactionOptions txopts{};
-        if(auto res = sharksfin::transaction_begin(stg.handle(), txopts, &tx_); res != sharksfin::StatusCode::OK) {
-            fail();
-        }
-    }
+    explicit transaction_context(storage_context& stg);
 
     /**
      * @brief create default context object
      */
-    ~transaction_context() noexcept {
-        if (active_) {
-            sharksfin::transaction_abort(tx_, false);
-        }
-        sharksfin::transaction_dispose(tx_);
-    }
+    ~transaction_context() noexcept;
 
     transaction_context(transaction_context const& other) = default;
     transaction_context& operator=(transaction_context const& other) = default;
     transaction_context(transaction_context&& other) noexcept = default;
     transaction_context& operator=(transaction_context&& other) noexcept = default;
 
-    bool commit() {
-        sharksfin::transaction_commit(tx_);
-        active_ = false;
-        return true;
-    }
+    bool commit();
 
-    bool abort() {
-        sharksfin::transaction_abort(tx_);
-        active_ = false;
-        return true;
-    }
+    bool abort();
 
-    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept {
-        return tx_;
-    }
+    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept;
 
-    sharksfin::TransactionHandle handle() noexcept {
-        if (!handle_) {
-            if(auto res = sharksfin::transaction_borrow_handle(tx_, &handle_); res != sharksfin::StatusCode::OK) {
-                fail();
-            }
-        }
-        return handle_;
-    }
+    sharksfin::TransactionHandle handle() noexcept;
 
-    void open_scan() {
-        if(sharksfin::StatusCode res = sharksfin::content_scan(handle(), parent_->default_storage(), {}, sharksfin::EndPointKind::UNBOUND,
-            {}, sharksfin::EndPointKind::UNBOUND, &iterator_); res != sharksfin::StatusCode::OK) {
-            fail();
-        }
-    }
+    void open_scan();
 
-    bool next_scan() {
-        sharksfin::StatusCode res = sharksfin::iterator_next(iterator_);
-        if (res == sharksfin::StatusCode::OK) {
-            sharksfin::Slice key{};
-            sharksfin::Slice value{};
-            if(sharksfin::StatusCode res2 = sharksfin::iterator_get_key(iterator_, &key);res2 != sharksfin::StatusCode::OK) {
-                fail();
-            }
-            if(sharksfin::StatusCode res2 = sharksfin::iterator_get_value(iterator_, &value);res2 != sharksfin::StatusCode::OK) {
-                fail();
-            }
-            // TODO fill result
-            return true;
-        }
-        if (res == sharksfin::StatusCode::NOT_FOUND) {
-            return false;
-        }
-        fail();
-    }
+    bool next_scan();
 
-    void close_scan() {
-        if(sharksfin::StatusCode res = sharksfin::iterator_dispose(iterator_); res != sharksfin::StatusCode::OK) {
-            fail();
-        }
-    }
+    void close_scan();
 private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};

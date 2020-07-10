@@ -15,9 +15,9 @@
  */
 #pragma once
 
+#include <memory>
 #include <glog/logging.h>
 #include <sharksfin/api.h>
-#include <sharksfin/Environment.h>
 
 namespace jogasaki::storage {
 
@@ -50,10 +50,12 @@ public:
 
     std::shared_ptr<transaction_context> const& create_transaction();
 
+    static constexpr std::string_view default_storage_name = "T0";
+
     sharksfin::StorageHandle default_storage() {
         sharksfin::StorageHandle handle{};
-        if (auto res = sharksfin::storage_get(db_, "T0", &handle); res == sharksfin::StatusCode::NOT_FOUND) {
-            sharksfin::storage_create(db_, "T0", &handle);
+        if (auto res = sharksfin::storage_get(db_, default_storage_name, &handle); res == sharksfin::StatusCode::NOT_FOUND) {
+            sharksfin::storage_create(db_, default_storage_name, &handle);
         }
         return handle;
     }

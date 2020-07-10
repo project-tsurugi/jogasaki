@@ -57,6 +57,7 @@ relation::expression &operators_executor::head() {
 
 void operators_executor::operator()(const relation::find &node) {
     (void)node;
+    (void)compiled_info_;
     fail();
 }
 

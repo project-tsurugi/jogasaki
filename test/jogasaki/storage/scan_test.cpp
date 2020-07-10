@@ -47,8 +47,6 @@ TEST_F(scan_test, simple) {
     scan_context ctx(stg);
 
     s(ctx);
-
-    stg->close();
 }
 
 }

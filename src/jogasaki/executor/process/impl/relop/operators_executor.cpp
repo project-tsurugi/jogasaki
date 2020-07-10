@@ -16,7 +16,6 @@
 #include "operators_executor.h"
 
 #include <jogasaki/storage/storage_context.h>
-#include <jogasaki/executor/process/impl/work_context.h>
 
 #include "scan.h"
 #include "scan_context.h"

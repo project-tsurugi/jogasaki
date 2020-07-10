@@ -33,7 +33,7 @@ public:
     /**
      * @brief create default context object
      */
-    transaction_context(storage_context& stg) : parent_(std::addressof(stg)) {
+    explicit transaction_context(storage_context& stg) : parent_(std::addressof(stg)) {
         sharksfin::TransactionOptions txopts{};
         if(auto res = sharksfin::transaction_begin(stg.handle(), txopts, &tx_); res != sharksfin::StatusCode::OK) {
             fail();
@@ -50,7 +50,10 @@ public:
         sharksfin::transaction_dispose(tx_);
     }
 
-    // TODO other constructors
+    transaction_context(transaction_context const& other) = default;
+    transaction_context& operator=(transaction_context const& other) = default;
+    transaction_context(transaction_context&& other) noexcept = default;
+    transaction_context& operator=(transaction_context&& other) noexcept = default;
 
     bool commit() {
         sharksfin::transaction_commit(tx_);

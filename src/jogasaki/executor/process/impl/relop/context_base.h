@@ -33,11 +33,16 @@ public:
     /**
      * @brief create new object
      */
-    context_base(
+    explicit context_base(
         std::shared_ptr<block_variables> variables
     ) :
         variables_(std::move(variables))
     {}
+
+    context_base(context_base const& other) = default;
+    context_base& operator=(context_base const& other) = default;
+    context_base(context_base&& other) noexcept = default;
+    context_base& operator=(context_base&& other) noexcept = default;
 
     virtual ~context_base() = default;
 

@@ -50,7 +50,7 @@ public:
     block_variables_info_builder() = default;
 
     explicit block_variables_info_builder(
-        std::shared_ptr<processor_info> info,
+        std::shared_ptr<processor_info> const& info,
         memory::paged_memory_resource* resource = nullptr) {
         create_block_variables(info->operators(), *info->compiled_info(), resource);
     }
@@ -74,7 +74,7 @@ private:
             case takatori::relation::expression_kind::buffer:
                 return;
             case takatori::relation::expression_kind::emit: {
-                auto& emit = static_cast<takatori::relation::emit const&>(back);
+                auto& emit = static_cast<takatori::relation::emit const&>(back); //NOLINT
                 for(auto &c : emit.columns()) {
                     auto& v = c.source();
                     variables.emplace_back(v);
@@ -84,7 +84,7 @@ private:
                 break;
             }
             case takatori::relation::expression_kind::offer: {
-                auto& offer = static_cast<takatori::relation::step::offer const&>(back);
+                auto& offer = static_cast<takatori::relation::step::offer const&>(back); //NOLINT
                 for(auto &c : offer.columns()) {
                     auto& v = c.destination();
                     variables.emplace_back(v);
@@ -137,7 +137,7 @@ private:
 
         nullability.resize(fields.size()); // TODO fetch nullability
         auto meta = std::make_shared<meta::record_meta>(std::move(fields), std::move(nullability));
-        assert(meta->field_count() == variables.size());
+        assert(meta->field_count() == variables.size()); //NOLINT
         for(std::size_t i=0, n = meta->field_count(); i < n; ++i) {
             auto& v = variables[i];
             map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
@@ -155,7 +155,7 @@ private:
 };
 
 inline std::pair<block_variables_info_builder::entity_type, block_variables_info_builder::block_indices_type> create_block_variables(
-    std::shared_ptr<processor_info> info,
+    std::shared_ptr<processor_info> const& info,
     memory::paged_memory_resource* resource = nullptr
 ) {
     return block_variables_info_builder{info, resource}();

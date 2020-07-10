@@ -27,9 +27,6 @@
 
 namespace jogasaki::executor::process::impl {
 
-namespace graph = takatori::graph;
-namespace relation = takatori::relation;
-
 /**
  * @brief processor implementation for production
  */
@@ -37,7 +34,7 @@ class processor : public process::abstract::processor {
 public:
     processor() = default;
 
-    explicit processor(std::shared_ptr<processor_info> info) noexcept;
+    explicit processor(std::shared_ptr<processor_info> info) ;
 
     abstract::status run(abstract::task_context* context) override;
 

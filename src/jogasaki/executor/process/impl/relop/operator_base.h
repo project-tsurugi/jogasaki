@@ -32,6 +32,11 @@ public:
 
     virtual ~operator_base() = default;
 
+    operator_base(operator_base const& other) = default;
+    operator_base& operator=(operator_base const& other) = default;
+    operator_base(operator_base&& other) noexcept = default;
+    operator_base& operator=(operator_base&& other) noexcept = default;
+
     virtual operator_kind kind() = 0;
 
     [[nodiscard]] std::size_t const& block_index() const noexcept {

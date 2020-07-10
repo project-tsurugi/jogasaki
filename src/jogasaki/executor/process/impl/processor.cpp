@@ -19,7 +19,7 @@
 
 namespace jogasaki::executor::process::impl {
 
-processor::processor(std::shared_ptr<processor_info> info) noexcept:
+processor::processor(std::shared_ptr<processor_info> info) :
     info_(std::move(info))
 {
     auto [e, indices] = create_block_variables(info_);
@@ -31,7 +31,7 @@ processor::processor(std::shared_ptr<processor_info> info) noexcept:
 
 abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
-    auto* work = static_cast<work_context*>(context->work_context());
+    auto* work = static_cast<work_context*>(context->work_context()); //NOLINT
     for(auto& blk : variables_info_) {
         work->variables().emplace_back(blk);
     }

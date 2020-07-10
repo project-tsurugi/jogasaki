@@ -48,7 +48,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
 
     for (std::size_t i=0; i < step_->partitions(); ++i) {
         task_contexts->push(create_task_context(i));
-        tasks_.emplace_back(std::make_unique<task>(context_, step_, task_contexts, std::move(proc)));
+        tasks_.emplace_back(std::make_unique<task>(context_, step_, task_contexts, proc));
     }
     return tasks_;
 }

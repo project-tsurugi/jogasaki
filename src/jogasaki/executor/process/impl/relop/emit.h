@@ -52,10 +52,9 @@ public:
     void operator()(emit_context& ctx) {
         auto rec = ctx.store_.ref();
         // fill destination variables
-        if (! ctx.writer_) {
-
+        if (ctx.writer_) {
+            ctx.writer_->write(rec);
         }
-        ctx.writer_->write(rec);
     }
 
     operator_kind kind() override {

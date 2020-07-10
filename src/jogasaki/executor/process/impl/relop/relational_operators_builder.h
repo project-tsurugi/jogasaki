@@ -82,7 +82,7 @@ public:
         (void)node;
     }
     void operator()(relation::scan const& node) {
-        LOG(INFO) << "scan op created";
+        DLOG(INFO) << "scan op created";
         if (operators_.count(std::addressof(node)) == 0) {
             auto stg = std::make_shared<storage::storage_context>();
             std::map<std::string, std::string> options{};
@@ -106,10 +106,11 @@ public:
     void operator()(relation::buffer const& node) {
         (void)node;
     }
+
     void operator()(relation::emit const& node) {
-        LOG(INFO) << "emit op created";
+        DLOG(INFO) << "emit op created";
         if (operators_.count(std::addressof(node)) == 0) {
-            operators_[std::addressof(node)] = std::make_unique<emit>();
+            operators_[std::addressof(node)] = std::make_unique<emit>(create_record_meta(node));
         }
     }
 
@@ -150,6 +151,17 @@ public:
 private:
     std::shared_ptr<processor_info> info_{};
     operators_type operators_{};
+
+    std::shared_ptr<meta::record_meta> create_record_meta(relation::emit const& node) {
+        std::vector<meta::field_type> fields{};
+        auto sz = node.columns().size();
+        fields.reserve(sz);
+        for(auto &c : node.columns()) {
+            auto& v = c.source();
+            fields.emplace_back(utils::type_for(*info_->compiled_info(), v));
+        }
+        return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz));
+    }
 };
 
 inline relational_operators create_relational_operators(

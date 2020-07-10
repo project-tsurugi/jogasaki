@@ -76,6 +76,7 @@ public:
     void close(scan_context& ctx) {
         ctx.tx_->close_scan();
         ctx.tx_->commit();
+        ctx.storage_->close();
     }
 
     operator_kind kind() override {

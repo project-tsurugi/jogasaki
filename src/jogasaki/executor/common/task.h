@@ -33,7 +33,9 @@ public:
     }
 
     task(request_context* context,
-            step* src) : context_(std::move(context)), src_(src) {}
+            step* src) : context_(std::move(context)), src_(src) {
+        id_ = id_src++;
+    }
 
     [[nodiscard]] identity_type id() const override {
         return id_;

@@ -53,14 +53,14 @@ public:
     static constexpr std::string_view default_storage_name = "T0";
 
     sharksfin::StorageHandle default_storage() {
-        sharksfin::StorageHandle handle{};
-        if (auto res = sharksfin::storage_get(db_, default_storage_name, &handle); res == sharksfin::StatusCode::NOT_FOUND) {
-            sharksfin::storage_create(db_, default_storage_name, &handle);
+        if (auto res = sharksfin::storage_get(db_, default_storage_name, &storage_); res == sharksfin::StatusCode::NOT_FOUND) {
+            sharksfin::storage_create(db_, default_storage_name, &storage_);
         }
-        return handle;
+        return storage_;
     }
 private:
     sharksfin::DatabaseHandle db_{};
+    sharksfin::StorageHandle storage_{};
     std::vector<std::shared_ptr<transaction_context>> transactions_{};
 };
 

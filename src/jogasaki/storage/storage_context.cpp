@@ -21,6 +21,9 @@
 namespace jogasaki::storage {
 
 storage_context::~storage_context() noexcept {
+    if (storage_) {
+        sharksfin::storage_dispose(storage_);
+    }
     if (db_) {
         sharksfin::database_dispose(db_);
     }

@@ -19,6 +19,7 @@
 #include <takatori/util/fail.h>
 #include <sharksfin/api.h>
 #include <sharksfin/Environment.h>
+#include "storage_context.h"
 
 namespace jogasaki::storage {
 
@@ -32,7 +33,7 @@ public:
     /**
      * @brief create default context object
      */
-    transaction_context(storage_context const& stg) {
+    transaction_context(storage_context& stg) : parent_(std::addressof(stg)) {
         sharksfin::TransactionOptions txopts{};
         if(auto res = sharksfin::transaction_begin(stg.handle(), txopts, &tx_); res != sharksfin::StatusCode::OK) {
             fail();
@@ -63,7 +64,7 @@ public:
         return true;
     }
 
-    sharksfin::TransactionControlHandle control_handle() const noexcept {
+    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept {
         return tx_;
     }
 
@@ -77,8 +78,8 @@ public:
     }
 
     void open_scan() {
-        if(sharksfin::StatusCode res = sharksfin::content_scan(handle_, nullptr, {}, sharksfin::EndPointKind::EXCLUSIVE,
-            {}, sharksfin::EndPointKind::EXCLUSIVE, &iterator_); res != sharksfin::StatusCode::OK) {
+        if(sharksfin::StatusCode res = sharksfin::content_scan(handle(), parent_->default_storage(), {}, sharksfin::EndPointKind::UNBOUND,
+            {}, sharksfin::EndPointKind::UNBOUND, &iterator_); res != sharksfin::StatusCode::OK) {
             fail();
         }
     }
@@ -112,6 +113,7 @@ private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
     sharksfin::IteratorHandle iterator_{};
+    storage_context* parent_{};
     bool active_{true};
 };
 

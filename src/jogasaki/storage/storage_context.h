@@ -49,6 +49,14 @@ public:
     [[nodiscard]] sharksfin::DatabaseHandle handle() const noexcept;
 
     std::shared_ptr<transaction_context> const& create_transaction();
+
+    sharksfin::StorageHandle default_storage() {
+        sharksfin::StorageHandle handle{};
+        if (auto res = sharksfin::storage_get(db_, "T0", &handle); res == sharksfin::StatusCode::NOT_FOUND) {
+            sharksfin::storage_create(db_, "T0", &handle);
+        }
+        return handle;
+    }
 private:
     sharksfin::DatabaseHandle db_{};
     std::vector<std::shared_ptr<transaction_context>> transactions_{};

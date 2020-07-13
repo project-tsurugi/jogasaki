@@ -15,15 +15,8 @@
  */
 #include "core_affinity.h"
 
-#include <variant>
 #include <boost/thread/thread.hpp>
 #include <numa.h>
-
-#include <takatori/util/universal_extractor.h>
-#include <takatori/util/reference_list_view.h>
-
-#include <jogasaki/model/step.h>
-#include <jogasaki/model/port.h>
 
 namespace jogasaki::utils {
 

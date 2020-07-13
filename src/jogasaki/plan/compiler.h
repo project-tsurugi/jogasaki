@@ -130,7 +130,7 @@ void create_mirror(compiler_context& ctx) {
                 executor::common::step* cur{};
                 switch(s.kind()) {
                     case takatori::plan::step_kind::process: {
-                        auto& process = static_cast<takatori::plan::process const&>(s);
+                        auto& process = static_cast<takatori::plan::process const&>(s);  //NOLINT
                         auto info = std::make_shared<executor::process::processor_info>(
                             const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
                         cur = &mirror->emplace<executor::process::step>(std::move(info));

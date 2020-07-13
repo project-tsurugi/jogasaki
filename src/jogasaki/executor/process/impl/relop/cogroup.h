@@ -298,8 +298,6 @@ public:
                     break;
                 case state::end:
                     break;
-                default:
-                    break;
             }
         }
         for(auto* r : readers_) {
@@ -311,7 +309,7 @@ private:
     std::vector<executor::group_reader*> readers_{};
     std::vector<std::shared_ptr<meta::group_meta>> groups_meta_{};
     std::vector<impl::cogroup_input> inputs_{};
-    std::priority_queue<input_index, std::vector<input_index>, impl::cogroup_input_comparator> queue_;
+    queue_type queue_;
     std::size_t key_size_{};
     comparator key_comparator_{};
     data::small_record_store key_buf_; // shallow copy of key (varlen body is held by reader)

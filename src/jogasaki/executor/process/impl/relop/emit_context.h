@@ -34,7 +34,7 @@ public:
     /**
      * @brief create new object
      */
-    emit_context(
+    explicit emit_context(
         std::shared_ptr<meta::record_meta> meta
     ) :
     store_(std::move(meta))

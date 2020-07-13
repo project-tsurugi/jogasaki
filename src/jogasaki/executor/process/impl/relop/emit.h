@@ -43,7 +43,7 @@ public:
     /**
      * @brief create new object
      */
-    emit(
+    explicit emit(
         std::shared_ptr<meta::record_meta> meta
     ) :
         meta_(std::move(meta))

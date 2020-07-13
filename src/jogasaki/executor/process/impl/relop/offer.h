@@ -43,7 +43,7 @@ public:
     /**
      * @brief create new object
      */
-    offer(
+    explicit offer(
         std::shared_ptr<meta::record_meta> meta
     ) :
         meta_(std::move(meta))

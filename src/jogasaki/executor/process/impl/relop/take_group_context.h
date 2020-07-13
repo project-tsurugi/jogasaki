@@ -35,7 +35,7 @@ public:
     /**
      * @brief create new object
      */
-    take_group_context(
+    explicit take_group_context(
         std::shared_ptr<meta::record_meta> meta
     ) :
     store_(std::move(meta))

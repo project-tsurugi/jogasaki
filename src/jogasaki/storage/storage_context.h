@@ -37,7 +37,10 @@ public:
      */
     ~storage_context() noexcept;
 
-    // TODO other constructors
+    storage_context(storage_context const& other) = delete;
+    storage_context& operator=(storage_context const& other) = delete;
+    storage_context(storage_context&& other) noexcept = delete;
+    storage_context& operator=(storage_context&& other) noexcept = delete;
 
     /**
      * @brief create default context object

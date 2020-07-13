@@ -38,7 +38,7 @@ constexpr std::size_t round_down_to_power_of_two(std::size_t v) {
         v |= v >> i;
     }
 
-    return (v + 1) >> 1;
+    return static_cast<std::size_t>(v + 1) >> 1U;
 }
 
 }

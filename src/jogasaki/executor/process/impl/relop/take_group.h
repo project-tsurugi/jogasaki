@@ -43,7 +43,7 @@ public:
     /**
      * @brief create new object
      */
-    take_group(
+    explicit take_group(
         std::shared_ptr<meta::record_meta> meta
     ) :
         meta_(std::move(meta))

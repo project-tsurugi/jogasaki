@@ -35,7 +35,7 @@ public:
     /**
      * @brief create new object
      */
-    offer_context(
+    explicit offer_context(
         std::shared_ptr<meta::record_meta> meta
     ) :
     store_(std::move(meta))

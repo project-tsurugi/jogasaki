@@ -51,7 +51,7 @@ public:
     using group_type = basic_group_entry<Keys, Values>;
     using groups_type = std::vector<group_type>;
 
-    basic_group_reader(
+    explicit basic_group_reader(
             groups_type groups
             ) : groups_(std::move(groups)){}
 

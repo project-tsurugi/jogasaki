@@ -79,7 +79,7 @@ public:
         using step_kind = common::step_kind;
         switch(flow.kind()) {
             case step_kind::group: {
-                auto r = static_cast<exchange::group::flow&>(flow).sources()[partition_].acquire_reader();
+                auto r = static_cast<exchange::group::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
                 info.reader_ = r;
                 return r;
             }
@@ -99,7 +99,7 @@ public:
         using step_kind = common::step_kind;
         switch(flow.kind()) {
             case step_kind::group: {
-                auto w = &static_cast<exchange::group::flow&>(flow).sinks()[partition_].acquire_writer();
+                auto w = &static_cast<exchange::group::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
                 info.writer_ = w;
                 return w;
             }

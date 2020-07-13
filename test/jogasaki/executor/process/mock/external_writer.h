@@ -43,6 +43,7 @@ public:
         released_ = true;
     }
 
+private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::vector<record> records_{};
     std::size_t offset_c1_{};

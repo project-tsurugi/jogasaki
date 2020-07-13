@@ -33,7 +33,7 @@ public:
             initial_core_(initial_core),
             assign_numa_nodes_uniformly_(assign_numa_nodes_uniformly) {}
 
-    explicit thread_params(std::shared_ptr<configuration> cfg) :
+    explicit thread_params(std::shared_ptr<configuration> const& cfg) :
             thread_params(cfg->thread_pool_size(), cfg->core_affinity(), cfg->initial_core(),
                     cfg->assign_numa_nodes_uniformly()) {}
 

@@ -27,7 +27,7 @@ inline constexpr auto delete_aligned = [](T* p) {
     std::free(p); //NOLINT
 };
 
-template<class T> using aligned_array = std::unique_ptr<T[], decltype(delete_aligned<T>)>;
+template<class T> using aligned_array = std::unique_ptr<T[], decltype(delete_aligned<T>)>;  //NOLINT
 
 template<class T>
 aligned_array<T> make_aligned_array(size_t alignment, size_t size) {

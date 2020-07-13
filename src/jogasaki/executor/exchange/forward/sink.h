@@ -24,8 +24,6 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-class writer;
-
 class sink : public exchange::sink {
 public:
     sink() noexcept;

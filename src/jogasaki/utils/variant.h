@@ -29,11 +29,11 @@ namespace jogasaki {
 
 template<class T, class Variant, std::size_t index = 0>
 constexpr std::size_t alternative_index() noexcept {
-    if constexpr (index == std::variant_size_v<Variant>) {
+    if constexpr (index == std::variant_size_v<Variant>) {  //NOLINT // clang tidy confused with if-constexpr
         return -1;
-    } else if constexpr (std::is_same_v<std::variant_alternative_t<index, Variant>, T>) {
+    } else if constexpr (std::is_same_v<std::variant_alternative_t<index, Variant>, T>) {  //NOLINT
         return index;
-    } else {
+    } else {  //NOLINT
         return alternative_index<T, Variant, index + 1>();
     }
 }

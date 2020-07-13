@@ -83,7 +83,7 @@ public:
      */
     template<typename T>
     void set_value(offset_type value_offset, T x) {
-        assert(value_offset < size_);
+        assert(value_offset < size_);  //NOLINT
         static_assert(std::is_trivially_copy_constructible_v<T>);
         std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
     }
@@ -96,8 +96,8 @@ public:
      * If nullity is true for nullable field, returned value by this function should be ignored and the field should be handled as null.
      */
     template<typename T>
-    T get_value(offset_type value_offset) const {
-        assert(value_offset < size_);
+    [[nodiscard]] T get_value(offset_type value_offset) const {
+        assert(value_offset < size_);  //NOLINT
         static_assert(std::is_trivially_copy_constructible_v<T>);
         T data{};
         std::memcpy(&data, static_cast<char*>(data_) + value_offset, sizeof(T)); //NOLINT
@@ -112,9 +112,9 @@ public:
      * @return optional containing the field value or nullptr if it's null
      */
     template<typename T>
-    std::optional<T> get_if(offset_type nullity_offset, offset_type value_offset) const {
-        assert(nullity_offset / bits_per_byte < size_);
-        assert(value_offset < size_);
+    [[nodiscard]] std::optional<T> get_if(offset_type nullity_offset, offset_type value_offset) const {
+        assert(nullity_offset / bits_per_byte < size_);  //NOLINT
+        assert(value_offset < size_);  //NOLINT
         if(is_null(nullity_offset)) {
             return {};
         }

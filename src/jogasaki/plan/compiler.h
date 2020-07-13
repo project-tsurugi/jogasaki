@@ -70,7 +70,7 @@ using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
-std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
+inline std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
     try {
@@ -83,7 +83,7 @@ std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_v
     return program;
 };
 
-void create_step_graph(std::string_view sql, compiler_context& ctx) {
+inline void create_step_graph(std::string_view sql, compiler_context& ctx) {
     auto p = generate_program(sql);
 
     shakujo_translator translator;
@@ -116,7 +116,7 @@ void create_step_graph(std::string_view sql, compiler_context& ctx) {
     ctx.compiler_result(std::move(result));
 }
 
-void create_mirror(compiler_context& ctx) {
+inline void create_mirror(compiler_context& ctx) {
     auto& statement = ctx.compiler_result().statement();
     using statement_kind = takatori::statement::statement_kind;
     switch(statement.kind()) {
@@ -163,7 +163,7 @@ void create_mirror(compiler_context& ctx) {
 
 } // namespace impl
 
-void compile(std::string_view sql, compiler_context& ctx) {
+inline void compile(std::string_view sql, compiler_context& ctx) {
     impl::create_step_graph(sql, ctx);
     impl::create_mirror(ctx);
 }

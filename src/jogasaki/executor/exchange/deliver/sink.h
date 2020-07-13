@@ -23,8 +23,6 @@
 
 namespace jogasaki::executor::exchange::deliver {
 
-class writer;
-
 class sink : public exchange::sink {
 public:
     sink() noexcept;

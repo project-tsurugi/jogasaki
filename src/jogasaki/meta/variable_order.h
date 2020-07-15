@@ -106,14 +106,20 @@ public:
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record_from_keys_values>,
         std::vector<variable, takatori::util::object_allocator<variable>> const& keys,
         std::vector<variable, takatori::util::object_allocator<variable>> const& values
-    ) {}
+    ) {
+        (void)keys;
+        (void)values;
+    }
 
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::group_from_keys>,
         std::vector<variable, takatori::util::object_allocator<variable>> const& columns,
         std::vector<variable, takatori::util::object_allocator<variable>> const& group_keys
     ) : for_group_{true}
-    {}
+    {
+        (void)columns;
+        (void)group_keys;
+    }
 
 private:
     entity_type entity_;

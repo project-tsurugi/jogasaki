@@ -52,6 +52,7 @@
 #include <takatori/plan/graph.h>
 
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
@@ -144,10 +145,24 @@ inline void create_mirror(compiler_context& ctx) {
                     case takatori::plan::step_kind::forward:
                         break;
                     case takatori::plan::step_kind::group: {
-//                        auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
-//                        auto info = std::make_shared<executor::process::processor_info>(
-//                            const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
-//                        cur = &mirror->emplace<executor::exchange::group::step>(std::move(info));
+                        auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
+
+                        auto order = meta::variable_order{
+                            meta::variable_ordering_enum_tag<meta::variable_ordering_kind::group_from_keys>,
+                            group.columns(),
+                            group.group_keys()
+                        };
+
+                        std::vector<meta::field_type> fields{};
+                        for(auto&& c: group.columns()) {
+                            fields.emplace_back(utils::type_for(ctx.compiler_result().info(), c));
+                        }
+                        auto cnt = fields.size();
+                        auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
+                        std::vector<std::size_t> key_indices{};
+
+                        auto info = std::make_shared<executor::exchange::group::shuffle_info>(std::move(meta), std::move(key_indices));
+                        cur = &mirror->emplace<executor::exchange::group::step>(std::move(info));
                         break;
                     }
                     case takatori::plan::step_kind::aggregate:

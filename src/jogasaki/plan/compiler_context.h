@@ -24,6 +24,8 @@
 #include <yugawara/compiler_result.h>
 #include <yugawara/storage/configurable_provider.h>
 
+#include "relation_step_map.h"
+
 namespace jogasaki::plan {
 
 class compiler_context {
@@ -53,10 +55,18 @@ public:
         return storage_provider_;
     }
 
+    void relation_step_map(std::shared_ptr<relation_step_map> map) noexcept {
+        relation_step_map_ = std::move(map);
+    }
+
+    [[nodiscard]] std::shared_ptr<class relation_step_map> const& relation_step_map() const {
+        return relation_step_map_;
+    }
 private:
     yugawara::compiler_result compiler_result_{};
     std::shared_ptr<model::graph> step_graph_{};
     std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider_{};
+    std::shared_ptr<class relation_step_map> relation_step_map_{};
 };
 
 }

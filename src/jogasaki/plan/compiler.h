@@ -46,6 +46,7 @@
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
+#include <takatori/plan/group.h>
 #include <takatori/serializer/json_printer.h>
 #include <takatori/statement/statement_kind.h>
 #include <takatori/plan/graph.h>
@@ -53,6 +54,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/process/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
 #include "compiler_context.h"
 
 namespace jogasaki::plan {
@@ -119,6 +121,9 @@ inline void create_step_graph(std::string_view sql, compiler_context& ctx) {
 inline void create_mirror(compiler_context& ctx) {
     auto& statement = ctx.compiler_result().statement();
     using statement_kind = takatori::statement::statement_kind;
+
+    using relation = takatori::descriptor::relation;
+    std::unordered_map<relation, executor::exchange::step*> exchanges{};
     switch(statement.kind()) {
         case statement_kind::execute: {
             auto&& c = downcast<statement::execute>(statement);
@@ -138,8 +143,13 @@ inline void create_mirror(compiler_context& ctx) {
                     }
                     case takatori::plan::step_kind::forward:
                         break;
-                    case takatori::plan::step_kind::group:
+                    case takatori::plan::step_kind::group: {
+//                        auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
+//                        auto info = std::make_shared<executor::process::processor_info>(
+//                            const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
+//                        cur = &mirror->emplace<executor::exchange::group::step>(std::move(info));
                         break;
+                    }
                     case takatori::plan::step_kind::aggregate:
                         break;
                     case takatori::plan::step_kind::broadcast:
@@ -159,6 +169,7 @@ inline void create_mirror(compiler_context& ctx) {
         case statement_kind::extension:
             fail();
     }
+    ctx.relation_step_map(std::make_shared<relation_step_map>(std::move(exchanges)));
 }
 
 } // namespace impl

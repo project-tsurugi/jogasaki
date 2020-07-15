@@ -20,7 +20,7 @@
 #include <takatori/descriptor/relation.h>
 #include <jogasaki/executor/exchange/step.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::plan {
 
 /**
  * @brief map relation descriptor to a exchange step

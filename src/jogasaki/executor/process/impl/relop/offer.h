@@ -18,6 +18,8 @@
 #include <vector>
 
 #include <takatori/util/sequence_view.h>
+#include <takatori/util/object_creator.h>
+#include <takatori/relation/step/offer.h>
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
@@ -29,6 +31,7 @@
 
 namespace jogasaki::executor::process::impl::relop {
 
+using column = takatori::relation::step::offer::column;
 /**
  * @brief offer operator
  */
@@ -44,14 +47,18 @@ public:
      * @brief create new object
      */
     explicit offer(
-        std::shared_ptr<meta::record_meta> meta
+        std::shared_ptr<meta::record_meta> meta,
+        std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) :
         meta_(std::move(meta))
-    {}
+    {
+        (void)columns;
+    }
 
     void operator()(offer_context& ctx) {
         auto rec = ctx.store_.ref();
         // fill destination variables
+
         if (ctx.writer_) {
             ctx.writer_->write(rec);
         }
@@ -66,6 +73,7 @@ public:
     }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
+    variable_value_map map_{};
 };
 
 }

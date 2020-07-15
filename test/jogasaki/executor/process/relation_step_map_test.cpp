@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relation_step_map.h>
+#include <jogasaki/plan/relation_step_map.h>
 
 #include <string>
 
@@ -28,7 +28,7 @@
 #include "mock/task_context.h"
 #include "mock/process_executor.h"
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::plan {
 
 using namespace executor;
 using namespace accessor;

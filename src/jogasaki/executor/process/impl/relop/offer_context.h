@@ -44,6 +44,7 @@ public:
     operator_kind kind() override {
         return operator_kind::offer;
     }
+
 private:
     data::small_record_store store_{};
     record_writer* writer_{};

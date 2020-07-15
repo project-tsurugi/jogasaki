@@ -38,7 +38,7 @@ public:
     explicit offer_context(
         std::shared_ptr<meta::record_meta> meta
     ) :
-    store_(std::move(meta))
+        store_(std::move(meta))
     {}
 
     operator_kind kind() override {

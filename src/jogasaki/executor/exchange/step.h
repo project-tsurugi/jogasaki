@@ -31,6 +31,10 @@ public:
     void notify_completed() override {
         // no-op for exchange
     }
+
+    [[nodiscard]] bool handles_group() const noexcept {
+        return kind() == common::step_kind::group || kind() == common::step_kind::aggregate;
+    }
 };
 
 }

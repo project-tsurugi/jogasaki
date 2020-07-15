@@ -28,10 +28,30 @@ namespace jogasaki::executor::exchange::group {
 
 step::step() : info_(std::make_shared<shuffle_info>()) {}
 
-step::step(std::shared_ptr<shuffle_info> info) : info_(std::move(info)) {}
+step::step(
+    std::shared_ptr<shuffle_info> info
+) :
+    info_(std::move(info))
+{}
 
-step::step(std::shared_ptr<meta::record_meta> input_meta, std::vector<field_index_type> key_indices) :
-    step(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices))) {}
+step::step(
+    std::shared_ptr<shuffle_info> info,
+    meta::variable_order input_column_order,
+    meta::variable_order output_column_order
+) :
+    info_(std::move(info)),
+    input_column_order_(std::move(input_column_order)),
+    output_column_order_(std::move(output_column_order))
+{}
+
+step::step(
+    std::shared_ptr<meta::record_meta> input_meta,
+    std::vector<field_index_type> key_indices
+) :
+    step(
+        std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices))
+    )
+{}
 
 executor::common::step_kind step::kind() const noexcept {
     return executor::common::step_kind::group;

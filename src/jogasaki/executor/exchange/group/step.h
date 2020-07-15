@@ -20,6 +20,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
+#include <jogasaki/meta/variable_order.h>
 #include "shuffle_info.h"
 #include "flow.h"
 
@@ -45,19 +46,42 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    explicit step(std::shared_ptr<shuffle_info> info);
+    explicit step(
+        std::shared_ptr<shuffle_info> info
+    );
 
     /**
      * @brief create new instance
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    step(std::shared_ptr<meta::record_meta> input_meta,
-            std::vector<field_index_type> key_indices);
+    step(
+        std::shared_ptr<shuffle_info> info,
+        meta::variable_order input_column_order,
+        meta::variable_order output_column_order
+    );
+
+    /**
+     * @brief create new instance
+     * @param input_meta input record metadata
+     * @param key_indices indices for key fields
+     */
+    step(
+        std::shared_ptr<meta::record_meta> input_meta,
+        std::vector<field_index_type> key_indices
+    );
 
     [[nodiscard]] executor::common::step_kind kind() const noexcept override;
 
     void activate() override;
+
+    [[nodiscard]] meta::variable_order const& input_column_order() const noexcept {
+        return input_column_order_;
+    }
+
+    [[nodiscard]] meta::variable_order const& output_column_order() const noexcept {
+        return output_column_order_;
+    }
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;
 
@@ -65,6 +89,8 @@ protected:
 
 private:
     std::shared_ptr<shuffle_info> info_{};
+    meta::variable_order input_column_order_{};
+    meta::variable_order output_column_order_{};
 };
 
 }

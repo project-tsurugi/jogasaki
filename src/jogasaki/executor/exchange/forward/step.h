@@ -17,6 +17,7 @@
 
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/port.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include "flow.h"
@@ -27,7 +28,19 @@ class step : public exchange::step {
 public:
     step() = default;
 
-    explicit step(std::shared_ptr<meta::record_meta> input_meta) : input_meta_(std::move(input_meta)) {}
+    explicit step(
+        std::shared_ptr<meta::record_meta> input_meta
+    ) :
+        input_meta_(std::move(input_meta))
+    {}
+
+    step(
+        std::shared_ptr<meta::record_meta> input_meta,
+        meta::variable_order column_order
+    ) :
+        input_meta_(std::move(input_meta)),
+        column_order_(column_order)
+    {}
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // exchange task is nop
@@ -43,9 +56,14 @@ public:
         // create data flow object
         data_flow_object(std::make_unique<forward::flow>(input_meta_, context()));
     }
+
+    [[nodiscard]] meta::variable_order const& column_order() const noexcept {
+        return column_order_;
+    }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<meta::record_meta> input_meta_{};
+    meta::variable_order column_order_{};
 };
 
 }

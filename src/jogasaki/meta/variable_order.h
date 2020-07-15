@@ -76,7 +76,8 @@ public:
         return entity_.at(var);
     }
 
-    [[nodiscard]] std::pair<variable_index_type, bool> key_index(variable const& var) const {
+    [[nodiscard]] std::pair<variable_index_type, bool> key_value_index(variable const& var) const {
+        assert(for_group_);  //NOLINT
         return { entity_.at(var), key_bool_.at(var) };
     }
 
@@ -85,21 +86,30 @@ public:
     }
 
     [[nodiscard]] bool is_key(variable const& var) const {
+        assert(for_group_);  //NOLINT
         return key_bool_.at(var);
     }
 
     variable_order() = default;
 
+    void fill_flat_record(
+        entity_type& entity,
+        std::vector<variable, takatori::util::object_allocator<variable>> const& columns,
+        std::size_t begin_offset = 0
+    ) {
+        // oredering arbitrarily for now
+        //TODO order shorter types first, and alphabetically
+        entity.reserve(columns.size());
+        for(std::size_t i=0, n =columns.size(); i < n; ++i) {
+            entity.emplace(columns[i], i+begin_offset);
+        }
+    }
+
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record>,
         std::vector<variable, takatori::util::object_allocator<variable>> const& columns
     ) {
-        //oredering arbitrarily for now
-        //TODO order shorter types first, and alphabetically
-        entity_.reserve(columns.size());
-        for(std::size_t i=0, n =columns.size(); i < n; ++i) {
-            entity_.emplace(columns[i], i);
-        }
+        fill_flat_record(entity_, columns);
     }
 
     variable_order(
@@ -107,8 +117,12 @@ public:
         std::vector<variable, takatori::util::object_allocator<variable>> const& keys,
         std::vector<variable, takatori::util::object_allocator<variable>> const& values
     ) {
-        (void)keys;
-        (void)values;
+        entity_type keys_order{};
+        entity_type values_order{};
+        fill_flat_record(keys_order, keys);
+        fill_flat_record(values_order, values, keys.size());
+        entity_.merge(keys_order);
+        entity_.merge(values_order);
     }
 
     variable_order(
@@ -117,8 +131,28 @@ public:
         std::vector<variable, takatori::util::object_allocator<variable>> const& group_keys
     ) : for_group_{true}
     {
-        (void)columns;
-        (void)group_keys;
+        entity_type keys_order{};
+        fill_flat_record(keys_order, group_keys);
+
+        std::vector<variable, takatori::util::object_allocator<variable>> values{};
+        values.reserve(columns.size() - group_keys.size());
+        for(auto&& column : columns) {
+            if (keys_order.count(column) == 0) {
+                values.emplace_back(column);
+            }
+        }
+        entity_type values_order{};
+        fill_flat_record(values_order, values);
+
+        entity_.reserve(columns.size());
+        for(auto&& k : group_keys) {
+            entity_.emplace(k, keys_order[k]);
+            key_bool_.emplace(k, true);
+        }
+        for(auto&& v : values) {
+            entity_.emplace(v, values_order[v]);
+            key_bool_.emplace(v, false);
+        }
     }
 
 private:

@@ -119,69 +119,97 @@ inline void create_step_graph(std::string_view sql, compiler_context& ctx) {
     ctx.compiler_result(std::move(result));
 }
 
+inline executor::process::step create(takatori::plan::process const& process, compiler_context& ctx) {
+    auto info = std::make_shared<executor::process::processor_info>(
+        const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
+    return executor::process::step(std::move(info));
+}
+
+inline executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx) {
+    meta::variable_order input_order{
+        meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
+        group.columns(),
+    };
+    meta::variable_order output_order{
+        meta::variable_ordering_enum_tag<meta::variable_ordering_kind::group_from_keys>,
+        group.columns(),
+        group.group_keys()
+    };
+
+    std::vector<meta::field_type> fields{};
+    for(auto&& c: group.columns()) {
+        fields.emplace_back(utils::type_for(ctx.compiler_result().info(), c));
+    }
+    auto cnt = fields.size();
+    auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
+    std::vector<std::size_t> key_indices{};
+    key_indices.resize(group.group_keys().size());
+    for(auto&& k : group.group_keys()) {
+        key_indices[output_order.index(k)] = input_order.index(k);
+    }
+
+    auto info = std::make_shared<executor::exchange::group::shuffle_info>(std::move(meta), std::move(key_indices));
+    return executor::exchange::group::step(
+        std::move(info),
+        std::move(input_order),
+        std::move(output_order));
+}
+
 inline void create_mirror(compiler_context& ctx) {
     auto& statement = ctx.compiler_result().statement();
     using statement_kind = takatori::statement::statement_kind;
 
     using relation = takatori::descriptor::relation;
     std::unordered_map<relation, executor::exchange::step*> exchanges{};
+    std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
+    yugawara::binding::factory f;
     switch(statement.kind()) {
         case statement_kind::execute: {
             auto&& c = downcast<statement::execute>(statement);
             auto& g = c.execution_plan();
             auto mirror = std::make_shared<executor::common::graph>();
-            executor::common::step* prev{};
-            takatori::plan::enumerate_top(g, [&mirror, &prev, &ctx](takatori::plan::step const& s){
-                // TODO implement
-                executor::common::step* cur{};
+            takatori::plan::sort_from_upstream(g, [&mirror, &ctx, &exchanges, &f, &steps](takatori::plan::step const& s){
                 switch(s.kind()) {
                     case takatori::plan::step_kind::process: {
                         auto& process = static_cast<takatori::plan::process const&>(s);  //NOLINT
-                        auto info = std::make_shared<executor::process::processor_info>(
-                            const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
-                        cur = &mirror->emplace<executor::process::step>(std::move(info));
+                        steps[&process] = &mirror->emplace<executor::process::step>(create(process, ctx));
                         break;
                     }
                     case takatori::plan::step_kind::forward:
+                        // TODO implement
                         break;
                     case takatori::plan::step_kind::group: {
                         auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
-
-                        auto order = meta::variable_order{
-                            meta::variable_ordering_enum_tag<meta::variable_ordering_kind::group_from_keys>,
-                            group.columns(),
-                            group.group_keys()
-                        };
-
-                        std::vector<meta::field_type> fields{};
-                        for(auto&& c: group.columns()) {
-                            fields.emplace_back(utils::type_for(ctx.compiler_result().info(), c));
-                        }
-                        auto cnt = fields.size();
-                        auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
-                        std::vector<std::size_t> key_indices{};
-
-                        auto info = std::make_shared<executor::exchange::group::shuffle_info>(std::move(meta), std::move(key_indices));
-                        cur = &mirror->emplace<executor::exchange::group::step>(std::move(info));
+                        auto* step = &mirror->emplace<executor::exchange::group::step>(create(group, ctx));
+                        auto relation_desc = f(group);
+                        exchanges[relation_desc] = step;
+                        steps[&group] = step;
                         break;
                     }
                     case takatori::plan::step_kind::aggregate:
+                        // TODO implement
                         break;
                     case takatori::plan::step_kind::broadcast:
+                        // TODO implement
                         break;
                     case takatori::plan::step_kind::discard:
                         break;
                 }
-                if (prev != nullptr) {
-                    *prev >> *cur;
-                }
-                prev = cur;
             });
+
+            for(auto&& [s, step] : steps) {
+                if(takatori::plan::has_upstream(*s)) {
+                    takatori::plan::enumerate_upstream(*s, [step=step, &steps](takatori::plan::step const& up){
+                        *step << *steps[&up];
+                    });
+                }
+            }
             ctx.step_graph(std::move(mirror));
             break;
         }
         case statement_kind::write:
         case statement_kind::extension:
+            // TODO implement
             fail();
     }
     ctx.relation_step_map(std::make_shared<relation_step_map>(std::move(exchanges)));

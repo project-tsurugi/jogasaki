@@ -41,16 +41,16 @@ using takatori::util::fail;
 using takatori::relation::step::dispatch;
 using yugawara::compiled_info;
 
-class operators_executor {
+class operator_executor {
 public:
-    operators_executor() = delete;
-    ~operators_executor() = default;
-    operators_executor(operators_executor const& other) = delete;
-    operators_executor& operator=(operators_executor const& other) = delete;
-    operators_executor(operators_executor&& other) noexcept = delete;
-    operators_executor& operator=(operators_executor&& other) noexcept = delete;
+    operator_executor() = delete;
+    ~operator_executor() = default;
+    operator_executor(operator_executor const& other) = delete;
+    operator_executor& operator=(operator_executor const& other) = delete;
+    operator_executor(operator_executor&& other) noexcept = delete;
+    operator_executor& operator=(operator_executor&& other) noexcept = delete;
 
-    operators_executor(
+    operator_executor(
         graph::graph<relation::expression>& relations,
         compiled_info const* compiled_info,
         operator_container* operators,

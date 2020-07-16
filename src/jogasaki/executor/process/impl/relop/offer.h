@@ -80,6 +80,7 @@ public:
                 meta->at(ind),
                 blocks[block_index()].value_map().at(c.source()).value_offset(),
                 meta->value_offset(ind),
+                //TODO nullity
                 0, // src nullity offset
                 0, // tgt nullity offset
                 false // nullable

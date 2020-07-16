@@ -20,7 +20,7 @@
 #include <yugawara/compiler_result.h>
 
 #include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/impl/relop/operators_executor.h>
+#include <jogasaki/executor/process/impl/relop/operator_executor.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/block_variables_info.h>
 #include <jogasaki/executor/process/impl/relop/operator_container.h>

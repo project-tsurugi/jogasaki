@@ -33,7 +33,7 @@ abstract::status processor::run(abstract::task_context *context) {
     for(auto& blk : variables_info_) {
         work->variables().emplace_back(blk);
     }
-    relop::operators_executor visitor{
+    relop::operator_executor visitor{
         const_cast<graph::graph<relation::expression>&>(info_->operators()),
         info_->compiled_info(),
         &operators_,

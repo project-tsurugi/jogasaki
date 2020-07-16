@@ -52,7 +52,6 @@ public:
 
 private:
     std::size_t block_index_{npos};
-    std::vector<block_variables_info> const* blocks_info_{};
 };
 
 }

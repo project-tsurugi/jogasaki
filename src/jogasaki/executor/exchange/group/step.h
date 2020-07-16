@@ -75,10 +75,6 @@ public:
 
     void activate() override;
 
-    [[nodiscard]] meta::variable_order const& input_column_order() const noexcept {
-        return input_column_order_;
-    }
-
     [[nodiscard]] meta::variable_order const& output_column_order() const noexcept {
         return output_column_order_;
     }
@@ -89,7 +85,6 @@ protected:
 
 private:
     std::shared_ptr<shuffle_info> info_{};
-    meta::variable_order input_column_order_{};
     meta::variable_order output_column_order_{};
 };
 

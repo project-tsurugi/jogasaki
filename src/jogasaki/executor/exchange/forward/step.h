@@ -38,8 +38,8 @@ public:
         std::shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
     ) :
-        input_meta_(std::move(input_meta)),
-        column_order_(column_order)
+        exchange::step(std::move(column_order)),
+        input_meta_(std::move(input_meta))
     {}
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
@@ -57,13 +57,9 @@ public:
         data_flow_object(std::make_unique<forward::flow>(input_meta_, context()));
     }
 
-    [[nodiscard]] meta::variable_order const& column_order() const noexcept {
-        return column_order_;
-    }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<meta::record_meta> input_meta_{};
-    meta::variable_order column_order_{};
 };
 
 }

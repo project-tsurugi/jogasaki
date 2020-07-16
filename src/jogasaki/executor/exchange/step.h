@@ -18,13 +18,21 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/graph.h>
 #include <jogasaki/executor/common/step.h>
+#include <jogasaki/meta/variable_order.h>
 
 namespace jogasaki::executor::exchange {
 
 class step : public common::step {
 public:
     step() : common::step(0, 0, 0) {}
+
     step(number_of_ports inputs, number_of_ports outputs) : common::step(inputs, outputs, 0) {}
+
+    explicit step(meta::variable_order column_order) :
+        common::step(0, 0, 0),
+        column_order_(std::move(column_order))
+    {}
+
     void notify_prepared() override {
         // no-op for exchange
     }
@@ -32,9 +40,20 @@ public:
         // no-op for exchange
     }
 
+    /**
+     * @brief accessor to column_order
+     * @details column order used for input. Some exchanges (forward, broadcast) use this for output as well.
+     * @return column order
+     */
+    [[nodiscard]] meta::variable_order const& column_order() const noexcept {
+        return column_order_;
+    }
+
     [[nodiscard]] bool handles_group() const noexcept {
         return kind() == common::step_kind::group || kind() == common::step_kind::aggregate;
     }
+private:
+    meta::variable_order column_order_{};
 };
 
 }

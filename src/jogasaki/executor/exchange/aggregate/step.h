@@ -62,8 +62,8 @@ public:
         meta::variable_order input_column_order,
         meta::variable_order output_column_order
     ) :
+        exchange::step(std::move(input_column_order)),
         info_(std::move(info)),
-        input_column_order_(std::move(input_column_order)),
         output_column_order_(std::move(output_column_order))
     {}
 
@@ -88,9 +88,6 @@ public:
         auto downstream_partitions = down ? down->partitions() : default_partitions;
         data_flow_object(std::make_unique<aggregate::flow>(info_, context(), this, downstream_partitions));
     }
-    [[nodiscard]] meta::variable_order const& input_column_order() const noexcept {
-        return input_column_order_;
-    }
 
     [[nodiscard]] meta::variable_order const& output_column_order() const noexcept {
         return output_column_order_;
@@ -110,7 +107,6 @@ protected:
 
 private:
     std::shared_ptr<shuffle_info> info_{};
-    meta::variable_order input_column_order_{};
     meta::variable_order output_column_order_{};
 };
 

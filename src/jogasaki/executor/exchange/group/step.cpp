@@ -38,9 +38,8 @@ step::step(
     std::shared_ptr<shuffle_info> info,
     meta::variable_order input_column_order,
     meta::variable_order output_column_order
-) :
+) : exchange::step(std::move(input_column_order)),
     info_(std::move(info)),
-    input_column_order_(std::move(input_column_order)),
     output_column_order_(std::move(output_column_order))
 {}
 

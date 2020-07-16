@@ -17,9 +17,11 @@
 
 #include "operator_kind.h"
 
+namespace jogasaki::executor::process::impl {
+class block_variables;
+}
 namespace jogasaki::executor::process::impl::relop {
 
-class block_variables;
 /**
  * @brief relational operator base class
  */
@@ -48,7 +50,7 @@ public:
 
     virtual operator_kind kind() = 0;
 
-    block_variables const& variables() {
+    block_variables& variables() {
         return *variables_;
     }
 

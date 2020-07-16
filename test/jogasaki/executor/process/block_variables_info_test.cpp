@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/block_variables_info_builder.h>
+#include <jogasaki/executor/process/impl/block_variables_info.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -92,7 +92,7 @@ using buffer = relation::buffer;
 
 using rgraph = ::takatori::graph::graph<relation::expression>;
 
-class block_variables_info_builder_test : public test_root {
+class block_variables_info_test : public test_root {
 public:
 
     std::unique_ptr<shakujo::model::program::Program> gen_shakujo_program(std::string_view sql) {
@@ -139,7 +139,7 @@ public:
 };
 
 
-TEST_F(block_variables_info_builder_test, DISABLED_basic) {
+TEST_F(block_variables_info_test, DISABLED_basic) {
     factory f;
     ::takatori::plan::forward f1 {
         f.exchange_column(),
@@ -187,7 +187,7 @@ TEST_F(block_variables_info_builder_test, DISABLED_basic) {
     yugawara::compiled_info info{expression_mapping, variable_mapping};
 
     auto pinfo = std::make_shared<processor_info>(rg, info);
-    auto v = block_variables_info_builder{pinfo}();
+    auto v = create_block_variables(pinfo->operators(), *pinfo->compiled_info());
 
     ASSERT_EQ(1, v.first.size());
     auto& b = v.first[0];
@@ -195,7 +195,7 @@ TEST_F(block_variables_info_builder_test, DISABLED_basic) {
     ASSERT_EQ(2, meta->field_count());
 }
 
-TEST_F(block_variables_info_builder_test, temp) {
+TEST_F(block_variables_info_test, temp) {
     std::string sql = "select * from T0";
     auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();
@@ -254,13 +254,12 @@ TEST_F(block_variables_info_builder_test, temp) {
     ASSERT_EQ(p0.operators().size(), 2);
 
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
-    auto v = block_variables_info_builder{pinfo}();
+    auto v = create_block_variables(pinfo->operators(), *pinfo->compiled_info());
 
     ASSERT_EQ(1, v.first.size());
     auto& b = v.first[0];
     auto meta = b.meta();
     ASSERT_EQ(2, meta->field_count());
-
 
     auto& map = b.value_map();
 

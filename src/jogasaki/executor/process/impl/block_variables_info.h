@@ -15,7 +15,11 @@
  */
 #pragma once
 
-#include <jogasaki/data/small_record_store.h>
+#include <memory>
+
+#include <takatori/relation/expression.h>
+#include <yugawara/compiled_info.h>
+
 #include <jogasaki/meta/record_meta.h>
 #include "variable_value_map.h"
 
@@ -28,24 +32,30 @@ class block_variables_info {
 public:
     block_variables_info() = default;
 
-    explicit block_variables_info(
+    block_variables_info(
         std::unique_ptr<variable_value_map> value_map,
         std::shared_ptr<meta::record_meta> meta
-    ) : value_map_(std::move(value_map)), meta_(std::move(meta))
-    {}
+    );
 
-    [[nodiscard]] variable_value_map& value_map() const noexcept {
-        return *value_map_;
-    }
+    [[nodiscard]] variable_value_map& value_map() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
-        return meta_;
-    }
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
     std::unique_ptr<variable_value_map> value_map_{};
     std::shared_ptr<meta::record_meta> meta_{};
 };
+
+using blocks_info_type = std::vector<class block_variables_info>;
+
+using blocks_index_type = std::unordered_map<takatori::relation::expression const*, std::size_t>;
+
+/**
+ * @brief create block related information about the operators in a process
+ */
+std::pair<blocks_info_type, blocks_index_type> create_block_variables(
+    takatori::graph::graph<takatori::relation::expression>& operators,
+    yugawara::compiled_info const& info);
 
 }
 

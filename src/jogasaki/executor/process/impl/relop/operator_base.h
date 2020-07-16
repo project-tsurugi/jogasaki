@@ -17,6 +17,9 @@
 
 #include "operator_kind.h"
 
+namespace jogasaki::executor::process::impl {
+class block_variables_info;
+}
 namespace jogasaki::executor::process::impl::relop {
 
 /**
@@ -46,8 +49,10 @@ public:
     void block_index(std::size_t index) {
         block_index_ = index;
     }
+
 private:
     std::size_t block_index_{npos};
+    std::vector<block_variables_info> const* blocks_info_{};
 };
 
 }

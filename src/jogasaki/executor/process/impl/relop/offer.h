@@ -20,18 +20,35 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
 #include <takatori/relation/step/offer.h>
+#include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/impl/block_variables.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
 #include "offer_context.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
 using column = takatori::relation::step::offer::column;
+
+namespace details {
+
+struct field {
+    meta::field_type type_{};
+    std::size_t source_offset_{};
+    std::size_t target_offset_{};
+    std::size_t source_nullity_offset_{};
+    std::size_t target_nullity_offset_{};
+    bool nullable_{};
+};
+
+}
+
 /**
  * @brief offer operator
  */
@@ -48,19 +65,38 @@ public:
      */
     explicit offer(
         std::shared_ptr<meta::record_meta> meta,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        exchange::step const* target,
+        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        std::vector<block_variables_info> const& blocks
     ) :
-        meta_(std::move(meta))
+        meta_(std::move(meta)),
+        target_(target)
     {
-        (void)columns;
+        auto& order = target->column_order();
+        fields_.resize(meta->field_count());
+        for(auto&& c : columns) {
+            auto ind = order.index(c.destination());
+            fields_[ind] = details::field{
+                meta->at(ind),
+                blocks[block_index()].value_map().at(c.source()).value_offset(),
+                meta->value_offset(ind),
+                0, // src nullity offset
+                0, // tgt nullity offset
+                false // nullable
+            };
+        }
     }
 
     void operator()(offer_context& ctx) {
-        auto rec = ctx.store_.ref();
-        // fill destination variables
+        auto target = ctx.store_.ref();
+        auto source = ctx.variables().store().ref();
+        for(auto &f : fields_) {
+            utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+        }
 
         if (ctx.writer_) {
-            ctx.writer_->write(rec);
+            // FIXME fetch writer when needed
+            ctx.writer_->write(target);
         }
     }
 
@@ -71,9 +107,12 @@ public:
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
+
 private:
     std::shared_ptr<meta::record_meta> meta_{};
+    exchange::step const* target_{};
     variable_value_map map_{};
+    std::vector<details::field> fields_{};
 };
 
 }

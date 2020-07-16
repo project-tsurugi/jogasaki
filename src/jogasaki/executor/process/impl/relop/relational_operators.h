@@ -17,7 +17,7 @@
 
 #include <takatori/relation/expression.h>
 #include <jogasaki/executor/process/impl/relop/operator_base.h>
-#include <jogasaki/executor/process/impl/block_variables_info_builder.h>
+#include <jogasaki/executor/process/impl/block_variables_info.h>
 
 namespace jogasaki::executor::process::impl::relop {
 
@@ -42,7 +42,7 @@ public:
         return operators_;
     }
 
-    void set_block_index(block_variables_info_builder::block_indices_type const& indices) {
+    void set_block_index(blocks_index_type const& indices) {
         for(auto& [e, o] : operators_) {
             o->block_index(indices.at(e));
         }

@@ -173,7 +173,5 @@ TEST_F(record_copier_test, text) {
     }
 }
 
-
-
 }
 

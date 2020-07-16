@@ -34,7 +34,7 @@ using traits = meta::field_type_traits<Kind>;
  * @param type filed type of the target
  * @param offset offset of the target field in the contained record
  */
-void print_field(std::ostream& os, accessor::record_ref record, meta::field_type const& type, meta::record_meta::value_offset_type offset) {
+inline void print_field(std::ostream& os, accessor::record_ref record, meta::field_type const& type, meta::record_meta::value_offset_type offset) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::undefined: os << kind::undefined; break;
@@ -120,7 +120,7 @@ private:
  * @return helper printer class, which finishes writing with operator<<(meta::record_meta const& meta)
  * @attention until returned value's operator<< is called, nothing happens or written to the stream
  */
-constexpr record_printer operator<<(std::ostream& os, record_ref rec) noexcept {
+inline constexpr record_printer operator<<(std::ostream& os, record_ref rec) noexcept {
     return record_printer(os, rec);
 }
 

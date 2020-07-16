@@ -16,10 +16,13 @@
 #pragma once
 
 #include <tuple>
+#include <sstream>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_traits.h>
 
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/accessor/record_printer.h>
 
 namespace jogasaki::testing {
 
@@ -109,18 +112,36 @@ public:
         entity_ = values<Kinds...>(ref, *meta_);
     }
 
-    std::shared_ptr<meta::record_meta> const& record_meta() {
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& record_meta() const noexcept {
         return meta_;
     }
 
-    accessor::record_ref ref() const noexcept {
+    [[nodiscard]] accessor::record_ref ref() const noexcept {
         return accessor::record_ref(const_cast<entity_type*>(std::addressof(entity_)), sizeof(entity_)); //FIXME
+    }
+
+    /// @brief equality comparison operator
+    friend bool operator==(basic_record<Kinds...> const& a, basic_record<Kinds...> const& b) noexcept {
+        return a.entity_ == b.entity_;
+    }
+
+    /// @brief inequality comparison operator
+    friend bool operator!=(basic_record<Kinds...> const& a, basic_record<Kinds...> const& b) noexcept {
+        return !(a == b);
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, basic_record<Kinds...> const& value) {
+        auto& v = const_cast<basic_record<Kinds...>&>(value);
+        std::stringstream ss{};
+        ss << v.ref() << *v.meta_;
+        return out << ss.str();
     }
 
 protected:
     entity_type entity_{};
     std::shared_ptr<meta::record_meta> meta_{};
 };
+
 
 class record : public basic_record<kind::int8, kind::float8> {
 public:

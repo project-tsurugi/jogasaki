@@ -38,11 +38,6 @@ public:
         operators_(std::move(operators))
     {}
 
-    void set_block_index(blocks_index_type const& indices) {
-        for(auto& [e, o] : operators_) {
-            o->block_index(indices.at(e));
-        }
-    }
     [[nodiscard]] std::size_t count(relation::expression const* op) const noexcept {
         return operators_.count(op);
     }

@@ -37,7 +37,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:
-            proc = std::make_shared<impl::processor>(info_);
+            proc = std::make_shared<impl::processor>(info_, *context_->compiler_context());
             break;
         case takatori::statement::statement_kind::write:
             //FIXME

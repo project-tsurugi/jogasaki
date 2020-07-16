@@ -19,19 +19,15 @@
 
 namespace jogasaki::executor::process::impl {
 
-processor::processor(std::shared_ptr<processor_info> info) :
-    info_(std::move(info))
-{
-    auto ops = relop::create_relational_operators(info_);
-    ops.set_block_index(info_->blocks_index());
-    operators_ = std::move(ops);
-}
+processor::processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) :
+    info_(std::move(info)), operators_(relop::create_relational_operators(info_, compiler_ctx))
+{}
 
 abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
     auto* work = static_cast<work_context*>(context->work_context()); //NOLINT
-    for(auto& blk : variables_info_) {
-        work->variables().emplace_back(blk);
+    for(auto& block_info : info_->blocks_info()) {
+        work->variables().emplace_back(block_info);
     }
     relop::operator_executor visitor{
         const_cast<graph::graph<relation::expression>&>(info_->operators()),

@@ -48,12 +48,12 @@ private:
 
 using blocks_info_type = std::vector<class block_variables_info>;
 
-using blocks_index_type = std::unordered_map<takatori::relation::expression const*, std::size_t>;
+using block_indices_type = std::unordered_map<takatori::relation::expression const*, std::size_t>;
 
 /**
  * @brief create block related information about the operators in a process
  */
-std::pair<blocks_info_type, blocks_index_type> create_block_variables(
+std::pair<blocks_info_type, block_indices_type> create_block_variables(
     takatori::graph::graph<takatori::relation::expression>& operators,
     yugawara::compiled_info const& info);
 

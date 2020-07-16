@@ -52,7 +52,7 @@ public:
 
     operator_executor(
         graph::graph<relation::expression>& relations,
-        compiled_info const* compiled_info,
+        compiled_info const& compiled_info,
         operator_container* operators,
         abstract::task_context *context
     ) noexcept;

@@ -49,7 +49,7 @@ std::shared_ptr<meta::record_meta> const& block_variables_info::meta() const noe
     return meta_;
 }
 
-std::pair<blocks_info_type, blocks_index_type>
+std::pair<blocks_info_type, block_indices_type>
 create_block_variables(takatori::graph::graph<takatori::relation::expression> &operators, const yugawara::compiled_info &info) {
 
     // analyze liveness
@@ -91,7 +91,7 @@ create_block_variables(takatori::graph::graph<takatori::relation::expression> &o
     }
 
     blocks_info_type entity{};
-    blocks_index_type indices{};
+    block_indices_type indices{};
 
     entity.emplace_back(
         std::make_unique<variable_value_map>(std::move(map)),

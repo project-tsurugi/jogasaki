@@ -45,10 +45,13 @@ public:
     /**
      * @brief create new object
      */
-    scan(std::shared_ptr<abstract::scan_info> info,
+    scan(
+        processor_info const& info,
+        takatori::relation::expression const& sibling,
+        std::shared_ptr<abstract::scan_info> scan_info,
         std::shared_ptr<meta::record_meta> meta
-    ) :
-        info_(std::move(info)),
+    ) : operator_base(info, sibling),
+        info_(std::move(scan_info)),
         meta_(std::move(meta))
     {}
 

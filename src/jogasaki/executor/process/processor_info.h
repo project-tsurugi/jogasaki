@@ -41,29 +41,29 @@ public:
     {
         auto&& p = impl::create_block_variables(*operators_, *info_);
         blocks_info_ = std::move(p.first);
-        blocks_index_ = std::move(p.second);
+        block_indices_ = std::move(p.second);
     }
 
-    [[nodiscard]] graph::graph<relation::expression>& operators() {
+    [[nodiscard]] graph::graph<relation::expression>& operators() const noexcept {
         return *operators_;
     }
 
-    [[nodiscard]] yugawara::compiled_info const* compiled_info() {
-        return info_;
+    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
+        return *info_;
     }
 
-    [[nodiscard]] impl::blocks_info_type const& blocks_info() {
+    [[nodiscard]] impl::blocks_info_type const& blocks_info() const noexcept {
         return blocks_info_;
     }
 
-    [[nodiscard]] impl::blocks_index_type const& blocks_index() {
-        return blocks_index_;
+    [[nodiscard]] impl::block_indices_type const& block_indices() const noexcept {
+        return block_indices_;
     }
 private:
     graph::graph<relation::expression>* operators_{};
     yugawara::compiled_info const* info_{};
     impl::blocks_info_type blocks_info_{};
-    impl::blocks_index_type blocks_index_{};
+    impl::block_indices_type block_indices_{};
 };
 
 }

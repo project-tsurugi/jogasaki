@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <takatori/relation/expression.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
@@ -35,6 +37,14 @@ public:
 
     virtual ~operator_base() = default;
 
+    operator_base(
+        processor_info const& info,
+        takatori::relation::expression const& sibling
+    ) noexcept :
+        processor_info_(std::addressof(info)),
+        sibling_(std::addressof(sibling))
+    {}
+
     operator_base(operator_base const& other) = default;
     operator_base& operator=(operator_base const& other) = default;
     operator_base(operator_base&& other) noexcept = default;
@@ -42,16 +52,18 @@ public:
 
     virtual operator_kind kind() = 0;
 
-    [[nodiscard]] std::size_t const& block_index() const noexcept {
-        return block_index_;
+    [[nodiscard]] std::size_t block_index() const noexcept {
+        if (!sibling_) return npos;
+        return processor_info_->block_indices().at(sibling_);
     }
 
-    void block_index(std::size_t index) {
-        block_index_ = index;
+    [[nodiscard]] std::vector<block_variables_info> const& blocks() const noexcept {
+        return processor_info_->blocks_info();
     }
 
 private:
-    std::size_t block_index_{npos};
+    processor_info const* processor_info_{};
+    takatori::relation::expression const* sibling_{};
 };
 
 }

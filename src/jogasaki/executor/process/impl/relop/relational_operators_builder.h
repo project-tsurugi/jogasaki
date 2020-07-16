@@ -58,8 +58,10 @@ public:
 
     explicit relational_operators_builder(
         std::shared_ptr<processor_info> info,
+        plan::compiler_context const& compiler_ctx,
         memory::paged_memory_resource* resource = nullptr) :
-        info_(std::move(info))
+        info_(std::move(info)),
+        compiler_ctx_(std::addressof(compiler_ctx))
     {
         (void)resource;
     }
@@ -89,7 +91,9 @@ public:
             auto stg = std::make_shared<storage::storage_context>();
             std::map<std::string, std::string> options{};
             stg->open(options);
-            operators_[std::addressof(node)] = std::make_unique<scan>();
+            std::shared_ptr<abstract::scan_info> scan_info;
+            std::shared_ptr<meta::record_meta> meta;
+            operators_[std::addressof(node)] = std::make_unique<scan>(*info_, node, scan_info, meta);
         }
         dispatch(*this, node.output().opposite()->owner());
     }
@@ -112,7 +116,7 @@ public:
     void operator()(relation::emit const& node) {
         DLOG(INFO) << "emit op created";
         if (operators_.count(std::addressof(node)) == 0) {
-            operators_[std::addressof(node)] = std::make_unique<emit>(create_record_meta(node));
+            operators_[std::addressof(node)] = std::make_unique<emit>(*info_, node, create_record_meta(node));
         }
     }
 
@@ -151,12 +155,15 @@ public:
     }
     void operator()(relation::step::offer const& node) {
         if (operators_.count(std::addressof(node)) == 0) {
-            operators_[std::addressof(node)] = std::make_unique<offer>();
+            auto map = compiler_ctx_->relation_step_map();
+            auto xchg = map->at(node.destination());
+            operators_[std::addressof(node)] = std::make_unique<offer>(*info_, node, xchg->column_order(), node.columns());
         }
     }
 
 private:
     std::shared_ptr<processor_info> info_{};
+    plan::compiler_context const* compiler_ctx_{};
     operators_type operators_{};
 
     std::shared_ptr<meta::record_meta> create_record_meta(relation::emit const& node) {
@@ -165,7 +172,7 @@ private:
         fields.reserve(sz);
         for(auto &c : node.columns()) {
             auto& v = c.source();
-            fields.emplace_back(utils::type_for(*info_->compiled_info(), v));
+            fields.emplace_back(utils::type_for(info_->compiled_info(), v));
         }
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz));
     }
@@ -173,9 +180,10 @@ private:
 
 inline operator_container create_relational_operators(
     std::shared_ptr<processor_info> info,
+    plan::compiler_context const& compiler_ctx,
     memory::paged_memory_resource* resource = nullptr
 ) {
-    return relational_operators_builder{std::move(info), resource}();
+    return relational_operators_builder{std::move(info), compiler_ctx, resource}();
 }
 
 }

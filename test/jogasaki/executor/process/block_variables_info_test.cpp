@@ -187,7 +187,7 @@ TEST_F(block_variables_info_test, DISABLED_basic) {
     yugawara::compiled_info info{expression_mapping, variable_mapping};
 
     auto pinfo = std::make_shared<processor_info>(rg, info);
-    auto v = create_block_variables(pinfo->operators(), *pinfo->compiled_info());
+    auto v = create_block_variables(pinfo->operators(), pinfo->compiled_info());
 
     ASSERT_EQ(1, v.first.size());
     auto& b = v.first[0];
@@ -254,7 +254,7 @@ TEST_F(block_variables_info_test, temp) {
     ASSERT_EQ(p0.operators().size(), 2);
 
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
-    auto v = create_block_variables(pinfo->operators(), *pinfo->compiled_info());
+    auto v = create_block_variables(pinfo->operators(), pinfo->compiled_info());
 
     ASSERT_EQ(1, v.first.size());
     auto& b = v.first[0];
@@ -283,14 +283,12 @@ TEST_F(block_variables_info_test, temp) {
         EXPECT_EQ(0, ind.second);
     }
 
+    plan::compiler_context compiler_ctx{};
+
     // additionally test relop builder
-    auto ops = relop::relational_operators_builder{pinfo}();
+    auto ops = relop::relational_operators_builder{pinfo, compiler_ctx}();
 
     ASSERT_EQ(2, ops.size());
-    for(auto&& [e, o] : ops) {
-        EXPECT_EQ(-1, o->block_index());
-    }
-    ops.set_block_index(inds);
     for(auto&& [e, o] : ops) {
         EXPECT_EQ(0, o->block_index());
     }

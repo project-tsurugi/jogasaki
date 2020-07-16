@@ -34,13 +34,12 @@ class processor : public process::abstract::processor {
 public:
     processor() = default;
 
-    explicit processor(std::shared_ptr<processor_info> info) ;
+    explicit processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) ;
 
     abstract::status run(abstract::task_context* context) override;
 
 private:
     std::shared_ptr<processor_info> info_{};
-    std::vector<block_variables_info> variables_info_{};
     relop::operator_container operators_{};
 };
 

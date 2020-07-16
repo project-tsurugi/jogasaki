@@ -34,12 +34,12 @@ using takatori::relation::step::dispatch;
 
 operator_executor::operator_executor(
     graph::graph<relation::expression>& relations,
-    compiled_info const* compiled_info,
+    compiled_info const& compiled_info,
     operator_container* operators,
     abstract::task_context *context
 ) noexcept :
     relations_(relations),
-    compiled_info_(compiled_info),
+    compiled_info_(std::addressof(compiled_info)),
     operators_(operators),
     context_(context)
 {}

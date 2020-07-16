@@ -43,7 +43,9 @@ TEST_F(scan_test, simple) {
     std::map<std::string, std::string> options{};
 
     record rec{};
-    scan s{{}, test_record_meta1()};
+
+    relation::scan* node{};
+    scan s{{}, *node, {}, test_record_meta1()};
     scan_context ctx(stg);
 
     s(ctx);

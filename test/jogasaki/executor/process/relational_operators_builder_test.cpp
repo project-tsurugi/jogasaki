@@ -195,7 +195,9 @@ TEST_F(relational_operators_builder_test, temp) {
     ASSERT_EQ(p0.operators().size(), 2);
 
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
-    auto v = relational_operators_builder{pinfo}();
+
+    plan::compiler_context compiler_ctx{};
+    auto v = relational_operators_builder{pinfo, compiler_ctx}();
 
     ASSERT_EQ(2, v.size());
 }

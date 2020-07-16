@@ -64,29 +64,31 @@ public:
      * @brief create new object
      */
     explicit offer(
-        std::shared_ptr<meta::record_meta> meta,
-        exchange::step const* target,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns,
-        std::vector<block_variables_info> const& blocks
-    ) :
-        meta_(std::move(meta)),
-        target_(target)
+        processor_info const& info,
+        takatori::relation::expression const& sibling,
+        meta::variable_order const& order,
+        std::vector<column, takatori::util::object_allocator<column>> const& columns
+    ) : operator_base(info, sibling)
     {
-        auto& order = target->column_order();
+        std::shared_ptr<meta::record_meta> meta = create_meta(info, order, columns);
+
         fields_.resize(meta->field_count());
         for(auto&& c : columns) {
             auto ind = order.index(c.destination());
+            auto& info = blocks().at(block_index()).value_map().at(c.source());
             fields_[ind] = details::field{
                 meta->at(ind),
-                blocks[block_index()].value_map().at(c.source()).value_offset(),
+                info.value_offset(),
                 meta->value_offset(ind),
+                info.nullity_offset(),
+                meta->nullity_offset(ind),
                 //TODO nullity
-                0, // src nullity offset
-                0, // tgt nullity offset
                 false // nullable
             };
         }
+        meta_ = std::move(meta);
     }
+
 
     void operator()(offer_context& ctx) {
         auto target = ctx.store_.ref();
@@ -111,9 +113,21 @@ public:
 
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    exchange::step const* target_{};
-    variable_value_map map_{};
     std::vector<details::field> fields_{};
+
+    std::shared_ptr<meta::record_meta> create_meta(
+        processor_info const& info,
+        meta::variable_order const& order,
+        std::vector<column, takatori::util::object_allocator<column>> const& columns
+    ) {
+        std::vector<meta::field_type> fields{};
+        auto sz = order.size();
+        fields.resize(sz);
+        for(auto&& c : columns) {
+            fields[order.index(c.destination())] = utils::type_for(info.compiled_info(), c.destination());
+        }
+        return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
+    }
 };
 
 }

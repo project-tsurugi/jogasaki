@@ -44,8 +44,10 @@ public:
      * @brief create new object
      */
     explicit emit(
+        processor_info const& info,
+        takatori::relation::expression const& sibling,
         std::shared_ptr<meta::record_meta> meta
-    ) :
+    ) : operator_base(info, sibling),
         meta_(std::move(meta))
     {}
 

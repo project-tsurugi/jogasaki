@@ -90,6 +90,10 @@ public:
         return key_bool_.at(var);
     }
 
+    [[nodiscard]] std::size_t size() const noexcept {
+        return entity_.size();
+    }
+
     variable_order() = default;
 
     void fill_flat_record(

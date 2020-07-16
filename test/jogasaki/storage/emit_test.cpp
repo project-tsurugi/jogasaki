@@ -51,7 +51,9 @@ TEST_F(emit_test, simple) {
     memory::monotonic_paged_memory_resource record_resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
-    emit e{test_record_meta1()};
+
+    relation::emit const& node{};
+    emit e{{}, node, test_record_meta1()};
 
     record rec0{0, 0.0};
     record rec1{1, 1.0};

@@ -34,7 +34,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/relop/operator_base.h>
 #include <jogasaki/storage/storage_context.h>
-#include "relational_operators.h"
+#include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
 #include "take_group.h"
@@ -52,7 +52,7 @@ using takatori::relation::step::dispatch;
  */
 class relational_operators_builder {
 public:
-    using operators_type = relational_operators::operators_type;
+    using operators_type = operator_container::operators_type;
 
     relational_operators_builder() = default;
 
@@ -64,9 +64,9 @@ public:
         (void)resource;
     }
 
-    relational_operators operator()() && {
+    operator_container operator()() && {
         dispatch(*this, head());
-        return relational_operators{std::move(operators_)};
+        return operator_container{std::move(operators_)};
     }
 
     relation::expression& head() {
@@ -171,7 +171,7 @@ private:
     }
 };
 
-inline relational_operators create_relational_operators(
+inline operator_container create_relational_operators(
     std::shared_ptr<processor_info> info,
     memory::paged_memory_resource* resource = nullptr
 ) {

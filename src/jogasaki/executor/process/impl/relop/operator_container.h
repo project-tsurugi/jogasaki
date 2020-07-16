@@ -26,26 +26,41 @@ namespace relation = takatori::relation;
 /**
  * @brief relational operators container
  */
-class relational_operators {
+class operator_container {
 public:
     using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<relop::operator_base>>;
 
-    relational_operators() = default;
+    operator_container() = default;
 
-    explicit relational_operators(
+    explicit operator_container(
         operators_type operators
     ) :
         operators_(std::move(operators))
     {}
 
-    [[nodiscard]] operators_type const& operators() const noexcept {
-        return operators_;
-    }
-
     void set_block_index(blocks_index_type const& indices) {
         for(auto& [e, o] : operators_) {
             o->block_index(indices.at(e));
         }
+    }
+    [[nodiscard]] std::size_t count(relation::expression const* op) const noexcept {
+        return operators_.count(op);
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return operators_.size();
+    }
+
+    [[nodiscard]] relop::operator_base* at(relation::expression const* op) const noexcept {
+        return operators_.at(op).get();
+    }
+
+    auto begin() const noexcept {
+        return operators_.begin();
+    }
+
+    auto end() const noexcept {
+        return operators_.end();
     }
 private:
     operators_type operators_{};

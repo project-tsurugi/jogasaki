@@ -286,12 +286,12 @@ TEST_F(block_variables_info_test, temp) {
     // additionally test relop builder
     auto ops = relop::relational_operators_builder{pinfo}();
 
-    ASSERT_EQ(2, ops.operators().size());
-    for(auto&& [e, o] : ops.operators()) {
+    ASSERT_EQ(2, ops.size());
+    for(auto&& [e, o] : ops) {
         EXPECT_EQ(-1, o->block_index());
     }
     ops.set_block_index(inds);
-    for(auto&& [e, o] : ops.operators()) {
+    for(auto&& [e, o] : ops) {
         EXPECT_EQ(0, o->block_index());
     }
 }

@@ -26,7 +26,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/relop/relational_operators.h>
+#include <jogasaki/executor/process/impl/relop/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 
@@ -53,7 +53,7 @@ public:
     operators_executor(
         graph::graph<relation::expression>& relations,
         compiled_info const* compiled_info,
-        relational_operators* operators,
+        operator_container* operators,
         abstract::task_context *context
     ) noexcept;
 
@@ -61,22 +61,22 @@ public:
 
     template <class T>
     T& to(const relation::expression &node) {
-        return *static_cast<T*>((operators_->operators()).at(std::addressof(node)).get());
+        return *static_cast<T*>(operators_->at(std::addressof(node)));
     }
 
     template<class T>
     T* find_context(relop::operator_base const* p) {
         auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();  //NOLINT
-        if (contexts.contexts().count(p) == 0) {
+        if (contexts.count(p) == 0) {
             return nullptr;
         }
-        return static_cast<T*>(contexts.contexts().at(p).get());
+        return static_cast<T*>(contexts.at(p));
     }
 
     template<class T, class ... Args>
     T* make_context(relop::operator_base const* p, Args&&...args) {
         auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();  //NOLINT
-        auto [it, b] = contexts.contexts().emplace(p, std::make_unique<T>(std::forward<Args>(args)...));
+        auto [it, b] = contexts.emplace(p, std::make_unique<T>(std::forward<Args>(args)...));
         if (!b) {
             return nullptr;
         }
@@ -108,7 +108,7 @@ public:
 private:
     graph::graph<relation::expression>& relations_;
     compiled_info const* compiled_info_{};
-    relational_operators* operators_{};
+    operator_container* operators_{};
     abstract::task_context *context_{};
 };
 

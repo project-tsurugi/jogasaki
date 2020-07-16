@@ -23,24 +23,36 @@
 namespace jogasaki::executor::process::impl::relop {
 
 /**
- * @brief relational operators container
+ * @brief relational operator context container
  */
-class operators_context {
+class context_container {
 public:
     using contexts_type = std::unordered_map<relop::operator_base const*, std::unique_ptr<relop::context_base>>;
 
-    operators_context() = default;
+    context_container() = default;
 
-    explicit operators_context(
-        contexts_type operators
+    explicit context_container(
+        contexts_type contexts
     ) :
-        contexts_(std::move(operators))
+        contexts_(std::move(contexts))
     {}
 
-    [[nodiscard]] contexts_type& contexts() noexcept {
-        return contexts_;
+    template <typename ... Args>
+    auto emplace(Args&& ... args) {
+        return contexts_.emplace(std::forward<Args>(args)...);
     }
 
+    [[nodiscard]] std::size_t count(relop::operator_base const* op) const noexcept {
+        return contexts_.count(op);
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return contexts_.size();
+    }
+
+    [[nodiscard]] relop::context_base* at(relop::operator_base const* op) const noexcept {
+        return contexts_.at(op).get();
+    }
 private:
     contexts_type contexts_{};
 };

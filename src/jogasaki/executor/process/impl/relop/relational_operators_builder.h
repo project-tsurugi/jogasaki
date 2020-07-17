@@ -86,7 +86,6 @@ public:
         (void)node;
     }
     void operator()(relation::scan const& node) {
-        DLOG(INFO) << "scan op created";
         if (operators_.count(std::addressof(node)) == 0) {
             auto stg = std::make_shared<storage::storage_context>();
             std::map<std::string, std::string> options{};
@@ -114,10 +113,7 @@ public:
     }
 
     void operator()(relation::emit const& node) {
-        DLOG(INFO) << "emit op created";
-        if (operators_.count(std::addressof(node)) == 0) {
-            operators_[std::addressof(node)] = std::make_unique<emit>(*info_, node, create_record_meta(node));
-        }
+        operators_[std::addressof(node)] = std::make_unique<emit>(*info_, node, node.columns());
     }
 
     void operator()(relation::write const& node) {
@@ -145,20 +141,18 @@ public:
         (void)node;
     }
     void operator()(relation::step::take_group const& node) {
-        if (operators_.count(std::addressof(node)) == 0) {
-            operators_[std::addressof(node)] = std::make_unique<take_group>();
-        }
+        auto map = compiler_ctx_->relation_step_map();
+        auto xchg = map->at(node.source());
+        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, node, xchg->column_order(), node.columns());
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::step::take_cogroup const& node) {
         (void)node;
     }
     void operator()(relation::step::offer const& node) {
-        if (operators_.count(std::addressof(node)) == 0) {
-            auto map = compiler_ctx_->relation_step_map();
-            auto xchg = map->at(node.destination());
-            operators_[std::addressof(node)] = std::make_unique<offer>(*info_, node, xchg->column_order(), node.columns());
-        }
+        auto map = compiler_ctx_->relation_step_map();
+        auto xchg = map->at(node.destination());
+        operators_[std::addressof(node)] = std::make_unique<offer>(*info_, node, xchg->column_order(), node.columns());
     }
 
 private:

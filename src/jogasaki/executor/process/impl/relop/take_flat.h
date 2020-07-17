@@ -28,13 +28,12 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include "operator_base.h"
-#include "take_group_context.h"
 
 namespace jogasaki::executor::process::impl::relop {
 
 namespace details {
 
-struct take_group_field {
+struct take_flat_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
@@ -47,22 +46,21 @@ struct take_group_field {
 }
 
 /**
- * @brief take_group operator
+ * @brief take_flat operator
  */
-class take_group : public operator_base {
+class take_flat : public operator_base {
 public:
-    using column = takatori::relation::step::take_group::column;
+    using column = takatori::relation::step::take_flat::column;
 
-    friend class take_group_context;
     /**
      * @brief create empty object
      */
-    take_group() = default;
+    take_flat() = default;
 
     /**
      * @brief create new object
      */
-    explicit take_group(
+    explicit take_flat(
         processor_info const& info,
         takatori::relation::expression const& sibling,
         meta::variable_order const& order,
@@ -72,7 +70,7 @@ public:
         fields_(create_fields(meta_, order, columns))
     {}
 
-    void operator()(take_group_context& ctx) {
+    void operator()() {
         auto target = ctx.variables().store().ref();
         if (ctx.reader_) {
             while(ctx.reader_->next_group()) {
@@ -89,7 +87,7 @@ public:
     }
 
     operator_kind kind() override {
-        return operator_kind::take_group;
+        return operator_kind::take_flat;
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
@@ -97,7 +95,7 @@ public:
     }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<details::take_group_field> fields_{};
+    std::vector<details::take_flat_field> fields_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
@@ -113,17 +111,17 @@ private:
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
     }
 
-    std::vector<details::take_group_field> create_fields(
+    std::vector<details::take_flat_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) {
-        std::vector<details::take_group_field> fields{};
+        std::vector<details::take_flat_field> fields{};
         fields.resize(meta->field_count());
         for(auto&& c : columns) {
             auto ind = order.index(c.destination());
             auto& info = blocks().at(block_index()).value_map().at(c.source());
-            fields[ind] = details::take_group_field{
+            fields[ind] = details::take_flat_field{
                 meta_->at(ind),
                 info.value_offset(),
                 meta_->value_offset(ind),

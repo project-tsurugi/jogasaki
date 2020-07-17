@@ -53,7 +53,7 @@ TEST_F(emit_test, simple) {
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
 
     relation::emit const& node{};
-    emit e{{}, node, test_record_meta1()};
+    emit e{{}, node, node.columns()};
 
     record rec0{0, 0.0};
     record rec1{1, 1.0};

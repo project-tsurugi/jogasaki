@@ -34,11 +34,10 @@
 
 namespace jogasaki::executor::process::impl::relop {
 
-using column = takatori::relation::step::offer::column;
 
 namespace details {
 
-struct field {
+struct offer_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
@@ -54,7 +53,10 @@ struct field {
  */
 class offer : public operator_base {
 public:
+    using column = takatori::relation::step::offer::column;
+
     friend class offer_context;
+
     /**
      * @brief create empty object
      */
@@ -63,32 +65,15 @@ public:
     /**
      * @brief create new object
      */
-    explicit offer(
+    offer(
         processor_info const& info,
         takatori::relation::expression const& sibling,
         meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
-    ) : operator_base(info, sibling)
-    {
-        std::shared_ptr<meta::record_meta> meta = create_meta(info, order, columns);
-
-        fields_.resize(meta->field_count());
-        for(auto&& c : columns) {
-            auto ind = order.index(c.destination());
-            auto& info = blocks().at(block_index()).value_map().at(c.source());
-            fields_[ind] = details::field{
-                meta->at(ind),
-                info.value_offset(),
-                meta->value_offset(ind),
-                info.nullity_offset(),
-                meta->nullity_offset(ind),
-                //TODO nullity
-                false // nullable
-            };
-        }
-        meta_ = std::move(meta);
-    }
-
+    ) : operator_base(info, sibling),
+        meta_(create_meta(info, order, columns)),
+        fields_(create_fields(meta_, order, columns))
+    {}
 
     void operator()(offer_context& ctx) {
         auto target = ctx.store_.ref();
@@ -113,7 +98,7 @@ public:
 
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<details::field> fields_{};
+    std::vector<details::offer_field> fields_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
@@ -127,6 +112,29 @@ private:
             fields[order.index(c.destination())] = utils::type_for(info.compiled_info(), c.destination());
         }
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
+    }
+
+    std::vector<details::offer_field> create_fields(
+        std::shared_ptr<meta::record_meta> const& meta,
+        meta::variable_order const& order,
+        std::vector<column, takatori::util::object_allocator<column>> const& columns
+    ) {
+        std::vector<details::offer_field> fields{};
+        fields.resize(meta->field_count());
+        for(auto&& c : columns) {
+            auto ind = order.index(c.destination());
+            auto& info = blocks().at(block_index()).value_map().at(c.source());
+            fields[ind] = details::offer_field{
+                meta_->at(ind),
+                info.value_offset(),
+                meta_->value_offset(ind),
+                info.nullity_offset(),
+                meta_->nullity_offset(ind),
+                //TODO nullity
+                false // nullable
+            };
+        }
+        return fields;
     }
 };
 

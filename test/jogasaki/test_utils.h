@@ -86,6 +86,61 @@ inline T& head(::takatori::relation::graph_type& graph) {
 }
 
 inline takatori::plan::process&
+top(takatori::plan::graph_type& g) {
+    takatori::plan::process* ret{};
+    takatori::plan::enumerate_top(g, [&](takatori::plan::step& s) {
+        if (s.kind() == takatori::plan::step_kind::process) {
+            if (!ret) {
+                ret = takatori::util::downcast<takatori::plan::process>(&s);
+            }
+        }
+    });
+    if (!ret) {
+        throw std::domain_error(takatori::util::string_builder {}
+            << "not found. "
+            << takatori::util::string_builder::to_string);
+    }
+    return *ret;
+}
+
+inline takatori::plan::process&
+next_top(takatori::plan::graph_type& g, takatori::plan::process& p) {
+    takatori::plan::process* ret{};
+    bool prev_found = false;
+    takatori::plan::enumerate_top(g, [&](takatori::plan::step& s) {
+        if (s.kind() == takatori::plan::step_kind::process) {
+            if (prev_found && !ret) {
+                ret = takatori::util::downcast<takatori::plan::process>(&s);
+            }
+            if (takatori::util::downcast<takatori::plan::process>(s) == p) {
+                prev_found = true;
+            }
+        }
+    });
+    if (!ret) {
+        throw std::domain_error(takatori::util::string_builder {}
+            << "not found. "
+            << takatori::util::string_builder::to_string);
+    }
+    return *ret;
+}
+
+template<class T>
+inline T& next_relation(::takatori::relation::expression& v) {
+    T* result = nullptr;
+    ::takatori::relation::enumerate_downstream(v, [&](::takatori::relation::expression& v) {
+        result = takatori::util::downcast<T>(&v);
+    });
+    if (result != nullptr) {
+        return *result;
+    }
+    throw std::domain_error(takatori::util::string_builder {}
+        << "missing next "
+        << T::tag
+        << takatori::util::string_builder::to_string);
+}
+
+inline takatori::plan::process&
 find(takatori::plan::graph_type& g, takatori::relation::expression const& e) {
     for (auto&& s : g) {
         if (s.kind() == takatori::plan::step_kind::process) {

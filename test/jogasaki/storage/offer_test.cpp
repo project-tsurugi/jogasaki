@@ -75,7 +75,8 @@ TEST_F(offer_test, simple) {
     yugawara::compiled_info info{};
     processor_info pinfo{rg, info};
 
-    offer s{pinfo, r2, {}, {}};
+    std::shared_ptr<meta::record_meta> meta{};
+    offer s{pinfo, r2, meta, {}};
     offer_context ctx(s.meta());
 //    s(ctx);
 }

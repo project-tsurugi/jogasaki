@@ -34,7 +34,6 @@
 
 namespace jogasaki::executor::process::impl::relop {
 
-
 namespace details {
 
 struct offer_field {
@@ -61,6 +60,19 @@ public:
      * @brief create empty object
      */
     offer() = default;
+
+    /**
+     * @brief create new object
+     */
+    offer(
+        processor_info const& info,
+        takatori::relation::expression const& sibling,
+        std::shared_ptr<meta::record_meta> meta,
+        std::vector<details::offer_field> fields
+    ) : operator_base(info, sibling),
+        meta_(std::move(meta)),
+        fields_(std::move(fields))
+    {}
 
     /**
      * @brief create new object

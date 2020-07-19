@@ -51,6 +51,7 @@
 
 #include <takatori/util/enum_tag.h>
 #include <jogasaki/utils/field_types.h>
+#include <takatori/relation/step/offer.h>
 #include "test_utils.h"
 
 namespace jogasaki::testing {
@@ -78,82 +79,98 @@ namespace tinfo = ::shakujo::common::core::type;
  * @brief test to confirm the compiler behavior
  * TOOO this is temporary, do not depend on compiler to generate same plan
  */
-class compiler_test : public ::testing::Test {};
+class compiler_test : public ::testing::Test {
+public:
+    using kind = field_type_kind;
+    ::takatori::util::object_creator creator;
+    ::yugawara::binding::factory bindings { creator };
 
-using kind = field_type_kind;
+    std::unique_ptr<shakujo::model::program::Program> gen_shakujo_program(std::string_view sql) {
+        shakujo::parser::Parser parser;
+        std::unique_ptr<shakujo::model::program::Program> program;
+        try {
+            std::stringstream ss{std::string(sql)};
+            program = parser.parse_program("compiler_test", ss);
+        } catch (shakujo::parser::Parser::Exception &e) {
+            LOG(ERROR) << "parse error:" << e.message() << " (" << e.region() << ")" << std::endl;
+        }
+        return program;
+    };
 
-std::unique_ptr<shakujo::model::program::Program> gen_shakujo_program(std::string_view sql) {
-    shakujo::parser::Parser parser;
-    std::unique_ptr<shakujo::model::program::Program> program;
-    try {
-        std::stringstream ss{std::string(sql)};
-        program = parser.parse_program("compiler_test", ss);
-    } catch (shakujo::parser::Parser::Exception &e) {
-        LOG(ERROR) << "parse error:" << e.message() << " (" << e.region() << ")" << std::endl;
-    }
-    return program;
-};
+    std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() {
 
-std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() {
-
-    std::shared_ptr<::yugawara::storage::configurable_provider> storages
+        std::shared_ptr<::yugawara::storage::configurable_provider> storages
             = std::make_shared<::yugawara::storage::configurable_provider>();
 
-    std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
+        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
             "T0",
             {
-                    { "C0", type::int8() },
-                    { "C1", type::float8 () },
+                { "C0", type::int8() },
+                { "C1", type::float8 () },
             },
-    });
-    std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
+        });
+        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
             t0,
             "I0",
             {
-                    t0->columns()[0],
+                t0->columns()[0],
             },
             {},
             {
-                    ::yugawara::storage::index_feature::find,
-                    ::yugawara::storage::index_feature::scan,
-                    ::yugawara::storage::index_feature::unique,
-                    ::yugawara::storage::index_feature::primary,
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
             },
-    });
-    return storages;
-}
+        });
+        return storages;
+    }
 
-TEST_F(compiler_test, insert) {
-    std::string sql = "insert into T0(C0, C1) values (1,1.0)";
-    auto p = gen_shakujo_program(sql);
-    auto storages = yugawara_provider();
+    yugawara::compiler_result compile(std::string_view sql, std::shared_ptr<::yugawara::storage::configurable_provider> storages) {
+        auto p = gen_shakujo_program(sql);
 
-    shakujo_translator translator;
-    shakujo_translator_options options {
+        shakujo_translator translator;
+        shakujo_translator_options options {
             storages,
             {},
             {},
             {},
-    };
+        };
 
-    placeholder_map placeholders;
-    ::takatori::document::document_map documents;
-    ::shakujo::model::IRFactory ir;
-    ::yugawara::binding::factory bindings { options.get_object_creator() };
+        placeholder_map placeholders;
+        ::takatori::document::document_map documents;
+        ::shakujo::model::IRFactory ir;
+        ::yugawara::binding::factory bindings { options.get_object_creator() };
 
-//    auto s = ir.InsertValuesStatement(
-//            ir.Name("T0"),
-//            {
-//                    ir.InsertValuesStatementColumn(ir.Name("C0"), ir.Literal(tinfo::Int(64), 1)),
-//                    ir.InsertValuesStatementColumn(ir.Name("C1"), ir.Literal(tinfo::Float(64), 1.0)),
-//            });
-//    auto r = translator(options, *s, documents, placeholders);
+        auto r = translator(options, *p->main(), documents, placeholders);
+        yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
+        std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
-    auto r = translator(options, *p->main(), documents, placeholders);
-    ASSERT_EQ(r.kind(), result_kind::statement);
+        yugawara::compiler_options c_options{
+            indices,
+            runtime_features,
+            options.get_object_creator(),
+        };
 
-    auto ptr = r.release<result_kind::statement>();
-    auto&& write = takatori::util::downcast<statement::write>(*ptr);
+        if (r.kind() == result_kind::execution_plan) {
+            auto ptr = r.release<result_kind::execution_plan>();
+            auto&& graph = *ptr;
+            return yugawara::compiler()(c_options, std::move(graph));
+        }
+        if (r.kind() == result_kind::statement) {
+            auto ptr = r.release<result_kind::statement>();
+            auto&& stmt = *ptr;
+            return yugawara::compiler()(c_options, std::move(stmt));
+        }
+        fail();
+    }
+};
+
+TEST_F(compiler_test, insert) {
+    std::string sql = "insert into T0(C0, C1) values (1,1.0)";
+    auto storages = yugawara_provider();
+    auto result = compile(sql, storages);
+    auto&& write = downcast<statement::write>(result.statement());
 
     EXPECT_EQ(write.operator_kind(), relation::write_kind::insert);
 
@@ -167,87 +184,36 @@ TEST_F(compiler_test, insert) {
     ASSERT_EQ(es.size(), 2);
     EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int4()));
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
+
+    dump(result);
 }
 
 TEST_F(compiler_test, simple_query) {
     std::string sql = "select * from T0";
-    auto p = gen_shakujo_program(sql);
+
+//    auto t0 = storages->find_relation("T0");
+//    yugawara::storage::column const& t0c0 = t0->columns()[0];
+//    yugawara::storage::column const& t0c1 = t0->columns()[1];
     auto storages = yugawara_provider();
-
-    shakujo_translator translator;
-    shakujo_translator_options options {
-            storages,
-            {},
-            {},
-            {},
-    };
-
-    placeholder_map placeholders;
-    ::takatori::document::document_map documents;
-    ::shakujo::model::IRFactory ir;
-    ::yugawara::binding::factory bindings { options.get_object_creator() };
-
-    auto r = translator(options, *p->main(), documents, placeholders);
-    ASSERT_EQ(r.kind(), result_kind::execution_plan);
-
-    auto ptr = r.release<result_kind::execution_plan>();
-    auto&& graph = *ptr;
-    auto&& emit = last<relation::emit>(graph);
-    auto&& scan = next<relation::scan>(emit.input());
-
-    ASSERT_EQ(scan.columns().size(), 2);
-    ASSERT_EQ(emit.columns().size(), 2);
-
-    EXPECT_EQ(emit.columns()[0].source(), scan.columns()[0].destination());
-    EXPECT_EQ(emit.columns()[1].source(), scan.columns()[1].destination());
-    EXPECT_EQ(emit.columns()[0].name(), "C0");
-    EXPECT_EQ(emit.columns()[1].name(), "C1");
-
-//    EXPECT_EQ(bindings(emit.columns()[0].source()), "C0");
-
-//    auto c0 = bindings.stream_variable("c0");
-//    auto c1 = bindings.stream_variable("c1");
-//    auto&& in = r.insert(relation::scan {
-//            bindings(*i0),
-//            {
-//                    { bindings(t0c0), c0 },
-//                    { bindings(t0c1), c1 },
-//            },
-//    });
-//    auto&& out = r.insert(relation::emit { c0 });
-//    in.output() >> out.input();
-
-    yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
-    std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
-
-    auto t0 = storages->find_relation("T0");
-    yugawara::storage::column const& t0c0 = t0->columns()[0];
-    yugawara::storage::column const& t0c1 = t0->columns()[1];
-
-//    std::shared_ptr<yugawara::storage::index> i0 = storages->add_index("I0", { t0, "I0", });
-
-    yugawara::compiler_options c_options{
-            indices,
-            runtime_features,
-            options.get_object_creator(),
-    };
-    auto result = yugawara::compiler()(c_options, std::move(graph));
+    auto result = compile(sql, storages);
     ASSERT_TRUE(result);
 
     auto&& c = downcast<statement::execute>(result.statement());
 
     ASSERT_EQ(c.execution_plan().size(), 1);
-    auto&& p0 = find(c.execution_plan(), scan);
-    auto&& p1 = find(c.execution_plan(), emit);
-    ASSERT_EQ(p0, p1);
+    auto&& p0 = top(c.execution_plan());
 
     ASSERT_EQ(p0.operators().size(), 2);
+
+    auto&& scan = head<takatori::relation::scan>(p0.operators());
+
+    auto&& emit = next_relation<takatori::relation::emit>(scan);
     ASSERT_TRUE(p0.operators().contains(scan));
     ASSERT_TRUE(p0.operators().contains(emit));
 
     ASSERT_EQ(scan.columns().size(), 2);
-    EXPECT_EQ(scan.columns()[0].source(), bindings(t0c0));
-    EXPECT_EQ(scan.columns()[1].source(), bindings(t0c1));
+//    EXPECT_EQ(scan.columns()[0].source(), bindings(t0c0));
+//    EXPECT_EQ(scan.columns()[1].source(), bindings(t0c1));
     auto&& c0p0 = scan.columns()[0].destination();
     auto&& c1p0 = scan.columns()[1].destination();
 
@@ -255,9 +221,9 @@ TEST_F(compiler_test, simple_query) {
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
     EXPECT_EQ(emit.columns()[1].source(), c1p0);
 
-    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
+//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
     EXPECT_EQ(result.type_of(c0p0), type::int8());
-    EXPECT_EQ(result.type_of(bindings(t0c1)), type::float8());
+//    EXPECT_EQ(result.type_of(bindings(t0c1)), type::float8());
     EXPECT_EQ(result.type_of(c1p0), type::float8());
 
     dump(result);
@@ -269,207 +235,134 @@ TEST_F(compiler_test, simple_query) {
 
 TEST_F(compiler_test, filter) {
     std::string sql = "select C0 from T0 where C1=1.0";
-    auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();
+    auto result = compile(sql, storages);
+    ASSERT_TRUE(result);
 
-    shakujo_translator translator;
-    shakujo_translator_options options {
-            storages,
-            {},
-            {},
-            {},
-    };
+    auto&& c = downcast<statement::execute>(result.statement());
+    ASSERT_EQ(c.execution_plan().size(), 1);
 
-    placeholder_map placeholders;
-    ::takatori::document::document_map documents;
-    ::shakujo::model::IRFactory ir;
-    ::yugawara::binding::factory bindings { options.get_object_creator() };
-
-    auto r = translator(options, *p->main(), documents, placeholders);
-    ASSERT_EQ(r.kind(), result_kind::execution_plan);
-
-    auto ptr = r.release<result_kind::execution_plan>();
-    auto&& graph = *ptr;
+    auto b = c.execution_plan().begin();
+    auto&& graph = takatori::util::downcast<takatori::plan::process>(*b).operators();
     auto&& emit = last<relation::emit>(graph);
     auto&& filter = next<relation::filter>(emit.input());
     auto&& scan = next<relation::scan>(filter.input());
 
-    ASSERT_EQ(scan.columns().size(), 2);
-//    ASSERT_EQ(filter..().columns().size(), 2);
-    ASSERT_EQ(emit.columns().size(), 1);
-
-    EXPECT_EQ(emit.columns()[0].source(), scan.columns()[0].destination());
-    EXPECT_EQ(emit.columns()[0].name(), "C0");
-
-//    EXPECT_EQ(bindings(emit.columns()[0].source()), "C0");
-
-//    auto c0 = bindings.stream_variable("c0");
-//    auto c1 = bindings.stream_variable("c1");
-//    auto&& in = r.insert(relation::scan {
-//            bindings(*i0),
-//            {
-//                    { bindings(t0c0), c0 },
-//                    { bindings(t0c1), c1 },
-//            },
-//    });
-//    auto&& out = r.insert(relation::emit { c0 });
-//    in.output() >> out.input();
-
-    yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
-    std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
-
-    auto t0 = storages->find_relation("T0");
-    yugawara::storage::column const& t0c0 = t0->columns()[0];
-    yugawara::storage::column const& t0c1 = t0->columns()[1];
-
-//    std::shared_ptr<yugawara::storage::index> i0 = storages->add_index("I0", { t0, "I0", });
-
-    yugawara::compiler_options c_options{
-            indices,
-            runtime_features,
-            options.get_object_creator(),
-    };
-    auto result = yugawara::compiler()(c_options, std::move(graph));
-    ASSERT_TRUE(result);
-    dump(result);
-
-    auto&& c = downcast<statement::execute>(result.statement());
-
-    ASSERT_EQ(c.execution_plan().size(), 1);
-
-    auto b = c.execution_plan().begin();
-    auto&& graph2 = takatori::util::downcast<takatori::plan::process>(*b).operators();
-    auto&& emit2 = last<relation::emit>(graph2);
-    auto&& filter2 = next<relation::filter>(emit2.input());
-    auto&& scan2 = next<relation::scan>(filter2.input());
-
-    auto&& p0 = find(c.execution_plan(), scan2);
-    auto&& p1 = find(c.execution_plan(), emit2);
-    auto&& p2 = find(c.execution_plan(), filter2);
+    auto&& p0 = find(c.execution_plan(), scan);
+    auto&& p1 = find(c.execution_plan(), emit);
+    auto&& p2 = find(c.execution_plan(), filter);
     ASSERT_EQ(p0, p1);
     ASSERT_EQ(p1, p2);
 
     ASSERT_EQ(p0.operators().size(), 3);
-    ASSERT_TRUE(p0.operators().contains(scan2));
-    ASSERT_TRUE(p0.operators().contains(filter2));
-    ASSERT_TRUE(p0.operators().contains(emit2));
+    ASSERT_TRUE(p0.operators().contains(scan));
+    ASSERT_TRUE(p0.operators().contains(filter));
+    ASSERT_TRUE(p0.operators().contains(emit));
 
-    ASSERT_EQ(scan2.columns().size(), 2);
-    EXPECT_EQ(scan2.columns()[0].source(), bindings(t0c0));
-    EXPECT_EQ(scan2.columns()[1].source(), bindings(t0c1));
-    auto&& c0p0 = scan2.columns()[0].destination();
-    auto&& c1p0 = scan2.columns()[1].destination();
+    ASSERT_EQ(scan.columns().size(), 2);
+//    EXPECT_EQ(scan2.columns()[0].source(), bindings(t0c0));
+//    EXPECT_EQ(scan2.columns()[1].source(), bindings(t0c1));
+    auto&& c0p0 = scan.columns()[0].destination();
+    auto&& c1p0 = scan.columns()[1].destination();
 
     ASSERT_EQ(emit.columns().size(), 1);
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
+//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
     EXPECT_EQ(result.type_of(c0p0), type::int8());
 }
 
 TEST_F(compiler_test, project_filter) {
     std::string sql = "select C1+C0, C0, C1 from T0 where C1=1.0";
-    auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();
+    auto result = compile(sql, storages);
+    auto&& c = downcast<statement::execute>(result.statement());
+    ASSERT_TRUE(result);
+    dump(result);
 
-    shakujo_translator translator;
-    shakujo_translator_options options {
-            storages,
-            {},
-            {},
-            {},
-    };
+    ASSERT_EQ(c.execution_plan().size(), 1);
 
-    placeholder_map placeholders;
-    ::takatori::document::document_map documents;
-    ::shakujo::model::IRFactory ir;
-    ::yugawara::binding::factory bindings { options.get_object_creator() };
-
-    auto r = translator(options, *p->main(), documents, placeholders);
-    ASSERT_EQ(r.kind(), result_kind::execution_plan);
-
-    auto ptr = r.release<result_kind::execution_plan>();
-    auto&& graph = *ptr;
+    auto b = c.execution_plan().begin();
+    auto&& graph = takatori::util::downcast<takatori::plan::process>(*b).operators();
     auto&& emit = last<relation::emit>(graph);
     auto&& project = next<relation::project>(emit.input());
     auto&& filter = next<relation::filter>(project.input());
     auto&& scan = next<relation::scan>(filter.input());
 
-    ASSERT_EQ(scan.columns().size(), 2);
-//    ASSERT_EQ(filter..().columns().size(), 2);
-    ASSERT_EQ(emit.columns().size(), 3);
-
-//    EXPECT_EQ(emit.columns()[0].source(), project.columns()[0]);
-//    EXPECT_EQ(emit.columns()[0].name(), "C0");
-
-//    EXPECT_EQ(bindings(emit.columns()[0].source()), "C0");
-
-//    auto c0 = bindings.stream_variable("c0");
-//    auto c1 = bindings.stream_variable("c1");
-//    auto&& in = r.insert(relation::scan {
-//            bindings(*i0),
-//            {
-//                    { bindings(t0c0), c0 },
-//                    { bindings(t0c1), c1 },
-//            },
-//    });
-//    auto&& out = r.insert(relation::emit { c0 });
-//    in.output() >> out.input();
-
-    yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
-    std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
-
-    auto t0 = storages->find_relation("T0");
-    yugawara::storage::column const& t0c0 = t0->columns()[0];
-    yugawara::storage::column const& t0c1 = t0->columns()[1];
-
-//    std::shared_ptr<yugawara::storage::index> i0 = storages->add_index("I0", { t0, "I0", });
-
-    yugawara::compiler_options c_options{
-            indices,
-            runtime_features,
-            options.get_object_creator(),
-    };
-    auto result = yugawara::compiler()(c_options, std::move(graph));
-    ASSERT_TRUE(result);
-    dump(result);
-
-    auto&& c = downcast<statement::execute>(result.statement());
-
-    ASSERT_EQ(c.execution_plan().size(), 1);
-
-    auto b = c.execution_plan().begin();
-    auto&& graph2 = takatori::util::downcast<takatori::plan::process>(*b).operators();
-    auto&& emit2 = last<relation::emit>(graph2);
-    auto&& project2 = next<relation::project>(emit2.input());
-    auto&& filter2 = next<relation::filter>(project2.input());
-    auto&& scan2 = next<relation::scan>(filter2.input());
-
-    auto&& p0 = find(c.execution_plan(), scan2);
-    auto&& p1 = find(c.execution_plan(), emit2);
-    auto&& p2 = find(c.execution_plan(), filter2);
-    auto&& p3 = find(c.execution_plan(), project2);
+    auto&& p0 = find(c.execution_plan(), scan);
+    auto&& p1 = find(c.execution_plan(), emit);
+    auto&& p2 = find(c.execution_plan(), filter);
+    auto&& p3 = find(c.execution_plan(), project);
     ASSERT_EQ(p0, p1);
     ASSERT_EQ(p1, p2);
     ASSERT_EQ(p2, p3);
 
     ASSERT_EQ(p0.operators().size(), 4);
-    ASSERT_TRUE(p0.operators().contains(scan2));
-    ASSERT_TRUE(p0.operators().contains(filter2));
-    ASSERT_TRUE(p0.operators().contains(emit2));
-    ASSERT_TRUE(p0.operators().contains(project2));
+    ASSERT_TRUE(p0.operators().contains(scan));
+    ASSERT_TRUE(p0.operators().contains(filter));
+    ASSERT_TRUE(p0.operators().contains(emit));
+    ASSERT_TRUE(p0.operators().contains(project));
 
-    ASSERT_EQ(scan2.columns().size(), 2);
-    EXPECT_EQ(scan2.columns()[0].source(), bindings(t0c0));
-    EXPECT_EQ(scan2.columns()[1].source(), bindings(t0c1));
-    auto&& c0p0 = scan2.columns()[0].destination();
-    auto&& c1p0 = scan2.columns()[1].destination();
+    ASSERT_EQ(scan.columns().size(), 2);
+//    EXPECT_EQ(scan.columns()[0].source(), bindings(t0c0));
+//    EXPECT_EQ(scan.columns()[1].source(), bindings(t0c1));
+    auto&& c0p0 = scan.columns()[0].destination();
+    auto&& c1p0 = scan.columns()[1].destination();
 
     ASSERT_EQ(emit.columns().size(), 3);
 //    EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
 //    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
 //    EXPECT_EQ(result.type_of(c0p0), type::int8());
+}
+
+TEST_F(compiler_test, join) {
+    std::string sql = "select T0.C0, T1.C1 from T0, T0 T1";
+    auto storages = yugawara_provider();
+    auto result = compile(sql, storages);
+    auto&& c = downcast<statement::execute>(result.statement());
+    ASSERT_TRUE(result);
+    dump(result);
+
+    ASSERT_EQ(c.execution_plan().size(), 5);
+
+    auto& b = top(c.execution_plan());
+    auto&& graph = takatori::util::downcast<takatori::plan::process>(b).operators();
+    auto&& offer = last<relation::step::offer>(graph);
+    auto&& scan = next<relation::scan>(offer.input());
+    {
+        auto&& p0 = find(c.execution_plan(), scan);
+        auto&& p1 = find(c.execution_plan(), offer);
+        ASSERT_EQ(p0, p1);
+    }
+
+    auto& b2 = next_top(c.execution_plan(), b);
+    auto&& graph2 = takatori::util::downcast<takatori::plan::process>(b2).operators();
+    auto&& offer2 = last<relation::step::offer>(graph2);
+    auto&& scan2 = next<relation::scan>(offer2.input());
+    {
+        auto&& p0 = find(c.execution_plan(), scan2);
+        auto&& p1 = find(c.execution_plan(), offer2);
+        ASSERT_EQ(p0, p1);
+    }
+
+    /*
+    ASSERT_EQ(p0.operators().size(), 4);
+    ASSERT_TRUE(p0.operators().contains(scan));
+    ASSERT_TRUE(p0.operators().contains(offer));
+
+    ASSERT_EQ(scan.columns().size(), 2);
+//    EXPECT_EQ(scan.columns()[0].source(), bindings(t0c0));
+//    EXPECT_EQ(scan.columns()[1].source(), bindings(t0c1));
+    auto&& c0p0 = scan.columns()[0].destination();
+    auto&& c1p0 = scan.columns()[1].destination();
+
+    ASSERT_EQ(emit.columns().size(), 3);
+//    EXPECT_EQ(emit.columns()[0].source(), c0p0);
+
+//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
+//    EXPECT_EQ(result.type_of(c0p0), type::int8());
+     */
 }
 
 }

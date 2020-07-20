@@ -19,7 +19,7 @@
 
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
-#include <takatori/relation/emit.h>
+#include <takatori/relation/step/offer.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>
@@ -27,68 +27,67 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/impl/block_variables.h>
-#include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
-#include "emit_context.h"
 
-namespace jogasaki::executor::process::impl::relop {
-
+namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
 
-struct emit_field {
+struct take_flat_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
     std::size_t source_nullity_offset_{};
     std::size_t target_nullity_offset_{};
     bool nullable_{};
+    bool is_key_{};
 };
 
 }
 
 /**
- * @brief emit operator
+ * @brief take_flat operator
  */
-class emit : public operator_base {
+class take_flat : public operator_base {
 public:
-    friend class emit_context;
-
-    using column = takatori::relation::emit::column;
+    using column = takatori::relation::step::take_flat::column;
 
     /**
      * @brief create empty object
      */
-    emit() = default;
+    take_flat() = default;
 
     /**
      * @brief create new object
      */
-    explicit emit(
+    explicit take_flat(
         processor_info const& info,
         takatori::relation::expression const& sibling,
+        meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) : operator_base(info, sibling),
-        meta_(create_meta(info, columns)),
-        fields_(create_fields(meta_, columns))
+        meta_(create_meta(info, order, columns)),
+        fields_(create_fields(meta_, order, columns))
     {}
 
-    void operator()(emit_context& ctx) {
-        auto target = ctx.store_.ref();
-        auto source = ctx.variables().store().ref();
-        for(auto &f : fields_) {
-            utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
-        }
-
-        if (ctx.writer_) {
-            // FIXME fetch writer when needed
-            ctx.writer_->write(target);
+    void operator()() {
+        auto target = ctx.variables().store().ref();
+        if (ctx.reader_) {
+            while(ctx.reader_->next_group()) {
+                while(ctx.reader_->next_member()) {
+                    auto key = ctx.reader_->get_group();
+                    auto value = ctx.reader_->get_member();
+                    for(auto &f : fields_) {
+                        auto source = f.is_key_ ? key : value;
+                        utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+                    }
+                }
+            }
         }
     }
 
     operator_kind kind() override {
-        return operator_kind::emit;
+        return operator_kind::take_flat;
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
@@ -96,33 +95,33 @@ public:
     }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<details::emit_field> fields_{};
+    std::vector<details::take_flat_field> fields_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
+        meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) {
-        // FIXME currently respect the column order coming from takatori
         std::vector<meta::field_type> fields{};
-        auto sz = columns.size();
-        fields.reserve(sz);
+        auto sz = order.size();
+        fields.resize(sz);
         for(auto&& c : columns) {
-            fields.emplace_back(utils::type_for(info.compiled_info(), c.source()));
+            fields[order.index(c.destination())] = utils::type_for(info.compiled_info(), c.destination());
         }
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
     }
 
-    std::vector<details::emit_field> create_fields(
+    std::vector<details::take_flat_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
+        meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) {
-        std::vector<details::emit_field> fields{};
-        std::size_t sz = meta->field_count();
-        fields.resize(sz);
-        for(std::size_t ind = 0 ; ind < sz; ++ind) {
-            auto&& c = columns[ind];
+        std::vector<details::take_flat_field> fields{};
+        fields.resize(meta->field_count());
+        for(auto&& c : columns) {
+            auto ind = order.index(c.destination());
             auto& info = blocks().at(block_index()).value_map().at(c.source());
-            fields.emplace_back(details::emit_field{
+            fields[ind] = details::take_flat_field{
                 meta_->at(ind),
                 info.value_offset(),
                 meta_->value_offset(ind),
@@ -130,7 +129,7 @@ private:
                 meta_->nullity_offset(ind),
                 //TODO nullity
                 false // nullable
-            });
+            };
         }
         return fields;
     }

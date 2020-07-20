@@ -19,7 +19,7 @@
 #include <jogasaki/executor/group_reader.h>
 #include "context_base.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief take_group context

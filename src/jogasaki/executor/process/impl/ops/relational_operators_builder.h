@@ -32,7 +32,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/relop/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/storage/storage_context.h>
 #include "operator_container.h"
 #include "scan.h"
@@ -40,7 +40,7 @@
 #include "take_group.h"
 #include "offer.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
 

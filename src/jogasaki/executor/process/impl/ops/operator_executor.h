@@ -26,13 +26,13 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/relop/operator_container.h>
+#include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 
 #include "emit.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace graph = takatori::graph;
 namespace relation = takatori::relation;
@@ -65,7 +65,7 @@ public:
     }
 
     template<class T>
-    T* find_context(relop::operator_base const* p) {
+    T* find_context(ops::operator_base const* p) {
         auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();  //NOLINT
         if (contexts.count(p) == 0) {
             return nullptr;
@@ -74,7 +74,7 @@ public:
     }
 
     template<class T, class ... Args>
-    T* make_context(relop::operator_base const* p, Args&&...args) {
+    T* make_context(ops::operator_base const* p, Args&&...args) {
         auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();  //NOLINT
         auto [it, b] = contexts.emplace(p, std::make_unique<T>(std::forward<Args>(args)...));
         if (!b) {

@@ -24,7 +24,7 @@
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/process/impl/relop/cogroup.h>
+#include <jogasaki/executor/process/impl/ops/cogroup.h>
 
 #include "../common/task_base.h"
 #include "params.h"
@@ -86,7 +86,7 @@ public:
 
         auto* l_reader = left_reader_.reader<executor::group_reader>();
         auto* r_reader = right_reader_.reader<executor::group_reader>();
-        process::impl::relop::cogroup cgrp{{l_reader, r_reader}, {l_meta_, r_meta_}};
+        process::impl::ops::cogroup cgrp{{l_reader, r_reader}, {l_meta_, r_meta_}};
 
         l_records_ = 0;
         r_records_ = 0;
@@ -96,7 +96,7 @@ public:
         total_val_ = 0;
 
         using namespace jogasaki::executor;
-        process::impl::relop::cogroup::consumer_type consumer = [&](accessor::record_ref key, std::vector<process::impl::iterator_pair>& values) {
+        process::impl::ops::cogroup::consumer_type consumer = [&](accessor::record_ref key, std::vector<process::impl::iterator_pair>& values) {
             auto r_value_len = r_meta_->value().record_size();
             auto r_value_offset = r_meta_->value().value_offset(0);
             auto l_value_len = l_meta_->value().record_size();

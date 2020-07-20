@@ -17,7 +17,7 @@
 
 #include <memory>
 #include <jogasaki/executor/process/abstract/work_context.h>
-#include <jogasaki/executor/process/impl/relop/context_container.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/block_variables.h>
 
 namespace jogasaki::executor::process::impl {
@@ -31,7 +31,7 @@ public:
 
     work_context() = default;
 
-    [[nodiscard]] relop::context_container& contexts() noexcept {
+    [[nodiscard]] ops::context_container& contexts() noexcept {
         return contexts_;
     }
     [[nodiscard]] variables_type& variables() noexcept {
@@ -39,7 +39,7 @@ public:
     }
 
 private:
-    relop::context_container contexts_{};
+    ops::context_container contexts_{};
     variables_type variables_{};
 };
 

@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relop/cogroup.h>
+#include <jogasaki/executor/process/impl/ops/cogroup.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
 #include <jogasaki/test_root.h>
 
-#include <jogasaki/executor/process/impl/relop/join.h>
+#include <jogasaki/executor/process/impl/ops/join.h>
 
 #include "mock/group_reader.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

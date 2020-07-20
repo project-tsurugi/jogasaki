@@ -27,40 +27,57 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/impl/block_variables.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
+#include "offer_context.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
 
-struct take_flat_field {
+struct offer_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
     std::size_t source_nullity_offset_{};
     std::size_t target_nullity_offset_{};
     bool nullable_{};
-    bool is_key_{};
 };
 
 }
 
 /**
- * @brief take_flat operator
+ * @brief offer operator
  */
-class take_flat : public operator_base {
+class offer : public operator_base {
 public:
-    using column = takatori::relation::step::take_flat::column;
+    using column = takatori::relation::step::offer::column;
+
+    friend class offer_context;
 
     /**
      * @brief create empty object
      */
-    take_flat() = default;
+    offer() = default;
 
     /**
      * @brief create new object
      */
-    explicit take_flat(
+    offer(
+        processor_info const& info,
+        takatori::relation::expression const& sibling,
+        std::shared_ptr<meta::record_meta> meta,
+        std::vector<details::offer_field> fields
+    ) : operator_base(info, sibling),
+        meta_(std::move(meta)),
+        fields_(std::move(fields))
+    {}
+
+    /**
+     * @brief create new object
+     */
+    offer(
         processor_info const& info,
         takatori::relation::expression const& sibling,
         meta::variable_order const& order,
@@ -70,32 +87,30 @@ public:
         fields_(create_fields(meta_, order, columns))
     {}
 
-    void operator()() {
-        auto target = ctx.variables().store().ref();
-        if (ctx.reader_) {
-            while(ctx.reader_->next_group()) {
-                while(ctx.reader_->next_member()) {
-                    auto key = ctx.reader_->get_group();
-                    auto value = ctx.reader_->get_member();
-                    for(auto &f : fields_) {
-                        auto source = f.is_key_ ? key : value;
-                        utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
-                    }
-                }
-            }
+    void operator()(offer_context& ctx) {
+        auto target = ctx.store_.ref();
+        auto source = ctx.variables().store().ref();
+        for(auto &f : fields_) {
+            utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+        }
+
+        if (ctx.writer_) {
+            // FIXME fetch writer when needed
+            ctx.writer_->write(target);
         }
     }
 
     operator_kind kind() override {
-        return operator_kind::take_flat;
+        return operator_kind::offer;
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
+
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<details::take_flat_field> fields_{};
+    std::vector<details::offer_field> fields_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
@@ -111,17 +126,17 @@ private:
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
     }
 
-    std::vector<details::take_flat_field> create_fields(
+    std::vector<details::offer_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) {
-        std::vector<details::take_flat_field> fields{};
+        std::vector<details::offer_field> fields{};
         fields.resize(meta->field_count());
         for(auto&& c : columns) {
             auto ind = order.index(c.destination());
             auto& info = blocks().at(block_index()).value_map().at(c.source());
-            fields[ind] = details::take_flat_field{
+            fields[ind] = details::offer_field{
                 meta_->at(ind),
                 info.value_offset(),
                 meta_->value_offset(ind),

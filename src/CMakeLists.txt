@@ -11,7 +11,7 @@ file(GLOB SOURCES
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/process/*.cpp"
         "jogasaki/executor/process/impl/*.cpp"
-        "jogasaki/executor/process/impl/relop/*.cpp"
+        "jogasaki/executor/process/impl/ops/*.cpp"
         "jogasaki/executor/process/abstract/*.cpp"
         "jogasaki/executor/exchange/*.cpp"
         "jogasaki/executor/exchange/aggregate/*.cpp"

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relop/offer.h>
+#include <jogasaki/executor/process/impl/ops/offer.h>
 
 #include <string>
 
@@ -25,11 +25,11 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/executor/process/impl/relop/offer_context.h>
+#include <jogasaki/executor/process/impl/ops/offer_context.h>
 
 #include <jogasaki/basic_record.h>
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 using namespace meta;
 using namespace testing;

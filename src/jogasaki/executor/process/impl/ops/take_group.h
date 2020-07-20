@@ -30,7 +30,7 @@
 #include "operator_base.h"
 #include "take_group_context.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
 

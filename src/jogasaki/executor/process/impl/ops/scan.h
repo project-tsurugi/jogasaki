@@ -29,7 +29,7 @@
 #include "operator_base.h"
 #include "scan_context.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief scanner

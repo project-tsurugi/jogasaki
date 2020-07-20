@@ -15,38 +15,48 @@
  */
 #pragma once
 
+#include <vector>
+
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/storage/storage_context.h>
+#include <jogasaki/storage/transaction_context.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/abstract/scan_info.h>
 #include "context_base.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 /**
- * @brief emit context
+ * @brief scan context
  */
-class emit_context : public context_base {
+class scan_context : public context_base {
 public:
-    friend class emit;
+    friend class scan;
     /**
      * @brief create empty object
      */
-    emit_context() = default;
+    scan_context() = default;
 
     /**
      * @brief create new object
      */
-    explicit emit_context(
-        std::shared_ptr<meta::record_meta> meta,
+    explicit scan_context(
+        std::shared_ptr<storage::storage_context> storage,
         block_variables_info const& info
     ) : context_base(std::make_shared<block_variables>(info)),
-    store_(std::move(meta))
+        storage_(std::move(storage))
     {}
 
     operator_kind kind() override {
-        return operator_kind::emit;
+        return operator_kind::scan;
     }
 private:
-    data::small_record_store store_{};
-    record_writer* writer_{};
+    std::shared_ptr<storage::storage_context> storage_{};
+    std::shared_ptr<storage::transaction_context> tx_{};
 };
 
 }

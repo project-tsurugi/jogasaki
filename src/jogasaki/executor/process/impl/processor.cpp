@@ -15,12 +15,12 @@
  */
 #include "processor.h"
 #include "block_variables_info.h"
-#include "relop/relational_operators_builder.h"
+#include "ops/relational_operators_builder.h"
 
 namespace jogasaki::executor::process::impl {
 
 processor::processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) :
-    info_(std::move(info)), operators_(relop::create_relational_operators(info_, compiler_ctx))
+    info_(std::move(info)), operators_(ops::create_relational_operators(info_, compiler_ctx))
 {}
 
 abstract::status processor::run(abstract::task_context *context) {
@@ -29,7 +29,7 @@ abstract::status processor::run(abstract::task_context *context) {
     for(auto& block_info : info_->blocks_info()) {
         work->variables().emplace_back(block_info);
     }
-    relop::operator_executor visitor{
+    ops::operator_executor visitor{
         const_cast<graph::graph<relation::expression>&>(info_->operators()),
         info_->compiled_info(),
         &operators_,

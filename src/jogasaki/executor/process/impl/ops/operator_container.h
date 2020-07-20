@@ -16,10 +16,10 @@
 #pragma once
 
 #include <takatori/relation/expression.h>
-#include <jogasaki/executor/process/impl/relop/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/block_variables_info.h>
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
 
@@ -28,7 +28,7 @@ namespace relation = takatori::relation;
  */
 class operator_container {
 public:
-    using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<relop::operator_base>>;
+    using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<ops::operator_base>>;
 
     operator_container() = default;
 
@@ -46,7 +46,7 @@ public:
         return operators_.size();
     }
 
-    [[nodiscard]] relop::operator_base* at(relation::expression const* op) const noexcept {
+    [[nodiscard]] ops::operator_base* at(relation::expression const* op) const noexcept {
         return operators_.at(op).get();
     }
 

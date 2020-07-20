@@ -16,36 +16,34 @@
 #pragma once
 
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/record_writer.h>
 #include "context_base.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 /**
- * @brief offer context
+ * @brief emit context
  */
-class offer_context : public context_base {
+class emit_context : public context_base {
 public:
-    friend class offer;
+    friend class emit;
     /**
      * @brief create empty object
      */
-    offer_context() = default;
+    emit_context() = default;
 
     /**
      * @brief create new object
      */
-    offer_context(
+    explicit emit_context(
         std::shared_ptr<meta::record_meta> meta,
         block_variables_info const& info
     ) : context_base(std::make_shared<block_variables>(info)),
-        store_(std::move(meta))
+    store_(std::move(meta))
     {}
 
     operator_kind kind() override {
-        return operator_kind::offer;
+        return operator_kind::emit;
     }
-
 private:
     data::small_record_store store_{};
     record_writer* writer_{};

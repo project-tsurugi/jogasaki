@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/relop/relational_operators_builder.h>
+#include <jogasaki/executor/process/impl/ops/relational_operators_builder.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -60,7 +60,7 @@
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

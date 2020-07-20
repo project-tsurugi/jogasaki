@@ -22,7 +22,7 @@
 namespace jogasaki::executor::process::impl {
 class block_variables_info;
 }
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief relational operator base class

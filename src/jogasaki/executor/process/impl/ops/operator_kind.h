@@ -17,7 +17,7 @@
 
 #include <takatori/util/enum_set.h>
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 enum class operator_kind : std::size_t {
     emit,

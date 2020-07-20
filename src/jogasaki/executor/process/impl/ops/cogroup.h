@@ -33,7 +33,7 @@
 
 #include "../iterator_pair.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace impl {
 

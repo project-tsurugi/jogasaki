@@ -24,7 +24,7 @@
 #include "take_group.h"
 #include "offer.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 namespace graph = takatori::graph;
 namespace relation = takatori::relation;

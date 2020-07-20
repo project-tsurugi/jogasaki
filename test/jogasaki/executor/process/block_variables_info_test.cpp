@@ -60,7 +60,7 @@
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/relop/relational_operators_builder.h>
+#include <jogasaki/executor/process/impl/ops/relational_operators_builder.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -285,8 +285,8 @@ TEST_F(block_variables_info_test, temp) {
 
     jogasaki::plan::compiler_context compiler_ctx{};
 
-    // additionally test relop builder
-    auto ops = relop::relational_operators_builder{pinfo, compiler_ctx}();
+    // additionally test ops builder
+    auto ops = ops::relational_operators_builder{pinfo, compiler_ctx}();
 
     ASSERT_EQ(2, ops.size());
     for(auto&& [e, o] : ops) {

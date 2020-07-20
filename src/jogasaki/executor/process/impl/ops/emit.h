@@ -19,7 +19,7 @@
 
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
-#include <takatori/relation/step/offer.h>
+#include <takatori/relation/emit.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>
@@ -30,13 +30,14 @@
 #include <jogasaki/executor/process/impl/block_variables.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
-#include "offer_context.h"
+#include "emit_context.h"
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
+
 
 namespace details {
 
-struct offer_field {
+struct emit_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
@@ -48,46 +49,32 @@ struct offer_field {
 }
 
 /**
- * @brief offer operator
+ * @brief emit operator
  */
-class offer : public operator_base {
+class emit : public operator_base {
 public:
-    using column = takatori::relation::step::offer::column;
+    friend class emit_context;
 
-    friend class offer_context;
+    using column = takatori::relation::emit::column;
 
     /**
      * @brief create empty object
      */
-    offer() = default;
+    emit() = default;
 
     /**
      * @brief create new object
      */
-    offer(
+    explicit emit(
         processor_info const& info,
         takatori::relation::expression const& sibling,
-        std::shared_ptr<meta::record_meta> meta,
-        std::vector<details::offer_field> fields
-    ) : operator_base(info, sibling),
-        meta_(std::move(meta)),
-        fields_(std::move(fields))
-    {}
-
-    /**
-     * @brief create new object
-     */
-    offer(
-        processor_info const& info,
-        takatori::relation::expression const& sibling,
-        meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) : operator_base(info, sibling),
-        meta_(create_meta(info, order, columns)),
-        fields_(create_fields(meta_, order, columns))
+        meta_(create_meta(info, columns)),
+        fields_(create_fields(meta_, columns))
     {}
 
-    void operator()(offer_context& ctx) {
+    void operator()(emit_context& ctx) {
         auto target = ctx.store_.ref();
         auto source = ctx.variables().store().ref();
         for(auto &f : fields_) {
@@ -101,42 +88,41 @@ public:
     }
 
     operator_kind kind() override {
-        return operator_kind::offer;
+        return operator_kind::emit;
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
-
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<details::offer_field> fields_{};
+    std::vector<details::emit_field> fields_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
-        meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) {
+        // FIXME currently respect the column order coming from takatori
         std::vector<meta::field_type> fields{};
-        auto sz = order.size();
-        fields.resize(sz);
+        auto sz = columns.size();
+        fields.reserve(sz);
         for(auto&& c : columns) {
-            fields[order.index(c.destination())] = utils::type_for(info.compiled_info(), c.destination());
+            fields.emplace_back(utils::type_for(info.compiled_info(), c.source()));
         }
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
     }
 
-    std::vector<details::offer_field> create_fields(
+    std::vector<details::emit_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
-        meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
     ) {
-        std::vector<details::offer_field> fields{};
-        fields.resize(meta->field_count());
-        for(auto&& c : columns) {
-            auto ind = order.index(c.destination());
+        std::vector<details::emit_field> fields{};
+        std::size_t sz = meta->field_count();
+        fields.resize(sz);
+        for(std::size_t ind = 0 ; ind < sz; ++ind) {
+            auto&& c = columns[ind];
             auto& info = blocks().at(block_index()).value_map().at(c.source());
-            fields[ind] = details::offer_field{
+            fields.emplace_back(details::emit_field{
                 meta_->at(ind),
                 info.value_offset(),
                 meta_->value_offset(ind),
@@ -144,7 +130,7 @@ private:
                 meta_->nullity_offset(ind),
                 //TODO nullity
                 false // nullable
-            };
+            });
         }
         return fields;
     }

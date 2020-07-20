@@ -17,17 +17,17 @@
 
 #include <unordered_map>
 
-#include <jogasaki/executor/process/impl/relop/operator_base.h>
-#include <jogasaki/executor/process/impl/relop/context_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/context_base.h>
 
-namespace jogasaki::executor::process::impl::relop {
+namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief relational operator context container
  */
 class context_container {
 public:
-    using contexts_type = std::unordered_map<relop::operator_base const*, std::unique_ptr<relop::context_base>>;
+    using contexts_type = std::unordered_map<ops::operator_base const*, std::unique_ptr<ops::context_base>>;
 
     context_container() = default;
 
@@ -42,7 +42,7 @@ public:
         return contexts_.emplace(std::forward<Args>(args)...);
     }
 
-    [[nodiscard]] std::size_t count(relop::operator_base const* op) const noexcept {
+    [[nodiscard]] std::size_t count(ops::operator_base const* op) const noexcept {
         return contexts_.count(op);
     }
 
@@ -50,7 +50,7 @@ public:
         return contexts_.size();
     }
 
-    [[nodiscard]] relop::context_base* at(relop::operator_base const* op) const noexcept {
+    [[nodiscard]] ops::context_base* at(ops::operator_base const* op) const noexcept {
         return contexts_.at(op).get();
     }
 private:

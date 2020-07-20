@@ -103,19 +103,19 @@ TEST_F(offer_test, simple) {
 
     r0.output() >> r1.input();
 
-    auto variable_mapping = std::make_shared<yugawara::analyzer::variable_mapping>();
-    variable_mapping->bind(c0, t::int4{});
-    variable_mapping->bind(c1, t::int4{});
-    variable_mapping->bind(c2, t::int4{});
-    variable_mapping->bind(f1c0, t::int4{});
-    variable_mapping->bind(f1c1, t::int4{});
-    variable_mapping->bind(f1c2, t::int4{});
-    variable_mapping->bind(bindings(t0c0), t::int4{});
-    variable_mapping->bind(bindings(t0c1), t::int4{});
-    variable_mapping->bind(bindings(t0c2), t::int4{});
-    yugawara::compiled_info info{{}, variable_mapping};
+    auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
+    vmap->bind(c0, t::int4{});
+    vmap->bind(c1, t::int4{});
+    vmap->bind(c2, t::int4{});
+    vmap->bind(f1c0, t::int4{});
+    vmap->bind(f1c1, t::int4{});
+    vmap->bind(f1c2, t::int4{});
+    vmap->bind(bindings(t0c0), t::int4{});
+    vmap->bind(bindings(t0c1), t::int4{});
+    vmap->bind(bindings(t0c2), t::int4{});
+    yugawara::compiled_info c_info{{}, vmap};
 
-    processor_info pinfo{p0.operators(), info};
+    processor_info p_info{p0.operators(), c_info};
 
     std::vector<variable, takatori::util::object_allocator<variable>> columns{f1c0, f1c1, f1c2};
     variable_order order{
@@ -123,13 +123,16 @@ TEST_F(offer_test, simple) {
         columns
     };
 
-    offer s{pinfo, 0, order, {
-        {c0, f1c0},
-        {c1, f1c1},
-        {c2, f1c2},
-    }};
+    offer s{
+        p_info, 0, order, {
+            {c0, f1c0},
+            {c1, f1c1},
+            {c2, f1c2},
+        }
+    };
 
-    auto& block_info = pinfo.blocks_info()[s.block_index()];
+    auto& block_info = p_info.blocks_info()[s.block_index()];
+
     block_variables variables{block_info};
     offer_context ctx(s.meta(), variables);
     s(ctx);

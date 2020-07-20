@@ -67,9 +67,9 @@ public:
      */
     explicit emit(
         processor_info const& info,
-        takatori::relation::expression const& sibling,
+        block_index_type block_index,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
-    ) : operator_base(info, sibling),
+    ) : operator_base(info, block_index),
         meta_(create_meta(info, columns)),
         fields_(create_fields(meta_, columns))
     {}

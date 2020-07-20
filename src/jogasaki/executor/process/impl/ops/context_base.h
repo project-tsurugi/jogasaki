@@ -36,9 +36,9 @@ public:
      * @brief create new object
      */
     explicit context_base(
-        std::shared_ptr<block_variables> variables
+        block_variables& variables
     ) :
-        variables_(std::move(variables))
+        variables_(std::addressof(variables))
     {}
 
     context_base(context_base const& other) = default;
@@ -54,11 +54,12 @@ public:
         return *variables_;
     }
 
-    void variables(std::shared_ptr<block_variables> variables) {
-        variables_ = std::move(variables);
+    void variables(block_variables& variables) {
+        variables_ = std::addressof(variables);
     }
+
 private:
-    std::shared_ptr<block_variables> variables_{};
+    block_variables* variables_{};
 };
 
 }

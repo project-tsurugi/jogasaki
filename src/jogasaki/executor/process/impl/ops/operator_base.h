@@ -29,6 +29,8 @@ namespace jogasaki::executor::process::impl::ops {
  */
 class operator_base {
 public:
+    using block_index_type = std::size_t;
+
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
     /**
      * @brief create empty object
@@ -39,10 +41,10 @@ public:
 
     operator_base(
         processor_info const& info,
-        takatori::relation::expression const& sibling
+        block_index_type block_index
     ) noexcept :
         processor_info_(std::addressof(info)),
-        sibling_(std::addressof(sibling))
+        block_index_(block_index)
     {}
 
     operator_base(operator_base const& other) = default;
@@ -52,13 +54,12 @@ public:
 
     virtual operator_kind kind() = 0;
 
-    [[nodiscard]] block_variables_info const& info() const noexcept {
-        return processor_info_->blocks_info()[block_index()];
+    [[nodiscard]] block_variables_info const& block_info() const noexcept {
+        return processor_info_->blocks_info()[block_index_];
     }
 
-    [[nodiscard]] std::size_t block_index() const noexcept {
-        if (!sibling_) return npos;
-        return processor_info_->block_indices().at(sibling_);
+    [[nodiscard]] block_index_type block_index() const noexcept {
+        return block_index_;
     }
 
     [[nodiscard]] std::vector<block_variables_info> const& blocks() const noexcept {
@@ -67,7 +68,7 @@ public:
 
 private:
     processor_info const* processor_info_{};
-    takatori::relation::expression const* sibling_{};
+    block_index_type block_index_{};
 };
 
 }

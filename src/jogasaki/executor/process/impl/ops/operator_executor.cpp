@@ -67,7 +67,8 @@ void operator_executor::operator()(const relation::scan &node) {
     auto* ctx = find_context<scan_context>(&s);
     if (! ctx) {
         auto stg = std::make_shared<storage::storage_context>();
-        ctx = make_context<scan_context>(&s, std::move(stg), s.info());
+        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
+        ctx = make_context<scan_context>(&s, std::move(stg), block_vars);
     }
 //    s(*ctx);
     dispatch(*this, node.output().opposite()->owner());
@@ -103,7 +104,8 @@ void operator_executor::operator()(const relation::emit &node) {
     auto&s = to<emit>(node);
     auto* ctx = find_context<emit_context>(&s);
     if (! ctx) {
-        ctx = make_context<emit_context>(&s, s.meta(), s.info());
+        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
+        ctx = make_context<emit_context>(&s, s.meta(), block_vars);
     }
 //    s(*ctx);
 }
@@ -151,7 +153,8 @@ void operator_executor::operator()(const relation::step::take_group &node) {
     auto&s = to<take_group>(node);
     auto* ctx = find_context<take_group_context>(&s);
     if (! ctx) {
-        ctx = make_context<take_group_context>(&s, s.meta(), s.info());
+        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
+        ctx = make_context<take_group_context>(&s, s.meta(), block_vars);
     }
     s(*ctx);
     dispatch(*this, node.output().opposite()->owner());
@@ -166,7 +169,8 @@ void operator_executor::operator()(const relation::step::offer &node) {
     auto&s = to<offer>(node);
     auto* ctx = find_context<offer_context>(&s);
     if (! ctx) {
-        ctx = make_context<offer_context>(&s, s.meta(), s.info());
+        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
+        ctx = make_context<offer_context>(&s, s.meta(), block_vars);
     }
     s(*ctx);
 }

@@ -46,8 +46,8 @@ public:
      */
     explicit scan_context(
         std::shared_ptr<storage::storage_context> storage,
-        block_variables_info const& info
-    ) : context_base(std::make_shared<block_variables>(info)),
+        block_variables& variables
+    ) : context_base(variables),
         storage_(std::move(storage))
     {}
 

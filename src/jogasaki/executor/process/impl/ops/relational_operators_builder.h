@@ -92,7 +92,8 @@ public:
             stg->open(options);
             std::shared_ptr<abstract::scan_info> scan_info;
             std::shared_ptr<meta::record_meta> meta;
-            operators_[std::addressof(node)] = std::make_unique<scan>(*info_, node, scan_info, meta);
+            auto block_index = info_->block_indices().at(&node);
+            operators_[std::addressof(node)] = std::make_unique<scan>(*info_, block_index, scan_info, meta);
         }
         dispatch(*this, node.output().opposite()->owner());
     }
@@ -113,7 +114,8 @@ public:
     }
 
     void operator()(relation::emit const& node) {
-        operators_[std::addressof(node)] = std::make_unique<emit>(*info_, node, node.columns());
+        auto block_index = info_->block_indices().at(&node);
+        operators_[std::addressof(node)] = std::make_unique<emit>(*info_, block_index, node.columns());
     }
 
     void operator()(relation::write const& node) {
@@ -143,7 +145,8 @@ public:
     void operator()(relation::step::take_group const& node) {
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.source());
-        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, node, xchg->column_order(), node.columns());
+        auto block_index = info_->block_indices().at(&node);
+        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, block_index, xchg->column_order(), node.columns());
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::step::take_cogroup const& node) {
@@ -152,7 +155,8 @@ public:
     void operator()(relation::step::offer const& node) {
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.destination());
-        operators_[std::addressof(node)] = std::make_unique<offer>(*info_, node, xchg->column_order(), node.columns());
+        auto block_index = info_->block_indices().at(&node);
+        operators_[std::addressof(node)] = std::make_unique<offer>(*info_, block_index, xchg->column_order(), node.columns());
     }
 
 private:

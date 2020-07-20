@@ -37,8 +37,8 @@ public:
      */
     offer_context(
         std::shared_ptr<meta::record_meta> meta,
-        block_variables_info const& info
-    ) : context_base(std::make_shared<block_variables>(info)),
+        block_variables& variables
+    ) : context_base(variables),
         store_(std::move(meta))
     {}
 

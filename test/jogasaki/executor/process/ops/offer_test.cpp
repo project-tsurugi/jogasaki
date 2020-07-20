@@ -123,14 +123,15 @@ TEST_F(offer_test, simple) {
         columns
     };
 
-    offer s{pinfo, r1, order, {
+    offer s{pinfo, 0, order, {
         {c0, f1c0},
         {c1, f1c1},
         {c2, f1c2},
     }};
 
     auto& block_info = pinfo.blocks_info()[s.block_index()];
-    offer_context ctx(s.meta(), block_info);
+    block_variables variables{block_info};
+    offer_context ctx(s.meta(), variables);
     s(ctx);
 }
 

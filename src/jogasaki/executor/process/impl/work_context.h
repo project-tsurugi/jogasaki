@@ -27,20 +27,24 @@ namespace jogasaki::executor::process::impl {
  */
 class work_context : public process::abstract::work_context {
 public:
-    using variables_type = std::vector<block_variables>;
+    using variables_list_type = std::vector<block_variables>;
 
     work_context() = default;
 
-    [[nodiscard]] ops::context_container& contexts() noexcept {
+    [[nodiscard]] ops::context_container& container() noexcept {
         return contexts_;
     }
-    [[nodiscard]] variables_type& variables() noexcept {
+
+    [[nodiscard]] variables_list_type& block_variables_list() noexcept {
         return variables_;
     }
 
+    [[nodiscard]] block_variables& variables(std::size_t block_index) noexcept {
+        return variables_[block_index];
+    }
 private:
     ops::context_container contexts_{};
-    variables_type variables_{};
+    variables_list_type variables_{};
 };
 
 }

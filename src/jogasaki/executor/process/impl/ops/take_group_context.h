@@ -37,9 +37,9 @@ public:
      */
     explicit take_group_context(
         std::shared_ptr<meta::record_meta> meta,
-        block_variables_info const& info
-    ) : context_base(std::make_shared<block_variables>(info)),
-    store_(std::move(meta))
+        block_variables& variables
+    ) : context_base(variables),
+        store_(std::move(meta))
     {}
 
     operator_kind kind() override {

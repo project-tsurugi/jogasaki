@@ -27,7 +27,7 @@ abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
     auto* work = static_cast<work_context*>(context->work_context()); //NOLINT
     for(auto& block_info : info_->blocks_info()) {
-        work->variables().emplace_back(block_info);
+        work->block_variables_list().emplace_back(block_info);
     }
     ops::operator_executor visitor{
         const_cast<graph::graph<relation::expression>&>(info_->operators()),

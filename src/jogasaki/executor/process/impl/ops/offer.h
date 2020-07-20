@@ -66,10 +66,10 @@ public:
      */
     offer(
         processor_info const& info,
-        takatori::relation::expression const& sibling,
+        block_index_type block_index,
         std::shared_ptr<meta::record_meta> meta,
         std::vector<details::offer_field> fields
-    ) : operator_base(info, sibling),
+    ) : operator_base(info, block_index),
         meta_(std::move(meta)),
         fields_(std::move(fields))
     {}
@@ -79,10 +79,10 @@ public:
      */
     offer(
         processor_info const& info,
-        takatori::relation::expression const& sibling,
+        block_index_type block_index,
         meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns
-    ) : operator_base(info, sibling),
+    ) : operator_base(info, block_index),
         meta_(create_meta(info, order, columns)),
         fields_(create_fields(meta_, order, columns))
     {}

@@ -66,16 +66,16 @@ public:
 
     template<class T>
     T* find_context(ops::operator_base const* p) {
-        auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();  //NOLINT
-        if (contexts.count(p) == 0) {
+        auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
+        if (container.count(p) == 0) {
             return nullptr;
         }
-        return static_cast<T*>(contexts.at(p));
+        return static_cast<T*>(container.at(p));
     }
 
     template<class T, class ... Args>
     T* make_context(ops::operator_base const* p, Args&&...args) {
-        auto& contexts = static_cast<work_context*>(context_->work_context())->contexts();  //NOLINT
+        auto& contexts = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
         auto [it, b] = contexts.emplace(p, std::make_unique<T>(std::forward<Args>(args)...));
         if (!b) {
             return nullptr;

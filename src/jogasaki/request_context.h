@@ -16,7 +16,7 @@
 #pragma once
 
 #include <jogasaki/configuration.h>
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/plan/compiler_context.h>
 
 namespace jogasaki {
@@ -43,7 +43,7 @@ public:
     request_context(std::shared_ptr<class channel> ch,
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
-        std::shared_ptr<data::iteratable_record_store> result_store = {}
+        std::shared_ptr<data::iterable_record_store> result_store = {}
     );
 
     /**
@@ -62,7 +62,7 @@ public:
      * @brief accessor for the result store
      * @return result store
      */
-    [[nodiscard]] std::shared_ptr<data::iteratable_record_store> const& result_store() const;
+    [[nodiscard]] std::shared_ptr<data::iterable_record_store> const& result_store() const;
 
     /**
      * @brief accessor for the compiler context
@@ -74,7 +74,7 @@ private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<plan::compiler_context> compiler_context_{};
-    std::shared_ptr<data::iteratable_record_store> result_store_{};
+    std::shared_ptr<data::iterable_record_store> result_store_{};
 };
 
 }

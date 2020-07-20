@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "iteratable_record_store.h"
+#include "iterable_record_store.h"
 
 namespace jogasaki::data {
 
-iteratable_record_store::iterator &iteratable_record_store::iterator::operator++() {
+iterable_record_store::iterator &iterable_record_store::iterator::operator++() {
 
     pos_ = static_cast<unsigned char*>(pos_) + container_->record_size_; //NOLINT
     if (pos_ >= range_->e_) {
@@ -31,24 +31,24 @@ iteratable_record_store::iterator &iteratable_record_store::iterator::operator++
     return *this;
 }
 
-const iteratable_record_store::iterator iteratable_record_store::iterator::operator++(int) { //NOLINT
+const iterable_record_store::iterator iterable_record_store::iterator::operator++(int) { //NOLINT
     auto it = *this;
     this->operator++();
     return it;
 }
 
-iteratable_record_store::iterator::iterator(const iteratable_record_store &container,
-    std::vector<iteratable_record_store::record_range>::iterator range) :
+iterable_record_store::iterator::iterator(const iterable_record_store &container,
+    std::vector<iterable_record_store::record_range>::iterator range) :
     container_(&container), pos_(range != container_->ranges_.end() ? range->b_ : nullptr), range_(range)
 {}
 
-iteratable_record_store::iteratable_record_store(memory::paged_memory_resource *record_resource,
+iterable_record_store::iterable_record_store(memory::paged_memory_resource *record_resource,
     memory::paged_memory_resource *varlen_resource, std::shared_ptr<meta::record_meta> meta) :
     record_size_(meta->record_size()),
     base_(record_resource, varlen_resource, std::move(meta))
 {}
 
-iteratable_record_store::record_pointer iteratable_record_store::append(accessor::record_ref record) {
+iterable_record_store::record_pointer iterable_record_store::append(accessor::record_ref record) {
     auto p = base_.append(record);
     if (prev_ == nullptr || p != static_cast<unsigned char*>(prev_) + record_size_) { //NOLINT
         // starting new range
@@ -59,23 +59,23 @@ iteratable_record_store::record_pointer iteratable_record_store::append(accessor
     return p;
 }
 
-std::size_t iteratable_record_store::count() const noexcept {
+std::size_t iterable_record_store::count() const noexcept {
     return base_.count();
 }
 
-bool iteratable_record_store::empty() const noexcept {
+bool iterable_record_store::empty() const noexcept {
     return base_.empty();
 }
 
-iteratable_record_store::iterator iteratable_record_store::begin() {
+iterable_record_store::iterator iterable_record_store::begin() {
     return iterator{*this, ranges_.begin()};
 }
 
-iteratable_record_store::iterator iteratable_record_store::end() {
+iterable_record_store::iterator iterable_record_store::end() {
     return iterator{*this, ranges_.end()};
 }
 
-void iteratable_record_store::reset() noexcept {
+void iterable_record_store::reset() noexcept {
     base_.reset();
     prev_ = nullptr;
     ranges_.clear();

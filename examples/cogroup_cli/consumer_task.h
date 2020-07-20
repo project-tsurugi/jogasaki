@@ -22,7 +22,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/small_record_store.h>
 
@@ -52,12 +52,12 @@ public:
             l_store_varlen_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())),
             r_store_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())),
             r_store_varlen_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())),
-            l_store_(std::make_unique<data::iteratable_record_store>(
+            l_store_(std::make_unique<data::iterable_record_store>(
                     l_store_resource_.get(),
                     l_store_varlen_resource_.get(),
                     l_meta_->value_shared()
             )),
-            r_store_(std::make_unique<data::iteratable_record_store>(
+            r_store_(std::make_unique<data::iterable_record_store>(
                     r_store_resource_.get(),
                     r_store_varlen_resource_.get(),
                     r_meta_->value_shared()
@@ -81,7 +81,7 @@ public:
     void consume_member(group_reader* reader,
             std::size_t& record_counter,
             std::size_t& key_counter,
-            std::unique_ptr<data::iteratable_record_store>& store) {
+            std::unique_ptr<data::iterable_record_store>& store) {
 
         while(reader->next_member()) {
             DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
@@ -343,8 +343,8 @@ private:
     std::unique_ptr<memory::lifo_paged_memory_resource> l_store_varlen_resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_varlen_resource_{};
-    std::unique_ptr<data::iteratable_record_store> l_store_{};
-    std::unique_ptr<data::iteratable_record_store> r_store_{};
+    std::unique_ptr<data::iterable_record_store> l_store_{};
+    std::unique_ptr<data::iterable_record_store> r_store_{};
     executor::reader_container left_reader_{};
     executor::reader_container right_reader_{};
     data::small_record_store l_key_;

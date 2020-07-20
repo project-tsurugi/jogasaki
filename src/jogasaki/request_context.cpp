@@ -28,7 +28,7 @@ request_context::request_context() :
 
 request_context::request_context(std::shared_ptr<class channel> ch, std::shared_ptr<class configuration> config,
     std::shared_ptr<plan::compiler_context> compiler_context,
-    std::shared_ptr<data::iteratable_record_store> result_store) :
+    std::shared_ptr<data::iterable_record_store> result_store) :
     channel_(std::move(ch)), config_(std::move(config)), compiler_context_(std::move(compiler_context)), result_store_(std::move(result_store))
 {}
 
@@ -40,7 +40,7 @@ std::shared_ptr<class configuration> const &request_context::configuration() con
     return config_;
 }
 
-std::shared_ptr<data::iteratable_record_store> const &request_context::result_store() const {
+std::shared_ptr<data::iterable_record_store> const &request_context::result_store() const {
     return result_store_;
 }
 

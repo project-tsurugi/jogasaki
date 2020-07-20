@@ -25,7 +25,7 @@ namespace jogasaki::executor::exchange::aggregate {
  */
 class reader : public group_reader {
 public:
-    using iteratable_tables = std::vector<input_partition::iteratable_hash_table>;
+    using iterable_tables = std::vector<input_partition::iterable_hash_table>;
     using aggregator_type = shuffle_info::aggregator_type;
     ~reader() override = default;
     reader(reader const& other) = delete;
@@ -54,8 +54,8 @@ private:
     aggregator_type const& aggregator_;
     std::size_t key_size_{};
     std::size_t value_size_{};
-    iteratable_tables tables_{};
-    iteratable_tables::iterator iterated_table_{};
+    iterable_tables tables_{};
+    iterable_tables::iterator iterated_table_{};
     bool on_member_{false};
 };
 

@@ -81,7 +81,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         return {};
     }
 
-    auto result_store = std::make_shared<data::iteratable_record_store>();
+    auto result_store = std::make_shared<data::iterable_record_store>();
     // TODO specify memory stores
 
     auto channel = std::make_shared<class channel>();

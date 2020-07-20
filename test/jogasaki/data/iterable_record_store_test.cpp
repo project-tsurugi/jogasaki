@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 
 #include <gtest/gtest.h>
 
@@ -34,22 +34,22 @@ using namespace std::string_view_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class iteratable_record_store_test : public test_root {};
+class iterable_record_store_test : public test_root {};
 
-TEST_F(iteratable_record_store_test, empty) {
+TEST_F(iterable_record_store_test, empty) {
     mock_memory_resource memory{};
-    iteratable_record_store r{&memory, &memory, test_record_meta1()};
+    iterable_record_store r{&memory, &memory, test_record_meta1()};
     ASSERT_TRUE(r.empty());
     ASSERT_EQ(0, r.count());
 
     ASSERT_EQ(r.begin(), r.end());
 }
 
-TEST_F(iteratable_record_store_test, basic) {
+TEST_F(iterable_record_store_test, basic) {
     mock_memory_resource memory{};
     testing::record rec{2, 2.0};
     auto meta = rec.record_meta();
-    iteratable_record_store r{&memory, &memory, meta};
+    iterable_record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());
     auto p1 = r.append(rec.ref());
     ASSERT_FALSE(r.empty());
@@ -90,11 +90,11 @@ TEST_F(iteratable_record_store_test, basic) {
     ASSERT_NE(r.begin(), it);
 }
 
-TEST_F(iteratable_record_store_test, multiple_pointer_intervals) {
+TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
     mock_memory_resource memory{0, 1};
     testing::record rec2{2, 2.0};
     auto meta = rec2.record_meta();
-    iteratable_record_store r{&memory, &memory, meta};
+    iterable_record_store r{&memory, &memory, meta};
     auto p2 = r.append(rec2.ref());
 
     testing::record rec1{1, 1.0};

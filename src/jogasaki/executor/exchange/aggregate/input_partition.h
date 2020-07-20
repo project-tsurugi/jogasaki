@@ -148,11 +148,11 @@ public:
      * @brief hash table read access interface with iterator
      * @details this object represents a reference to a hash table with an iterator on it
      */
-    class iteratable_hash_table {
+    class iterable_hash_table {
     public:
         using iterator = hash_table::iterator;
 
-        iteratable_hash_table(hash_table& table,
+        iterable_hash_table(hash_table& table,
             std::size_t key_size,
             std::size_t value_size
         ) noexcept : table_(std::addressof(table)), key_size_(key_size), value_size_(value_size), it_(table_->end()) {}
@@ -272,8 +272,8 @@ public:
      * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
      * @return the object to access hash table with iterator
      */
-    iteratable_hash_table table_at(std::size_t index) {
-        return iteratable_hash_table(tables_[index],
+    iterable_hash_table table_at(std::size_t index) {
+        return iterable_hash_table(tables_[index],
             info_->key_meta()->record_size(),
             info_->value_meta()->record_size());
     }

@@ -25,7 +25,7 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/reader_container.h>
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
@@ -41,10 +41,10 @@ using checkpoint = memory::lifo_paged_memory_resource::checkpoint;
 
 class cogroup_record_store {
 public:
-    using iterator = data::iteratable_record_store::iterator;
+    using iterator = data::iterable_record_store::iterator;
 
     explicit cogroup_record_store(
-            std::unique_ptr<data::iteratable_record_store> store,
+            std::unique_ptr<data::iterable_record_store> store,
             std::unique_ptr<memory::lifo_paged_memory_resource> resource = {},
             std::unique_ptr<memory::lifo_paged_memory_resource> varlen_resource = {}
     ) :
@@ -55,7 +55,7 @@ public:
             varlen_resource_last_checkpoint_(varlen_resource_ ? varlen_resource_->get_checkpoint() : checkpoint{})
     {}
 
-    [[nodiscard]] data::iteratable_record_store& store() const noexcept {
+    [[nodiscard]] data::iterable_record_store& store() const noexcept {
         return *store_;
     }
 
@@ -80,7 +80,7 @@ public:
     }
 
 private:
-    std::unique_ptr<data::iteratable_record_store> store_{};
+    std::unique_ptr<data::iterable_record_store> store_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> varlen_resource_{};
     memory::lifo_paged_memory_resource::checkpoint resource_last_checkpoint_{};
@@ -227,7 +227,7 @@ public:
             auto resource = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
             auto varlen_resource = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
             auto meta = groups_meta_[idx];
-            auto store = std::make_unique<data::iteratable_record_store>(
+            auto store = std::make_unique<data::iterable_record_store>(
                     resource.get(),
                     varlen_resource.get(),
                     meta->value_shared()

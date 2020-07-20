@@ -16,11 +16,11 @@
 #pragma once
 
 #include <type_traits>
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 
 namespace jogasaki::executor::process::impl {
 
-using iterator = data::iteratable_record_store::iterator;
+using iterator = data::iterable_record_store::iterator;
 
 struct iterator_pair {
     iterator_pair(iterator x, iterator y) : first(x), second(y) {}

@@ -31,7 +31,7 @@ namespace jogasaki::data {
  * treats gaps between the pages (i.e. not all records are on the same continuous memory region, but iterator allow users
  * to iterate them sequentially as if they are continuous region)
  */
-class iteratable_record_store {
+class iterable_record_store {
 public:
     /// @brief pointer type
     using record_pointer = record_store::record_pointer;
@@ -57,7 +57,7 @@ public:
         using iterator_category = std::input_iterator_tag;
 
         /// @brief type of value
-        using value_type = iteratable_record_store::record_pointer;
+        using value_type = iterable_record_store::record_pointer;
 
         /// @brief type of difference
         using difference_type = std::ptrdiff_t;
@@ -73,7 +73,7 @@ public:
          * @param container the target record store that the constructed object iterates
          * @param range indicates the range entry that the constructed iterator start iterating with
          */
-        iterator(iteratable_record_store const& container, range_list::iterator range);
+        iterator(iterable_record_store const& container, range_list::iterator range);
 
         /**
          * @brief increment iterator
@@ -119,20 +119,20 @@ public:
         }
 
     private:
-        iteratable_record_store const* container_;
-        iteratable_record_store::record_pointer pos_{};
+        iterable_record_store const* container_;
+        iterable_record_store::record_pointer pos_{};
         range_list::iterator range_;
     };
 
     /**
      * @brief create empty object
      */
-    iteratable_record_store() = default;
+    iterable_record_store() = default;
 
     /**
      * @copydoc record_store::record_store(memory::paged_memory_resource* record_resource, memory::paged_memory_resource* varlen_resource, std::shared_ptr<meta::record_meta> meta)
      */
-    iteratable_record_store(
+    iterable_record_store(
             memory::paged_memory_resource* record_resource,
             memory::paged_memory_resource* varlen_resource,
             std::shared_ptr<meta::record_meta> meta);

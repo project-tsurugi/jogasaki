@@ -22,7 +22,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/process/impl/relop/cogroup.h>
 
@@ -65,7 +65,7 @@ public:
     void consume_member(group_reader* reader,
             std::size_t& record_counter,
             std::size_t& key_counter,
-            std::unique_ptr<data::iteratable_record_store>& store) {
+            std::unique_ptr<data::iterable_record_store>& store) {
 
         while(reader->next_member()) {
             DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);

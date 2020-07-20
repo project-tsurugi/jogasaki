@@ -16,13 +16,13 @@
 #pragma once
 
 #include <jogasaki/api/result_set.h>
-#include <jogasaki/data/iteratable_record_store.h>
+#include <jogasaki/data/iterable_record_store.h>
 
 namespace jogasaki::api {
 
 class result_set::impl {
 public:
-    explicit impl(std::shared_ptr<data::iteratable_record_store> store) noexcept : store_(std::move(store)) {
+    explicit impl(std::shared_ptr<data::iterable_record_store> store) noexcept : store_(std::move(store)) {
         //FIXME temp. implementation for client access
         refs_.reserve(store_->count());
         auto sz = store_->record_size();
@@ -36,7 +36,7 @@ public:
     void close();
 
 private:
-    std::shared_ptr<data::iteratable_record_store> store_{};
+    std::shared_ptr<data::iterable_record_store> store_{};
     std::vector<accessor::record_ref> refs_{}; //FIXME
 };
 

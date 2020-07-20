@@ -62,7 +62,6 @@ namespace jogasaki::plan {
 ///@private
 namespace impl {
 
-// TODO avoid using namespace
 using namespace takatori::util;
 
 using namespace ::mizugaki::translator;
@@ -72,7 +71,7 @@ using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
-inline std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
+std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
     try {
@@ -86,10 +85,8 @@ inline std::unique_ptr<shakujo::model::program::Program> generate_program(std::s
 };
 
 /**
- * @brief
- * @param sql
- * @param ctx
- * @pre storage provider exists and filled in the compiler context
+ * @brief compile sql and generate takatori step graph
+ * @pre storage provider exists and populated in the compiler context
  */
 bool create_step_graph(std::string_view sql, compiler_context& ctx) {
     shakujo_translator translator;
@@ -134,13 +131,13 @@ bool create_step_graph(std::string_view sql, compiler_context& ctx) {
     return true;
 }
 
-inline executor::process::step create(takatori::plan::process const& process, compiler_context& ctx) {
+executor::process::step create(takatori::plan::process const& process, compiler_context& ctx) {
     auto info = std::make_shared<executor::process::processor_info>(
         const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
     return executor::process::step(std::move(info));
 }
 
-inline executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx) {
+executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx) {
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         group.columns(),
@@ -171,10 +168,9 @@ inline executor::exchange::group::step create(takatori::plan::group const& group
 }
 
 /**
- * @brief
- * @param ctx
- * @pre storage provider exists and filled in the compiler context
- * @pre step graph and compile result are filled in the compiler context
+ * @brief create jogasaki step graph based on takatori/yugawara compile result
+ * @pre storage provider exists in the compiler context
+ * @pre compile result are populated in the compiler context
  */
 bool create_mirror(compiler_context& ctx) {
     auto& statement = ctx.compiler_result().statement();

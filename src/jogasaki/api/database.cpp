@@ -16,6 +16,7 @@
 #include <jogasaki/api/database.h>
 
 #include <string_view>
+#include <glog/logging.h>
 
 #include <takatori/type/int.h>
 
@@ -75,7 +76,10 @@ private:
 std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->storage_provider(storage_provider_);
-    plan::compile(sql, *ctx);
+    if(!plan::compile(sql, *ctx)) {
+        LOG(ERROR) << "compilation failed.";
+        return {};
+    }
 
     auto result_store = std::make_shared<data::iteratable_record_store>();
     // TODO specify memory stores

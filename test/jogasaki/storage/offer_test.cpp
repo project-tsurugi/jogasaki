@@ -95,9 +95,9 @@ TEST_F(offer_test, simple) {
     auto&& r1 = p0.operators().insert(relation::step::offer {
         bindings.exchange(f1),
         {
-            { c0, f1.columns()[0] },
-            { c1, f1.columns()[1] },
-            { c2, f1.columns()[2] },
+            { c0, f1c0 },
+            { c1, f1c1 },
+            { c2, f1c2 },
         },
     });
 
@@ -110,6 +110,9 @@ TEST_F(offer_test, simple) {
     variable_mapping->bind(f1c0, t::int4{});
     variable_mapping->bind(f1c1, t::int4{});
     variable_mapping->bind(f1c2, t::int4{});
+    variable_mapping->bind(bindings(t0c0), t::int4{});
+    variable_mapping->bind(bindings(t0c1), t::int4{});
+    variable_mapping->bind(bindings(t0c2), t::int4{});
     yugawara::compiled_info info{{}, variable_mapping};
 
     processor_info pinfo{p0.operators(), info};

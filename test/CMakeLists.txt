@@ -34,6 +34,7 @@ file(GLOB SRCS
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/process/*.cpp"
+        "jogasaki/executor/process/ops/*.cpp"
         "jogasaki/executor/shuffle/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/meta/*.cpp"

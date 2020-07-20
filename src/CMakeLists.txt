@@ -23,6 +23,7 @@ file(GLOB SOURCES
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"
         "jogasaki/model/*.cpp"
+        "jogasaki/plan/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/storage/*.cpp"
         "jogasaki/utils/*.cpp"

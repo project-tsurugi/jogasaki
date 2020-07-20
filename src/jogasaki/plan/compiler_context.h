@@ -28,6 +28,9 @@
 
 namespace jogasaki::plan {
 
+/**
+ * @brief vehicle of objects generated during sql compilation
+ */
 class compiler_context {
 public:
 
@@ -35,7 +38,7 @@ public:
         compiler_result_ = std::move(compiler_result);
     }
 
-    [[nodiscard]] yugawara::compiler_result const& compiler_result() const noexcept {
+    [[nodiscard]] yugawara::compiler_result & compiler_result() noexcept {
         return compiler_result_;
     }
 
@@ -62,6 +65,7 @@ public:
     [[nodiscard]] std::shared_ptr<class relation_step_map> const& relation_step_map() const {
         return relation_step_map_;
     }
+
 private:
     yugawara::compiler_result compiler_result_{};
     std::shared_ptr<model::graph> step_graph_{};

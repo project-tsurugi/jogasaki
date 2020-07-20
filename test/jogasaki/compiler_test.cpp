@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <jogasaki/plan/compiler.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -52,9 +53,11 @@
 #include <takatori/util/enum_tag.h>
 #include <jogasaki/utils/field_types.h>
 #include <takatori/relation/step/offer.h>
+#include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/compiler.h>
 #include "test_utils.h"
 
-namespace jogasaki::testing {
+namespace jogasaki::plan {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -75,6 +78,8 @@ namespace statement = ::takatori::statement;
 
 namespace tinfo = ::shakujo::common::core::type;
 
+using namespace testing;
+
 /**
  * @brief test to confirm the compiler behavior
  * TOOO this is temporary, do not depend on compiler to generate same plan
@@ -84,18 +89,6 @@ public:
     using kind = field_type_kind;
     ::takatori::util::object_creator creator;
     ::yugawara::binding::factory bindings { creator };
-
-    std::unique_ptr<shakujo::model::program::Program> gen_shakujo_program(std::string_view sql) {
-        shakujo::parser::Parser parser;
-        std::unique_ptr<shakujo::model::program::Program> program;
-        try {
-            std::stringstream ss{std::string(sql)};
-            program = parser.parse_program("compiler_test", ss);
-        } catch (shakujo::parser::Parser::Exception &e) {
-            LOG(ERROR) << "parse error:" << e.message() << " (" << e.region() << ")" << std::endl;
-        }
-        return program;
-    };
 
     std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() {
 
@@ -126,56 +119,20 @@ public:
         return storages;
     }
 
-    yugawara::compiler_result compile(std::string_view sql, std::shared_ptr<::yugawara::storage::configurable_provider> storages) {
-        auto p = gen_shakujo_program(sql);
-
-        shakujo_translator translator;
-        shakujo_translator_options options {
-            storages,
-            {},
-            {},
-            {},
-        };
-
-        placeholder_map placeholders;
-        ::takatori::document::document_map documents;
-        ::shakujo::model::IRFactory ir;
-        ::yugawara::binding::factory bindings { options.get_object_creator() };
-
-        auto r = translator(options, *p->main(), documents, placeholders);
-        yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
-        std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
-
-        yugawara::compiler_options c_options{
-            indices,
-            runtime_features,
-            options.get_object_creator(),
-        };
-
-        if (r.kind() == result_kind::execution_plan) {
-            auto ptr = r.release<result_kind::execution_plan>();
-            auto&& graph = *ptr;
-            return yugawara::compiler()(c_options, std::move(graph));
-        }
-        if (r.kind() == result_kind::statement) {
-            auto ptr = r.release<result_kind::statement>();
-            auto&& stmt = *ptr;
-            return yugawara::compiler()(c_options, std::move(stmt));
-        }
-        fail();
-    }
 };
 
-TEST_F(compiler_test, insert) {
+TEST_F(compiler_test, DISABLED_insert) {
     std::string sql = "insert into T0(C0, C1) values (1,1.0)";
-    auto storages = yugawara_provider();
-    auto result = compile(sql, storages);
+    compiler_context ctx{};
+    ctx.storage_provider(yugawara_provider());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto& result = ctx.compiler_result();
     auto&& write = downcast<statement::write>(result.statement());
 
     EXPECT_EQ(write.operator_kind(), relation::write_kind::insert);
 
     ASSERT_EQ(write.columns().size(), 2);
-    auto t0 = storages->find_relation("T0");
+    auto t0 = ctx.storage_provider()->find_relation("T0");
     EXPECT_EQ(write.columns()[0], bindings(t0->columns()[0]));
     EXPECT_EQ(write.columns()[1], bindings(t0->columns()[1]));
 
@@ -194,9 +151,10 @@ TEST_F(compiler_test, simple_query) {
 //    auto t0 = storages->find_relation("T0");
 //    yugawara::storage::column const& t0c0 = t0->columns()[0];
 //    yugawara::storage::column const& t0c1 = t0->columns()[1];
-    auto storages = yugawara_provider();
-    auto result = compile(sql, storages);
-    ASSERT_TRUE(result);
+    compiler_context ctx{};
+    ctx.storage_provider(yugawara_provider());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto& result = ctx.compiler_result();
 
     auto&& c = downcast<statement::execute>(result.statement());
 
@@ -235,9 +193,10 @@ TEST_F(compiler_test, simple_query) {
 
 TEST_F(compiler_test, filter) {
     std::string sql = "select C0 from T0 where C1=1.0";
-    auto storages = yugawara_provider();
-    auto result = compile(sql, storages);
-    ASSERT_TRUE(result);
+    compiler_context ctx{};
+    ctx.storage_provider(yugawara_provider());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto& result = ctx.compiler_result();
 
     auto&& c = downcast<statement::execute>(result.statement());
     ASSERT_EQ(c.execution_plan().size(), 1);
@@ -274,10 +233,11 @@ TEST_F(compiler_test, filter) {
 
 TEST_F(compiler_test, project_filter) {
     std::string sql = "select C1+C0, C0, C1 from T0 where C1=1.0";
-    auto storages = yugawara_provider();
-    auto result = compile(sql, storages);
+    compiler_context ctx{};
+    ctx.storage_provider(yugawara_provider());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto& result = ctx.compiler_result();
     auto&& c = downcast<statement::execute>(result.statement());
-    ASSERT_TRUE(result);
     dump(result);
 
     ASSERT_EQ(c.execution_plan().size(), 1);
@@ -318,8 +278,10 @@ TEST_F(compiler_test, project_filter) {
 
 TEST_F(compiler_test, join) {
     std::string sql = "select T0.C0, T1.C1 from T0, T0 T1";
-    auto storages = yugawara_provider();
-    auto result = compile(sql, storages);
+    compiler_context ctx{};
+    ctx.storage_provider(yugawara_provider());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto& result = ctx.compiler_result();
     auto&& c = downcast<statement::execute>(result.statement());
     ASSERT_TRUE(result);
     dump(result);
@@ -346,6 +308,9 @@ TEST_F(compiler_test, join) {
         ASSERT_EQ(p0, p1);
     }
 
+    auto& step_map = ctx.relation_step_map();
+
+    ASSERT_EQ(2, step_map->size());
     /*
     ASSERT_EQ(p0.operators().size(), 4);
     ASSERT_TRUE(p0.operators().contains(scan));

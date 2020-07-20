@@ -51,8 +51,7 @@ std::shared_ptr<meta::record_meta> const& block_variables_info::meta() const noe
 
 std::pair<blocks_info_type, block_indices_type>
 create_block_variables(takatori::graph::graph<takatori::relation::expression> &operators, const yugawara::compiled_info &info) {
-
-    // analyze liveness
+    // analyze variables liveness
     // for each basic block, define a block_variables region with
     // result fields + defined fields (except killed in the same basic block)
     auto bg = yugawara::analyzer::block_builder::build(operators);

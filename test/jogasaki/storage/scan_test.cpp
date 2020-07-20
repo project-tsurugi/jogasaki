@@ -46,9 +46,9 @@ TEST_F(scan_test, simple) {
 
     relation::scan* node{};
     scan s{{}, *node, {}, test_record_meta1()};
-    scan_context ctx(stg);
+//    scan_context ctx(stg, block_variables_info{});
 
-    s(ctx);
+//    s(ctx);
 }
 
 }

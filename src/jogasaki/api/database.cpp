@@ -17,12 +17,16 @@
 
 #include <string_view>
 
+#include <takatori/type/int.h>
+
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_impl.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/channel.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/executor/common/graph.h>
 
 namespace jogasaki::api {
 

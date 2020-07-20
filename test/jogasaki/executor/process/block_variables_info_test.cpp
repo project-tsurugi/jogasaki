@@ -283,7 +283,7 @@ TEST_F(block_variables_info_test, temp) {
         EXPECT_EQ(0, ind.second);
     }
 
-    plan::compiler_context compiler_ctx{};
+    jogasaki::plan::compiler_context compiler_ctx{};
 
     // additionally test relop builder
     auto ops = relop::relational_operators_builder{pinfo, compiler_ctx}();

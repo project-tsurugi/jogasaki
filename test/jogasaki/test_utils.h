@@ -37,10 +37,26 @@
 #include <takatori/serializer/json_printer.h>
 #include <takatori/util/string_builder.h>
 #include <takatori/util/fail.h>
+#include <takatori/scalar/variable_reference.h>
+
+#include <yugawara/binding/factory.h>
 
 #include <yugawara/compiler_result.h>
 
 namespace jogasaki::testing {
+
+namespace t = ::takatori::type;
+namespace v = ::takatori::value;
+namespace descriptor = ::takatori::descriptor;
+namespace scalar = ::takatori::scalar;
+namespace relation = ::takatori::relation;
+namespace plan = ::takatori::plan;
+namespace binding = ::yugawara::binding;
+
+using ::takatori::util::downcast;
+using ::takatori::util::string_builder;
+
+using varref = scalar::variable_reference;
 
 using ::takatori::util::fail;
 

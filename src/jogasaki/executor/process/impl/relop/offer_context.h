@@ -36,8 +36,9 @@ public:
      * @brief create new object
      */
     explicit offer_context(
-        std::shared_ptr<meta::record_meta> meta
-    ) :
+        std::shared_ptr<meta::record_meta> meta,
+        block_variables_info const& info
+    ) : context_base(std::make_shared<block_variables>(info)),
         store_(std::move(meta))
     {}
 

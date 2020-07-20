@@ -48,6 +48,9 @@ public:
         return map_.at(rel);
     }
 
+    [[nodiscard]] std::size_t size() const noexcept {
+        return map_.size();
+    }
 private:
     entity_type map_{};
 };

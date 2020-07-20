@@ -52,6 +52,10 @@ public:
 
     virtual operator_kind kind() = 0;
 
+    [[nodiscard]] block_variables_info const& info() const noexcept {
+        return processor_info_->blocks_info()[block_index()];
+    }
+
     [[nodiscard]] std::size_t block_index() const noexcept {
         if (!sibling_) return npos;
         return processor_info_->block_indices().at(sibling_);

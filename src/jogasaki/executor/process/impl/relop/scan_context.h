@@ -45,8 +45,9 @@ public:
      * @brief create new object
      */
     explicit scan_context(
-        std::shared_ptr<storage::storage_context> storage
-    ) :
+        std::shared_ptr<storage::storage_context> storage,
+        block_variables_info const& info
+    ) : context_base(std::make_shared<block_variables>(info)),
         storage_(std::move(storage))
     {}
 

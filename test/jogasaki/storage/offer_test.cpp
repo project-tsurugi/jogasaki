@@ -21,6 +21,7 @@
 
 #include <takatori/plan/forward.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/basic_configurable_provider.h>
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
@@ -30,6 +31,7 @@
 
 namespace jogasaki::executor::process::impl::relop {
 
+using namespace meta;
 using namespace testing;
 using namespace executor;
 using namespace accessor;
@@ -45,40 +47,88 @@ namespace scalar = ::takatori::scalar;
 using take = relation::step::take_flat;
 using buffer = relation::buffer;
 
-using rgraph = ::takatori::graph::graph<relation::expression>;
+namespace storage = yugawara::storage;
 
 class offer_test : public test_root {};
 
 TEST_F(offer_test, simple) {
-    yugawara::binding::factory bindings;
-    rgraph rg;
+    binding::factory bindings;
+    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
 
-    auto&& c1 = bindings.stream_variable("c1");
-    auto&& c2 = bindings.stream_variable("c2");
-    auto&& c3 = bindings.stream_variable("c3");
+    std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
+        "T0",
+        {
+            { "C0", t::int4() },
+            { "C1", t::int4() },
+            { "C2", t::int4() },
+        },
+    });
+    storage::column const& t0c0 = t0->columns()[0];
+    storage::column const& t0c1 = t0->columns()[1];
+    storage::column const& t0c2 = t0->columns()[2];
+
+    std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
 
     ::takatori::plan::forward f1 {
         bindings.exchange_column(),
         bindings.exchange_column(),
         bindings.exchange_column(),
     };
+    auto&& f1c0 = f1.columns()[0];
+    auto&& f1c1 = f1.columns()[1];
+    auto&& f1c2 = f1.columns()[2];
 
-    auto&& r2 = rg.insert(relation::step::offer {
-        bindings.exchange(f1),
+    takatori::plan::graph_type p;
+    auto&& p0 = p.insert(takatori::plan::process {});
+    auto c0 = bindings.stream_variable("c0");
+    auto c1 = bindings.stream_variable("c1");
+    auto c2 = bindings.stream_variable("c2");
+    auto& r0 = p0.operators().insert(relation::scan {
+        bindings(*i0),
         {
-            { c1, f1.columns()[0] },
-            { c2, f1.columns()[1] },
-            { c3, f1.columns()[2] },
+            { bindings(t0c0), c0 },
+            { bindings(t0c1), c1 },
+            { bindings(t0c2), c2 },
         },
     });
 
-    yugawara::compiled_info info{};
-    processor_info pinfo{rg, info};
+    auto&& r1 = p0.operators().insert(relation::step::offer {
+        bindings.exchange(f1),
+        {
+            { c0, f1.columns()[0] },
+            { c1, f1.columns()[1] },
+            { c2, f1.columns()[2] },
+        },
+    });
 
-    std::shared_ptr<meta::record_meta> meta{};
-    offer s{pinfo, r2, meta, {}};
-    offer_context ctx(s.meta());
-//    s(ctx);
+    r0.output() >> r1.input();
+
+    auto variable_mapping = std::make_shared<yugawara::analyzer::variable_mapping>();
+    variable_mapping->bind(c0, t::int4{});
+    variable_mapping->bind(c1, t::int4{});
+    variable_mapping->bind(c2, t::int4{});
+    variable_mapping->bind(f1c0, t::int4{});
+    variable_mapping->bind(f1c1, t::int4{});
+    variable_mapping->bind(f1c2, t::int4{});
+    yugawara::compiled_info info{{}, variable_mapping};
+
+    processor_info pinfo{p0.operators(), info};
+
+    std::vector<variable, takatori::util::object_allocator<variable>> columns{f1c0, f1c1, f1c2};
+    variable_order order{
+        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
+        columns
+    };
+
+    offer s{pinfo, r1, order, {
+        {c0, f1c0},
+        {c1, f1c1},
+        {c2, f1c2},
+    }};
+
+    auto& block_info = pinfo.blocks_info()[s.block_index()];
+    offer_context ctx(s.meta(), block_info);
+    s(ctx);
 }
 
 }

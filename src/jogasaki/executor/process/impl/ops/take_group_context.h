@@ -46,6 +46,7 @@ public:
     operator_kind kind() override {
         return operator_kind::take_group;
     }
+
 private:
     data::small_record_store store_{};
     group_reader* reader_{};

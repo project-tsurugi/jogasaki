@@ -76,15 +76,17 @@ public:
 
     void operator()(take_group_context& ctx) {
         auto target = ctx.variables().store().ref();
-        if (ctx.reader_) {
-            while(ctx.reader_->next_group()) {
-                while(ctx.reader_->next_member()) {
-                    auto key = ctx.reader_->get_group();
-                    auto value = ctx.reader_->get_member();
-                    for(auto &f : fields_) {
-                        auto source = f.is_key_ ? key : value;
-                        utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
-                    }
+        if (!ctx.reader_) {
+            auto r = ctx.task_context().reader(reader_index_);
+            ctx.reader_ = r.reader<group_reader>();
+        }
+        while(ctx.reader_->next_group()) {
+            while(ctx.reader_->next_member()) {
+                auto key = ctx.reader_->get_group();
+                auto value = ctx.reader_->get_member();
+                for(auto &f : fields_) {
+                    auto source = f.is_key_ ? key : value;
+                    utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
                 }
             }
         }

@@ -115,7 +115,10 @@ public:
 
     void operator()(relation::emit const& node) {
         auto block_index = info_->block_indices().at(&node);
-        operators_[std::addressof(node)] = std::make_unique<emit>(*info_, block_index, node.columns());
+        auto e = std::make_unique<emit>(*info_, block_index, node.columns());
+        auto writer_index = process_io_map_.add_external_output(e.get());
+        e->external_writer_index(writer_index);
+        operators_[std::addressof(node)] = std::move(e);
     }
 
     void operator()(relation::write const& node) {
@@ -143,26 +146,29 @@ public:
         (void)node;
     }
     void operator()(relation::step::take_group const& node) {
+        auto block_index = info_->block_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.source());
-        auto block_index = info_->block_indices().at(&node);
-        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, block_index, xchg->column_order(), node.columns());
+        auto reader_index = process_io_map_.add_input(xchg);
+        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, block_index, xchg->column_order(), node.columns(), reader_index);
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::step::take_cogroup const& node) {
         (void)node;
     }
     void operator()(relation::step::offer const& node) {
+        auto block_index = info_->block_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.destination());
-        auto block_index = info_->block_indices().at(&node);
-        operators_[std::addressof(node)] = std::make_unique<offer>(*info_, block_index, xchg->column_order(), node.columns());
+        auto writer_index = process_io_map_.add_output(xchg);
+        operators_[std::addressof(node)] = std::make_unique<offer>(*info_, block_index, xchg->column_order(), node.columns(), writer_index);
     }
 
 private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
     operators_type operators_{};
+    process_io_map process_io_map_{};
 
     std::shared_ptr<meta::record_meta> create_record_meta(relation::emit const& node) {
         std::vector<meta::field_type> fields{};

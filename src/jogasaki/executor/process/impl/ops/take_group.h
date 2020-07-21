@@ -66,10 +66,12 @@ public:
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        std::size_t reader_index
     ) : operator_base(info, block_index),
         meta_(create_meta(info, order, columns)),
-        fields_(create_fields(meta_, order, columns))
+        fields_(create_fields(meta_, order, columns)),
+        reader_index_(reader_index)
     {}
 
     void operator()(take_group_context& ctx) {
@@ -98,6 +100,7 @@ public:
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
+    std::size_t reader_index_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,

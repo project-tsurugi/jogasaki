@@ -35,10 +35,11 @@ public:
      * @brief create new object
      */
     explicit emit_context(
+        class abstract::task_context* ctx,
         std::shared_ptr<meta::record_meta> meta,
         block_variables& variables
-    ) : context_base(variables),
-    store_(std::move(meta))
+    ) : context_base(ctx, variables),
+        store_(std::move(meta))
     {}
 
     operator_kind kind() override {

@@ -45,9 +45,10 @@ public:
      * @brief create new object
      */
     explicit scan_context(
+        class abstract::task_context* ctx,
         std::shared_ptr<storage::storage_context> storage,
         block_variables& variables
-    ) : context_base(variables),
+    ) : context_base(ctx, variables),
         storage_(std::move(storage))
     {}
 

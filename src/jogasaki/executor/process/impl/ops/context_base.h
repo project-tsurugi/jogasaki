@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <jogasaki/executor/process/impl/task_context.h>
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
@@ -36,8 +37,10 @@ public:
      * @brief create new object
      */
     explicit context_base(
+        class abstract::task_context* context,
         block_variables& variables
     ) :
+        task_context_(context),
         variables_(std::addressof(variables))
     {}
 
@@ -54,11 +57,16 @@ public:
         return *variables_;
     }
 
+    class abstract::task_context& task_context() {
+        return *task_context_;
+    }
+
     void variables(block_variables& variables) {
         variables_ = std::addressof(variables);
     }
 
 private:
+    class abstract::task_context* task_context_{};
     block_variables* variables_{};
 };
 

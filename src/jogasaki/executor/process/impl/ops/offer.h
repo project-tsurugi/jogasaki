@@ -28,6 +28,7 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/block_variables.h>
+#include <jogasaki/executor/process/impl/ops/process_io_map.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
 #include "offer_context.h"
@@ -52,10 +53,9 @@ struct offer_field {
  */
 class offer : public operator_base {
 public:
-    using column = takatori::relation::step::offer::column;
-
     friend class offer_context;
 
+    using column = takatori::relation::step::offer::column;
     /**
      * @brief create empty object
      */
@@ -68,10 +68,12 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::shared_ptr<meta::record_meta> meta,
-        std::vector<details::offer_field> fields
+        std::vector<details::offer_field> fields,
+        std::size_t writer_index
     ) : operator_base(info, block_index),
         meta_(std::move(meta)),
-        fields_(std::move(fields))
+        fields_(std::move(fields)),
+        writer_index_(writer_index)
     {}
 
     /**
@@ -81,10 +83,12 @@ public:
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        std::size_t writer_index
     ) : operator_base(info, block_index),
         meta_(create_meta(info, order, columns)),
-        fields_(create_fields(meta_, order, columns))
+        fields_(create_fields(meta_, order, columns)),
+        writer_index_(writer_index)
     {}
 
     void operator()(offer_context& ctx) {
@@ -94,10 +98,10 @@ public:
             utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
         }
 
-        if (ctx.writer_) {
-            // FIXME fetch writer when needed
-            ctx.writer_->write(target);
+        if (!ctx.writer_) {
+            ctx.writer_ = ctx.task_context().downstream_writer(writer_index_);
         }
+        ctx.writer_->write(target);
     }
 
     operator_kind kind() override {
@@ -111,8 +115,9 @@ public:
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::vector<details::offer_field> fields_{};
+    std::size_t writer_index_{};
 
-    std::shared_ptr<meta::record_meta> create_meta(
+        std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
         meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns

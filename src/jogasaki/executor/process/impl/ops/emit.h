@@ -94,9 +94,14 @@ public:
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
+
+    void external_writer_index(std::size_t index) noexcept {
+        external_writer_index_ = index;
+    }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::vector<details::emit_field> fields_{};
+    std::size_t external_writer_index_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,

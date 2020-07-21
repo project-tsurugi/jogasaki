@@ -48,6 +48,10 @@ public:
         return records_.size();
     }
 
+    records_type const& records() const noexcept {
+        return records_;
+    }
+
 private:
     records_type records_{};
     bool released_{false};

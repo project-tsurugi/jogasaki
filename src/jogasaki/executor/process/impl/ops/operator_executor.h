@@ -75,8 +75,8 @@ public:
 
     template<class T, class ... Args>
     T* make_context(ops::operator_base const* p, Args&&...args) {
-        auto& contexts = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
-        auto [it, b] = contexts.emplace(p, std::make_unique<T>(std::forward<Args>(args)...));
+        auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
+        auto [it, b] = container.emplace(p, std::make_unique<T>(context_, std::forward<Args>(args)...));
         if (!b) {
             return nullptr;
         }

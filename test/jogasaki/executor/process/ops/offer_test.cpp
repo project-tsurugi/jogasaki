@@ -28,6 +28,7 @@
 #include <jogasaki/executor/process/impl/ops/offer_context.h>
 
 #include <jogasaki/basic_record.h>
+#include <jogasaki/executor/process/mock/task_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -130,12 +131,24 @@ TEST_F(offer_test, simple) {
             {c0, f1c0},
             {c1, f1c1},
             {c2, f1c2},
-        }
+        },
+        0
     };
 
     auto& block_info = p_info.blocks_info()[s.block_index()];
     block_variables variables{block_info};
-    offer_context ctx(s.meta(), variables);
+
+    using test_record = basic_record<kind::int4, kind::int4, kind::int4>;
+    auto writer = std::make_shared<mock::basic_record_writer<test_record>>();
+
+    mock::task_context task_ctx{
+        {},
+        {writer},
+        {},
+        {},
+    };
+
+    offer_context ctx(&task_ctx, s.meta(), variables);
 
     auto block_rec = variables.store().ref();
     auto map = variables.value_map();
@@ -149,6 +162,12 @@ TEST_F(offer_test, simple) {
     EXPECT_EQ(1, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(0)));
     EXPECT_EQ(0, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(1)));
     EXPECT_EQ(2, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(2)));
+
+    ASSERT_EQ(1, writer->size());
+    auto& records = writer->records();
+
+    test_record exp{2, 0, 1};
+    ASSERT_EQ(exp, records[0]);
 }
 
 }

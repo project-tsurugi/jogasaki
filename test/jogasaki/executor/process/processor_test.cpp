@@ -43,8 +43,12 @@ TEST_F(processor_test, basic) {
     reader_container r{reader.get()};
     auto downstream_writer = std::make_shared<mock::record_writer>();
     auto external_writer = std::make_shared<mock::record_writer>();
-    auto context = std::make_shared<mock::task_context>(r, downstream_writer, external_writer);
-
+    auto context = std::make_shared<mock::task_context>(
+        std::vector<reader_container>{r},
+        std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer},
+        std::vector<std::shared_ptr<executor::record_writer>>{external_writer},
+        std::shared_ptr<abstract::scan_info>{}
+    );
     auto proc = std::make_shared<processor>();
 //    proc->run(context.get());
 }

@@ -44,17 +44,6 @@ public:
         scan_info_(std::move(info))
     {}
 
-    explicit task_context(
-        reader_container reader,
-        std::shared_ptr<executor::record_writer> downstream_writer = {},
-        std::shared_ptr<executor::record_writer> external_writer = {},
-        std::shared_ptr<abstract::scan_info> info = {}
-    ) :
-        readers_({std::move(reader)}),
-        downstream_writers_({std::move(downstream_writer)}),
-        external_writers_({std::move(external_writer)}),
-        scan_info_(std::move(info))
-    {}
 
     reader_container reader(reader_index idx) override {
         return readers_.at(idx);

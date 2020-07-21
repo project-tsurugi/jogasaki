@@ -162,15 +162,16 @@ TEST_F(take_flat_test, simple) {
     auto map = variables.value_map();
     auto block_rec_meta = variables.meta();
 
-    s(ctx);
+    ASSERT_TRUE(s(ctx));
     EXPECT_EQ(0, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(0)));
     EXPECT_EQ(1, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(1)));
     EXPECT_EQ(2, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(2)));
 
-    s(ctx);
+    ASSERT_TRUE(s(ctx));
     EXPECT_EQ(0, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(0)));
     EXPECT_EQ(2, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(1)));
     EXPECT_EQ(4, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(2)));
+    ASSERT_FALSE(s(ctx));
 }
 
 }

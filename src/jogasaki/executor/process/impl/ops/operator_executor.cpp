@@ -23,6 +23,7 @@
 #include "emit_context.h"
 #include "take_group.h"
 #include "offer.h"
+#include "take_flat.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -55,6 +56,10 @@ relation::expression &operator_executor::head() {
     fail();
 }
 
+block_variables& operator_executor::get_block_variables(std::size_t index) {
+    return static_cast<work_context *>(context_->work_context())->variables(index); //NOLINT
+}
+
 void operator_executor::operator()(const relation::find &node) {
     (void)node;
     (void)compiled_info_;
@@ -72,6 +77,7 @@ void operator_executor::operator()(const relation::scan &node) {
     }
 //    s(*ctx);
     dispatch(*this, node.output().opposite()->owner());
+    continue_processing_ = false;
 }
 
 void operator_executor::operator()(const relation::join_find &node) {
@@ -104,8 +110,7 @@ void operator_executor::operator()(const relation::emit &node) {
     auto&s = to<emit>(node);
     auto* ctx = find_context<emit_context>(&s);
     if (! ctx) {
-        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        ctx = make_context<emit_context>(&s, s.meta(), block_vars);
+        ctx = make_context<emit_context>(&s, s.meta(), get_block_variables(s.block_index()));
     }
 //    s(*ctx);
 }
@@ -145,16 +150,21 @@ void operator_executor::operator()(const relation::step::flatten &node) {
 }
 
 void operator_executor::operator()(const relation::step::take_flat &node) {
-    (void)node;
-    fail();
+    auto&s = to<take_flat>(node);
+    auto* ctx = find_context<take_flat_context>(&s);
+    if (! ctx) {
+        ctx = make_context<take_flat_context>(&s, get_block_variables(s.block_index()));
+    }
+    if(! s(*ctx)) {
+        continue_processing_ = false;
+    }
 }
 
 void operator_executor::operator()(const relation::step::take_group &node) {
     auto&s = to<take_group>(node);
     auto* ctx = find_context<take_group_context>(&s);
     if (! ctx) {
-        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        ctx = make_context<take_group_context>(&s, s.meta(), block_vars);
+        ctx = make_context<take_group_context>(&s, s.meta(), get_block_variables(s.block_index()));
     }
     s(*ctx);
     dispatch(*this, node.output().opposite()->owner());
@@ -169,14 +179,15 @@ void operator_executor::operator()(const relation::step::offer &node) {
     auto&s = to<offer>(node);
     auto* ctx = find_context<offer_context>(&s);
     if (! ctx) {
-        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        ctx = make_context<offer_context>(&s, s.meta(), block_vars);
+        ctx = make_context<offer_context>(&s, s.meta(), get_block_variables(s.block_index()));
     }
     s(*ctx);
 }
 
 void operator_executor::process() {
-    dispatch(*this, head());
+    while(continue_processing_) {
+        dispatch(*this, head());
+    }
 }
 
 }

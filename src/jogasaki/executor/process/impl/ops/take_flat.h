@@ -89,7 +89,7 @@ public:
         reader_index_(reader_index)
     {}
 
-    void operator()(take_flat_context& ctx) {
+    bool operator()(take_flat_context& ctx) {
         auto target = ctx.variables().store().ref();
         if (! ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
@@ -100,7 +100,9 @@ public:
             for(auto &f : fields_) {
                 utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
             }
+            return true;
         }
+        return false;
     }
 
     operator_kind kind() override {

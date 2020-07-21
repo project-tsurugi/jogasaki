@@ -67,12 +67,12 @@ public:
     offer(
         processor_info const& info,
         block_index_type block_index,
-        std::shared_ptr<meta::record_meta> meta,
-        std::vector<details::offer_field> fields,
+        meta::variable_order const& order,
+        std::vector<column, takatori::util::object_allocator<column>> const& columns,
         std::size_t writer_index
     ) : operator_base(info, block_index),
-        meta_(std::move(meta)),
-        fields_(std::move(fields)),
+        meta_(create_meta(info, order, columns)),
+        fields_(create_fields(meta_, order, columns)),
         writer_index_(writer_index)
     {}
 
@@ -82,12 +82,12 @@ public:
     offer(
         processor_info const& info,
         block_index_type block_index,
-        meta::variable_order const& order,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        std::shared_ptr<meta::record_meta> meta,
+        std::vector<details::offer_field> fields,
         std::size_t writer_index
     ) : operator_base(info, block_index),
-        meta_(create_meta(info, order, columns)),
-        fields_(create_fields(meta_, order, columns)),
+        meta_(std::move(meta)),
+        fields_(std::move(fields)),
         writer_index_(writer_index)
     {}
 
@@ -138,15 +138,16 @@ private:
     ) {
         std::vector<details::offer_field> fields{};
         fields.resize(meta->field_count());
+        auto& vmap = block_info().value_map();
         for(auto&& c : columns) {
             auto ind = order.index(c.destination());
-            auto& info = blocks().at(block_index()).value_map().at(c.source());
+            auto& info = vmap.at(c.source());
             fields[ind] = details::offer_field{
-                meta_->at(ind),
+                meta->at(ind),
                 info.value_offset(),
-                meta_->value_offset(ind),
+                meta->value_offset(ind),
                 info.nullity_offset(),
-                meta_->nullity_offset(ind),
+                meta->nullity_offset(ind),
                 //TODO nullity
                 false // nullable
             };

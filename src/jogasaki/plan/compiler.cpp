@@ -55,6 +55,8 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/forward/step.h>
+#include <takatori/plan/forward.h>
 #include "compiler_context.h"
 
 namespace jogasaki::plan {
@@ -137,6 +139,24 @@ executor::process::step create(takatori::plan::process const& process, compiler_
     return executor::process::step(std::move(info));
 }
 
+executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx) {
+    meta::variable_order column_order{
+        meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
+        forward.columns(),
+    };
+
+    std::vector<meta::field_type> fields{};
+    auto cnt = forward.columns().size();
+    fields.reserve(cnt);
+    for(auto&& c: forward.columns()) {
+        fields.emplace_back(utils::type_for(ctx.compiler_result().info(), c));
+    }
+    auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
+    return executor::exchange::forward::step(
+        std::move(meta),
+        std::move(column_order));
+}
+
 executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx) {
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
@@ -192,9 +212,14 @@ bool create_mirror(compiler_context& ctx) {
                         steps[&process] = &mirror->emplace<executor::process::step>(create(process, ctx));
                         break;
                     }
-                    case takatori::plan::step_kind::forward:
-                        // TODO implement
+                    case takatori::plan::step_kind::forward: {
+                        auto& forward = static_cast<takatori::plan::forward const&>(s);  //NOLINT
+                        auto* step = &mirror->emplace<executor::exchange::forward::step>(create(forward, ctx));
+                        auto relation_desc = f(forward);
+                        exchanges[relation_desc] = step;
+                        steps[&forward] = step;
                         break;
+                    }
                     case takatori::plan::step_kind::group: {
                         auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
                         auto* step = &mirror->emplace<executor::exchange::group::step>(create(group, ctx));

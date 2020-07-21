@@ -16,37 +16,38 @@
 #pragma once
 
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/record_reader.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 /**
- * @brief take_group context
+ * @brief take_flat context
  */
-class take_group_context : public context_base {
+class take_flat_context : public context_base {
 public:
-    friend class take_group;
+    friend class take_flat;
+
     /**
      * @brief create empty object
      */
-    take_group_context() = default;
+    take_flat_context() = default;
 
     /**
      * @brief create new object
      */
-    explicit take_group_context(
-        std::shared_ptr<meta::record_meta> meta
-    ) :
-    store_(std::move(meta))
+    explicit take_flat_context(
+        class abstract::task_context* ctx,
+        block_variables& variables
+    ) : context_base(ctx, variables)
     {}
 
     operator_kind kind() override {
-        return operator_kind::take_group;
+        return operator_kind::take_flat;
     }
+
 private:
-    data::small_record_store store_{};
-    group_reader* reader_{};
+    record_reader* reader_{};
 };
 
 }

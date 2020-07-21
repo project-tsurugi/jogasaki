@@ -46,6 +46,10 @@ public:
         return operator_kind::offer;
     }
 
+    // for test
+    [[nodiscard]] data::small_record_store& store() noexcept {
+        return store_;
+    }
 private:
     data::small_record_store store_{};
     record_writer* writer_{};

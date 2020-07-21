@@ -117,7 +117,9 @@ TEST_F(offer_test, simple) {
 
     processor_info p_info{p0.operators(), c_info};
 
-    std::vector<variable, takatori::util::object_allocator<variable>> columns{f1c0, f1c1, f1c2};
+    // currently this vector order defines the order of variables
+    // TODO fix when the logic is fixed
+    std::vector<variable, takatori::util::object_allocator<variable>> columns{f1c1, f1c0, f1c2};
     variable_order order{
         variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
         columns
@@ -132,10 +134,21 @@ TEST_F(offer_test, simple) {
     };
 
     auto& block_info = p_info.blocks_info()[s.block_index()];
-
     block_variables variables{block_info};
     offer_context ctx(s.meta(), variables);
+
+    auto block_rec = variables.store().ref();
+    auto map = variables.value_map();
+    auto block_rec_meta = variables.meta();
+    block_rec.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
+    block_rec.set_value<std::int32_t>(map.at(c1).value_offset(), 1);
+    block_rec.set_value<std::int32_t>(map.at(c2).value_offset(), 2);
     s(ctx);
+    auto internal_rec = ctx.store().ref();
+    auto& internal_rec_meta = s.meta();
+    EXPECT_EQ(1, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(0)));
+    EXPECT_EQ(0, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(1)));
+    EXPECT_EQ(2, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(2)));
 }
 
 }

@@ -102,9 +102,10 @@ public:
         std::size_t begin_offset = 0
     ) {
         // oredering arbitrarily for now
-        //TODO order shorter types first, and alphabetically
-        entity.reserve(columns.size());
-        for(std::size_t i=0, n =columns.size(); i < n; ++i) {
+        //TODO order shorter types first, alphabetically
+        auto sz = columns.size();
+        entity.reserve(sz);
+        for(std::size_t i=0; i < sz; ++i) {
             entity.emplace(columns[i], i+begin_offset);
         }
     }

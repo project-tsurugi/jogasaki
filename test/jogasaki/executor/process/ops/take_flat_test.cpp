@@ -54,7 +54,6 @@ class take_flat_test : public test_root {};
 
 TEST_F(take_flat_test, simple) {
     binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
 
     ::takatori::plan::forward f0 {
         bindings.exchange_column(),
@@ -64,20 +63,6 @@ TEST_F(take_flat_test, simple) {
     auto&& f0c0 = f0.columns()[0];
     auto&& f0c1 = f0.columns()[1];
     auto&& f0c2 = f0.columns()[2];
-
-//    std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
-//        "T0",
-//        {
-//            { "C0", t::int4() },
-//            { "C1", t::int4() },
-//            { "C2", t::int4() },
-//        },
-//    });
-//    storage::column const& t0c0 = t0->columns()[0];
-//    storage::column const& t0c1 = t0->columns()[1];
-//    storage::column const& t0c2 = t0->columns()[2];
-
-//    std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
 
     takatori::plan::graph_type p;
     auto&& p0 = p.insert(takatori::plan::process {});
@@ -101,6 +86,7 @@ TEST_F(take_flat_test, simple) {
     auto&& f1c0 = f0.columns()[0];
     auto&& f1c1 = f0.columns()[1];
     auto&& f1c2 = f0.columns()[2];
+    // without offer, the columns are not used and block variables become empty
     auto&& r1 = p0.operators().insert(relation::step::offer {
         bindings.exchange(f0),
         {
@@ -109,7 +95,7 @@ TEST_F(take_flat_test, simple) {
             { c2, f1c2 },
         },
     });
-    r0.output() >> r1.input();
+    r0.output() >> r1.input(); // connection required by takatori
 
     auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
     vmap->bind(f0c0, t::int4{});
@@ -171,6 +157,7 @@ TEST_F(take_flat_test, simple) {
     EXPECT_EQ(0, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(0)));
     EXPECT_EQ(2, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(1)));
     EXPECT_EQ(4, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(2)));
+
     ASSERT_FALSE(s(ctx));
 }
 

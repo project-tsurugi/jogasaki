@@ -21,39 +21,51 @@
 
 namespace jogasaki::executor::process::impl {
 
+/**
+ * @brief value location information
+ */
 class value_info {
 public:
     /**
      * @brief create empty info
      */
-    value_info() = default;
+    constexpr value_info() = default;
 
     /**
      * @brief create new object
      * @param value_offset offset of the value
      * @param nullity_offset nullity offset of the value
      */
-    value_info(
+    constexpr value_info(
         std::size_t value_offset,
         std::size_t nullity_offset
         ) noexcept : value_offset_(value_offset), nullity_offset_(nullity_offset)
     {}
 
+    /**
+     * @brief value offset getter for the value
+     * @return value offset
+     */
     [[nodiscard]] std::size_t value_offset() const noexcept {
         return value_offset_;
     }
 
+    /**
+     * @brief nullity offset getter for the value
+     * @return nullity offset
+     */
     [[nodiscard]] std::size_t nullity_offset() const noexcept {
         return nullity_offset_;
     }
+
 private:
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
 };
 
 /**
- * @brief map variables descriptor to value location in the record reference
- * @details This map is associated with a single record metadata. Use in pair with a record_meta,
+ * @brief mapping of variables descriptors to value location information in the record reference
+ * @details This map is associated with a single record metadata. Use in pair with the record_meta,
  * that holds fields offset/layout information of the record.
  */
 class variable_value_map {
@@ -65,15 +77,20 @@ public:
     /**
      * @brief create new empty instance
      */
-    variable_value_map() = default;
+    constexpr variable_value_map() = default;
 
     /**
      * @brief create new instance from map
      */
-    explicit variable_value_map(entity_type map) :
+    explicit variable_value_map(entity_type map) noexcept :
         map_(std::move(map))
     {}
 
+    /**
+     * @brief getter for value location info. for the given variable
+     * @param var the variable descriptor
+     * @return value_info for the variable
+     */
     value_info const& at(variable const& var) const {
         return map_.at(var);
     }

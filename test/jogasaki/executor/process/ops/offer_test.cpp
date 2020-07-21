@@ -167,7 +167,13 @@ TEST_F(offer_test, simple) {
     auto& records = writer->records();
 
     test_record exp{2, 0, 1};
-    ASSERT_EQ(exp, records[0]);
+    EXPECT_EQ(exp, records[0]);
+
+    block_rec.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
+    s(ctx);
+    ASSERT_EQ(2, writer->size());
+    test_record exp2{2, 3, 1};
+    EXPECT_EQ(exp2, records[1]);
 }
 
 }

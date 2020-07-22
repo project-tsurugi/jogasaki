@@ -32,8 +32,7 @@ flow::flow(flow::record_meta_list input_meta, flow::record_meta_list subinput_me
 {}
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-    auto& res = context_->compiler_context()->compiler_result();
-    auto& stmt = res.statement();
+    auto& stmt = context_->compiler_context()->statement();
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:

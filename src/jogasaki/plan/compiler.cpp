@@ -135,7 +135,7 @@ bool create_step_graph(std::string_view sql, compiler_context& ctx) {
 
 executor::process::step create(takatori::plan::process const& process, compiler_context& ctx) {
     auto info = std::make_shared<executor::process::processor_info>(
-        const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiler_result().info());
+        const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiled_info());
     return executor::process::step(std::move(info));
 }
 
@@ -149,7 +149,7 @@ executor::exchange::forward::step create(takatori::plan::forward const& forward,
     auto cnt = forward.columns().size();
     fields.reserve(cnt);
     for(auto&& c: forward.columns()) {
-        fields.emplace_back(utils::type_for(ctx.compiler_result().info(), c));
+        fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
     }
     auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
     return executor::exchange::forward::step(
@@ -170,7 +170,7 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
 
     std::vector<meta::field_type> fields{};
     for(auto&& c: group.columns()) {
-        fields.emplace_back(utils::type_for(ctx.compiler_result().info(), c));
+        fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
     }
     auto cnt = fields.size();
     auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
@@ -193,7 +193,7 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
  * @pre compile result are populated in the compiler context
  */
 bool create_mirror(compiler_context& ctx) {
-    auto& statement = ctx.compiler_result().statement();
+    auto& statement = ctx.statement();
     using statement_kind = takatori::statement::statement_kind;
 
     using relation = takatori::descriptor::relation;

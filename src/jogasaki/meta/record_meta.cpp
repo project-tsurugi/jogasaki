@@ -93,5 +93,14 @@ void record_meta::calculate_default_layout_offset() {
     assert(record_max_align <= max_alignment); //NOLINT
     assert(max_alignment % record_max_align == 0); //NOLINT
 }
+
+record_meta::field_iterator record_meta::begin() const noexcept {
+    return entity_.begin();
+}
+
+record_meta::field_iterator record_meta::end() const noexcept {
+    return entity_.end();
+}
+
 } // namespace
 

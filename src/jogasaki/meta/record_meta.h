@@ -36,6 +36,9 @@ public:
     /// @brief entity type
     using value_entity_type = std::vector<field_type>;
 
+    /// @brief iterator for fields
+    using field_iterator = value_entity_type::const_iterator;
+
     /// @brief byte offset of field value
     using value_offset_type = std::size_t;
 
@@ -166,6 +169,18 @@ public:
      * @return number of the fields
      */
     [[nodiscard]] std::size_t field_count() const noexcept;
+
+    /**
+     * @brief begin field iterator
+     * @return field iterator at the beginning
+     */
+    [[nodiscard]] field_iterator begin() const noexcept;
+
+    /**
+     * @brief end field iterator
+     * @return field iterator at the end
+     */
+    [[nodiscard]] field_iterator end() const noexcept;
 
 private:
     value_entity_type entity_{};

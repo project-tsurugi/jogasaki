@@ -271,5 +271,24 @@ TEST_F(record_meta_test, equality_with_options) {
     EXPECT_NE(r_date_1, r_date_0);
 }
 
+TEST_F(record_meta_test, iterate_fields) {
+    record_meta meta{
+        std::vector<field_type>{
+            field_type(enum_tag<kind::boolean>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::float4>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{3}};
+    EXPECT_EQ(3, meta.field_count());
+    auto it = meta.begin();
+    EXPECT_EQ(field_type(enum_tag<kind::boolean>), *it);
+    ++it;
+    EXPECT_EQ(field_type(enum_tag<kind::int8>), *it);
+    ++it;
+    EXPECT_EQ(field_type(enum_tag<kind::float4>), *it);
+    ++it;
+    EXPECT_EQ(meta.end(), it);
+}
+
 }
 

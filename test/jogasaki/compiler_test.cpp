@@ -55,6 +55,7 @@
 #include <takatori/relation/step/offer.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
+#include <yugawara/binding/extract.h>
 #include "test_utils.h"
 
 namespace jogasaki::plan {
@@ -80,6 +81,8 @@ namespace tinfo = ::shakujo::common::core::type;
 
 using namespace testing;
 
+using namespace ::yugawara::variable;
+
 /**
  * @brief test to confirm the compiler behavior
  * TOOO this is temporary, do not depend on compiler to generate same plan
@@ -98,7 +101,7 @@ public:
         std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
             "T0",
             {
-                { "C0", type::int8() },
+                { "C0", type::int8(), criteria{nullity{false}}},
                 { "C1", type::float8 () },
             },
         });
@@ -148,9 +151,6 @@ TEST_F(compiler_test, DISABLED_insert) {
 TEST_F(compiler_test, simple_query) {
     std::string sql = "select * from T0";
 
-//    auto t0 = storages->find_relation("T0");
-//    yugawara::storage::column const& t0c0 = t0->columns()[0];
-//    yugawara::storage::column const& t0c1 = t0->columns()[1];
     compiler_context ctx{};
     ctx.storage_provider(yugawara_provider());
     ASSERT_TRUE(compile(sql, ctx));
@@ -174,6 +174,14 @@ TEST_F(compiler_test, simple_query) {
 //    EXPECT_EQ(scan.columns()[1].source(), bindings(t0c1));
     auto&& c0p0 = scan.columns()[0].destination();
     auto&& c1p0 = scan.columns()[1].destination();
+
+    // verify extract
+    auto& t0c0 = yugawara::binding::extract<yugawara::storage::column>(scan.columns()[0].source());
+    auto& t0c1 = yugawara::binding::extract<yugawara::storage::column>(scan.columns()[1].source());
+    EXPECT_EQ("C0", t0c0.simple_name());
+    EXPECT_EQ("C1", t0c1.simple_name());
+    EXPECT_FALSE(t0c0.criteria().nullity().nullable());
+    EXPECT_TRUE(t0c1.criteria().nullity().nullable());
 
     ASSERT_EQ(emit.columns().size(), 2);
     EXPECT_EQ(emit.columns()[0].source(), c0p0);

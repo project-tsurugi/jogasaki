@@ -15,8 +15,11 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/record_writer.h>
+#include <jogasaki/utils/copy_field_data.h>
 
 namespace jogasaki::executor::process::mock {
 
@@ -31,8 +34,27 @@ public:
 
     basic_record_writer() = default;
 
+    /**
+     * @param meta metadata of the record_ref passed to write()
+     */
+    explicit basic_record_writer(std::shared_ptr<meta::record_meta> meta) : meta_(std::move(meta)) {}
+
+
+    /**
+     * @brief write record and store internal storage as basic_record.
+     * The record_meta, if passed to constructor, is used to convert the offset between input record ref and basic_record::record_meata().
+     * Only offsets are converted, nothing done for field ordering.
+     */
     bool write(accessor::record_ref rec) override {
-        records_.emplace_back(record_type(rec));
+        record_type r{};
+        if (meta_) {
+            for(std::size_t i = 0; i < meta_->field_count(); ++i) {
+                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(i), rec, meta_->value_offset(i));
+            }
+        } else {
+            r = record_type{rec};
+        }
+        records_.emplace_back(r);
         return false;
     }
 
@@ -53,6 +75,7 @@ public:
     }
 
 private:
+    std::shared_ptr<meta::record_meta> meta_{};
     records_type records_{};
     bool released_{false};
 };

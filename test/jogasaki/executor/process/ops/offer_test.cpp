@@ -55,13 +55,12 @@ class offer_test : public test_root {};
 TEST_F(offer_test, simple) {
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-
     std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
         "T0",
         {
             { "C0", t::int4() },
-            { "C1", t::int4() },
-            { "C2", t::int4() },
+            { "C1", t::float8() },
+            { "C2", t::int8() },
         },
     });
     storage::column const& t0c0 = t0->columns()[0];
@@ -104,17 +103,17 @@ TEST_F(offer_test, simple) {
 
     r0.output() >> r1.input();
 
-    auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vmap->bind(c0, t::int4{});
-    vmap->bind(c1, t::int4{});
-    vmap->bind(c2, t::int4{});
-    vmap->bind(f1c0, t::int4{});
-    vmap->bind(f1c1, t::int4{});
-    vmap->bind(f1c2, t::int4{});
-    vmap->bind(bindings(t0c0), t::int4{});
-    vmap->bind(bindings(t0c1), t::int4{});
-    vmap->bind(bindings(t0c2), t::int4{});
-    yugawara::compiled_info c_info{{}, vmap};
+    auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
+    vm->bind(c0, t::int4{});
+    vm->bind(c1, t::float8{});
+    vm->bind(c2, t::int8{});
+    vm->bind(f1c0, t::int4{});
+    vm->bind(f1c1, t::float8{});
+    vm->bind(f1c2, t::int8{});
+    vm->bind(bindings(t0c0), t::int4{});
+    vm->bind(bindings(t0c1), t::float8{});
+    vm->bind(bindings(t0c2), t::int8{});
+    yugawara::compiled_info c_info{{}, vm};
 
     processor_info p_info{p0.operators(), c_info};
 
@@ -135,11 +134,12 @@ TEST_F(offer_test, simple) {
         0
     };
 
+    ASSERT_EQ(1, p_info.blocks_info().size());
     auto& block_info = p_info.blocks_info()[s.block_index()];
     block_variables variables{block_info};
 
-    using test_record = basic_record<kind::int4, kind::int4, kind::int4>;
-    auto writer = std::make_shared<mock::basic_record_writer<test_record>>();
+    using test_record = basic_record<kind::float8, kind::int4, kind::int8>;
+    auto writer = std::make_shared<mock::basic_record_writer<test_record>>(s.meta());
 
     mock::task_context task_ctx{
         {},
@@ -150,29 +150,29 @@ TEST_F(offer_test, simple) {
 
     offer_context ctx(&task_ctx, s.meta(), variables);
 
-    auto block_rec = variables.store().ref();
+    auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
-    auto block_rec_meta = variables.meta();
-    block_rec.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
-    block_rec.set_value<std::int32_t>(map.at(c1).value_offset(), 1);
-    block_rec.set_value<std::int32_t>(map.at(c2).value_offset(), 2);
+    auto vars_meta = variables.meta();
+    vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
+    vars_ref.set_value<double>(map.at(c1).value_offset(), 1.0);
+    vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 2);
     s(ctx);
-    auto internal_rec = ctx.store().ref();
-    auto& internal_rec_meta = s.meta();
-    EXPECT_EQ(1, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(0)));
-    EXPECT_EQ(0, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(1)));
-    EXPECT_EQ(2, internal_rec.get_value<std::int32_t>(internal_rec_meta->value_offset(2)));
+    auto internal_cols_ref = ctx.store().ref();
+    auto& internal_cols_meta = s.meta();
+    EXPECT_EQ(1.0, internal_cols_ref.get_value<double>(internal_cols_meta->value_offset(0)));
+    EXPECT_EQ(0, internal_cols_ref.get_value<std::int32_t>(internal_cols_meta->value_offset(1)));
+    EXPECT_EQ(2, internal_cols_ref.get_value<std::int64_t>(internal_cols_meta->value_offset(2)));
 
     ASSERT_EQ(1, writer->size());
     auto& records = writer->records();
 
-    test_record exp{2, 0, 1};
+    test_record exp{1.0, 0, 2};
     EXPECT_EQ(exp, records[0]);
 
-    block_rec.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
+    vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
     s(ctx);
     ASSERT_EQ(2, writer->size());
-    test_record exp2{2, 3, 1};
+    test_record exp2{1.0, 3, 2};
     EXPECT_EQ(exp2, records[1]);
 }
 

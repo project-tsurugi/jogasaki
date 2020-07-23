@@ -129,8 +129,7 @@ TEST_F(compiler_test, DISABLED_insert) {
     compiler_context ctx{};
     ctx.storage_provider(yugawara_provider());
     ASSERT_TRUE(compile(sql, ctx));
-    auto& result = ctx.compiler_result();
-    auto&& write = downcast<statement::write>(result.statement());
+    auto&& write = downcast<statement::write>(ctx.statement());
 
     EXPECT_EQ(write.operator_kind(), relation::write_kind::insert);
 
@@ -145,7 +144,7 @@ TEST_F(compiler_test, DISABLED_insert) {
     EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int4()));
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
 
-    dump(result);
+    dump(ctx.compiled_info(), ctx.statement());
 }
 
 TEST_F(compiler_test, simple_query) {
@@ -154,9 +153,7 @@ TEST_F(compiler_test, simple_query) {
     compiler_context ctx{};
     ctx.storage_provider(yugawara_provider());
     ASSERT_TRUE(compile(sql, ctx));
-    auto& result = ctx.compiler_result();
-
-    auto&& c = downcast<statement::execute>(result.statement());
+    auto&& c = downcast<statement::execute>(ctx.statement());
 
     ASSERT_EQ(c.execution_plan().size(), 1);
     auto&& p0 = top(c.execution_plan());
@@ -187,16 +184,14 @@ TEST_F(compiler_test, simple_query) {
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
     EXPECT_EQ(emit.columns()[1].source(), c1p0);
 
-//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
-    EXPECT_EQ(result.type_of(c0p0), type::int8());
-//    EXPECT_EQ(result.type_of(bindings(t0c1)), type::float8());
-    EXPECT_EQ(result.type_of(c1p0), type::float8());
+    EXPECT_EQ(ctx.compiled_info().type_of(c0p0), type::int8());
+    EXPECT_EQ(ctx.compiled_info().type_of(c1p0), type::float8());
 
-    dump(result);
+    dump(ctx.compiled_info(), ctx.statement());
 
     // test utils
-    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(result.info(), c0p0));
-    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(result.info(), c1p0));
+    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(ctx.compiled_info(), c0p0));
+    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(ctx.compiled_info(), c1p0));
 }
 
 TEST_F(compiler_test, filter) {
@@ -204,9 +199,8 @@ TEST_F(compiler_test, filter) {
     compiler_context ctx{};
     ctx.storage_provider(yugawara_provider());
     ASSERT_TRUE(compile(sql, ctx));
-    auto& result = ctx.compiler_result();
 
-    auto&& c = downcast<statement::execute>(result.statement());
+    auto&& c = downcast<statement::execute>(ctx.statement());
     ASSERT_EQ(c.execution_plan().size(), 1);
 
     auto b = c.execution_plan().begin();
@@ -235,8 +229,7 @@ TEST_F(compiler_test, filter) {
     ASSERT_EQ(emit.columns().size(), 1);
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
-    EXPECT_EQ(result.type_of(c0p0), type::int8());
+    EXPECT_EQ(ctx.compiled_info().type_of(c0p0), type::int8());
 }
 
 TEST_F(compiler_test, project_filter) {
@@ -244,9 +237,8 @@ TEST_F(compiler_test, project_filter) {
     compiler_context ctx{};
     ctx.storage_provider(yugawara_provider());
     ASSERT_TRUE(compile(sql, ctx));
-    auto& result = ctx.compiler_result();
-    auto&& c = downcast<statement::execute>(result.statement());
-    dump(result);
+    auto&& c = downcast<statement::execute>(ctx.statement());
+    dump(ctx.compiled_info(), ctx.statement());
 
     ASSERT_EQ(c.execution_plan().size(), 1);
 
@@ -280,8 +272,6 @@ TEST_F(compiler_test, project_filter) {
     ASSERT_EQ(emit.columns().size(), 3);
 //    EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
-//    EXPECT_EQ(result.type_of(c0p0), type::int8());
 }
 
 TEST_F(compiler_test, join) {
@@ -289,10 +279,8 @@ TEST_F(compiler_test, join) {
     compiler_context ctx{};
     ctx.storage_provider(yugawara_provider());
     ASSERT_TRUE(compile(sql, ctx));
-    auto& result = ctx.compiler_result();
-    auto&& c = downcast<statement::execute>(result.statement());
-    ASSERT_TRUE(result);
-    dump(result);
+    auto&& c = downcast<statement::execute>(ctx.statement());
+    dump(ctx.compiled_info(), ctx.statement());
 
     ASSERT_EQ(c.execution_plan().size(), 5);
 
@@ -333,8 +321,8 @@ TEST_F(compiler_test, join) {
     ASSERT_EQ(emit.columns().size(), 3);
 //    EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-//    EXPECT_EQ(result.type_of(bindings(t0c0)), type::int8());
-//    EXPECT_EQ(result.type_of(c0p0), type::int8());
+//    EXPECT_EQ(ctx.compiled_info.type_of(bindings(t0c0)), type::int8());
+//    EXPECT_EQ(ctx.compiled_info.type_of(c0p0), type::int8());
      */
 }
 

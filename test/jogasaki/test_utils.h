@@ -172,10 +172,10 @@ find(takatori::plan::graph_type& g, takatori::relation::expression const& e) {
             << takatori::util::string_builder::to_string);
 }
 
-static void dump(yugawara::compiler_result const& r) {
+static void dump(yugawara::compiled_info const& r, takatori::statement::statement const& stmt) {
     ::takatori::serializer::json_printer printer { std::cout };
     r.object_scanner()(
-            r.statement(),
+            stmt,
             ::takatori::serializer::json_printer { std::cout });
 }
 

@@ -48,15 +48,25 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::
 
 } // namespace impl
 
-flow::flow(std::shared_ptr<meta::record_meta> input_meta,
-        request_context* context) :
-        input_meta_(std::move(input_meta)), context_(context) {
+flow::flow(
+    std::shared_ptr<meta::record_meta> input_meta,
+    request_context* context,
+    step* owner
+) :
+    input_meta_(std::move(input_meta)),
+    context_(context),
+    owner_(owner)
+{
     (void)context_;
+
+    // For testing purpose, setup sinks/sources automatically even if there is no input.
+    if (owner_->input_ports().empty()) {
+        setup_partitions(default_partitions);
+    }
 }
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-//        auto ch = graph_ ? &graph_->get_channel() : nullptr;
-//        tasks_.emplace_back(std::make_unique<exchange::task>(ch, this));
+    // no tasks for forward
     return tasks_;
 }
 

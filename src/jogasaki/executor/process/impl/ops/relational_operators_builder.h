@@ -39,6 +39,7 @@
 #include "emit.h"
 #include "take_group.h"
 #include "offer.h"
+#include "take_flat.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -68,7 +69,7 @@ public:
 
     operator_container operator()() && {
         dispatch(*this, head());
-        return operator_container{std::move(operators_)};
+        return operator_container{std::move(operators_), std::move(process_io_map_)};
     }
 
     relation::expression& head() {
@@ -143,7 +144,12 @@ public:
         (void)node;
     }
     void operator()(relation::step::take_flat const& node) {
-        (void)node;
+        auto block_index = info_->block_indices().at(&node);
+        auto map = compiler_ctx_->relation_step_map();
+        auto xchg = map->at(node.source());
+        auto reader_index = process_io_map_.add_input(xchg);
+        operators_[std::addressof(node)] = std::make_unique<take_flat>(*info_, block_index, xchg->column_order(), node.columns(), reader_index);
+        dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::step::take_group const& node) {
         auto block_index = info_->block_indices().at(&node);

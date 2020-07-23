@@ -43,6 +43,12 @@ class flow : public exchange::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
+    flow(flow const& other) = default;
+    flow& operator=(flow const& other) = default;
+    flow(flow&& other) noexcept = default;
+    flow& operator=(flow&& other) noexcept = default;
+    ~flow() override = default;
+
     /**
      * @brief create new instance with empty schema (for testing)
      */
@@ -51,9 +57,14 @@ public:
     /**
      * @brief create new instance
      * @param input_meta input record metadata
-     * @param key_indices indices for key fields
+     * @param context the request context
+     * @param owner step owning this object
      */
-    flow(std::shared_ptr<meta::record_meta> input_meta, request_context* context);
+    flow(
+        std::shared_ptr<meta::record_meta> input_meta,
+        request_context* context,
+        step* owner
+    );
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
@@ -72,6 +83,7 @@ private:
     std::vector<std::unique_ptr<forward::sink>> sinks_;
     std::vector<std::unique_ptr<forward::source>> sources_{};
     request_context* context_{};
+    step* owner_{};
 };
 
 }

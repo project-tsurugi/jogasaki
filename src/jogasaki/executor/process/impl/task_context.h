@@ -22,6 +22,7 @@
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/group/flow.h>
+#include <jogasaki/executor/exchange/forward/flow.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -83,6 +84,11 @@ public:
                 info.reader_ = r;
                 return r;
             }
+            case step_kind::forward: {
+                auto r = static_cast<exchange::forward::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
+                info.reader_ = r;
+                return r;
+            }
             //TODO other exchanges
             default:
                 std::abort();
@@ -103,7 +109,12 @@ public:
                 info.writer_ = w;
                 return w;
             }
-                //TODO other exchanges
+            case step_kind::forward: {
+                auto w = &static_cast<exchange::forward::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+                info.writer_ = w;
+                return w;
+            }
+            //TODO other exchanges
             default:
                 std::abort();
         }

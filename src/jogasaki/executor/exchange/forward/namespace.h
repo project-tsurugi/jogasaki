@@ -3,4 +3,4 @@
 /**
  * @brief exchange for data forward
  */
-namespace jogasaki::executor::exchange::deliver {}
+namespace jogasaki::executor::exchange::forward {}

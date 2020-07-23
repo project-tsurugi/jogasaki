@@ -15,31 +15,23 @@
  */
 #pragma once
 
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/record_reader.h>
 
 namespace jogasaki::executor::exchange::forward {
 
-class reader : public group_reader {
+class reader : public record_reader {
 public:
     reader() = default;
-    reader(reader&& other) noexcept = delete;
-    reader& operator=(reader&& other) noexcept = delete;
 
-    // reader interface
-
-    bool next_group() override {
+    [[nodiscard]] bool available() const override {
         return false;
     }
 
-    [[nodiscard]] accessor::record_ref get_group() const override {
-        return accessor::record_ref();
-    }
-
-    bool next_member() override {
+    bool next_record() override {
         return false;
     }
 
-    [[nodiscard]] accessor::record_ref get_member() const override {
+    [[nodiscard]] accessor::record_ref get_record() const override {
         return accessor::record_ref();
     }
 

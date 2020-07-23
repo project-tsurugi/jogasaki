@@ -15,21 +15,13 @@
  */
 #pragma once
 
-#include <jogasaki/executor/exchange/source.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
-#include <jogasaki/executor/exchange/group/input_partition.h>
-#include <jogasaki/executor/group_reader.h>
+namespace jogasaki::process_cli {
 
-namespace jogasaki::executor::exchange::forward {
-
-class reader;
-
-class source : public exchange::source {
+class params {
 public:
-    reader_container acquire_reader() override;
+    std::size_t records_per_partition_ = 1000;
 
-private:
-    std::unique_ptr<record_reader> reader_;
+    std::size_t partitions_ = 10;
 };
 
 }

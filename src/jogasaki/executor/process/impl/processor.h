@@ -38,6 +38,9 @@ public:
 
     abstract::status run(abstract::task_context* context) override;
 
+    [[nodiscard]] ops::operator_container const& operators() const noexcept {
+        return operators_;
+    }
 private:
     std::shared_ptr<processor_info> info_{};
     ops::operator_container operators_{};

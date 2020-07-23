@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 #include "source.h"
+#include "reader.h"
 
 #include <jogasaki/executor/reader_container.h>
 
 namespace jogasaki::executor::exchange::forward {
 
 reader_container source::acquire_reader() {
-    return {};
+    if (! reader_) {
+        reader_ = std::make_unique<reader>();
+    }
+    return reader_container{reader_.get()};
 }
 
 }

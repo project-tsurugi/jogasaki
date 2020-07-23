@@ -188,6 +188,7 @@ void operator_executor::process() {
     while(continue_processing_) {
         dispatch(*this, head());
     }
+    // TODO handling status code
 }
 
 }

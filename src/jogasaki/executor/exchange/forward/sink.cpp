@@ -22,6 +22,9 @@ namespace jogasaki::executor::exchange::forward {
 sink::sink() noexcept : writer_(std::make_unique<writer>()) {}
 
 record_writer& sink::acquire_writer() {
+    if (! writer_) {
+        writer_ = std::make_unique<writer>();
+    }
     return *writer_;
 }
 

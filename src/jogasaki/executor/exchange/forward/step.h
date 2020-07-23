@@ -54,7 +54,7 @@ public:
 
     void activate() override {
         // create data flow object
-        data_flow_object(std::make_unique<forward::flow>(input_meta_, context()));
+        data_flow_object(std::make_unique<forward::flow>(input_meta_, context(), this));
     }
 
 private:

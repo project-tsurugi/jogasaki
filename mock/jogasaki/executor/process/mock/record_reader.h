@@ -35,7 +35,9 @@ public:
 
     basic_record_reader() = default;
 
-    explicit basic_record_reader(records_type records) : records_(std::move(records)) {}
+    explicit basic_record_reader(records_type records, std::shared_ptr<meta::record_meta> meta = {}) noexcept :
+        records_(std::move(records)), meta_(std::move(meta))
+    {}
 
     [[nodiscard]] bool available() const override {
         return it_ != records_.end() && it_+1 != records_.end();
@@ -65,11 +67,15 @@ public:
 
     std::shared_ptr<meta::record_meta> const& meta() {
         static record_type rec{};
+        if (meta_) {
+            return meta_;
+        }
         return rec.record_meta();
     }
 
 private:
     records_type records_{};
+    std::shared_ptr<meta::record_meta> meta_{};
     bool initialized_{false};
     bool released_{false};
     typename records_type::iterator it_{};

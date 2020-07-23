@@ -22,6 +22,7 @@
 
 #include <jogasaki/mock_memory_resource.h>
 
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::testing {
@@ -47,7 +48,7 @@ TEST_F(iterable_record_store_test, empty) {
 
 TEST_F(iterable_record_store_test, basic) {
     mock_memory_resource memory{};
-    testing::record rec{2, 2.0};
+    mock::record rec{2, 2.0};
     auto meta = rec.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());
@@ -92,15 +93,15 @@ TEST_F(iterable_record_store_test, basic) {
 
 TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
     mock_memory_resource memory{0, 1};
-    testing::record rec2{2, 2.0};
+    mock::record rec2{2, 2.0};
     auto meta = rec2.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     auto p2 = r.append(rec2.ref());
 
-    testing::record rec1{1, 1.0};
+    mock::record rec1{1, 1.0};
     auto p1 = r.append(rec1.ref());
 
-    testing::record rec3{3, 3.0};
+    mock::record rec3{3, 3.0};
     auto p3 = r.append(rec3.ref());
     ASSERT_EQ(3, r.count());
 

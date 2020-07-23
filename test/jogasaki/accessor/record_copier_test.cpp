@@ -22,7 +22,7 @@
 #include <jogasaki/meta/record_meta.h>
 
 #include <jogasaki/mock_memory_resource.h>
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::testing {
 
@@ -90,7 +90,7 @@ TEST_F(record_copier_test, simple) {
 
 TEST_F(record_copier_test, non_standard_layout_record) {
     using kind = meta::field_type_kind;
-    testing::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> rec{
+    mock::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> rec{
         record_meta::nullability_entity_type{"11110"s},
         record_meta::nullity_offset_table_type{0, 1, 2, 3, 4}, // last int1 is for nullity bits
         1, 2, 100.0, 200.0, 0};
@@ -106,7 +106,7 @@ TEST_F(record_copier_test, non_standard_layout_record) {
 
     ASSERT_EQ(40, meta->record_size());
     record_copier copier{meta};
-    testing::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> dst{};
+    mock::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> dst{};
     record_ref t{dst.ref()};
     copier(t, r);
 

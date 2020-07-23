@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/utils/copy_field_data.h>
@@ -70,7 +72,7 @@ public:
         return records_.size();
     }
 
-    records_type const& records() const noexcept {
+    [[nodiscard]] records_type const& records() const noexcept {
         return records_;
     }
 
@@ -80,7 +82,7 @@ private:
     bool released_{false};
 };
 
-using record_writer = basic_record_writer<basic_record<kind::int8, kind::float8>>;
+using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
 
 template <class Record>
 basic_record_writer<Record>* unwrap(executor::record_writer* writer) {

@@ -22,8 +22,8 @@
 
 #include <jogasaki/test_root.h>
 
-#include "mock/task_context.h"
-#include "mock/process_executor.h"
+#include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/executor/process/mock/process_executor.h>
 
 namespace jogasaki::executor::process::impl {
 

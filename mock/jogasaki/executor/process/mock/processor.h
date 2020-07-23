@@ -23,6 +23,7 @@
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/mock/record_reader.h>
 
 namespace jogasaki::executor::process::mock {
 

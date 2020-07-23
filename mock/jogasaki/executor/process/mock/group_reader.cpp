@@ -13,29 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/abstract/processor.h>
+#include "group_reader.h"
 
 namespace jogasaki::executor::process::mock {
 
-class process_executor {
-public:
-    process_executor(std::shared_ptr<abstract::processor> processor, std::shared_ptr<task_context> context) :
-            processor_(std::move(processor)), context_(std::move(context)) {}
-
-    bool run() {
-        processor_->run(context_.get());
-        return true;
-    }
-
-private:
-    std::shared_ptr<abstract::processor> processor_{};
-    std::shared_ptr<task_context> context_{};
-};
-
 }
-
 

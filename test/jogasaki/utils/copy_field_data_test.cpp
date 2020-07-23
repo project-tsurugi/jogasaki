@@ -15,7 +15,7 @@
  */
 #include <jogasaki/utils/copy_field_data.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 
 #include <gtest/gtest.h>
 
@@ -23,13 +23,15 @@ namespace jogasaki::utils {
 
 using namespace testing;
 
+using kind = meta::field_type_kind;
+
 class copy_field_data_test : public ::testing::Test {};
 
 TEST_F(copy_field_data_test, simple) {
 
-    basic_record<kind::float4, kind::int8> src{1.0, 100};
-    basic_record<kind::int8, kind::float4> tgt{200, 2.0};
-    basic_record<kind::int8, kind::float4> exp{100, 1.0};
+    mock::basic_record<kind::float4, kind::int8> src{1.0, 100};
+    mock::basic_record<kind::int8, kind::float4> tgt{200, 2.0};
+    mock::basic_record<kind::int8, kind::float4> exp{100, 1.0};
     auto src_meta = src.record_meta();
     auto tgt_meta = tgt.record_meta();
     auto cnt = src_meta->field_count();

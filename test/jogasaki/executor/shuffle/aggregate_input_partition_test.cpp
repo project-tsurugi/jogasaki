@@ -21,7 +21,7 @@
 #include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
@@ -72,9 +72,9 @@ TEST_F(aggregate_input_partition_test, basic) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         info_, context.get()};
-    record r1 {1, 1.0};
-    record r2 {2, 2.0};
-    record r3 {3, 3.0};
+    mock::record r1 {1, 1.0};
+    mock::record r2 {2, 2.0};
+    mock::record r3 {3, 3.0};
     accessor::record_ref ref1{&r1, sizeof(r1)};
     accessor::record_ref ref2{&r2, sizeof(r2)};
     accessor::record_ref ref3{&r3, sizeof(r3)};
@@ -114,9 +114,9 @@ TEST_F(aggregate_input_partition_test, multiple_hash_tables) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         info_, context.get()};
-    record r1 {1, 1.0};
-    record r2 {2, 2.0};
-    record r3 {3, 3.0};
+    mock::record r1 {1, 1.0};
+    mock::record r2 {2, 2.0};
+    mock::record r3 {3, 3.0};
     accessor::record_ref ref1{&r1, sizeof(r1)};
     accessor::record_ref ref2{&r2, sizeof(r2)};
     accessor::record_ref ref3{&r3, sizeof(r3)};

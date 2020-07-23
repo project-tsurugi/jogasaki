@@ -22,7 +22,7 @@
 
 #include <jogasaki/executor/process/impl/ops/join.h>
 
-#include "mock/group_reader.h"
+#include <jogasaki/executor/process/mock/group_reader.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

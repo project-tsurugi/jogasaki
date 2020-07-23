@@ -21,7 +21,7 @@
 #include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
@@ -68,7 +68,7 @@ public:
             info_, context);
 
         for(auto& p: map) {
-            record r1 {p.first, p.second};
+            mock::record r1 {p.first, p.second};
             accessor::record_ref ref{&r1, sizeof(r1)};
             partition->write(ref);
         }

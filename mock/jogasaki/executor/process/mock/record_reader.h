@@ -19,12 +19,11 @@
 
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/executor/record_reader.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::process::mock {
-
-using namespace testing;
 
 using kind = meta::field_type_kind;
 
@@ -55,7 +54,7 @@ public:
         return it_ != records_.end();
     }
 
-    [[nodiscard]] accessor::record_ref get_record() const {
+    [[nodiscard]] accessor::record_ref get_record() const override {
         return it_->ref();
     }
 
@@ -76,7 +75,7 @@ private:
     typename records_type::iterator it_{};
 };
 
-using record_reader = basic_record_reader<basic_record<kind::int8, kind::float8>>;
+using record_reader = basic_record_reader<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
 
 template <class Record>
 basic_record_reader<Record>* unwrap(executor::record_reader* reader) {

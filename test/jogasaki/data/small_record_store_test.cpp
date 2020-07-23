@@ -37,7 +37,7 @@ using namespace boost::container::pmr;
 class small_record_store_test : public test_root {};
 
 TEST_F(small_record_store_test, basic) {
-    testing::record record{};
+    mock::record record{};
     auto meta = record.record_meta();
     small_record_store r{meta};
     auto c0_offset = meta->value_offset(0);
@@ -52,7 +52,7 @@ TEST_F(small_record_store_test, basic) {
 
 TEST_F(small_record_store_test, memory_resource) {
     mock_memory_resource resource{};
-    testing::record record{};
+    mock::record record{};
     auto meta = record.record_meta();
     small_record_store r{meta, 1, &resource};
     auto c0_offset = meta->value_offset(0);
@@ -67,9 +67,9 @@ TEST_F(small_record_store_test, memory_resource) {
 
 TEST_F(small_record_store_test, multiple_records) {
     mock_memory_resource resource{};
-    testing::record record0{};
-    testing::record record1{};
-    testing::record record2{};
+    mock::record record0{};
+    mock::record record1{};
+    mock::record record2{};
     auto meta = record0.record_meta();
     small_record_store r{meta, 3, &resource};
     auto c0_offset = meta->value_offset(0);
@@ -96,7 +96,7 @@ TEST_F(small_record_store_test, multiple_records) {
 TEST_F(small_record_store_test, metadata_variation) {
     mock_memory_resource resource{};
     mock_memory_resource varlen_resource{};
-    testing::record_f4f8ch record{};
+    mock::record_f4f8ch record{};
     auto meta = record.record_meta();
     small_record_store r{meta, 1, &resource};
     auto c0_offset = meta->value_offset(0);

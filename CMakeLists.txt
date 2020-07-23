@@ -120,6 +120,7 @@ install(
 )
 
 add_subdirectory(src)
+add_subdirectory(mock)
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()

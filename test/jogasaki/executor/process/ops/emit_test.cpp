@@ -24,7 +24,7 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
 
@@ -55,9 +55,9 @@ TEST_F(emit_test, simple) {
     relation::emit const& node{};
     emit e{{}, 0, node.columns()};
 
-    record rec0{0, 0.0};
-    record rec1{1, 1.0};
-    record rec2{2, 2.0};
+    mock::record rec0{0, 0.0};
+    mock::record rec1{1, 1.0};
+    mock::record rec2{2, 2.0};
 //    e(accessor::record_ref{&rec0, sizeof(record)});
 //    e.write(accessor::record_ref{&rec1, sizeof(record)});
 //    e.write(accessor::record_ref{&rec2, sizeof(record)});

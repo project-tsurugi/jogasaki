@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "basic_record.h"
+#include <jogasaki/mock/basic_record.h>
 
 #include "test_root.h"
 
@@ -27,6 +27,8 @@ using namespace takatori::util;
 class basic_record_test : public test_root {};
 
 using kind = field_type_kind;
+
+using namespace jogasaki::mock;
 
 TEST_F(basic_record_test, simple) {
     basic_record<kind::int4> r{2};

@@ -22,7 +22,7 @@
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
@@ -75,7 +75,7 @@ TEST_F(sorted_vector_reader_test, basic) {
             context.get()
     ));
 
-    record arr[] = {
+    mock::record arr[] = {
             {1, 1.0},
             {1, 2.0},
             {3, 3.0},
@@ -134,7 +134,7 @@ TEST_F(sorted_vector_reader_test, multiple_partitions) {
             context.get()
             ));
 
-    record arr[] = {
+    mock::record arr[] = {
             {0, 5.0},
             {1, 1.0},
             {1, 2.0},
@@ -198,7 +198,7 @@ TEST_F(sorted_vector_reader_test, empty_partition) {
             context.get()
     ));
 
-    record arr[] = {
+    mock::record arr[] = {
             {1, 1.0},
             {1, 2.0},
             {3, 3.0},

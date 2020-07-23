@@ -21,7 +21,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki {
 
@@ -32,7 +32,7 @@ public:
      * @brief providing typical record metadata
      */
     static inline std::shared_ptr<meta::record_meta> test_record_meta1() {
-        testing::record r1{};
+        jogasaki::mock::record r1{};
         return r1.record_meta();
     }
 

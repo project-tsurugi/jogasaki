@@ -22,7 +22,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/storage/transaction_context.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -42,7 +42,7 @@ TEST_F(scan_test, simple) {
     auto stg = std::make_shared<storage::storage_context>();
     std::map<std::string, std::string> options{};
 
-    record rec{};
+    mock::record rec{};
 
     relation::scan* node{};
     scan s{{}, 0, {}, test_record_meta1()};

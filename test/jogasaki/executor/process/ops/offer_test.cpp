@@ -27,7 +27,7 @@
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/offer_context.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
@@ -138,7 +138,8 @@ TEST_F(offer_test, simple) {
     auto& block_info = p_info.blocks_info()[s.block_index()];
     block_variables variables{block_info};
 
-    using test_record = basic_record<kind::float8, kind::int4, kind::int8>;
+    using kind = meta::field_type_kind;
+    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
     auto writer = std::make_shared<mock::basic_record_writer<test_record>>(s.meta());
 
     mock::task_context task_ctx{

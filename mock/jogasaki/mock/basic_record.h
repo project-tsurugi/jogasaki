@@ -24,7 +24,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/accessor/record_printer.h>
 
-namespace jogasaki::testing {
+namespace jogasaki::mock {
 
 using kind = meta::field_type_kind;
 

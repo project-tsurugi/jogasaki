@@ -22,7 +22,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
@@ -53,9 +53,9 @@ TEST_F(input_partition_test, basic) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}), context.get()};
-    record r1 {1, 1.0};
-    record r2 {2, 2.0};
-    record r3 {3, 3.0};
+    mock::record r1 {1, 1.0};
+    mock::record r2 {2, 2.0};
+    mock::record r3 {3, 3.0};
     accessor::record_ref ref1{&r1, sizeof(r1)};
     accessor::record_ref ref2{&r2, sizeof(r2)};
     accessor::record_ref ref3{&r3, sizeof(r3)};
@@ -80,9 +80,9 @@ TEST_F(input_partition_test, use_monotonic_resource) {
             context.get(),
             };
 
-    record r1 {1, 1.0};
-    record r2 {2, 2.0};
-    record r3 {3, 3.0};
+    mock::record r1 {1, 1.0};
+    mock::record r2 {2, 2.0};
+    mock::record r3 {3, 3.0};
     accessor::record_ref ref1{&r1, sizeof(r1)};
     accessor::record_ref ref2{&r2, sizeof(r2)};
     accessor::record_ref ref3{&r3, sizeof(r3)};
@@ -108,9 +108,9 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
             context.get(),
             2
             };
-    record r1 {1, 1.0};
-    record r2 {2, 2.0};
-    record r3 {3, 3.0};
+    mock::record r1 {1, 1.0};
+    mock::record r2 {2, 2.0};
+    mock::record r3 {3, 3.0};
     accessor::record_ref ref1{&r1, sizeof(r1)};
     accessor::record_ref ref2{&r2, sizeof(r2)};
     accessor::record_ref ref3{&r3, sizeof(r3)};

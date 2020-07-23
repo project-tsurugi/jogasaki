@@ -15,10 +15,13 @@
  */
 #pragma once
 
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/executor/record_writer.h>
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor::process::mock {
 
+template <class Record>
 class external_writer : public executor::record_writer {
 public:
     explicit external_writer(std::shared_ptr<meta::record_meta> meta) :
@@ -45,7 +48,7 @@ public:
 
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<record> records_{};
+    std::vector<Record> records_{};
     std::size_t offset_c1_{};
     std::size_t offset_c2_{};
     bool released_{false};

@@ -27,7 +27,7 @@
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/take_flat_context.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
@@ -128,7 +128,8 @@ TEST_F(take_flat_test, simple) {
     auto& block_info = p_info.blocks_info()[s.block_index()];
     block_variables variables{block_info};
 
-    using test_record = basic_record<kind::int4, kind::int4, kind::int4>;
+    using kind = meta::field_type_kind;
+    using test_record = jogasaki::mock::basic_record<kind::int4, kind::int4, kind::int4>;
     std::vector<test_record> records{
         test_record{0, 1, 2},
         test_record{0, 2, 4},

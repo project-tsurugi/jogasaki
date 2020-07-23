@@ -19,7 +19,8 @@
 
 #include <jogasaki/accessor/record_ref.h>
 
-#include <jogasaki/basic_record.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/executor/group_reader.h>
 
 namespace jogasaki::executor::process::mock {
 
@@ -105,6 +106,6 @@ public:
     bool on_member_{false};
 };
 
-using group_reader = basic_group_reader<testing::basic_record<kind::int8>, testing::basic_record<kind::float8>>;
+using group_reader = basic_group_reader<jogasaki::mock::basic_record<kind::int8>, jogasaki::mock::basic_record<kind::float8>>;
 }
 

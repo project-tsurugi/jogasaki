@@ -22,6 +22,7 @@
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/utils/iterator_pair.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -29,14 +30,7 @@ namespace impl {
 
 using iterator = input_partition::table_iterator;
 
-struct iterator_pair {
-    iterator_pair(iterator x, iterator y) : first(x), second(y) {}
-    iterator first; //NOLINT
-    iterator second; //NOLINT
-};
-
-static_assert(std::is_trivially_copyable_v<iterator>);
-static_assert(std::is_trivially_copyable_v<iterator_pair>);
+using iterator_pair = utils::iterator_pair<iterator>;
 
 enum class reader_state {
     init,

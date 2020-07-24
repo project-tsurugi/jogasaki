@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <jogasaki/utils/iterator_pair.h>
 
-#include <type_traits>
-#include <jogasaki/data/iterable_record_store.h>
+#include <gtest/gtest.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::testing {
 
-using iterator = data::iterable_record_store::iterator;
+class iterator_pair_test : public ::testing::Test {};
 
-struct iterator_pair {
-    iterator_pair(iterator x, iterator y) : first(x), second(y) {}
-    iterator first; //NOLINT
-    iterator second; //NOLINT
-};
+TEST_F(iterator_pair_test, simple) {
+    std::vector<int> v{1,2,3};
+    using iterator = decltype(v)::iterator;
+    utils::iterator_pair<iterator> p{v.begin(), v.end()};
 
-static_assert(std::is_trivially_copyable_v<iterator>);
-static_assert(std::is_trivially_copyable_v<iterator_pair>);
+    EXPECT_EQ(v.begin(), p.first);
+    EXPECT_EQ(v.end(), p.second);
+}
 
 }
+

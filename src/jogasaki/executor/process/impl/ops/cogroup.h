@@ -30,8 +30,7 @@
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/data/small_record_store.h>
-
-#include "../iterator_pair.h"
+#include <jogasaki/utils/iterator_pair.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -92,6 +91,8 @@ private:
  */
 class cogroup_input {
 public:
+    using iterator = cogroup_record_store::iterator;
+
     cogroup_input(
             executor::group_reader& reader,
             std::unique_ptr<cogroup_record_store> store,
@@ -207,6 +208,8 @@ public:
     using input_index = std::size_t;
 
     using queue_type = std::priority_queue<input_index, std::vector<input_index>, impl::cogroup_input_comparator>;
+
+    using iterator_pair = utils::iterator_pair<impl::cogroup_record_store::iterator>;
 
     using consumer_type = std::function<void(accessor::record_ref, std::vector<iterator_pair>&)>;
 

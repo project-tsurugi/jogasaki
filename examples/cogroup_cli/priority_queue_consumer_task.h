@@ -86,7 +86,8 @@ public:
 
         auto* l_reader = left_reader_.reader<executor::group_reader>();
         auto* r_reader = right_reader_.reader<executor::group_reader>();
-        process::impl::ops::cogroup cgrp{{l_reader, r_reader}, {l_meta_, r_meta_}};
+        using cogroup = process::impl::ops::cogroup;
+        cogroup cgrp{{l_reader, r_reader}, {l_meta_, r_meta_}};
 
         l_records_ = 0;
         r_records_ = 0;
@@ -96,7 +97,7 @@ public:
         total_val_ = 0;
 
         using namespace jogasaki::executor;
-        process::impl::ops::cogroup::consumer_type consumer = [&](accessor::record_ref key, std::vector<process::impl::iterator_pair>& values) {
+        cogroup::consumer_type consumer = [&](accessor::record_ref key, std::vector<cogroup::iterator_pair>& values) {
             auto r_value_len = r_meta_->value().record_size();
             auto r_value_offset = r_meta_->value().value_offset(0);
             auto l_value_len = l_meta_->value().record_size();

@@ -28,14 +28,16 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/utils/iterator_pair.h>
 
-#include "../iterator_pair.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 class join {
 public:
     using input_index = std::size_t;
+
+    using iterator_pair = cogroup::iterator_pair;
 
     join(
             std::shared_ptr<meta::record_meta> key_meta,

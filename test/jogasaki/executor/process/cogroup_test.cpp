@@ -87,11 +87,11 @@ TEST_F(cogroup_test, simple) {
         std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1()}
     };
 
-    using consumer_type = std::function<void(accessor::record_ref, std::vector<iterator_pair>&)>;
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<cogroup::iterator_pair>&)>;
     std::vector<std::int64_t> keys{};
     std::vector<std::vector<double>> values1{};
     std::vector<std::vector<double>> values2{};
-    consumer_type consumer = [&](accessor::record_ref key, std::vector<iterator_pair>& values) {
+    consumer_type consumer = [&](accessor::record_ref key, std::vector<cogroup::iterator_pair>& values) {
         keys.emplace_back(key.get_value<std::int64_t>(key_offset));
         auto& r1 = values1.emplace_back();
         auto& r2 = values2.emplace_back();
@@ -183,12 +183,12 @@ TEST_F(cogroup_test, three_inputs) {
             std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1(), test_group_meta1()}
     };
 
-    using consumer_type = std::function<void(accessor::record_ref, std::vector<iterator_pair>&)>;
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<cogroup::iterator_pair>&)>;
     std::vector<std::int64_t> keys{};
     std::vector<std::vector<double>> values1{};
     std::vector<std::vector<double>> values2{};
     std::vector<std::vector<double>> values3{};
-    consumer_type consumer = [&](accessor::record_ref key, std::vector<iterator_pair>& values) {
+    consumer_type consumer = [&](accessor::record_ref key, std::vector<cogroup::iterator_pair>& values) {
         keys.emplace_back(key.get_value<std::int64_t>(key_offset));
         auto& r1 = values1.emplace_back();
         auto& r2 = values2.emplace_back();
@@ -275,11 +275,11 @@ TEST_F(cogroup_test, key_value_reversed) {
             std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1_kv_reversed(), test_group_meta1_kv_reversed()}
     };
 
-    using consumer_type = std::function<void(accessor::record_ref, std::vector<iterator_pair>&)>;
+    using consumer_type = std::function<void(accessor::record_ref, std::vector<cogroup::iterator_pair>&)>;
     std::vector<std::int64_t> keys{};
     std::vector<std::vector<double>> values1{};
     std::vector<std::vector<double>> values2{};
-    consumer_type consumer = [&](accessor::record_ref key, std::vector<iterator_pair>& values) {
+    consumer_type consumer = [&](accessor::record_ref key, std::vector<cogroup::iterator_pair>& values) {
         keys.emplace_back(key.get_value<std::int64_t>(key_offset));
         auto& r1 = values1.emplace_back();
         auto& r2 = values2.emplace_back();

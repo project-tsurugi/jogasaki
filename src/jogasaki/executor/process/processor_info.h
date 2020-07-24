@@ -33,19 +33,19 @@ public:
     processor_info() = default;
 
     processor_info(
-        graph::graph<relation::expression>& operators,
+        graph::graph<relation::expression>& relations,
         yugawara::compiled_info const& info
     ) :
-        operators_(std::addressof(operators)),
+        relations_(std::addressof(relations)),
         info_(std::addressof(info))
     {
-        auto&& p = impl::create_block_variables(*operators_, *info_);
+        auto&& p = impl::create_block_variables(*relations_, *info_);
         blocks_info_ = std::move(p.first);
         block_indices_ = std::move(p.second);
     }
 
-    [[nodiscard]] graph::graph<relation::expression>& operators() const noexcept {
-        return *operators_;
+    [[nodiscard]] graph::graph<relation::expression>& relations() const noexcept {
+        return *relations_;
     }
 
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
@@ -60,7 +60,7 @@ public:
         return block_indices_;
     }
 private:
-    graph::graph<relation::expression>* operators_{};
+    graph::graph<relation::expression>* relations_{};
     yugawara::compiled_info const* info_{};
     impl::blocks_info_type blocks_info_{};
     impl::block_indices_type block_indices_{};

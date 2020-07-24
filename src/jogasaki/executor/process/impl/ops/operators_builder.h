@@ -74,7 +74,7 @@ public:
 
     relation::expression& head() {
         relation::expression* result = nullptr;
-        takatori::relation::enumerate_top(info_->operators(), [&](relation::expression& v) {
+        takatori::relation::enumerate_top(info_->relations(), [&](relation::expression& v) {
             result = &v;
         });
         if (result != nullptr) {

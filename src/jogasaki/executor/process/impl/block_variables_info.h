@@ -54,7 +54,7 @@ using block_indices_type = std::unordered_map<takatori::relation::expression con
  * @brief create block related information about the operators in a process
  */
 std::pair<blocks_info_type, block_indices_type> create_block_variables(
-    takatori::graph::graph<takatori::relation::expression>& operators,
+    takatori::graph::graph<takatori::relation::expression>& relations,
     yugawara::compiled_info const& info);
 
 }

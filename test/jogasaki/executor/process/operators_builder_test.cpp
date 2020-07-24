@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/relational_operators_builder.h>
+#include <jogasaki/executor/process/impl/ops/operators_builder.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -89,7 +89,7 @@ using buffer = relation::buffer;
 
 using rgraph = ::takatori::graph::graph<relation::expression>;
 
-class relational_operators_builder_test : public test_root {
+class operators_builder_test : public test_root {
 public:
 
     std::unique_ptr<shakujo::model::program::Program> gen_shakujo_program(std::string_view sql) {
@@ -136,7 +136,7 @@ public:
 };
 
 
-TEST_F(relational_operators_builder_test, temp) {
+TEST_F(operators_builder_test, temp) {
     std::string sql = "select * from T0";
     auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();
@@ -197,7 +197,7 @@ TEST_F(relational_operators_builder_test, temp) {
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
 
     jogasaki::plan::compiler_context compiler_ctx{};
-    auto v = relational_operators_builder{pinfo, compiler_ctx}();
+    auto v = operators_builder{pinfo, compiler_ctx}();
 
     ASSERT_EQ(2, v.size());
 }

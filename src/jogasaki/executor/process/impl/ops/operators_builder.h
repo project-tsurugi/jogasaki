@@ -51,13 +51,13 @@ using takatori::relation::step::dispatch;
 /**
  * @brief generator for relational operators
  */
-class relational_operators_builder {
+class operators_builder {
 public:
     using operators_type = operator_container::operators_type;
 
-    relational_operators_builder() = default;
+    operators_builder() = default;
 
-    explicit relational_operators_builder(
+    explicit operators_builder(
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
         memory::paged_memory_resource* resource = nullptr) :
@@ -193,7 +193,7 @@ inline operator_container create_relational_operators(
     plan::compiler_context const& compiler_ctx,
     memory::paged_memory_resource* resource = nullptr
 ) {
-    return relational_operators_builder{std::move(info), compiler_ctx, resource}();
+    return operators_builder{std::move(info), compiler_ctx, resource}();
 }
 
 }

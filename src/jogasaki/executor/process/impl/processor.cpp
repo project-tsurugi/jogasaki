@@ -15,7 +15,7 @@
  */
 #include "processor.h"
 #include "block_variables_info.h"
-#include "ops/relational_operators_builder.h"
+#include "ops/operators_builder.h"
 
 namespace jogasaki::executor::process::impl {
 

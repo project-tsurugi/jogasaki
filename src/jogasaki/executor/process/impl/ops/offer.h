@@ -117,7 +117,7 @@ private:
     std::vector<details::offer_field> fields_{};
     std::size_t writer_index_{};
 
-        std::shared_ptr<meta::record_meta> create_meta(
+    std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
         meta::variable_order const& order,
         std::vector<column, takatori::util::object_allocator<column>> const& columns

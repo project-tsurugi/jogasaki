@@ -25,6 +25,9 @@ namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief index mapping for input/output exchanges in a process
+ * @details a process needs to manage indices (to read from input, write to downstream, write externally)
+ * Each index maps to/from exchanges that provides the process with input/output.
+ * This object represents the indices for a single process.
  */
 class process_io_map {
 public:

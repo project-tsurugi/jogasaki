@@ -51,6 +51,7 @@ public:
     [[nodiscard]] data::small_record_store& store() noexcept {
         return store_;
     }
+
 private:
     data::small_record_store store_{};
     record_writer* writer_{};

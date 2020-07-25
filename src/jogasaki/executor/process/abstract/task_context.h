@@ -58,8 +58,9 @@ public:
 
     /**
      * @brief accessor to main/sub input readers
-     * @details internally stored object or newly acquired one will be returned, no need to release them one by one
-     * use processor_context::release() function to do that at once for all resource
+     * @details object in the "acquired" state will be borrowed corresponding to the given index.
+     * The callers are responsible to call release() of the object when they finish using it.
+     * The release() called second time are no-op, so they are safely called multiple times.
      * @param idx the requested reader's index
      * If this context is for the task processing main input(s), the index corresponds to the index of the main input.
      * If this context is for the task processing sub input, the parameter is ignored since only one reader/input exists.
@@ -69,8 +70,9 @@ public:
 
     /**
      * @brief accessor to main output writers
-     * @details internally stored object or newly acquired one will be returned, no need to release them one by one
-     * use processor_context::release() function to do that at once for all resource
+     * @details object in the "acquired" state will be borrowed corresponding to the given index.
+     * The callers are responsible to call release() of the object when they finish using it.
+     * The release() called second time are no-op, so they are safely called multiple times.
      * @param idx the requested writer's index, which corresponds to the index of output from the process step
      * @return writer corresponding to the given index
      * @attention for the task processing sub input, this
@@ -79,8 +81,9 @@ public:
 
     /**
      * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
-     * @details internally stored object or newly acquired one will be returned, no need to release them one by one
-     * use processor_context::release() function to do that at once for all resource
+     * @details object in the "acquired" state will be borrowed corresponding to the given index.
+     * The callers are responsible to call release() of the object when they finish using it.
+     * The release() called second time are no-op, so they are safely called multiple times.
      * @param idx the requested external writer's index, which corresponds to the index of external output from the process step
      * (the knowledge on the index of external output is shared with processor impl.)
      * @return external writer corresponding to the given index
@@ -108,17 +111,10 @@ public:
     [[nodiscard]] class work_context* work_context() const;
 
     /**
-     * @brief release all resource (readers/writers/scan_info and working context) attached to this instance
-     * @details processor is required to call this when it finishes using the context (i.e. the end of assigned work for the task)
+     * @brief detach and return the work_context held by this instance
+     * @details callers can use this to finalize the work context when it finishes using the context (i.e. the end of assigned work for the task)
      */
-    void release();
-
-protected:
-
-    /**
-     * @brief request subclass to release all resource
-     */
-    virtual void do_release() = 0;
+    std::unique_ptr<class work_context> release_work();
 
 private:
     std::unique_ptr<class work_context> work_context_{};

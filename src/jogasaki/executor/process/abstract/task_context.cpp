@@ -25,9 +25,8 @@ class work_context* task_context::work_context() const {
     return work_context_.get();
 }
 
-void task_context::release() {
-    do_release();
-    work_context_.reset();
+std::unique_ptr<class work_context> task_context::release_work() {
+    return std::move(work_context_);
 }
 
 }

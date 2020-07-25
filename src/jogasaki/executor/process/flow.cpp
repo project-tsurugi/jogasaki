@@ -62,22 +62,10 @@ common::step_kind flow::kind() const noexcept {
 }
 
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::process_io_map const& io_map) {
-    std::vector<impl::reader_info> readers{};
-    std::vector<impl::writer_info> writers{};
-    std::vector<impl::writer_info> external_writers{};
     std::unique_ptr<abstract::scan_info> sinfo{};
-
-    for(std::size_t i=0, n=io_map.input_count(); i < n; ++i) {
-        readers.emplace_back(impl::reader_info{io_map.input_at(i)});
-    }
-    for(std::size_t i=0, n=io_map.output_count(); i < n; ++i) {
-        writers.emplace_back(impl::writer_info{io_map.output_at(i)});
-    }
     auto ctx = std::make_shared<impl::task_context>(
         partition,
-        std::move(readers),
-        std::move(writers),
-        std::move(external_writers),
+        io_map,
         std::move(sinfo)
     );
     ctx->work_context(std::make_unique<impl::work_context>());

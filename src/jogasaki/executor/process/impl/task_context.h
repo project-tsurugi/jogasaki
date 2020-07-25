@@ -20,28 +20,13 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/impl/ops/process_io_map.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/group/flow.h>
+#include <jogasaki/executor/exchange/aggregate/flow.h>
 #include <jogasaki/executor/exchange/forward/flow.h>
 
 namespace jogasaki::executor::process::impl {
-
-struct reader_info {
-    executor::exchange::step* step_{};
-    reader_container reader_{};
-    bool reader_acquired_{};
-};
-
-struct writer_info {
-    executor::exchange::step* step_{};
-    record_writer* writer_{};
-    bool writer_acquired_{};
-};
-
-struct external_writer_info {
-    record_writer* writer_{};
-    bool writer_acquired_{};
-};
 
 /**
  * @brief task context implementation for production
@@ -59,70 +44,57 @@ public:
     {}
 
     task_context(partition_index partition,
-        std::vector<reader_info> readers,
-        std::vector<writer_info> writers,
-        std::vector<writer_info> external_writers,
+        impl::ops::process_io_map const& process_io_map,
         std::unique_ptr<abstract::scan_info> scan_info
     ) :
         partition_(partition),
-        readers_(std::move(readers)),
-        writers_(std::move(writers)),
-        external_writers_(std::move(external_writers)),
+        process_io_map_(std::addressof(process_io_map)),
         scan_info_(std::move(scan_info))
     {}
 
     reader_container reader(reader_index idx) override {
-        auto& info = readers_[idx];
-        if (info.reader_acquired_) {
-            return info.reader_;
-        }
-        auto& flow = info.step_->data_flow_object();
+        auto& flow = process_io_map_->input_at(idx)->data_flow_object();
         using step_kind = common::step_kind;
         switch(flow.kind()) {
-            case step_kind::group: {
-                auto r = static_cast<exchange::group::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
-                info.reader_ = r;
-                return r;
-            }
-            case step_kind::forward: {
-                auto r = static_cast<exchange::forward::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
-                info.reader_ = r;
-                return r;
-            }
+            case step_kind::group:
+                return static_cast<exchange::group::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
+            case step_kind::aggregate:
+                return static_cast<exchange::aggregate::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
+            case step_kind::forward:
+                return static_cast<exchange::forward::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
             //TODO other exchanges
             default:
-                std::abort();
+                fail();
         }
         return {};
     }
 
     record_writer* downstream_writer(writer_index idx) override {
-        auto& info = writers_[idx];
-        if (info.writer_acquired_) {
-            return info.writer_;
-        }
-        auto& flow = info.step_->data_flow_object();
+        auto& flow = process_io_map_->output_at(idx)->data_flow_object();
         using step_kind = common::step_kind;
         switch(flow.kind()) {
-            case step_kind::group: {
-                auto w = &static_cast<exchange::group::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
-                info.writer_ = w;
-                return w;
-            }
-            case step_kind::forward: {
-                auto w = &static_cast<exchange::forward::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
-                info.writer_ = w;
-                return w;
-            }
+            case step_kind::group:
+                return &static_cast<exchange::group::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+            case step_kind::aggregate:
+                return &static_cast<exchange::aggregate::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+            case step_kind::forward:
+                return &static_cast<exchange::forward::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
             //TODO other exchanges
             default:
-                std::abort();
+                fail();
         }
         return {};
     }
 
     record_writer* external_writer(writer_index idx) override {
-        (void)idx;
+        auto& p = process_io_map_->external_output_at(idx);
+        using kind = ops::operator_kind;
+        switch(p.kind()) {
+            case kind::emit:
+            case kind::write:
+            default:
+                break;
+        }
         return {};
     }
 
@@ -130,16 +102,9 @@ public:
         return {};
     }
 
-protected:
-    void do_release() override {
-
-    }
-
 private:
     std::size_t partition_{};
-    std::vector<reader_info> readers_{};
-    std::vector<writer_info> writers_{};
-    std::vector<writer_info> external_writers_{};
+    impl::ops::process_io_map const* process_io_map_{};
     std::unique_ptr<abstract::scan_info> scan_info_{};
 };
 

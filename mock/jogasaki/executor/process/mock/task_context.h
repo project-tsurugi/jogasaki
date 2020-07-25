@@ -44,7 +44,6 @@ public:
         scan_info_(std::move(info))
     {}
 
-
     reader_container reader(reader_index idx) override {
         return readers_.at(idx);
     }
@@ -57,7 +56,7 @@ public:
         return external_writers_.at(idx).get();
     }
 
-    void do_release() override {
+    void do_release() {
         for(auto r : readers_) {
             r.release();
         }

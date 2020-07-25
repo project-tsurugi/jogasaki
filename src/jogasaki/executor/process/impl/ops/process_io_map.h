@@ -34,11 +34,11 @@ public:
     using relation = takatori::descriptor::relation;
     using input_step = executor::exchange::step;
     using output_step = executor::exchange::step;
-    using external_output_op = operator_base;
+    using external_output_operator = operator_base;
 
     using input_entity_type = std::vector<input_step*>;
     using output_entity_type = std::vector<output_step*>;
-    using external_output_entity_type = std::vector<external_output_op*>;
+    using external_output_entity_type = std::vector<external_output_operator*>;
 
     constexpr static std::size_t npos = static_cast<std::size_t>(-1);
     /**
@@ -55,7 +55,7 @@ public:
         return output_entity_.size() - 1;
     }
 
-    std::size_t add_external_output(external_output_op* s) {
+    std::size_t add_external_output(external_output_operator* s) {
         external_output_entity_.emplace_back(s);
         return external_output_entity_.size() - 1;
     }
@@ -76,7 +76,7 @@ public:
         }
         return npos;
     }
-    std::size_t external_output_index(external_output_op* s) {
+    std::size_t external_output_index(external_output_operator* s) {
         for(std::size_t i=0, n=external_output_entity_.size(); i < n; ++i) {
             if(external_output_entity_[i] == s) {
                 return i;
@@ -93,8 +93,8 @@ public:
         return output_entity_.at(index);
     }
 
-    [[nodiscard]] external_output_op* const& external_output_at(std::size_t index) const {
-        return external_output_entity_.at(index);
+    [[nodiscard]] external_output_operator const& external_output_at(std::size_t index) const {
+        return *external_output_entity_.at(index);
     }
 
     [[nodiscard]] std::size_t input_count() const noexcept {

@@ -104,7 +104,7 @@ public:
         ctx.writer_->write(target);
     }
 
-    operator_kind kind() override {
+    operator_kind kind() const noexcept override {
         return operator_kind::offer;
     }
 

@@ -21,6 +21,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 enum class operator_kind : std::size_t {
     emit,
+    write,
     scan,
     take_group,
     take_flat,
@@ -36,6 +37,7 @@ constexpr inline std::string_view to_string_view(operator_kind value) noexcept {
     using namespace std::string_view_literals;
     switch (value) {
         case operator_kind::emit: return "emit"sv;
+        case operator_kind::write: return "write"sv;
         case operator_kind::scan: return "scan"sv;
         case operator_kind::take_group: return "take_group"sv;
         case operator_kind::take_flat: return "take_flat"sv;

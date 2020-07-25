@@ -65,8 +65,6 @@ private:
 
 /**
  * @brief mapping of variables descriptors to value location information in the record reference
- * @details This map is associated with a single record metadata. Use in pair with the record_meta,
- * that holds fields offset/layout information of the record.
  */
 class variable_value_map {
 public:

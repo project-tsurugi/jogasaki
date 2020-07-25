@@ -44,7 +44,6 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             takatori::util::fail();
     }
     auto task_contexts = std::make_shared<impl::task_context_pool>();
-
     for (std::size_t i=0; i < step_->partitions(); ++i) {
         task_contexts->push(create_task_context(i, proc->operators().io_map()));
         tasks_.emplace_back(std::make_unique<task>(context_, step_, task_contexts, proc));
@@ -68,8 +67,6 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
     std::vector<impl::writer_info> external_writers{};
     std::unique_ptr<abstract::scan_info> sinfo{};
 
-    //TODO implement mapping
-    context_->compiler_context()->relation_step_map();
     for(std::size_t i=0, n=io_map.input_count(); i < n; ++i) {
         readers.emplace_back(impl::reader_info{io_map.input_at(i)});
     }

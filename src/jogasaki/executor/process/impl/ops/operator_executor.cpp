@@ -39,7 +39,7 @@ operator_executor::operator_executor(
     operator_container* operators,
     abstract::task_context *context
 ) noexcept :
-    relations_(relations),
+    relations_(std::addressof(relations)),
     compiled_info_(std::addressof(compiled_info)),
     operators_(operators),
     context_(context)
@@ -47,7 +47,7 @@ operator_executor::operator_executor(
 
 relation::expression &operator_executor::head() {
     relation::expression* result = nullptr;
-    takatori::relation::enumerate_top(relations_, [&](relation::expression& v) {
+    takatori::relation::enumerate_top(*relations_, [&](relation::expression& v) {
         result = &v;
     });
     if (result != nullptr) {

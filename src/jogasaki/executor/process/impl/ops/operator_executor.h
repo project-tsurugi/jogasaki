@@ -43,7 +43,7 @@ using yugawara::compiled_info;
 
 class operator_executor {
 public:
-    operator_executor() = delete;
+    operator_executor() = default;
     ~operator_executor() = default;
     operator_executor(operator_executor const& other) = delete;
     operator_executor& operator=(operator_executor const& other) = delete;
@@ -105,7 +105,7 @@ public:
     void operator()();
 
 private:
-    graph::graph<relation::expression>& relations_;
+    graph::graph<relation::expression>* relations_;
     compiled_info const* compiled_info_{};
     operator_container* operators_{};
     abstract::task_context *context_{};

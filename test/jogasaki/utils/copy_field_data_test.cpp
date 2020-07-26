@@ -28,7 +28,6 @@ using kind = meta::field_type_kind;
 class copy_field_data_test : public ::testing::Test {};
 
 TEST_F(copy_field_data_test, simple) {
-
     mock::basic_record<kind::float4, kind::int8> src{1.0, 100};
     mock::basic_record<kind::int8, kind::float4> tgt{200, 2.0};
     mock::basic_record<kind::int8, kind::float4> exp{100, 1.0};
@@ -46,5 +45,21 @@ TEST_F(copy_field_data_test, simple) {
     ASSERT_EQ(exp, tgt);
 }
 
+TEST_F(copy_field_data_test, types) {
+    using test_record = mock::basic_record<kind::boolean, kind::int1, kind::int2, kind::int4, kind::int8, kind::float4, kind::float8>;
+
+    test_record src{1, 1, 1, 1, 1, 1.0, 1.0};
+    test_record tgt{2, 2, 2, 2, 2, 2.0, 2.0};
+    auto src_meta = src.record_meta();
+    auto tgt_meta = tgt.record_meta();
+    auto cnt = src_meta->field_count();
+    for(std::size_t i=0; i < cnt; ++i) {
+        auto& f = src_meta->at(i);
+        auto src_offset = src_meta->value_offset(i);
+        auto tgt_offset = tgt_meta->value_offset(i);
+        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset);
+    }
+    ASSERT_EQ(src, tgt);
+}
 }
 

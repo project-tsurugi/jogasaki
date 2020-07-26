@@ -38,10 +38,10 @@ inline void copy_field(
     using k = meta::field_type_kind;
     switch(type.kind()) {
         case k::undefined:
-        case k::boolean:
-        case k::int1:
-        case k::int2:
             break;
+        case k::boolean: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::boolean>::runtime_type>(source_offset)); return;
+        case k::int1: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int1>::runtime_type>(source_offset)); return;
+        case k::int2: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int2>::runtime_type>(source_offset)); return;
         case k::int4: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int4>::runtime_type>(source_offset)); return;
         case k::int8: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int8>::runtime_type>(source_offset)); return;
         case k::float4: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::float4>::runtime_type>(source_offset)); return;

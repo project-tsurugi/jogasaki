@@ -73,6 +73,7 @@ using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
+
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
@@ -144,7 +145,6 @@ executor::exchange::forward::step create(takatori::plan::forward const& forward,
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         forward.columns(),
     };
-
     std::vector<meta::field_type> fields{};
     auto cnt = forward.columns().size();
     fields.reserve(cnt);
@@ -187,6 +187,66 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
         std::move(output_order));
 }
 
+void create_mirror_for_execute(compiler_context& ctx) {
+    std::unordered_map<takatori::descriptor::relation, executor::exchange::step*> exchanges{};
+    std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
+    yugawara::binding::factory bindings{};
+    auto&& c = downcast<statement::execute>(ctx.statement());
+    auto mirror = std::make_shared<executor::common::graph>();
+    // traverse two times - first create exchange and then process steps
+    takatori::plan::sort_from_upstream(c.execution_plan(), [&mirror, &ctx, &exchanges, &bindings, &steps](takatori::plan::step const& s){
+        switch(s.kind()) {
+            case takatori::plan::step_kind::forward: {
+                auto& forward = static_cast<takatori::plan::forward const&>(s);  //NOLINT
+                auto* step = &mirror->emplace<executor::exchange::forward::step>(create(forward, ctx));
+                auto relation_desc = bindings(forward);
+                exchanges[relation_desc] = step;
+                steps[&forward] = step;
+                break;
+            }
+            case takatori::plan::step_kind::group: {
+                auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
+                auto* step = &mirror->emplace<executor::exchange::group::step>(create(group, ctx));
+                auto relation_desc = bindings(group);
+                exchanges[relation_desc] = step;
+                steps[&group] = step;
+                break;
+            }
+            case takatori::plan::step_kind::aggregate:
+                // TODO implement
+                break;
+            case takatori::plan::step_kind::broadcast:
+                // TODO implement
+                break;
+            case takatori::plan::step_kind::discard:
+                break;
+            default:
+                break;
+        }
+    });
+    ctx.relation_step_map(std::make_shared<relation_step_map>(std::move(exchanges)));
+    takatori::plan::sort_from_upstream(c.execution_plan(), [&mirror, &ctx, &bindings, &steps](takatori::plan::step const& s){
+        (void)bindings;
+        switch(s.kind()) {
+            case takatori::plan::step_kind::process: {
+                auto& process = static_cast<takatori::plan::process const&>(s);  //NOLINT
+                steps[&process] = &mirror->emplace<executor::process::step>(create(process, ctx));
+                break;
+            }
+            default:
+                break;
+        }
+    });
+    for(auto&& [s, step] : steps) {
+        if(takatori::plan::has_upstream(*s)) {
+            takatori::plan::enumerate_upstream(*s, [step=step, &steps](takatori::plan::step const& up){
+                *step << *steps[&up];
+            });
+        }
+    }
+    ctx.step_graph(std::move(mirror));
+}
+
 /**
  * @brief create jogasaki step graph based on takatori/yugawara compile result
  * @pre storage provider exists in the compiler context
@@ -195,60 +255,10 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
 bool create_mirror(compiler_context& ctx) {
     auto& statement = ctx.statement();
     using statement_kind = takatori::statement::statement_kind;
-
-    using relation = takatori::descriptor::relation;
-    std::unordered_map<relation, executor::exchange::step*> exchanges{};
-    std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
-    yugawara::binding::factory f;
     switch(statement.kind()) {
-        case statement_kind::execute: {
-            auto&& c = downcast<statement::execute>(statement);
-            auto& g = c.execution_plan();
-            auto mirror = std::make_shared<executor::common::graph>();
-            takatori::plan::sort_from_upstream(g, [&mirror, &ctx, &exchanges, &f, &steps](takatori::plan::step const& s){
-                switch(s.kind()) {
-                    case takatori::plan::step_kind::process: {
-                        auto& process = static_cast<takatori::plan::process const&>(s);  //NOLINT
-                        steps[&process] = &mirror->emplace<executor::process::step>(create(process, ctx));
-                        break;
-                    }
-                    case takatori::plan::step_kind::forward: {
-                        auto& forward = static_cast<takatori::plan::forward const&>(s);  //NOLINT
-                        auto* step = &mirror->emplace<executor::exchange::forward::step>(create(forward, ctx));
-                        auto relation_desc = f(forward);
-                        exchanges[relation_desc] = step;
-                        steps[&forward] = step;
-                        break;
-                    }
-                    case takatori::plan::step_kind::group: {
-                        auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
-                        auto* step = &mirror->emplace<executor::exchange::group::step>(create(group, ctx));
-                        auto relation_desc = f(group);
-                        exchanges[relation_desc] = step;
-                        steps[&group] = step;
-                        break;
-                    }
-                    case takatori::plan::step_kind::aggregate:
-                        // TODO implement
-                        break;
-                    case takatori::plan::step_kind::broadcast:
-                        // TODO implement
-                        break;
-                    case takatori::plan::step_kind::discard:
-                        break;
-                }
-            });
-
-            for(auto&& [s, step] : steps) {
-                if(takatori::plan::has_upstream(*s)) {
-                    takatori::plan::enumerate_upstream(*s, [step=step, &steps](takatori::plan::step const& up){
-                        *step << *steps[&up];
-                    });
-                }
-            }
-            ctx.step_graph(std::move(mirror));
+        case statement_kind::execute:
+            create_mirror_for_execute(ctx);
             break;
-        }
         case statement_kind::write: {
             /*
             auto&& c = downcast<statement::write>(statement);
@@ -263,7 +273,6 @@ bool create_mirror(compiler_context& ctx) {
         case statement_kind::extension:
             return false;
     }
-    ctx.relation_step_map(std::make_shared<relation_step_map>(std::move(exchanges)));
     return true;
 }
 

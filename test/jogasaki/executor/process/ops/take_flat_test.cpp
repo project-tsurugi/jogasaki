@@ -99,11 +99,11 @@ TEST_F(take_flat_test, simple) {
 
     auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
     vmap->bind(f0c0, t::int4{});
-    vmap->bind(f0c1, t::int4{});
-    vmap->bind(f0c2, t::int4{});
+    vmap->bind(f0c1, t::float8{});
+    vmap->bind(f0c2, t::int8{});
     vmap->bind(c0, t::int4{});
-    vmap->bind(c1, t::int4{});
-    vmap->bind(c2, t::int4{});
+    vmap->bind(c1, t::float8{});
+    vmap->bind(c2, t::int8{});
     yugawara::compiled_info c_info{{}, vmap};
 
     processor_info p_info{p0.operators(), c_info};
@@ -129,12 +129,20 @@ TEST_F(take_flat_test, simple) {
     block_scope variables{block_info};
 
     using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::int4, kind::int4, kind::int4>;
+    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
     std::vector<test_record> records{
-        test_record{0, 1, 2},
-        test_record{0, 2, 4},
+        test_record{1.0, 10, 100},
+        test_record{2.0, 20, 200},
     };
-    auto reader = std::make_shared<mock::basic_record_reader<test_record>>(records);
+    auto meta = std::make_shared<record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::float8>),
+            field_type(enum_tag<kind::int4>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{"000"s}
+    );
+    auto reader = std::make_shared<mock::basic_record_reader<test_record>>(records, meta);
 
     mock::task_context task_ctx{
         {reader_container{reader.get()}},
@@ -145,19 +153,22 @@ TEST_F(take_flat_test, simple) {
 
     take_flat_context ctx(&task_ctx, variables);
 
-    auto block_rec = variables.store().ref();
+    auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
-    auto block_rec_meta = variables.meta();
+    auto vars_meta = variables.meta();
+
+    auto c0_offset = map.at(c0).value_offset();
+    auto c1_offset = map.at(c1).value_offset();
+    auto c2_offset = map.at(c2).value_offset();
+    ASSERT_TRUE(s(ctx));
+    EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
+    EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
+    EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(c2_offset));
 
     ASSERT_TRUE(s(ctx));
-    EXPECT_EQ(0, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(0)));
-    EXPECT_EQ(1, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(1)));
-    EXPECT_EQ(2, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(2)));
-
-    ASSERT_TRUE(s(ctx));
-    EXPECT_EQ(0, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(0)));
-    EXPECT_EQ(2, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(1)));
-    EXPECT_EQ(4, block_rec.get_value<std::int32_t>(block_rec_meta->value_offset(2)));
+    EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
+    EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
+    EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
 
     ASSERT_FALSE(s(ctx));
 }

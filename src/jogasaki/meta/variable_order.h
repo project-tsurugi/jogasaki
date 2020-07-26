@@ -72,43 +72,7 @@ public:
     using entity_type = std::unordered_map<variable, variable_index_type>;
     using key_bool_type = std::unordered_map<variable, bool>;
 
-    [[nodiscard]] variable_index_type index(variable const& var) const {
-        return entity_.at(var);
-    }
-
-    [[nodiscard]] std::pair<variable_index_type, bool> key_value_index(variable const& var) const {
-        assert(for_group_);  //NOLINT
-        return { entity_.at(var), key_bool_.at(var) };
-    }
-
-    [[nodiscard]] bool for_group() const noexcept {
-        return for_group_;
-    }
-
-    [[nodiscard]] bool is_key(variable const& var) const {
-        assert(for_group_);  //NOLINT
-        return key_bool_.at(var);
-    }
-
-    [[nodiscard]] std::size_t size() const noexcept {
-        return entity_.size();
-    }
-
     variable_order() = default;
-
-    void fill_flat_record(
-        entity_type& entity,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& columns,
-        std::size_t begin_offset = 0
-    ) {
-        // oredering arbitrarily for now
-        //TODO order shorter types first, alphabetically
-        auto sz = columns.size();
-        entity.reserve(sz);
-        for(std::size_t i=0; i < sz; ++i) {
-            entity.emplace(columns[i], i+begin_offset);
-        }
-    }
 
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record>,
@@ -160,10 +124,46 @@ public:
         }
     }
 
+    [[nodiscard]] variable_index_type index(variable const& var) const {
+        return entity_.at(var);
+    }
+
+    [[nodiscard]] std::pair<variable_index_type, bool> key_value_index(variable const& var) const {
+        assert(for_group_);  //NOLINT
+        return { entity_.at(var), key_bool_.at(var) };
+    }
+
+    [[nodiscard]] bool for_group() const noexcept {
+        return for_group_;
+    }
+
+    [[nodiscard]] bool is_key(variable const& var) const {
+        assert(for_group_);  //NOLINT
+        return key_bool_.at(var);
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return entity_.size();
+    }
+
 private:
     entity_type entity_;
     key_bool_type key_bool_{};
     bool for_group_{false};
+
+    void fill_flat_record(
+        entity_type& entity,
+        std::vector<variable, takatori::util::object_allocator<variable>> const& columns,
+        std::size_t begin_offset = 0
+    ) {
+        // oredering arbitrarily for now
+        //TODO order shorter types first, alphabetically
+        auto sz = columns.size();
+        entity.reserve(sz);
+        for(std::size_t i=0; i < sz; ++i) {
+            entity.emplace(columns[i], i+begin_offset);
+        }
+    }
 };
 
 }

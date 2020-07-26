@@ -51,7 +51,7 @@ public:
 
     virtual ~context_base() = default;
 
-    virtual operator_kind kind() = 0;
+    [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
     block_scope& variables() {
         return *variables_;

@@ -52,7 +52,7 @@ public:
     operator_base(operator_base&& other) noexcept = default;
     operator_base& operator=(operator_base&& other) noexcept = default;
 
-    virtual operator_kind kind() const noexcept = 0;
+    [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
     [[nodiscard]] block_scope_info const& block_info() const noexcept {
         return processor_info_->scopes_info()[block_index_];

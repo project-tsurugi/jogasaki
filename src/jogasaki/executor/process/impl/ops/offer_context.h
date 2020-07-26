@@ -43,7 +43,7 @@ public:
         store_(std::move(meta))
     {}
 
-    operator_kind kind() override {
+    [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::offer;
     }
 

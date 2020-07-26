@@ -52,7 +52,7 @@ public:
         storage_(std::move(storage))
     {}
 
-    operator_kind kind() override {
+    [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::scan;
     }
 private:

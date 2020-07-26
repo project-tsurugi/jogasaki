@@ -42,7 +42,7 @@ public:
     ) : context_base(ctx, variables)
     {}
 
-    operator_kind kind() override {
+    [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::take_flat;
     }
 

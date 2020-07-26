@@ -92,7 +92,7 @@ public:
         }
     }
 
-    operator_kind kind() const noexcept override {
+    [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::take_group;
     }
 

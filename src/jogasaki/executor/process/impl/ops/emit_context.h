@@ -42,8 +42,15 @@ public:
         store_(std::move(meta))
     {}
 
-    operator_kind kind() const noexcept override {
+    [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::emit;
+    }
+
+    void release() override {
+        if(writer_) {
+            writer_->release();
+            writer_ = nullptr;
+        }
     }
 private:
     data::small_record_store store_{};

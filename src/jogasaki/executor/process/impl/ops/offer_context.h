@@ -52,6 +52,12 @@ public:
         return store_;
     }
 
+    void release() override {
+        if(writer_) {
+            writer_->release();
+            writer_ = nullptr;
+        }
+    }
 private:
     data::small_record_store store_{};
     record_writer* writer_{};

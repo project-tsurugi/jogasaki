@@ -46,6 +46,12 @@ public:
         return operator_kind::take_flat;
     }
 
+    void release() override {
+        if(reader_) {
+            reader_->release();
+            reader_ = nullptr;
+        }
+    }
 private:
     record_reader* reader_{};
 };

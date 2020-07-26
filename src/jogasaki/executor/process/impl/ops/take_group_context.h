@@ -47,6 +47,12 @@ public:
         return operator_kind::take_group;
     }
 
+    void release() override {
+        if(reader_) {
+            reader_->release();
+            reader_ = nullptr;
+        }
+    }
 private:
     data::small_record_store store_{};
     group_reader* reader_{};

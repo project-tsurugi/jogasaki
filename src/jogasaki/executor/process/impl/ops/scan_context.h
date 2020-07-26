@@ -55,6 +55,14 @@ public:
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::scan;
     }
+
+    void release() override {
+        if(storage_) {
+            // TODO revisit the life-time of storage objects
+            // storage_->close();
+            storage_ = nullptr;
+        }
+    }
 private:
     std::shared_ptr<storage::storage_context> storage_{};
     std::shared_ptr<storage::transaction_context> tx_{};

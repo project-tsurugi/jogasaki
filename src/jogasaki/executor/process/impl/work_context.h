@@ -31,6 +31,15 @@ public:
 
     work_context() = default;
 
+    ~work_context() override {
+        contexts_.release();
+    }
+
+    work_context(work_context const& other) = delete;
+    work_context& operator=(work_context const& other) = delete;
+    work_context(work_context&& other) noexcept = delete;
+    work_context& operator=(work_context&& other) noexcept = delete;
+
     [[nodiscard]] ops::context_container& container() noexcept {
         return contexts_;
     }

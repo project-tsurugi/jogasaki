@@ -65,6 +65,10 @@ public:
         variables_ = std::addressof(variables);
     }
 
+    /**
+     * @brief subclass releases any resources acquired after context initialization
+     */
+    virtual void release() = 0;
 private:
     class abstract::task_context* task_context_{};
     block_scope* variables_{};

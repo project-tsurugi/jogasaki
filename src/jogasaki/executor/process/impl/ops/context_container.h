@@ -53,6 +53,12 @@ public:
     [[nodiscard]] ops::context_base* at(ops::operator_base const* op) const noexcept {
         return contexts_.at(op).get();
     }
+
+    void release() {
+        for(auto&& op : contexts_) {
+            op.second->release();
+        }
+    }
 private:
     contexts_type contexts_{};
 };

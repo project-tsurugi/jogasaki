@@ -28,7 +28,7 @@
 namespace jogasaki::executor::process::impl {
 
 /**
- * @brief processor implementation for production
+ * @brief processor implementation
  */
 class processor : public process::abstract::processor {
 public:
@@ -41,6 +41,7 @@ public:
     [[nodiscard]] ops::operator_container const& operators() const noexcept {
         return operators_;
     }
+
 private:
     std::shared_ptr<processor_info> info_{};
     ops::operator_container operators_{};

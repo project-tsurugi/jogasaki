@@ -66,7 +66,7 @@ enum class status : std::size_t {
  *
  * The processor must be re-entrant, i.e. required to allow calling run() from multiple threads for distinct tasks.
  * To save task specific working data across run() function call boundaries, processor can generate work_context
- * and keep it in processor_context.
+ * and keep it in task_context.
  */
 class processor {
 public:

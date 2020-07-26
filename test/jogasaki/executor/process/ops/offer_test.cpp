@@ -119,10 +119,9 @@ TEST_F(offer_test, simple) {
 
     // currently this vector order defines the order of variables
     // TODO fix when the logic is fixed
-    std::vector<variable, takatori::util::object_allocator<variable>> columns{f1c1, f1c0, f1c2};
     variable_order order{
         variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
-        columns
+        {f1c1, f1c0, f1c2}
     };
 
     offer s{

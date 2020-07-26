@@ -26,7 +26,11 @@ namespace graph = takatori::graph;
 namespace relation = takatori::relation;
 
 /**
- * @brief processor specification
+ * @brief processor specification packing up all compile-time (takatori/yugawara) information
+ * necessary for the processor to run.
+ *
+ * This object contains only compile time information and derived objects such as jogasaki operators
+ * are not part of this info.
  */
 class processor_info {
 public:

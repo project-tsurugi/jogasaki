@@ -184,7 +184,7 @@ void operator_executor::operator()(const relation::step::offer &node) {
     s(*ctx);
 }
 
-void operator_executor::process() {
+void operator_executor::operator()() {
     while(continue_processing_) {
         dispatch(*this, head());
     }

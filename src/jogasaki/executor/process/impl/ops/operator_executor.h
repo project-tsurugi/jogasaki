@@ -103,7 +103,7 @@ public:
     void operator()(relation::step::take_cogroup const& node);
     void operator()(relation::step::offer const& node);
 
-    void process();
+    void operator()();
 
 private:
     graph::graph<relation::expression>& relations_;

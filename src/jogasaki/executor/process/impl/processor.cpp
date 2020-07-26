@@ -35,7 +35,7 @@ abstract::status processor::run(abstract::task_context *context) {
         &operators_,
         context
     };
-    visitor.process();
+    visitor();
     // TODO handling status code
     return abstract::status::completed;
 }

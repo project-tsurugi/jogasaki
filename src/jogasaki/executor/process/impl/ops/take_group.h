@@ -67,14 +67,16 @@ public:
         block_index_type block_index,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns,
-        std::size_t reader_index
+        std::size_t reader_index,
+        relation::expression const* downstream
     ) : operator_base(info, block_index),
         meta_(create_meta(info, order, columns)),
         fields_(create_fields(meta_, order, columns)),
-        reader_index_(reader_index)
+        reader_index_(reader_index),
+        downstream_(downstream)
     {}
 
-    void operator()(take_group_context& ctx) {
+    void operator()(take_group_context& ctx, operator_executor* visitor = nullptr) {
         auto target = ctx.variables().store().ref();
         if (!ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
@@ -87,6 +89,9 @@ public:
                 for(auto &f : fields_) {
                     auto source = f.is_key_ ? key : value;
                     utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+                    if (visitor) {
+                        dispatch(*visitor, *downstream_);
+                    }
                 }
             }
         }
@@ -99,10 +104,12 @@ public:
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
+
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
     std::size_t reader_index_{};
+    relation::expression const* downstream_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,

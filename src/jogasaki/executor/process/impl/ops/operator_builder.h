@@ -87,16 +87,15 @@ public:
         (void)node;
     }
     void operator()(relation::scan const& node) {
-        if (operators_.count(std::addressof(node)) == 0) {
-            auto stg = std::make_shared<storage::storage_context>();
-            std::map<std::string, std::string> options{};
-            stg->open(options);
-            std::shared_ptr<abstract::scan_info> scan_info;
-            std::shared_ptr<meta::record_meta> meta;
-            auto block_index = info_->scope_indices().at(&node);
-            operators_[std::addressof(node)] = std::make_unique<scan>(*info_, block_index, scan_info, meta);
-        }
-        dispatch(*this, node.output().opposite()->owner());
+        auto stg = std::make_shared<storage::storage_context>();
+        std::map<std::string, std::string> options{};
+        stg->open(options);
+        std::shared_ptr<abstract::scan_info> scan_info;
+        std::shared_ptr<meta::record_meta> meta;
+        auto block_index = info_->scope_indices().at(&node);
+        auto& downstream = node.output().opposite()->owner();
+        operators_[std::addressof(node)] = std::make_unique<scan>(*info_, block_index, scan_info, meta, &downstream);
+        dispatch(*this, downstream);
     }
     void operator()(relation::join_find const& node) {
         (void)node;
@@ -148,16 +147,18 @@ public:
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.source());
         auto reader_index = process_io_map_.add_input(xchg);
-        operators_[std::addressof(node)] = std::make_unique<take_flat>(*info_, block_index, xchg->column_order(), node.columns(), reader_index);
-        dispatch(*this, node.output().opposite()->owner());
+        auto& downstream = node.output().opposite()->owner();
+        operators_[std::addressof(node)] = std::make_unique<take_flat>(*info_, block_index, xchg->column_order(), node.columns(), reader_index, &downstream);
+        dispatch(*this, downstream);
     }
     void operator()(relation::step::take_group const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.source());
         auto reader_index = process_io_map_.add_input(xchg);
-        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, block_index, xchg->column_order(), node.columns(), reader_index);
-        dispatch(*this, node.output().opposite()->owner());
+        auto& downstream = node.output().opposite()->owner();
+        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, block_index, xchg->column_order(), node.columns(), reader_index, &downstream);
+        dispatch(*this, downstream);
     }
     void operator()(relation::step::take_cogroup const& node) {
         (void)node;

@@ -49,19 +49,25 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::shared_ptr<abstract::scan_info> scan_info,
-        std::shared_ptr<meta::record_meta> meta
+        std::shared_ptr<meta::record_meta> meta,
+        relation::expression const* downstream
     ) : operator_base(info, block_index),
         info_(std::move(scan_info)),
-        meta_(std::move(meta))
+        meta_(std::move(meta)),
+        downstream_(downstream)
     {}
 
-    void operator()(scan_context& ctx) {
+    void operator()(scan_context& ctx, operator_executor* visitor = nullptr) {
         if (! ctx.tx_) {
             open(ctx);
         }
-        if(!next(ctx)) {
-            close(ctx);
+        while(next(ctx)) {
+            // TODO implement
+            if (visitor) {
+                dispatch(*visitor, *downstream_);
+            }
         }
+        close(ctx);
     }
 
     void open(scan_context& ctx) {
@@ -89,6 +95,7 @@ public:
 private:
     std::shared_ptr<abstract::scan_info> info_{};
     std::shared_ptr<meta::record_meta> meta_{};
+    relation::expression const* downstream_{};
 };
 
 }

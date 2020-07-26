@@ -75,9 +75,7 @@ void operator_executor::operator()(const relation::scan &node) {
         auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
         ctx = make_context<scan_context>(&s, std::move(stg), block_vars);
     }
-//    s(*ctx);
-    dispatch(*this, node.output().opposite()->owner());
-    continue_processing_ = false;
+    s(*ctx, this);
 }
 
 void operator_executor::operator()(const relation::join_find &node) {
@@ -155,9 +153,7 @@ void operator_executor::operator()(const relation::step::take_flat &node) {
     if (! ctx) {
         ctx = make_context<take_flat_context>(&s, get_block_variables(s.block_index()));
     }
-    if(! s(*ctx)) {
-        continue_processing_ = false;
-    }
+    s(*ctx, this);
 }
 
 void operator_executor::operator()(const relation::step::take_group &node) {
@@ -166,8 +162,7 @@ void operator_executor::operator()(const relation::step::take_group &node) {
     if (! ctx) {
         ctx = make_context<take_group_context>(&s, s.meta(), get_block_variables(s.block_index()));
     }
-    s(*ctx);
-    dispatch(*this, node.output().opposite()->owner());
+    s(*ctx, this);
 }
 
 void operator_executor::operator()(const relation::step::take_cogroup &node) {
@@ -185,9 +180,7 @@ void operator_executor::operator()(const relation::step::offer &node) {
 }
 
 void operator_executor::operator()() {
-    while(continue_processing_) {
-        dispatch(*this, head());
-    }
+    dispatch(*this, head());
     // TODO handling status code
 }
 

@@ -228,7 +228,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     take_flat t{
         *p_info, 0, f0_order,
         take_flat_columns,
-        0
+        0,
+        &r1
     };
 
     std::vector<offer::column> offer_columns {

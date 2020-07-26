@@ -20,6 +20,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
 #include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/dispatch.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>
@@ -31,6 +32,8 @@
 #include "take_flat_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::relation::step::dispatch;
 
 namespace details {
 
@@ -67,12 +70,14 @@ public:
         block_index_type block_index,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns,
-        std::size_t reader_index
+        std::size_t reader_index,
+        relation::expression const* downstream
     ) : operator_base(info, block_index),
         meta_(create_meta(info, order, columns)),
         fields_(create_fields(meta_, order, columns)),
-        reader_index_(reader_index)
-    {}
+        reader_index_(reader_index),
+        downstream_(downstream)
+        {}
 
     /**
      * @brief create new object
@@ -82,27 +87,30 @@ public:
         block_index_type block_index,
         std::shared_ptr<meta::record_meta> meta,
         std::vector<details::take_flat_field> fields,
-        std::size_t reader_index
+        std::size_t reader_index,
+        relation::expression const* downstream
     ) : operator_base(info, block_index),
         meta_(std::move(meta)),
         fields_(std::move(fields)),
-        reader_index_(reader_index)
+        reader_index_(reader_index),
+        downstream_(downstream)
     {}
 
-    bool operator()(take_flat_context& ctx) {
+    void operator()(take_flat_context& ctx, operator_executor* visitor = nullptr) {
         auto target = ctx.variables().store().ref();
         if (! ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
             ctx.reader_ = r.reader<record_reader>();
         }
-        if (ctx.reader_->next_record()) {
+        while(ctx.reader_->next_record()) {
             auto source = ctx.reader_->get_record();
             for(auto &f : fields_) {
                 utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
             }
-            return true;
+            if (visitor) {
+                dispatch(*visitor, *downstream_);
+            }
         }
-        return false;
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -117,6 +125,7 @@ private:
     std::shared_ptr<meta::record_meta> meta_{};
     std::vector<details::take_flat_field> fields_{};
     std::size_t reader_index_{};
+    relation::expression const* downstream_{};
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,

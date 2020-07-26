@@ -102,7 +102,6 @@ public:
     void operator()(relation::step::take_group const& node);
     void operator()(relation::step::take_cogroup const& node);
     void operator()(relation::step::offer const& node);
-
     void operator()();
 
 private:

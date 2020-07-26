@@ -125,8 +125,8 @@ TEST_F(take_flat_test, simple) {
         0
     };
 
-    auto& block_info = p_info.blocks_info()[s.block_index()];
-    block_variables variables{block_info};
+    auto& block_info = p_info.scopes_info()[s.block_index()];
+    block_scope variables{block_info};
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record<kind::int4, kind::int4, kind::int4>;

@@ -18,7 +18,7 @@
 #include <takatori/graph/graph.h>
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
-#include <jogasaki/executor/process/impl/block_variables_info.h>
+#include <jogasaki/executor/process/impl/block_scope_info.h>
 
 namespace jogasaki::executor::process {
 
@@ -43,9 +43,9 @@ public:
         relations_(std::addressof(relations)),
         info_(std::addressof(info))
     {
-        auto&& p = impl::create_block_variables(*relations_, *info_);
-        blocks_info_ = std::move(p.first);
-        block_indices_ = std::move(p.second);
+        auto&& p = impl::create_scopes_info(*relations_, *info_);
+        scopes_info_ = std::move(p.first);
+        scope_indices_ = std::move(p.second);
     }
 
     [[nodiscard]] graph::graph<relation::expression>& relations() const noexcept {
@@ -56,18 +56,18 @@ public:
         return *info_;
     }
 
-    [[nodiscard]] impl::blocks_info_type const& blocks_info() const noexcept {
-        return blocks_info_;
+    [[nodiscard]] impl::scopes_info const& scopes_info() const noexcept {
+        return scopes_info_;
     }
 
-    [[nodiscard]] impl::block_indices_type const& block_indices() const noexcept {
-        return block_indices_;
+    [[nodiscard]] impl::scope_indices const& scope_indices() const noexcept {
+        return scope_indices_;
     }
 private:
     graph::graph<relation::expression>* relations_{};
     yugawara::compiled_info const* info_{};
-    impl::blocks_info_type blocks_info_{};
-    impl::block_indices_type block_indices_{};
+    impl::scopes_info scopes_info_{};
+    impl::scope_indices scope_indices_{};
 };
 
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "processor.h"
-#include "block_variables_info.h"
+#include "block_scope_info.h"
 #include "ops/operators_builder.h"
 
 namespace jogasaki::executor::process::impl {
@@ -26,8 +26,8 @@ processor::processor(std::shared_ptr<processor_info> info, plan::compiler_contex
 abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
     auto* work = static_cast<work_context*>(context->work_context()); //NOLINT
-    for(auto& block_info : info_->blocks_info()) {
-        work->block_variables_list().emplace_back(block_info);
+    for(auto& block_info : info_->scopes_info()) {
+        work->scopes().emplace_back(block_info);
     }
     ops::operator_executor visitor{
         const_cast<graph::graph<relation::expression>&>(info_->relations()),

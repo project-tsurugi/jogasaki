@@ -19,7 +19,7 @@
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
-class block_variables;
+class block_scope;
 }
 namespace jogasaki::executor::process::impl::ops {
 
@@ -38,7 +38,7 @@ public:
      */
     explicit context_base(
         class abstract::task_context* context,
-        block_variables& variables
+        block_scope& variables
     ) :
         task_context_(context),
         variables_(std::addressof(variables))
@@ -53,7 +53,7 @@ public:
 
     virtual operator_kind kind() = 0;
 
-    block_variables& variables() {
+    block_scope& variables() {
         return *variables_;
     }
 
@@ -61,13 +61,13 @@ public:
         return *task_context_;
     }
 
-    void variables(block_variables& variables) {
+    void variables(block_scope& variables) {
         variables_ = std::addressof(variables);
     }
 
 private:
     class abstract::task_context* task_context_{};
-    block_variables* variables_{};
+    block_scope* variables_{};
 };
 
 }

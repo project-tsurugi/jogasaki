@@ -238,8 +238,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         0
     };
 
-    auto& block_info = p_info->blocks_info()[s.block_index()];
-    block_variables variables{block_info};
+    auto& scope_info = p_info->scopes_info()[s.block_index()];
+    block_scope variables{scope_info};
 
     using kind = meta::field_type_kind;
 

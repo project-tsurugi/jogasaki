@@ -112,7 +112,7 @@ private:
     abstract::task_context *context_{};
     bool continue_processing_{true};
 
-    block_variables& get_block_variables(std::size_t index);
+    block_scope& get_block_variables(std::size_t index);
 };
 
 }

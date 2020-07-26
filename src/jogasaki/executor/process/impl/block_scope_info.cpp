@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "block_variables_info.h"
+#include "block_scope_info.h"
 
 #include <cassert>
 
@@ -33,26 +33,26 @@ namespace jogasaki::executor::process::impl {
 
 using takatori::util::fail;
 
-block_variables_info::block_variables_info(
+block_scope_info::block_scope_info(
     std::unique_ptr<variable_value_map> value_map,
     std::shared_ptr<meta::record_meta> meta
-) :
+) noexcept :
     value_map_(std::move(value_map)),
     meta_(std::move(meta))
 {}
 
-variable_value_map& block_variables_info::value_map() const noexcept {
+variable_value_map& block_scope_info::value_map() const noexcept {
     return *value_map_;
 }
 
-std::shared_ptr<meta::record_meta> const& block_variables_info::meta() const noexcept {
+std::shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexcept {
     return meta_;
 }
 
-std::pair<blocks_info_type, block_indices_type>
-create_block_variables(takatori::graph::graph<takatori::relation::expression> &relations, const yugawara::compiled_info &info) {
+std::pair<scopes_info, scope_indices>
+create_scopes_info(takatori::graph::graph<takatori::relation::expression> &relations, const yugawara::compiled_info &info) {
     // analyze variables liveness
-    // for each basic block, define a block_variables region with
+    // for each basic block, define a block_scope region with
     // result fields + defined fields (except killed in the same basic block)
     auto bg = yugawara::analyzer::block_builder::build(relations);
     yugawara::analyzer::variable_liveness_analyzer analyzer { bg };
@@ -89,8 +89,8 @@ create_block_variables(takatori::graph::graph<takatori::relation::expression> &r
         map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
     }
 
-    blocks_info_type entity{};
-    block_indices_type indices{};
+    scopes_info entity{};
+    scope_indices indices{};
 
     entity.emplace_back(
         std::make_unique<variable_value_map>(std::move(map)),

@@ -27,7 +27,7 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/impl/block_variables.h>
+#include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
 #include "emit_context.h"

@@ -20,7 +20,7 @@
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
-class block_variables_info;
+class block_scope_info;
 }
 namespace jogasaki::executor::process::impl::ops {
 
@@ -54,16 +54,16 @@ public:
 
     virtual operator_kind kind() const noexcept = 0;
 
-    [[nodiscard]] block_variables_info const& block_info() const noexcept {
-        return processor_info_->blocks_info()[block_index_];
+    [[nodiscard]] block_scope_info const& block_info() const noexcept {
+        return processor_info_->scopes_info()[block_index_];
     }
 
     [[nodiscard]] block_index_type block_index() const noexcept {
         return block_index_;
     }
 
-    [[nodiscard]] std::vector<block_variables_info> const& blocks() const noexcept {
-        return processor_info_->blocks_info();
+    [[nodiscard]] std::vector<block_scope_info> const& blocks() const noexcept {
+        return processor_info_->scopes_info();
     }
 
 private:

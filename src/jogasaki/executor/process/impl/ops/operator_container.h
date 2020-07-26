@@ -17,7 +17,7 @@
 
 #include <takatori/relation/expression.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/block_variables_info.h>
+#include <jogasaki/executor/process/impl/block_scope_info.h>
 #include <jogasaki/executor/process/impl/ops/process_io_map.h>
 
 namespace jogasaki::executor::process::impl::ops {

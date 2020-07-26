@@ -133,9 +133,9 @@ TEST_F(offer_test, simple) {
         0
     };
 
-    ASSERT_EQ(1, p_info.blocks_info().size());
-    auto& block_info = p_info.blocks_info()[s.block_index()];
-    block_variables variables{block_info};
+    ASSERT_EQ(1, p_info.scopes_info().size());
+    auto& block_info = p_info.scopes_info()[s.block_index()];
+    block_scope variables{block_info};
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;

@@ -37,7 +37,7 @@ public:
     explicit emit_context(
         class abstract::task_context* ctx,
         std::shared_ptr<meta::record_meta> meta,
-        block_variables& variables
+        block_scope& variables
     ) : context_base(ctx, variables),
         store_(std::move(meta))
     {}

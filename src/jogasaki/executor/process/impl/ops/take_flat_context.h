@@ -38,7 +38,7 @@ public:
      */
     explicit take_flat_context(
         class abstract::task_context* ctx,
-        block_variables& variables
+        block_scope& variables
     ) : context_base(ctx, variables)
     {}
 

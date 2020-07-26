@@ -93,7 +93,7 @@ public:
             stg->open(options);
             std::shared_ptr<abstract::scan_info> scan_info;
             std::shared_ptr<meta::record_meta> meta;
-            auto block_index = info_->block_indices().at(&node);
+            auto block_index = info_->scope_indices().at(&node);
             operators_[std::addressof(node)] = std::make_unique<scan>(*info_, block_index, scan_info, meta);
         }
         dispatch(*this, node.output().opposite()->owner());
@@ -115,7 +115,7 @@ public:
     }
 
     void operator()(relation::emit const& node) {
-        auto block_index = info_->block_indices().at(&node);
+        auto block_index = info_->scope_indices().at(&node);
         auto e = std::make_unique<emit>(*info_, block_index, node.columns());
         auto writer_index = process_io_map_.add_external_output(e.get());
         e->external_writer_index(writer_index);
@@ -144,7 +144,7 @@ public:
         (void)node;
     }
     void operator()(relation::step::take_flat const& node) {
-        auto block_index = info_->block_indices().at(&node);
+        auto block_index = info_->scope_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.source());
         auto reader_index = process_io_map_.add_input(xchg);
@@ -152,7 +152,7 @@ public:
         dispatch(*this, node.output().opposite()->owner());
     }
     void operator()(relation::step::take_group const& node) {
-        auto block_index = info_->block_indices().at(&node);
+        auto block_index = info_->scope_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.source());
         auto reader_index = process_io_map_.add_input(xchg);
@@ -163,7 +163,7 @@ public:
         (void)node;
     }
     void operator()(relation::step::offer const& node) {
-        auto block_index = info_->block_indices().at(&node);
+        auto block_index = info_->scope_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.destination());
         auto writer_index = process_io_map_.add_output(xchg);

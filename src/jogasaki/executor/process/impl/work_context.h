@@ -18,7 +18,7 @@
 #include <memory>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
-#include <jogasaki/executor/process/impl/block_variables.h>
+#include <jogasaki/executor/process/impl/block_scope.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -27,7 +27,7 @@ namespace jogasaki::executor::process::impl {
  */
 class work_context : public process::abstract::work_context {
 public:
-    using variables_list_type = std::vector<block_variables>;
+    using block_scopes = std::vector<block_scope>;
 
     work_context() = default;
 
@@ -35,16 +35,16 @@ public:
         return contexts_;
     }
 
-    [[nodiscard]] variables_list_type& block_variables_list() noexcept {
+    [[nodiscard]] block_scopes& scopes() noexcept {
         return variables_;
     }
 
-    [[nodiscard]] block_variables& variables(std::size_t block_index) noexcept {
+    [[nodiscard]] block_scope& variables(std::size_t block_index) noexcept {
         return variables_[block_index];
     }
 private:
     ops::context_container contexts_{};
-    variables_list_type variables_{};
+    block_scopes variables_{};
 };
 
 }

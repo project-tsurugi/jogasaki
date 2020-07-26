@@ -56,7 +56,7 @@ relation::expression &operator_executor::head() {
     fail();
 }
 
-block_variables& operator_executor::get_block_variables(std::size_t index) {
+block_scope& operator_executor::get_block_variables(std::size_t index) {
     return static_cast<work_context *>(context_->work_context())->variables(index); //NOLINT
 }
 

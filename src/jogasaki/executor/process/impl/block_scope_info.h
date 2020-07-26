@@ -26,16 +26,16 @@
 namespace jogasaki::executor::process::impl {
 
 /**
- * @brief block variables meta data shared by multiple threads
+ * @brief information on block scoped variables
  */
-class block_variables_info {
+class block_scope_info {
 public:
-    block_variables_info() = default;
+    block_scope_info() = default;
 
-    block_variables_info(
+    block_scope_info(
         std::unique_ptr<variable_value_map> value_map,
         std::shared_ptr<meta::record_meta> meta
-    );
+    ) noexcept;
 
     [[nodiscard]] variable_value_map& value_map() const noexcept;
 
@@ -46,14 +46,14 @@ private:
     std::shared_ptr<meta::record_meta> meta_{};
 };
 
-using blocks_info_type = std::vector<class block_variables_info>;
+using scopes_info = std::vector<class block_scope_info>;
 
-using block_indices_type = std::unordered_map<takatori::relation::expression const*, std::size_t>;
+using scope_indices = std::unordered_map<takatori::relation::expression const*, std::size_t>;
 
 /**
  * @brief create block related information about the operators in a process
  */
-std::pair<blocks_info_type, block_indices_type> create_block_variables(
+std::pair<scopes_info, scope_indices> create_scopes_info(
     takatori::graph::graph<takatori::relation::expression>& relations,
     yugawara::compiled_info const& info);
 

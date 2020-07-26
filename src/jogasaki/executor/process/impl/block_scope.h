@@ -18,19 +18,19 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/meta/record_meta.h>
 #include "variable_value_map.h"
-#include "block_variables_info.h"
+#include "block_scope_info.h"
 
 namespace jogasaki::executor::process::impl {
 
 /**
- * @brief variables data region scoped by a basic block
+ * @brief block scoped variables storage
  */
-class block_variables {
+class block_scope {
 public:
-    block_variables() = default;
+    block_scope() = default;
 
-    explicit block_variables(
-        block_variables_info const& info
+    explicit block_scope(
+        block_scope_info const& info
     ) : info_(std::addressof(info)), store_(std::make_unique<data::small_record_store>(info.meta()))
     {}
 
@@ -47,7 +47,7 @@ public:
     }
 
 private:
-    block_variables_info const* info_{};
+    block_scope_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};
 };
 

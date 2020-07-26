@@ -110,18 +110,20 @@ TEST_F(take_flat_test, simple) {
 
     // currently this vector order defines the order of variables
     // TODO fix when the logic is fixed
-    std::vector<variable, takatori::util::object_allocator<variable>> columns{f0c1, f0c0, f0c2};
+    std::vector<variable> columns{f0c1, f0c0, f0c2};
     variable_order order{
         variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
         columns
     };
 
+    std::vector<take_flat::column> take_flat_columns{
+        {f0c0, c0},
+        {f0c1, c1},
+        {f0c2, c2},
+    };
     take_flat s{
-        p_info, 0, order, {
-            {f0c0, c0},
-            {f0c1, c1},
-            {f0c2, c2},
-        },
+        p_info, 0, order,
+        take_flat_columns,
         0
     };
 

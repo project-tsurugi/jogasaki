@@ -119,17 +119,20 @@ TEST_F(offer_test, simple) {
 
     // currently this vector order defines the order of variables
     // TODO fix when the logic is fixed
+    std::vector<variable> columns{f1c1, f1c0, f1c2};
     variable_order order{
         variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
-        {f1c1, f1c0, f1c2}
+        columns
     };
 
+    std::vector<offer::column> offer_columns{
+        {c0, f1c0},
+        {c1, f1c1},
+        {c2, f1c2},
+    };
     offer s{
-        p_info, 0, order, {
-            {c0, f1c0},
-            {c1, f1c1},
-            {c2, f1c2},
-        },
+        p_info, 0, order,
+        offer_columns,
         0
     };
 

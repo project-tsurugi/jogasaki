@@ -192,12 +192,12 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     compiler_context->compiled_info(c_info);
     compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(p)));
 
-    std::vector<variable, takatori::util::object_allocator<variable>> f0_columns{f0c1, f0c0, f0c2};
+    std::vector<variable> f0_columns{f0c1, f0c0, f0c2};
     variable_order f0_order{
         variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
         f0_columns
     };
-    std::vector<variable, takatori::util::object_allocator<variable>> f1_columns{f1c1, f1c0, f1c2};
+    std::vector<variable> f1_columns{f1c1, f1c0, f1c2};
     variable_order f1_order{
         variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
         f1_columns
@@ -220,21 +220,25 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     });
     compiler_context->relation_step_map(r_step_map);
 
+    std::vector<take_flat::column> take_flat_columns{
+        {f0c0, c0},
+        {f0c1, c1},
+        {f0c2, c2},
+    };
     take_flat t{
-        *p_info, 0, f0_order, {
-            {f0c0, c0},
-            {f0c1, c1},
-            {f0c2, c2},
-        },
+        *p_info, 0, f0_order,
+        take_flat_columns,
         0
     };
 
+    std::vector<offer::column> offer_columns {
+        {c0, f1c0},
+        {c1, f1c1},
+        {c2, f1c2},
+    };
     offer s{
-        *p_info, 0, f1_order, {
-            {c0, f1c0},
-            {c1, f1c1},
-            {c2, f1c2},
-        },
+        *p_info, 0, f1_order,
+        offer_columns,
         0
     };
 

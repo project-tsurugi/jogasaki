@@ -67,7 +67,7 @@ public:
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        takatori::util::sequence_view<column const> columns,
         std::size_t writer_index
     ) : operator_base(info, block_index),
         meta_(create_meta(info, order, columns)),
@@ -119,7 +119,7 @@ private:
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
         meta::variable_order const& order,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        takatori::util::sequence_view<column const> columns
     ) {
         std::vector<meta::field_type> fields{};
         auto sz = order.size();
@@ -133,7 +133,7 @@ private:
     std::vector<details::offer_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        takatori::util::sequence_view<column const> columns
     ) {
         std::vector<details::offer_field> fields{};
         fields.resize(meta->field_count());

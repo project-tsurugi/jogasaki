@@ -76,15 +76,15 @@ public:
 
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record>,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& columns
+        takatori::util::sequence_view<variable const> columns
     ) {
         fill_flat_record(entity_, columns);
     }
 
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record_from_keys_values>,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& keys,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& values
+        takatori::util::sequence_view<variable const> keys,
+        takatori::util::sequence_view<variable const> values
     ) {
         entity_type keys_order{};
         entity_type values_order{};
@@ -96,14 +96,14 @@ public:
 
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::group_from_keys>,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& columns,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& group_keys
+        takatori::util::sequence_view<variable const> columns,
+        takatori::util::sequence_view<variable const> group_keys
     ) : for_group_{true}
     {
         entity_type keys_order{};
         fill_flat_record(keys_order, group_keys);
 
-        std::vector<variable, takatori::util::object_allocator<variable>> values{};
+        std::vector<variable> values{};
         values.reserve(columns.size() - group_keys.size());
         for(auto&& column : columns) {
             if (keys_order.count(column) == 0) {
@@ -153,7 +153,7 @@ private:
 
     void fill_flat_record(
         entity_type& entity,
-        std::vector<variable, takatori::util::object_allocator<variable>> const& columns,
+        takatori::util::sequence_view<variable const> columns,
         std::size_t begin_offset = 0
     ) {
         // oredering arbitrarily for now

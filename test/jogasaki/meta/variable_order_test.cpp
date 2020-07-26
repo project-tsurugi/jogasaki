@@ -90,7 +90,7 @@ TEST_F(variable_order_test, stream_variables) {
     auto&& c1 = f.stream_variable("c1");
     auto&& c2 = f.stream_variable("c2");
 
-    std::vector<variable, takatori::util::object_allocator<variable>> cols{ c1, c0, c2 };
+    std::vector<variable> cols{ c1, c0, c2 };
 
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::flat_record>, cols};
 
@@ -129,8 +129,8 @@ TEST_F(variable_order_test, flat_record_from_keys_values) {
     auto&& c2 = f.stream_variable("c2");
     auto&& c3 = f.stream_variable("c3");
 
-    std::vector<variable, takatori::util::object_allocator<variable>> keys{ c0, c1 };
-    std::vector<variable, takatori::util::object_allocator<variable>> values{ c2, c3 };
+    std::vector<variable> keys{ c0, c1 };
+    std::vector<variable> values{ c2, c3 };
 
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::flat_record_from_keys_values>, keys, values};
 
@@ -151,8 +151,8 @@ TEST_F(variable_order_test, group_from_keys) {
     auto&& c2 = f.stream_variable("c2");
     auto&& c3 = f.stream_variable("c3");
 
-    std::vector<variable, takatori::util::object_allocator<variable>> cols{ c0, c1, c2, c3 };
-    std::vector<variable, takatori::util::object_allocator<variable>> keys{ c2, c1 };
+    std::vector<variable> cols{ c0, c1, c2, c3 };
+    std::vector<variable> keys{ c2, c1 };
 
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>, cols, keys};
 

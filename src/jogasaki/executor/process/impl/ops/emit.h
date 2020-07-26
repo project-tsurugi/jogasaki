@@ -68,7 +68,7 @@ public:
     explicit emit(
         processor_info const& info,
         block_index_type block_index,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        takatori::util::sequence_view<column const> columns
     ) : operator_base(info, block_index),
         meta_(create_meta(info, columns)),
         fields_(create_fields(meta_, columns))
@@ -105,7 +105,7 @@ private:
 
     std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        takatori::util::sequence_view<column const> columns
     ) {
         // FIXME currently respect the column order coming from takatori
         std::vector<meta::field_type> fields{};
@@ -119,7 +119,7 @@ private:
 
     std::vector<details::emit_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns
+        takatori::util::sequence_view<column const> columns
     ) {
         std::vector<details::emit_field> fields{};
         std::size_t sz = meta->field_count();

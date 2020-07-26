@@ -73,7 +73,6 @@ using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
-
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
@@ -140,7 +139,7 @@ executor::process::step create(takatori::plan::process const& process, compiler_
     return executor::process::step(std::move(info));
 }
 
-executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx) {
+executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context &ctx) {
     meta::variable_order column_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         forward.columns(),

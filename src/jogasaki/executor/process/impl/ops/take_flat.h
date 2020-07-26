@@ -69,29 +69,13 @@ public:
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
+        std::shared_ptr<meta::record_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
         relation::expression const* downstream
     ) : operator_base(info, block_index),
-        meta_(create_meta(info, order, columns)),
-        fields_(create_fields(meta_, order, columns)),
-        reader_index_(reader_index),
-        downstream_(downstream)
-        {}
-
-    /**
-     * @brief create new object
-     */
-    take_flat(
-        processor_info const& info,
-        block_index_type block_index,
-        std::shared_ptr<meta::record_meta> meta,
-        std::vector<details::take_flat_field> fields,
-        std::size_t reader_index,
-        relation::expression const* downstream
-    ) : operator_base(info, block_index),
         meta_(std::move(meta)),
-        fields_(std::move(fields)),
+        fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),
         downstream_(downstream)
     {}
@@ -126,20 +110,6 @@ private:
     std::vector<details::take_flat_field> fields_{};
     std::size_t reader_index_{};
     relation::expression const* downstream_{};
-
-    std::shared_ptr<meta::record_meta> create_meta(
-        processor_info const& info,
-        meta::variable_order const& order,
-        takatori::util::sequence_view<column const> columns
-    ) {
-        std::vector<meta::field_type> fields{};
-        auto sz = order.size();
-        fields.resize(sz);
-        for(auto&& c : columns) {
-            fields[order.index(c.source())] = utils::type_for(info.compiled_info(), c.source());
-        }
-        return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
-    }
 
     std::vector<details::take_flat_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,

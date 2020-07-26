@@ -37,10 +37,8 @@ public:
      */
     explicit take_group_context(
         class abstract::task_context* ctx,
-        std::shared_ptr<meta::record_meta> meta,
         block_scope& variables
-    ) : context_base(ctx, variables),
-        store_(std::move(meta))
+    ) : context_base(ctx, variables)
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -54,7 +52,6 @@ public:
         }
     }
 private:
-    data::small_record_store store_{};
     group_reader* reader_{};
 };
 

@@ -34,6 +34,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/storage/storage_context.h>
+#include <jogasaki/executor/exchange/forward/step.h>
 #include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
@@ -145,10 +146,12 @@ public:
     void operator()(relation::step::take_flat const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
-        auto xchg = map->at(node.source());
+        auto xchg = dynamic_cast<exchange::forward::step*>(map->at(node.source()));
+        if (! xchg) fail();
         auto reader_index = process_io_map_.add_input(xchg);
         auto& downstream = node.output().opposite()->owner();
-        operators_[std::addressof(node)] = std::make_unique<take_flat>(*info_, block_index, xchg->column_order(), node.columns(), reader_index, &downstream);
+        operators_[std::addressof(node)] = std::make_unique<take_flat>(
+            *info_, block_index, xchg->column_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
         dispatch(*this, downstream);
     }
     void operator()(relation::step::take_group const& node) {

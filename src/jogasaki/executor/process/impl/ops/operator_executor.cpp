@@ -160,7 +160,7 @@ void operator_executor::operator()(const relation::step::take_group &node) {
     auto&s = to<take_group>(node);
     auto* ctx = find_context<take_group_context>(&s);
     if (! ctx) {
-        ctx = make_context<take_group_context>(&s, s.meta(), get_block_variables(s.block_index()));
+        ctx = make_context<take_group_context>(&s, get_block_variables(s.block_index()));
     }
     s(*ctx, this);
 }

@@ -29,17 +29,17 @@ public:
     step() = default;
 
     explicit step(
-        std::shared_ptr<meta::record_meta> input_meta
+        std::shared_ptr<meta::record_meta> meta
     ) :
-        input_meta_(std::move(input_meta))
+        meta_(std::move(meta))
     {}
 
     step(
-        std::shared_ptr<meta::record_meta> input_meta,
+        std::shared_ptr<meta::record_meta> meta,
         meta::variable_order column_order
     ) :
         exchange::step(std::move(column_order)),
-        input_meta_(std::move(input_meta))
+        meta_(std::move(meta))
     {}
 
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
@@ -54,12 +54,19 @@ public:
 
     void activate() override {
         // create data flow object
-        data_flow_object(std::make_unique<forward::flow>(input_meta_, context(), this));
+        data_flow_object(std::make_unique<forward::flow>(meta_, context(), this));
     }
 
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& input_meta() const noexcept {
+        return meta_;
+    }
+
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& output_meta() const noexcept {
+        return meta_;
+    }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    std::shared_ptr<meta::record_meta> input_meta_{};
+    std::shared_ptr<meta::record_meta> meta_{};
 };
 
 }

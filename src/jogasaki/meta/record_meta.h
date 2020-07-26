@@ -182,6 +182,18 @@ public:
      */
     [[nodiscard]] field_iterator end() const noexcept;
 
+    /**
+     * @brief appends string representation of the given value.
+     * @param out the target output
+     * @param value the target value
+     * @return the output stream
+     */
+    friend inline std::ostream& operator<<(std::ostream& out, record_meta const& value) {
+        for(std::size_t i=0, n=value.field_count(); i < n; ++i) {
+            out << value[i] << "[" << value.value_offset(i) << "] ";
+        }
+        return out;
+    }
 private:
     value_entity_type entity_{};
     nullability_entity_type nullability_{};

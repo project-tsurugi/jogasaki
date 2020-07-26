@@ -34,13 +34,22 @@ public:
     using record_type = Record;
     using records_type = std::vector<record_type>;
 
+    /**
+     * @brief create default instance - written records are stored internally as they are.
+     */
     basic_record_writer() = default;
 
     /**
+     * @brief create new instance considering field metadata and its mapping
      * @param meta metadata of the record_ref passed to write()
+     * @param map field mapping represented by the pair {source index, target index} where source is the input record, and target is the stored record
      */
-    explicit basic_record_writer(std::shared_ptr<meta::record_meta> meta) : meta_(std::move(meta)) {}
-
+    explicit basic_record_writer(std::shared_ptr<meta::record_meta> meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
+        meta_(std::move(meta)),
+        map_(std::move(map))
+    {
+        assert(map.empty() || map.size() == meta->field_count());
+    }
 
     /**
      * @brief write record and store internal storage as basic_record.
@@ -51,7 +60,8 @@ public:
         record_type r{};
         if (meta_) {
             for(std::size_t i = 0; i < meta_->field_count(); ++i) {
-                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(i), rec, meta_->value_offset(i));
+                auto j = map_.empty() ? i : map_.at(i);
+                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, meta_->value_offset(i));
             }
         } else {
             r = record_type{rec};
@@ -79,6 +89,7 @@ public:
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     records_type records_{};
+    std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};
 };
 

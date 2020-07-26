@@ -22,6 +22,8 @@
 #include <jogasaki/executor/record_reader.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/utils/copy_field_data.h>
 
 namespace jogasaki::executor::process::mock {
 
@@ -33,11 +35,25 @@ public:
     using record_type = Record;
     using records_type = std::vector<record_type>;
 
+    /**
+     * @brief create default instance - read records are output as they are.
+     */
     basic_record_reader() = default;
 
-    explicit basic_record_reader(records_type records, std::shared_ptr<meta::record_meta> meta = {}) noexcept :
-        records_(std::move(records)), meta_(std::move(meta))
-    {}
+    /**
+     * @brief create new instance considering field metadata and its mapping
+     * @param records the source records stored internally in this reader
+     * @param meta metadata of the record_ref output by get_record()
+     * @param map field mapping represented by the pair {source index, target index} where source is the stored record, and target is the output record by get_record()
+     */
+    explicit basic_record_reader(records_type records, std::shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
+        records_(std::move(records)),
+        meta_(std::move(meta)),
+        store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
+        map_(std::move(map))
+    {
+        assert(map.empty() || map.size() == meta->field_count());
+    }
 
     [[nodiscard]] bool available() const override {
         return it_ != records_.end() && it_+1 != records_.end();
@@ -57,7 +73,16 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_record() const override {
-        return it_->ref();
+        auto rec = it_->ref();
+        if (meta_) {
+            auto r = *it_;
+            rec = store_->ref();
+            for(std::size_t i = 0; i < meta_->field_count(); ++i) {
+                auto j = map_.empty() ? i : map_.at(i);
+                utils::copy_field(meta_->at(j), rec, meta_->value_offset(j), r.ref(), r.record_meta()->value_offset(i));
+            }
+        }
+        return rec;
     }
 
     void release() override {
@@ -76,6 +101,8 @@ public:
 private:
     records_type records_{};
     std::shared_ptr<meta::record_meta> meta_{};
+    std::shared_ptr<data::small_record_store> store_{};
+    std::unordered_map<std::size_t, std::size_t> map_{};
     bool initialized_{false};
     bool released_{false};
     typename records_type::iterator it_{};

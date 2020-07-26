@@ -15,12 +15,12 @@
  */
 #include "processor.h"
 #include "block_scope_info.h"
-#include "ops/operators_builder.h"
+#include "ops/operator_builder.h"
 
 namespace jogasaki::executor::process::impl {
 
 processor::processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) :
-    info_(std::move(info)), operators_(ops::create_relational_operators(info_, compiler_ctx))
+    info_(std::move(info)), operators_(ops::create_operators(info_, compiler_ctx))
 {}
 
 abstract::status processor::run(abstract::task_context *context) {

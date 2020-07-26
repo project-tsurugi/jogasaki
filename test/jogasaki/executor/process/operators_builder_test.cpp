@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/operators_builder.h>
+#include <jogasaki/executor/process/impl/ops/operator_builder.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -197,7 +197,7 @@ TEST_F(operators_builder_test, temp) {
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
 
     jogasaki::plan::compiler_context compiler_ctx{};
-    auto v = operators_builder{pinfo, compiler_ctx}();
+    auto v = operator_builder{pinfo, compiler_ctx}();
 
     ASSERT_EQ(2, v.size());
 }

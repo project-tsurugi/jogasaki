@@ -60,7 +60,7 @@
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/ops/operators_builder.h>
+#include <jogasaki/executor/process/impl/ops/operator_builder.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -286,7 +286,7 @@ TEST_F(block_scope_info_test, temp) {
     jogasaki::plan::compiler_context compiler_ctx{};
 
     // additionally test ops builder
-    auto ops = ops::operators_builder{pinfo, compiler_ctx}();
+    auto ops = ops::operator_builder{pinfo, compiler_ctx}();
 
     ASSERT_EQ(2, ops.size());
     for(auto&& [e, o] : ops) {

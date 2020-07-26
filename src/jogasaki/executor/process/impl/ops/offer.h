@@ -28,7 +28,6 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/block_scope.h>
-#include <jogasaki/executor/process/impl/ops/process_io_map.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
 #include "offer_context.h"

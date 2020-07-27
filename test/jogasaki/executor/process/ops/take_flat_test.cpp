@@ -131,17 +131,10 @@ TEST_F(take_flat_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
-
-    jogasaki::plan::compiler_context c_ctx;
-    c_ctx.compiled_info(c_info);
-
-    auto jf0 = jogasaki::plan::impl::create(f0, c_ctx);
-
-    ASSERT_EQ(*meta, *jf0.output_meta());
     take_flat s{
         p_info, 0,
         order,
-        jf0.output_meta(),
+        meta,
         take_flat_columns,
         0,
         nullptr
@@ -150,12 +143,12 @@ TEST_F(take_flat_test, simple) {
     auto& block_info = p_info.scopes_info()[s.block_index()];
     block_scope variables{block_info};
 
+
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
     std::vector<test_record> records{
         test_record{1.0, 10, 100},
         test_record{2.0, 20, 200},
     };
-
     auto reader = std::make_shared<mock::basic_record_reader<test_record>>(records, meta);
 
     mock::task_context task_ctx{

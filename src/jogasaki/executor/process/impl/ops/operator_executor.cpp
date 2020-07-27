@@ -182,6 +182,7 @@ void operator_executor::operator()(const relation::step::offer &node) {
 void operator_executor::operator()() {
     dispatch(*this, head());
     // TODO handling status code
+    (void)continue_processing_;
 }
 
 }

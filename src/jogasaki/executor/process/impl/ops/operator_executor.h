@@ -105,7 +105,7 @@ public:
     void operator()();
 
 private:
-    graph::graph<relation::expression>* relations_;
+    graph::graph<relation::expression>* relations_{};
     compiled_info const* compiled_info_{};
     operator_container* operators_{};
     abstract::task_context *context_{};

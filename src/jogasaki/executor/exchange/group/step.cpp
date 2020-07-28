@@ -46,8 +46,8 @@ step::step(
 ) :
     step(
         std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)),
-        input_column_order,
-        output_column_order
+        std::move(input_column_order),
+        std::move(output_column_order)
     )
 {}
 

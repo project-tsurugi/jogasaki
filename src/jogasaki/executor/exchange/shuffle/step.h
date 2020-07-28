@@ -40,7 +40,7 @@ public:
     step(
         std::shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
-    ) : exchange::step(input_meta, column_order)
+    ) : exchange::step(std::move(input_meta), column_order)
     {}
 
     [[nodiscard]] virtual meta::variable_order const& output_order() const noexcept = 0;

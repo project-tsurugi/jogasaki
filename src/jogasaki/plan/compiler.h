@@ -18,7 +18,12 @@
 #include <string_view>
 
 #include <takatori/plan/forward.h>
+#include <takatori/plan/group.h>
+#include <takatori/plan/process.h>
+
 #include <jogasaki/executor/exchange/forward/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/process/step.h>
 
 #include "compiler_context.h"
 
@@ -26,7 +31,9 @@ namespace jogasaki::plan {
 
 // for testing
 namespace impl {
+executor::process::step create(takatori::plan::process const& process, compiler_context& ctx);
 executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx);
+executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx);
 }
 
 /**
@@ -35,6 +42,5 @@ executor::exchange::forward::step create(takatori::plan::forward const& forward,
  * @param ctx the compiler context filled with storage provider required to compile the sql
  */
 bool compile(std::string_view sql, compiler_context& ctx);
-
 
 }

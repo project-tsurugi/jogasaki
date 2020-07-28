@@ -20,6 +20,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/meta/variable_order.h>
 #include "shuffle_info.h"
 #include "flow.h"
@@ -27,12 +28,13 @@
 namespace jogasaki::executor::process {
 class step;
 }
+
 namespace jogasaki::executor::exchange::group {
 
 /**
  * @brief group step
  */
-class step : public exchange::step {
+class step : public shuffle::step {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
@@ -43,40 +45,40 @@ public:
 
     /**
      * @brief create new instance
-     * @param input_meta input record metadata
-     * @param key_indices indices for key fields
+     * @param info shuffle info for this object
+     * @param input_column_order column ordering information for exchange input
+     * @param output_column_order column ordering information for exchange output
      */
     explicit step(
-        std::shared_ptr<shuffle_info> info
-    );
-
-    /**
-     * @brief create new instance
-     * @param input_meta input record metadata
-     * @param key_indices indices for key fields
-     */
-    step(
         std::shared_ptr<shuffle_info> info,
-        meta::variable_order input_column_order,
-        meta::variable_order output_column_order
+        meta::variable_order input_column_order = {},
+        meta::variable_order output_column_order = {}
     );
 
     /**
      * @brief create new instance
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
+     * @param input_column_order column ordering information for exchange input
+     * @param output_column_order column ordering information for exchange output
      */
     step(
         std::shared_ptr<meta::record_meta> input_meta,
-        std::vector<field_index_type> key_indices
+        std::vector<field_index_type> key_indices,
+        meta::variable_order input_column_order = {},
+        meta::variable_order output_column_order = {}
     );
 
     [[nodiscard]] executor::common::step_kind kind() const noexcept override;
 
     void activate() override;
 
-    [[nodiscard]] meta::variable_order const& output_column_order() const noexcept {
+    [[nodiscard]] meta::variable_order const& output_order() const noexcept override {
         return output_column_order_;
+    }
+
+    [[nodiscard]] std::shared_ptr<meta::group_meta> const& output_meta() const noexcept override {
+        return info_->group_meta();
     }
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;

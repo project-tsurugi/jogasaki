@@ -35,6 +35,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/storage/storage_context.h>
 #include <jogasaki/executor/exchange/forward/step.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
 #include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
@@ -151,16 +152,18 @@ public:
         auto reader_index = process_io_map_.add_input(xchg);
         auto& downstream = node.output().opposite()->owner();
         operators_[std::addressof(node)] = std::make_unique<take_flat>(
-            *info_, block_index, xchg->column_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
+            *info_, block_index, xchg->output_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
         dispatch(*this, downstream);
     }
     void operator()(relation::step::take_group const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto map = compiler_ctx_->relation_step_map();
-        auto xchg = map->at(node.source());
+        auto* xchg = dynamic_cast<exchange::shuffle::step*>(map->at(node.source()));
+        if (! xchg) fail();
         auto reader_index = process_io_map_.add_input(xchg);
         auto& downstream = node.output().opposite()->owner();
-        operators_[std::addressof(node)] = std::make_unique<take_group>(*info_, block_index, xchg->column_order(), node.columns(), reader_index, &downstream);
+        operators_[std::addressof(node)] =
+            std::make_unique<take_group>(*info_, block_index, xchg->output_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
         dispatch(*this, downstream);
     }
     void operator()(relation::step::take_cogroup const& node) {
@@ -171,7 +174,8 @@ public:
         auto map = compiler_ctx_->relation_step_map();
         auto xchg = map->at(node.destination());
         auto writer_index = process_io_map_.add_output(xchg);
-        operators_[std::addressof(node)] = std::make_unique<offer>(*info_, block_index, xchg->column_order(), node.columns(), writer_index);
+        operators_[std::addressof(node)] =
+            std::make_unique<offer>(*info_, block_index, xchg->input_order(), xchg->input_meta(), node.columns(), writer_index);
     }
 
 private:

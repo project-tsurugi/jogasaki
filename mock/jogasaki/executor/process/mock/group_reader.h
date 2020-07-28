@@ -21,40 +21,49 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/group_reader.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/utils/copy_field_data.h>
 
 namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 
-template <class Keys, class Values>
+template <class Key, class Value>
 class basic_group_entry {
 public:
-    using keys_type = Keys;
-    using values_type = Values;
-    using values_groups = std::vector<Values>;
-    explicit basic_group_entry(Keys keys, values_groups values) : keys_(keys), values_(std::move(values)) {}
+    using key_type = Key;
+    using value_type = Value;
+    using value_groups = std::vector<Value>;
+    explicit basic_group_entry(Key key, value_groups values) : key_(key), values_(std::move(values)) {}
 
-    [[nodiscard]] accessor::record_ref keys() const noexcept {
-        return keys_.ref();
+    [[nodiscard]] key_type const& key() const noexcept {
+        return key_;
     }
 
-    [[nodiscard]] values_groups const& values() const noexcept {
+    [[nodiscard]] value_groups const& values() const noexcept {
         return values_;
     }
+
 private:
-    keys_type keys_{};
-    values_groups values_{};
+    key_type key_{};
+    value_groups values_{};
 };
 
-template <class Keys, class Values>
+template <class Key, class Value>
 class basic_group_reader : public executor::group_reader {
 public:
-    using group_type = basic_group_entry<Keys, Values>;
+    using group_type = basic_group_entry<Key, Value>;
     using groups_type = std::vector<group_type>;
 
     explicit basic_group_reader(
-            groups_type groups
-            ) : groups_(std::move(groups)){}
+        groups_type groups,
+        std::shared_ptr<meta::group_meta> meta = {}
+    ) :
+        groups_(std::move(groups)),
+        meta_(std::move(meta)),
+        key_store_(meta_ ? std::make_shared<data::small_record_store>(meta_->key_shared()) : nullptr),
+        value_store_(meta_ ? std::make_shared<data::small_record_store>(meta_->value_shared()) : nullptr)
+    {}
 
     bool next_group() override {
         if (!initialized_) {
@@ -69,12 +78,21 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_group() const override {
-        return current_group_->keys();
+        if (meta_) {
+            auto& r = *current_group_;
+            auto rec = key_store_->ref();
+            auto& m = meta_->key();
+            for(std::size_t i = 0; i < m.field_count(); ++i) {
+                utils::copy_field(m.at(i), rec, m.value_offset(i), r.key().ref(), r.key().record_meta()->value_offset(i));
+            }
+            return rec;
+        }
+        return current_group_->key().ref();
     }
 
     bool next_member() override {
         if (!on_member_) {
-            current_member_ = const_cast<typename group_type::values_groups&>(current_group_->values()).begin(); //FIXME
+            current_member_ = const_cast<typename group_type::value_groups&>(current_group_->values()).begin(); //FIXME
             on_member_ = true;
         } else {
             ++current_member_;
@@ -83,6 +101,15 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_member() const override {
+        if (meta_) {
+            auto& r = *current_member_;
+            auto rec = value_store_->ref();
+            auto& m = meta_->value();
+            for(std::size_t i = 0; i < m.field_count(); ++i) {
+                utils::copy_field(m.at(i), rec, m.value_offset(i), r.ref(), r.record_meta()->value_offset(i));
+            }
+            return rec;
+        }
         return current_member_->ref();
     }
 
@@ -98,9 +125,13 @@ public:
     basic_group_reader(basic_group_reader&& other) noexcept = default;
     basic_group_reader& operator=(basic_group_reader&& other) noexcept = default;
 
+private:
     groups_type groups_{};
+    std::shared_ptr<meta::group_meta> meta_{};
+    std::shared_ptr<data::small_record_store> key_store_{};
+    std::shared_ptr<data::small_record_store> value_store_{};
     typename groups_type::iterator current_group_{};
-    typename group_type::values_groups::iterator current_member_{};
+    typename group_type::value_groups::iterator current_member_{};
     bool initialized_{false};
     bool released_{false};
     bool on_member_{false};

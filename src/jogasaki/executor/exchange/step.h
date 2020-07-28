@@ -28,8 +28,12 @@ public:
 
     step(number_of_ports inputs, number_of_ports outputs) : common::step(inputs, outputs, 0) {}
 
-    explicit step(meta::variable_order column_order) :
+    explicit step(
+        std::shared_ptr<meta::record_meta> input_meta,
+        meta::variable_order column_order
+    ) :
         common::step(0, 0, 0),
+        input_meta_(std::move(input_meta)),
         column_order_(std::move(column_order))
     {}
 
@@ -43,16 +47,26 @@ public:
     /**
      * @brief accessor to column_order
      * @details column order used for input. Some exchanges (forward, broadcast) use this for output as well.
-     * @return column order
+     * @return column order for exchange input
      */
-    [[nodiscard]] meta::variable_order const& column_order() const noexcept {
+    [[nodiscard]] meta::variable_order const& input_order() const noexcept {
         return column_order_;
+    }
+
+    /**
+     * @brief accessor to input meta
+     * @details returns record_meta used for input. Some exchanges (forward, broadcast) use this for output as well.
+     * @return record_meta for exchange input
+     */
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& input_meta() const noexcept {
+        return input_meta_;
     }
 
     [[nodiscard]] bool handles_group() const noexcept {
         return kind() == common::step_kind::group || kind() == common::step_kind::aggregate;
     }
 private:
+    std::shared_ptr<meta::record_meta> input_meta_{};
     meta::variable_order column_order_{};
 };
 

@@ -21,6 +21,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/executor/process/step.h>
@@ -32,7 +33,7 @@ namespace jogasaki::executor::exchange::aggregate {
 /**
  * @brief group step
  */
-class step : public exchange::step {
+class step : public shuffle::step {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
@@ -47,22 +48,10 @@ public:
      * @param key_indices indices for key fields
      */
     explicit step(
-        std::shared_ptr<shuffle_info> info
-    ) :
-        info_(std::move(info))
-    {}
-
-    /**
-     * @brief create new instance
-     * @param input_meta input record metadata
-     * @param key_indices indices for key fields
-     */
-    explicit step(
         std::shared_ptr<shuffle_info> info,
-        meta::variable_order input_column_order,
-        meta::variable_order output_column_order
-    ) :
-        exchange::step(std::move(input_column_order)),
+        meta::variable_order input_column_order = {},
+        meta::variable_order output_column_order = {}
+    ) : shuffle::step(info->record_meta(), std::move(input_column_order)),
         info_(std::move(info)),
         output_column_order_(std::move(output_column_order))
     {}
@@ -74,9 +63,15 @@ public:
      */
     step(
         std::shared_ptr<meta::record_meta> input_meta,
-        std::vector<field_index_type> key_indices
+        std::vector<field_index_type> key_indices,
+        meta::variable_order input_column_order = {},
+        meta::variable_order output_column_order = {}
     ) :
-        step(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)))
+        step(
+            std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)),
+            input_column_order,
+            output_column_order
+        )
     {}
 
     [[nodiscard]] executor::common::step_kind kind() const noexcept override {
@@ -89,8 +84,12 @@ public:
         data_flow_object(std::make_unique<aggregate::flow>(info_, context(), this, downstream_partitions));
     }
 
-    [[nodiscard]] meta::variable_order const& output_column_order() const noexcept {
+    [[nodiscard]] meta::variable_order const& output_order() const noexcept override {
         return output_column_order_;
+    }
+
+    [[nodiscard]] std::shared_ptr<meta::group_meta> const& output_meta() const noexcept override {
+        return info_->group_meta();
     }
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept {

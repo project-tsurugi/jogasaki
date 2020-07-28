@@ -130,8 +130,20 @@ TEST_F(offer_test, simple) {
         {c1, f1c1},
         {c2, f1c2},
     };
+
+    using kind = meta::field_type_kind;
+    auto meta = std::make_shared<record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::float8>),
+            field_type(enum_tag<kind::int4>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{"000"s}
+    );
     offer s{
-        p_info, 0, order,
+        p_info, 0,
+        order,
+        meta,
         offer_columns,
         0
     };

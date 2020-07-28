@@ -23,19 +23,19 @@ group_meta::group_meta(group_meta::record_meta_type key_meta, group_meta::record
 
 group_meta::group_meta(const record_meta &key_meta, const record_meta &value_meta) : group_meta(std::make_shared<record_meta>(key_meta), std::make_shared<record_meta>(value_meta)) {}
 
-record_meta const &group_meta::key() const noexcept {
+record_meta const& group_meta::key() const noexcept {
     return *key_meta_;
 }
 
-const group_meta::record_meta_type &group_meta::key_shared() const noexcept {
+group_meta::record_meta_type const& group_meta::key_shared() const noexcept {
     return key_meta_;
 }
 
-record_meta const &group_meta::value() const noexcept {
+record_meta const& group_meta::value() const noexcept {
     return *value_meta_;
 }
 
-const group_meta::record_meta_type &group_meta::value_shared() const noexcept {
+group_meta::record_meta_type const& group_meta::value_shared() const noexcept {
     return value_meta_;
 }
 } // namespace

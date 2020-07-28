@@ -62,15 +62,16 @@ public:
     /**
      * @brief create new object
      */
-    explicit take_group(
+    take_group(
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
+        std::shared_ptr<meta::group_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
         relation::expression const* downstream
     ) : operator_base(info, block_index),
-        meta_(create_meta(info, order, columns)),
+        meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),
         downstream_(downstream)
@@ -83,15 +84,19 @@ public:
             ctx.reader_ = r.reader<group_reader>();
         }
         while(ctx.reader_->next_group()) {
+            auto key = ctx.reader_->get_group();
+            for(auto &f : fields_) {
+                if (! f.is_key_) continue;
+                utils::copy_field(f.type_, target, f.target_offset_, key, f.source_offset_);
+            }
             while(ctx.reader_->next_member()) {
-                auto key = ctx.reader_->get_group();
                 auto value = ctx.reader_->get_member();
                 for(auto &f : fields_) {
-                    auto source = f.is_key_ ? key : value;
-                    utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
-                    if (visitor) {
-                        dispatch(*visitor, *downstream_);
-                    }
+                    if (f.is_key_) continue;
+                    utils::copy_field(f.type_, target, f.target_offset_, value, f.source_offset_);
+                }
+                if (visitor) {
+                    dispatch(*visitor, *downstream_);
                 }
             }
         }
@@ -101,48 +106,42 @@ public:
         return operator_kind::take_group;
     }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+    [[nodiscard]] std::shared_ptr<meta::group_meta> const& meta() const noexcept {
         return meta_;
     }
 
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    std::shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
     std::size_t reader_index_{};
     relation::expression const* downstream_{};
 
-    std::shared_ptr<meta::record_meta> create_meta(
-        processor_info const& info,
-        meta::variable_order const& order,
-        takatori::util::sequence_view<column const> columns
-    ) {
-        std::vector<meta::field_type> fields{};
-        auto sz = order.size();
-        fields.resize(sz);
-        for(auto&& c : columns) {
-            fields[order.index(c.destination())] = utils::type_for(info.compiled_info(), c.destination());
-        }
-        return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
-    }
-
     std::vector<details::take_group_field> create_fields(
-        std::shared_ptr<meta::record_meta> const& meta,
+        std::shared_ptr<meta::group_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns
     ) {
         std::vector<details::take_group_field> fields{};
-        fields.resize(meta->field_count());
+        auto& key_meta = meta->key();
+        auto& value_meta = meta->value();
+        auto num_keys = key_meta.field_count();
+        auto num_fields = num_keys+value_meta.field_count();
+        fields.resize(num_fields);
+        assert(num_fields == columns.size());  //NOLINT
+        auto& vmap = block_info().value_map();
         for(auto&& c : columns) {
-            auto ind = order.index(c.destination());
-            auto& info = blocks().at(block_index()).value_map().at(c.source());
-            fields[ind] = details::take_group_field{
-                meta_->at(ind),
-                info.value_offset(),
-                meta_->value_offset(ind),
-                info.nullity_offset(),
-                meta_->nullity_offset(ind),
+            auto [src_idx, is_key] = order.key_value_index(c.source());
+            auto& target_info = vmap.at(c.destination());
+            auto idx = src_idx + (is_key ? 0 : num_keys); // copy keys first, then values
+            fields[idx]=details::take_group_field{
+                is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
+                is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),
+                target_info.value_offset(),
+                is_key ? key_meta.nullity_offset(src_idx) : value_meta.nullity_offset(src_idx),
+                target_info.nullity_offset(),
                 //TODO nullity
-                false // nullable
+                false, // nullable
+                is_key
             };
         }
         return fields;

@@ -39,8 +39,8 @@ public:
 };
 
 using group_type = mock::group_reader::group_type;
-using keys_type = group_type::keys_type;
-using values_type = group_type::values_type;
+using keys_type = group_type::key_type;
+using values_type = group_type::value_type;
 
 TEST_F(cogroup_test, simple) {
     mock::group_reader r1 {

@@ -143,7 +143,6 @@ TEST_F(take_flat_test, simple) {
     auto& block_info = p_info.scopes_info()[s.block_index()];
     block_scope variables{block_info};
 
-
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
     std::vector<test_record> records{
         test_record{1.0, 10, 100},
@@ -169,16 +168,10 @@ TEST_F(take_flat_test, simple) {
     auto c2_offset = map.at(c2).value_offset();
     s(ctx, nullptr);
     // TODO verify interim results
-//    EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
-//    EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
-//    EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(c2_offset));
-
-//    ASSERT_TRUE(s(ctx));
     EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
     EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
     EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
-
-//    ASSERT_FALSE(s(ctx));
+    ctx.release();
 }
 
 }

@@ -27,9 +27,11 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/take_group_context.h>
+#include <jogasaki/executor/exchange/group/shuffle_info.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/executor/process/mock/group_reader.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -51,14 +53,16 @@ using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 
+using namespace jogasaki::executor::exchange::group;
+
 class take_group_test : public test_root {};
 
 TEST_F(take_group_test, simple) {
     binding::factory bindings;
 
-    auto&& g0c0 = bindings.exchange_column();
-    auto&& g0c1 = bindings.exchange_column();
-    auto&& g0c2 = bindings.exchange_column();
+    auto&& g0c0 = bindings.exchange_column("g0c0");
+    auto&& g0c1 = bindings.exchange_column("g0c1");
+    auto&& g0c2 = bindings.exchange_column("g0c2");
     ::takatori::plan::group g0{
         {
             g0c0,
@@ -85,9 +89,9 @@ TEST_F(take_group_test, simple) {
     });
 
     ::takatori::plan::forward f1 {
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
+        bindings.exchange_column("f1c0"),
+        bindings.exchange_column("f1c1"),
+        bindings.exchange_column("f1c2"),
     };
     auto&& f1c0 = f1.columns()[0];
     auto&& f1c1 = f1.columns()[1];
@@ -129,24 +133,14 @@ TEST_F(take_group_test, simple) {
         {g0c1, c1},
         {g0c2, c2},
     };
-    take_group s{
-        p_info, 0,
-        order,
-        take_group_columns,
-        0,
-        nullptr
-    };
-
-    auto& block_info = p_info.scopes_info()[s.block_index()];
-    block_scope variables{block_info};
-
     using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    std::vector<test_record> records{
-        test_record{1.0, 10, 100},
-        test_record{2.0, 20, 200},
-    };
-    auto meta = std::make_shared<record_meta>(
+
+    using key_record = jogasaki::mock::basic_record<kind::float8, kind::int4>;
+    using value_record = jogasaki::mock::basic_record<kind::int8>;
+    using reader = mock::basic_group_reader<key_record, value_record>;
+    using group_type = reader::group_type;
+    using groups_type = reader::groups_type;
+    auto input_meta = std::make_shared<record_meta>(
         std::vector<field_type>{
             field_type(enum_tag<kind::float8>),
             field_type(enum_tag<kind::int4>),
@@ -154,10 +148,31 @@ TEST_F(take_group_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
-    auto reader = std::make_shared<mock::basic_record_reader<test_record>>(records, meta);
+    shuffle_info s_info{input_meta, {0,1}};
+    take_group s{
+        p_info,
+        0,
+        order,
+        s_info.group_meta(),
+        take_group_columns,
+        0,
+        nullptr
+    };
 
+    auto& block_info = p_info.scopes_info()[s.block_index()];
+    block_scope variables{block_info};
+    groups_type groups{
+        group_type{
+            key_record{1.0, 10},
+            {
+                value_record {100},
+                value_record {200},
+            },
+        }
+    };
+    auto r = std::make_shared<reader>(groups, s_info.group_meta());
     mock::task_context task_ctx{
-        {reader_container{reader.get()}},
+        {reader_container{r.get()}},
         {},
         {},
         {},
@@ -174,16 +189,10 @@ TEST_F(take_group_test, simple) {
     auto c2_offset = map.at(c2).value_offset();
     s(ctx, nullptr);
     // TODO verify interim results
-//    EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
-//    EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
-//    EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(c2_offset));
-
-//    ASSERT_TRUE(s(ctx));
-    EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
-    EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
+    EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
+    EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
     EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
-
-//    ASSERT_FALSE(s(ctx));
+    ctx.release();
 }
 
 }

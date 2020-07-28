@@ -99,8 +99,8 @@ using namespace ::yugawara::variable;
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
+            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{std::string("000")});
@@ -226,7 +226,10 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         {f0c2, c2},
     };
     take_flat t{
-        *p_info, 0, f0_order,
+        *p_info,
+        0,
+        f0_order,
+        meta,
         take_flat_columns,
         0,
         &r1
@@ -237,8 +240,12 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         {c1, f1c1},
         {c2, f1c2},
     };
+
     offer s{
-        *p_info, 0, f1_order,
+        *p_info,
+        0,
+        f1_order,
+        meta,
         offer_columns,
         0
     };

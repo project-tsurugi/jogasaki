@@ -17,66 +17,18 @@
 
 #include <cstddef>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::utils {
 
-using ::takatori::util::fail;
-
-inline void copy_field(
+void copy_field(
     meta::field_type const& type,
     accessor::record_ref target,
     std::size_t target_offset,
     accessor::record_ref source,
     std::size_t source_offset
-) {
-    using k = meta::field_type_kind;
-    switch(type.kind()) {
-        case k::undefined:
-            break;
-        case k::boolean: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::boolean>::runtime_type>(source_offset)); return;
-        case k::int1: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int1>::runtime_type>(source_offset)); return;
-        case k::int2: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int2>::runtime_type>(source_offset)); return;
-        case k::int4: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int4>::runtime_type>(source_offset)); return;
-        case k::int8: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int8>::runtime_type>(source_offset)); return;
-        case k::float4: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::float4>::runtime_type>(source_offset)); return;
-        case k::float8: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::float8>::runtime_type>(source_offset)); return;
-        case k::decimal:
-            break;
-        case k::character:
-            break;
-        case k::bit:
-            break;
-        case k::date:
-            break;
-        case k::time_of_day:
-            break;
-        case k::time_point:
-            break;
-        case k::time_interval:
-            break;
-        case k::array:
-            break;
-        case k::record:
-            break;
-        case k::unknown:
-            break;
-        case k::row_reference:
-            break;
-        case k::row_id:
-            break;
-        case k::declared:
-            break;
-        case k::extension:
-            break;
-    }
-    fail();
-}
+);
 
 }
 

@@ -20,6 +20,7 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/executor/process/step.h>
 #include "shuffle_info.h"
 #include "flow.h"
@@ -29,26 +30,24 @@ namespace jogasaki::executor::exchange::group {
 step::step() : info_(std::make_shared<shuffle_info>()) {}
 
 step::step(
-    std::shared_ptr<shuffle_info> info
-) :
-    info_(std::move(info))
-{}
-
-step::step(
     std::shared_ptr<shuffle_info> info,
     meta::variable_order input_column_order,
     meta::variable_order output_column_order
-) : exchange::step(std::move(input_column_order)),
+) : shuffle::step(info->record_meta(), std::move(input_column_order)),
     info_(std::move(info)),
     output_column_order_(std::move(output_column_order))
 {}
 
 step::step(
     std::shared_ptr<meta::record_meta> input_meta,
-    std::vector<field_index_type> key_indices
+    std::vector<field_index_type> key_indices,
+    meta::variable_order input_column_order,
+    meta::variable_order output_column_order
 ) :
     step(
-        std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices))
+        std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)),
+        input_column_order,
+        output_column_order
     )
 {}
 

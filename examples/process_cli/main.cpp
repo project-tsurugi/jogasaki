@@ -276,6 +276,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     dag_controller dc{std::move(cfg)};
     dc.schedule(g);
+
+    LOG(INFO) << "written " << writer->size() << " records";
     return 0;
 }
 

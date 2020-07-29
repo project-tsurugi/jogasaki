@@ -21,14 +21,14 @@
 
 namespace jogasaki::executor::process::mock {
 
-class process_executor {
+class process_executor : public abstract::process_executor {
 public:
     process_executor(std::shared_ptr<abstract::processor> processor, std::shared_ptr<abstract::task_context> context) :
             processor_(std::move(processor)), context_(std::move(context)) {}
 
-    bool run() {
+    status run() override {
         processor_->run(context_.get());
-        return true;
+        return status::completed;
     }
 
 private:

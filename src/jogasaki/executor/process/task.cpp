@@ -22,17 +22,20 @@
 
 namespace jogasaki::executor::process {
 
-task::task(request_context *context, task::step_type *src, std::shared_ptr<impl::task_context_pool> task_contexts,
-    std::shared_ptr<abstract::processor> processor) :
+task::task(
+    request_context *context,
+    task::step_type *src,
+    std::shared_ptr<abstract::process_executor> exec,
+    std::shared_ptr<abstract::processor> processor
+) :
     common::task(context, src),
-    task_contexts_(std::move(task_contexts)),
+    executor_(std::move(exec)),
     processor_(std::move(processor))
 {}
 
 model::task_result task::operator()() {
     VLOG(1) << *this << " process::task executed.";
-    impl::process_executor executor{processor_, task_contexts_};
-    auto status = executor.run();
+    auto status = executor_->run();
     switch (status) {
         case abstract::status::completed:
             break;

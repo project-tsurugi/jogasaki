@@ -15,9 +15,7 @@
  */
 #pragma once
 
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include "task_context_pool.h"
@@ -25,22 +23,26 @@
 namespace jogasaki::executor::process::impl {
 
 /**
- * @brief process executor
- * @details process executor is responsible for set-up task context and execute the processor in order to
- * complete the work assigned to a processor task.
+ * @brief default process executor implementation with naive task assignment logic
  */
-class process_executor {
-    using status = abstract::status;
+class process_executor : public abstract::process_executor {
 public:
     /**
      * @brief construct new instance
      */
     process_executor() = default;
 
-    explicit process_executor(std::shared_ptr<abstract::processor> processor,
-        std::shared_ptr<impl::task_context_pool> contexts) : processor_(std::move(processor)), contexts_(std::move(contexts)) {}
+    explicit process_executor(
+        std::shared_ptr<abstract::processor> processor,
+        std::vector<std::shared_ptr<abstract::task_context>> contexts)
+        : processor_(std::move(processor)), contexts_(std::make_shared<impl::task_context_pool>())
+    {
+        for(auto&& c : contexts) {
+            contexts_->push(std::move(c));
+        }
+    }
 
-    status run() {
+    status run() override {
         // assign context
         auto context = contexts_->pop();
 
@@ -59,6 +61,18 @@ private:
     std::shared_ptr<impl::task_context_pool> contexts_{};
 };
 
+/**
+ * @brief global constant accessor to default process executor factory
+ * @return factory of default process_executor implementation
+ */
+inline abstract::process_executor_factory& default_process_executor_factory() {
+    static abstract::process_executor_factory f = [](
+        std::shared_ptr<abstract::processor> processor,
+        std::vector<std::shared_ptr<abstract::task_context>> contexts
+    ) {
+        return std::make_shared<process_executor>(std::move(processor), std::move(contexts));
+    };
+    return f;
 }
 
-
+}

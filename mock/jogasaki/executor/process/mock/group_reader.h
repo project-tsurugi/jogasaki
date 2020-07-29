@@ -119,12 +119,22 @@ public:
         initialized_ = false;
     }
 
+    void acquire() {
+        acquired_ = true;
+    }
+
     ~basic_group_reader() override = default;
     basic_group_reader(basic_group_reader const& other) = default;
     basic_group_reader& operator=(basic_group_reader const& other) = default;
     basic_group_reader(basic_group_reader&& other) noexcept = default;
     basic_group_reader& operator=(basic_group_reader&& other) noexcept = default;
 
+    [[nodiscard]] bool is_released() const noexcept {
+        return released_;
+    }
+    [[nodiscard]] bool is_acquired() const noexcept {
+        return acquired_;
+    }
 private:
     groups_type groups_{};
     std::shared_ptr<meta::group_meta> meta_{};
@@ -134,6 +144,7 @@ private:
     typename group_type::value_groups::iterator current_member_{};
     bool initialized_{false};
     bool released_{false};
+    bool acquired_{false};
     bool on_member_{false};
 };
 

@@ -22,6 +22,7 @@
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/executor/process/impl/task_context_pool.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/executor/process/impl/process_executor.h>
 
 namespace jogasaki::executor::process {
 
@@ -30,14 +31,14 @@ public:
     task() = default;
     task(request_context* context,
         step_type* src,
-        std::shared_ptr<impl::task_context_pool> task_contexts,
+        std::shared_ptr<abstract::process_executor> exec,
         std::shared_ptr<abstract::processor> processor
     );
 
     model::task_result operator()() override;
 
 private:
-    std::shared_ptr<impl::task_context_pool> task_contexts_;
+    std::shared_ptr<abstract::process_executor> executor_{};
     std::shared_ptr<abstract::processor> processor_{};
 };
 

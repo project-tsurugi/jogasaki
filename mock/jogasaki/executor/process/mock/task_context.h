@@ -26,12 +26,14 @@
 
 #include "record_reader.h"
 #include "record_writer.h"
+#include "group_reader.h"
 #include "external_writer.h"
 
 namespace jogasaki::executor::process::mock {
 
 class task_context : public abstract::task_context {
 public:
+
     explicit task_context(
         std::vector<reader_container> readers = {},
         std::vector<std::shared_ptr<executor::record_writer>> downstream_writers = {},

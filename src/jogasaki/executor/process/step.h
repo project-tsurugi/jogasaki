@@ -23,6 +23,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/abstract/process_executor.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
@@ -57,8 +58,18 @@ public:
     [[nodiscard]] virtual std::size_t partitions() const noexcept;
 
     void activate() override;
+
+    void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept {
+        executor_factory_ = std::move(factory);
+    }
+
+    [[nodiscard]] std::shared_ptr<abstract::process_executor_factory> const& executor_factory() const noexcept {
+        return executor_factory_;
+    }
+
 private:
     std::shared_ptr<processor_info> info_{};
+    std::shared_ptr<abstract::process_executor_factory> executor_factory_{};
 };
 
 }

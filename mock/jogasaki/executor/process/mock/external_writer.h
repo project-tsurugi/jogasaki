@@ -18,23 +18,53 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/utils/copy_field_data.h>
 
 namespace jogasaki::executor::process::mock {
 
-template <class Record>
-class external_writer : public executor::record_writer {
-public:
-    explicit external_writer(std::shared_ptr<meta::record_meta> meta) :
-            meta_(std::move(meta)),
-            offset_c1_(meta_->value_offset(0)),
-            offset_c2_(meta_->value_offset(1))
-    {}
+using kind = meta::field_type_kind;
 
+template <class Record>
+class basic_external_writer : public executor::record_writer {
+public:
+    using record_type = Record;
+    using records_type = std::vector<record_type>;
+
+    /**
+     * @brief create default instance - written records are stored internally as they are.
+     */
+    basic_external_writer() = default;
+
+    /**
+     * @brief create new instance considering field metadata and its mapping
+     * @param meta metadata of the record_ref passed to write()
+     * @param map field mapping represented by the pair {source index, target index} where source is the input record, and target is the stored record
+     */
+    explicit basic_external_writer(std::shared_ptr<meta::record_meta> meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
+        meta_(std::move(meta)),
+        map_(std::move(map))
+    {
+        assert(map.empty() || map.size() == meta->field_count());
+    }
+
+    /**
+     * @brief write record and store internal storage as basic_record.
+     * The record_meta, if passed to constructor, is used to convert the offset between input record ref and basic_record::record_meata().
+     * Only offsets are converted, nothing done for field ordering.
+     */
     bool write(accessor::record_ref rec) override {
-        records_.emplace_back(
-                rec.get_value<std::int64_t>(offset_c1_),
-                rec.get_value<double>(offset_c2_)
-        );
+        record_type r{};
+        if (meta_) {
+            for(std::size_t i = 0; i < meta_->field_count(); ++i) {
+                auto j = map_.empty() ? i : map_.at(i);
+                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, meta_->value_offset(i));
+            }
+        } else {
+            r = record_type{rec};
+        }
+        records_.emplace_back(r);
         return false;
     }
 
@@ -46,13 +76,41 @@ public:
         released_ = true;
     }
 
+    void acquire() {
+        acquired_ = true;
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return records_.size();
+    }
+
+    [[nodiscard]] records_type const& records() const noexcept {
+        return records_;
+    }
+    [[nodiscard]] bool is_released() const noexcept {
+        return released_;
+    }
+    [[nodiscard]] bool is_acquired() const noexcept {
+        return acquired_;
+    }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
-    std::vector<Record> records_{};
-    std::size_t offset_c1_{};
-    std::size_t offset_c2_{};
+    records_type records_{};
+    std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};
+    bool acquired_{false};
 };
+
+using external_writer = basic_external_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
+
+template <class Record>
+basic_external_writer<Record>* unwrap_external(executor::record_writer* writer) {
+    return static_cast<basic_external_writer<Record>*>(writer);
+}
+
+inline external_writer* unwrap_external_writer(executor::record_writer* writer) {
+    return unwrap_external<external_writer::record_type>(writer);
+}
 
 }
 

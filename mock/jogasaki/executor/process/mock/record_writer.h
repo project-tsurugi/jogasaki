@@ -78,6 +78,10 @@ public:
         released_ = true;
     }
 
+    void acquire() {
+        acquired_ = true;
+    }
+
     [[nodiscard]] std::size_t size() const noexcept {
         return records_.size();
     }
@@ -86,11 +90,19 @@ public:
         return records_;
     }
 
+    [[nodiscard]] bool is_released() const noexcept {
+        return released_;
+    }
+
+    [[nodiscard]] bool is_acquired() const noexcept {
+        return acquired_;
+    }
 private:
     std::shared_ptr<meta::record_meta> meta_{};
     records_type records_{};
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};
+    bool acquired_{false};
 };
 
 using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;

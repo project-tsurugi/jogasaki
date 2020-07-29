@@ -43,10 +43,18 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         default:
             takatori::util::fail();
     }
-    auto task_contexts = std::make_shared<impl::task_context_pool>();
-    for (std::size_t i=0; i < step_->partitions(); ++i) {
-        task_contexts->push(create_task_context(i, proc->operators().io_map()));
-        tasks_.emplace_back(std::make_unique<task>(context_, step_, task_contexts, proc));
+    // create process executor
+    auto& factory = step_->executor_factory() ? *step_->executor_factory() : impl::default_process_executor_factory();
+
+    std::vector<std::shared_ptr<abstract::task_context>> contexts{};
+    auto partitions = step_->partitions();
+    contexts.reserve(partitions);
+    for (std::size_t i=0; i < partitions; ++i) {
+        contexts.emplace_back(create_task_context(i, proc->operators().io_map()));
+    }
+    auto exec = factory(proc, contexts);
+    for (std::size_t i=0; i < partitions; ++i) {
+        tasks_.emplace_back(std::make_unique<task>(context_, step_, exec, proc));
     }
     return tasks_;
 }

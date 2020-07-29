@@ -38,42 +38,96 @@ using namespace testing;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class process_executor_test : public test_root {};
-
-using kind = meta::field_type_kind;
-
-TEST_F(process_executor_test, basic) {
+class process_executor_test : public test_root {
+public:
     using record_type = mock::record_reader::record_type;
-    std::vector<record_type> records{
+    void SetUp() override {
+        reader_ = std::make_shared<mock::record_reader>(records_);
+        reader_container r{reader_.get()};
+        auto meta = unwrap_record_reader(reader_.get())->meta();
+        downstream_writer_ = std::make_shared<mock::record_writer>();
+        external_writer_ = std::make_shared<mock::record_writer>();
+        contexts_.emplace_back(std::make_shared<mock::task_context>(
+            std::vector<reader_container>{r},
+            std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
+            std::vector<std::shared_ptr<executor::record_writer>>{external_writer_},
+            std::shared_ptr<abstract::scan_info>{}
+        ));
+    }
+    std::vector<record_type> records_{
         record_type{1, 1.0},
         record_type{2, 2.0},
         record_type{3, 3.0},
     };
+    std::shared_ptr<mock::record_reader> reader_{};
+    std::vector<std::shared_ptr<abstract::task_context>> contexts_{};
+    std::shared_ptr<mock::record_writer> downstream_writer_{};
+    std::shared_ptr<mock::record_writer> external_writer_{};
+    std::shared_ptr<mock::processor> proc_ = std::make_shared<mock::processor>();
+};
+
+using kind = meta::field_type_kind;
+
+TEST_F(process_executor_test, basic) {
+    process_executor exec{proc_, contexts_};
+    exec.run();
+    auto writer = unwrap_record_writer(downstream_writer_.get());
+    auto ewriter = unwrap_record_writer(external_writer_.get());
+    EXPECT_EQ(4, reader_->num_calls_next_record());
+    EXPECT_EQ(3, writer->size());
+    EXPECT_EQ(3, ewriter->size());
+    EXPECT_TRUE(reader_->is_released());
+    EXPECT_TRUE(writer->is_released());
+    EXPECT_TRUE(ewriter->is_released());
+}
+
+TEST_F(process_executor_test, default_factory) {
+    abstract::process_executor_factory f = impl::default_process_executor_factory();
+    auto executor = f(proc_, contexts_);
+    executor->run();
+    auto writer = unwrap_record_writer(downstream_writer_.get());
+    auto ewriter = unwrap_record_writer(external_writer_.get());
+    EXPECT_EQ(4, reader_->num_calls_next_record());
+    EXPECT_EQ(3, writer->size());
+    EXPECT_EQ(3, ewriter->size());
+    EXPECT_TRUE(reader_->is_released());
+    EXPECT_TRUE(writer->is_released());
+    EXPECT_TRUE(ewriter->is_released());
+}
+
+TEST_F(process_executor_test, custom_factory) {
+    // custom factory discarding passed contexts and use customized one
+    std::vector<record_type> records{
+        record_type{1, 1.0},
+    };
     auto reader = std::make_shared<mock::record_reader>(records);
     reader_container r{reader.get()};
-    auto meta = unwrap_record_reader(reader.get())->meta();
-    auto downstream_writer = std::make_shared<mock::record_writer>();
-    auto external_writer = std::make_shared<mock::record_writer>();
-    auto context = std::make_shared<mock::task_context>(
+    std::vector<std::shared_ptr<abstract::task_context>> custom_contexts{};
+    custom_contexts.emplace_back(std::make_shared<mock::task_context>(
         std::vector<reader_container>{r},
-        std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer},
-        std::vector<std::shared_ptr<executor::record_writer>>{external_writer},
+        std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
+        std::vector<std::shared_ptr<executor::record_writer>>{external_writer_},
         std::shared_ptr<abstract::scan_info>{}
-    );
-    auto proc = std::make_shared<mock::processor>();
-    auto contexts = std::make_shared<impl::task_context_pool>();
-    contexts->push(context);
-    process_executor exec{proc, contexts};
-    exec.run();
+    ));
+    abstract::process_executor_factory f = [&](
+        std::shared_ptr<abstract::processor> processor,
+        std::vector<std::shared_ptr<abstract::task_context>> contexts
+    ) {
+        return std::make_shared<process_executor>(std::move(processor), std::move(custom_contexts));
+    };
 
-    auto written = unwrap_record_writer(downstream_writer.get())->size();
-    auto written2 = unwrap_record_writer(external_writer.get())->size();
-    EXPECT_EQ(3, written);
-    EXPECT_EQ(3, written2);
-
-//    EXPECT_TRUE(reader->released_);
-//    EXPECT_TRUE(downstream_writer->released_);
-//    EXPECT_TRUE(external_writer->released_);
+    auto executor = f(proc_, contexts_);
+    executor->run();
+    auto writer = unwrap_record_writer(downstream_writer_.get());
+    auto ewriter = unwrap_record_writer(external_writer_.get());
+    EXPECT_EQ(0, reader_->num_calls_next_record());
+    EXPECT_EQ(2, reader->num_calls_next_record());
+    EXPECT_EQ(1, writer->size());
+    EXPECT_EQ(1, ewriter->size());
+    EXPECT_FALSE(reader_->is_released()); // not used
+    EXPECT_TRUE(reader->is_released());
+    EXPECT_TRUE(writer->is_released());
+    EXPECT_TRUE(ewriter->is_released());
 }
 
 }

@@ -69,6 +69,7 @@ public:
             }
             ++it_;
         }
+        ++num_calls_next_record_;
         return it_ != records_.end();
     }
 
@@ -90,6 +91,10 @@ public:
         released_ = true;
     }
 
+    void acquire() {
+        acquired_ = true;
+    }
+
     std::shared_ptr<meta::record_meta> const& meta() {
         static record_type rec{};
         if (meta_) {
@@ -98,6 +103,17 @@ public:
         return rec.record_meta();
     }
 
+    [[nodiscard]] bool is_released() const noexcept {
+        return released_;
+    }
+
+    [[nodiscard]] bool is_acquired() const noexcept {
+        return acquired_;
+    }
+
+    [[nodiscard]] std::size_t num_calls_next_record() const noexcept {
+        return num_calls_next_record_;
+    }
 private:
     records_type records_{};
     std::shared_ptr<meta::record_meta> meta_{};
@@ -105,6 +121,8 @@ private:
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool initialized_{false};
     bool released_{false};
+    bool acquired_{false};
+    std::size_t num_calls_next_record_{};
     typename records_type::iterator it_{};
 };
 

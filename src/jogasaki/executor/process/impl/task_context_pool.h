@@ -24,8 +24,7 @@ namespace jogasaki::executor::process::impl {
 
 /**
  * @brief task context pool
- * @details a context pool represents tasks that are possibly run by a processor.
- * This object is thread-safe, so can be used from process::task instances running on different threads.
+ * @details a thread-safe task context container
  */
 class task_context_pool {
 public:
@@ -34,10 +33,20 @@ public:
      */
     task_context_pool() = default;
 
-    void push(std::shared_ptr<abstract::task_context>&& context) {
+    /**
+     * @brief add new task context
+     * @details this function can be called from multiple threads
+     * @param context the context to add
+     */
+    void push(std::shared_ptr<abstract::task_context> context) {
         contexts_.emplace(std::move(context));
     }
 
+    /**
+     * @brief fetch the task context on top
+     * @details this function can be called from multiple threads
+     * @return the fetched context
+     */
     std::shared_ptr<abstract::task_context> pop() {
         std::shared_ptr<abstract::task_context> context{};
         contexts_.pop(context);

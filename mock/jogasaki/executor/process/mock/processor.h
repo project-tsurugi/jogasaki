@@ -41,6 +41,9 @@ public:
             w->write(rec);
             e->write(rec);
         }
+        w->release();
+        e->release();
+        r->release();
         ctx->release_work();
         return status::completed;
     }

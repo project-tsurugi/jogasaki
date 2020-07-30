@@ -22,6 +22,8 @@ public:
     std::size_t records_per_partition_ = 1000;
 
     std::size_t partitions_ = 10;
+
+    std::size_t write_buffer_size_ = 10000;
 };
 
 }

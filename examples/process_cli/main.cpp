@@ -64,6 +64,7 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
+DEFINE_int32(write_buffer_size, 10000, "Number of records in writer buffer");  //NOLINT
 
 namespace jogasaki::process_cli {
 
@@ -111,8 +112,6 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 
 static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
-
-    (void)param;
 
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
@@ -258,12 +257,6 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-//    executor::process::mock::task_context task_ctx{
-//        {reader_container{reader.get()}},
-//        {writer},
-//        {},
-//        {},
-//    };
 
     auto& process = g.emplace<process::step>(p_info);
     jf0 >> process >> jf1;
@@ -274,6 +267,7 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     auto partitions = param.partitions_;
     auto records_per_partition = param.records_per_partition_;
+    auto write_buffer_size = param.write_buffer_size_;
     std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
     std::vector<std::shared_ptr<writer_type>> writers{};
     std::vector<std::shared_ptr<reader_type>> readers{};
@@ -288,7 +282,7 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(records));
         reader->repeats(records_per_partition / 5);
         reader_container r{reader.get()};
-        auto& writer = writers.emplace_back(std::make_shared<writer_type>());
+        auto& writer = writers.emplace_back(std::make_shared<writer_type>(write_buffer_size));
         auto ctx =
             std::make_shared<process::mock::task_context>(
                 std::vector<reader_container>{r},
@@ -342,6 +336,7 @@ extern "C" int main(int argc, char* argv[]) {
 
     s.partitions_ = FLAGS_partitions;
     s.records_per_partition_ = FLAGS_records_per_partition;
+    s.write_buffer_size_ = FLAGS_write_buffer_size;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

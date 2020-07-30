@@ -34,6 +34,8 @@ public:
     using record_type = Record;
     using records_type = std::vector<record_type>;
 
+    static constexpr std::size_t npos = static_cast<std::size_t>(-1);
+
     /**
      * @brief create default instance - written records are stored internally as they are.
      */
@@ -47,6 +49,14 @@ public:
     explicit basic_record_writer(std::shared_ptr<meta::record_meta> meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
         meta_(std::move(meta)),
         map_(std::move(map))
+    {
+        assert(map.empty() || map.size() == meta->field_count());
+    }
+
+    explicit basic_record_writer(std::size_t capacity, std::shared_ptr<meta::record_meta> meta ={}, std::unordered_map<std::size_t, std::size_t> map = {}) :
+        meta_(std::move(meta)),
+        map_(std::move(map)),
+        capacity_(capacity)
     {
         assert(map.empty() || map.size() == meta->field_count());
     }
@@ -66,7 +76,12 @@ public:
         } else {
             r = record_type{rec};
         }
-        records_.emplace_back(r);
+        if (capacity_ == npos || records_.size() < capacity_) {
+            records_.emplace_back(r);
+        } else {
+            records_[pos_ % capacity_] = r;
+            ++pos_;
+        }
         return false;
     }
 
@@ -103,6 +118,8 @@ private:
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};
     bool acquired_{false};
+    std::size_t capacity_{npos};
+    std::size_t pos_{};
 };
 
 using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;

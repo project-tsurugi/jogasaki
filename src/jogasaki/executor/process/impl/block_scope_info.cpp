@@ -50,7 +50,7 @@ std::shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexcep
 }
 
 std::pair<scopes_info, scope_indices>
-create_scopes_info(takatori::graph::graph<takatori::relation::expression> &relations, const yugawara::compiled_info &info) {
+create_scopes_info(relation::graph_type &relations, const yugawara::compiled_info &info) {
     // analyze variables liveness
     // for each basic block, define a block_scope region with
     // result fields + defined fields (except killed in the same basic block)

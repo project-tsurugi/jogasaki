@@ -30,7 +30,7 @@ abstract::status processor::run(abstract::task_context *context) {
         work->scopes().emplace_back(block_info);
     }
     ops::operator_executor visitor{
-        const_cast<graph::graph<relation::expression>&>(info_->relations()),
+        const_cast<relation::graph_type&>(info_->relations()),
         info_->compiled_info(),
         &operators_,
         context

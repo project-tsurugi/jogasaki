@@ -87,7 +87,7 @@ namespace tinfo = ::shakujo::common::core::type;
 using take = relation::step::take_flat;
 using buffer = relation::buffer;
 
-using rgraph = ::takatori::graph::graph<relation::expression>;
+using rgraph = ::takatori::relation::graph_type;
 
 class operators_builder_test : public test_root {
 public:

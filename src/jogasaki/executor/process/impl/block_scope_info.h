@@ -21,9 +21,12 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>
+#include <takatori/relation/graph.h>
 #include "variable_value_map.h"
 
 namespace jogasaki::executor::process::impl {
+
+namespace relation = takatori::relation;
 
 /**
  * @brief information on block scoped variables
@@ -54,7 +57,7 @@ using scope_indices = std::unordered_map<takatori::relation::expression const*, 
  * @brief create block related information about the operators in a process
  */
 [[nodiscard]] std::pair<scopes_info, scope_indices> create_scopes_info(
-    takatori::graph::graph<takatori::relation::expression>& relations,
+    relation::graph_type& relations,
     yugawara::compiled_info const& info);
 
 }

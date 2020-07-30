@@ -34,7 +34,7 @@ using takatori::util::fail;
 using takatori::relation::step::dispatch;
 
 operator_executor::operator_executor(
-    graph::graph<relation::expression>& relations,
+    relation::graph_type& relations,
     compiled_info const& compiled_info,
     operator_container* operators,
     abstract::task_context *context

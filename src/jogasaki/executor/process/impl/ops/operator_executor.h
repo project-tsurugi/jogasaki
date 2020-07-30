@@ -51,7 +51,7 @@ public:
     operator_executor& operator=(operator_executor&& other) noexcept = delete;
 
     operator_executor(
-        graph::graph<relation::expression>& relations,
+        relation::graph_type& relations,
         compiled_info const& compiled_info,
         operator_container* operators,
         abstract::task_context *context
@@ -105,7 +105,7 @@ public:
     void operator()();
 
 private:
-    graph::graph<relation::expression>* relations_{};
+    relation::graph_type* relations_{};
     compiled_info const* compiled_info_{};
     operator_container* operators_{};
     abstract::task_context *context_{};

@@ -37,7 +37,7 @@ public:
     processor_info() = default;
 
     processor_info(
-        graph::graph<relation::expression>& relations,
+        relation::graph_type& relations,
         yugawara::compiled_info const& info
     ) :
         relations_(std::addressof(relations)),
@@ -48,7 +48,7 @@ public:
         scope_indices_ = std::move(p.second);
     }
 
-    [[nodiscard]] graph::graph<relation::expression>& relations() const noexcept {
+    [[nodiscard]] relation::graph_type& relations() const noexcept {
         return *relations_;
     }
 
@@ -64,7 +64,7 @@ public:
         return scope_indices_;
     }
 private:
-    graph::graph<relation::expression>* relations_{};
+    relation::graph_type* relations_{};
     yugawara::compiled_info const* info_{};
     impl::scopes_info scopes_info_{};
     impl::scope_indices scope_indices_{};

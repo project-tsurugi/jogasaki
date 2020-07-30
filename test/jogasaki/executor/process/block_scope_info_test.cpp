@@ -90,7 +90,7 @@ using take = relation::step::take_flat;
 using offer = relation::step::offer;
 using buffer = relation::buffer;
 
-using rgraph = ::takatori::graph::graph<relation::expression>;
+using rgraph = ::takatori::relation::graph_type;
 
 class block_scope_info_test : public test_root {
 public:

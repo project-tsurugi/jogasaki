@@ -73,6 +73,8 @@ using code = shakujo_translator_code;
 using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
+namespace relation = takatori::relation;
+
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
@@ -135,7 +137,7 @@ bool create_step_graph(std::string_view sql, compiler_context& ctx) {
 
 executor::process::step create(takatori::plan::process const& process, compiler_context& ctx) {
     auto info = std::make_shared<executor::process::processor_info>(
-        const_cast<takatori::graph::graph<takatori::relation::expression>&>(process.operators()), ctx.compiled_info());
+        const_cast<relation::graph_type&>(process.operators()), ctx.compiled_info());
     return executor::process::step(std::move(info));
 }
 

@@ -22,10 +22,6 @@
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/meta/variable_order.h>
 
-namespace jogasaki::executor::process {
-class step;
-}
-
 namespace jogasaki::executor::exchange::shuffle {
 
 /**
@@ -40,7 +36,7 @@ public:
     step(
         std::shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
-    ) : exchange::step(std::move(input_meta), column_order)
+    ) : exchange::step(std::move(input_meta), std::move(column_order))
     {}
 
     [[nodiscard]] virtual meta::variable_order const& output_order() const noexcept = 0;

@@ -138,12 +138,12 @@ std::ostream& step::write_to(std::ostream& out) const {
 
 step& operator<<(step& downstream, step& upstream) {
     upstream.connect_to(downstream);
-    return downstream;
+    return upstream;
 }
 
 step& operator>>(step& upstream, step& downstream) {
     upstream.connect_to(downstream);
-    return upstream;
+    return downstream;
 }
 
 }

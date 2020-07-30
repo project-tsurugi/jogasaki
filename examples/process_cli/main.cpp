@@ -273,6 +273,7 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     using writer_type = process::mock::basic_record_writer<test_record>;
 
     auto partitions = param.partitions_;
+    auto records_per_partition = param.records_per_partition_;
     std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
     std::vector<std::shared_ptr<writer_type>> writers{};
     std::vector<std::shared_ptr<reader_type>> readers{};
@@ -281,8 +282,11 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
             test_record{1.0, 10, 100},
             test_record{2.0, 20, 200},
             test_record{3.0, 30, 300},
+            test_record{4.0, 40, 400},
+            test_record{5.0, 50, 500},
         };
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(records));
+        reader->repeats(records_per_partition / 5);
         reader_container r{reader.get()};
         auto& writer = writers.emplace_back(std::make_shared<writer_type>());
         auto ctx =

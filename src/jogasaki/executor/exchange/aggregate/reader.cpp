@@ -65,7 +65,7 @@ bool reader::next_group() {
         if (iterated_table_ == tables_.end()) {
             return false;
         }
-        iterated_table_->next(); // must be successful
+        (void)iterated_table_->next(); // must be successful
     }
     auto key = iterated_table_->key();
     auto value = iterated_table_->value();

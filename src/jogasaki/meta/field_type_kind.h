@@ -53,7 +53,7 @@ enum class field_type_kind : std::size_t {
  * @param value the target value
  * @return the corresponded string representation
  */
-constexpr inline std::string_view to_string_view(field_type_kind value) noexcept {
+[[nodiscard]] constexpr inline std::string_view to_string_view(field_type_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = field_type_kind;
     switch (value) {

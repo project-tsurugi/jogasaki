@@ -61,7 +61,7 @@ flow::flow(
 
     // For testing purpose, setup sinks/sources automatically even if there is no input.
     if (owner_->input_ports().empty()) {
-        setup_partitions(default_partitions);
+        (void)setup_partitions(default_partitions);
     }
 }
 

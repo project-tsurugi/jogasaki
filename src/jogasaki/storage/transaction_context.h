@@ -44,17 +44,17 @@ public:
     transaction_context(transaction_context&& other) noexcept = default;
     transaction_context& operator=(transaction_context&& other) noexcept = default;
 
-    bool commit();
+    [[nodiscard]] bool commit();
 
-    bool abort();
+    [[nodiscard]] bool abort();
 
     [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept;
 
-    sharksfin::TransactionHandle handle() noexcept;
+    [[nodiscard]] sharksfin::TransactionHandle handle() noexcept;
 
     void open_scan();
 
-    bool next_scan();
+    [[nodiscard]] bool next_scan();
 
     void close_scan();
 private:

@@ -35,7 +35,7 @@ public:
         std::shared_ptr<abstract::processor> processor
     );
 
-    model::task_result operator()() override;
+    [[nodiscard]] model::task_result operator()() override;
 
 private:
     std::shared_ptr<abstract::process_executor> executor_{};

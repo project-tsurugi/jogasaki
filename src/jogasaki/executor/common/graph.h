@@ -38,7 +38,7 @@ public:
         return takatori::util::sequence_view(steps_);
     }
 
-    takatori::util::optional_ptr<model::step> find_step(model::step::identity_type id) noexcept override {
+    [[nodiscard]] takatori::util::optional_ptr<model::step> find_step(model::step::identity_type id) noexcept override {
         if (id < steps_.size()) {
             return takatori::util::optional_ptr<model::step>(steps_[id].get());
         }
@@ -84,7 +84,7 @@ public:
         return steps_.size();
     }
 
-    static std::shared_ptr<graph> const& undefined() {
+    [[nodiscard]] static std::shared_ptr<graph> const& undefined() {
         static std::shared_ptr<graph> undefined = std::make_shared<graph>();
         return undefined;
     }

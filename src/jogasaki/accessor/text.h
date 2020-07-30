@@ -61,7 +61,7 @@ public:
     /**
      * @brief implicit conversion to string_view
      */
-    explicit operator std::string_view() const noexcept;
+    [[nodiscard]] explicit operator std::string_view() const noexcept;
 
     /**
      * @brief return whether the instance is in short format

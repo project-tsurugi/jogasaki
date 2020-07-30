@@ -66,7 +66,7 @@ public:
      * If this context is for the task processing sub input, the parameter is ignored since only one reader/input exists.
      * @return reader corresponding to the given index
      */
-    virtual reader_container reader(reader_index idx) = 0;
+    [[nodiscard]] virtual reader_container reader(reader_index idx) = 0;
 
     /**
      * @brief accessor to main output writers
@@ -77,7 +77,7 @@ public:
      * @return writer corresponding to the given index
      * @attention for the task processing sub input, this
      */
-    virtual record_writer* downstream_writer(writer_index idx) = 0;
+    [[nodiscard]] virtual record_writer* downstream_writer(writer_index idx) = 0;
 
     /**
      * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
@@ -88,7 +88,7 @@ public:
      * (the knowledge on the index of external output is shared with processor impl.)
      * @return external writer corresponding to the given index
      */
-    virtual record_writer* external_writer(writer_index idx) = 0;
+    [[nodiscard]] virtual record_writer* external_writer(writer_index idx) = 0;
 
     /**
      * @brief accessor to scan information that defines scan specification for the task
@@ -96,7 +96,7 @@ public:
      * The details of scan_info is transparent to processor context.
      * @return scan info
      */
-    virtual class scan_info const* scan_info() = 0;
+    [[nodiscard]] virtual class scan_info const* scan_info() = 0;
 
     /**
      * @brief setter of work context
@@ -114,7 +114,7 @@ public:
      * @brief detach and return the work_context held by this instance
      * @details callers can use this to finalize the work context when it finishes using the context (i.e. the end of assigned work for the task)
      */
-    std::unique_ptr<class work_context> release_work();
+    [[nodiscard]] std::unique_ptr<class work_context> release_work();
 
 private:
     std::unique_ptr<class work_context> work_context_{};

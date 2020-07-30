@@ -30,7 +30,7 @@ public:
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
 
-    virtual record_writer& acquire_writer() = 0;
+    [[nodiscard]] virtual record_writer& acquire_writer() = 0;
 };
 
 }

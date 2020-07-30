@@ -59,12 +59,12 @@ public:
     /**
      * @brief retrieve the time when first comes at the point of code
      */
-    Clock::time_point view_first(point_in_code loc);
+    [[nodiscard]] Clock::time_point view_first(point_in_code loc);
 
     /**
      * @brief retrieve the time when last leaves the point of code
      */
-    Clock::time_point view_last(point_in_code loc);
+    [[nodiscard]] Clock::time_point view_last(point_in_code loc);
 
     /**
      * @brief calculate duration between two time point
@@ -74,11 +74,11 @@ public:
      * if true, interval begins when last thread comes and ends when first leaves
      * @return duration
      */
-    std::size_t duration(point_in_code begin, point_in_code end, bool complementary = false);
+    [[nodiscard]] std::size_t duration(point_in_code begin, point_in_code end, bool complementary = false);
 
-    std::size_t average_duration(point_in_code begin, point_in_code end);
+    [[nodiscard]] std::size_t average_duration(point_in_code begin, point_in_code end);
 
-    std::unique_ptr<std::vector<std::size_t>> durations(point_in_code begin, point_in_code end);
+    [[nodiscard]] std::unique_ptr<std::vector<std::size_t>> durations(point_in_code begin, point_in_code end);
 
 private:
     std::chrono::time_point<Clock> begin_{};

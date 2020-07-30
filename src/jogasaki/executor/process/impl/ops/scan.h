@@ -84,8 +84,8 @@ public:
 
     void close(scan_context& ctx) {
         ctx.tx_->close_scan();
-        ctx.tx_->commit();
-        ctx.storage_->close();
+        (void)ctx.tx_->commit(); //FIXME
+        (void)ctx.storage_->close(); //FIXME
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {

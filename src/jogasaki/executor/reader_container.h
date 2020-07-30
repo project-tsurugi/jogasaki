@@ -42,7 +42,7 @@ enum class reader_kind {
  * @param value the target value
  * @return the corresponded string representation
  */
-constexpr inline std::string_view to_string_view(reader_kind value) noexcept {
+[[nodiscard]] constexpr inline std::string_view to_string_view(reader_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = reader_kind;
     switch (value) {
@@ -120,7 +120,7 @@ public:
      * @return pointer to the reader held by this object
      */
     template<class T>
-    T* reader() {
+    [[nodiscard]] T* reader() {
         return std::get<T*>(reader_);
     }
 
@@ -128,7 +128,7 @@ public:
      * @brief getter of the validity
      * @return whether the container holds any reader or not
      */
-    explicit operator bool() const noexcept {
+    [[nodiscard]] explicit operator bool() const noexcept {
         switch(reader_.index()) {
             case index_of<std::monostate>:
                 return false;

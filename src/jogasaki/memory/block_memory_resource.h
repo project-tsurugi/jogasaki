@@ -96,7 +96,7 @@ protected:
      * @return pointer to the allocated buffer
      * @throws std::bad_alloc if allocation was failed
      */
-    void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+    [[nodiscard]] void* do_allocate(std::size_t bytes, std::size_t alignment) override {
         if (alignment > block_size / 2) {
             throw std::bad_alloc();
         }
@@ -210,7 +210,7 @@ private:
             }
             return last - next;
         }
-        void* try_acquire(std::size_t bytes, std::size_t alignment) noexcept {
+        [[nodiscard]] void* try_acquire(std::size_t bytes, std::size_t alignment) noexcept {
             // the next available block
             auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
             auto ua_next = head + acquired_ * block_size;

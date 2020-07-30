@@ -38,11 +38,11 @@ public:
         aggregator_type const& aggregator
         );
 
-    bool next_group() override;
+    [[nodiscard]] bool next_group() override;
 
     [[nodiscard]] accessor::record_ref get_group() const override;
 
-    bool next_member() override;
+    [[nodiscard]] bool next_member() override;
 
     [[nodiscard]] accessor::record_ref get_member() const override;
 

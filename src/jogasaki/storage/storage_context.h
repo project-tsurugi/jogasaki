@@ -45,17 +45,17 @@ public:
     /**
      * @brief create default context object
      */
-    bool open(std::map<std::string, std::string> const& options = {});
+    [[nodiscard]] bool open(std::map<std::string, std::string> const& options = {});
 
-    bool close();
+    [[nodiscard]] bool close();
 
     [[nodiscard]] sharksfin::DatabaseHandle handle() const noexcept;
 
-    std::shared_ptr<transaction_context> const& create_transaction();
+    [[nodiscard]] std::shared_ptr<transaction_context> const& create_transaction();
 
     static constexpr std::string_view default_storage_name = "T0";
 
-    sharksfin::StorageHandle default_storage() {
+    [[nodiscard]] sharksfin::StorageHandle default_storage() {
         if (auto res = sharksfin::storage_get(db_, default_storage_name, &storage_); res == sharksfin::StatusCode::NOT_FOUND) {
             sharksfin::storage_create(db_, default_storage_name, &storage_);
         }

@@ -37,7 +37,7 @@ public:
         events_->push(e);
     }
 
-    bool pop(element_type& e) {
+    [[nodiscard]] bool pop(element_type& e) {
         return events_->try_pop(e);
     }
 

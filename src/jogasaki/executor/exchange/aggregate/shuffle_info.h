@@ -113,7 +113,7 @@ private:
     std::shared_ptr<meta::group_meta> group_{};
     std::shared_ptr<aggregator_type> aggregator_{};
 
-    std::shared_ptr<meta::record_meta> create_meta(std::vector<std::size_t> const& indices) {
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(std::vector<std::size_t> const& indices) {
         auto num = indices.size();
         meta::record_meta::value_entity_type fields{};
         meta::record_meta::nullability_entity_type  nullables(num);
@@ -142,11 +142,11 @@ private:
 
     }
 
-    std::shared_ptr<meta::record_meta> create_key_meta() {
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta() {
         return create_meta(key_indices_);
     }
 
-    std::shared_ptr<meta::record_meta> create_value_meta() {
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta() {
         std::size_t num = record_->field_count() - key_indices_.size();
         std::set<std::size_t> indices{key_indices_.begin(), key_indices_.end()};
         std::vector<field_index_type> vec{};

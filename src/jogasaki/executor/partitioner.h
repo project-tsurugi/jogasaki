@@ -46,7 +46,7 @@ public:
      * @param key the record to be evaluated
      * @return the target partition number
      */
-    std::size_t operator()(accessor::record_ref key) const noexcept {
+    [[nodiscard]] std::size_t operator()(accessor::record_ref key) const noexcept {
         static const std::size_t p = 18446744073709551557ULL; // arbitrary prime in int64_t
         std::size_t h = 0;
         for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {

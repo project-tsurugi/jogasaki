@@ -45,7 +45,7 @@ public:
      * - most recent next_record() returned true
      * @warning the function behavior is undefined when pre-condition stated above is not met
      */
-    virtual bool next_record() = 0;
+    [[nodiscard]] virtual bool next_record() = 0;
 
     //FIXME: add get_status() to get error status if needed
 

@@ -42,11 +42,11 @@ public:
             request_context* context
             );
 
-    record_writer& acquire_writer() override;
+    [[nodiscard]] record_writer& acquire_writer() override;
 
     void release_writer(record_writer& writer);
 
-    std::vector<std::unique_ptr<input_partition>>& input_partitions();
+    [[nodiscard]] std::vector<std::unique_ptr<input_partition>>& input_partitions();
 
     [[nodiscard]] request_context* context() const noexcept;
 private:

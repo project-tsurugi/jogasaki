@@ -57,7 +57,7 @@ public:
             record_size_(info_->record_meta()->record_size()),
             key_comparator_(info_->key_meta().get()) {}
 
-    bool operator()(iterator_pair const& x, iterator_pair const& y) {
+    [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y) {
         auto& it_x = x.first;
         auto& it_y = y.first;
         auto key_x = info_->extract_key(accessor::record_ref(*it_x, record_size_));
@@ -88,11 +88,11 @@ public:
 
     priority_queue_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
 
-    bool next_group() override;
+    [[nodiscard]] bool next_group() override;
 
     [[nodiscard]] accessor::record_ref get_group() const override;
 
-    bool next_member() override;
+    [[nodiscard]] bool next_member() override;
 
     [[nodiscard]] accessor::record_ref get_member() const override;
 

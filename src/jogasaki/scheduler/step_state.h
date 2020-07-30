@@ -33,7 +33,7 @@ enum class step_state_kind : std::int32_t {
     deactivated,
 };
 
-inline constexpr std::string_view to_string_view(step_state_kind value) noexcept {
+[[nodiscard]] inline constexpr std::string_view to_string_view(step_state_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = step_state_kind;
     switch (value) {
@@ -56,7 +56,7 @@ enum class task_state_kind : std::int32_t {
     completed,
 };
 
-inline constexpr std::string_view to_string_view(task_state_kind value) noexcept {
+[[nodiscard]] inline constexpr std::string_view to_string_view(task_state_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = task_state_kind;
     switch (value) {

@@ -46,7 +46,7 @@ enum class event_kind {
     completion_instructed,
 };
 
-inline constexpr std::string_view to_string_view(event_kind value) noexcept {
+[[nodiscard]] inline constexpr std::string_view to_string_view(event_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = event_kind;
     switch (value) {
@@ -92,23 +92,23 @@ public:
     event(event_enum_tag_t<event_kind::task_completed>, identity_type step, model::task::identity_type task) : kind_(event_kind::task_completed), target_(step), task_(task) {}
     event(event_enum_tag_t<event_kind::providing>, identity_type step, port_kind pkind, port_index_type pindex) : kind_(event_kind::providing), target_(step), source_port_kind_(pkind), source_port_index_(pindex){}
 
-    event_kind kind() {
+    [[nodiscard]] event_kind kind() {
         return kind_;
     }
 
-    identity_type target() {
+    [[nodiscard]] identity_type target() {
         return target_;
     }
 
-    model::task::identity_type task() {
+    [[nodiscard]] model::task::identity_type task() {
         return task_;
     }
 
-    port_kind source_port_kind() {
+    [[nodiscard]] port_kind source_port_kind() {
         return source_port_kind_;
     }
 
-    port_index_type source_port_index() {
+    [[nodiscard]] port_index_type source_port_index() {
         return source_port_index_;
     }
 

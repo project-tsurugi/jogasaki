@@ -27,7 +27,7 @@ public:
         return false;
     }
 
-    bool next_record() override {
+    [[nodiscard]] bool next_record() override {
         return false;
     }
 

@@ -91,7 +91,7 @@ public:
     void operator()(relation::scan const& node) {
         auto stg = std::make_shared<storage::storage_context>();
         std::map<std::string, std::string> options{};
-        stg->open(options);
+        (void)stg->open(options); //FIXME
         std::shared_ptr<abstract::scan_info> scan_info;
         std::shared_ptr<meta::record_meta> meta;
         auto block_index = info_->scope_indices().at(&node);

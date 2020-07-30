@@ -47,7 +47,7 @@ public:
      * @return positive if a > b
      * @return zero if a is equivalent to b
      */
-    int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept {
+    [[nodiscard]] int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept {
         for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
             auto res = compare_field(a, b, i);
             if (res != 0) {

@@ -28,7 +28,7 @@ public:
 
     step(number_of_ports inputs, number_of_ports outputs) : common::step(inputs, outputs, 0) {}
 
-    explicit step(
+    step(
         std::shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
     ) :

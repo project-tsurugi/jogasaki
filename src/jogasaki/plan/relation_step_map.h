@@ -44,7 +44,7 @@ public:
         map_(std::move(map))
     {}
 
-    step* const& at(relation const& rel) const {
+    [[nodiscard]] step* const& at(relation const& rel) const {
         return map_.at(rel);
     }
 

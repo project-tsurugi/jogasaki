@@ -117,7 +117,7 @@ public:
      * @return field type
      * @warning if index is not in valid range, the behavior is undefined
      */
-    field_type const& operator[](field_index_type index) const noexcept;
+    [[nodiscard]] field_type const& operator[](field_index_type index) const noexcept;
 
     /**
      * @brief getter for field type - same as operator[] but friendly style for pointers

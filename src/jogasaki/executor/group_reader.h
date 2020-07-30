@@ -37,7 +37,7 @@ public:
      * - most recent next_group() returned true, then next_member() has been called at least once, and most recent call returned false
      * @warning the function behavior is undefined when pre-condition stated above is not met
      */
-    virtual bool next_group() = 0;
+    [[nodiscard]] virtual bool next_group() = 0;
 
     //FIXME: add get_status() if needed
 
@@ -61,7 +61,7 @@ public:
      * - if next_member() has been called after most recent next_group(), the return value was true
      * @warning the function behavior is undefined when pre-condition stated above is not met
      */
-    virtual bool next_member() = 0;
+    [[nodiscard]] virtual bool next_member() = 0;
 
     /**
      * @brief get the value corresponding to the current member

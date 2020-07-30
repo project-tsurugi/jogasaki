@@ -37,7 +37,7 @@ public:
             );
     void receive(std::unique_ptr<input_partition> in);
 
-    reader_container acquire_reader() override;
+    [[nodiscard]] reader_container acquire_reader() override;
 
 private:
     std::vector<std::unique_ptr<group_reader>> readers_;

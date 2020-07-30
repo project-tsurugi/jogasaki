@@ -63,17 +63,17 @@ public:
 
     void deactivate() override;
     void notify_prepared() override;
-    bool has_subinput() override;
+    [[nodiscard]] bool has_subinput() override;
 
-    port_index sub_input_port_index(step const* source);
+    [[nodiscard]] port_index sub_input_port_index(step const* source);
 
     void connect_to(step& downstream, port_index src = npos, port_index target = npos);
 
     void connect_to_sub(step& downstream, port_index src = npos, port_index target = npos);
 
-    sequence_view<std::shared_ptr<model::task>> create_tasks() override;
+    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index subinput) override;
+    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_pretask(port_index subinput) override;
 
     [[nodiscard]] flow& data_flow_object() const noexcept;
 

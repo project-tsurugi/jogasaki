@@ -55,7 +55,7 @@ TEST_F(storage_context_test, transaction) {
     auto tx = stg.create_transaction();
     ASSERT_TRUE(tx->control_handle());
     ASSERT_TRUE(tx->handle());
-    tx->abort();
+    ASSERT_TRUE(tx->abort());
 
     ASSERT_TRUE(stg.close());
 }

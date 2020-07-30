@@ -50,7 +50,7 @@ public:
      * @brief find the step for the given identity in this graph
      * @return step if found
      */
-    virtual optional_ptr<step> find_step(step::identity_type id) = 0;
+    [[nodiscard]] virtual optional_ptr<step> find_step(step::identity_type id) = 0;
 
     /**
      * @brief creates a new instance.

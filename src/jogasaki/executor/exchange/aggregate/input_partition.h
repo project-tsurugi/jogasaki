@@ -161,7 +161,7 @@ public:
          * @brief proceed the internal iterator
          * @return whether the value on the forwarded iterator is available or not
          */
-        bool next() noexcept {
+        [[nodiscard]] bool next() noexcept {
             if (it_ == table_->end()) {
                 reset();
             } else {
@@ -200,7 +200,7 @@ public:
          * @return end() when not found
          * @note this doesn't change the state of internal iterator. No const is specified as hopscotch doesn't either.
          */
-        iterator find(accessor::record_ref key) {
+        [[nodiscard]] iterator find(accessor::record_ref key) {
             return table_->find(key.data());
         }
 
@@ -212,7 +212,7 @@ public:
          * @return end() when not found
          * @note this doesn't change the state of internal iterator. No const is specified as hopscotch doesn't either.
          */
-        iterator find(accessor::record_ref key, std::size_t precalculated_hash) {
+        [[nodiscard]] iterator find(accessor::record_ref key, std::size_t precalculated_hash) {
             return table_->find(key.data(), precalculated_hash);
         }
 

@@ -19,7 +19,7 @@
 
 namespace jogasaki::global {
 
-inline memory::page_pool& page_pool() {
+[[nodiscard]] inline memory::page_pool& page_pool() {
     static memory::page_pool pool{};
     return pool;
 }

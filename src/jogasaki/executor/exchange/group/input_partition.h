@@ -102,14 +102,14 @@ public:
     /**
      * @brief beginning iterator for pointer tables
      */
-    iterator begin() {
+    [[nodiscard]] iterator begin() {
         return pointer_tables_.begin();
     }
 
     /**
      * @brief ending iterator for pointer tables
      */
-    iterator end() {
+    [[nodiscard]] iterator end() {
         return pointer_tables_.end();
     }
 

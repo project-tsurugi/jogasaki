@@ -97,7 +97,7 @@ public:
      * @brief task body
      * @return task_result to instruct scheduler
      */
-    virtual task_result operator()() = 0;
+    [[nodiscard]] virtual task_result operator()() = 0;
 
 protected:
     virtual std::ostream& write_to(std::ostream& out) const = 0;

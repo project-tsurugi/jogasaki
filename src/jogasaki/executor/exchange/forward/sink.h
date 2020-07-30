@@ -28,7 +28,7 @@ class sink : public exchange::sink {
 public:
     sink() noexcept;
 
-    record_writer& acquire_writer() override;
+    [[nodiscard]] record_writer& acquire_writer() override;
 
     void release_writer(record_writer& writer);
 

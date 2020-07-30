@@ -32,7 +32,7 @@ public:
      */
     process_executor() = default;
 
-    explicit process_executor(
+    process_executor(
         std::shared_ptr<abstract::processor> processor,
         std::vector<std::shared_ptr<abstract::task_context>> contexts)
         : processor_(std::move(processor)), contexts_(std::make_shared<impl::task_context_pool>())
@@ -42,7 +42,7 @@ public:
         }
     }
 
-    status run() override {
+    [[nodiscard]] status run() override {
         // assign context
         auto context = contexts_->pop();
 

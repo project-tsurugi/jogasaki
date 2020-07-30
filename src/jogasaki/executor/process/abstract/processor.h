@@ -82,7 +82,7 @@ public:
      * @param context the context for the task conducted by this processor
      * @return status code to notify caller of the execution status
      */
-    virtual status run(task_context* context) = 0;
+    [[nodiscard]] virtual status run(task_context* context) = 0;
 
     /**
      * @brief create new object

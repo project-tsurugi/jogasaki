@@ -30,7 +30,7 @@ enum class internal_event_kind {
     propagate_downstream_completing,
 };
 
-inline constexpr std::string_view to_string_view(internal_event_kind value) noexcept {
+[[nodiscard]] inline constexpr std::string_view to_string_view(internal_event_kind value) noexcept {
     using namespace std::string_view_literals;
     using kind = internal_event_kind;
     switch (value) {
@@ -49,10 +49,10 @@ public:
     internal_event() = default;
     internal_event(internal_event_kind kind, identity_type target) : kind_(kind), target_(target) {}
 
-    internal_event_kind kind() {
+    [[nodiscard]] internal_event_kind kind() {
         return kind_;
     }
-    identity_type target() {
+    [[nodiscard]] identity_type target() {
         return target_;
     }
 

@@ -91,7 +91,7 @@ public:
          * @brief dereference the iterator
          * @return pointer to the record that the iterator is on
          */
-        reference operator*() {
+        [[nodiscard]] reference operator*() {
             return pos_;
         }
 
@@ -157,14 +157,14 @@ public:
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
-    iterator begin();
+    [[nodiscard]] iterator begin();
 
     /**
      * @brief getter of end iterator
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    iterator end();
+    [[nodiscard]] iterator end();
 
     /**
      * @copydoc record_store::reset()

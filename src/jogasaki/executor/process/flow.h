@@ -58,9 +58,9 @@ public:
             std::shared_ptr<processor_info> info
     );
 
-    sequence_view<std::shared_ptr<model::task>> create_tasks() override;
+    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override;
+    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override;
 
     [[nodiscard]] common::step_kind kind() const noexcept override;
 
@@ -74,7 +74,7 @@ private:
     step* step_{};
     std::shared_ptr<processor_info> info_{};
 
-    std::shared_ptr<impl::task_context> create_task_context(std::size_t partition, impl::ops::process_io_map const& io_map);
+    [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(std::size_t partition, impl::ops::process_io_map const& io_map);
 };
 
 }

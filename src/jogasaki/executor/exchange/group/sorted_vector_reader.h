@@ -56,11 +56,11 @@ public:
 
     sorted_vector_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
 
-    bool next_group() override;
+    [[nodiscard]] bool next_group() override;
 
     [[nodiscard]] accessor::record_ref get_group() const override;
 
-    bool next_member() override;
+    [[nodiscard]] bool next_member() override;
 
     [[nodiscard]] accessor::record_ref get_member() const override;
 

@@ -20,11 +20,11 @@
 
 namespace jogasaki::utils {
 
-constexpr bool is_power_of_two(std::size_t value) {
+[[nodiscard]] constexpr bool is_power_of_two(std::size_t value) {
     return value != 0 && (value & (value - 1)) == 0;
 }
 
-constexpr std::size_t round_down_to_power_of_two(std::size_t v) {
+[[nodiscard]] constexpr std::size_t round_down_to_power_of_two(std::size_t v) {
     if(is_power_of_two(v)) {
         return v;
     }

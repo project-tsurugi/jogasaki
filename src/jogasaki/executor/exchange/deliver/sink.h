@@ -32,7 +32,7 @@ public:
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
 
-    record_writer& acquire_writer() override;
+    [[nodiscard]] record_writer& acquire_writer() override;
 
     void release_writer(record_writer& writer);
 

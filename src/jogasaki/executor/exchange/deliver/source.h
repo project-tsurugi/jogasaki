@@ -26,7 +26,7 @@ class reader;
 
 class source : public exchange::source {
 public:
-    reader_container acquire_reader() override;
+    [[nodiscard]] reader_container acquire_reader() override;
 
 private:
 };

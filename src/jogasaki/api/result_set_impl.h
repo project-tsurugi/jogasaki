@@ -31,8 +31,8 @@ public:
         }
     }
 
-    iterator begin();
-    iterator end();
+    [[nodiscard]] iterator begin();
+    [[nodiscard]] iterator end();
     void close();
 
 private:

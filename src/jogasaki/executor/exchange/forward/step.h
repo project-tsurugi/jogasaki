@@ -40,7 +40,7 @@ public:
         exchange::step(std::move(meta), std::move(column_order))
     {}
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
+    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // exchange task is nop
         tasks_.emplace_back(std::make_shared<exchange::task>(context(), this));
         return tasks_;

@@ -31,9 +31,9 @@ namespace jogasaki::plan {
 
 // for testing
 namespace impl {
-executor::process::step create(takatori::plan::process const& process, compiler_context& ctx);
-executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx);
-executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx);
+[[nodiscard]] executor::process::step create(takatori::plan::process const& process, compiler_context& ctx);
+[[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx);
+[[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx);
 }
 
 /**
@@ -41,6 +41,6 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
  * @param sql the sql statement to compile
  * @param ctx the compiler context filled with storage provider required to compile the sql
  */
-bool compile(std::string_view sql, compiler_context& ctx);
+[[nodiscard]] bool compile(std::string_view sql, compiler_context& ctx);
 
 }

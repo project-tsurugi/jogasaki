@@ -59,7 +59,7 @@ public:
         return it_ != records_.end() && it_+1 != records_.end();
     }
 
-    bool next_record() override {
+    [[nodiscard]] bool next_record() override {
         if (!initialized_) {
             it_ = records_.begin();
             initialized_ = true;
@@ -95,7 +95,7 @@ public:
         acquired_ = true;
     }
 
-    std::shared_ptr<meta::record_meta> const& meta() {
+    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
         static record_type rec{};
         if (meta_) {
             return meta_;

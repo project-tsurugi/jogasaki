@@ -133,7 +133,7 @@ public:
      * @return true if field type is valid
      * @return false otherwise
      */
-    explicit constexpr operator bool() const noexcept {
+    [[nodiscard]] explicit constexpr operator bool() const noexcept {
         return kind() != field_type_kind::undefined;
     }
 
@@ -220,7 +220,7 @@ namespace impl {
 
 template <field_type_kind Kind, class = void>
 struct eq {
-    bool operator()(field_type const& a, field_type const& b) const noexcept {
+    [[nodiscard]] bool operator()(field_type const& a, field_type const& b) const noexcept {
         auto&& r1 = a.option_unsafe<Kind>();
         auto&& r2 = b.option_unsafe<Kind>();
         return r1 == r2;
@@ -234,7 +234,7 @@ struct eq<
                 takatori::util::is_equal_comparable_v<
                         decltype(*std::declval<field_type::option_type<Kind>>()),
                         decltype(*std::declval<field_type::option_type<Kind>>())>>> {
-    bool operator()(field_type const& a, field_type const& b) const noexcept {
+    [[nodiscard]] bool operator()(field_type const& a, field_type const& b) const noexcept {
         auto&& r1 = a.option_unsafe<Kind>();
         auto&& r2 = b.option_unsafe<Kind>();
         return *r1 == *r2;

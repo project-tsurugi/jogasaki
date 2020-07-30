@@ -26,7 +26,7 @@ public:
     process_executor(std::shared_ptr<abstract::processor> processor, std::shared_ptr<abstract::task_context> context) :
             processor_(std::move(processor)), context_(std::move(context)) {}
 
-    status run() override {
+    [[nodiscard]] status run() override {
         processor_->run(context_.get());
         return status::completed;
     }

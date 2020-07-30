@@ -26,7 +26,7 @@ class step : public exchange::step {
 public:
     step() = default;
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
+    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // exchange task is nop
         tasks_.emplace_back(std::make_shared<exchange::task>(context(), this));
         return tasks_;

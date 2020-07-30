@@ -62,7 +62,7 @@ public:
      * @return false if requested variable is not found
      * @attention this is not very efficient in its space usage and not intended to be called frequently
      */
-    bool remove(variable v) {  //NOLINT(performance-unnecessary-value-param)
+    [[nodiscard]] bool remove(variable v) {  //NOLINT(performance-unnecessary-value-param)
         if(indices_.count(v) == 0) {
             return false;
         }

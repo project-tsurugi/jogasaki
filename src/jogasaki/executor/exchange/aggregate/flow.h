@@ -75,13 +75,13 @@ public:
             std::size_t downstream_partitions
             );
 
-    takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
+    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    sinks_sources setup_partitions(std::size_t partitions) override;
+    [[nodiscard]] sinks_sources setup_partitions(std::size_t partitions) override;
 
-    sink_list_view sinks() override;
+    [[nodiscard]] sink_list_view sinks() override;
 
-    source_list_view sources() override;
+    [[nodiscard]] source_list_view sources() override;
 
     /**
      * @brief transfer the input partitions from sinks to sources

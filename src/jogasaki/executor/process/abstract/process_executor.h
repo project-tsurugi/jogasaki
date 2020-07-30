@@ -39,7 +39,7 @@ public:
 
     virtual ~process_executor() = default;
 
-    virtual status run() = 0;
+    [[nodiscard]] virtual status run() = 0;
 };
 
 /**

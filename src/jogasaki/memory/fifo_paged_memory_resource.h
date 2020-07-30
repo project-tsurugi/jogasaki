@@ -82,7 +82,7 @@ protected:
      * @return pointer to the allocated buffer
      * @throws std::bad_alloc if allocation was failed
      */
-    void* do_allocate(std::size_t bytes, std::size_t alignment) override;
+    [[nodiscard]] void* do_allocate(std::size_t bytes, std::size_t alignment) override;
 
     /**
      * @brief deallocates the buffer previously allocated by this resource.

@@ -82,6 +82,7 @@ public:
             records_[pos_ % capacity_] = r;
             ++pos_;
         }
+        ++write_count_;
         return false;
     }
 
@@ -98,7 +99,7 @@ public:
     }
 
     [[nodiscard]] std::size_t size() const noexcept {
-        return records_.size();
+        return std::max(write_count_, records_.size());
     }
 
     [[nodiscard]] records_type const& records() const noexcept {
@@ -120,6 +121,7 @@ private:
     bool acquired_{false};
     std::size_t capacity_{npos};
     std::size_t pos_{};
+    std::size_t write_count_{};
 };
 
 using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;

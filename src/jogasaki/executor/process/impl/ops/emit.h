@@ -103,7 +103,7 @@ private:
     std::vector<details::emit_field> fields_{};
     std::size_t external_writer_index_{};
 
-    std::shared_ptr<meta::record_meta> create_meta(
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
         takatori::util::sequence_view<column const> columns
     ) {
@@ -117,7 +117,7 @@ private:
         return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
     }
 
-    std::vector<details::emit_field> create_fields(
+    [[nodiscard]] std::vector<details::emit_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
         takatori::util::sequence_view<column const> columns
     ) {

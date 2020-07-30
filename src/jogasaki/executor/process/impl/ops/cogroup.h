@@ -58,11 +58,11 @@ public:
         return *store_;
     }
 
-    iterator begin() {
+    [[nodiscard]] iterator begin() {
         return store_->begin();
     }
 
-    iterator end() {
+    [[nodiscard]] iterator end() {
         return store_->end();
     }
 
@@ -111,7 +111,7 @@ public:
         return key_.ref();
     }
 
-    std::shared_ptr<meta::group_meta> const& meta() {
+    [[nodiscard]] std::shared_ptr<meta::group_meta> const& meta() {
         return meta_;
     }
 
@@ -127,15 +127,15 @@ public:
         return key_filled_;
     }
 
-    iterator begin() {
+    [[nodiscard]] iterator begin() {
         return store_->begin();
     }
 
-    iterator end() {
+    [[nodiscard]] iterator end() {
         return store_->end();
     }
 
-    bool next() {
+    [[nodiscard]] bool next() {
         if(!reader_->next_group()) {
             key_filled_ = false;
             reader_eof_ = true;
@@ -190,7 +190,7 @@ public:
             inputs_(inputs),
             key_comparator_(key_meta) {}
 
-    bool operator()(input_index const& x, input_index const& y) {
+    [[nodiscard]] bool operator()(input_index const& x, input_index const& y) {
         auto& l = inputs_->operator[](x);
         auto& r = inputs_->operator[](y);
         return key_comparator_(l.key_record(), r.key_record()) > 0;

@@ -69,12 +69,12 @@ public:
         (void)resource;
     }
 
-    operator_container operator()() && {
+    [[nodiscard]] operator_container operator()() && {
         dispatch(*this, head());
         return operator_container{std::move(operators_), std::move(process_io_map_)};
     }
 
-    relation::expression& head() {
+    [[nodiscard]] relation::expression& head() {
         relation::expression* result = nullptr;
         takatori::relation::enumerate_top(info_->relations(), [&](relation::expression& v) {
             result = &v;
@@ -183,20 +183,9 @@ private:
     plan::compiler_context const* compiler_ctx_{};
     operators_type operators_{};
     process_io_map process_io_map_{};
-
-    std::shared_ptr<meta::record_meta> create_record_meta(relation::emit const& node) {
-        std::vector<meta::field_type> fields{};
-        auto sz = node.columns().size();
-        fields.reserve(sz);
-        for(auto &c : node.columns()) {
-            auto& v = c.source();
-            fields.emplace_back(utils::type_for(info_->compiled_info(), v));
-        }
-        return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz));
-    }
 };
 
-inline operator_container create_operators(
+[[nodiscard]] inline operator_container create_operators(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
     memory::paged_memory_resource* resource = nullptr

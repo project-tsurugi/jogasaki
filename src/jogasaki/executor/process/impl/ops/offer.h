@@ -102,7 +102,7 @@ private:
     std::vector<details::offer_field> fields_{};
     std::size_t writer_index_{};
 
-    std::vector<details::offer_field> create_fields(
+    [[nodiscard]] std::vector<details::offer_field> create_fields(
         std::shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns

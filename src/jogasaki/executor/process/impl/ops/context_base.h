@@ -53,11 +53,11 @@ public:
 
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
-    block_scope& variables() {
+    [[nodiscard]] block_scope& variables() {
         return *variables_;
     }
 
-    class abstract::task_context& task_context() {
+    [[nodiscard]] class abstract::task_context& task_context() {
         return *task_context_;
     }
 

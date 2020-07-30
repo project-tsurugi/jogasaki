@@ -60,12 +60,12 @@ public:
     relation::expression& head();
 
     template <class T>
-    T& to(const relation::expression &node) {
+    [[nodiscard]] T& to(const relation::expression &node) {
         return *static_cast<T*>(operators_->at(std::addressof(node)));
     }
 
     template<class T>
-    T* find_context(ops::operator_base const* p) {
+    [[nodiscard]] T* find_context(ops::operator_base const* p) {
         auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
         if (container.count(p) == 0) {
             return nullptr;
@@ -74,7 +74,7 @@ public:
     }
 
     template<class T, class ... Args>
-    T* make_context(ops::operator_base const* p, Args&&...args) {
+    [[nodiscard]] T* make_context(ops::operator_base const* p, Args&&...args) {
         auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
         auto [it, b] = container.emplace(p, std::make_unique<T>(context_, std::forward<Args>(args)...));
         if (!b) {
@@ -111,7 +111,7 @@ private:
     abstract::task_context *context_{};
     bool continue_processing_{true};
 
-    block_scope& get_block_variables(std::size_t index);
+    [[nodiscard]] block_scope& get_block_variables(std::size_t index);
 };
 
 }

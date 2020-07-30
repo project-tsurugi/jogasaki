@@ -36,7 +36,7 @@ public:
 
     explicit processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) ;
 
-    abstract::status run(abstract::task_context* context) override;
+    [[nodiscard]] abstract::status run(abstract::task_context* context) override;
 
     [[nodiscard]] ops::operator_container const& operators() const noexcept {
         return operators_;

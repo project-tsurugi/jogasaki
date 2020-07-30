@@ -116,7 +116,7 @@ private:
     std::size_t reader_index_{};
     relation::expression const* downstream_{};
 
-    std::vector<details::take_group_field> create_fields(
+    [[nodiscard]] std::vector<details::take_group_field> create_fields(
         std::shared_ptr<meta::group_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns

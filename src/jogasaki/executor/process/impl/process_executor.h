@@ -65,7 +65,7 @@ private:
  * @brief global constant accessor to default process executor factory
  * @return factory of default process_executor implementation
  */
-inline abstract::process_executor_factory& default_process_executor_factory() {
+[[nodiscard]] inline abstract::process_executor_factory& default_process_executor_factory() {
     static abstract::process_executor_factory f = [](
         std::shared_ptr<abstract::processor> processor,
         std::vector<std::shared_ptr<abstract::task_context>> contexts

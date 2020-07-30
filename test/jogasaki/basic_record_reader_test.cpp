@@ -107,5 +107,41 @@ TEST_F(basic_record_reader_test, given_meta_with_map) {
     EXPECT_TRUE(eq(rev.ref(), rec, *rev.record_meta()));
 }
 
+TEST_F(basic_record_reader_test, generate) {
+    using test_record = basic_record<kind::int4>;
+
+    using reader_type = basic_record_reader<test_record>;
+    test_record src{1};
+    reader_type reader{
+        2, reader_type::npos, []() { return test_record{1}; }
+    };
+    ASSERT_TRUE(reader.next_record());
+    auto rec1 = reader.get_record();
+    EXPECT_TRUE(eq(src.ref(), rec1, *src.record_meta()));
+    ASSERT_TRUE(reader.next_record());
+    auto rec2 = reader.get_record();
+    EXPECT_TRUE(eq(src.ref(), rec2, *src.record_meta()));
+    ASSERT_FALSE(reader.next_record());
+}
+
+TEST_F(basic_record_reader_test, repeats) {
+    using test_record = basic_record<kind::int4>;
+    using reader_type = basic_record_reader<test_record>;
+    test_record src{1};
+    reader_type reader{
+        {
+            test_record{1},
+        },
+    };
+    reader.repeats(2);
+    ASSERT_TRUE(reader.next_record());
+    auto rec1 = reader.get_record();
+    EXPECT_TRUE(eq(src.ref(), rec1, *src.record_meta()));
+    ASSERT_TRUE(reader.next_record());
+    auto rec2 = reader.get_record();
+    EXPECT_TRUE(eq(src.ref(), rec2, *src.record_meta()));
+    ASSERT_FALSE(reader.next_record());
+}
+
 }
 

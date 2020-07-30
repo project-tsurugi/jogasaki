@@ -35,6 +35,7 @@ public:
     using record_type = Record;
     using records_type = std::vector<record_type>;
 
+    static constexpr std::size_t npos = static_cast<std::size_t>(-1);
     /**
      * @brief create default instance - read records are output as they are.
      */
@@ -52,6 +53,20 @@ public:
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
         map_(std::move(map))
     {
+        assert(map.empty() || map.size() == meta->field_count()); //FIXME when repeats is set
+    }
+
+    using record_generator = std::function<record_type(void)>;
+    basic_record_reader(std::size_t num_records, std::size_t repeats, record_generator generator, std::shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
+        repeats_(repeats),
+        meta_(std::move(meta)),
+        store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
+        map_(std::move(map))
+    {
+        records_.reserve(num_records);
+        for(std::size_t i=0; i < num_records; ++i) {
+            records_.emplace_back(generator());
+        }
         assert(map.empty() || map.size() == meta->field_count());
     }
 
@@ -68,6 +83,10 @@ public:
                 return false;
             }
             ++it_;
+            if (it_ == records_.end() && repeats_ != npos && times_ < repeats_-1) {
+                it_ = records_.begin();
+                ++times_;
+            }
         }
         ++num_calls_next_record_;
         return it_ != records_.end();
@@ -93,6 +112,14 @@ public:
 
     void acquire() {
         acquired_ = true;
+    }
+
+    void repeats(std::size_t times) {
+        repeats_ = times;
+    }
+
+    [[nodiscard]] std::size_t repeats() const noexcept {
+        return repeats_;
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
@@ -124,6 +151,8 @@ private:
     bool acquired_{false};
     std::size_t num_calls_next_record_{};
     typename records_type::iterator it_{};
+    std::size_t repeats_{npos};
+    std::size_t times_{};
 };
 
 using record_reader = basic_record_reader<jogasaki::mock::basic_record<kind::int8, kind::float8>>;

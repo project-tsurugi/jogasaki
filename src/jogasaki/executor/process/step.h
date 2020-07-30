@@ -57,6 +57,11 @@ public:
      */
     [[nodiscard]] virtual std::size_t partitions() const noexcept;
 
+    // for testing
+    void partitions(std::size_t num) noexcept {
+        partitions_ = num;
+    }
+
     void activate() override;
 
     void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept {
@@ -70,6 +75,7 @@ public:
 private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<abstract::process_executor_factory> executor_factory_{};
+    std::size_t partitions_{default_partitions};
 };
 
 }

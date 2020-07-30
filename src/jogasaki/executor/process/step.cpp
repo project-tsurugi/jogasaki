@@ -28,7 +28,7 @@ common::step_kind step::kind() const noexcept {
 }
 
 std::size_t step::partitions() const noexcept {
-    return default_partitions;
+    return partitions_;
 }
 
 void step::activate() {

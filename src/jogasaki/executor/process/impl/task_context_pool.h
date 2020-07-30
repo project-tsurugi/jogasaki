@@ -34,6 +34,15 @@ public:
     task_context_pool() = default;
 
     /**
+     * @brief create new empty instance
+     */
+    explicit task_context_pool(std::vector<std::shared_ptr<abstract::task_context>> contexts) {
+        for(auto&& c : contexts) {
+            push(std::move(c));
+        }
+    }
+
+    /**
      * @brief add new task context
      * @details this function can be called from multiple threads
      * @param context the context to add

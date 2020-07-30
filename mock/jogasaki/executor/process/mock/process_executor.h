@@ -23,17 +23,39 @@ namespace jogasaki::executor::process::mock {
 
 class process_executor : public abstract::process_executor {
 public:
-    process_executor(std::shared_ptr<abstract::processor> processor, std::shared_ptr<abstract::task_context> context) :
-            processor_(std::move(processor)), context_(std::move(context)) {}
+    process_executor(
+        std::shared_ptr<abstract::processor> processor,
+        std::shared_ptr<abstract::task_context> context
+    ) noexcept :
+        processor_(std::move(processor)),
+        pool_(std::make_shared<impl::task_context_pool>(std::vector<std::shared_ptr<abstract::task_context>>{context}))
+    {}
+
+    process_executor(
+        std::shared_ptr<abstract::processor> processor,
+        std::vector<std::shared_ptr<abstract::task_context>> contexts
+    ) noexcept :
+        processor_(std::move(processor)),
+        pool_(std::make_shared<impl::task_context_pool>(std::move(contexts)))
+    {}
 
     [[nodiscard]] status run() override {
-        processor_->run(context_.get());
-        return status::completed;
+        // assign context
+        auto context = pool_->pop();
+
+        // execute task
+        auto rc = processor_->run(context.get());
+
+        if (rc != status::completed && rc != status::completed_with_errors) {
+            // task is suspended in the middle, put the current context back
+            pool_->push(std::move(context));
+        }
+        return rc;
     }
 
 private:
     std::shared_ptr<abstract::processor> processor_{};
-    std::shared_ptr<abstract::task_context> context_{};
+    std::shared_ptr<impl::task_context_pool> pool_{};
 };
 
 }

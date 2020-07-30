@@ -35,12 +35,8 @@ public:
     process_executor(
         std::shared_ptr<abstract::processor> processor,
         std::vector<std::shared_ptr<abstract::task_context>> contexts)
-        : processor_(std::move(processor)), contexts_(std::make_shared<impl::task_context_pool>())
-    {
-        for(auto&& c : contexts) {
-            contexts_->push(std::move(c));
-        }
-    }
+        : processor_(std::move(processor)), contexts_(std::make_shared<impl::task_context_pool>(std::move(contexts)))
+    {}
 
     [[nodiscard]] status run() override {
         // assign context

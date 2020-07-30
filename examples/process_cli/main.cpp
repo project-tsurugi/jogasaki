@@ -42,6 +42,9 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/record_writer.h>
 #include <jogasaki/executor/process/mock/record_reader.h>
+#include <jogasaki/executor/process/mock/process_executor.h>
+#include <jogasaki/executor/process/impl/process_executor.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 
 #include "params.h"
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -52,9 +55,9 @@
 #include "gperftools/profiler.h"
 #endif
 
-DEFINE_int32(thread_pool_size, 10, "Thread pool size");  //NOLINT
+DEFINE_int32(thread_pool_size, 3, "Thread pool size");  //NOLINT
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
-DEFINE_int32(partitions, 10, "Number of partitions");  //NOLINT
+DEFINE_int32(partitions, 3, "Number of partitions");  //NOLINT
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
@@ -109,9 +112,6 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
 
-    auto channel = std::make_shared<class channel>();
-    auto compiler_context = std::make_shared<plan::compiler_context>();
-    auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
     (void)param;
 
     binding::factory bindings;
@@ -189,6 +189,7 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     yugawara::compiled_info c_info{{}, vm};
 
     auto p_info = std::make_shared<processor_info>(p0.operators(), c_info);
+    auto compiler_context = std::make_shared<plan::compiler_context>();
     compiler_context->compiled_info(c_info);
     compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(p)));
 
@@ -203,6 +204,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         f1_columns
     };
 
+    auto channel = std::make_shared<class channel>();
+    auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
     common::graph g{*context};
     auto& jf0 = g.emplace<forward::step>(
         meta,
@@ -254,30 +257,61 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     block_scope variables{scope_info};
 
     using kind = meta::field_type_kind;
-
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    std::vector<test_record> input_records {
-        test_record{1.0, 10, 100},
-    };
-
-    auto reader = std::make_shared<process::mock::basic_record_reader<test_record>>(input_records);
-    auto writer = std::make_shared<process::mock::basic_record_writer<test_record>>(s.meta());
-
-    executor::process::mock::task_context task_ctx{
-        {reader_container{reader.get()}},
-        {writer},
-        {},
-        {},
-    };
+//    executor::process::mock::task_context task_ctx{
+//        {reader_container{reader.get()}},
+//        {writer},
+//        {},
+//        {},
+//    };
 
     auto& process = g.emplace<process::step>(p_info);
-    jf0 >> process;
-    process >> jf1;
+    jf0 >> process >> jf1;
+
+
+    using reader_type = process::mock::basic_record_reader<test_record>;
+    using writer_type = process::mock::basic_record_writer<test_record>;
+
+    auto partitions = param.partitions_;
+    std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
+    std::vector<std::shared_ptr<writer_type>> writers{};
+    std::vector<std::shared_ptr<reader_type>> readers{};
+    for(std::size_t i=0; i < partitions; ++i) {
+        std::vector<test_record> records{
+            test_record{1.0, 10, 100},
+            test_record{2.0, 20, 200},
+            test_record{3.0, 30, 300},
+        };
+        auto& reader = readers.emplace_back(std::make_shared<reader_type>(records));
+        reader_container r{reader.get()};
+        auto& writer = writers.emplace_back(std::make_shared<writer_type>());
+        auto ctx =
+            std::make_shared<process::mock::task_context>(
+                std::vector<reader_container>{r},
+                std::vector<std::shared_ptr<executor::record_writer>>{writer},
+                std::vector<std::shared_ptr<executor::record_writer>>{},
+                std::shared_ptr<abstract::scan_info>{}
+            );
+
+        ctx->work_context(std::make_unique<process::impl::work_context>());
+        custom_contexts.emplace_back(std::move(ctx));
+    }
+    auto f = std::make_shared<abstract::process_executor_factory>([&custom_contexts](
+        std::shared_ptr<abstract::processor> processor,
+        std::vector<std::shared_ptr<abstract::task_context>> contexts
+        ){
+        (void)contexts;
+        return std::make_shared<process::mock::process_executor>(std::move(processor), std::move(custom_contexts));
+    });
+    process.executor_factory(f);
+    process.partitions(partitions);
 
     dag_controller dc{std::move(cfg)};
     dc.schedule(g);
 
-    LOG(INFO) << "written " << writer->size() << " records";
+    for(auto&& w : writers) {
+        LOG(INFO) << "written " << w->size() << " records";
+    }
     return 0;
 }
 

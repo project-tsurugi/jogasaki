@@ -58,10 +58,10 @@ public:
 
     using record_generator = std::function<record_type(void)>;
     basic_record_reader(std::size_t num_records, std::size_t repeats, record_generator generator, std::shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
-        repeats_(repeats),
         meta_(std::move(meta)),
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
-        map_(std::move(map))
+        map_(std::move(map)),
+        repeats_(repeats)
     {
         records_.reserve(num_records);
         for(std::size_t i=0; i < num_records; ++i) {

@@ -50,6 +50,7 @@
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <takatori/statement/execute.h>
 #include <jogasaki/executor/process/impl/ops/take_flat.h>
+#include "../common/random.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
@@ -64,7 +65,8 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
-DEFINE_int32(write_buffer_size, 10000, "Number of records in writer buffer");  //NOLINT
+DEFINE_int32(write_buffer_size, 2097152, "Writer buffer size in byte");  //NOLINT
+DEFINE_int32(read_buffer_size, 2097152, "Reader buffer size in byte");  //NOLINT
 
 namespace jogasaki::process_cli {
 
@@ -83,7 +85,6 @@ using namespace jogasaki::scheduler;
 
 using namespace meta;
 using namespace takatori::util;
-
 
 namespace t = ::takatori::type;
 namespace v = ::takatori::value;
@@ -267,22 +268,25 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     auto partitions = param.partitions_;
     auto records_per_partition = param.records_per_partition_;
-    auto write_buffer_size = param.write_buffer_size_;
+    auto record_size = test_record{}.record_meta()->record_size();
+    auto write_buffer_record_count = param.write_buffer_size_ / record_size;
+    auto read_buffer_record_count = param.read_buffer_size_ / record_size;
     std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
     std::vector<std::shared_ptr<writer_type>> writers{};
     std::vector<std::shared_ptr<reader_type>> readers{};
+    common_cli::xorshift_random64 rnd{1234567U};
     for(std::size_t i=0; i < partitions; ++i) {
-        std::vector<test_record> records{
-            test_record{1.0, 10, 100},
-            test_record{2.0, 20, 200},
-            test_record{3.0, 30, 300},
-            test_record{4.0, 40, 400},
-            test_record{5.0, 50, 500},
-        };
-        auto& reader = readers.emplace_back(std::make_shared<reader_type>(records));
-        reader->repeats(records_per_partition / 5);
+        auto& reader = readers.emplace_back(std::make_shared<reader_type>(
+            read_buffer_record_count,
+            (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
+            [&rnd]() { return test_record{
+                static_cast<double>(rnd()),
+                static_cast<std::int32_t>(rnd()),
+                static_cast<std::int64_t>(rnd()),
+            }; })
+        );
         reader_container r{reader.get()};
-        auto& writer = writers.emplace_back(std::make_shared<writer_type>(write_buffer_size));
+        auto& writer = writers.emplace_back(std::make_shared<writer_type>(write_buffer_record_count));
         auto ctx =
             std::make_shared<process::mock::task_context>(
                 std::vector<reader_container>{r},

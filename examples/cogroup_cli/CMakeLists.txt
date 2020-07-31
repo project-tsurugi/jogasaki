@@ -44,5 +44,5 @@ endif()
 
 add_test(
         NAME cogroup-cli
-        COMMAND cogroup-cli
+        COMMAND cogroup-cli --minimum
 )

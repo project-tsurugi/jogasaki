@@ -44,5 +44,5 @@ endif()
 
 add_test(
         NAME process-cli
-        COMMAND process-cli
+        COMMAND process-cli --minimum
 )

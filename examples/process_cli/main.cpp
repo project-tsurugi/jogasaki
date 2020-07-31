@@ -305,11 +305,15 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     process.partitions(partitions);
 
     dag_controller dc{std::move(cfg)};
+    utils::get_watch().set_point(1, 0);
     dc.schedule(g);
+    utils::get_watch().set_point(2, 0);
 
     for(auto&& w : writers) {
         LOG(INFO) << "written " << w->size() << " records";
     }
+    auto& watch = utils::get_watch();
+    LOG(INFO) << jogasaki::utils::textualize(watch, 1, 2, "take-offer");
     return 0;
 }
 

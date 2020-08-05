@@ -59,6 +59,7 @@ public:
         capacity_(capacity)
     {
         assert(map.empty() || map.size() == meta->field_count());
+        records_.reserve(capacity);
     }
 
     /**

@@ -38,6 +38,7 @@ model::task_result task::operator()() {
     auto status = executor_->run();
     switch (status) {
         case abstract::status::completed:
+            VLOG(1) << *this << " process::task completed.";
             break;
         case abstract::status::completed_with_errors:
             LOG(WARNING) << *this << " task completed with errors";

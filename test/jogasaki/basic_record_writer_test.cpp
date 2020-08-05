@@ -81,5 +81,26 @@ TEST_F(basic_record_writer_test, given_meta_with_map) {
     ASSERT_EQ(*meta, *rec.record_meta());  // only field types are equal
     EXPECT_EQ(rec, result[0]);
 }
+
+TEST_F(basic_record_writer_test, capacity) {
+    using test_record = basic_record<kind::int4>;
+    test_record rec1{1};
+    test_record rec2{2};
+    test_record rec3{3};
+    test_record rec4{4};
+
+    basic_record_writer<test_record> writer{3};
+    writer.write(rec1.ref());
+    writer.write(rec2.ref());
+    writer.write(rec3.ref());
+    writer.write(rec4.ref());
+    auto result = writer.records();
+    ASSERT_EQ(3, result.size());
+    auto meta = result[0].record_meta();
+    EXPECT_EQ(rec4, result[0]);
+    EXPECT_EQ(rec2, result[1]);
+    EXPECT_EQ(rec3, result[2]);
+}
+
 }
 

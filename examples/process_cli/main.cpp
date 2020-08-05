@@ -301,7 +301,7 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto f = std::make_shared<abstract::process_executor_factory>([&custom_contexts](
         std::shared_ptr<abstract::processor> processor,
         std::vector<std::shared_ptr<abstract::task_context>> contexts
-        ){
+    ){
         (void)contexts;
         return std::make_shared<process::mock::process_executor>(std::move(processor), std::move(custom_contexts));
     });

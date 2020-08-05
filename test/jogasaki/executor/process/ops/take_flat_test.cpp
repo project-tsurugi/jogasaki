@@ -30,6 +30,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/plan/compiler.h>
+#include "output_verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -131,13 +132,14 @@ TEST_F(take_flat_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
+    relation::project dummy{};
     take_flat s{
         p_info, 0,
         order,
         meta,
         take_flat_columns,
         0,
-        nullptr
+        &dummy
     };
 
     auto& block_info = p_info.scopes_info()[s.block_index()];
@@ -166,11 +168,30 @@ TEST_F(take_flat_test, simple) {
     auto c0_offset = map.at(c0).value_offset();
     auto c1_offset = map.at(c1).value_offset();
     auto c2_offset = map.at(c2).value_offset();
-    s(ctx, nullptr);
-    // TODO verify interim results
-    EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
-    EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
-    EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
+
+    std::size_t count = 0;
+    output_verifier verifier{[&](relation::project const& node) {
+        switch(count) {
+            case 0: {
+                EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
+                EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
+                EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(c2_offset));
+                break;
+            }
+            case 1: {
+                EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
+                EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
+                EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
+                break;
+            }
+            default:
+                ADD_FAILURE();
+                return false;
+        }
+        ++count;
+        return true;
+    }};
+    s(ctx, &verifier);
     ctx.release();
 }
 

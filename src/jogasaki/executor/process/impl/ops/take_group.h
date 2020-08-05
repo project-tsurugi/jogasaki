@@ -77,7 +77,8 @@ public:
         downstream_(downstream)
     {}
 
-    void operator()(take_group_context& ctx, operator_executor* visitor = nullptr) {
+    template <class Callback>
+    void operator()(take_group_context& ctx, Callback* visitor = nullptr) {
         auto target = ctx.variables().store().ref();
         if (!ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);

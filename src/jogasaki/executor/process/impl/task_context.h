@@ -102,6 +102,10 @@ public:
         return {};
     }
 
+    [[nodiscard]] std::size_t partition() const noexcept {
+        return partition_;
+    }
+
 private:
     std::size_t partition_{};
     impl::ops::process_io_map const* process_io_map_{};

@@ -18,6 +18,8 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/utils/performance_tools.h>
+#include "constants.h"
 
 namespace jogasaki::executor::process::mock {
 
@@ -42,9 +44,12 @@ public:
     [[nodiscard]] status run() override {
         // assign context
         auto context = pool_->pop();
+        auto& casted = *static_cast<impl::task_context*>(context.get());  //NOLINT
 
+        utils::get_watch().set_point(time_point_run, casted.partition());
         // execute task
         auto rc = processor_->run(context.get());
+        utils::get_watch().set_point(time_point_ran, casted.partition());
 
         if (rc != status::completed && rc != status::completed_with_errors) {
             // task is suspended in the middle, put the current context back

@@ -51,6 +51,7 @@
 #include <takatori/statement/execute.h>
 #include <jogasaki/executor/process/impl/ops/take_flat.h>
 #include "../common/random.h"
+#include "cli_constants.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
@@ -109,6 +110,17 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{std::string("000")});
+}
+
+void dump_perf_info() {
+    auto& watch = utils::get_watch();
+#ifndef PERFORMANCE_TOOLS
+    LOG(INFO) << "prepare: total " << watch.duration(time_point_prepare, time_point_run, true) << "ms" ;
+#endif
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_run, time_point_ran, "run");
+#ifndef PERFORMANCE_TOOLS
+    LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed, true) << "ms" ;
+#endif
 }
 
 static int run(params& param, std::shared_ptr<configuration> cfg) {
@@ -280,12 +292,14 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(
             read_buffer_record_count,
             (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
-            [&rnd, &test_record_meta]() { return test_record{
-                test_record_meta,
-                static_cast<double>(rnd()),
-                static_cast<std::int32_t>(rnd()),
-                static_cast<std::int64_t>(rnd()),
-            }; })
+            [&rnd, &test_record_meta]() {
+                return test_record{
+                    test_record_meta,
+                    static_cast<double>(rnd()),
+                    static_cast<std::int32_t>(rnd()),
+                    static_cast<std::int64_t>(rnd()),
+                };
+            })
         );
         reader_container r{reader.get()};
         auto& writer = writers.emplace_back(std::make_shared<writer_type>(write_buffer_record_count));
@@ -311,15 +325,14 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     process.partitions(partitions);
 
     dag_controller dc{std::move(cfg)};
-    utils::get_watch().set_point(1, 0);
+    utils::get_watch().set_point(time_point_prepare, 0);
     dc.schedule(g);
-    utils::get_watch().set_point(2, 0);
+    utils::get_watch().set_point(time_point_completed, 0);
+    dump_perf_info();
 
     for(auto&& w : writers) {
         LOG(INFO) << "written " << w->size() << " records";
     }
-    auto& watch = utils::get_watch();
-    LOG(INFO) << jogasaki::utils::textualize(watch, 1, 2, "take-offer");
     return 0;
 }
 
@@ -346,6 +359,7 @@ extern "C" int main(int argc, char* argv[]) {
 
     s.partitions_ = FLAGS_partitions;
     s.records_per_partition_ = FLAGS_records_per_partition;
+    s.read_buffer_size_ = FLAGS_read_buffer_size;
     s.write_buffer_size_ = FLAGS_write_buffer_size;
 
     cfg->core_affinity(FLAGS_core_affinity);

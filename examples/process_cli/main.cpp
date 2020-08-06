@@ -268,7 +268,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     auto partitions = param.partitions_;
     auto records_per_partition = param.records_per_partition_;
-    auto record_size = test_record{}.record_meta()->record_size();
+    auto test_record_meta = test_record{}.record_meta();
+    auto record_size = test_record_meta->record_size();
     auto write_buffer_record_count = param.write_buffer_size_ / record_size;
     auto read_buffer_record_count = param.read_buffer_size_ / record_size;
     std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
@@ -279,7 +280,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(
             read_buffer_record_count,
             (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
-            [&rnd]() { return test_record{
+            [&rnd, &test_record_meta]() { return test_record{
+                test_record_meta,
                 static_cast<double>(rnd()),
                 static_cast<std::int32_t>(rnd()),
                 static_cast<std::int64_t>(rnd()),

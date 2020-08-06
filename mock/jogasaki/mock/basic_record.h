@@ -61,63 +61,104 @@ std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, meta::r
     return values<Kinds...>(ref, meta, std::make_index_sequence<sizeof...(Kinds)>());
 }
 
+/**
+ * @brief record object for testing
+ * @tparam Kinds list of field kind for the record fields
+ * @details this object represents a handy record instance, and provides convenient way to materialize record that can
+ * be stored in the C++ containers. Also, meta data can be defined based on the field types, or passed from outside.
+ */
 template<kind ...Kinds>
 class basic_record {
 public:
     using entity_type = std::tuple<to_runtime_type_t<Kinds>...>;
 
-    basic_record() {
-        meta_ = std::make_shared<meta::record_meta>(
-            std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
-            boost::dynamic_bitset<std::uint64_t>{sizeof...(Kinds)},  // all fields non-nullable
-            std::vector<std::size_t>{offsets<Kinds...>(entity_)},
-            std::vector<std::size_t>{(void(Kinds), 0)...},
-            alignof(std::tuple<to_runtime_type_t<Kinds>...>),
-            sizeof(entity_type)
-        );
-    }
+    /**
+     * @brief create empty object - only meta data is meaningful
+     */
+    basic_record() : meta_(create_meta(
+        boost::dynamic_bitset<std::uint64_t>{sizeof...(Kinds)},  // all fields non-nullable
+        std::vector<std::size_t>{(void(Kinds), 0)...}
+        )){}
 
     /**
      * @brief construct new object with non-nullable fields
      */
     template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
-    explicit basic_record(to_runtime_type_t<Kinds>...args) : entity_(args...) {
-        meta_ = std::make_shared<meta::record_meta>(
-            std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
+    explicit basic_record(to_runtime_type_t<Kinds>...args) :
+        entity_(args...),
+        meta_(create_meta(
             boost::dynamic_bitset<std::uint64_t>{sizeof...(args)},  // all fields non-nullable
-            std::vector<std::size_t>{offsets<Kinds...>(entity_)},
-        std::vector<std::size_t>{(void(args), 0)...},
-        alignof(std::tuple<to_runtime_type_t<Kinds>...>),
-        sizeof(entity_)
-        );
-    }
+            std::vector<std::size_t>{(void(args), 0)...}
+        ))
+    {}
 
     /**
-     * @brief construct new objects with given nullability offsets
+     * @brief construct new object with given meta data and field values
+     * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
+     * the underlying entity's memory layout)
      */
-    explicit basic_record(boost::dynamic_bitset<std::uint64_t> nullability,
-        std::vector<std::size_t> nullity_offset_table,
-        to_runtime_type_t<Kinds>...args) : entity_(args...) {
-        meta_ = std::make_shared<meta::record_meta>(
-            std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
-            std::move(nullability),
-            std::vector<std::size_t>{offsets<Kinds...>(entity_)},
-            std::move(nullity_offset_table),
-            alignof(std::tuple<to_runtime_type_t<Kinds>...>),
-            sizeof(entity_)
-        );
-    }
+    template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+    explicit basic_record(
+        std::shared_ptr<meta::record_meta> meta,
+        to_runtime_type_t<Kinds>...args
+    ) :
+        entity_(args...),
+        meta_(std::move(meta))
+    {}
 
+    /**
+     * @brief construct new object with given nullability offsets
+     * @param nullability bitset that represents if each field is nullable or not
+     * @param nullity_offset_table bit offset table that indicates the nullity offset of each nullable field
+     */
+    basic_record(
+        boost::dynamic_bitset<std::uint64_t> nullability,
+        std::vector<std::size_t> nullity_offset_table,
+        to_runtime_type_t<Kinds>...args
+    ) :
+        entity_(args...),
+        meta_(create_meta(std::move(nullability), std::move(nullity_offset_table)))
+    {}
+
+    /**
+     * @brief construct new object from record_ref with default meta data
+     * @param ref the record_ref whose values are copied to new object
+     */
     explicit basic_record(accessor::record_ref ref) : basic_record() {
         entity_ = values<Kinds...>(ref, *meta_);
     }
 
+    /**
+     * @brief construct empty object with given meta data
+     * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
+     * the underlying entity's memory layout)
+     */
+    explicit basic_record(std::shared_ptr<meta::record_meta> meta) noexcept : meta_(std::move(meta)) {}
+
+    /**
+     * @brief construct new object from record_ref with given meta data
+     * @param ref the record_ref whose values are copied to new object
+     * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
+     * the underlying entity's memory layout)
+     */
+    basic_record(accessor::record_ref ref, std::shared_ptr<meta::record_meta> meta) : basic_record(std::move(meta)) {
+        entity_ = values<Kinds...>(ref, *meta_);
+    }
+
+    /**
+     * @brief accessor to the meta data of the record
+     * @return the meta data
+     */
     [[nodiscard]] std::shared_ptr<meta::record_meta> const& record_meta() const noexcept {
         return meta_;
     }
 
+    /**
+     * @brief accessor to the record_ref that represents this record object
+     * @return record ref of the record
+     */
     [[nodiscard]] accessor::record_ref ref() const noexcept {
-        return accessor::record_ref(const_cast<entity_type*>(std::addressof(entity_)), sizeof(entity_)); //FIXME
+        return accessor::record_ref(const_cast<entity_type*>(std::addressof(entity_)), sizeof(entity_)); //FIXME use of const_cast
     }
 
     /// @brief equality comparison operator
@@ -130,6 +171,12 @@ public:
         return !(a == b);
     }
 
+    /**
+     * @brief appends string representation of the given value.
+     * @param out the target output
+     * @param value the target value
+     * @return the output
+     */
     friend std::ostream& operator<<(std::ostream& out, basic_record<Kinds...> const& value) {
         auto& v = const_cast<basic_record<Kinds...>&>(value);
         std::stringstream ss{};
@@ -140,6 +187,21 @@ public:
 protected:
     entity_type entity_{};
     std::shared_ptr<meta::record_meta> meta_{};
+
+    template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+    std::shared_ptr<meta::record_meta> create_meta(
+        boost::dynamic_bitset<std::uint64_t> nullability,
+        std::vector<std::size_t> nullity_offset_table
+        ) {
+        return std::make_shared<meta::record_meta>(
+            std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
+            std::move(nullability),
+            std::vector<std::size_t>{offsets<Kinds...>(entity_)},
+            std::move(nullity_offset_table),
+            alignof(std::tuple<to_runtime_type_t<Kinds>...>),
+            sizeof(entity_)
+        );
+    }
 };
 
 

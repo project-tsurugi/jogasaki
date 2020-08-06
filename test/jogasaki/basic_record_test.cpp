@@ -54,7 +54,7 @@ TEST_F(basic_record_test, meta) {
     }
 }
 
-TEST_F(basic_record_test, create_record_from_ref) {
+TEST_F(basic_record_test, default_metadata) {
     basic_record<kind::float4, kind::int8> r{1.0, 100};
     basic_record<kind::float4, kind::int8> r2{r.ref()};
     auto meta = r2.record_meta();
@@ -62,5 +62,15 @@ TEST_F(basic_record_test, create_record_from_ref) {
     EXPECT_EQ(1.0, r2.ref().get_value<float>(meta->value_offset(0)));
     EXPECT_EQ(100, r2.ref().get_value<std::int64_t>(meta->value_offset(1)));
 }
+
+TEST_F(basic_record_test, share_metadata) {
+    basic_record<kind::int4> r{1};
+    auto meta = r.record_meta();
+    basic_record<kind::int4> r2{meta, 2};
+    auto meta2 = r2.record_meta();
+    EXPECT_EQ(1, meta2->field_count());
+    EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta2->at(0));
+    EXPECT_EQ(meta, meta2);
 }
 
+}

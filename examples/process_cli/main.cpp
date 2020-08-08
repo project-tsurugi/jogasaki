@@ -114,16 +114,20 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 
 void dump_perf_info() {
     auto& watch = utils::get_watch();
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_schedule, "create graph");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_create_task, "schedule");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_create_task, time_point_created_task, "create tasks");
 #ifndef PERFORMANCE_TOOLS
-    LOG(INFO) << "prepare: total " << watch.duration(time_point_prepare, time_point_run, true) << "ms" ;
+    LOG(INFO) << "wait before run: total " << watch.duration(time_point_created_task, time_point_run) << "ms" ;
 #endif
     LOG(INFO) << jogasaki::utils::textualize(watch, time_point_run, time_point_ran, "run");
 #ifndef PERFORMANCE_TOOLS
-    LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed, true) << "ms" ;
+    LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed) << "ms" ;
 #endif
 }
 
 static int run(params& param, std::shared_ptr<configuration> cfg) {
+    utils::get_watch().set_point(time_point_begin, 0);
     auto meta = test_record_meta();
 
     binding::factory bindings;
@@ -274,7 +278,6 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto& process = g.emplace<process::step>(p_info);
     jf0 >> process >> jf1;
 
-
     using reader_type = process::mock::basic_record_reader<test_record>;
     using writer_type = process::mock::basic_record_writer<test_record>;
 
@@ -324,8 +327,19 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     process.executor_factory(f);
     process.partitions(partitions);
 
+    process.will_create_tasks(
+        std::make_shared<common::callback_type>([](){
+            utils::get_watch().set_point(time_point_create_task, 0);
+        })
+    );
+    process.did_create_tasks(
+        std::make_shared<common::callback_type>([](){
+            utils::get_watch().set_point(time_point_created_task, 0);
+        })
+    );
+
     dag_controller dc{std::move(cfg)};
-    utils::get_watch().set_point(time_point_prepare, 0);
+    utils::get_watch().set_point(time_point_schedule, 0);
     dc.schedule(g);
     utils::get_watch().set_point(time_point_completed, 0);
     dump_perf_info();

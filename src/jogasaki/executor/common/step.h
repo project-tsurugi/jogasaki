@@ -24,6 +24,12 @@
 namespace jogasaki::executor::common {
 
 using ::takatori::util::sequence_view;
+
+/**
+ * @brief callback type for the caller to use as extension point
+ */
+using callback_type = std::function<void(void)>;
+
 /**
  * @brief step common implementation
  * @details represents connectivity among steps
@@ -78,6 +84,23 @@ public:
     [[nodiscard]] flow& data_flow_object() const noexcept;
 
     std::ostream& write_to(std::ostream& out) const override;
+
+    /**
+     * @brief sets callback before creating tasks
+     * @param arg the callback
+     */
+    void will_create_tasks(std::shared_ptr<callback_type> arg) {
+        will_create_tasks_ = std::move(arg);
+    }
+
+    /**
+     * @brief sets callback after creating tasks
+     * @param arg the callback
+     */
+    void did_create_tasks(std::shared_ptr<callback_type> arg) {
+        did_create_tasks_ = std::move(arg);
+    }
+
 protected:
     void data_flow_object(std::unique_ptr<flow> p) noexcept;
     [[nodiscard]] class request_context* context() const noexcept;
@@ -89,7 +112,8 @@ private:
     std::vector<std::unique_ptr<model::port>> output_ports_{};
     model::graph* owner_{};
     std::unique_ptr<flow> data_flow_object_{};
-
+    std::shared_ptr<callback_type> will_create_tasks_{};
+    std::shared_ptr<callback_type> did_create_tasks_{};
 };
 
 step& operator<<(step& downstream, step& upstream);

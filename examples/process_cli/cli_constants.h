@@ -22,7 +22,10 @@
 
 namespace jogasaki::process_cli {
 
-constexpr static std::size_t time_point_prepare = 0;
+constexpr static std::size_t time_point_begin = 0;
+constexpr static std::size_t time_point_schedule = 1;
+constexpr static std::size_t time_point_create_task = 2;
+constexpr static std::size_t time_point_created_task = 3;
 constexpr static std::size_t time_point_run = executor::process::mock::time_point_run;
 constexpr static std::size_t time_point_ran = executor::process::mock::time_point_ran;
 constexpr static std::size_t time_point_completed = time_point_ran + 1;

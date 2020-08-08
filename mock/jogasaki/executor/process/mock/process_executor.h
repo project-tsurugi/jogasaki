@@ -44,12 +44,12 @@ public:
     [[nodiscard]] status run() override {
         // assign context
         auto context = pool_->pop();
-        auto& casted = *static_cast<impl::task_context*>(context.get());  //NOLINT
+        auto& impl = *static_cast<impl::task_context*>(context.get());  //NOLINT
 
-        utils::get_watch().set_point(time_point_run, casted.partition());
+        utils::get_watch().set_point(time_point_run, impl.partition());
         // execute task
         auto rc = processor_->run(context.get());
-        utils::get_watch().set_point(time_point_ran, casted.partition());
+        utils::get_watch().set_point(time_point_ran, impl.partition());
 
         if (rc != status::completed && rc != status::completed_with_errors) {
             // task is suspended in the middle, put the current context back

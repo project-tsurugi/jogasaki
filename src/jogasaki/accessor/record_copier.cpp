@@ -41,4 +41,5 @@ void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref
 void record_copier::operator()(accessor::record_ref dst, accessor::record_ref src) {
     operator()(dst.data(), meta_->record_size(), src);
 }
+
 }

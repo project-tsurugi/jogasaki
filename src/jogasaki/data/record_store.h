@@ -50,8 +50,12 @@ public:
     record_store(
             memory::paged_memory_resource* record_resource,
             memory::paged_memory_resource* varlen_resource,
-            std::shared_ptr<meta::record_meta> meta) :
-            resource_(record_resource), meta_(std::move(meta)), copier_(meta_, varlen_resource)
+            std::shared_ptr<meta::record_meta> meta
+    ) :
+            resource_(record_resource),
+            meta_(std::move(meta)),
+            copier_(meta_, varlen_resource),
+            record_size_(meta_->record_size())
     {}
 
     /**
@@ -86,6 +90,7 @@ private:
     std::shared_ptr<meta::record_meta> meta_{};
     accessor::record_copier copier_{};
     std::size_t count_{};
+    std::size_t record_size_{};
 };
 
 } // namespace

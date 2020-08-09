@@ -18,10 +18,9 @@
 namespace jogasaki::data {
 
 record_store::record_pointer record_store::append(accessor::record_ref record) {
-    auto sz = meta_->record_size();
-    auto* p = resource_->allocate(meta_->record_size(), meta_->record_alignment());
+    auto* p = resource_->allocate(record_size_, meta_->record_alignment());
     if (!p) std::abort();
-    copier_(p, sz, record);
+    copier_(p, record_size_, record);
     ++count_;
     return p;
 }

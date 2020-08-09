@@ -55,9 +55,10 @@ public:
         capacity_(capacity),
         varlen_resource_(varlen_resource),
         copier_(meta_, varlen_resource_),
+        record_size_(meta_->record_size()),
         data_(utils::make_aligned_array<std::byte>(
             std::max(meta_->record_alignment(), hardware_destructive_interference_size),
-            meta_->record_size()*capacity_))
+            record_size_*capacity_))
     {}
 
     /**
@@ -69,10 +70,9 @@ public:
      * @return pointer to the stored record
      */
     record_pointer set(accessor::record_ref record, std::size_t index = 0) {
-        auto sz = meta_->record_size();
         auto* p = ref(index).data();
         if (!p) std::abort();
-        copier_(p, sz, record);
+        copier_(p, record_size_, record);
         return p;
     }
 
@@ -90,7 +90,7 @@ public:
      * @return the accessor to the record specified by the index
      */
     [[nodiscard]] accessor::record_ref ref(std::size_t index = 0) const noexcept {
-        return accessor::record_ref(data_.get()+meta_->record_size()*index, meta_->record_size());
+        return accessor::record_ref(data_.get()+record_size_*index, record_size_);
     }
 
 private:
@@ -98,6 +98,7 @@ private:
     std::size_t capacity_{};
     memory::paged_memory_resource* varlen_resource_{};
     accessor::record_copier copier_{};
+    std::size_t record_size_{};
     utils::aligned_array<std::byte> data_ = utils::make_aligned_array<std::byte>(0UL, 0UL);
 };
 

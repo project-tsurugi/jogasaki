@@ -43,22 +43,22 @@ public:
 
     /**
      * @brief create new instance considering field metadata and its mapping
-     * @param meta metadata of the record_ref passed to write()
+     * @param external_meta metadata of the record_ref passed to write()
      * @param map field mapping represented by the pair {source index, target index} where source is the input record, and target is the stored record
      */
-    explicit basic_record_writer(maybe_shared_ptr<meta::record_meta> meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
-        meta_(std::move(meta)),
+    explicit basic_record_writer(maybe_shared_ptr<meta::record_meta> external_meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
+        external_meta_(std::move(external_meta)),
         map_(std::move(map))
     {
-        assert(map.empty() || map.size() == meta->field_count());
+        assert(map.empty() || map.size() == external_meta_->field_count());
     }
 
-    explicit basic_record_writer(std::size_t capacity, maybe_shared_ptr<meta::record_meta> meta ={}, std::unordered_map<std::size_t, std::size_t> map = {}) :
-        meta_(std::move(meta)),
+    explicit basic_record_writer(std::size_t capacity, maybe_shared_ptr<meta::record_meta> external_meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) :
+        external_meta_(std::move(external_meta)),
         map_(std::move(map)),
         capacity_(capacity)
     {
-        assert(map.empty() || map.size() == meta->field_count());
+        assert(map.empty() || map.size() == external_meta_->field_count());
         records_.reserve(capacity);
     }
 
@@ -68,14 +68,14 @@ public:
      * Only offsets are converted, nothing done for field ordering.
      */
     bool write(accessor::record_ref rec) override {
-        record_type r{};
-        if (meta_) {
-            for(std::size_t i = 0; i < meta_->field_count(); ++i) {
+        record_type r{maybe_shared_ptr<meta::record_meta>{meta_.get()}};
+        if (external_meta_) {
+            for(std::size_t i = 0; i < external_meta_->field_count(); ++i) {
                 auto j = map_.empty() ? i : map_.at(i);
-                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, meta_->value_offset(i));
+                utils::copy_field(external_meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, external_meta_->value_offset(i));
             }
         } else {
-            r = record_type{rec};
+            r = record_type{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}};
         }
         if (capacity_ == npos || records_.size() < capacity_) {
             records_.emplace_back(r);
@@ -115,7 +115,8 @@ public:
         return acquired_;
     }
 private:
-    maybe_shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{record_type{}.record_meta()};
+    maybe_shared_ptr<meta::record_meta> external_meta_{};
     records_type records_{};
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};

@@ -15,12 +15,21 @@
  */
 #pragma once
 
-#include <limits>
-#include <cstdint>
+#include <functional>
 
-namespace jogasaki::executor::process::mock {
+namespace jogasaki {
 
-constexpr static std::size_t time_point_run = 4;
-constexpr static std::size_t time_point_ran = 5;
+/**
+ * @brief generic callback argument to exchange values between caller/callee
+ */
+struct callback_arg {
+    ///@brief identifier of the partition or tasks
+    std::size_t identity_{};
+};
 
-}
+/**
+ * @brief callback type for the caller to use as extension point
+ */
+using callback_type = std::function<void(callback_arg*)>;
+
+} // namespace jogasaki

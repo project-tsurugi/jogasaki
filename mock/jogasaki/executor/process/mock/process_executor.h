@@ -19,7 +19,6 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/utils/performance_tools.h>
-#include "constants.h"
 
 namespace jogasaki::executor::process::mock {
 
@@ -45,12 +44,15 @@ public:
         // assign context
         auto context = pool_->pop();
         auto& impl = *static_cast<impl::task_context*>(context.get());  //NOLINT
-
-        utils::get_watch().set_point(time_point_run, impl.partition());
+        callback_arg arg{impl.partition()};
+        if (will_run()) {
+            (*will_run())(&arg);
+        }
         // execute task
         auto rc = processor_->run(context.get());
-        utils::get_watch().set_point(time_point_ran, impl.partition());
-
+        if (did_run()) {
+            (*did_run())(&arg);
+        }
         if (rc != status::completed && rc != status::completed_with_errors) {
             // task is suspended in the middle, put the current context back
             pool_->push(std::move(context));

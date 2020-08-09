@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <jogasaki/callback.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 
@@ -24,6 +25,7 @@ namespace jogasaki::executor::process::abstract {
  * @brief process executor interface
  * @details process executor is responsible to choose task context, assign and execute the processor in order to
  * complete the work assigned to a processor task.
+ * Optionally callbacks can be set before/after run() add customization point (for perf. testing purpose)
  * The object should be thread safe.
  */
 class process_executor {
@@ -40,6 +42,43 @@ public:
     virtual ~process_executor() = default;
 
     [[nodiscard]] virtual status run() = 0;
+
+    /**
+     * @brief sets callback before creating tasks
+     * @param arg the callback
+     */
+    void will_run(std::shared_ptr<callback_type> arg) {
+        will_run_ = std::move(arg);
+    }
+
+    /**
+     * @brief gets callback before creating tasks
+     * @return the callback
+     */
+    [[nodiscard]] std::shared_ptr<callback_type> const& will_run() const noexcept {
+        return will_run_;
+    }
+
+    /**
+     * @brief sets callback after creating tasks
+     * @param arg the callback
+     */
+    void did_run(std::shared_ptr<callback_type> arg) {
+        did_run_ = std::move(arg);
+    }
+
+    /**
+     * @brief gets callback after creating tasks
+     * @return the callback
+     */
+    [[nodiscard]] std::shared_ptr<callback_type> const& did_run() const noexcept {
+        return did_run_;
+    }
+
+private:
+    std::shared_ptr<callback_type> did_assign_task_{};
+    std::shared_ptr<callback_type> will_run_{};
+    std::shared_ptr<callback_type> did_run_{};
 };
 
 /**

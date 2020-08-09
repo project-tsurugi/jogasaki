@@ -17,6 +17,7 @@
 
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/graph.h>
+#include <jogasaki/callback.h>
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/executor/common/step_kind.h>
 #include <jogasaki/executor/common/flow.h>
@@ -24,11 +25,6 @@
 namespace jogasaki::executor::common {
 
 using ::takatori::util::sequence_view;
-
-/**
- * @brief callback type for the caller to use as extension point
- */
-using callback_type = std::function<void(void)>;
 
 /**
  * @brief step common implementation

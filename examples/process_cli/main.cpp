@@ -322,18 +322,30 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         std::vector<std::shared_ptr<abstract::task_context>> contexts
     ){
         (void)contexts;
-        return std::make_shared<process::mock::process_executor>(std::move(processor), std::move(custom_contexts));
+        auto ret = std::make_shared<process::mock::process_executor>(std::move(processor), std::move(custom_contexts));
+
+        ret->will_run(
+            std::make_shared<callback_type>([](callback_arg* arg){
+                utils::get_watch().set_point(time_point_run, arg->identity_);
+            })
+        );
+        ret->did_run(
+            std::make_shared<callback_type>([](callback_arg* arg){
+                utils::get_watch().set_point(time_point_ran, arg->identity_);
+            })
+        );
+        return ret;
     });
     process.executor_factory(f);
     process.partitions(partitions);
 
     process.will_create_tasks(
-        std::make_shared<common::callback_type>([](){
+        std::make_shared<callback_type>([](callback_arg*){
             utils::get_watch().set_point(time_point_create_task, 0);
         })
     );
     process.did_create_tasks(
-        std::make_shared<common::callback_type>([](){
+        std::make_shared<callback_type>([](callback_arg*){
             utils::get_watch().set_point(time_point_created_task, 0);
         })
     );

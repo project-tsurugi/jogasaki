@@ -111,11 +111,11 @@ void step::connect_to_sub(step& downstream, port_index src, port_index target) {
 sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
     assert(data_flow_object_ != nullptr); //NOLINT
     if (will_create_tasks_) {
-        (*will_create_tasks_)();
+        (*will_create_tasks_)(nullptr);
     }
     auto ret = data_flow_object_->create_tasks();
     if (did_create_tasks_) {
-        (*did_create_tasks_)();
+        (*did_create_tasks_)(nullptr);
     }
     return ret;
 }

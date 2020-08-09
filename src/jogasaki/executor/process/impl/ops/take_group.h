@@ -66,7 +66,7 @@ public:
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
-        std::shared_ptr<meta::group_meta> meta,
+        maybe_shared_ptr<meta::group_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
         relation::expression const* downstream
@@ -107,18 +107,18 @@ public:
         return operator_kind::take_group;
     }
 
-    [[nodiscard]] std::shared_ptr<meta::group_meta> const& meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() const noexcept {
         return meta_;
     }
 
 private:
-    std::shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
     std::size_t reader_index_{};
     relation::expression const* downstream_{};
 
     [[nodiscard]] std::vector<details::take_group_field> create_fields(
-        std::shared_ptr<meta::group_meta> const& meta,
+        maybe_shared_ptr<meta::group_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns
     ) {

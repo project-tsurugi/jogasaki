@@ -17,9 +17,11 @@
 
 #include <tuple>
 #include <sstream>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_traits.h>
-
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/accessor/record_printer.h>
@@ -27,6 +29,7 @@
 namespace jogasaki::mock {
 
 using kind = meta::field_type_kind;
+using takatori::util::maybe_shared_ptr;
 
 template<kind Kind>
 struct to_runtime_type {
@@ -99,7 +102,7 @@ public:
      */
     template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
     explicit basic_record(
-        std::shared_ptr<meta::record_meta> meta,
+        maybe_shared_ptr<meta::record_meta> meta,
         to_runtime_type_t<Kinds>...args
     ) :
         entity_(args...),
@@ -133,7 +136,7 @@ public:
      * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
      * the underlying entity's memory layout)
      */
-    explicit basic_record(std::shared_ptr<meta::record_meta> meta) noexcept : meta_(std::move(meta)) {}
+    explicit basic_record(maybe_shared_ptr<meta::record_meta> meta) noexcept : meta_(std::move(meta)) {}
 
     /**
      * @brief construct new object from record_ref with given meta data
@@ -141,7 +144,7 @@ public:
      * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
      * the underlying entity's memory layout)
      */
-    basic_record(accessor::record_ref ref, std::shared_ptr<meta::record_meta> meta) : basic_record(std::move(meta)) {
+    basic_record(accessor::record_ref ref, maybe_shared_ptr<meta::record_meta> meta) : basic_record(std::move(meta)) {
         entity_ = values<Kinds...>(ref, *meta_);
     }
 
@@ -149,7 +152,7 @@ public:
      * @brief accessor to the meta data of the record
      * @return the meta data
      */
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& record_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept {
         return meta_;
     }
 
@@ -186,7 +189,7 @@ public:
 
 protected:
     entity_type entity_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    takatori::util::maybe_shared_ptr<meta::record_meta> meta_{};
 
     template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
     std::shared_ptr<meta::record_meta> create_meta(
@@ -231,7 +234,7 @@ public:
     }
 };
 
-static_assert(sizeof(record) == 32);
+static_assert(sizeof(record) == 40);
 static_assert(alignof(record) == 8);
 static_assert(!std::is_trivially_copyable_v<record>);
 

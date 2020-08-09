@@ -15,12 +15,16 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/graph.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/meta/variable_order.h>
 
 namespace jogasaki::executor::exchange {
+
+using takatori::util::maybe_shared_ptr;
 
 class step : public common::step {
 public:
@@ -29,7 +33,7 @@ public:
     step(number_of_ports inputs, number_of_ports outputs) : common::step(inputs, outputs, 0) {}
 
     step(
-        std::shared_ptr<meta::record_meta> input_meta,
+        maybe_shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
     ) :
         common::step(0, 0, 0),
@@ -58,7 +62,7 @@ public:
      * @details returns record_meta used for input. Some exchanges (forward, broadcast) use this for output as well.
      * @return record_meta for exchange input
      */
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& input_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& input_meta() const noexcept {
         return input_meta_;
     }
 
@@ -66,7 +70,7 @@ public:
         return kind() == common::step_kind::group || kind() == common::step_kind::aggregate;
     }
 private:
-    std::shared_ptr<meta::record_meta> input_meta_{};
+    maybe_shared_ptr<meta::record_meta> input_meta_{};
     meta::variable_order column_order_{};
 };
 

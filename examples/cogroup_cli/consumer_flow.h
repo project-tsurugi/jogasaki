@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/constants.h>
@@ -26,6 +28,8 @@
 #include "params.h"
 
 namespace jogasaki::cogroup_cli {
+
+using takatori::util::maybe_shared_ptr;
 
 template<class T>
 using sequence_view = takatori::util::sequence_view<T>;
@@ -38,7 +42,7 @@ public:
             executor::exchange::step* right_upstream,
             model::step* step,
             request_context* context,
-            std::shared_ptr<meta::group_meta> meta,
+            maybe_shared_ptr<meta::group_meta> meta,
             params& c
     ) :
             left_upstream_(left_upstream),
@@ -78,7 +82,7 @@ private:
     executor::exchange::step* right_upstream_{};
     model::step* step_{};
     request_context* context_{};
-    std::shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> meta_{};
     params* params_{};
 };
 

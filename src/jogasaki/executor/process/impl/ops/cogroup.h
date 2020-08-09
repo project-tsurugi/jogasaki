@@ -19,6 +19,8 @@
 #include <queue>
 #include <glog/logging.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/group_meta.h>
@@ -33,6 +35,8 @@
 #include <jogasaki/utils/iterator_pair.h>
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::maybe_shared_ptr;
 
 namespace impl {
 
@@ -96,7 +100,7 @@ public:
     cogroup_input(
             executor::group_reader& reader,
             std::unique_ptr<cogroup_record_store> store,
-            std::shared_ptr<meta::group_meta> meta
+            maybe_shared_ptr<meta::group_meta> meta
     ) :
             reader_(std::addressof(reader)),
             store_(std::move(store)),
@@ -111,7 +115,7 @@ public:
         return key_.ref();
     }
 
-    [[nodiscard]] std::shared_ptr<meta::group_meta> const& meta() {
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() {
         return meta_;
     }
 
@@ -164,7 +168,7 @@ public:
 private:
     executor::group_reader* reader_{};
     std::unique_ptr<cogroup_record_store> store_;
-    std::shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> meta_{};
     std::size_t key_size_ = 0;
     data::small_record_store key_; // shallow copy of key (varlen body is held by reader)
     comparator key_comparator_{};
@@ -215,7 +219,7 @@ public:
 
     cogroup(
             std::vector<executor::group_reader*> readers,
-            std::vector<std::shared_ptr<meta::group_meta>> groups_meta
+            std::vector<maybe_shared_ptr<meta::group_meta>> groups_meta
     ) :
             readers_(std::move(readers)),
             groups_meta_(std::move(groups_meta)),
@@ -310,7 +314,7 @@ public:
 
 private:
     std::vector<executor::group_reader*> readers_{};
-    std::vector<std::shared_ptr<meta::group_meta>> groups_meta_{};
+    std::vector<maybe_shared_ptr<meta::group_meta>> groups_meta_{};
     std::vector<impl::cogroup_input> inputs_{};
     queue_type queue_;
     std::size_t key_size_{};

@@ -55,7 +55,7 @@ flow::flow(std::shared_ptr<shuffle_info> info,
         step* owner, std::size_t downstream_partitions) :
         info_(std::move(info)), context_(context), owner_(owner), downstream_partitions_(downstream_partitions) {}
 
-flow::flow(std::shared_ptr<meta::record_meta> input_meta,
+flow::flow(maybe_shared_ptr<meta::record_meta> input_meta,
         std::vector<field_index_type> key_indices,
         request_context* context,
         step* owner,

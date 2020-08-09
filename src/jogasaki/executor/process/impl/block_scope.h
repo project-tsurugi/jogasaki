@@ -42,7 +42,7 @@ public:
         return info_->value_map();
     }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
         return info_->meta();
     }
 

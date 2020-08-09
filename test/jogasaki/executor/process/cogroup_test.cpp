@@ -84,7 +84,7 @@ TEST_F(cogroup_test, simple) {
 
     cogroup cgrp{
         std::vector<group_reader*>{&r1, &r2},
-        std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1()}
+        std::vector<maybe_shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1()}
     };
 
     using consumer_type = std::function<void(accessor::record_ref, std::vector<cogroup::iterator_pair>&)>;
@@ -180,7 +180,7 @@ TEST_F(cogroup_test, three_inputs) {
 
     cogroup cgrp{
             std::vector<group_reader*>{&r1, &r2, &r3},
-            std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1(), test_group_meta1()}
+            std::vector<maybe_shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1(), test_group_meta1()}
     };
 
     using consumer_type = std::function<void(accessor::record_ref, std::vector<cogroup::iterator_pair>&)>;
@@ -272,7 +272,7 @@ TEST_F(cogroup_test, key_value_reversed) {
 
     cogroup cgrp{
             std::vector<group_reader*>{&r1, &r2},
-            std::vector<std::shared_ptr<meta::group_meta>>{test_group_meta1_kv_reversed(), test_group_meta1_kv_reversed()}
+            std::vector<maybe_shared_ptr<meta::group_meta>>{test_group_meta1_kv_reversed(), test_group_meta1_kv_reversed()}
     };
 
     using consumer_type = std::function<void(accessor::record_ref, std::vector<cogroup::iterator_pair>&)>;

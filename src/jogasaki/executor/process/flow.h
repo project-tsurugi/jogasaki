@@ -38,7 +38,7 @@ public:
 
     using field_index_type = meta::record_meta::field_index_type;
 
-    using record_meta_list = std::vector<std::shared_ptr<meta::record_meta>>;
+    using record_meta_list = std::vector<maybe_shared_ptr<meta::record_meta>>;
 
     /**
      * @brief create new instance with empty schema (for testing)

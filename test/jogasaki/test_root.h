@@ -17,6 +17,8 @@
 
 #include <gtest/gtest.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/meta/record_meta.h>
@@ -25,18 +27,20 @@
 
 namespace jogasaki {
 
+using takatori::util::maybe_shared_ptr;
+
 class test_root : public ::testing::Test {
 public:
 
     /**
      * @brief providing typical record metadata
      */
-    static inline std::shared_ptr<meta::record_meta> test_record_meta1() {
+    static inline maybe_shared_ptr<meta::record_meta> test_record_meta1() {
         jogasaki::mock::record r1{};
         return r1.record_meta();
     }
 
-    static inline std::shared_ptr<meta::record_meta> test_record_meta2() {
+    static inline maybe_shared_ptr<meta::record_meta> test_record_meta2() {
         return std::make_shared<meta::record_meta>(
                 std::vector<meta::field_type>{
                         meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
@@ -46,7 +50,7 @@ public:
                 boost::dynamic_bitset<std::uint64_t>{std::string("000")});
     }
 
-    static inline std::shared_ptr<meta::group_meta> test_group_meta1() {
+    static inline maybe_shared_ptr<meta::group_meta> test_group_meta1() {
         return std::make_shared<meta::group_meta>(
                 std::make_shared<meta::record_meta>(
                         std::vector<meta::field_type>{
@@ -60,7 +64,7 @@ public:
                         boost::dynamic_bitset<std::uint64_t>{std::string("0")})
         );
     }
-    static inline std::shared_ptr<meta::group_meta> test_group_meta1_kv_reversed() {
+    static inline maybe_shared_ptr<meta::group_meta> test_group_meta1_kv_reversed() {
         return std::make_shared<meta::group_meta>(
                 std::make_shared<meta::record_meta>(
                         std::vector<meta::field_type>{

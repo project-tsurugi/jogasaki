@@ -17,11 +17,15 @@
 
 #include <cstddef>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::executor {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief partitioner determines input partition for the record to be sent
@@ -38,7 +42,7 @@ public:
      * @param partitions number of total partitions
      * @param meta schema information of the record whose target is calculated by this partitioner
      */
-    partitioner(std::size_t partitions, std::shared_ptr<meta::record_meta> meta) noexcept :
+    partitioner(std::size_t partitions, maybe_shared_ptr<meta::record_meta> meta) noexcept :
             partitions_(partitions), meta_(std::move(meta)) {}
 
     /**
@@ -58,7 +62,7 @@ public:
 
 private:
     std::size_t partitions_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
 
     template <meta::field_type_kind Kind>
     using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;

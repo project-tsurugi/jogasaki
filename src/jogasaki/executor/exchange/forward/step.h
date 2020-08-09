@@ -34,7 +34,7 @@ public:
      * @param column_order variable ordering information common for input/output
      */
     explicit step(
-        std::shared_ptr<meta::record_meta> meta,
+        maybe_shared_ptr<meta::record_meta> meta,
         meta::variable_order column_order = {}
     ) :
         exchange::step(std::move(meta), std::move(column_order))
@@ -59,7 +59,7 @@ public:
         return exchange::step::input_order();
     }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& output_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& output_meta() const noexcept {
         return exchange::step::input_meta();
     }
 private:

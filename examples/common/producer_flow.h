@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/constants.h>
@@ -24,6 +26,8 @@
 #include "producer_task.h"
 
 namespace jogasaki::common_cli {
+
+using takatori::util::maybe_shared_ptr;
 
 template<class T>
 using sequence_view = takatori::util::sequence_view<T>;
@@ -35,7 +39,7 @@ public:
     producer_flow(executor::exchange::step* downstream,
             model::step* step,
             request_context* context,
-            std::shared_ptr<meta::record_meta> meta,
+            maybe_shared_ptr<meta::record_meta> meta,
             Params& p) :
             downstream_(downstream),
             step_(step),
@@ -68,7 +72,7 @@ private:
     executor::exchange::step* downstream_{};
     model::step* step_{};
     request_context* context_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     Params* params_{};
     std::vector<std::unique_ptr<memory::monotonic_paged_memory_resource>> resources_{};
 };

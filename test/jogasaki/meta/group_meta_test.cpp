@@ -121,7 +121,8 @@ TEST_F(group_meta_test, access_shared_ptr) {
     };
 
     auto key = meta.key_shared();
-    EXPECT_EQ(2, key.use_count());
+    auto owner = key.ownership();
+    EXPECT_EQ(3, owner.use_count());
 }
 
 }

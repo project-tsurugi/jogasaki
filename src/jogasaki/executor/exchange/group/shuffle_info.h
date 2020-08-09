@@ -19,6 +19,8 @@
 #include <set>
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
@@ -26,6 +28,8 @@
 #include <jogasaki/executor/comparator.h>
 
 namespace jogasaki::executor::exchange::group {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief information to execute shuffle, used to extract schema and record layout information for key/value parts
@@ -45,7 +49,7 @@ public:
      * @param key_indices
      * @param partitions
      */
-    shuffle_info(std::shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices) :
+    shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices) :
             record_(std::move(record)),
             key_indices_(std::move(key_indices)),
             group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())) {}
@@ -68,35 +72,35 @@ public:
     /**
      * @brief returns metadata for whole record
      */
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& record_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept {
         return record_;
     }
 
     /**
      * @brief returns metadata for key part
      */
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& key_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept {
         return group_->key_shared();
     }
 
     /**
      * @brief returns metadata for value part
      */
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& value_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept {
         return group_->value_shared();
     }
 
     /**
      * @brief returns metadata for key/value parts at once
      */
-    [[nodiscard]] std::shared_ptr<meta::group_meta> const& group_meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept {
         return group_;
     }
 
 private:
-    std::shared_ptr<meta::record_meta> record_{};
+    maybe_shared_ptr<meta::record_meta> record_{};
     std::vector<field_index_type> key_indices_{};
-    std::shared_ptr<meta::group_meta> group_{};
+    maybe_shared_ptr<meta::group_meta> group_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(std::vector<std::size_t> const& indices) {
         auto num = indices.size();

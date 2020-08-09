@@ -16,6 +16,7 @@
 #pragma once
 
 #include <takatori/util/sequence_view.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
 
@@ -28,6 +29,7 @@
 namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
+using takatori::util::maybe_shared_ptr;
 
 template <class Record>
 class basic_record_reader : public executor::record_reader {
@@ -47,7 +49,7 @@ public:
      * @param meta metadata of the record_ref output by get_record()
      * @param map field mapping represented by the pair {source index, target index} where source is the stored record, and target is the output record by get_record()
      */
-    explicit basic_record_reader(records_type records, std::shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
+    explicit basic_record_reader(records_type records, maybe_shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
         records_(std::move(records)),
         meta_(std::move(meta)),
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
@@ -57,7 +59,7 @@ public:
     }
 
     using record_generator = std::function<record_type(void)>;
-    basic_record_reader(std::size_t num_records, std::size_t repeats, record_generator generator, std::shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
+    basic_record_reader(std::size_t num_records, std::size_t repeats, record_generator generator, maybe_shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
         meta_(std::move(meta)),
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
         map_(std::move(map)),
@@ -122,7 +124,7 @@ public:
         return repeats_;
     }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
         static record_type rec{};
         if (meta_) {
             return meta_;
@@ -143,7 +145,7 @@ public:
     }
 private:
     records_type records_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     std::shared_ptr<data::small_record_store> store_{};
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool initialized_{false};

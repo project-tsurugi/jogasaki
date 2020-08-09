@@ -61,7 +61,7 @@ public:
      * @param owner step owning this object
      */
     flow(
-        std::shared_ptr<meta::record_meta> input_meta,
+        maybe_shared_ptr<meta::record_meta> input_meta,
         request_context* context,
         step* owner
     );
@@ -79,7 +79,7 @@ public:
     }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    std::shared_ptr<meta::record_meta> input_meta_{};
+    maybe_shared_ptr<meta::record_meta> input_meta_{};
     std::vector<std::unique_ptr<forward::sink>> sinks_;
     std::vector<std::unique_ptr<forward::source>> sources_{};
     request_context* context_{};

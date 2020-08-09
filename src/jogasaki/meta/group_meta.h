@@ -17,10 +17,14 @@
 
 #include <cstddef>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/constants.h>
 
 namespace jogasaki::meta {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief represents group metadata holding record metadata on key and value parts
@@ -28,7 +32,7 @@ namespace jogasaki::meta {
 class group_meta final {
 public:
     /// @brief record meta type
-    using record_meta_type = std::shared_ptr<record_meta>;
+    using record_meta_type = maybe_shared_ptr<record_meta>;
 
     /**
      * @brief construct empty object

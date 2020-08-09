@@ -130,12 +130,12 @@ public:
     iterable_record_store() = default;
 
     /**
-     * @copydoc record_store::record_store(memory::paged_memory_resource* record_resource, memory::paged_memory_resource* varlen_resource, std::shared_ptr<meta::record_meta> meta)
+     * @copydoc record_store::record_store(memory::paged_memory_resource* record_resource, memory::paged_memory_resource* varlen_resource, maybe_shared_ptr<meta::record_meta> meta)
      */
     iterable_record_store(
             memory::paged_memory_resource* record_resource,
             memory::paged_memory_resource* varlen_resource,
-            std::shared_ptr<meta::record_meta> meta);
+            maybe_shared_ptr<meta::record_meta> meta);
 
     /**
      * @copydoc record_store::append()

@@ -43,7 +43,7 @@ iterable_record_store::iterator::iterator(const iterable_record_store &container
 {}
 
 iterable_record_store::iterable_record_store(memory::paged_memory_resource *record_resource,
-    memory::paged_memory_resource *varlen_resource, std::shared_ptr<meta::record_meta> meta) :
+    memory::paged_memory_resource *varlen_resource, maybe_shared_ptr<meta::record_meta> meta) :
     record_size_(meta->record_size()),
     base_(record_resource, varlen_resource, std::move(meta))
 {}

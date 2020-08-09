@@ -40,8 +40,8 @@ public:
     using iterator_pair = cogroup::iterator_pair;
 
     join(
-            std::shared_ptr<meta::record_meta> key_meta,
-            std::vector<std::shared_ptr<meta::record_meta>> records_meta,
+            maybe_shared_ptr<meta::record_meta> key_meta,
+            std::vector<maybe_shared_ptr<meta::record_meta>> records_meta,
             std::function<void(accessor::record_ref)> downstream
     ) :
             key_meta_(std::move(key_meta)),
@@ -102,8 +102,8 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::record_meta> key_meta_{};
-    std::vector<std::shared_ptr<meta::record_meta>> records_meta_{};
+    maybe_shared_ptr<meta::record_meta> key_meta_{};
+    std::vector<maybe_shared_ptr<meta::record_meta>> records_meta_{};
     std::function<void(accessor::record_ref)> downstream_{};
 };
 

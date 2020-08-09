@@ -18,6 +18,7 @@
 #include <memory>
 
 #include <takatori/relation/expression.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>
@@ -27,6 +28,7 @@
 namespace jogasaki::executor::process::impl {
 
 namespace relation = takatori::relation;
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief information on block scoped variables
@@ -37,16 +39,16 @@ public:
 
     block_scope_info(
         std::unique_ptr<variable_value_map> value_map,
-        std::shared_ptr<meta::record_meta> meta
+        maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
 
     [[nodiscard]] variable_value_map& value_map() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
     std::unique_ptr<variable_value_map> value_map_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
 };
 
 using scopes_info = std::vector<class block_scope_info>;

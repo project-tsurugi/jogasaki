@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/constants.h>
@@ -26,11 +28,13 @@
 
 namespace jogasaki::common_cli {
 
+using takatori::util::maybe_shared_ptr;
+
 template <class Params>
 class producer_process : public executor::process::step {
 public:
     producer_process() = default;
-    producer_process(std::shared_ptr<meta::record_meta> meta,
+    producer_process(maybe_shared_ptr<meta::record_meta> meta,
             Params& c) :
             meta_(std::move(meta)), params_(&c) {}
 
@@ -44,7 +48,7 @@ public:
         executor::process::step::deactivate();
     }
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     Params* params_{};
 };
 

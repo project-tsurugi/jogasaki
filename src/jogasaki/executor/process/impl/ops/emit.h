@@ -91,7 +91,7 @@ public:
         return operator_kind::emit;
     }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
 
@@ -99,7 +99,7 @@ public:
         external_writer_index_ = index;
     }
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::emit_field> fields_{};
     std::size_t external_writer_index_{};
 
@@ -118,7 +118,7 @@ private:
     }
 
     [[nodiscard]] std::vector<details::emit_field> create_fields(
-        std::shared_ptr<meta::record_meta> const& meta,
+        maybe_shared_ptr<meta::record_meta> const& meta,
         takatori::util::sequence_view<column const> columns
     ) {
         std::vector<details::emit_field> fields{};

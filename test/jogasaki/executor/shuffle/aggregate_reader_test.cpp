@@ -87,7 +87,7 @@ public:
         }
         return ret;
     }
-    std::shared_ptr<meta::record_meta> meta_ = test_record_meta1();
+    maybe_shared_ptr<meta::record_meta> meta_ = test_record_meta1();
     std::shared_ptr<shuffle_info> info_ = std::make_shared<shuffle_info>(meta_, std::vector<std::size_t>{0}, aggregator_);
 };
 

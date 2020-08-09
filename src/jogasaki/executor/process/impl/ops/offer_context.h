@@ -21,6 +21,8 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::maybe_shared_ptr;
+
 /**
  * @brief offer context
  */
@@ -37,7 +39,7 @@ public:
      */
     offer_context(
         class abstract::task_context* ctx,
-        std::shared_ptr<meta::record_meta> meta,
+        maybe_shared_ptr<meta::record_meta> meta,
         block_scope& variables
     ) : context_base(ctx, variables),
         store_(std::move(meta))

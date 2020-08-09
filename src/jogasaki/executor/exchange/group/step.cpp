@@ -39,7 +39,7 @@ step::step(
 {}
 
 step::step(
-    std::shared_ptr<meta::record_meta> input_meta,
+    maybe_shared_ptr<meta::record_meta> input_meta,
     std::vector<field_index_type> key_indices,
     meta::variable_order input_column_order,
     meta::variable_order output_column_order

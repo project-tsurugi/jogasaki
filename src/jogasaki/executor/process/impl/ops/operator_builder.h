@@ -49,6 +49,7 @@ namespace relation = takatori::relation;
 
 using takatori::util::fail;
 using takatori::relation::step::dispatch;
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief generator for relational operators
@@ -93,7 +94,7 @@ public:
         std::map<std::string, std::string> options{};
         (void)stg->open(options); //FIXME
         std::shared_ptr<abstract::scan_info> scan_info;
-        std::shared_ptr<meta::record_meta> meta;
+        maybe_shared_ptr<meta::record_meta> meta;
         auto block_index = info_->scope_indices().at(&node);
         auto& downstream = node.output().opposite()->owner();
         operators_[std::addressof(node)] = std::make_unique<scan>(*info_, block_index, scan_info, meta, &downstream);

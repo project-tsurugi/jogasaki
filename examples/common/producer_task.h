@@ -17,6 +17,8 @@
 
 #include <glog/logging.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
@@ -28,6 +30,8 @@
 
 namespace jogasaki::common_cli {
 
+using takatori::util::maybe_shared_ptr;
+
 template <class Params>
 class producer_task : public task_base {
 public:
@@ -35,7 +39,7 @@ public:
     producer_task(request_context* context,
             model::step* src,
             executor::exchange::sink* sink,
-            std::shared_ptr<meta::record_meta> meta,
+            maybe_shared_ptr<meta::record_meta> meta,
             Params& c,
             memory::monotonic_paged_memory_resource& resource
             ) :
@@ -60,7 +64,7 @@ public:
 
 private:
     executor::exchange::sink* sink_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     executor::record_writer* writer_{};
     Params* params_{};
     memory::monotonic_paged_memory_resource* resource_{};

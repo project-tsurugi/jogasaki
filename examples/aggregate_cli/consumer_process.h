@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/constants.h>
@@ -24,10 +26,12 @@
 
 namespace jogasaki::aggregate_cli {
 
+using takatori::util::maybe_shared_ptr;
+
 class consumer_process : public executor::process::step {
 public:
     consumer_process() = default;
-    explicit consumer_process(std::shared_ptr<meta::group_meta> meta, params& c) :
+    explicit consumer_process(maybe_shared_ptr<meta::group_meta> meta, params& c) :
             meta_(std::move(meta)), params_(&c) {}
 
     void activate() override {
@@ -40,7 +44,7 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> meta_{};
     params* params_{};
 };
 

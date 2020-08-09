@@ -35,7 +35,7 @@ using takatori::util::fail;
 
 block_scope_info::block_scope_info(
     std::unique_ptr<variable_value_map> value_map,
-    std::shared_ptr<meta::record_meta> meta
+    maybe_shared_ptr<meta::record_meta> meta
 ) noexcept :
     value_map_(std::move(value_map)),
     meta_(std::move(meta))
@@ -45,7 +45,7 @@ variable_value_map& block_scope_info::value_map() const noexcept {
     return *value_map_;
 }
 
-std::shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexcept {
     return meta_;
 }
 

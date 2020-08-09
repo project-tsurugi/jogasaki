@@ -42,7 +42,7 @@ public:
      * @param meta metadata of the record_ref passed to write()
      * @param map field mapping represented by the pair {source index, target index} where source is the input record, and target is the stored record
      */
-    explicit basic_external_writer(std::shared_ptr<meta::record_meta> meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
+    explicit basic_external_writer(maybe_shared_ptr<meta::record_meta> meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
         meta_(std::move(meta)),
         map_(std::move(map))
     {
@@ -94,7 +94,7 @@ public:
         return acquired_;
     }
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     records_type records_{};
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};

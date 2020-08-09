@@ -68,7 +68,7 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    flow(std::shared_ptr<meta::record_meta> input_meta,
+    flow(maybe_shared_ptr<meta::record_meta> input_meta,
             std::vector<field_index_type> key_indices,
             request_context* context,
             step* owner,

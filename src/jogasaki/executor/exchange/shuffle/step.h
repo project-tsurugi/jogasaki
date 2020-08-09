@@ -34,14 +34,14 @@ public:
     step() = default;
 
     step(
-        std::shared_ptr<meta::record_meta> input_meta,
+        maybe_shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
     ) : exchange::step(std::move(input_meta), std::move(column_order))
     {}
 
     [[nodiscard]] virtual meta::variable_order const& output_order() const noexcept = 0;
 
-    [[nodiscard]] virtual std::shared_ptr<meta::group_meta> const& output_meta() const noexcept = 0;
+    [[nodiscard]] virtual maybe_shared_ptr<meta::group_meta> const& output_meta() const noexcept = 0;
 };
 
 }

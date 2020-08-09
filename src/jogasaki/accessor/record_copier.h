@@ -18,10 +18,14 @@
 #include <cstddef>
 #include <cstring>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::accessor {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief record copy utility
@@ -49,7 +53,7 @@ public:
      * Pass nullptr if this copier never copies such data item, or shallow copy is sufficient (i.e. only reference to
      * memory resource is copied)
      */
-    explicit record_copier(std::shared_ptr<meta::record_meta> meta, memory::paged_memory_resource* resource = nullptr);
+    explicit record_copier(maybe_shared_ptr<meta::record_meta> meta, memory::paged_memory_resource* resource = nullptr);
 
     /**
      * @brief copy record content referenced by record_ref
@@ -67,7 +71,7 @@ public:
     void operator()(accessor::record_ref dst, accessor::record_ref src);
 
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     memory::paged_memory_resource* resource_{};
     std::vector<offset_type> text_field_offsets_{};
 };

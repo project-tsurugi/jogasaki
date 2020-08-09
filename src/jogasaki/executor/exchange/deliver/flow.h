@@ -51,7 +51,7 @@ public:
     }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    std::shared_ptr<meta::record_meta> input_meta_{};
+    maybe_shared_ptr<meta::record_meta> input_meta_{};
     std::vector<std::unique_ptr<deliver::sink>> sinks_;
     std::vector<std::unique_ptr<deliver::source>> sources_;
     request_context* context_{};

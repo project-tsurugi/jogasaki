@@ -49,7 +49,7 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::
 } // namespace impl
 
 flow::flow(
-    std::shared_ptr<meta::record_meta> input_meta,
+    maybe_shared_ptr<meta::record_meta> input_meta,
     request_context* context,
     step* owner
 ) :

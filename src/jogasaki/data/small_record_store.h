@@ -18,11 +18,15 @@
 #include <vector>
 #include <cstring>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/utils/aligned_unique_ptr.h>
 
 namespace jogasaki::data {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief records container to store just handful of records
@@ -47,7 +51,7 @@ public:
      * instance. nullptr is allowed if this instance stores only the copy of reference to varlen data (shallow copy.)
      */
     explicit small_record_store(
-        std::shared_ptr<meta::record_meta> meta,
+        maybe_shared_ptr<meta::record_meta> meta,
         std::size_t capacity = 1,
         memory::paged_memory_resource* varlen_resource = nullptr
     ) :
@@ -94,7 +98,7 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     std::size_t capacity_{};
     memory::paged_memory_resource* varlen_resource_{};
     accessor::record_copier copier_{};

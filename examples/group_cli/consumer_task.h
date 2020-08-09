@@ -18,6 +18,8 @@
 #include <memory>
 #include <glog/logging.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
@@ -28,6 +30,8 @@
 
 namespace jogasaki::group_cli {
 
+using takatori::util::maybe_shared_ptr;
+
 class consumer_task : public common_cli::task_base {
 public:
     consumer_task() = default;
@@ -35,7 +39,7 @@ public:
             request_context* context,
             model::step* src,
             executor::reader_container reader,
-            std::shared_ptr<meta::group_meta> meta,
+            maybe_shared_ptr<meta::group_meta> meta,
             params& c
     ) : task_base(context, src), meta_(std::move(meta)), reader_(reader), params_(&c) {}
 
@@ -95,7 +99,7 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> meta_{};
     executor::reader_container reader_{};
     params* params_{};
     std::size_t key_offset_{};

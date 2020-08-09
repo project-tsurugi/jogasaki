@@ -31,6 +31,8 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::maybe_shared_ptr;
+
 /**
  * @brief scanner
  */
@@ -49,7 +51,7 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::shared_ptr<abstract::scan_info> scan_info,
-        std::shared_ptr<meta::record_meta> meta,
+        maybe_shared_ptr<meta::record_meta> meta,
         relation::expression const* downstream
     ) : operator_base(info, block_index),
         info_(std::move(scan_info)),
@@ -94,7 +96,7 @@ public:
 
 private:
     std::shared_ptr<abstract::scan_info> info_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     relation::expression const* downstream_{};
 };
 

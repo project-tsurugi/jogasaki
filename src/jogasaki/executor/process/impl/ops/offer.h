@@ -19,6 +19,7 @@
 
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/relation/step/offer.h>
 #include <takatori/descriptor/variable.h>
 
@@ -67,7 +68,7 @@ public:
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
-        std::shared_ptr<meta::record_meta> meta,
+        maybe_shared_ptr<meta::record_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t writer_index
     ) : operator_base(info, block_index),
@@ -93,17 +94,17 @@ public:
         return operator_kind::offer;
     }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> const& meta() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
 
 private:
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::offer_field> fields_{};
     std::size_t writer_index_{};
 
     [[nodiscard]] std::vector<details::offer_field> create_fields(
-        std::shared_ptr<meta::record_meta> const& meta,
+        maybe_shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns
     ) {

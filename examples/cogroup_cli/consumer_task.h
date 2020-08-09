@@ -18,6 +18,8 @@
 #include <memory>
 #include <glog/logging.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
@@ -33,6 +35,7 @@
 namespace jogasaki::cogroup_cli {
 
 using namespace jogasaki::executor;
+using takatori::util::maybe_shared_ptr;
 
 class consumer_task : public common_cli::task_base {
 public:
@@ -41,8 +44,8 @@ public:
             model::step* src,
             executor::reader_container left_reader,
             executor::reader_container right_reader,
-            std::shared_ptr<meta::group_meta> l_meta,
-            std::shared_ptr<meta::group_meta> r_meta,
+            maybe_shared_ptr<meta::group_meta> l_meta,
+            maybe_shared_ptr<meta::group_meta> r_meta,
             params& c
     ) :
             task_base(context, src),
@@ -337,8 +340,8 @@ public:
     }
 
 private:
-    std::shared_ptr<meta::group_meta> l_meta_{};
-    std::shared_ptr<meta::group_meta> r_meta_{};
+    maybe_shared_ptr<meta::group_meta> l_meta_{};
+    maybe_shared_ptr<meta::group_meta> r_meta_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> l_store_resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> l_store_varlen_resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_resource_{};

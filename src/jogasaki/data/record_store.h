@@ -18,10 +18,14 @@
 #include <vector>
 #include <cstring>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
 
 namespace jogasaki::data {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief auto-expanding container to store any number of record
@@ -50,7 +54,7 @@ public:
     record_store(
             memory::paged_memory_resource* record_resource,
             memory::paged_memory_resource* varlen_resource,
-            std::shared_ptr<meta::record_meta> meta
+            maybe_shared_ptr<meta::record_meta> meta
     ) :
             resource_(record_resource),
             meta_(std::move(meta)),
@@ -87,7 +91,7 @@ public:
 
 private:
     memory::paged_memory_resource* resource_{};
-    std::shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     accessor::record_copier copier_{};
     std::size_t count_{};
     std::size_t record_size_{};

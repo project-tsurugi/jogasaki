@@ -57,7 +57,7 @@ public:
 
     explicit basic_group_reader(
         groups_type groups,
-        std::shared_ptr<meta::group_meta> meta = {}
+        maybe_shared_ptr<meta::group_meta> meta = {}
     ) :
         groups_(std::move(groups)),
         meta_(std::move(meta)),
@@ -137,7 +137,7 @@ public:
     }
 private:
     groups_type groups_{};
-    std::shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> meta_{};
     std::shared_ptr<data::small_record_store> key_store_{};
     std::shared_ptr<data::small_record_store> value_store_{};
     typename groups_type::iterator current_group_{};

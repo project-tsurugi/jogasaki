@@ -30,6 +30,7 @@ namespace jogasaki::mock {
 
 using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
+using takatori::util::fail;
 
 template<kind Kind>
 struct to_runtime_type {
@@ -196,6 +197,12 @@ protected:
         boost::dynamic_bitset<std::uint64_t> nullability,
         std::vector<std::size_t> nullity_offset_table
         ) {
+        // too many creation is likely to be a program error (e.g. using wrong constructor)
+        static constexpr std::size_t limit_creating_meta = 1000;
+        thread_local std::size_t create_count = 0;
+        if (++create_count > limit_creating_meta) {
+            fail();
+        }
         return std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
             std::move(nullability),

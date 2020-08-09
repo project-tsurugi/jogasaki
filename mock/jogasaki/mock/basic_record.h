@@ -86,6 +86,8 @@ public:
 
     /**
      * @brief construct new object with non-nullable fields
+     * @warning new record_meta is created based on the template parameter. This constructor should not be used
+     * when creating large number of (e.g. thousands of) records.
      */
     template <typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
     explicit basic_record(to_runtime_type_t<Kinds>...args) :
@@ -114,6 +116,8 @@ public:
      * @brief construct new object with given nullability offsets
      * @param nullability bitset that represents if each field is nullable or not
      * @param nullity_offset_table bit offset table that indicates the nullity offset of each nullable field
+     * @warning new record_meta is created based on the template parameter. This constructor should not be used
+     * when creating large number of (e.g. thousands of) records.
      */
     basic_record(
         boost::dynamic_bitset<std::uint64_t> nullability,
@@ -127,6 +131,8 @@ public:
     /**
      * @brief construct new object from record_ref with default meta data
      * @param ref the record_ref whose values are copied to new object
+     * @warning new record_meta is created based on the template parameter. This constructor should not be used
+     * when creating large number of (e.g. thousands of) records.
      */
     explicit basic_record(accessor::record_ref ref) : basic_record() {
         entity_ = values<Kinds...>(ref, *meta_);
@@ -145,7 +151,7 @@ public:
      * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
      * the underlying entity's memory layout)
      */
-    basic_record(accessor::record_ref ref, maybe_shared_ptr<meta::record_meta> meta) : basic_record(std::move(meta)) {
+    basic_record(accessor::record_ref ref, maybe_shared_ptr<meta::record_meta> meta) : basic_record(std::move(meta)) {  // NOLINT(performance-unnecessary-value-param)
         entity_ = values<Kinds...>(ref, *meta_);
     }
 
@@ -189,6 +195,15 @@ public:
     }
 
 protected:
+    [[nodiscard]] entity_type& entity() noexcept {
+        return entity_;
+    }
+
+    [[nodiscard]] entity_type const& entity() const noexcept {
+        return entity_;
+    }
+
+private:
     entity_type entity_{};
     takatori::util::maybe_shared_ptr<meta::record_meta> meta_{};
 
@@ -225,19 +240,19 @@ public:
     record(key_type key, value_type value) : basic_record(key, value) {}
 
     [[nodiscard]] key_type const& key() const noexcept {
-        return std::get<0>(entity_);
+        return std::get<0>(entity());
     }
 
     void key(key_type arg) noexcept {
-        std::get<0>(entity_) = arg;
+        std::get<0>(entity()) = arg;
     }
 
     [[nodiscard]] value_type const& value() const noexcept {
-        return std::get<1>(entity_);
+        return std::get<1>(entity());
     }
 
     void value(value_type arg) noexcept {
-        std::get<1>(entity_) = arg;
+        std::get<1>(entity()) = arg;
     }
 };
 
@@ -256,15 +271,15 @@ public:
     record_f4f8ch(f4_value_type f4_value, key_type key, ch_value_type ch_value) : basic_record(f4_value, key, ch_value) {}
 
     [[nodiscard]] key_type const& key() const noexcept {
-        return std::get<1>(entity_);
+        return std::get<1>(entity());
     }
 
     [[nodiscard]] f4_value_type const& f4_value() const noexcept {
-        return std::get<0>(entity_);
+        return std::get<0>(entity());
     }
 
     [[nodiscard]] ch_value_type const& ch_value() const noexcept {
-        return std::get<2>(entity_);
+        return std::get<2>(entity());
     }
 };
 

@@ -29,7 +29,9 @@ public:
         std::shared_ptr<abstract::task_context> context
     ) noexcept :
         processor_(std::move(processor)),
-        pool_(std::make_shared<impl::task_context_pool>(std::vector<std::shared_ptr<abstract::task_context>>{context}))
+        pool_(std::make_shared<impl::task_context_pool>(
+            std::vector<std::shared_ptr<abstract::task_context>>{std::move(context)}
+        ))
     {}
 
     process_executor(

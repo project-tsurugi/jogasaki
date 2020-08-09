@@ -46,14 +46,21 @@ public:
      * @param external_meta metadata of the record_ref passed to write()
      * @param map field mapping represented by the pair {source index, target index} where source is the input record, and target is the stored record
      */
-    explicit basic_record_writer(maybe_shared_ptr<meta::record_meta> external_meta, std::unordered_map<std::size_t, std::size_t> map = {}) :
+    explicit basic_record_writer(
+        maybe_shared_ptr<meta::record_meta> external_meta,
+        std::unordered_map<std::size_t, std::size_t> map = {}
+    ) :
         external_meta_(std::move(external_meta)),
         map_(std::move(map))
     {
         assert(map.empty() || map.size() == external_meta_->field_count());
     }
 
-    explicit basic_record_writer(std::size_t capacity, maybe_shared_ptr<meta::record_meta> external_meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) :
+    explicit basic_record_writer(
+        std::size_t capacity,
+        maybe_shared_ptr<meta::record_meta> external_meta = {},
+        std::unordered_map<std::size_t, std::size_t> map = {}
+    ) :
         external_meta_(std::move(external_meta)),
         map_(std::move(map)),
         capacity_(capacity)
@@ -72,7 +79,13 @@ public:
         if (external_meta_) {
             for(std::size_t i = 0; i < external_meta_->field_count(); ++i) {
                 auto j = map_.empty() ? i : map_.at(i);
-                utils::copy_field(external_meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, external_meta_->value_offset(i));
+                utils::copy_field(
+                    external_meta_->at(i),
+                    r.ref(),
+                    r.record_meta()->value_offset(j),
+                    rec,
+                    external_meta_->value_offset(i)
+                );
             }
         } else {
             r = record_type{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}};

@@ -47,9 +47,14 @@ public:
      * @brief create new instance considering field metadata and its mapping
      * @param records the source records stored internally in this reader
      * @param meta metadata of the record_ref output by get_record()
-     * @param map field mapping represented by the pair {source index, target index} where source is the stored record, and target is the output record by get_record()
+     * @param map field mapping represented by the pair {source index, target index} where source is
+     * the stored record, and target is the output record by get_record()
      */
-    explicit basic_record_reader(records_type records, maybe_shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
+    explicit basic_record_reader(
+        records_type records,
+        maybe_shared_ptr<meta::record_meta> meta = {},
+        std::unordered_map<std::size_t, std::size_t> map = {}
+    ) noexcept :
         records_(std::move(records)),
         meta_(std::move(meta)),
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
@@ -59,7 +64,13 @@ public:
     }
 
     using record_generator = std::function<record_type(void)>;
-    basic_record_reader(std::size_t num_records, std::size_t repeats, record_generator generator, maybe_shared_ptr<meta::record_meta> meta = {}, std::unordered_map<std::size_t, std::size_t> map = {}) noexcept :
+    basic_record_reader(
+        std::size_t num_records,
+        std::size_t repeats,
+        record_generator generator,
+        maybe_shared_ptr<meta::record_meta> meta = {},
+        std::unordered_map<std::size_t, std::size_t> map = {}
+    ) noexcept :
         meta_(std::move(meta)),
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
         map_(std::move(map)),
@@ -101,7 +112,13 @@ public:
             rec = store_->ref();
             for(std::size_t i = 0; i < meta_->field_count(); ++i) {
                 auto j = map_.empty() ? i : map_.at(i);
-                utils::copy_field(meta_->at(j), rec, meta_->value_offset(j), r.ref(), r.record_meta()->value_offset(i));
+                utils::copy_field(
+                    meta_->at(j),
+                    rec,
+                    meta_->value_offset(j),
+                    r.ref(),
+                    r.record_meta()->value_offset(i)
+                );
             }
         }
         return rec;

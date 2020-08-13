@@ -146,7 +146,7 @@ TEST_F(take_flat_test, simple) {
     block_scope variables{block_info};
 
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    std::vector<test_record> records{
+    mock::basic_record_reader<test_record>::records_type records{
         test_record{1.0, 10, 100},
         test_record{2.0, 20, 200},
     };

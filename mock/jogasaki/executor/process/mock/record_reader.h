@@ -17,6 +17,7 @@
 
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/standard_memory_resource.h>
 
 #include <jogasaki/accessor/record_ref.h>
 
@@ -25,6 +26,8 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/copy_field_data.h>
+
+#include <boost/container/pmr/vector.hpp>
 
 namespace jogasaki::executor::process::mock {
 
@@ -35,7 +38,9 @@ template <class Record>
 class basic_record_reader : public executor::record_reader {
 public:
     using record_type = Record;
-    using records_type = std::vector<record_type>;
+
+    using records_type = boost::container::pmr::vector<record_type>;
+    using memory_resource_type = boost::container::pmr::memory_resource;
 
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
     /**
@@ -68,9 +73,11 @@ public:
         std::size_t num_records,
         std::size_t repeats,
         record_generator generator,
+        memory_resource_type* resource = takatori::util::get_standard_memory_resource(),
         maybe_shared_ptr<meta::record_meta> meta = {},
         std::unordered_map<std::size_t, std::size_t> map = {}
     ) noexcept :
+        records_(resource),
         meta_(std::move(meta)),
         store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
         map_(std::move(map)),

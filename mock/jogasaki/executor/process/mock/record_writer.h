@@ -17,6 +17,11 @@
 
 #include <memory>
 
+#include <boost/container/pmr/vector.hpp>
+#include <boost/container/pmr/memory_resource.hpp>
+
+#include <takatori/util/standard_memory_resource.h>
+
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -32,7 +37,8 @@ class basic_record_writer : public executor::record_writer {
 public:
 
     using record_type = Record;
-    using records_type = std::vector<record_type>;
+    using records_type = boost::container::pmr::vector<record_type>;
+    using memory_resource_type = boost::container::pmr::memory_resource;
 
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 
@@ -58,10 +64,12 @@ public:
 
     explicit basic_record_writer(
         std::size_t capacity,
+        memory_resource_type* resource = takatori::util::get_standard_memory_resource(),
         maybe_shared_ptr<meta::record_meta> external_meta = {},
         std::unordered_map<std::size_t, std::size_t> map = {}
     ) :
         external_meta_(std::move(external_meta)),
+        records_(resource),
         map_(std::move(map)),
         capacity_(capacity)
     {

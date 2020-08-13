@@ -42,6 +42,7 @@ class process_executor_test : public test_root {
 public:
     using record_type = mock::record_reader::record_type;
     void SetUp() override {
+
         reader_ = std::make_shared<mock::record_reader>(records_);
         reader_container r{reader_.get()};
         auto meta = unwrap_record_reader(reader_.get())->meta();
@@ -54,7 +55,7 @@ public:
             std::shared_ptr<abstract::scan_info>{}
         ));
     }
-    std::vector<record_type> records_{
+    mock::basic_record_reader<record_type>::records_type records_{
         record_type{1, 1.0},
         record_type{2, 2.0},
         record_type{3, 3.0},
@@ -97,7 +98,7 @@ TEST_F(process_executor_test, default_factory) {
 
 TEST_F(process_executor_test, custom_factory) {
     // custom factory discarding passed contexts and use customized one
-    std::vector<record_type> records{
+    mock::basic_record_reader<record_type>::records_type records{
         record_type{1, 1.0},
     };
     auto reader = std::make_shared<mock::record_reader>(records);

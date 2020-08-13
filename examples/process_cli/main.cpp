@@ -68,6 +68,7 @@ DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_int32(write_buffer_size, 2097152, "Writer buffer size in byte");  //NOLINT
 DEFINE_int32(read_buffer_size, 2097152, "Reader buffer size in byte");  //NOLINT
+DEFINE_bool(std_allocator, false, "use standard allocator for reader/writer");  //NOLINT
 
 namespace jogasaki::process_cli {
 
@@ -101,6 +102,8 @@ using ::takatori::util::downcast;
 using ::takatori::util::string_builder;
 using namespace ::yugawara;
 using namespace ::yugawara::variable;
+
+using custom_memory_resource = jogasaki::memory::monotonic_paged_memory_resource;
 
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
@@ -274,6 +277,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
+    assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
+    static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
 
     auto& process = g.emplace<process::step>(p_info);
     jf0 >> process >> jf1;
@@ -284,14 +289,25 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto partitions = param.partitions_;
     auto records_per_partition = param.records_per_partition_;
     auto test_record_meta = test_record{}.record_meta();
-    auto record_size = test_record_meta->record_size();
+    auto record_size = sizeof(test_record);
     auto write_buffer_record_count = param.write_buffer_size_ / record_size;
     auto read_buffer_record_count = param.read_buffer_size_ / record_size;
     std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
+
+    memory::page_pool pool;
+    std::vector<std::shared_ptr<custom_memory_resource>> resources{};
     std::vector<std::shared_ptr<writer_type>> writers{};
     std::vector<std::shared_ptr<reader_type>> readers{};
     common_cli::xorshift_random64 rnd{1234567U};
+
+    if (param.std_allocator) {
+        resources.reserve(partitions*2);
+    }
     for(std::size_t i=0; i < partitions; ++i) {
+        pmr::memory_resource* reader_resource =
+            param.std_allocator ?
+            static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
+            resources.emplace_back(std::make_shared<custom_memory_resource>(&pool)).get();
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(
             read_buffer_record_count,
             (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
@@ -302,10 +318,19 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
                     static_cast<std::int32_t>(rnd()),
                     static_cast<std::int64_t>(rnd()),
                 };
-            })
+            },
+            reader_resource
+            )
         );
         reader_container r{reader.get()};
-        auto& writer = writers.emplace_back(std::make_shared<writer_type>(write_buffer_record_count));
+        pmr::memory_resource* writer_resource =
+            param.std_allocator ?
+                static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
+                resources.emplace_back(std::make_shared<custom_memory_resource>(&pool)).get();
+        auto& writer = writers.emplace_back(std::make_shared<writer_type>(
+            write_buffer_record_count,
+            writer_resource
+            ));
         auto ctx =
             std::make_shared<process::mock::task_context>(
                 std::vector<reader_container>{r},
@@ -387,6 +412,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.records_per_partition_ = FLAGS_records_per_partition;
     s.read_buffer_size_ = FLAGS_read_buffer_size;
     s.write_buffer_size_ = FLAGS_write_buffer_size;
+    s.std_allocator = FLAGS_std_allocator;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

@@ -26,6 +26,8 @@ public:
     std::size_t write_buffer_size_ = 2*1024*1024;
 
     std::size_t read_buffer_size_ = 2*1024*1024;
+
+    bool std_allocator = false;
 };
 
 }

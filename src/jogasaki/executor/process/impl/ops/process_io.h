@@ -23,11 +23,11 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+/**
+ * @brief process input information corresponding to input port
+ * @details the input can be either record-based or group-based, which the upstream exchange kind defines.
+ */
 class process_input {
-    maybe_shared_ptr<meta::record_meta> record_meta_{};
-    maybe_shared_ptr<meta::group_meta> group_meta_{};
-    meta::variable_order column_order_{};
-    bool for_group_{false};
 public:
     process_input(
         maybe_shared_ptr<meta::record_meta> meta,
@@ -56,11 +56,18 @@ public:
     [[nodiscard]] bool is_group_input() const noexcept {
         return for_group_;
     }
+private:
+    maybe_shared_ptr<meta::record_meta> record_meta_{};
+    maybe_shared_ptr<meta::group_meta> group_meta_{};
+    meta::variable_order column_order_{};
+    bool for_group_{false};
 };
 
+/**
+ * @brief process output information corresponding to output port
+ * @details the output is always record based
+ */
 class process_output {
-    maybe_shared_ptr<meta::record_meta> meta_{};
-    meta::variable_order column_order_{};
 public:
     process_output(
         maybe_shared_ptr<meta::record_meta> meta,
@@ -75,8 +82,15 @@ public:
     [[nodiscard]] meta::variable_order const& column_order() const noexcept {
         return column_order_;
     }
+private:
+    maybe_shared_ptr<meta::record_meta> meta_{};
+    meta::variable_order column_order_{};
 };
 
+/**
+ * @brief process external output information corresponding to emit or write operator
+ * @details the output is always record based
+ */
 class process_external_output {
     maybe_shared_ptr<meta::record_meta> meta_{};
     meta::variable_order column_order_{};
@@ -97,9 +111,6 @@ public:
 };
 
 class process_io {
-    std::vector<process_input> inputs_{};
-    std::vector<process_output> outputs_{};
-    std::vector<process_external_output> external_outputs_{};
 public:
     using input_entity_type = std::vector<process_input>;
     using output_entity_type = std::vector<process_output>;
@@ -112,33 +123,33 @@ public:
     process_io() = default;
 
     [[nodiscard]] process_input const& input_at(std::size_t index) const {
-        return input_entity_.at(index);
+        return inputs_.at(index);
     }
 
     [[nodiscard]] process_output const& output_at(std::size_t index) const {
-        return output_entity_.at(index);
+        return outputs_.at(index);
     }
 
     [[nodiscard]] process_external_output const& external_output_at(std::size_t index) const {
-        return external_output_entity_.at(index);
+        return external_outputs_.at(index);
     }
 
     [[nodiscard]] std::size_t input_count() const noexcept {
-        return input_entity_.size();
+        return inputs_.size();
     }
 
     [[nodiscard]] std::size_t output_count() const noexcept {
-        return output_entity_.size();
+        return outputs_.size();
     }
 
     [[nodiscard]] std::size_t external_output_count() const noexcept {
-        return external_output_entity_.size();
+        return external_outputs_.size();
     }
 
 private:
-    input_entity_type input_entity_{};
-    output_entity_type output_entity_{};
-    external_output_entity_type external_output_entity_{};
+    input_entity_type inputs_{};
+    output_entity_type outputs_{};
+    external_output_entity_type external_outputs_{};
 };
 
 }

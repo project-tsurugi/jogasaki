@@ -24,9 +24,12 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
+#include <jogasaki/executor/process/impl/ops/process_io.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
+
+using jogasaki::executor::process::impl::ops::process_io;
 
 class step : public common::step {
 public:
@@ -72,10 +75,20 @@ public:
         return executor_factory_;
     }
 
+    void process_io(std::shared_ptr<class process_io> arg) noexcept {
+        process_io_ = std::move(arg);
+    }
+
+    [[nodiscard]] std::shared_ptr<class process_io> const& process_io() const noexcept {
+        return process_io_;
+    }
 private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<abstract::process_executor_factory> executor_factory_{};
+    std::shared_ptr<class process_io> process_io_{};
     std::size_t partitions_{default_partitions};
+
+    std::shared_ptr<class process_io> create_process_io();
 };
 
 }

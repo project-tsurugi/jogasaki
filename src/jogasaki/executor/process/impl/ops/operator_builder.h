@@ -28,14 +28,19 @@
 #include <takatori/relation/scan.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/step/dispatch.h>
+#include <takatori/relation/expression.h>
+
+#include <yugawara/binding/factory.h>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/process_io.h>
 #include <jogasaki/storage/storage_context.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/shuffle/step.h>
+#include <yugawara/binding/extract.h>
 #include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
@@ -63,9 +68,11 @@ public:
     explicit operator_builder(
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
+        std::shared_ptr<process_io> io_info,
         memory::paged_memory_resource* resource = nullptr) :
         info_(std::move(info)),
-        compiler_ctx_(std::addressof(compiler_ctx))
+        compiler_ctx_(std::addressof(compiler_ctx)),
+        io_info_(std::move(io_info))
     {
         (void)resource;
     }
@@ -145,15 +152,44 @@ public:
     void operator()(relation::step::flatten const& node) {
         (void)node;
     }
+
+    std::size_t find_input_index(relation::expression const& self, takatori::descriptor::relation const& target) {
+        std::size_t count = 0;
+        yugawara::binding::factory bindings;
+        if (auto t = yugawara::binding::extract_if<::takatori::plan::exchange>(target)) {
+            if (self == t) {
+
+            }
+
+        }
+        takatori::relation::enumerate_upstream(self, [&count, &target, &bindings](relation::expression& e){
+            if ( == bindings(e)) {
+
+            }
+            ++count;
+        });
+        return count;
+    }
+
     void operator()(relation::step::take_flat const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto map = compiler_ctx_->relation_step_map();
-        auto xchg = dynamic_cast<exchange::forward::step*>(map->at(node.source()));
-        if (! xchg) fail();
-        auto reader_index = process_io_map_.add_input(xchg);
-        auto& downstream = node.output().opposite()->owner();
+//        auto map = compiler_ctx_->relation_step_map();
+//        auto xchg = dynamic_cast<exchange::forward::step*>(map->at(node.source()));
+//        if (! xchg) fail();
+//        auto reader_index = process_io_map_.add_input(xchg);
+        auto reader_index = find_input_index(node, node.source());
+//        auto& downstream = node.output().opposite()->owner();
+        auto& input = io_info_->input_at(reader_index);
+        assert(! input.is_group_input());
         operators_[std::addressof(node)] = std::make_unique<take_flat>(
-            *info_, block_index, xchg->output_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
+            *info_,
+            block_index,
+            input.record_meta(),
+            input.column_order()
+            node.columns(),
+            reader_index,
+            &downstream
+        );
         dispatch(*this, downstream);
     }
     void operator()(relation::step::take_group const& node) {
@@ -182,6 +218,7 @@ public:
 private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
+    std::shared_ptr<process_io> io_info_{};
     operators_type operators_{};
     process_io_map process_io_map_{};
 };
@@ -189,9 +226,10 @@ private:
 [[nodiscard]] inline operator_container create_operators(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
+    std::shared_ptr<process_io> io_info,
     memory::paged_memory_resource* resource = nullptr
 ) {
-    return operator_builder{std::move(info), compiler_ctx, resource}();
+    return operator_builder{std::move(info), compiler_ctx, std::move(io_info), resource}();
 }
 
 }

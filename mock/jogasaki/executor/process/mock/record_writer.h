@@ -79,7 +79,7 @@ public:
 
     /**
      * @brief write record and store internal storage as basic_record.
-     * The record_meta, if passed to constructor, is used to convert the offset between input record ref and basic_record::record_meata().
+     * The record_meta, if passed to constructor, is used to convert the offset between input record ref and basic_record::record_meta().
      * Only offsets are converted, nothing done for field ordering.
      */
     bool write(accessor::record_ref rec) override {

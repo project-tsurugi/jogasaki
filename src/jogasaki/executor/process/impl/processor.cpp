@@ -19,7 +19,11 @@
 
 namespace jogasaki::executor::process::impl {
 
-processor::processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) :
+processor::processor(
+    std::shared_ptr<processor_info> info,
+    plan::compiler_context const& compiler_ctx,
+    std::shared_ptr<process_io> io_info
+    ) :
     info_(std::move(info)), operators_(ops::create_operators(info_, compiler_ctx))
 {}
 

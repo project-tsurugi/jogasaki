@@ -16,12 +16,61 @@
 #include "step.h"
 
 #include <memory>
+#include <jogasaki/executor/exchange/forward/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
 
-step::step(std::shared_ptr<processor_info> info, step::number_of_ports inputs, step::number_of_ports outputs,
-    step::number_of_ports subinputs) : common::step(inputs, outputs, subinputs), info_(std::move(info)) {}
+using jogasaki::executor::process::impl::ops::process_io;
+
+std::shared_ptr<process_io> step::create_process_io() {
+    auto io = std::make_shared<class process_io>();
+
+    std::vector<impl::ops::process_input> inputs{};
+    for(auto& in : input_ports()) {
+        auto& xchg = *static_cast<exchange::step*>(in->opposites()[0]->owner());
+        switch(xchg.kind()) {
+            case common::step_kind::forward: {
+                auto& fwd = static_cast<exchange::forward::step&>(xchg);
+                inputs.emplace_back(
+                    fwd.output_meta(),
+                    fwd.output_order()
+                );
+                break;
+            }
+            case common::step_kind::group: {
+                auto& grp = static_cast<exchange::group::step&>(xchg);
+                inputs.emplace_back(
+                    grp.output_meta(),
+                    grp.output_order()
+                );
+                break;
+            }
+            case common::step_kind::aggregate: {
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+
+
+    return std::make_shared<class process_io>();
+}
+
+step::step(
+    std::shared_ptr<processor_info> info,
+    step::number_of_ports inputs,
+    step::number_of_ports outputs,
+    step::number_of_ports subinputs
+) : common::step(inputs, outputs, subinputs),
+    info_(std::move(info)),
+    process_io_(create_process_io())
+{}
 
 common::step_kind step::kind() const noexcept {
     return common::step_kind::process;

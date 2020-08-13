@@ -23,6 +23,7 @@
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/utils/aligned_unique_ptr.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 
@@ -33,7 +34,6 @@ using takatori::util::maybe_shared_ptr;
  */
 class small_record_store {
 public:
-    static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
 
     /// @brief type of record pointer
     using record_pointer = void*;
@@ -61,7 +61,7 @@ public:
         copier_(meta_, varlen_resource_),
         record_size_(meta_->record_size()),
         data_(utils::make_aligned_array<std::byte>(
-            std::max(meta_->record_alignment(), hardware_destructive_interference_size),
+            std::max(meta_->record_alignment(), utils::hardware_destructive_interference_size),
             record_size_*capacity_))
     {}
 

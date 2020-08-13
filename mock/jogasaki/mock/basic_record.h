@@ -25,6 +25,7 @@
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::mock {
 
@@ -214,7 +215,7 @@ private:
         ) {
         // too many creation is likely to be a program error (e.g. using wrong constructor)
         static constexpr std::size_t limit_creating_meta = 1000;
-        thread_local std::size_t create_count = 0;
+        alignas(utils::hardware_destructive_interference_size) thread_local std::size_t create_count = 0;
         if (++create_count > limit_creating_meta) {
             fail();
         }

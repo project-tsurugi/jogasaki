@@ -17,15 +17,16 @@
 
 #include <memory>
 
+#include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/task_context.h>
 
 namespace jogasaki::executor::process {
 
-flow::flow(flow::record_meta_list input_meta, flow::record_meta_list subinput_meta, flow::record_meta_list output_meta,
-    request_context *context, process::step* step, std::shared_ptr<processor_info> info) :
-    input_meta_(std::move(input_meta)),
-    subinput_meta_(std::move(subinput_meta)),
-    output_meta_(std::move(output_meta)),
+flow::flow(
+    request_context *context,
+    process::step* step,
+    std::shared_ptr<processor_info> info
+) :
     context_(context),
     step_(step),
     info_(std::move(info))
@@ -36,7 +37,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:
-            proc = std::make_shared<impl::processor>(info_, *context_->compiler_context());
+            proc = std::make_shared<impl::processor>(info_, *context_->compiler_context(), step_->process_io(), *step_);
             break;
         case takatori::statement::statement_kind::write:
             //FIXME

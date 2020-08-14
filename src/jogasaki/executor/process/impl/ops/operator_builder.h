@@ -34,6 +34,7 @@
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/relation_indices.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/process_io.h>
@@ -65,14 +66,16 @@ public:
 
     operator_builder() = default;
 
-    explicit operator_builder(
+    operator_builder(
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<process_io> io_info,
+        takatori::plan::step& process,
         memory::paged_memory_resource* resource = nullptr) :
         info_(std::move(info)),
         compiler_ctx_(std::addressof(compiler_ctx)),
-        io_info_(std::move(io_info))
+        io_info_(std::move(io_info)),
+        process_(std::addressof(process))
     {
         (void)resource;
     }
@@ -153,39 +156,23 @@ public:
         (void)node;
     }
 
-    std::size_t find_input_index(relation::expression const& self, takatori::descriptor::relation const& target) {
-        std::size_t count = 0;
-        yugawara::binding::factory bindings;
-        if (auto t = yugawara::binding::extract_if<::takatori::plan::exchange>(target)) {
-            if (self == t) {
-
-            }
-
-        }
-        takatori::relation::enumerate_upstream(self, [&count, &target, &bindings](relation::expression& e){
-            if ( == bindings(e)) {
-
-            }
-            ++count;
-        });
-        return count;
-    }
-
     void operator()(relation::step::take_flat const& node) {
         auto block_index = info_->scope_indices().at(&node);
+        (void)block_index;
 //        auto map = compiler_ctx_->relation_step_map();
 //        auto xchg = dynamic_cast<exchange::forward::step*>(map->at(node.source()));
 //        if (! xchg) fail();
 //        auto reader_index = process_io_map_.add_input(xchg);
-        auto reader_index = find_input_index(node, node.source());
-//        auto& downstream = node.output().opposite()->owner();
+        auto reader_index = utils::find_input_index(*process_, node.source());
+        auto& downstream = node.output().opposite()->owner();
         auto& input = io_info_->input_at(reader_index);
         assert(! input.is_group_input());
+
         operators_[std::addressof(node)] = std::make_unique<take_flat>(
             *info_,
             block_index,
+            input.column_order(),
             input.record_meta(),
-            input.column_order()
             node.columns(),
             reader_index,
             &downstream
@@ -221,15 +208,17 @@ private:
     std::shared_ptr<process_io> io_info_{};
     operators_type operators_{};
     process_io_map process_io_map_{};
+    takatori::plan::step* process_{};
 };
 
 [[nodiscard]] inline operator_container create_operators(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<process_io> io_info,
+    takatori::plan::step& process,
     memory::paged_memory_resource* resource = nullptr
 ) {
-    return operator_builder{std::move(info), compiler_ctx, std::move(io_info), resource}();
+    return operator_builder{std::move(info), compiler_ctx, std::move(io_info), process, resource}();
 }
 
 }

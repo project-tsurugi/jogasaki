@@ -44,11 +44,11 @@ public:
         column_order_(std::move(column_order)),
         for_group_(true)
     {}
-    [[nodiscard]] meta::record_meta const& record_meta() const noexcept {
-        return *record_meta_;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept {
+        return record_meta_;
     }
-    [[nodiscard]] meta::group_meta const& group_meta() const noexcept {
-        return *group_meta_;
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept {
+        return group_meta_;
     }
     [[nodiscard]] meta::variable_order const& column_order() const noexcept {
         return column_order_;
@@ -76,8 +76,8 @@ public:
         meta_(std::move(meta)),
         column_order_(std::move(column_order))
     {}
-    [[nodiscard]] meta::record_meta const& meta() const noexcept {
-        return *meta_;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
+        return meta_;
     }
     [[nodiscard]] meta::variable_order const& column_order() const noexcept {
         return column_order_;
@@ -117,10 +117,24 @@ public:
     using external_output_entity_type = std::vector<process_external_output>;
 
     constexpr static std::size_t npos = static_cast<std::size_t>(-1);
+
     /**
      * @brief create new empty instance
      */
     process_io() = default;
+
+    /**
+     * @brief create new instance
+     */
+    process_io(
+        input_entity_type inputs,
+        output_entity_type outputs,
+        external_output_entity_type external_outputs
+    ) :
+        inputs_(std::move(inputs)),
+        outputs_(std::move(outputs)),
+        external_outputs_(std::move(external_outputs))
+    {}
 
     [[nodiscard]] process_input const& input_at(std::size_t index) const {
         return inputs_.at(index);

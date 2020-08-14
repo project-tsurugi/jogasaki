@@ -41,25 +41,39 @@ std::shared_ptr<process_io> step::create_process_io() {
                 );
                 break;
             }
-            case common::step_kind::group: {
-                auto& grp = static_cast<exchange::group::step&>(xchg);
+            case common::step_kind::group:
+            case common::step_kind::aggregate:
+            {
+                auto& grp = static_cast<exchange::shuffle::step&>(xchg);
                 inputs.emplace_back(
                     grp.output_meta(),
                     grp.output_order()
                 );
                 break;
             }
+            default:
+                fail();
+        }
+    }
+    std::vector<impl::ops::process_output> outputs{};
+    for(auto& out : output_ports()) {
+        auto& xchg = *static_cast<exchange::step*>(out->opposites()[0]->owner());
+        switch(xchg.kind()) {
+            case common::step_kind::forward:
+            case common::step_kind::group:
             case common::step_kind::aggregate: {
+                auto& x = static_cast<exchange::step&>(xchg);
+                outputs.emplace_back(
+                    x.input_meta(),
+                    x.input_order()
+                );
                 break;
             }
             default:
-                break;
+                fail();
         }
     }
-
-
-
-    return std::make_shared<class process_io>();
+    return std::make_shared<class process_io>(std::move(inputs), std::move(outputs), process_io::external_output_entity_type{});
 }
 
 step::step(
@@ -82,9 +96,6 @@ std::size_t step::partitions() const noexcept {
 
 void step::activate() {
     data_flow_object(std::make_unique<flow>(
-        flow::record_meta_list {},
-        flow::record_meta_list {},
-        flow::record_meta_list {},
         context(),
         this,
         info_

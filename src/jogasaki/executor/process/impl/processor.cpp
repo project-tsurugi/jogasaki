@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #include "processor.h"
+
+#include <jogasaki/executor/process/step.h>
 #include "block_scope_info.h"
 #include "ops/operator_builder.h"
 
@@ -22,9 +24,10 @@ namespace jogasaki::executor::process::impl {
 processor::processor(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
-    std::shared_ptr<process_io> io_info
+    std::shared_ptr<process_io> io_info,
+    takatori::plan::step& process
     ) :
-    info_(std::move(info)), operators_(ops::create_operators(info_, compiler_ctx))
+    info_(std::move(info)), operators_(ops::create_operators(info_, compiler_ctx, std::move(io_info), process))
 {}
 
 abstract::status processor::run(abstract::task_context *context) {

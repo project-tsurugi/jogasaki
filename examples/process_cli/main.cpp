@@ -69,6 +69,7 @@ DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all nu
 DEFINE_int32(write_buffer_size, 2097152, "Writer buffer size in byte");  //NOLINT
 DEFINE_int32(read_buffer_size, 2097152, "Reader buffer size in byte");  //NOLINT
 DEFINE_bool(std_allocator, false, "use standard allocator for reader/writer");  //NOLINT
+DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
 
 namespace jogasaki::process_cli {
 
@@ -308,15 +309,17 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
             param.std_allocator ?
             static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
             resources.emplace_back(std::make_shared<custom_memory_resource>(&pool)).get();
+        std::size_t seq = 0;
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(
             read_buffer_record_count,
             (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
-            [&rnd, &test_record_meta]() {
+            [&rnd, &test_record_meta, &seq, &param]() {
+                ++seq;
                 return test_record{
                     test_record_meta,
-                    static_cast<double>(rnd()),
-                    static_cast<std::int32_t>(rnd()),
-                    static_cast<std::int64_t>(rnd()),
+                    static_cast<double>(param.sequential_data ? seq : rnd()),
+                    static_cast<std::int32_t>(param.sequential_data ? seq*10 : rnd()),
+                    static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd()),
                 };
             },
             reader_resource
@@ -413,6 +416,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.read_buffer_size_ = FLAGS_read_buffer_size;
     s.write_buffer_size_ = FLAGS_write_buffer_size;
     s.std_allocator = FLAGS_std_allocator;
+    s.sequential_data = FLAGS_sequential_data;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

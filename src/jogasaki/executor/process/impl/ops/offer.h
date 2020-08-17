@@ -56,6 +56,7 @@ public:
     friend class offer_context;
 
     using column = takatori::relation::step::offer::column;
+
     /**
      * @brief create empty object
      */
@@ -63,6 +64,14 @@ public:
 
     /**
      * @brief create new object
+     * @param info processor's information where this operation is contained
+     * @param block_index the index of the block that this operation belongs to
+     * @param order the exchange columns ordering information that assigns the field index of the output record. The index
+     * can be used with record_meta to get field metadata.
+     * @param meta the record metadata of the output record. This information is typically provided by the downstream exchange.
+     * @param columns mapping information between variables and exchange columns
+     * @param writer_index the index that identifies the writer in the task context. This corresponds to the output port
+     * number that the output exchange is connected.
      */
     offer(
         processor_info const& info,
@@ -77,6 +86,10 @@ public:
         writer_index_(writer_index)
     {}
 
+    /**
+     * @brief conduct the operation
+     * @param ctx context object for the execution
+     */
     void operator()(offer_context& ctx) {
         auto target = ctx.store_.ref();
         auto source = ctx.variables().store().ref();

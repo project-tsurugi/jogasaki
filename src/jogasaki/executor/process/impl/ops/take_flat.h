@@ -65,6 +65,15 @@ public:
 
     /**
      * @brief create new object
+     * @param info processor's information where this operation is contained
+     * @param block_index the index of the block that this operation belongs to
+     * @param order the exchange columns ordering information that assigns the field index of the input record. The index
+     * can be used with record_meta to get field metadata.
+     * @param meta the record metadata of the record. This information is typically provided by the upstream exchange.
+     * @param columns mapping information between exchange columns and variables
+     * @param reader_index the index that identifies the reader in the task context. This corresponds to the input port
+     * number that the input exchange is connected.
+     * @param downstream downstream operator that should be invoked with the output from this operation
      */
     take_flat(
         processor_info const& info,
@@ -81,6 +90,13 @@ public:
         downstream_(downstream)
     {}
 
+    /**
+     * @brief conduct the operation
+     * @tparam Callback type of parent operator executor, which can be called via takatori::relation::step::dispatch.
+     * @param ctx context object for the execution
+     * @param visitor the callback object that should be invoked to process output of this operation. Pass nullptr if
+     * this operation is executed stand-alone and no subsequent processing is needed (e.g. in testcases).
+     */
     template <class Callback>
     void operator()(take_flat_context& ctx, Callback* visitor = nullptr) {
         auto target = ctx.variables().store().ref();

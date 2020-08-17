@@ -131,8 +131,13 @@ void dump_perf_info() {
 }
 
 static int run(params& param, std::shared_ptr<configuration> cfg) {
+    using kind = meta::field_type_kind;
+    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
+    assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
+    static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
+    auto meta = test_record{}.record_meta();
+
     utils::get_watch().set_point(time_point_begin, 0);
-    auto meta = test_record_meta();
 
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
@@ -276,10 +281,6 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto& scope_info = p_info->scopes_info()[s.block_index()];
     block_scope variables{scope_info};
 
-    using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
-    static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
 
     auto& process = g.emplace<process::step>(p_info);
     jf0 >> process >> jf1;
@@ -289,7 +290,6 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     auto partitions = param.partitions_;
     auto records_per_partition = param.records_per_partition_;
-    auto test_record_meta = test_record{}.record_meta();
     auto record_size = sizeof(test_record);
     auto write_buffer_record_count = param.write_buffer_size_ / record_size;
     auto read_buffer_record_count = param.read_buffer_size_ / record_size;
@@ -313,10 +313,10 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         auto& reader = readers.emplace_back(std::make_shared<reader_type>(
             read_buffer_record_count,
             (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
-            [&rnd, &test_record_meta, &seq, &param]() {
+            [&rnd, &meta, &seq, &param]() {
                 ++seq;
                 return test_record{
-                    test_record_meta,
+                    meta,
                     static_cast<double>(param.sequential_data ? seq : rnd()),
                     static_cast<std::int32_t>(param.sequential_data ? seq*10 : rnd()),
                     static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd()),

@@ -108,288 +108,283 @@ using namespace ::yugawara::variable;
 
 using custom_memory_resource = jogasaki::memory::monotonic_paged_memory_resource;
 
-std::shared_ptr<meta::record_meta> test_record_meta() {
-    return std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{std::string("000")});
-}
+using kind = meta::field_type_kind;
+using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
+using reader_type = process::mock::basic_record_reader<test_record>;
+using writer_type = process::mock::basic_record_writer<test_record>;
 
-void dump_perf_info() {
-    auto& watch = utils::get_watch();
-    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_schedule, "create graph");
-    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_create_task, "schedule");
-    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_create_task, time_point_created_task, "create tasks");
-#ifndef PERFORMANCE_TOOLS
-    LOG(INFO) << "wait before run: total " << watch.duration(time_point_created_task, time_point_run) << "ms" ;
-#endif
-    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_run, time_point_ran, "run");
-#ifndef PERFORMANCE_TOOLS
-    LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed) << "ms" ;
-#endif
-}
+class cli {
+public:
+    int operator()(params& param, std::shared_ptr<configuration> cfg) {
+        utils::get_watch().set_point(time_point_begin, 0);
+        assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
+        static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
+        auto meta = test_record{}.record_meta();
 
-void create_compiled_info(std::shared_ptr<plan::compiler_context> compiler_context,
-    std::vector<maybe_shared_ptr<takatori::plan::exchange>>& input_exchanges,
-    std::vector<maybe_shared_ptr<takatori::plan::exchange>>& output_exchanges
-) {
+        // generate takatori compile info and statement
+        auto compiler_context = std::make_shared<plan::compiler_context>();
+        create_compiled_info(compiler_context);
 
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
-        "T0",
-        {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
-    storage::column const& t0c2 = t0->columns()[2];
+        // create step graph with only process
+        auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
+        auto& p0 = find_process(p);
+        auto channel = std::make_shared<class channel>();
+        auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
+        common::graph g{*context};
+        auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
+        customize_process(
+            param,
+            process,
+            meta
+        );
 
-    std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
-    auto p = std::make_shared<takatori::plan::graph_type>();
-    auto& f0 = p->insert(::takatori::plan::forward{
-        variable_vector{
-            bindings.exchange_column(),
-            bindings.exchange_column(),
-            bindings.exchange_column()
-        }
-    });
-    auto&& f0c0 = f0.columns()[0];
-    auto&& f0c1 = f0.columns()[1];
-    auto&& f0c2 = f0.columns()[2];
+        dag_controller dc{std::move(cfg)};
+        utils::get_watch().set_point(time_point_schedule, 0);
+        dc.schedule(g);
+        utils::get_watch().set_point(time_point_completed, 0);
+        dump_perf_info();
 
-    auto& f1 = p->insert(::takatori::plan::forward{
-        variable_vector{
-            bindings.exchange_column(),
-            bindings.exchange_column(),
-            bindings.exchange_column()
-        }
-    });
-    auto&& f1c0 = f1.columns()[0];
-    auto&& f1c1 = f1.columns()[1];
-    auto&& f1c2 = f1.columns()[2];
-
-    auto&& p0 = p->insert(takatori::plan::process {});
-    auto c0 = bindings.stream_variable("c0");
-    auto c1 = bindings.stream_variable("c1");
-    auto c2 = bindings.stream_variable("c2");
-    auto& r0 = p0.operators().insert(relation::step::take_flat {
-        bindings.exchange(f0),
-        {
-            { f0c0, c0 },
-            { f0c1, c1 },
-            { f0c2, c2 },
-        },
-    });
-
-    auto&& r1 = p0.operators().insert(relation::step::offer {
-        bindings.exchange(f1),
-        {
-            { c0, f1c0 },
-            { c1, f1c1 },
-            { c2, f1c2 },
-        },
-    });
-
-    r0.output() >> r1.input();
-
-    f0.add_downstream(p0);
-    f1.add_upstream(p0);
-    auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vm->bind(c0, t::int4{});
-    vm->bind(c1, t::float8{});
-    vm->bind(c2, t::int8{});
-    vm->bind(f0c0, t::int4{});
-    vm->bind(f0c1, t::float8{});
-    vm->bind(f0c2, t::int8{});
-    vm->bind(f1c0, t::int4{});
-    vm->bind(f1c1, t::float8{});
-    vm->bind(f1c2, t::int8{});
-    vm->bind(bindings(t0c0), t::int4{});
-    vm->bind(bindings(t0c1), t::float8{});
-    vm->bind(bindings(t0c2), t::int8{});
-    yugawara::compiled_info c_info{{}, vm};
-
-    input_exchanges.emplace_back(&f0);
-    output_exchanges.emplace_back(&f1);
-
-    compiler_context->compiled_info(c_info);
-    compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
-}
-
-takatori::plan::process& find_process(takatori::plan::graph_type& p) {
-    takatori::plan::process* p0{};
-    takatori::plan::sort_from_upstream(p, [&p0](takatori::plan::step& s){
-        if (s.kind() == takatori::plan::step_kind::process) {
-            p0 = &dynamic_cast<takatori::plan::process&>(s);
-        }
-    });
-    if (! p0) fail();
-    return *p0;
-}
-
-static int run(params& param, std::shared_ptr<configuration> cfg) {
-    utils::get_watch().set_point(time_point_begin, 0);
-
-    using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
-    static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
-    auto meta = test_record{}.record_meta();
-
-    auto compiler_context = std::make_shared<plan::compiler_context>();
-    std::vector<maybe_shared_ptr<takatori::plan::exchange>> input_exchanges{};
-    std::vector<maybe_shared_ptr<takatori::plan::exchange>> output_exchanges{};
-
-    create_compiled_info(compiler_context,
-        input_exchanges,
-        output_exchanges
-    );
-
-    auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
-    auto& p0 = find_process(p);
-    auto channel = std::make_shared<class channel>();
-    auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
-    common::graph g{*context};
-    auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
-
-
-    using kind = meta::field_type_kind;
-    using reader_type = process::mock::basic_record_reader<test_record>;
-    using writer_type = process::mock::basic_record_writer<test_record>;
-
-    auto partitions = param.partitions_;
-    auto records_per_partition = param.records_per_partition_;
-    auto record_size = sizeof(test_record);
-    auto write_buffer_record_count = param.write_buffer_size_ / record_size;
-    auto read_buffer_record_count = param.read_buffer_size_ / record_size;
-    memory::page_pool pool;
-    std::vector<std::shared_ptr<custom_memory_resource>> resources{};
-    std::vector<std::shared_ptr<writer_type>> writers{};
-    std::vector<std::shared_ptr<reader_type>> readers{};
-    utils::xorshift_random64 rnd{1234567U};
-
-    std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
-    if (param.std_allocator) {
-        resources.reserve(partitions*2);
+        return 0;
     }
-    for(std::size_t i=0; i < partitions; ++i) {
-        pmr::memory_resource* reader_resource =
-            param.std_allocator ?
-            static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
-            resources.emplace_back(std::make_shared<custom_memory_resource>(&pool)).get();
-        std::size_t seq = 0;
-        auto& reader = readers.emplace_back(std::make_shared<reader_type>(
-            read_buffer_record_count,
-            (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
-            [&rnd, &meta, &seq, &param]() {
-                ++seq;
-                return test_record{
-                    meta,
-                    static_cast<double>(param.sequential_data ? seq : rnd()),
-                    static_cast<std::int32_t>(param.sequential_data ? seq*10 : rnd()),
-                    static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd()),
-                };
+
+private:
+    memory::page_pool pool_;
+    std::vector<std::shared_ptr<custom_memory_resource>> resources_{};
+    std::vector<maybe_shared_ptr<takatori::plan::exchange>> input_exchanges_{};
+    std::vector<maybe_shared_ptr<takatori::plan::exchange>> output_exchanges_{};
+    std::vector<std::shared_ptr<writer_type>> writers_{};
+    std::vector<std::shared_ptr<reader_type>> readers_{};
+
+    void dump_perf_info() {
+        auto& watch = utils::get_watch();
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_schedule, "create graph");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_create_task, "schedule");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_create_task, time_point_created_task, "create tasks");
+#ifndef PERFORMANCE_TOOLS
+        LOG(INFO) << "wait before run: total " << watch.duration(time_point_created_task, time_point_run) << "ms" ;
+#endif
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_run, time_point_ran, "run");
+#ifndef PERFORMANCE_TOOLS
+        LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed) << "ms" ;
+#endif
+    }
+
+    void create_compiled_info(std::shared_ptr<plan::compiler_context> compiler_context) {
+        binding::factory bindings;
+        std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
+        std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
+            "T0",
+            {
+                { "C0", t::int4() },
+                { "C1", t::float8() },
+                { "C2", t::int8() },
             },
-            reader_resource
+        });
+        storage::column const& t0c0 = t0->columns()[0];
+        storage::column const& t0c1 = t0->columns()[1];
+        storage::column const& t0c2 = t0->columns()[2];
+
+        std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
+        auto p = std::make_shared<takatori::plan::graph_type>();
+        auto& f0 = p->insert(::takatori::plan::forward{
+            variable_vector{
+                bindings.exchange_column(),
+                bindings.exchange_column(),
+                bindings.exchange_column()
+            }
+        });
+        auto&& f0c0 = f0.columns()[0];
+        auto&& f0c1 = f0.columns()[1];
+        auto&& f0c2 = f0.columns()[2];
+
+        auto& f1 = p->insert(::takatori::plan::forward{
+            variable_vector{
+                bindings.exchange_column(),
+                bindings.exchange_column(),
+                bindings.exchange_column()
+            }
+        });
+        auto&& f1c0 = f1.columns()[0];
+        auto&& f1c1 = f1.columns()[1];
+        auto&& f1c2 = f1.columns()[2];
+
+        auto&& p0 = p->insert(takatori::plan::process {});
+        auto c0 = bindings.stream_variable("c0");
+        auto c1 = bindings.stream_variable("c1");
+        auto c2 = bindings.stream_variable("c2");
+        auto& r0 = p0.operators().insert(relation::step::take_flat {
+            bindings.exchange(f0),
+            {
+                { f0c0, c0 },
+                { f0c1, c1 },
+                { f0c2, c2 },
+            },
+        });
+
+        auto&& r1 = p0.operators().insert(relation::step::offer {
+            bindings.exchange(f1),
+            {
+                { c0, f1c0 },
+                { c1, f1c1 },
+                { c2, f1c2 },
+            },
+        });
+
+        r0.output() >> r1.input();
+
+        f0.add_downstream(p0);
+        f1.add_upstream(p0);
+        auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
+        vm->bind(c0, t::int4{});
+        vm->bind(c1, t::float8{});
+        vm->bind(c2, t::int8{});
+        vm->bind(f0c0, t::int4{});
+        vm->bind(f0c1, t::float8{});
+        vm->bind(f0c2, t::int8{});
+        vm->bind(f1c0, t::int4{});
+        vm->bind(f1c1, t::float8{});
+        vm->bind(f1c2, t::int8{});
+        vm->bind(bindings(t0c0), t::int4{});
+        vm->bind(bindings(t0c1), t::float8{});
+        vm->bind(bindings(t0c2), t::int8{});
+        yugawara::compiled_info c_info{{}, vm};
+
+        input_exchanges_.emplace_back(&f0);
+        output_exchanges_.emplace_back(&f1);
+
+        compiler_context->compiled_info(c_info);
+        compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
+    }
+
+    takatori::plan::process& find_process(takatori::plan::graph_type& p) {
+        takatori::plan::process* p0{};
+        takatori::plan::sort_from_upstream(p, [&p0](takatori::plan::step& s){
+            if (s.kind() == takatori::plan::step_kind::process) {
+                p0 = &dynamic_cast<takatori::plan::process&>(s);
+            }
+        });
+        if (! p0) fail();
+        return *p0;
+    }
+
+    void customize_process(
+        params& param,
+        process::step& process,
+        maybe_shared_ptr<meta::record_meta> meta
+    ) {
+        // create custom contexts
+        utils::xorshift_random64 rnd{1234567U};
+        auto records_per_partition = param.records_per_partition_;
+        auto record_size = sizeof(test_record);
+        auto write_buffer_record_count = param.write_buffer_size_ / record_size;
+        auto read_buffer_record_count = param.read_buffer_size_ / record_size;
+        auto partitions = param.partitions_;
+        std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
+        if (param.std_allocator) {
+            resources_.reserve(partitions*2);
+        }
+        for(std::size_t i=0; i < partitions; ++i) {
+            pmr::memory_resource* reader_resource =
+                param.std_allocator ?
+                    static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
+                    resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
+            std::size_t seq = 0;
+            auto& reader = readers_.emplace_back(std::make_shared<reader_type>(
+                read_buffer_record_count,
+                (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
+                [&rnd, &meta, &seq, &param]() {
+                    ++seq;
+                    return test_record{
+                        meta,
+                        static_cast<double>(param.sequential_data ? seq : rnd()),
+                        static_cast<std::int32_t>(param.sequential_data ? seq*10 : rnd()),
+                        static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd()),
+                    };
+                },
+                reader_resource
+                )
+            );
+            reader_container r{reader.get()};
+            pmr::memory_resource* writer_resource =
+                param.std_allocator ?
+                    static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
+                    resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
+            auto& writer = writers_.emplace_back(std::make_shared<writer_type>(
+                write_buffer_record_count,
+                writer_resource
+            ));
+            auto ctx =
+                std::make_shared<process::mock::task_context>(
+                    std::vector<reader_container>{r},
+                    std::vector<std::shared_ptr<executor::record_writer>>{writer},
+                    std::vector<std::shared_ptr<executor::record_writer>>{},
+                    std::shared_ptr<abstract::scan_info>{}
+                );
+
+            ctx->work_context(std::make_unique<process::impl::work_context>());
+            custom_contexts.emplace_back(std::move(ctx));
+        }
+
+        // insert custom contexts via executor factory
+        auto f = std::make_shared<abstract::process_executor_factory>([custom_contexts = std::move(custom_contexts)](
+            std::shared_ptr<abstract::processor> processor,
+            std::vector<std::shared_ptr<abstract::task_context>> contexts //NOLINT
+        ){
+            (void)contexts;
+            auto ret = std::make_shared<process::mock::process_executor>(std::move(processor), custom_contexts);
+
+            ret->will_run(
+                std::make_shared<callback_type>([](callback_arg* arg){
+                    utils::get_watch().set_point(time_point_run, arg->identity_);
+                })
+            );
+            ret->did_run(
+                std::make_shared<callback_type>([](callback_arg* arg){
+                    utils::get_watch().set_point(time_point_ran, arg->identity_);
+                })
+            );
+            return ret;
+        });
+        process.executor_factory(f);
+        process.partitions(partitions);
+        process.will_create_tasks(
+            std::make_shared<callback_type>([](callback_arg*){
+                utils::get_watch().set_point(time_point_create_task, 0);
+            })
+        );
+        process.did_create_tasks(
+            std::make_shared<callback_type>([](callback_arg*){
+                utils::get_watch().set_point(time_point_created_task, 0);
+            })
+        );
+
+        auto& f0 = static_cast<takatori::plan::forward&>(*input_exchanges_[0]);
+        auto& f1 = static_cast<takatori::plan::forward&>(*output_exchanges_[0]);
+        process.io_info(
+            std::make_shared<io_info>(
+                std::vector<input_info>{
+                    {
+                        meta,
+                        variable_order{
+                            variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
+                            f0.columns()
+                        }
+                    }
+                },
+                std::vector<output_info>{
+                    {
+                        meta,
+                        variable_order{
+                            variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
+                            f1.columns()
+                        }
+                    }
+                },
+                io_info::external_output_entity_type{}
             )
         );
-        reader_container r{reader.get()};
-        pmr::memory_resource* writer_resource =
-            param.std_allocator ?
-                static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
-                resources.emplace_back(std::make_shared<custom_memory_resource>(&pool)).get();
-        auto& writer = writers.emplace_back(std::make_shared<writer_type>(
-            write_buffer_record_count,
-            writer_resource
-            ));
-        auto ctx =
-            std::make_shared<process::mock::task_context>(
-                std::vector<reader_container>{r},
-                std::vector<std::shared_ptr<executor::record_writer>>{writer},
-                std::vector<std::shared_ptr<executor::record_writer>>{},
-                std::shared_ptr<abstract::scan_info>{}
-            );
-
-        ctx->work_context(std::make_unique<process::impl::work_context>());
-        custom_contexts.emplace_back(std::move(ctx));
     }
-    auto f = std::make_shared<abstract::process_executor_factory>([&custom_contexts](
-        std::shared_ptr<abstract::processor> processor,
-        std::vector<std::shared_ptr<abstract::task_context>> contexts
-    ){
-        (void)contexts;
-        auto ret = std::make_shared<process::mock::process_executor>(std::move(processor), std::move(custom_contexts));
-
-        ret->will_run(
-            std::make_shared<callback_type>([](callback_arg* arg){
-                utils::get_watch().set_point(time_point_run, arg->identity_);
-            })
-        );
-        ret->did_run(
-            std::make_shared<callback_type>([](callback_arg* arg){
-                utils::get_watch().set_point(time_point_ran, arg->identity_);
-            })
-        );
-        return ret;
-    });
-    process.executor_factory(f);
-    process.partitions(partitions);
-
-    process.will_create_tasks(
-        std::make_shared<callback_type>([](callback_arg*){
-            utils::get_watch().set_point(time_point_create_task, 0);
-        })
-    );
-    process.did_create_tasks(
-        std::make_shared<callback_type>([](callback_arg*){
-            utils::get_watch().set_point(time_point_created_task, 0);
-        })
-    );
-
-    auto& f0 = static_cast<takatori::plan::forward&>(*input_exchanges[0]);
-    auto& f1 = static_cast<takatori::plan::forward&>(*output_exchanges[0]);
-    process.io_info(
-        std::make_shared<io_info>(
-            std::vector<input_info>{
-                {
-                    meta,
-                    variable_order{
-                        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
-                        f0.columns()
-                    }
-                }
-            },
-            std::vector<output_info>{
-                {
-                    meta,
-                    variable_order{
-                        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
-                        f1.columns()
-                    }
-                }
-            },
-            io_info::external_output_entity_type{}
-        )
-    );
-
-    dag_controller dc{std::move(cfg)};
-    utils::get_watch().set_point(time_point_schedule, 0);
-    dc.schedule(g);
-    utils::get_watch().set_point(time_point_completed, 0);
-    dump_perf_info();
-
-    for(auto&& w : writers) {
-        LOG(INFO) << "written " << w->size() << " records";
-    }
-    return 0;
-}
+}; // class cli
 
 }  // namespace
 
@@ -439,7 +434,7 @@ extern "C" int main(int argc, char* argv[]) {
     }
 
     try {
-        jogasaki::process_cli::run(s, cfg);  // NOLINT
+        jogasaki::process_cli::cli{}(s, cfg);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

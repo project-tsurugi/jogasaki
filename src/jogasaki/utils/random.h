@@ -32,9 +32,9 @@ public:
         }
     }
     std::uint32_t operator()() {
-        x_ ^= x_ << 13;
-        x_ ^= x_ >> 17;
-        x_ ^= x_ << 5;
+        x_ ^= x_ << 13UL;
+        x_ ^= x_ >> 17UL;
+        x_ ^= x_ << 5UL;
         return x_;
     }
     void seed(std::uint32_t seed) {
@@ -57,9 +57,9 @@ public:
         }
     }
     std::uint64_t operator()() {
-        x_ ^= x_ << 13;
-        x_ ^= x_ >> 7;
-        x_ ^= x_ << 17;
+        x_ ^= x_ << 13UL;
+        x_ ^= x_ >> 7UL;
+        x_ ^= x_ << 17UL;
         return x_;
     }
     void seed(std::uint64_t seed) {

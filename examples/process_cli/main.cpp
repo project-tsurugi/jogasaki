@@ -248,40 +248,6 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     });
     compiler_context->relation_step_map(r_step_map);
 
-    std::vector<take_flat::column> take_flat_columns{
-        {f0c0, c0},
-        {f0c1, c1},
-        {f0c2, c2},
-    };
-    take_flat t{
-        *p_info,
-        0,
-        f0_order,
-        meta,
-        take_flat_columns,
-        0,
-        &r1
-    };
-
-    std::vector<offer::column> offer_columns {
-        {c0, f1c0},
-        {c1, f1c1},
-        {c2, f1c2},
-    };
-
-    offer s{
-        *p_info,
-        0,
-        f1_order,
-        meta,
-        offer_columns,
-        0
-    };
-
-    auto& scope_info = p_info->scopes_info()[s.block_index()];
-    block_scope variables{scope_info};
-
-
     auto& process = g.emplace<process::step>(p_info);
     jf0 >> process >> jf1;
 

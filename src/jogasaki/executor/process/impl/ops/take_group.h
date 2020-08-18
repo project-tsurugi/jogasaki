@@ -27,6 +27,7 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/utils/interference_size.h>
 #include "operator_base.h"
 #include "take_group_context.h"
 
@@ -34,7 +35,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
 
-struct take_group_field {
+struct alignas(utils::hardware_destructive_interference_size) take_group_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};

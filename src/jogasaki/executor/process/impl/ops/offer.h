@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/interference_size.h>
 #include "operator_base.h"
 #include "offer_context.h"
 
@@ -37,7 +38,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
 
-struct offer_field {
+struct alignas(utils::hardware_destructive_interference_size) offer_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};

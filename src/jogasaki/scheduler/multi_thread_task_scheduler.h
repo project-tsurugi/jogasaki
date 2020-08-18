@@ -36,26 +36,10 @@ public:
     thread() = default;
 
     template <class T>
-    explicit thread(T func, bool randomize_memory = false) : entity_(std::make_unique<boost::thread>(std::forward<T>(func))) {
-        if (randomize_memory) {
-            static constexpr std::array<std::size_t, 14> sizes =
-                {8, 16, 160, 320, 640, 1280, 2560, 5120, 10240, 16*1024, 20*1024, 40*1024, 80*1024, 160*1024 };
-            utils::xorshift_random64 rnd(std::random_device{}());
-            std::stringstream ss{};
-            ss << "random allocation : ";
-            std::size_t total = 0;
-            for(auto sz : sizes) {
-                std::size_t count = rnd() % 13;
-                for(std::size_t i=0; i < count; ++i) {
-                    randomized_buffer_.emplace_back(std::make_unique<char[]>(sz)); //NOLINT
-                }
-                ss << "[" << sz << "]*" << count << " ";
-                total += sz * count;
-            }
-            ss << "total: " << total;
-            VLOG(2) << ss.str();
-        }
+    void start(T func) {
+        entity_ = std::make_unique<boost::thread>(std::forward<T>(func));
     }
+
     [[nodiscard]] boost::thread* get() const noexcept {
         return entity_.get();
     }
@@ -64,6 +48,25 @@ public:
         for(auto&& e : randomized_buffer_) {
             e.reset();
         }
+    }
+
+    void allocate_randomly() {
+        static constexpr std::array<std::size_t, 14> sizes =
+            {8, 16, 160, 320, 640, 1280, 2560, 5120, 10240, 16*1024, 20*1024, 40*1024, 80*1024, 160*1024 };
+        utils::xorshift_random64 rnd(std::random_device{}());
+        std::stringstream ss{};
+        ss << "random allocation : ";
+        std::size_t total = 0;
+        for(auto sz : sizes) {
+            std::size_t count = rnd() % 13;
+            for(std::size_t i=0; i < count; ++i) {
+                randomized_buffer_.emplace_back(std::make_unique<char[]>(sz)); //NOLINT
+            }
+            ss << "[" << sz << "]*" << count << " ";
+            total += sz * count;
+        }
+        ss << "total: " << total;
+        VLOG(2) << ss.str();
     }
 
 private:

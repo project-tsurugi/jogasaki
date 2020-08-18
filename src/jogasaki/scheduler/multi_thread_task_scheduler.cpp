@@ -75,9 +75,13 @@ void thread_pool::stop() {
 void thread_pool::prepare_threads_() {
     threads_.reserve(max_threads_);
     for(std::size_t i = 0; i < max_threads_; ++i) {
-        auto& thread = threads_.emplace_back([this]() {
+        auto& thread = threads_.emplace_back();
+        thread.start([this, &thread]() {
+            if (randomize_memory_usage_) {
+                thread.allocate_randomly();
+            }
             io_service_.run();
-        }, randomize_memory_usage_);
+        });
         if(set_core_affinity_) {
             utils::set_core_affinity(thread.get(), i+initial_core_, assign_numa_nodes_uniformly_);
         }

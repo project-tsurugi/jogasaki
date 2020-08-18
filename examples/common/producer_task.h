@@ -24,8 +24,8 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/performance_tools.h>
+#include <jogasaki/utils/random.h>
 #include "task_base.h"
-#include "random.h"
 #include "cli_constants.h"
 
 namespace jogasaki::common_cli {
@@ -78,7 +78,7 @@ private:
     void prepare_data(std::vector<std::pair<void*, void*>>& continuous_ranges) {
         auto offset_c1 = meta_->value_offset(0);
         auto offset_c2 = meta_->value_offset(1);
-        xorshift_random64 rnd{static_cast<std::uint64_t>(id()+1)};
+        utils::xorshift_random64 rnd{static_cast<std::uint64_t>(id()+1)};
         auto sz = meta_->record_size();
         auto recs_per_page = memory::page_size / sizeof(void*);
         auto partitions = params_->records_per_upstream_partition_;

@@ -29,6 +29,7 @@
 
 namespace jogasaki::scheduler {
 
+
 thread_pool::thread_pool() : thread_pool(thread_params(1)) {}
 
 thread_pool::thread_pool(thread_params params) :
@@ -37,7 +38,9 @@ thread_pool::thread_pool(thread_params params) :
     work_(std::make_unique<boost::asio::io_service::work>(io_service_)),
     set_core_affinity_(params.is_set_core_affinity()),
     initial_core_(params.inititial_core()),
-    assign_numa_nodes_uniformly_(params.assign_numa_nodes_uniformly()) {
+    assign_numa_nodes_uniformly_(params.assign_numa_nodes_uniformly()),
+    randomize_memory_usage_(params.randomize_memory_usage())
+{
     start();
 }
 
@@ -72,21 +75,20 @@ void thread_pool::stop() {
 void thread_pool::prepare_threads_() {
     threads_.reserve(max_threads_);
     for(std::size_t i = 0; i < max_threads_; ++i) {
-        auto thread = new boost::thread([this]() {
+        auto& thread = threads_.emplace_back([this]() {
             io_service_.run();
-        });
+        }, randomize_memory_usage_);
         if(set_core_affinity_) {
-            utils::set_core_affinity(thread, i+initial_core_, assign_numa_nodes_uniformly_);
+            utils::set_core_affinity(thread.get(), i+initial_core_, assign_numa_nodes_uniformly_);
         }
-        thread_group_.add_thread(thread);
-        threads_.emplace_back(thread);
+        thread_group_.add_thread(thread.get());
     }
 }
 
 void thread_pool::cleanup_threads_() {
-    for(auto* t : threads_) {
-        thread_group_.remove_thread(t);
-        delete t; //NOLINT thread_group handles raw pointer
+    for(auto& t : threads_) {
+        thread_group_.remove_thread(t.get());
+        t.reset();
     }
 }
 

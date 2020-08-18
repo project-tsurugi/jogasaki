@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 #pragma once
+#include <cstdint>
 
-namespace jogasaki::common_cli {
+#include <takatori/util/fail.h>
 
-class xorshift_random {
+namespace jogasaki::utils {
+
+using takatori::util::fail;
+
+class xorshift_random32 {
 public:
-    xorshift_random() = default;
+    xorshift_random32() = default;
 
-    explicit xorshift_random(std::uint32_t seed) : x_{seed} {
+    explicit xorshift_random32(std::uint32_t seed) : x_{seed} {
         if (seed == 0) {
-            std::abort();
+            fail();
         }
     }
     std::uint32_t operator()() {
@@ -34,7 +39,7 @@ public:
     }
     void seed(std::uint32_t seed) {
         if (seed == 0) {
-            std::abort();
+            fail();
         }
         x_ = seed;
     }
@@ -48,7 +53,7 @@ public:
 
     explicit xorshift_random64(std::uint64_t seed) : x_{seed} {
         if (seed == 0) {
-            std::abort();
+            fail();
         }
     }
     std::uint64_t operator()() {
@@ -59,7 +64,7 @@ public:
     }
     void seed(std::uint64_t seed) {
         if (seed == 0) {
-            std::abort();
+            fail();
         }
         x_ = seed;
     }

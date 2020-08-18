@@ -23,19 +23,28 @@ public:
     thread_params() = default;
 
     explicit thread_params(
-            std::size_t threads,
-            bool set_core_affinity = true,
-            std::size_t initial_core = 1,
-            bool assign_numa_nodes_uniformly = false
+        std::size_t threads,
+        bool set_core_affinity = true,
+        std::size_t initial_core = 1,
+        bool assign_numa_nodes_uniformly = false,
+        bool randomize_memory_usage = false
     ) :
-            threads_(threads),
-            set_core_affinity_(set_core_affinity),
-            initial_core_(initial_core),
-            assign_numa_nodes_uniformly_(assign_numa_nodes_uniformly) {}
+        threads_(threads),
+        set_core_affinity_(set_core_affinity),
+        initial_core_(initial_core),
+        assign_numa_nodes_uniformly_(assign_numa_nodes_uniformly),
+        randomize_memory_usage_(randomize_memory_usage)
+    {}
 
     explicit thread_params(std::shared_ptr<configuration> const& cfg) :
-            thread_params(cfg->thread_pool_size(), cfg->core_affinity(), cfg->initial_core(),
-                    cfg->assign_numa_nodes_uniformly()) {}
+        thread_params(
+            cfg->thread_pool_size(),
+            cfg->core_affinity(),
+            cfg->initial_core(),
+            cfg->assign_numa_nodes_uniformly(),
+            cfg->randomize_memory_usage()
+        )
+    {}
 
     [[nodiscard]] std::size_t threads() const noexcept {
         return threads_;
@@ -53,11 +62,15 @@ public:
         return assign_numa_nodes_uniformly_;
     }
 
+    [[nodiscard]] bool randomize_memory_usage() const noexcept {
+        return randomize_memory_usage_;
+    }
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
     std::size_t initial_core_{};
     bool assign_numa_nodes_uniformly_{};
+    bool randomize_memory_usage_{};
 };
 
 } // namespace

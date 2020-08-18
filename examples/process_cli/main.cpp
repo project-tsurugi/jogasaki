@@ -50,7 +50,7 @@
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <takatori/statement/execute.h>
 #include <jogasaki/executor/process/impl/ops/take_flat.h>
-#include "../common/random.h"
+#include <jogasaki/utils/random.h>
 #include "cli_constants.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
@@ -70,6 +70,7 @@ DEFINE_int32(write_buffer_size, 2097152, "Writer buffer size in byte");  //NOLIN
 DEFINE_int32(read_buffer_size, 2097152, "Reader buffer size in byte");  //NOLINT
 DEFINE_bool(std_allocator, false, "use standard allocator for reader/writer");  //NOLINT
 DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
+DEFINE_bool(randomize_memory, false, "initialize each thread with randomly allocated memory");  //NOLINT
 
 namespace jogasaki::process_cli {
 
@@ -265,7 +266,7 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     std::vector<std::shared_ptr<custom_memory_resource>> resources{};
     std::vector<std::shared_ptr<writer_type>> writers{};
     std::vector<std::shared_ptr<reader_type>> readers{};
-    common_cli::xorshift_random64 rnd{1234567U};
+    utils::xorshift_random64 rnd{1234567U};
 
     if (param.std_allocator) {
         resources.reserve(partitions*2);
@@ -376,6 +377,7 @@ extern "C" int main(int argc, char* argv[]) {
     auto cfg = std::make_shared<jogasaki::configuration>();
     cfg->single_thread(!FLAGS_use_multithread);
     cfg->thread_pool_size(FLAGS_thread_pool_size);
+    cfg->randomize_memory_usage(FLAGS_randomize_memory);
 
     s.partitions_ = FLAGS_partitions;
     s.records_per_partition_ = FLAGS_records_per_partition;

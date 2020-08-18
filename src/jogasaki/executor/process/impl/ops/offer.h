@@ -85,7 +85,12 @@ public:
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         writer_index_(writer_index)
-    {}
+    {
+        fields_.reserve(4);
+        for(auto itr = fields_.begin(); itr != fields_.end(); ++itr) {
+            std::cout << __func__ << "    \t: " << std::distance(fields_.begin(), itr) << "\t: " << static_cast<void*>(&(*itr)) << std::endl;
+        }
+    }
 
     /**
      * @brief conduct the operation

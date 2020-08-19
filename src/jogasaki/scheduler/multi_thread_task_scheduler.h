@@ -16,6 +16,7 @@
 #pragma once
 
 #include <unordered_set>
+#include <thread>
 #include <random>
 
 #include <glog/logging.h>
@@ -31,18 +32,22 @@
 
 namespace jogasaki::scheduler {
 
+/**
+ * @brief boost thread wrapper to keep the buffer together
+ */
 class thread {
 public:
-    thread() = default;
+    thread() : id_(new_identity()) {};
 
     template <class T>
-    void start(T func) {
+    void operator()(T&& func) {
         entity_ = std::make_unique<boost::thread>(std::forward<T>(func));
     }
 
     [[nodiscard]] boost::thread* get() const noexcept {
         return entity_.get();
     }
+
     void reset() noexcept {
         entity_.reset();
         for(auto&& e : randomized_buffer_) {
@@ -50,15 +55,20 @@ public:
         }
     }
 
-    void allocate_randomly() {
+    /**
+     * @brief allocate memory randomly to randomize state of the arena
+     * @param magnitude maximum number of allocations for each size class. The larger the
+     */
+    void allocate_randomly(std::size_t magnitude) {
+        if (magnitude == 0) return;
         static constexpr std::array<std::size_t, 14> sizes =
             {8, 16, 160, 320, 640, 1280, 2560, 5120, 10240, 16*1024, 20*1024, 40*1024, 80*1024, 160*1024 };
-        utils::xorshift_random64 rnd(std::random_device{}());
+        utils::xorshift_random64 rnd(54321UL + id_);
         std::stringstream ss{};
         ss << "random allocation : ";
         std::size_t total = 0;
         for(auto sz : sizes) {
-            std::size_t count = rnd() % 13;
+            std::size_t count = rnd() % magnitude;
             for(std::size_t i=0; i < count; ++i) {
                 randomized_buffer_.emplace_back(std::make_unique<char[]>(sz)); //NOLINT
             }
@@ -72,6 +82,12 @@ public:
 private:
     std::unique_ptr<boost::thread> entity_{};
     std::vector<std::unique_ptr<char[]>> randomized_buffer_{}; //NOLINT
+    std::size_t id_{};
+
+    std::size_t new_identity() {
+        static std::atomic<size_t> source = 0;
+        return source++;
+    }
 };
 /**
  * @brief simple implementation of fixed size thread pool
@@ -127,7 +143,7 @@ private:
     bool set_core_affinity_;
     std::size_t initial_core_{};
     bool assign_numa_nodes_uniformly_{};
-    bool randomize_memory_usage_{};
+    std::size_t randomize_memory_usage_{};
     bool started_{false};
 
     void prepare_threads_();

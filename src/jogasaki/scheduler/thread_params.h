@@ -27,7 +27,7 @@ public:
         bool set_core_affinity = true,
         std::size_t initial_core = 1,
         bool assign_numa_nodes_uniformly = false,
-        bool randomize_memory_usage = false
+        std::size_t randomize_memory_usage = 0
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),
@@ -62,7 +62,7 @@ public:
         return assign_numa_nodes_uniformly_;
     }
 
-    [[nodiscard]] bool randomize_memory_usage() const noexcept {
+    [[nodiscard]] std::size_t randomize_memory_usage() const noexcept {
         return randomize_memory_usage_;
     }
 private:
@@ -70,7 +70,7 @@ private:
     bool set_core_affinity_{};
     std::size_t initial_core_{};
     bool assign_numa_nodes_uniformly_{};
-    bool randomize_memory_usage_{};
+    std::size_t randomize_memory_usage_{};
 };
 
 } // namespace

@@ -70,7 +70,7 @@ DEFINE_int32(write_buffer_size, 2097152, "Writer buffer size in byte");  //NOLIN
 DEFINE_int32(read_buffer_size, 2097152, "Reader buffer size in byte");  //NOLINT
 DEFINE_bool(std_allocator, false, "use standard allocator for reader/writer");  //NOLINT
 DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
-DEFINE_bool(randomize_memory, false, "initialize each thread with randomly allocated memory");  //NOLINT
+DEFINE_int32(randomize_memory, 0, "initialize each thread with randomly allocated memory. Specify magnitude for randomizer. Specify 0 to disable.");  //NOLINT
 
 namespace jogasaki::process_cli {
 

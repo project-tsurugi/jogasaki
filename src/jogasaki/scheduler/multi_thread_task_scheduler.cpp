@@ -76,9 +76,9 @@ void thread_pool::prepare_threads_() {
     threads_.reserve(max_threads_);
     for(std::size_t i = 0; i < max_threads_; ++i) {
         auto& thread = threads_.emplace_back();
-        thread.start([this, &thread]() {
-            if (randomize_memory_usage_) {
-                thread.allocate_randomly();
+        thread([this, &thread]() {
+            if (randomize_memory_usage_ != 0) {
+                thread.allocate_randomly(randomize_memory_usage_);
             }
             io_service_.run();
         });

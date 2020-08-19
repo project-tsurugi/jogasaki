@@ -97,11 +97,11 @@ public:
         assign_numa_nodes_uniformly_ = arg;
     }
 
-    [[nodiscard]] bool randomize_memory_usage() const noexcept {
+    [[nodiscard]] std::size_t randomize_memory_usage() const noexcept {
         return randomize_memory_usage_;
     }
 
-    void randomize_memory_usage(bool arg) noexcept {
+    void randomize_memory_usage(std::size_t arg) noexcept {
         randomize_memory_usage_ = arg;
     }
 private:
@@ -114,7 +114,7 @@ private:
     bool use_sorted_vector_reader_ = false;
     bool noop_pregroup_ = false;
     bool assign_numa_nodes_uniformly_ = false;
-    bool randomize_memory_usage_ = false;
+    std::size_t randomize_memory_usage_ = 0;
 };
 
 }

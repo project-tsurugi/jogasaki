@@ -28,13 +28,14 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 
 template <class Record>
-class basic_record_writer : public executor::record_writer {
+class OPTIONAL_CACHE_ALIGN basic_record_writer : public executor::record_writer {
 public:
 
     using record_type = Record;

@@ -22,3 +22,9 @@ namespace jogasaki::utils {
 static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
 
 } // namespace
+
+#ifdef ENABLE_CACHE_ALIGN
+#define OPTIONAL_CACHE_ALIGN alignas(jogasaki::utils::hardware_destructive_interference_size)  //NOLINT clang-tidy confuses with constant
+#else
+#define OPTIONAL_CACHE_ALIGN
+#endif

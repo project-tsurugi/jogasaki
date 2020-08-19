@@ -26,6 +26,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/interference_size.h>
 
 #include <boost/container/pmr/vector.hpp>
 
@@ -35,7 +36,7 @@ using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
 
 template <class Record>
-class basic_record_reader : public executor::record_reader {
+class OPTIONAL_CACHE_ALIGN basic_record_reader : public executor::record_reader {
 public:
     using record_type = Record;
 

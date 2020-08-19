@@ -34,6 +34,7 @@ option(BUILD_DOCUMENTS "build documents" ON)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(ENABLE_GOOGLE_PERFTOOLS "Enable Google Perftools" OFF)
 option(PERFORMANCE_TOOLS "Enable tooling to measure engine performance" OFF)
+option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")

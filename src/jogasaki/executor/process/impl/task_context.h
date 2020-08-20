@@ -20,7 +20,7 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/impl/ops/process_io_map.h>
+#include <jogasaki/executor/process/impl/ops/io_exchange_map.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/group/flow.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
@@ -44,16 +44,16 @@ public:
     {}
 
     task_context(partition_index partition,
-        impl::ops::process_io_map const& process_io_map,
+        impl::ops::io_exchange_map const& io_exchange_map,
         std::unique_ptr<abstract::scan_info> scan_info
     ) :
         partition_(partition),
-        process_io_map_(std::addressof(process_io_map)),
+        io_exchange_map_(std::addressof(io_exchange_map)),
         scan_info_(std::move(scan_info))
     {}
 
     reader_container reader(reader_index idx) override {
-        auto& flow = process_io_map_->input_at(idx)->data_flow_object();
+        auto& flow = io_exchange_map_->input_at(idx)->data_flow_object();
         using step_kind = common::step_kind;
         switch(flow.kind()) {
             case step_kind::group:
@@ -70,7 +70,7 @@ public:
     }
 
     record_writer* downstream_writer(writer_index idx) override {
-        auto& flow = process_io_map_->output_at(idx)->data_flow_object();
+        auto& flow = io_exchange_map_->output_at(idx)->data_flow_object();
         using step_kind = common::step_kind;
         switch(flow.kind()) {
             case step_kind::group:
@@ -87,7 +87,7 @@ public:
     }
 
     record_writer* external_writer(writer_index idx) override {
-        auto& p = process_io_map_->external_output_at(idx);
+        auto& p = io_exchange_map_->external_output_at(idx);
         using kind = ops::operator_kind;
         switch(p.kind()) {
             case kind::emit:
@@ -108,7 +108,7 @@ public:
 
 private:
     std::size_t partition_{};
-    impl::ops::process_io_map const* process_io_map_{};
+    impl::ops::io_exchange_map const* io_exchange_map_{};
     std::unique_ptr<abstract::scan_info> scan_info_{};
 };
 

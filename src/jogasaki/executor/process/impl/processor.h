@@ -21,10 +21,15 @@
 
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/executor/process/impl/ops/operator_executor.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/block_scope_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
+#include <jogasaki/executor/process/relation_io_map.h>
 
+namespace jogasaki::executor::process {
+class step;
+}
 namespace jogasaki::executor::process::impl {
 
 /**
@@ -34,7 +39,12 @@ class processor : public process::abstract::processor {
 public:
     processor() = default;
 
-    explicit processor(std::shared_ptr<processor_info> info, plan::compiler_context const& compiler_ctx) ;
+    explicit processor(
+        std::shared_ptr<processor_info> info,
+        plan::compiler_context const& compiler_ctx,
+        std::shared_ptr<ops::io_info> io_info,
+        std::shared_ptr<relation_io_map> relation_io_map
+    );
 
     [[nodiscard]] abstract::status run(abstract::task_context* context) override;
 
@@ -45,6 +55,7 @@ public:
 private:
     std::shared_ptr<processor_info> info_{};
     ops::operator_container operators_{};
+    std::shared_ptr<relation_io_map> relation_io_map_{};
 };
 
 }

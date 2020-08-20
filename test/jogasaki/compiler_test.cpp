@@ -192,6 +192,7 @@ TEST_F(compiler_test, simple_query) {
     // test utils
     EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(ctx.compiled_info(), c0p0));
     EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(ctx.compiled_info(), c1p0));
+
 }
 
 TEST_F(compiler_test, filter) {
@@ -304,26 +305,12 @@ TEST_F(compiler_test, join) {
         ASSERT_EQ(p0, p1);
     }
 
-    auto& step_map = ctx.relation_step_map();
+    auto& grp1 = b.downstreams()[0];
+    auto& grp2 = b2.downstreams()[0];
 
-    ASSERT_EQ(2, step_map->size());
-    /*
-    ASSERT_EQ(p0.operators().size(), 4);
-    ASSERT_TRUE(p0.operators().contains(scan));
-    ASSERT_TRUE(p0.operators().contains(offer));
-
-    ASSERT_EQ(scan.columns().size(), 2);
-//    EXPECT_EQ(scan.columns()[0].source(), bindings(t0c0));
-//    EXPECT_EQ(scan.columns()[1].source(), bindings(t0c1));
-    auto&& c0p0 = scan.columns()[0].destination();
-    auto&& c1p0 = scan.columns()[1].destination();
-
-    ASSERT_EQ(emit.columns().size(), 3);
-//    EXPECT_EQ(emit.columns()[0].source(), c0p0);
-
-//    EXPECT_EQ(ctx.compiled_info.type_of(bindings(t0c0)), type::int8());
-//    EXPECT_EQ(ctx.compiled_info.type_of(c0p0), type::int8());
-     */
+    auto s = jogasaki::plan::impl::create(b, ctx);
+    auto io_map = s.relation_io_map();
+    ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 }
 
 }

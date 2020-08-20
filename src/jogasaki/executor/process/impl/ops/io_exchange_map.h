@@ -29,28 +29,28 @@ namespace jogasaki::executor::process::impl::ops {
  * Each index maps to/from exchanges that provides the process with input/output.
  * This object represents the indices for a single process.
  */
-class process_io_map {
+class io_exchange_map {
 public:
     using relation = takatori::descriptor::relation;
-    using input_step = executor::exchange::step;
-    using output_step = executor::exchange::step;
+    using input_exchange = executor::exchange::step;
+    using output_exchange = executor::exchange::step;
     using external_output_operator = operator_base;
 
-    using input_entity_type = std::vector<input_step*>;
-    using output_entity_type = std::vector<output_step*>;
+    using input_entity_type = std::vector<input_exchange*>;
+    using output_entity_type = std::vector<output_exchange*>;
     using external_output_entity_type = std::vector<external_output_operator*>;
 
     constexpr static std::size_t npos = static_cast<std::size_t>(-1);
     /**
      * @brief create new empty instance
      */
-    process_io_map() = default;
+    io_exchange_map() = default;
 
-    std::size_t add_input(input_step* s) {
+    std::size_t add_input(input_exchange* s) {
         input_entity_.emplace_back(s);
         return input_entity_.size() - 1;
     }
-    std::size_t add_output(output_step* s) {
+    std::size_t add_output(output_exchange* s) {
         output_entity_.emplace_back(s);
         return output_entity_.size() - 1;
     }
@@ -60,7 +60,7 @@ public:
         return external_output_entity_.size() - 1;
     }
 
-    std::size_t input_index(input_step* s) {
+    std::size_t input_index(input_exchange* s) {
         for(std::size_t i=0, n=input_entity_.size(); i < n; ++i) {
             if(input_entity_[i] == s) {
                 return i;
@@ -68,7 +68,7 @@ public:
         }
         return npos;
     }
-    std::size_t output_index(output_step* s) {
+    std::size_t output_index(output_exchange* s) {
         for(std::size_t i=0, n=output_entity_.size(); i < n; ++i) {
             if(output_entity_[i] == s) {
                 return i;
@@ -85,11 +85,11 @@ public:
         return npos;
     }
 
-    [[nodiscard]] input_step* const& input_at(std::size_t index) const {
+    [[nodiscard]] input_exchange* const& input_at(std::size_t index) const {
         return input_entity_.at(index);
     }
 
-    [[nodiscard]] output_step* const& output_at(std::size_t index) const {
+    [[nodiscard]] output_exchange* const& output_at(std::size_t index) const {
         return output_entity_.at(index);
     }
 

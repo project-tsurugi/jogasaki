@@ -24,15 +24,20 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
+
+using jogasaki::executor::process::impl::ops::io_info;
 
 class step : public common::step {
 public:
     step() = default;
 
     explicit step(std::shared_ptr<processor_info> info,
+        std::shared_ptr<class relation_io_map> relation_io_map,
+        std::shared_ptr<class io_info> io_info = {},
         number_of_ports inputs = 0,
         number_of_ports outputs = 0,
         number_of_ports subinputs = 0);
@@ -72,10 +77,30 @@ public:
         return executor_factory_;
     }
 
+    void io_info(std::shared_ptr<class io_info> arg) noexcept {
+        io_info_ = std::move(arg);
+    }
+
+    [[nodiscard]] std::shared_ptr<class io_info> const& io_info() const noexcept {
+        return io_info_;
+    }
+
+    void relation_io_map(std::shared_ptr<class relation_io_map> arg) noexcept {
+        relation_io_map_ = std::move(arg);
+    }
+
+    [[nodiscard]] std::shared_ptr<class relation_io_map> const& relation_io_map() const noexcept {
+        return relation_io_map_;
+    }
+
 private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<abstract::process_executor_factory> executor_factory_{};
+    std::shared_ptr<class io_info> io_info_{};
     std::size_t partitions_{default_partitions};
+    std::shared_ptr<class relation_io_map> relation_io_map_{};
+
+    std::shared_ptr<class io_info> create_io_info();
 };
 
 }

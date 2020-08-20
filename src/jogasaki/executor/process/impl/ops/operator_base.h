@@ -22,6 +22,7 @@
 namespace jogasaki::executor::process::impl {
 class block_scope_info;
 }
+
 namespace jogasaki::executor::process::impl::ops {
 
 /**
@@ -72,5 +73,3 @@ private:
 };
 
 }
-
-

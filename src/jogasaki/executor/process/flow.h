@@ -35,10 +35,7 @@ class step;
  */
 class flow : public common::flow {
 public:
-
     using field_index_type = meta::record_meta::field_index_type;
-
-    using record_meta_list = std::vector<maybe_shared_ptr<meta::record_meta>>;
 
     /**
      * @brief create new instance with empty schema (for testing)
@@ -50,12 +47,9 @@ public:
      * @param input_meta input record metadata
      */
     flow(
-            record_meta_list input_meta,
-            record_meta_list subinput_meta,
-            record_meta_list output_meta,
-            request_context* context,
-            process::step* step,
-            std::shared_ptr<processor_info> info
+        request_context* context,
+        process::step* step,
+        std::shared_ptr<processor_info> info
     );
 
     [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_tasks() override;
@@ -65,16 +59,12 @@ public:
     [[nodiscard]] common::step_kind kind() const noexcept override;
 
 private:
-    record_meta_list input_meta_{};
-    record_meta_list subinput_meta_{};
-    record_meta_list output_meta_{};
-    record_meta_list external_meta_{};
     request_context* context_{};
     std::vector<std::shared_ptr<model::task>> tasks_{};
     step* step_{};
     std::shared_ptr<processor_info> info_{};
 
-    [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(std::size_t partition, impl::ops::process_io_map const& io_map);
+    [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(std::size_t partition, impl::ops::io_exchange_map const& io_exchange_map);
 };
 
 }

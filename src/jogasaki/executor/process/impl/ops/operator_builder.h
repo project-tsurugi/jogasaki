@@ -28,14 +28,20 @@
 #include <takatori/relation/scan.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/step/dispatch.h>
+#include <takatori/relation/expression.h>
+
+#include <yugawara/binding/factory.h>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/relation_indices.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/storage/storage_context.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/shuffle/step.h>
+#include <yugawara/binding/extract.h>
 #include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
@@ -60,19 +66,23 @@ public:
 
     operator_builder() = default;
 
-    explicit operator_builder(
+    operator_builder(
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
+        std::shared_ptr<io_info> io_info,
+        std::shared_ptr<relation_io_map> relation_io_map,
         memory::paged_memory_resource* resource = nullptr) :
         info_(std::move(info)),
-        compiler_ctx_(std::addressof(compiler_ctx))
+        compiler_ctx_(std::addressof(compiler_ctx)),
+        io_info_(std::move(io_info)),
+        relation_io_map_(std::move(relation_io_map))
     {
         (void)resource;
     }
 
     [[nodiscard]] operator_container operator()() && {
         dispatch(*this, head());
-        return operator_container{std::move(operators_), std::move(process_io_map_)};
+        return operator_container{std::move(operators_), std::move(io_exchange_map_)};
     }
 
     [[nodiscard]] relation::expression& head() {
@@ -119,7 +129,7 @@ public:
     void operator()(relation::emit const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto e = std::make_unique<emit>(*info_, block_index, node.columns());
-        auto writer_index = process_io_map_.add_external_output(e.get());
+        auto writer_index = io_exchange_map_.add_external_output(e.get());
         e->external_writer_index(writer_index);
         operators_[std::addressof(node)] = std::move(e);
     }
@@ -145,53 +155,72 @@ public:
     void operator()(relation::step::flatten const& node) {
         (void)node;
     }
+
     void operator()(relation::step::take_flat const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto map = compiler_ctx_->relation_step_map();
-        auto xchg = dynamic_cast<exchange::forward::step*>(map->at(node.source()));
-        if (! xchg) fail();
-        auto reader_index = process_io_map_.add_input(xchg);
+        auto reader_index = relation_io_map_->input_index(node.source());
         auto& downstream = node.output().opposite()->owner();
+        auto& input = io_info_->input_at(reader_index);
+        assert(! input.is_group_input());
+
         operators_[std::addressof(node)] = std::make_unique<take_flat>(
-            *info_, block_index, xchg->output_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
+            *info_,
+            block_index,
+            input.column_order(),
+            input.record_meta(),
+            node.columns(),
+            reader_index,
+            &downstream
+        );
         dispatch(*this, downstream);
     }
+
     void operator()(relation::step::take_group const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto map = compiler_ctx_->relation_step_map();
-        auto* xchg = dynamic_cast<exchange::shuffle::step*>(map->at(node.source()));
-        if (! xchg) fail();
-        auto reader_index = process_io_map_.add_input(xchg);
+        auto reader_index = relation_io_map_->input_index(node.source());
         auto& downstream = node.output().opposite()->owner();
-        operators_[std::addressof(node)] =
-            std::make_unique<take_group>(*info_, block_index, xchg->output_order(), xchg->output_meta(), node.columns(), reader_index, &downstream);
+        auto& input = io_info_->input_at(reader_index);
+        operators_[std::addressof(node)] = std::make_unique<take_group>(
+            *info_,
+            block_index,
+            input.column_order(),
+            input.group_meta(),
+            node.columns(),
+            reader_index,
+            &downstream
+        );
         dispatch(*this, downstream);
     }
+
     void operator()(relation::step::take_cogroup const& node) {
         (void)node;
     }
+
     void operator()(relation::step::offer const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto map = compiler_ctx_->relation_step_map();
-        auto xchg = map->at(node.destination());
-        auto writer_index = process_io_map_.add_output(xchg);
+        auto writer_index = relation_io_map_->output_index(node.destination());
+        auto& output = io_info_->output_at(writer_index);
         operators_[std::addressof(node)] =
-            std::make_unique<offer>(*info_, block_index, xchg->input_order(), xchg->input_meta(), node.columns(), writer_index);
+            std::make_unique<offer>(*info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
     }
 
 private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
+    std::shared_ptr<io_info> io_info_{};
     operators_type operators_{};
-    process_io_map process_io_map_{};
+    io_exchange_map io_exchange_map_{};
+    std::shared_ptr<relation_io_map> relation_io_map_{};
 };
 
 [[nodiscard]] inline operator_container create_operators(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
+    std::shared_ptr<io_info> io_info,
+    std::shared_ptr<relation_io_map> relation_io_map,
     memory::paged_memory_resource* resource = nullptr
 ) {
-    return operator_builder{std::move(info), compiler_ctx, resource}();
+    return operator_builder{std::move(info), compiler_ctx, std::move(io_info), std::move(relation_io_map), resource}();
 }
 
 }

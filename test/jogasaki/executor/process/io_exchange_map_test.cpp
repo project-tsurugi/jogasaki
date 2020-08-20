@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/process_io_map.h>
+#include <jogasaki/executor/process/impl/ops/io_exchange_map.h>
 
 #include <string>
 
@@ -37,10 +37,10 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class process_io_map_test : public test_root {};
+class io_exchange_map_test : public test_root {};
 
-TEST_F(process_io_map_test, basic) {
-    process_io_map map{};
+TEST_F(io_exchange_map_test, basic) {
+    io_exchange_map map{};
 
     exchange::forward::step in0{};
     exchange::forward::step in1{};

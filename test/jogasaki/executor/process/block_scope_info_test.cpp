@@ -286,7 +286,7 @@ TEST_F(block_scope_info_test, temp) {
     jogasaki::plan::compiler_context compiler_ctx{};
 
     // additionally test ops builder
-    auto ops = ops::operator_builder{pinfo, compiler_ctx}();
+    auto ops = ops::operator_builder{pinfo, compiler_ctx, {}, {}}();
 
     ASSERT_EQ(2, ops.size());
     for(auto&& [e, o] : ops) {

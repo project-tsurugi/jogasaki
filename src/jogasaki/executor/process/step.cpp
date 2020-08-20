@@ -16,12 +16,78 @@
 #include "step.h"
 
 #include <memory>
+#include <jogasaki/executor/exchange/forward/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
 
-step::step(std::shared_ptr<processor_info> info, step::number_of_ports inputs, step::number_of_ports outputs,
-    step::number_of_ports subinputs) : common::step(inputs, outputs, subinputs), info_(std::move(info)) {}
+using jogasaki::executor::process::impl::ops::io_info;
+
+std::shared_ptr<io_info> step::create_io_info() {
+    auto io = std::make_shared<class io_info>();
+
+    std::vector<impl::ops::input_info> inputs{};
+    for(auto& in : input_ports()) {
+        auto& xchg = *static_cast<exchange::step*>(in->opposites()[0]->owner());
+        switch(xchg.kind()) {
+            case common::step_kind::forward: {
+                auto& fwd = static_cast<exchange::forward::step&>(xchg);
+                inputs.emplace_back(
+                    fwd.output_meta(),
+                    fwd.output_order()
+                );
+                break;
+            }
+            case common::step_kind::group:
+            case common::step_kind::aggregate:
+            {
+                auto& grp = static_cast<exchange::shuffle::step&>(xchg);
+                inputs.emplace_back(
+                    grp.output_meta(),
+                    grp.output_order()
+                );
+                break;
+            }
+            default:
+                fail();
+        }
+    }
+    std::vector<impl::ops::output_info> outputs{};
+    for(auto& out : output_ports()) {
+        auto& xchg = *static_cast<exchange::step*>(out->opposites()[0]->owner());
+        switch(xchg.kind()) {
+            case common::step_kind::forward:
+            case common::step_kind::group:
+            case common::step_kind::aggregate: {
+                auto& x = static_cast<exchange::step&>(xchg);
+                outputs.emplace_back(
+                    x.input_meta(),
+                    x.input_order()
+                );
+                break;
+            }
+            default:
+                fail();
+        }
+    }
+    return std::make_shared<class io_info>(std::move(inputs), std::move(outputs), io_info::external_output_entity_type{});
+}
+
+step::step(
+    std::shared_ptr<processor_info> info,
+    std::shared_ptr<class relation_io_map> relation_io_map,
+    std::shared_ptr<class io_info> io_info,
+    step::number_of_ports inputs,
+    step::number_of_ports outputs,
+    step::number_of_ports subinputs
+) : common::step(inputs, outputs, subinputs),
+    info_(std::move(info)),
+    io_info_(std::move(io_info)),
+    relation_io_map_(std::move(relation_io_map))
+{}
 
 common::step_kind step::kind() const noexcept {
     return common::step_kind::process;
@@ -32,10 +98,10 @@ std::size_t step::partitions() const noexcept {
 }
 
 void step::activate() {
+    if(! io_info_) {
+        io_info_ = create_io_info();
+    }
     data_flow_object(std::make_unique<flow>(
-        flow::record_meta_list {},
-        flow::record_meta_list {},
-        flow::record_meta_list {},
         context(),
         this,
         info_

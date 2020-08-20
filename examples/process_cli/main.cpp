@@ -34,8 +34,8 @@
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/plan/relation_step_map.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/utils/performance_tools.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/executor/process/impl/ops/offer.h>
@@ -52,6 +52,7 @@
 #include <jogasaki/executor/process/impl/ops/take_flat.h>
 #include <jogasaki/utils/random.h>
 #include "cli_constants.h"
+#include <jogasaki/names.h>
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
@@ -131,14 +132,10 @@ void dump_perf_info() {
 #endif
 }
 
-static int run(params& param, std::shared_ptr<configuration> cfg) {
-    using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
-    static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
-    auto meta = test_record{}.record_meta();
-
-    utils::get_watch().set_point(time_point_begin, 0);
+void create_compiled_info(std::shared_ptr<plan::compiler_context> compiler_context,
+    std::vector<maybe_shared_ptr<takatori::plan::exchange>>& input_exchanges,
+    std::vector<maybe_shared_ptr<takatori::plan::exchange>>& output_exchanges
+) {
 
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
@@ -155,27 +152,30 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     storage::column const& t0c2 = t0->columns()[2];
 
     std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
-
-    ::takatori::plan::forward f0 {
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-    };
+    auto p = std::make_shared<takatori::plan::graph_type>();
+    auto& f0 = p->insert(::takatori::plan::forward{
+        variable_vector{
+            bindings.exchange_column(),
+            bindings.exchange_column(),
+            bindings.exchange_column()
+        }
+    });
     auto&& f0c0 = f0.columns()[0];
     auto&& f0c1 = f0.columns()[1];
     auto&& f0c2 = f0.columns()[2];
 
-    ::takatori::plan::forward f1 {
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-    };
+    auto& f1 = p->insert(::takatori::plan::forward{
+        variable_vector{
+            bindings.exchange_column(),
+            bindings.exchange_column(),
+            bindings.exchange_column()
+        }
+    });
     auto&& f1c0 = f1.columns()[0];
     auto&& f1c1 = f1.columns()[1];
     auto&& f1c2 = f1.columns()[2];
 
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process {});
+    auto&& p0 = p->insert(takatori::plan::process {});
     auto c0 = bindings.stream_variable("c0");
     auto c1 = bindings.stream_variable("c1");
     auto c2 = bindings.stream_variable("c2");
@@ -199,6 +199,8 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
 
     r0.output() >> r1.input();
 
+    f0.add_downstream(p0);
+    f1.add_upstream(p0);
     auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
     vm->bind(c0, t::int4{});
     vm->bind(c1, t::float8{});
@@ -214,44 +216,51 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     vm->bind(bindings(t0c2), t::int8{});
     yugawara::compiled_info c_info{{}, vm};
 
-    auto p_info = std::make_shared<processor_info>(p0.operators(), c_info);
-    auto compiler_context = std::make_shared<plan::compiler_context>();
+    input_exchanges.emplace_back(&f0);
+    output_exchanges.emplace_back(&f1);
+
     compiler_context->compiled_info(c_info);
-    compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(p)));
+    compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
+}
 
-    std::vector<variable> f0_columns{f0c1, f0c0, f0c2};
-    variable_order f0_order{
-        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
-        f0_columns
-    };
-    std::vector<variable> f1_columns{f1c1, f1c0, f1c2};
-    variable_order f1_order{
-        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
-        f1_columns
-    };
+takatori::plan::process& find_process(takatori::plan::graph_type& p) {
+    takatori::plan::process* p0{};
+    takatori::plan::sort_from_upstream(p, [&p0](takatori::plan::step& s){
+        if (s.kind() == takatori::plan::step_kind::process) {
+            p0 = &dynamic_cast<takatori::plan::process&>(s);
+        }
+    });
+    if (! p0) fail();
+    return *p0;
+}
 
+static int run(params& param, std::shared_ptr<configuration> cfg) {
+    utils::get_watch().set_point(time_point_begin, 0);
+
+    using kind = meta::field_type_kind;
+    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
+    assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
+    static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
+    auto meta = test_record{}.record_meta();
+
+    auto compiler_context = std::make_shared<plan::compiler_context>();
+    std::vector<maybe_shared_ptr<takatori::plan::exchange>> input_exchanges{};
+    std::vector<maybe_shared_ptr<takatori::plan::exchange>> output_exchanges{};
+
+    create_compiled_info(compiler_context,
+        input_exchanges,
+        output_exchanges
+    );
+
+    auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
+    auto& p0 = find_process(p);
     auto channel = std::make_shared<class channel>();
     auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
     common::graph g{*context};
-    auto& jf0 = g.emplace<forward::step>(
-        meta,
-        f0_order
-    );
-    auto& jf1 = g.emplace<forward::step>(
-        meta,
-        f1_order
-    );
+    auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
 
-    auto r_step_map = std::make_shared<plan::relation_step_map>(
-        std::unordered_map<takatori::descriptor::relation, executor::exchange::step*>{
-        {bindings(f0), &jf0},
-        {bindings(f1), &jf1},
-    });
-    compiler_context->relation_step_map(r_step_map);
 
-    auto& process = g.emplace<process::step>(p_info);
-    jf0 >> process >> jf1;
-
+    using kind = meta::field_type_kind;
     using reader_type = process::mock::basic_record_reader<test_record>;
     using writer_type = process::mock::basic_record_writer<test_record>;
 
@@ -260,14 +269,13 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
     auto record_size = sizeof(test_record);
     auto write_buffer_record_count = param.write_buffer_size_ / record_size;
     auto read_buffer_record_count = param.read_buffer_size_ / record_size;
-    std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
-
     memory::page_pool pool;
     std::vector<std::shared_ptr<custom_memory_resource>> resources{};
     std::vector<std::shared_ptr<writer_type>> writers{};
     std::vector<std::shared_ptr<reader_type>> readers{};
     utils::xorshift_random64 rnd{1234567U};
 
+    std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
     if (param.std_allocator) {
         resources.reserve(partitions*2);
     }
@@ -343,6 +351,32 @@ static int run(params& param, std::shared_ptr<configuration> cfg) {
         std::make_shared<callback_type>([](callback_arg*){
             utils::get_watch().set_point(time_point_created_task, 0);
         })
+    );
+
+    auto& f0 = static_cast<takatori::plan::forward&>(*input_exchanges[0]);
+    auto& f1 = static_cast<takatori::plan::forward&>(*output_exchanges[0]);
+    process.io_info(
+        std::make_shared<io_info>(
+            std::vector<input_info>{
+                {
+                    meta,
+                    variable_order{
+                        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
+                        f0.columns()
+                    }
+                }
+            },
+            std::vector<output_info>{
+                {
+                    meta,
+                    variable_order{
+                        variable_ordering_enum_tag<variable_ordering_kind::flat_record>,
+                        f1.columns()
+                    }
+                }
+            },
+            io_info::external_output_entity_type{}
+        )
     );
 
     dag_controller dc{std::move(cfg)};

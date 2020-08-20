@@ -22,7 +22,6 @@
 #include <boost/container/pmr/memory_resource.hpp>
 
 #include <takatori/util/standard_memory_resource.h>
-
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -35,7 +34,7 @@ namespace jogasaki::executor::process::mock {
 using kind = meta::field_type_kind;
 
 template <class Record>
-class OPTIONAL_CACHE_ALIGN basic_record_writer : public executor::record_writer {
+class cache_align basic_record_writer : public executor::record_writer {
 public:
 
     using record_type = Record;

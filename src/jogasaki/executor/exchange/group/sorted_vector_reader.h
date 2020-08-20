@@ -24,6 +24,7 @@
 
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -32,7 +33,7 @@ namespace jogasaki::executor::exchange::group {
  * @details no pregroup is needed and all pointer tables are merged and sorted at once
  * @attention readers for shuffle should be acquired after transfer completed
  */
-class sorted_vector_reader : public group_reader {
+class cache_align sorted_vector_reader : public group_reader {
 public:
     enum class reader_state {
         init,

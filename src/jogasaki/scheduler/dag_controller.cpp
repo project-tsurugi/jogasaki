@@ -27,6 +27,7 @@
 #include <jogasaki/internal_event.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
+#include <jogasaki/utils/interference_size.h>
 #include "single_thread_task_scheduler.h"
 #include "multi_thread_task_scheduler.h"
 #include "step_state.h"
@@ -44,7 +45,7 @@ using enum_tag_t = takatori::util::enum_tag_t<Kind>;
 /**
  * @brief Dependency Graph Scheduler
  */
-class dag_controller::impl {
+class cache_align dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 

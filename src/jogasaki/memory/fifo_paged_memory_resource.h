@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <deque>
 
+#include <jogasaki/utils/interference_size.h>
 #include "paged_memory_resource.h"
 #include "page_pool.h"
 #include "details/page_allocation_info.h"
@@ -27,7 +28,7 @@ namespace jogasaki::memory {
 /**
  * @brief an implementation of paged_memory_resource that only can deallocate memory fragments by FIFO order.
  */
-class fifo_paged_memory_resource : public paged_memory_resource {
+class cache_align fifo_paged_memory_resource : public paged_memory_resource {
 public:
     /**
      * @brief creates a new instance.

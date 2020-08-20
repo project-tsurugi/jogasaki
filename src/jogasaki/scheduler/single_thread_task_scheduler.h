@@ -19,6 +19,7 @@
 #include <memory>
 
 #include <jogasaki/model/task.h>
+#include <jogasaki/utils/interference_size.h>
 #include "task_scheduler.h"
 
 namespace jogasaki::scheduler {
@@ -26,7 +27,7 @@ namespace jogasaki::scheduler {
 /*
  * @brief task scheduler using multiple threads
  */
-class single_thread_task_scheduler : public task_scheduler {
+class cache_align single_thread_task_scheduler : public task_scheduler {
 public:
     using entity_type = std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>>;
 

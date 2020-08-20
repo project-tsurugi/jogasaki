@@ -18,11 +18,11 @@
 #include <takatori/util/sequence_view.h>
 
 #include <jogasaki/accessor/record_ref.h>
-
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::mock {
 
@@ -50,7 +50,7 @@ private:
 };
 
 template <class Key, class Value>
-class basic_group_reader : public executor::group_reader {
+class cache_align basic_group_reader : public executor::group_reader {
 public:
     using group_type = basic_group_entry<Key, Value>;
     using groups_type = std::vector<group_type>;

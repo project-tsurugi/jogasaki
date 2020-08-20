@@ -22,6 +22,8 @@
 
 #include <boost/container/pmr/memory_resource.hpp>
 
+#include <jogasaki/utils/interference_size.h>
+
 namespace jogasaki::memory {
 
 /*
@@ -35,7 +37,7 @@ constexpr static std::size_t page_size = 2*1024*1024;
  * Pages are provided to paged_memory_resource so that it can conduct more granular memory management.
  * After using the page, paged_memory_resource returns pages to page pool and page pool try to recycle the returned page efficiently.
  */
-class page_pool {
+class cache_align page_pool {
 public:
     /**
      * @brief minimum alignment of a page

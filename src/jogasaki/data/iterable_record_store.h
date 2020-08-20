@@ -19,8 +19,10 @@
 #include <vector>
 #include <cstring>
 
-#include <jogasaki/data/record_store.h>
 #include <takatori/util/print_support.h>
+
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 
@@ -31,7 +33,7 @@ namespace jogasaki::data {
  * treats gaps between the pages (i.e. not all records are on the same continuous memory region, but iterator allow users
  * to iterate them sequentially as if they are continuous region)
  */
-class iterable_record_store {
+class cache_align iterable_record_store {
 public:
     /// @brief pointer type
     using record_pointer = record_store::record_pointer;

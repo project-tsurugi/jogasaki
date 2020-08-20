@@ -28,6 +28,7 @@
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/hash.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -55,7 +56,7 @@ namespace impl {
  * (each of which needs to fit page size defined by memory allocator, e.g. 2MB for huge page)
  * which contain (locally pre-aggregated) key-value pairs.
  */
-class input_partition {
+class cache_align input_partition {
 public:
 
     using key_pointer = void*;

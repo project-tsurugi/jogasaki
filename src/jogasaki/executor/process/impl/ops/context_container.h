@@ -19,13 +19,14 @@
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief relational operator context container
  */
-class context_container {
+class cache_align context_container {
 public:
     using contexts_type = std::unordered_map<ops::operator_base const*, std::unique_ptr<ops::context_base>>;
 

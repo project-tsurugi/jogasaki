@@ -27,6 +27,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/utils/random.h>
+#include <jogasaki/utils/interference_size.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
 
@@ -35,7 +36,7 @@ namespace jogasaki::scheduler {
 /**
  * @brief boost thread wrapper to keep the buffer together
  */
-class thread {
+class cache_align thread {
 public:
     thread() : id_(new_identity()) {};
 
@@ -85,14 +86,14 @@ private:
     std::size_t id_{};
 
     std::size_t new_identity() {
-        static std::atomic<size_t> source = 0;
+        cache_align static std::atomic<size_t> source = 0;
         return source++;
     }
 };
 /**
  * @brief simple implementation of fixed size thread pool
  */
-class thread_pool {
+class cache_align thread_pool {
 public:
     /**
      * @brief create default object with single thread
@@ -153,7 +154,7 @@ private:
 /*
  * @brief task scheduler using multiple threads
  */
-class multi_thread_task_scheduler : public task_scheduler {
+class cache_align multi_thread_task_scheduler : public task_scheduler {
 public:
     multi_thread_task_scheduler() = default;
     ~multi_thread_task_scheduler() override = default;

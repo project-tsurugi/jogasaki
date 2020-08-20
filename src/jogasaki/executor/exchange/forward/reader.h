@@ -16,10 +16,11 @@
 #pragma once
 
 #include <jogasaki/executor/record_reader.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::forward {
 
-class reader : public record_reader {
+class cache_align reader : public record_reader {
 public:
     reader() = default;
 

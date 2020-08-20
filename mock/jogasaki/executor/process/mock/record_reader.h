@@ -15,12 +15,13 @@
  */
 #pragma once
 
+#include <boost/container/pmr/vector.hpp>
+
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/standard_memory_resource.h>
 
 #include <jogasaki/accessor/record_ref.h>
-
 #include <jogasaki/executor/record_reader.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -28,15 +29,13 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 
-#include <boost/container/pmr/vector.hpp>
-
 namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
 
 template <class Record>
-class OPTIONAL_CACHE_ALIGN basic_record_reader : public executor::record_reader {
+class cache_align basic_record_reader : public executor::record_reader {
 public:
     using record_type = Record;
 

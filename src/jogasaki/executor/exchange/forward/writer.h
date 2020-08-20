@@ -19,12 +19,13 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/executor/record_writer.h>
+#include <jogasaki/utils/interference_size.h>
 #include "source.h"
 #include "sink.h"
 
 namespace jogasaki::executor::exchange::forward {
 
-class writer : public record_writer {
+class cache_align writer : public record_writer {
 public:
     writer() = default;
 

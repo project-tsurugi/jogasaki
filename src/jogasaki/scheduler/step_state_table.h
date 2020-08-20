@@ -21,6 +21,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/scheduler/step_state.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 
@@ -30,7 +31,7 @@ namespace jogasaki::scheduler {
  * @details Each task status is stored in a slot. Slots can be assigned before the tasks are available.
  * Completion is decided based on whether the tasks in all slots for run/prepare completed.
  */
-class step_state_table {
+class cache_align step_state_table {
 public:
     using entity_type = std::unordered_map<model::task::identity_type, task_state_kind>;
     using slots_type = std::vector<model::task::identity_type>;

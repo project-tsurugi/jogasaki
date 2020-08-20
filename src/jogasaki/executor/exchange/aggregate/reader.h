@@ -17,13 +17,14 @@
 
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
 /**
  * @brief reader for aggregate exchange
  */
-class reader : public group_reader {
+class cache_align reader : public group_reader {
 public:
     using iterable_tables = std::vector<input_partition::iterable_hash_table>;
     using aggregator_type = shuffle_info::aggregator_type;

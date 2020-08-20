@@ -21,13 +21,14 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 
 template <class Record>
-class basic_external_writer : public executor::record_writer {
+class cache_align basic_external_writer : public executor::record_writer {
 public:
     using record_type = Record;
     using records_type = std::vector<record_type>;

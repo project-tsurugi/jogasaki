@@ -20,6 +20,7 @@
 #include <string_view>
 
 #include <jogasaki/model/task.h>
+#include <jogasaki/utils/interference_size.h>
 #include "step.h"
 
 namespace jogasaki::executor::common {
@@ -56,7 +57,7 @@ protected:
     };
 
 private:
-    static inline std::atomic_size_t id_src = 10000;
+    cache_align static inline std::atomic_size_t id_src = 10000;
     identity_type id_{};
     request_context* context_{};
     step_type* src_{};

@@ -21,9 +21,11 @@
 #include <memory>
 #include <vector>
 
+#include <jogasaki/utils/interference_size.h>
+
 namespace jogasaki::utils {
 
-class watch {
+class cache_align watch {
 public:
     using Clock = std::chrono::steady_clock;
     using Duration = std::chrono::milliseconds;

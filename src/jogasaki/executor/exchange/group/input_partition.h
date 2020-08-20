@@ -23,6 +23,7 @@
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/group/pointer_table.h>
 #include <jogasaki/memory/page_pool.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -35,7 +36,7 @@ namespace jogasaki::executor::exchange::group {
  * (each of which needs to fit page size defined by memory allocator, e.g. 2MB for huge page)
  * which contain sorted pointers.
  */
-class input_partition {
+class cache_align input_partition {
 public:
     using pointer_table_type = pointer_table;
     using pointer_tables_type = std::vector<pointer_table_type>;

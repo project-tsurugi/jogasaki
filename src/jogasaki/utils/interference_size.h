@@ -28,3 +28,11 @@ static constexpr std::size_t hardware_destructive_interference_size = 64; // rep
 #else
 #define OPTIONAL_CACHE_ALIGN
 #endif
+
+/**
+ * @brief non conditional shorter qualifier to align on cache lines
+ * @details To avoid false sharing, objects should be cache aligned if
+ * 1. the objects are created(allocated) on one thread and accessed from different threads.
+ * 2. the objects are mutable and changes are made frequently.
+ */
+#define cache_align alignas(jogasaki::utils::hardware_destructive_interference_size)  //NOLINT

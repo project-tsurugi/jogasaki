@@ -23,6 +23,7 @@
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -78,7 +79,7 @@ private:
  * @details pregrouped pointer tables are k-way merged using priority queue
  * @attention readers for shuffle should be acquired after transfer completed
  */
-class priority_queue_reader : public group_reader {
+class cache_align priority_queue_reader : public group_reader {
 public:
     ~priority_queue_reader() override = default;
     priority_queue_reader(priority_queue_reader const& other) = delete;

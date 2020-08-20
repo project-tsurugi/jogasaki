@@ -33,6 +33,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -42,7 +43,8 @@ namespace impl {
 
 using checkpoint = memory::lifo_paged_memory_resource::checkpoint;
 
-class cogroup_record_store {
+//TODO move to context ojbect
+class cache_align cogroup_record_store {
 public:
     using iterator = data::iterable_record_store::iterator;
 
@@ -90,6 +92,7 @@ private:
     memory::lifo_paged_memory_resource::checkpoint varlen_resource_last_checkpoint_{};
 };
 
+//TODO move to context ojbect
 /**
  * @brief responsible for reading from reader and filling the record store
  */

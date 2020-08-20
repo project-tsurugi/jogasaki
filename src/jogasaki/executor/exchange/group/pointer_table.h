@@ -23,6 +23,7 @@
 
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -35,7 +36,7 @@ namespace jogasaki::executor::exchange::group {
  * Resources referenced from this object (e.g. head_) are owned and managed by backing paged_memory_resource, so
  * this object doesn't clean up or release them on destruction. Their lifetime is defined by the backing memory resource.
  */
-class pointer_table {
+class cache_align pointer_table {
 public:
     using pointer = void*;
 

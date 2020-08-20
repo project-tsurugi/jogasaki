@@ -18,19 +18,20 @@
 #include <cstddef>
 #include <functional>
 
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/model/graph.h>
-
 #include <takatori/util/object_creator.h>
 #include <yugawara/compiler_result.h>
 #include <yugawara/storage/configurable_provider.h>
+
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/model/graph.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::plan {
 
 /**
  * @brief vehicle of objects generated during sql compilation
  */
-class compiler_context {
+class cache_align compiler_context {
 public:
 
     void compiler_result(yugawara::compiler_result compiler_result) noexcept {

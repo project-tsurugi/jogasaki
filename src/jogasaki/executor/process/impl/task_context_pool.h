@@ -19,6 +19,7 @@
 
 #include <tbb/concurrent_queue.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -26,7 +27,7 @@ namespace jogasaki::executor::process::impl {
  * @brief task context pool
  * @details a thread-safe task context container
  */
-class task_context_pool {
+class cache_align task_context_pool {
 public:
     /**
      * @brief create new empty instance

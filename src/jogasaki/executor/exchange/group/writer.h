@@ -19,6 +19,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/executor/record_writer.h>
+#include <jogasaki/utils/interference_size.h>
 #include "input_partition.h"
 #include "shuffle_info.h"
 #include "source.h"
@@ -26,7 +27,7 @@
 
 namespace jogasaki::executor::exchange::group {
 
-class writer : public record_writer {
+class cache_align writer : public record_writer {
 public:
     ~writer() override = default;
     writer(writer const& other) = delete;

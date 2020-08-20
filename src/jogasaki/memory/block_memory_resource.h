@@ -21,6 +21,7 @@
 #include <utility>
 #include <cassert>
 
+#include <jogasaki/utils/interference_size.h>
 #include "page_pool.h"
 #include "paged_memory_resource.h"
 
@@ -43,7 +44,7 @@ namespace jogasaki::memory {
  *      and the recommended value is `65,536` (32 blocks per page).
  */
 template<std::size_t BlockSize>
-class block_memory_resource : public paged_memory_resource {
+class cache_align block_memory_resource : public paged_memory_resource {
 public:
     /// @brief the block size in bytes.
     static inline constexpr std::size_t block_size = BlockSize;

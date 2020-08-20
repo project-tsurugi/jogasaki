@@ -22,6 +22,7 @@
 
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 
@@ -34,7 +35,7 @@ using takatori::util::maybe_shared_ptr;
  * This container support variable length data such as text field, whose non-SSO data are backed by another paged
  * memory resource.
  */
-class record_store {
+class cache_align record_store {
 public:
     /// @brief type of record pointer
     using record_pointer = void*;

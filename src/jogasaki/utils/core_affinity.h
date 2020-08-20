@@ -21,5 +21,7 @@ namespace jogasaki::utils {
 
 bool set_core_affinity(boost::thread* t, std::size_t cpu, bool uniform_on_nodes = false);
 
+bool set_current_thread_core_affinity(std::size_t cpu);
+
 }
 

@@ -55,6 +55,9 @@ void thread_pool::join() {
 
 void thread_pool::start() {
     if (started_) return;
+    if(set_core_affinity_) {
+        utils::set_current_thread_core_affinity(0);
+    }
     prepare_threads_();
     started_ = true;
 }

@@ -32,5 +32,19 @@ bool set_core_affinity(boost::thread *t, std::size_t cpu, bool uniform_on_nodes)
     return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
 }
 
+/**
+ * @brief set the core affinity of current thread
+ * @param cpu the core number associated with current thread
+ * @return true when successful
+ * @return false otherwise
+ */
+bool set_current_thread_core_affinity(std::size_t cpu) {
+    pthread_t x = pthread_self();
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);  //NOLINT
+    return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
+}
+
 }
 

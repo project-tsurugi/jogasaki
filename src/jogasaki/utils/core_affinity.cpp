@@ -20,25 +20,18 @@
 
 namespace jogasaki::utils {
 
-bool set_core_affinity(boost::thread *t, std::size_t cpu, bool uniform_on_nodes) {
+/**
+ * @brief set the core affinity of current thread
+ * @param cpu the core number associated with current thread
+ * @param uniform_on_nodes indicate whether the cpu number should be translated to node number to distribute uniformly
+ * @return true when successful
+ * @return false otherwise
+ */
+bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes) {
     if (uniform_on_nodes) {
         static std::size_t nodes = numa_max_node()+1;
         return 0 == numa_run_on_node(static_cast<int>(cpu % nodes));
     }
-    pthread_t x = t->native_handle();
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);  //NOLINT
-    return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
-}
-
-/**
- * @brief set the core affinity of current thread
- * @param cpu the core number associated with current thread
- * @return true when successful
- * @return false otherwise
- */
-bool set_current_thread_core_affinity(std::size_t cpu) {
     pthread_t x = pthread_self();
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);

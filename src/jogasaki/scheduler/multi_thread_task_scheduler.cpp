@@ -56,7 +56,7 @@ void thread_pool::join() {
 void thread_pool::start() {
     if (started_) return;
     if(set_core_affinity_) {
-        utils::set_current_thread_core_affinity(0);
+        utils::thread_core_affinity(0);
     }
     prepare_threads_();
     started_ = true;
@@ -79,15 +79,16 @@ void thread_pool::prepare_threads_() {
     threads_.reserve(max_threads_);
     for(std::size_t i = 0; i < max_threads_; ++i) {
         auto& thread = threads_.emplace_back();
-        thread([this, &thread]() {
+        auto core = i+initial_core_;
+        thread([this, &thread, core]() {
+            if(set_core_affinity_) {
+                utils::thread_core_affinity(core, assign_numa_nodes_uniformly_);
+            }
             if (randomize_memory_usage_ != 0) {
                 thread.allocate_randomly(randomize_memory_usage_);
             }
             io_service_.run();
         });
-        if(set_core_affinity_) {
-            utils::set_core_affinity(thread.get(), i+initial_core_, assign_numa_nodes_uniformly_);
-        }
         thread_group_.add_thread(thread.get());
     }
 }

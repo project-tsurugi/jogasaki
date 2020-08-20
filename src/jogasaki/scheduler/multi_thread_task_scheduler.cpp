@@ -15,90 +15,7 @@
  */
 #include "multi_thread_task_scheduler.h"
 
-#include <unordered_set>
-
-#include <glog/logging.h>
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
-
-#include <jogasaki/utils/core_affinity.h>
-#include <jogasaki/model/task.h>
-#include <jogasaki/executor/common/task.h>
-#include "task_scheduler.h"
-#include "thread_params.h"
-
 namespace jogasaki::scheduler {
-
-
-thread_pool::thread_pool() : thread_pool(thread_params(1)) {}
-
-thread_pool::thread_pool(thread_params params) :
-    max_threads_(params.threads()),
-    io_service_(),
-    work_(std::make_unique<boost::asio::io_service::work>(io_service_)),
-    set_core_affinity_(params.is_set_core_affinity()),
-    initial_core_(params.inititial_core()),
-    assign_numa_nodes_uniformly_(params.assign_numa_nodes_uniformly()),
-    randomize_memory_usage_(params.randomize_memory_usage())
-{
-    start();
-}
-
-thread_pool::~thread_pool() noexcept {
-    stop();
-}
-
-void thread_pool::join() {
-    work_.reset();
-    thread_group_.join_all();
-}
-
-void thread_pool::start() {
-    if (started_) return;
-    if(set_core_affinity_) {
-        utils::thread_core_affinity(0);
-    }
-    prepare_threads_();
-    started_ = true;
-}
-
-void thread_pool::stop() {
-    if (!started_) return;
-    try {
-        join();
-        io_service_.stop();
-    } catch (...) {
-        LOG(ERROR) << "error on finishing thread pool";
-    }
-    cleanup_threads_();
-    assert(thread_group_.size() == 0); //NOLINT
-    started_ = false;
-}
-
-void thread_pool::prepare_threads_() {
-    threads_.reserve(max_threads_);
-    for(std::size_t i = 0; i < max_threads_; ++i) {
-        auto& thread = threads_.emplace_back();
-        auto core = i+initial_core_;
-        thread([this, &thread, core]() {
-            if(set_core_affinity_) {
-                utils::thread_core_affinity(core, assign_numa_nodes_uniformly_);
-            }
-            if (randomize_memory_usage_ != 0) {
-                thread.allocate_randomly(randomize_memory_usage_);
-            }
-            io_service_.run();
-        });
-        thread_group_.add_thread(thread.get());
-    }
-}
-
-void thread_pool::cleanup_threads_() {
-    for(auto& t : threads_) {
-        thread_group_.remove_thread(t.get());
-        t.reset();
-    }
-}
 
 multi_thread_task_scheduler::multi_thread_task_scheduler(thread_params params) :
     threads_(params) {}
@@ -131,7 +48,5 @@ void multi_thread_task_scheduler::proceeding_task_wrapper::operator()() {
     if (!s) return;
     while(s->operator()() == model::task_result::proceed) {}
 }
+
 }
-
-
-

@@ -25,6 +25,7 @@ file(GLOB SOURCES
         "jogasaki/model/*.cpp"
         "jogasaki/plan/*.cpp"
         "jogasaki/scheduler/*.cpp"
+        "jogasaki/scheduler/details/*.cpp"
         "jogasaki/storage/*.cpp"
         "jogasaki/utils/*.cpp"
 )

@@ -161,7 +161,7 @@ public:
         auto reader_index = relation_io_map_->input_index(node.source());
         auto& downstream = node.output().opposite()->owner();
         auto& input = io_info_->input_at(reader_index);
-        assert(! input.is_group_input());
+        assert(! input.is_group_input());  //NOLINT
 
         operators_[std::addressof(node)] = std::make_unique<take_flat>(
             *info_,

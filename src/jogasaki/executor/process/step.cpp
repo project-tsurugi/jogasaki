@@ -25,16 +25,17 @@
 namespace jogasaki::executor::process {
 
 using jogasaki::executor::process::impl::ops::io_info;
+using takatori::util::unsafe_downcast;
 
 std::shared_ptr<io_info> step::create_io_info() {
     auto io = std::make_shared<class io_info>();
 
     std::vector<impl::ops::input_info> inputs{};
     for(auto& in : input_ports()) {
-        auto& xchg = *static_cast<exchange::step*>(in->opposites()[0]->owner());
+        auto& xchg = *unsafe_downcast<exchange::step>(in->opposites()[0]->owner());
         switch(xchg.kind()) {
             case common::step_kind::forward: {
-                auto& fwd = static_cast<exchange::forward::step&>(xchg);
+                auto& fwd = unsafe_downcast<exchange::forward::step>(xchg);
                 inputs.emplace_back(
                     fwd.output_meta(),
                     fwd.output_order()
@@ -44,7 +45,7 @@ std::shared_ptr<io_info> step::create_io_info() {
             case common::step_kind::group:
             case common::step_kind::aggregate:
             {
-                auto& grp = static_cast<exchange::shuffle::step&>(xchg);
+                auto& grp = unsafe_downcast<exchange::shuffle::step>(xchg);
                 inputs.emplace_back(
                     grp.output_meta(),
                     grp.output_order()
@@ -57,12 +58,12 @@ std::shared_ptr<io_info> step::create_io_info() {
     }
     std::vector<impl::ops::output_info> outputs{};
     for(auto& out : output_ports()) {
-        auto& xchg = *static_cast<exchange::step*>(out->opposites()[0]->owner());
+        auto& xchg = *unsafe_downcast<exchange::step>(out->opposites()[0]->owner());
         switch(xchg.kind()) {
             case common::step_kind::forward:
             case common::step_kind::group:
             case common::step_kind::aggregate: {
-                auto& x = static_cast<exchange::step&>(xchg);
+                auto& x = unsafe_downcast<exchange::step>(xchg);
                 outputs.emplace_back(
                     x.input_meta(),
                     x.input_order()

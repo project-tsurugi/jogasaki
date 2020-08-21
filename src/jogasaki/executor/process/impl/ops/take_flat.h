@@ -39,7 +39,7 @@ using takatori::util::maybe_shared_ptr;
 
 namespace details {
 
-struct alignas(utils::hardware_destructive_interference_size) take_flat_field {
+struct cache_align take_flat_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};

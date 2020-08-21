@@ -23,10 +23,13 @@ static constexpr std::size_t hardware_destructive_interference_size = 64; // rep
 
 } // namespace
 
+/**
+ * @brief conditional cache alignment qualifier (switchable by build option for experiment)
+ */
 #ifdef ENABLE_CACHE_ALIGN
-#define OPTIONAL_CACHE_ALIGN alignas(jogasaki::utils::hardware_destructive_interference_size)  //NOLINT clang-tidy confuses with constant
+#define optional_cache_align alignas(jogasaki::utils::hardware_destructive_interference_size)  //NOLINT clang-tidy confuses with constant
 #else
-#define OPTIONAL_CACHE_ALIGN
+#define optional_cache_align
 #endif
 
 /**

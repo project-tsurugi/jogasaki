@@ -38,7 +38,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
 
-struct alignas(utils::hardware_destructive_interference_size) offer_field {
+struct cache_align offer_field {
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};

@@ -37,10 +37,10 @@ void *memory::page_pool::acquire_page() {
         }
     }
     page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
-        (MAP_SHARED | MAP_ANON | MAP_HUGETLB), -1, 0); //NOLINT
+        (MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB), -1, 0); //NOLINT
     if (page == MAP_FAILED) { //NOLINT
         page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
-            (MAP_SHARED | MAP_ANON), -1, 0); //NOLINT
+            (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0); //NOLINT
         if (page == MAP_FAILED) { //NOLINT
             return nullptr;
         }

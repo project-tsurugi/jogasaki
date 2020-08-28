@@ -31,6 +31,7 @@
 #include <takatori/relation/expression.h>
 
 #include <yugawara/binding/factory.h>
+#include <yugawara/binding/extract.h>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
@@ -38,10 +39,10 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
+#include <jogasaki/executor/process/impl/details/io_exchange_map.h>
 #include <jogasaki/storage/storage_context.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/shuffle/step.h>
-#include <yugawara/binding/extract.h>
 #include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
@@ -209,7 +210,7 @@ private:
     plan::compiler_context const* compiler_ctx_{};
     std::shared_ptr<io_info> io_info_{};
     operators_type operators_{};
-    io_exchange_map io_exchange_map_{};
+    impl::details::io_exchange_map io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
 };
 

@@ -21,7 +21,7 @@
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::impl::details {
 
 /**
  * @brief index mapping for input/output exchanges in a process
@@ -34,7 +34,7 @@ public:
     using relation = takatori::descriptor::relation;
     using input_exchange = executor::exchange::step;
     using output_exchange = executor::exchange::step;
-    using external_output_operator = operator_base;
+    using external_output_operator = ops::operator_base;
 
     using input_entity_type = std::vector<input_exchange*>;
     using output_entity_type = std::vector<output_exchange*>;

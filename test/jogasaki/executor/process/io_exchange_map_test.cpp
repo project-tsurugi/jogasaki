@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/io_exchange_map.h>
+#include <jogasaki/executor/process/impl/details/io_exchange_map.h>
 
 #include <string>
 
@@ -26,7 +26,7 @@
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/executor/process/mock/process_executor.h>
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::impl::details {
 
 using namespace executor;
 using namespace accessor;

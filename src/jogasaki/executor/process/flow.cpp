@@ -70,7 +70,7 @@ common::step_kind flow::kind() const noexcept {
     return common::step_kind::process;
 }
 
-std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::io_exchange_map const& io_exchange_map) {
+std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::details::io_exchange_map const& io_exchange_map) {
     std::unique_ptr<abstract::scan_info> sinfo{};
     auto ctx = std::make_shared<impl::task_context>(
         partition,

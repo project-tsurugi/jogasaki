@@ -18,7 +18,7 @@
 #include <takatori/relation/expression.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/block_scope_info.h>
-#include <jogasaki/executor/process/impl/ops/io_exchange_map.h>
+#include <jogasaki/executor/process/impl/details/io_exchange_map.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -35,7 +35,7 @@ public:
 
     explicit operator_container(
         operators_type operators,
-        class io_exchange_map io_exchange_map
+        details::io_exchange_map io_exchange_map
     ) :
         operators_(std::move(operators)),
         io_exchange_map_(std::move(io_exchange_map))
@@ -61,13 +61,13 @@ public:
         return operators_.end();
     }
 
-    [[nodiscard]] class io_exchange_map const& io_exchange_map() const noexcept {
+    [[nodiscard]] details::io_exchange_map const& io_exchange_map() const noexcept {
         return io_exchange_map_;
     };
 
 private:
     operators_type operators_{};
-    class io_exchange_map io_exchange_map_{};
+    details::io_exchange_map io_exchange_map_{};
 };
 
 }

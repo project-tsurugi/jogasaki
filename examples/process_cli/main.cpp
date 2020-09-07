@@ -164,6 +164,7 @@ private:
         LOG(INFO) << "wait before run: total " << watch.duration(time_point_created_task, time_point_run) << "ms" ;
 #endif
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_run, time_point_ran, "run");
+        LOG(INFO) << jogasaki::utils::textualize(watch, 8, 9, "task");
 #ifndef PERFORMANCE_TOOLS
         LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed) << "ms" ;
 #endif

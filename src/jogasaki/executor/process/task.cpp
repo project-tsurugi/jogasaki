@@ -19,6 +19,7 @@
 
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
+#include <jogasaki/utils/performance_tools.h>
 
 namespace jogasaki::executor::process {
 
@@ -35,7 +36,10 @@ task::task(
 
 model::task_result task::operator()() {
     VLOG(1) << *this << " process::task executed.";
+    auto& watch = utils::get_watch();
+    watch.set_point(8, id());
     auto status = executor_->run();
+    watch.set_point(9, id());
     switch (status) {
         case abstract::status::completed:
             VLOG(1) << *this << " process::task completed.";

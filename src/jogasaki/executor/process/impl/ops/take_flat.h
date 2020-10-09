@@ -83,7 +83,7 @@ public:
         maybe_shared_ptr<meta::record_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
-        relation::expression const* downstream
+        relation::expression const* downstream = nullptr
     ) : operator_base(info, block_index),
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
@@ -98,7 +98,7 @@ public:
      * @param visitor the callback object that should be invoked to process output of this operation. Pass nullptr if
      * this operation is executed stand-alone and no subsequent processing is needed (e.g. in testcases).
      */
-    template <class Callback>
+    template <class Callback = void>
     void operator()(take_flat_context& ctx, Callback* visitor = nullptr) {
         auto target = ctx.variables().store().ref();
         if (! ctx.reader_) {
@@ -110,8 +110,11 @@ public:
             for(auto &f : fields_) {
                 utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
             }
-            if (visitor) {
-                dispatch(*visitor, *downstream_);
+            if constexpr (!std::is_same_v<Callback, void>) {
+                if (downstream_ && visitor) {
+                    dispatch(*visitor, *downstream_);
+
+                }
             }
         }
     }

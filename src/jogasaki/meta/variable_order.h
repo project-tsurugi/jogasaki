@@ -33,7 +33,6 @@
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/block_scope_info.h>
 
 namespace jogasaki::meta {
 

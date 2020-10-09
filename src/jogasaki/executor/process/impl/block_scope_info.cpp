@@ -41,6 +41,27 @@ block_scope_info::block_scope_info(
     meta_(std::move(meta))
 {}
 
+std::unique_ptr<variable_value_map> from_indices(
+    block_scope_info::variable_indices const& indices,
+    maybe_shared_ptr<meta::record_meta> const& meta
+) {
+    variable_value_map::entity_type map{};
+    for(auto&& [v, i] : indices) {
+        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
+    }
+    return std::make_unique<variable_value_map>(std::move(map));
+}
+
+block_scope_info::block_scope_info(
+    variable_indices const& indices,
+    maybe_shared_ptr<meta::record_meta> meta
+) noexcept :
+    value_map_(from_indices(indices, meta)),
+    meta_(std::move(meta))
+{
+
+}
+
 variable_value_map& block_scope_info::value_map() const noexcept {
     return *value_map_;
 }
@@ -67,7 +88,7 @@ create_scopes_info(relation::graph_type &relations, const yugawara::compiled_inf
     auto&& n0 = analyzer.inspect(*b0);
 
     auto& killed = n0.kill();
-    std::unordered_map<takatori::descriptor::variable, value_info> map{};
+    std::unordered_map<takatori::descriptor::variable, std::size_t> map{};
     std::vector<meta::field_type> fields{};
     std::vector<takatori::descriptor::variable> variables{};
 
@@ -75,7 +96,6 @@ create_scopes_info(relation::graph_type &relations, const yugawara::compiled_inf
     for(auto& v : n0.define()) {
         if (killed.count(v) == 0) {
             fields.emplace_back(utils::type_for(info, v));
-            map[v] = value_info{};
             variables.emplace_back(v);
         }
     }
@@ -86,16 +106,13 @@ create_scopes_info(relation::graph_type &relations, const yugawara::compiled_inf
     assert(meta->field_count() == variables.size()); //NOLINT
     for(std::size_t i=0, n = meta->field_count(); i < n; ++i) {
         auto& v = variables[i];
-        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
+        map[v] = i;
     }
 
     scopes_info entity{};
     scope_indices indices{};
 
-    entity.emplace_back(
-        std::make_unique<variable_value_map>(std::move(map)),
-        meta);
-
+    entity.emplace_back(std::move(map), meta);
     for(auto&& e : *b0) {
         indices[&e] = block_index;
     }

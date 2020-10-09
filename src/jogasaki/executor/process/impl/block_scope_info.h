@@ -35,10 +35,18 @@ using takatori::util::maybe_shared_ptr;
  */
 class block_scope_info {
 public:
+    using variable = takatori::descriptor::variable;
+    using variable_indices = std::unordered_map<variable, std::size_t>;
+
     block_scope_info() = default;
 
     block_scope_info(
         std::unique_ptr<variable_value_map> value_map,
+        maybe_shared_ptr<meta::record_meta> meta
+    ) noexcept;
+
+    block_scope_info(
+        variable_indices const& indices,
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
 

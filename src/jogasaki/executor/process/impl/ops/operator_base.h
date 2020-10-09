@@ -67,6 +67,9 @@ public:
         return processor_info_->scopes_info();
     }
 
+    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
+        return processor_info_->compiled_info();
+    }
 private:
     processor_info const* processor_info_{};
     block_index_type block_index_{};

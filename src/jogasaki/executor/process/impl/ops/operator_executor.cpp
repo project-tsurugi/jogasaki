@@ -21,6 +21,10 @@
 #include "scan_context.h"
 #include "emit.h"
 #include "emit_context.h"
+#include "filter.h"
+#include "filter_context.h"
+#include "project.h"
+#include "project_context.h"
 #include "take_group.h"
 #include "offer.h"
 #include "take_flat.h"
@@ -88,13 +92,21 @@ void operator_executor::operator()(const relation::join_scan &node) {
 }
 
 void operator_executor::operator()(const relation::project &node) {
-    (void)node;
-    fail();
+    auto&s = to<project>(node);
+    auto* ctx = find_context<project_context>(&s);
+    if (! ctx) {
+        ctx = make_context<project_context>(&s, get_block_variables(s.block_index()));
+    }
+    s(*ctx, this);
 }
 
 void operator_executor::operator()(const relation::filter &node) {
-    (void)node;
-    fail();
+    auto&s = to<filter>(node);
+    auto* ctx = find_context<filter_context>(&s);
+    if (! ctx) {
+        ctx = make_context<filter_context>(&s, get_block_variables(s.block_index()));
+    }
+    s(*ctx, this);
 }
 
 void operator_executor::operator()(const relation::buffer &node) {

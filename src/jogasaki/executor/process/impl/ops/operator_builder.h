@@ -46,6 +46,8 @@
 #include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
+#include "filter.h"
+#include "project.h"
 #include "take_group.h"
 #include "offer.h"
 #include "take_flat.h"
@@ -118,10 +120,18 @@ public:
         (void)node;
     }
     void operator()(relation::project const& node) {
-        (void)node;
+        auto block_index = info_->scope_indices().at(&node);
+        auto& downstream = node.output().opposite()->owner();
+        auto e = std::make_unique<project>(*info_, block_index, node.columns(), &downstream);
+        operators_[std::addressof(node)] = std::move(e);
+        dispatch(*this, downstream);
     }
     void operator()(relation::filter const& node) {
-        (void)node;
+        auto block_index = info_->scope_indices().at(&node);
+        auto& downstream = node.output().opposite()->owner();
+        auto e = std::make_unique<filter>(*info_, block_index, node.condition(), &downstream);
+        operators_[std::addressof(node)] = std::move(e);
+        dispatch(*this, downstream);
     }
     void operator()(relation::buffer const& node) {
         (void)node;

@@ -195,8 +195,8 @@ TEST_F(block_scope_info_test, DISABLED_basic) {
     ASSERT_EQ(2, meta->field_count());
 }
 
-TEST_F(block_scope_info_test, temp) {
-    std::string sql = "select * from T0";
+TEST_F(block_scope_info_test, filter) {
+    std::string sql = "select * from T0 where T0.C1=1";
     auto p = gen_shakujo_program(sql);
     auto storages = yugawara_provider();
 
@@ -219,7 +219,8 @@ TEST_F(block_scope_info_test, temp) {
     auto ptr = r.release<result_kind::execution_plan>();
     auto&& graph = *ptr;
     auto&& emit = last<relation::emit>(graph);
-    auto&& scan = next<relation::scan>(emit.input());
+    auto&& filter = next<relation::filter>(emit.input());
+    auto&& scan = next<relation::scan>(filter.input());
 
     ASSERT_EQ(scan.columns().size(), 2);
     ASSERT_EQ(emit.columns().size(), 2);
@@ -247,11 +248,11 @@ TEST_F(block_scope_info_test, temp) {
     auto&& c = downcast<statement::execute>(result.statement());
 
     ASSERT_EQ(c.execution_plan().size(), 1);
-    auto&& p0 = find(c.execution_plan(), scan);
-    auto&& p1 = find(c.execution_plan(), emit);
-    ASSERT_EQ(p0, p1);
-
-    ASSERT_EQ(p0.operators().size(), 2);
+    auto&& p0 = top(const_cast<takatori::plan::graph_type&>(c.execution_plan()));
+    ASSERT_EQ(p0.operators().size(), 3);
+    auto&& emit2 = last<relation::emit>(p0.operators());
+    auto&& filter2 = next<relation::filter>(emit2.input());
+    auto&& scan2 = next<relation::scan>(filter2.input());
 
     auto pinfo = std::make_shared<processor_info>(p0.operators(), result.info());
     auto v = create_scopes_info(pinfo->relations(), pinfo->compiled_info());
@@ -278,7 +279,7 @@ TEST_F(block_scope_info_test, temp) {
     EXPECT_EQ(0, map.at(c1p0).value_offset());
 
     auto& inds = v.second;
-    ASSERT_EQ(2, inds.size());
+    ASSERT_EQ(3, inds.size());
     for(auto&& ind : inds) {
         EXPECT_EQ(0, ind.second);
     }
@@ -288,7 +289,7 @@ TEST_F(block_scope_info_test, temp) {
     // additionally test ops builder
     auto ops = ops::operator_builder{pinfo, compiler_ctx, {}, {}}();
 
-    ASSERT_EQ(2, ops.size());
+    ASSERT_EQ(3, ops.size());
     for(auto&& [e, o] : ops) {
         EXPECT_EQ(0, o->block_index());
     }

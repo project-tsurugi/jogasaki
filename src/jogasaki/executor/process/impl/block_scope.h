@@ -27,21 +27,38 @@ namespace jogasaki::executor::process::impl {
  */
 class block_scope {
 public:
+    /**
+     * @brief construct empty instance
+     */
     block_scope() = default;
 
+    /**
+     * @brief construct new instance
+     */
     explicit block_scope(
         block_scope_info const& info
-    ) : info_(std::addressof(info)), store_(std::make_unique<data::small_record_store>(info.meta()))
+    ) :
+        info_(std::addressof(info)),
+        store_(std::make_unique<data::small_record_store>(info.meta()))
     {}
 
+    /**
+     * @brief accessor to variable store
+     */
     [[nodiscard]] data::small_record_store& store() const noexcept {
         return *store_;
     }
 
+    /**
+     * @brief accessor to variable value map
+     */
     [[nodiscard]] variable_value_map& value_map() const noexcept {
         return info_->value_map();
     }
 
+    /**
+     * @brief accessor to metadata of variable store
+     */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
         return info_->meta();
     }

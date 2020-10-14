@@ -274,6 +274,7 @@ public:
 
     /**
      * @brief evaluate the expression
+     * @param scope scope variables used to evaluate the expression
      */
     [[nodiscard]] any operator()(executor::process::impl::block_scope& scope) const {
         details::expression_callback c{scope, *info_};

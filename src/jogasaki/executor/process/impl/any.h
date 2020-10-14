@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <variant>
+
 #include <jogasaki/accessor/text.h>
 
 namespace jogasaki::executor::process::impl {
@@ -26,8 +27,14 @@ namespace jogasaki::executor::process::impl {
  */
 class any {
 public:
+    /**
+     * @brief construct empty instance
+     */
     any() = default;
 
+    /**
+     * @brief construct new instance
+     */
     template<typename T, typename E = T>
     any(std::in_place_type_t<T>, E arg) : body_(std::in_place_type<T>, arg) {}
 
@@ -47,5 +54,3 @@ private:
 };
 
 }
-
-

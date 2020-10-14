@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/executor/process/impl/task_context.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
@@ -28,6 +29,7 @@ namespace jogasaki::executor::process::impl::ops {
  */
 class context_base {
 public:
+    using memory_resource = memory::lifo_paged_memory_resource;
     /**
      * @brief create empty object
      */
@@ -65,6 +67,9 @@ public:
         variables_ = std::addressof(variables);
     }
 
+    [[nodiscard]] memory_resource* resource() {
+        return resource_;
+    }
     /**
      * @brief subclass releases any resources acquired after context initialization
      */
@@ -72,6 +77,7 @@ public:
 private:
     class abstract::task_context* task_context_{};
     block_scope* variables_{};
+    memory_resource* resource_{};
 };
 
 }

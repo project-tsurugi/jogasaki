@@ -83,7 +83,7 @@ public:
             auto& v = variables_[i];
             auto info = scope.value_map().at(variables_[i]);
             auto& ev = evaluators_[i];
-            auto res = ev(scope);
+            auto res = ev(scope, ctx.resource());
             using t = takatori::type::type_kind;
             switch(cinfo.type_of(v).kind()) {
                 case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), res); break;

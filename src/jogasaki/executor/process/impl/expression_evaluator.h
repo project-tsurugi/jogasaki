@@ -31,6 +31,7 @@
 
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/executor/process/impl/any.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -52,6 +53,8 @@ inline static typename T::view_type value_of(takatori::scalar::expression const&
 class expression_callback {
 public:
     using stack_type = std::vector<any>;
+
+    using memory_resource = memory::lifo_paged_memory_resource;
 
     expression_callback(
         executor::process::impl::block_scope& scope,
@@ -79,45 +82,43 @@ public:
     }
 
     // default handler
-    bool operator()(takatori::scalar::expression const&, stack_type&) {
+    bool operator()(takatori::scalar::expression const&, stack_type&, memory_resource*) {
         fail();
     }
 
-    bool operator()(takatori::scalar::binary const&, stack_type&) {
+    bool operator()(takatori::scalar::binary const&, stack_type&, memory_resource*) {
         return true;
     }
 
     template <typename T>
-    void binary(takatori::scalar::binary_operator op, stack_type& stack) {
-        using kind = takatori::scalar::binary_operator;
+    void binary(takatori::scalar::binary_operator op, stack_type& stack, memory_resource*) {
+        using k = takatori::scalar::binary_operator;
         auto right = pop<T>(stack);
         auto left = pop<T>(stack);
         T result = 0;
         switch(op) {
-            case kind::add: result = left+right; break;
-            case kind::subtract: result = left-right; break;
-            case kind::divide: result = left/right; break;
-            case kind::multiply:
+            case k::add: result = left+right; break;
+            case k::subtract: result = left-right; break;
+            case k::divide: result = left/right; break;
+            case k::multiply:
                 if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {  //NOLINT
                     result = left*right; break;
                 }
                 break;
-            case kind::concat:
-                if constexpr (std::is_same_v<T, accessor::text>) {  //NOLINT
-                    //TODO implement concatenation
-                }
-                break;
-            case kind::remainder:
+            case k::concat:
+                // specialized template should be called for T = accessor::text
+                fail();
+            case k::remainder:
                 if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {  //NOLINT
                     result = left%right;
                 }
                 break;
-            case kind::conditional_and:
+            case k::conditional_and:
                 if constexpr (std::is_same_v<T, bool>) {  //NOLINT
                     result = left && right;
                 }
                 break;
-            case kind::conditional_or:
+            case k::conditional_or:
                 if constexpr (std::is_same_v<T, bool>) {  //NOLINT
                     result = left || right;
                 }
@@ -128,20 +129,9 @@ public:
         push<T>(stack, result);
     }
 
-    void operator()(takatori::util::post_visit, takatori::scalar::binary const& arg, stack_type& stack) {
-        auto& type = info_.type_of(arg.left()); //TODO support cases where left/right types differ
-        using t = takatori::type::type_kind;
-        switch(type.kind()) {
-            case t::int4: binary<std::int32_t>(arg.operator_kind(), stack); break;
-            case t::int8: binary<std::int64_t>(arg.operator_kind(), stack); break;
-            case t::float4: binary<float>(arg.operator_kind(), stack); break;
-            case t::float8: binary<double>(arg.operator_kind(), stack); break;
-            case t::boolean: binary<bool>(arg.operator_kind(), stack); break;
-            default: fail();
-        }
-    }
+    void operator()(takatori::util::post_visit, takatori::scalar::binary const& arg, stack_type& stack, memory_resource* resource);
 
-    bool operator()(takatori::scalar::immediate const& arg, stack_type& stack) {
+    bool operator()(takatori::scalar::immediate const& arg, stack_type& stack, memory_resource* resource) {
         using t = takatori::type::type_kind;
         auto& type = info_.type_of(arg);
         switch(type.kind()) {
@@ -151,52 +141,58 @@ public:
             case t::float4: push<float>(stack, value_of<takatori::value::float4>(arg)); break;
             case t::float8: push<double>(stack, value_of<takatori::value::float8>(arg)); break;
             case t::boolean: push<bool>(stack, value_of<takatori::value::boolean>(arg)); break;
+            case t::character: {
+                auto sv = value_of<takatori::value::character>(arg);
+                push<accessor::text>(stack, accessor::text{resource, sv});
+                break;
+            }
             default: fail();
         }
         return false;
     }
 
-    bool operator()(takatori::scalar::compare const&, stack_type&) {
+    bool operator()(takatori::scalar::compare const&, stack_type&, memory_resource*) {
         return true;
     }
 
     template <typename T>
-    void compare(takatori::scalar::comparison_operator op, stack_type& stack) {
-        using kind = takatori::scalar::comparison_operator;
+    void compare(takatori::scalar::comparison_operator op, stack_type& stack, memory_resource*) {
+        using k = takatori::scalar::comparison_operator;
         auto right = pop<T>(stack);
         auto left = pop<T>(stack);
         bool result = false;
         switch(op) {
-            case kind::equal: result = left == right; break;
-            case kind::not_equal: result = left != right; break;
-            case kind::greater: result = left > right; break;
-            case kind::greater_equal: result = left >= right; break;
-            case kind::less: result = left < right; break;
-            case kind::less_equal: result = left <= right; break;
+            case k::equal: result = left == right; break;
+            case k::not_equal: result = left != right; break;
+            case k::greater: result = left > right; break;
+            case k::greater_equal: result = left >= right; break;
+            case k::less: result = left < right; break;
+            case k::less_equal: result = left <= right; break;
             default:
                 fail();
         }
         push<bool>(stack, result);
     }
 
-    void operator()(takatori::util::post_visit, takatori::scalar::compare const& arg, stack_type& stack) {
+    void operator()(takatori::util::post_visit, takatori::scalar::compare const& arg, stack_type& stack, memory_resource* resource) {
         auto& type = info_.type_of(arg.left()); //TODO support cases where left/right types differ
         using t = takatori::type::type_kind;
         switch(type.kind()) {
-            case t::int4: compare<std::int32_t>(arg.operator_kind(), stack); break;
-            case t::int8: compare<std::int64_t>(arg.operator_kind(), stack); break;
-            case t::float4: compare<float>(arg.operator_kind(), stack); break;
-            case t::float8: compare<double>(arg.operator_kind(), stack); break;
-            case t::boolean: compare<bool>(arg.operator_kind(), stack); break;
+            case t::int4: compare<std::int32_t>(arg.operator_kind(), stack, resource); break;
+            case t::int8: compare<std::int64_t>(arg.operator_kind(), stack, resource); break;
+            case t::float4: compare<float>(arg.operator_kind(), stack, resource); break;
+            case t::float8: compare<double>(arg.operator_kind(), stack, resource); break;
+            case t::boolean: compare<bool>(arg.operator_kind(), stack, resource); break;
+            case t::character: compare<accessor::text>(arg.operator_kind(), stack, resource); break;
             default: fail();
         }
     }
 
-    bool operator()(takatori::scalar::unary const&, stack_type&) {
+    bool operator()(takatori::scalar::unary const&, stack_type&, memory_resource*) {
         return true;
     }
 
-    void operator()(takatori::util::post_visit, takatori::scalar::unary const& arg, stack_type& stack) {
+    void operator()(takatori::util::post_visit, takatori::scalar::unary const& arg, stack_type& stack, memory_resource*) {
         using k = takatori::scalar::unary::operator_kind_type;
         using t = takatori::type::type_kind;
         switch(arg.operator_kind()) {
@@ -223,11 +219,25 @@ public:
                 }
                 break;
             }
-            default: fail();
+            case k::length: {
+                auto& type = info_.type_of(arg.operand());
+                switch(type.kind()) {
+                    case t::character: {
+                        auto txt = pop<accessor::text>(stack);
+                        push<std::int32_t>(stack, static_cast<std::string_view>(txt).size());
+                        break;
+                    }
+                    default:
+                        fail();
+                }
+                break;
+            }
+            default:
+                fail();
         }
     }
 
-    bool operator()(takatori::scalar::variable_reference const& arg, stack_type& stack) {
+    bool operator()(takatori::scalar::variable_reference const& arg, stack_type& stack, memory_resource*) {
         auto& info = scope_.value_map().at(arg.variable());
         auto ref = scope_.store().ref();
         using t = takatori::type::type_kind;
@@ -249,6 +259,9 @@ private:
     yugawara::compiled_info const& info_{};
 };
 
+template <>
+void expression_callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource);
+
 }
 
 /**
@@ -256,6 +269,7 @@ private:
  */
 class expression_evaluator {
 public:
+    using memory_resource = details::expression_callback::memory_resource;
     /**
      * @brief construct empty object
      */
@@ -274,12 +288,21 @@ public:
 
     /**
      * @brief evaluate the expression
+     * @details The required memory is allocated from the memory resource to calculate and store the result value.
+     * Caller is responsible for release the allocated store after consuming the result. This can be typically done by
+     * remembering checkpoint before this call and using memory_resource::deallocate_after() after consuming return value.
      * @param scope scope variables used to evaluate the expression
+     * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
+     * never generate types whose values are stored via memory resource(e.g. accessor::text). Then UB if such type is processed.
+     * @return the result of evaluation
      */
-    [[nodiscard]] any operator()(executor::process::impl::block_scope& scope) const {
+    [[nodiscard]] any operator()(
+        executor::process::impl::block_scope& scope,
+        memory_resource* resource = nullptr
+    ) const {
         details::expression_callback c{scope, *info_};
         details::expression_callback::stack_type stack{};
-        takatori::scalar::walk(c, *expression_, stack);
+        takatori::scalar::walk(c, *expression_, stack, resource);
         return stack.back();
     }
 

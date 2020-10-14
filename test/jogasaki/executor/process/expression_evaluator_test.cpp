@@ -283,6 +283,53 @@ TEST_F(expression_evaluator_test, add_double) {
     ASSERT_EQ(30, result);
 }
 
+TEST_F(expression_evaluator_test, concat_text) {
+    factory f;
+    auto&& c1 = f.stream_variable("c1");
+    auto&& c2 = f.stream_variable("c2");
+
+    binary expr {
+        binary_operator::concat,
+        varref(c1),
+        varref(c2)
+    };
+    expressions().bind(expr, t::character{type::varying, 200});
+    expressions().bind(expr.left(), t::character{type::varying, 100});
+    expressions().bind(expr.right(), t::character {type::varying, 100});
+
+    compiled_info c_info{expressions_, variables_};
+    expression_evaluator ev{expr, c_info};
+
+    std::unique_ptr<variable_value_map> value_map{};
+    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
+        std::vector<meta::field_type>{
+            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
+            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+    );
+
+    std::unordered_map<variable, std::size_t> m{
+        {c1, 0},
+        {c2, 1},
+    };
+
+    block_scope_info info{m, meta};
+    block_scope scope{info};
+
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    auto cp = resource.get_checkpoint();
+    auto&& ref = scope.store().ref();
+    ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
+    ref.set_value<accessor::text>(meta->value_offset(1), accessor::text{&resource, "B23456789012345678901234567890"});
+
+    auto result = ev(scope, &resource).to<accessor::text>();
+    accessor::text exp{&resource, "A23456789012345678901234567890B23456789012345678901234567890"};
+    ASSERT_EQ(exp, result);
+    resource.deallocate_after(cp);
+}
+
 inline immediate constant(int v, type::data&& type = type::int8()) {
     return immediate { value::int8(v), std::move(type) };
 }
@@ -385,6 +432,42 @@ TEST_F(expression_evaluator_test, conditional_not) {
     ASSERT_TRUE(ev(scope).to<bool>());
 }
 
+TEST_F(expression_evaluator_test, text_length) {
+    factory f;
+    auto&& c1 = f.stream_variable("c1");
+
+    unary expr {
+        unary_operator::length,
+        varref(c1)
+    };
+    expressions().bind(expr, t::int4 {});
+    expressions().bind(expr.operand(), t::character{type::varying, 200});
+
+    std::unique_ptr<variable_value_map> value_map{};
+    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
+        std::vector<meta::field_type>{
+            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{std::string("0")}
+    );
+
+    std::unordered_map<variable, std::size_t> m{
+        {c1, 0},
+    };
+
+    block_scope_info info{m, meta};
+    block_scope scope{info};
+
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    auto cp = resource.get_checkpoint();
+    auto&& ref = scope.store().ref();
+    ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
+    compiled_info c_info{ expressions_, variables_ };
+    expression_evaluator ev{expr, c_info};
+    auto result = ev(scope, &resource).to<std::int32_t>();
+    ASSERT_EQ(30, ev(scope, &resource).to<std::int32_t>());
+}
 
 TEST_F(expression_evaluator_test, compare_int4) {
     factory f;

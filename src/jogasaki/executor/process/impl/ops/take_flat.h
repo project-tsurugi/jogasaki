@@ -113,7 +113,6 @@ public:
             if constexpr (!std::is_same_v<Callback, void>) {
                 if (downstream_ && visitor) {
                     dispatch(*visitor, *downstream_);
-
                 }
             }
         }

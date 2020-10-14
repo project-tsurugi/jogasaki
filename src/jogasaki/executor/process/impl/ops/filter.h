@@ -73,7 +73,7 @@ public:
     template <typename Callback = void>
     void operator()(filter_context& ctx, Callback* visitor = nullptr) {
         auto& scope = ctx.variables();
-        if(evaluator_(scope).to<bool>()) {
+        if(evaluator_(scope, ctx.resource()).to<bool>()) {
             if constexpr (!std::is_same_v<Callback, void>) {
                 if (visitor && downstream_) {
                     dispatch(*visitor, *downstream_);

@@ -19,15 +19,27 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 
 namespace jogasaki::utils {
 
+/**
+ * @brief copy record field data with given type
+ * @param type type of the field being copied
+ * @param target target record reference
+ * @param target_offset byte offset of the target field in the target record
+ * @param source source record reference
+ * @param source_offset byte offset of the source field in the source record
+ * @param resource memory resource optionally used to allocate varlen data on the target. Pass nullptr if no new
+ * allocation is needed and the target still references the same varlen buffer as source.
+ */
 void copy_field(
     meta::field_type const& type,
     accessor::record_ref target,
     std::size_t target_offset,
     accessor::record_ref source,
-    std::size_t source_offset
+    std::size_t source_offset,
+    memory::paged_memory_resource* resource = nullptr
 );
 
 }

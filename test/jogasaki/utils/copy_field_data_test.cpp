@@ -18,6 +18,7 @@
 #include <jogasaki/mock/basic_record.h>
 
 #include <gtest/gtest.h>
+#include <jogasaki/mock_memory_resource.h>
 
 namespace jogasaki::utils {
 
@@ -61,5 +62,36 @@ TEST_F(copy_field_data_test, types) {
     }
     ASSERT_EQ(src, tgt);
 }
+
+TEST_F(copy_field_data_test, text) {
+    using test_record = mock::basic_record<kind::character, kind::character>;
+    using text = accessor::text;
+    mock_memory_resource r1{};
+    mock_memory_resource r2{};
+    test_record src{text{&r1, "A23456789012345678901234567890"}, text{&r1, "111"}};
+    test_record tgt{text{&r1, "B23456789012345678901234567890"}, text{&r1, "222"}};
+    ASSERT_EQ(60, r1.total_bytes_allocated_);  // long strings
+    auto src_meta = src.record_meta();
+    auto tgt_meta = tgt.record_meta();
+    auto cnt = src_meta->field_count();
+    for(std::size_t i=0; i < cnt; ++i) {
+        auto& f = src_meta->at(i);
+        auto src_offset = src_meta->value_offset(i);
+        auto tgt_offset = tgt_meta->value_offset(i);
+        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset); // copied text refers existing varlen buffer
+    }
+    ASSERT_EQ(60, r1.total_bytes_allocated_);
+    ASSERT_EQ(0, r2.total_bytes_allocated_);
+    ASSERT_EQ(src, tgt);
+    for(std::size_t i=0; i < cnt; ++i) {
+        auto& f = src_meta->at(i);
+        auto src_offset = src_meta->value_offset(i);
+        auto tgt_offset = tgt_meta->value_offset(i);
+        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset, &r2); // copied text refers new varlen buffer
+    }
+    ASSERT_EQ(30, r2.total_bytes_allocated_);
+    ASSERT_EQ(src, tgt);
+}
+
 }
 

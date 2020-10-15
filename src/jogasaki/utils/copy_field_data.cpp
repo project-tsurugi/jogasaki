@@ -19,8 +19,6 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 
@@ -29,7 +27,7 @@ namespace jogasaki::utils {
 using takatori::util::fail;
 
 void copy_field(const meta::field_type &type, accessor::record_ref target, std::size_t target_offset,
-    accessor::record_ref source, std::size_t source_offset) {
+    accessor::record_ref source, std::size_t source_offset, memory::paged_memory_resource* resource) {
     using k = meta::field_type_kind;
     switch(type.kind()) {
         case k::undefined:
@@ -43,8 +41,13 @@ void copy_field(const meta::field_type &type, accessor::record_ref target, std::
         case k::float8: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::float8>::runtime_type>(source_offset)); return;
         case k::decimal:
             break;
-        case k::character:
-            break;
+        case k::character: {
+            auto text = source.get_value<meta::field_type_traits<k::character>::runtime_type>(source_offset);
+            target.set_value(target_offset,
+                resource != nullptr ? accessor::text(resource, static_cast<std::string_view>(text)) : text
+            );
+            return;
+        }
         case k::bit:
             break;
         case k::date:

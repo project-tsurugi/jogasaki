@@ -54,7 +54,7 @@ TEST_F(small_record_store_test, memory_resource) {
     mock_memory_resource resource{};
     mock::record record{};
     auto meta = record.record_meta();
-    small_record_store r{meta, 1, &resource};
+    small_record_store r{meta, &resource};
     auto c0_offset = meta->value_offset(0);
     auto c1_offset = meta->value_offset(1);
     record.ref().set_value(c0_offset, 2L);
@@ -71,7 +71,7 @@ TEST_F(small_record_store_test, multiple_records) {
     mock::record record1{};
     mock::record record2{};
     auto meta = record0.record_meta();
-    small_record_store r{meta, 3, &resource};
+    small_record_store r{meta, &resource, 3};
     auto c0_offset = meta->value_offset(0);
     auto c1_offset = meta->value_offset(1);
     record2.ref().set_value(c0_offset, 2L);
@@ -98,7 +98,7 @@ TEST_F(small_record_store_test, metadata_variation) {
     mock_memory_resource varlen_resource{};
     mock::record_f4f8ch record{};
     auto meta = record.record_meta();
-    small_record_store r{meta, 1, &resource};
+    small_record_store r{meta, &resource};
     auto c0_offset = meta->value_offset(0);
     auto c1_offset = meta->value_offset(1);
     auto c2_offset = meta->value_offset(2);
@@ -115,5 +115,35 @@ TEST_F(small_record_store_test, metadata_variation) {
     EXPECT_EQ(20, resource.total_bytes_allocated_);
 }
 
+TEST_F(small_record_store_test, comparison) {
+    mock::record record{};
+    auto meta = record.record_meta();
+    small_record_store r1{meta};
+    small_record_store r2{meta};
+    auto c0_offset = meta->value_offset(0);
+    auto c1_offset = meta->value_offset(1);
+    record.ref().set_value(c0_offset, 2L);
+    record.ref().set_value(c1_offset, 2.0);
+    r1.set(record.ref());
+    EXPECT_NE(r1, r2);
+    r2.set(record.ref());
+    EXPECT_EQ(r1, r2);
+
+    small_record_store e{};
+    EXPECT_NE(e, r1);
+    EXPECT_EQ(e, e);
+}
+
+TEST_F(small_record_store_test, print) {
+    mock::record record{};
+    auto meta = record.record_meta();
+    small_record_store r1{meta};
+    std::cout << r1; // manually check the output
+
+    std::stringstream ss{};
+    small_record_store e{};
+    ss << e;
+    EXPECT_EQ("<empty>", ss.str());
+}
 }
 

@@ -23,7 +23,6 @@
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/utils/aligned_unique_ptr.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 
@@ -46,24 +45,15 @@ public:
     /**
      * @brief create new instance
      * @param meta the record metadata
-     * @param capacity the capacity of the container
      * @param varlen_resource memory resource used to store the varlen data referenced from the records stored in this
      * instance. nullptr is allowed if this instance stores only the copy of reference to varlen data (shallow copy.)
+     * @param capacity the capacity of the container
      */
     explicit small_record_store(
         maybe_shared_ptr<meta::record_meta> meta,
-        std::size_t capacity = 1,
-        memory::paged_memory_resource* varlen_resource = nullptr
-    ) :
-        meta_(std::move(meta)),
-        capacity_(capacity),
-        varlen_resource_(varlen_resource),
-        copier_(meta_, varlen_resource_),
-        record_size_(meta_->record_size()),
-        data_(utils::make_aligned_array<std::byte>(
-            std::max(meta_->record_alignment(), utils::hardware_destructive_interference_size),
-            record_size_*capacity_))
-    {}
+        memory::paged_memory_resource* varlen_resource = nullptr,
+        std::size_t capacity = 1
+    );
 
     /**
      * @brief copy and store the record
@@ -73,30 +63,43 @@ public:
      * @param index the index for the record to be stored. Must be less than the capacity.
      * @return pointer to the stored record
      */
-    record_pointer set(accessor::record_ref record, std::size_t index = 0) {
-        auto* p = ref(index).data();
-        if (!p) std::abort();
-        copier_(p, record_size_, record);
-        return p;
-    }
+    record_pointer set(accessor::record_ref record, std::size_t index = 0);
 
     /**
      * @brief getter for the number of data count added to this store
      * @return the number of records
      */
-    [[nodiscard]] std::size_t capacity() const noexcept {
-        return capacity_;
-    }
+    [[nodiscard]] std::size_t capacity() const noexcept;
 
     /**
      * @brief get accessor to N-th record
      * @param index the index for the record
      * @return the accessor to the record specified by the index
      */
-    [[nodiscard]] accessor::record_ref ref(std::size_t index = 0) const noexcept {
-        return accessor::record_ref(data_.get()+record_size_*index, record_size_);
-    }
+    [[nodiscard]] accessor::record_ref ref(std::size_t index = 0) const noexcept;
 
+    /**
+     * @brief return whether the object is valid or not
+     */
+    [[nodiscard]] explicit operator bool() const noexcept;
+
+    /**
+     * @brief compare contents of two objects
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a == b
+     * @return false otherwise
+     */
+    friend bool operator==(small_record_store const& a, small_record_store const& b) noexcept;
+    friend bool operator!=(small_record_store const& a, small_record_store const& b) noexcept;
+
+    /**
+     * @brief appends string representation of the given value.
+     * @param out the target output
+     * @param value the target value
+     * @return the output
+     */
+    friend std::ostream& operator<<(std::ostream& out, small_record_store const& value);
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::size_t capacity_{};

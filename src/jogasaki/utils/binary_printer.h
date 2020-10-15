@@ -31,7 +31,7 @@ public:
     constexpr binary_printer(void* ptr, std::size_t size) noexcept : ptr_(ptr), size_(size) {}
 
     friend std::ostream& operator<<(std::ostream& out, binary_printer const& value) {
-        std::ios init(NULL);
+        std::ios init(nullptr);
         init.copyfmt(out);
         for(std::size_t idx = 0; idx < value.size_; ++idx) {
             if (idx != 0) {

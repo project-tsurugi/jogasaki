@@ -79,6 +79,9 @@ public:
     inline immediate constant(int v, type::data&& type = type::int8()) {
         return immediate { value::int8(v), std::move(type) };
     }
+    inline immediate constant_text(std::string_view v, type::data&& type = type::character(type::varying, 64)) {
+        return immediate { value::character(v), std::move(type) };
+    }
     std::shared_ptr<yugawara::analyzer::variable_mapping> variables_ = std::make_shared<yugawara::analyzer::variable_mapping>();
     std::shared_ptr<yugawara::analyzer::expression_mapping> expressions_ = std::make_shared<yugawara::analyzer::expression_mapping>();
 };
@@ -227,6 +230,144 @@ TEST_F(project_test, simple) {
 
     ASSERT_EQ(100, vars_ref.get_value<std::int64_t>(map.at(c3).value_offset()));
     ASSERT_EQ(22, vars_ref.get_value<std::int64_t>(map.at(c4).value_offset()));
+}
+
+TEST_F(project_test, text) {
+    binding::factory bindings;
+    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
+    std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
+        "T0",
+        {
+            { "C0", t::character(type::varying, 64) },
+            { "C1", t::character(type::varying, 64) },
+            { "C2", t::character(type::varying, 64) },
+        },
+    });
+    storage::column const& t0c0 = t0->columns()[0];
+    storage::column const& t0c1 = t0->columns()[1];
+    storage::column const& t0c2 = t0->columns()[2];
+
+    std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
+
+    ::takatori::plan::forward f1 {
+        bindings.exchange_column(),
+        bindings.exchange_column(),
+        bindings.exchange_column(),
+        bindings.exchange_column(),
+        bindings.exchange_column(),
+    };
+    auto&& f1c0 = f1.columns()[0];
+    auto&& f1c1 = f1.columns()[1];
+    auto&& f1c2 = f1.columns()[2];
+    auto&& f1c3 = f1.columns()[3];
+    auto&& f1c4 = f1.columns()[4];
+
+    takatori::plan::graph_type p;
+    auto&& p0 = p.insert(takatori::plan::process {});
+    auto c0 = bindings.stream_variable("C0");
+    auto c1 = bindings.stream_variable("C1");
+    auto c2 = bindings.stream_variable("C2");
+    auto& r0 = p0.operators().insert(relation::scan {
+        bindings(*i0),
+        {
+            { bindings(t0c0), c0 },
+            { bindings(t0c1), c1 },
+            { bindings(t0c2), c2 },
+        },
+    });
+    object_creator creator{};
+
+    auto expr1 = creator.create_unique<binary>(
+        binary_operator::concat,
+        varref(c1),
+        binary {
+            binary_operator::concat,
+            varref(c2),
+            constant_text("Z23456789012345678901234567890")
+        }
+    );
+    expressions().bind(*expr1, t::character(type::varying, 64+64+64));
+    expressions().bind(expr1->left(), t::character(type::varying, 64));
+    expressions().bind(expr1->right(), t::character(type::varying, 64+64));
+    auto& r = static_cast<binary&>(expr1->right());
+    expressions().bind(r.left(), t::character(type::varying, 64));
+    expressions().bind(r.right(), t::character(type::varying, 64));
+
+    std::vector<relation::project::column> columns{};
+    // use emplace to avoid copying expr, whose parts have been registered by bind() above
+    using column = relation::project::column;
+    auto c3 = bindings.stream_variable("C3");
+
+    std::vector<column, takatori::util::object_allocator<column>> v{};
+    v.emplace_back(
+        relation::project::column {
+            c3,
+            std::move(expr1)
+        }
+    );
+    expressions().bind(v[0].value(), t::character(type::varying, 64+64+64));
+    auto& r1 = p0.operators().emplace<relation::project>(std::move(v));
+
+    auto&& r2 = p0.operators().insert(relation::step::offer {
+        bindings.exchange(f1),
+        {
+            { c0, f1c0 },
+            { c1, f1c1 },
+            { c2, f1c2 },
+            { c3, f1c3 },
+        },
+    });
+
+    r0.output() >> r1.input();
+    r1.output() >> r2.input();
+
+    variables().bind(c0, t::character{type::varying, 64});
+    variables().bind(c1, t::character{type::varying, 64});
+    variables().bind(c2, t::character{type::varying, 64});
+    variables().bind(c3, t::character{type::varying, 64+64+64});
+    variables().bind(f1c0, t::character{type::varying, 64});
+    variables().bind(f1c1, t::character{type::varying, 64});
+    variables().bind(f1c2, t::character{type::varying, 64});
+    variables().bind(f1c3, t::character{type::varying, 64+64+64});
+    variables().bind(bindings(t0c0), t::character{type::varying, 64});
+    variables().bind(bindings(t0c1), t::character{type::varying, 64});
+    variables().bind(bindings(t0c2), t::character{type::varying, 64});
+
+    yugawara::compiled_info c_info{expressions_, variables_};
+    processor_info p_info{p0.operators(), c_info};
+
+    relation::project downstream{};
+    project s{
+        p_info,
+        0,
+        r1.columns()
+    };
+
+    ASSERT_EQ(1, p_info.scopes_info().size());
+    auto& block_info = p_info.scopes_info()[s.block_index()];
+    block_scope variables{block_info};
+
+    mock::task_context task_ctx{
+        {},
+        {},
+        {},
+        {},
+    };
+
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource res{&pool};
+    project_context ctx(&task_ctx, variables, &res);
+
+    auto vars_ref = variables.store().ref();
+    auto map = variables.value_map();
+    auto vars_meta = variables.meta();
+
+    vars_ref.set_value<text>(map.at(c0).value_offset(), text{&res, "A23456789012345678901234567890"});
+    vars_ref.set_value<text>(map.at(c1).value_offset(), text{&res, "B23456789012345678901234567890"});
+    vars_ref.set_value<text>(map.at(c2).value_offset(), text{&res, "C23456789012345678901234567890"});
+    s(ctx);
+    text exp{&res, "B23456789012345678901234567890C23456789012345678901234567890Z23456789012345678901234567890"};
+    ASSERT_EQ(exp, vars_ref.get_value<text>(map.at(c3).value_offset()));
 }
 
 }

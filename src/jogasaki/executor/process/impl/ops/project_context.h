@@ -37,9 +37,10 @@ public:
      */
     project_context(
         class abstract::task_context* ctx,
-        block_scope& variables
+        block_scope& variables,
+        memory_resource* resource = nullptr
     ) :
-        context_base(ctx, variables)
+        context_base(ctx, variables, resource)
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {

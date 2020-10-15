@@ -85,22 +85,27 @@ public:
             auto r = ctx.task_context().reader(reader_index_);
             ctx.reader_ = r.reader<group_reader>();
         }
+        auto resource = ctx.resource();
         while(ctx.reader_->next_group()) {
+            auto group_cp = resource->get_checkpoint();
             auto key = ctx.reader_->get_group();
             for(auto &f : fields_) {
                 if (! f.is_key_) continue;
-                utils::copy_field(f.type_, target, f.target_offset_, key, f.source_offset_);
+                utils::copy_field(f.type_, target, f.target_offset_, key, f.source_offset_, resource); // copy from outside process
             }
             while(ctx.reader_->next_member()) {
+                auto member_cp = resource->get_checkpoint();
                 auto value = ctx.reader_->get_member();
                 for(auto &f : fields_) {
                     if (f.is_key_) continue;
-                    utils::copy_field(f.type_, target, f.target_offset_, value, f.source_offset_);
+                    utils::copy_field(f.type_, target, f.target_offset_, value, f.source_offset_, resource); // copy from outside process
                 }
                 if (visitor) {
                     dispatch(*visitor, *downstream_);
                 }
+                resource->deallocate_after(member_cp);
             }
+            resource->deallocate_after(group_cp);
         }
     }
 

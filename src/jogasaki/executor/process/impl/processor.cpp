@@ -42,7 +42,8 @@ abstract::status processor::run(abstract::task_context *context) {
         const_cast<relation::graph_type&>(info_->relations()),
         info_->compiled_info(),
         &operators_,
-        context
+        context,
+        work->resource()
     };
     visitor();
     // TODO handling status code

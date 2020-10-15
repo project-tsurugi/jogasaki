@@ -40,12 +40,14 @@ operator_executor::operator_executor(
     relation::graph_type& relations,
     compiled_info const& compiled_info,
     operator_container* operators,
-    abstract::task_context *context
+    abstract::task_context *context,
+    memory_resource* resource
 ) noexcept :
     relations_(std::addressof(relations)),
     compiled_info_(std::addressof(compiled_info)),
     operators_(operators),
-    context_(context)
+    context_(context),
+    resource_(resource)
 {}
 
 relation::expression &operator_executor::head() {
@@ -76,7 +78,7 @@ void operator_executor::operator()(const relation::scan &node) {
     if (! ctx) {
         auto stg = std::make_shared<storage::storage_context>();
         auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        ctx = make_context<scan_context>(&s, std::move(stg), block_vars);
+        ctx = make_context<scan_context>(&s, std::move(stg), block_vars, resource_);
     }
     s(*ctx, this);
 }
@@ -95,7 +97,7 @@ void operator_executor::operator()(const relation::project &node) {
     auto&s = to<project>(node);
     auto* ctx = find_context<project_context>(&s);
     if (! ctx) {
-        ctx = make_context<project_context>(&s, get_block_variables(s.block_index()));
+        ctx = make_context<project_context>(&s, get_block_variables(s.block_index()), resource_);
     }
     s(*ctx, this);
 }
@@ -104,7 +106,7 @@ void operator_executor::operator()(const relation::filter &node) {
     auto&s = to<filter>(node);
     auto* ctx = find_context<filter_context>(&s);
     if (! ctx) {
-        ctx = make_context<filter_context>(&s, get_block_variables(s.block_index()));
+        ctx = make_context<filter_context>(&s, get_block_variables(s.block_index()), resource_);
     }
     s(*ctx, this);
 }
@@ -119,7 +121,7 @@ void operator_executor::operator()(const relation::emit &node) {
     auto&s = to<emit>(node);
     auto* ctx = find_context<emit_context>(&s);
     if (! ctx) {
-        ctx = make_context<emit_context>(&s, s.meta(), get_block_variables(s.block_index()));
+        ctx = make_context<emit_context>(&s, s.meta(), get_block_variables(s.block_index()), resource_);
     }
 //    s(*ctx);
 }
@@ -162,7 +164,7 @@ void operator_executor::operator()(const relation::step::take_flat &node) {
     auto&s = to<take_flat>(node);
     auto* ctx = find_context<take_flat_context>(&s);
     if (! ctx) {
-        ctx = make_context<take_flat_context>(&s, get_block_variables(s.block_index()));
+        ctx = make_context<take_flat_context>(&s, get_block_variables(s.block_index()), resource_);
     }
     s(*ctx, this);
 }
@@ -171,7 +173,7 @@ void operator_executor::operator()(const relation::step::take_group &node) {
     auto&s = to<take_group>(node);
     auto* ctx = find_context<take_group_context>(&s);
     if (! ctx) {
-        ctx = make_context<take_group_context>(&s, get_block_variables(s.block_index()));
+        ctx = make_context<take_group_context>(&s, get_block_variables(s.block_index()), resource_);
     }
     s(*ctx, this);
 }
@@ -185,7 +187,7 @@ void operator_executor::operator()(const relation::step::offer &node) {
     auto&s = to<offer>(node);
     auto* ctx = find_context<offer_context>(&s);
     if (! ctx) {
-        ctx = make_context<offer_context>(&s, s.meta(), get_block_variables(s.block_index()));
+        ctx = make_context<offer_context>(&s, s.meta(), get_block_variables(s.block_index()), resource_);
     }
     s(*ctx);
 }

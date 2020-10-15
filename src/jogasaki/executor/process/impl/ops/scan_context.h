@@ -47,8 +47,9 @@ public:
     explicit scan_context(
         class abstract::task_context* ctx,
         std::shared_ptr<storage::storage_context> storage,
-        block_scope& variables
-    ) : context_base(ctx, variables),
+        block_scope& variables,
+        memory_resource* resource = nullptr
+    ) : context_base(ctx, variables, resource),
         storage_(std::move(storage))
     {}
 

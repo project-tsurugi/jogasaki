@@ -31,6 +31,8 @@ text::text(memory::paged_memory_resource *resource, const char *data, text::size
 
 text::text(memory::paged_memory_resource *resource, std::string_view str) : text(resource, str.data(), str.size()) {}
 
+text::text(memory::paged_memory_resource* resource, text src) : text(resource, static_cast<std::string_view>(src)) {}
+
 text::operator std::string_view() const noexcept {
     if (is_short()) {
         return {s_.data(), s_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)

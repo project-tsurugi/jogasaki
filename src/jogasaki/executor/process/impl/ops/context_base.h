@@ -38,12 +38,14 @@ public:
     /**
      * @brief create new object
      */
-    explicit context_base(
+    context_base(
         class abstract::task_context* context,
-        block_scope& variables
+        block_scope& variables,
+        memory_resource* resource
     ) :
         task_context_(context),
-        variables_(std::addressof(variables))
+        variables_(std::addressof(variables)),
+        resource_(resource)
     {}
 
     context_base(context_base const& other) = default;

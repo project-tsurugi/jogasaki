@@ -54,7 +54,7 @@ class expression_callback {
 public:
     using stack_type = std::vector<any>;
 
-    using memory_resource = memory::lifo_paged_memory_resource;
+    using memory_resource = memory::paged_memory_resource;
 
     expression_callback(
         executor::process::impl::block_scope& scope,

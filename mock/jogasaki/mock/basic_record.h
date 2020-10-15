@@ -56,14 +56,27 @@ std::vector<std::size_t> offsets(std::tuple<to_runtime_type_t<Kinds>...>& entity
     return offsets<Kinds...>(entity, std::make_index_sequence<sizeof...(Kinds)>());
 }
 
+template <kind Kind>
+to_runtime_type_t<Kind> value(to_runtime_type_t<Kind> arg, memory::paged_memory_resource*) {
+    return arg;
+}
+
+template <>
+inline to_runtime_type_t<kind::character> value<kind::character>(to_runtime_type_t<kind::character> arg, memory::paged_memory_resource* resource) {
+    if (resource != nullptr) {
+        return accessor::text{resource, static_cast<std::string_view>(arg)};
+    }
+    return arg;
+}
+
 template <kind ...Kinds, size_t ... Is>
-std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, meta::record_meta& meta, std::index_sequence<Is...>) {
-    return std::tuple<to_runtime_type_t<Kinds>...>{ ref.get_value<to_runtime_type_t<Kinds>>(meta.value_offset(Is))...};
+std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, meta::record_meta& meta, memory::paged_memory_resource* resource, std::index_sequence<Is...>) {
+    return std::tuple<to_runtime_type_t<Kinds>...>{ value<Kinds>(ref.get_value<to_runtime_type_t<Kinds>>(meta.value_offset(Is)), resource)...};
 }
 
 template <kind ...Kinds>
-std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, meta::record_meta& meta) {
-    return values<Kinds...>(ref, meta, std::make_index_sequence<sizeof...(Kinds)>());
+std::tuple<to_runtime_type_t<Kinds>...> values(accessor::record_ref ref, memory::paged_memory_resource* resource, meta::record_meta& meta) {
+    return values<Kinds...>(ref, meta, resource, std::make_index_sequence<sizeof...(Kinds)>());
 }
 
 /**
@@ -135,8 +148,8 @@ public:
      * @warning new record_meta is created based on the template parameter. This constructor should not be used
      * when creating large number of (e.g. thousands of) records.
      */
-    explicit basic_record(accessor::record_ref ref) : basic_record() {
-        entity_ = values<Kinds...>(ref, *meta_);
+    explicit basic_record(accessor::record_ref ref, memory::paged_memory_resource* resource = nullptr) : basic_record() {
+        entity_ = values<Kinds...>(ref, resource, *meta_);
     }
 
     /**
@@ -152,8 +165,8 @@ public:
      * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
      * the underlying entity's memory layout)
      */
-    basic_record(accessor::record_ref ref, maybe_shared_ptr<meta::record_meta> meta) : basic_record(std::move(meta)) {  // NOLINT(performance-unnecessary-value-param)
-        entity_ = values<Kinds...>(ref, *meta_);
+    basic_record(accessor::record_ref ref, maybe_shared_ptr<meta::record_meta> meta, memory::paged_memory_resource* resource = nullptr) : basic_record(std::move(meta)) {  // NOLINT(performance-unnecessary-value-param)
+        entity_ = values<Kinds...>(ref, resource, *meta_);
     }
 
     /**

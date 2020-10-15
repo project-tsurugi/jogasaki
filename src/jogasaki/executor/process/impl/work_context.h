@@ -28,6 +28,7 @@ namespace jogasaki::executor::process::impl {
 class work_context : public process::abstract::work_context {
 public:
     using block_scopes = std::vector<block_scope>;
+    using memory_resource = ops::context_base::memory_resource;
 
     work_context() = default;
 
@@ -51,9 +52,15 @@ public:
     [[nodiscard]] block_scope& variables(std::size_t block_index) noexcept {
         return variables_[block_index];
     }
+
+    [[nodiscard]] memory_resource* resource() const noexcept {
+        return resource_.get();
+    }
+
 private:
     ops::context_container contexts_{};
     block_scopes variables_{};
+    std::unique_ptr<memory_resource> resource_{};
 };
 
 }

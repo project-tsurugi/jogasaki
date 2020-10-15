@@ -105,16 +105,19 @@ public:
             auto r = ctx.task_context().reader(reader_index_);
             ctx.reader_ = r.reader<record_reader>();
         }
+        auto resource = ctx.resource();
         while(ctx.reader_->next_record()) {
+            auto cp = resource->get_checkpoint();
             auto source = ctx.reader_->get_record();
             for(auto &f : fields_) {
-                utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+                utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, ctx.resource()); // allocate using context memory resource
             }
             if constexpr (!std::is_same_v<Callback, void>) {
                 if (downstream_ && visitor) {
                     dispatch(*visitor, *downstream_);
                 }
             }
+            resource->deallocate_after(cp);
         }
     }
 

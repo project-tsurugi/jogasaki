@@ -22,6 +22,8 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::executor::process::mock {
 
@@ -60,10 +62,10 @@ public:
         if (meta_) {
             for(std::size_t i = 0; i < meta_->field_count(); ++i) {
                 auto j = map_.empty() ? i : map_.at(i);
-                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, meta_->value_offset(i));
+                utils::copy_field(meta_->at(i), r.ref(), r.record_meta()->value_offset(j), rec, meta_->value_offset(i), resource_.get());
             }
         } else {
-            r = record_type{rec};
+            r = record_type{rec, resource_.get()};
         }
         records_.emplace_back(r);
         return false;
@@ -100,6 +102,7 @@ private:
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};
     bool acquired_{false};
+    std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
 };
 
 using external_writer = basic_external_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;

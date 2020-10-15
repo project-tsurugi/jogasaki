@@ -59,6 +59,13 @@ public:
     text(memory::paged_memory_resource* resource, std::string_view str);
 
     /**
+     * @brief construct new object allocating from the given memory resource when long format is needed
+     * @param resource memory resource used to allocate storage for long format
+     * @param src text string data copied into the new object
+     */
+    text(memory::paged_memory_resource* resource, text src);
+
+    /**
      * @brief implicit conversion to string_view
      */
     [[nodiscard]] explicit operator std::string_view() const noexcept;

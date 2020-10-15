@@ -22,6 +22,9 @@
 #include <boost/container/pmr/memory_resource.hpp>
 
 #include <takatori/util/standard_memory_resource.h>
+
+#include <jogasaki/executor/global.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -93,11 +96,12 @@ public:
                     r.ref(),
                     r.record_meta()->value_offset(j),
                     rec,
-                    external_meta_->value_offset(i)
+                    external_meta_->value_offset(i),
+                    resource_.get()
                 );
             }
         } else {
-            r = record_type{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}};
+            r = record_type{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}, resource_.get()};
         }
         if (capacity_ == npos || records_.size() < capacity_) {
             auto& x = records_.emplace_back(r);
@@ -148,6 +152,7 @@ private:
     std::size_t capacity_{npos};
     std::size_t pos_{};
     std::size_t write_count_{};
+    std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
 };
 
 using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;

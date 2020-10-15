@@ -43,6 +43,8 @@ using yugawara::compiled_info;
 
 class operator_executor {
 public:
+    using memory_resource = context_base::memory_resource;
+
     operator_executor() = default;
     ~operator_executor() = default;
     operator_executor(operator_executor const& other) = delete;
@@ -54,7 +56,8 @@ public:
         relation::graph_type& relations,
         compiled_info const& compiled_info,
         operator_container* operators,
-        abstract::task_context *context
+        abstract::task_context *context,
+        memory_resource* resource
     ) noexcept;
 
     relation::expression& head();
@@ -110,6 +113,7 @@ private:
     operator_container* operators_{};
     abstract::task_context *context_{};
     bool continue_processing_{true};
+    memory_resource* resource_{};
 
     [[nodiscard]] block_scope& get_block_variables(std::size_t index);
 };

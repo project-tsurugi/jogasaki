@@ -33,6 +33,8 @@ TEST_F(text_test, default_construct) {
     EXPECT_EQ(0, sv.size());
     EXPECT_EQ(""sv, sv);
     EXPECT_TRUE(t.is_short());
+    EXPECT_TRUE(t.empty());
+    EXPECT_FALSE(t);
 }
 
 TEST_F(text_test, long_version) {
@@ -43,6 +45,8 @@ TEST_F(text_test, long_version) {
     EXPECT_EQ(16, sv.size());
     EXPECT_EQ(s, sv);
     EXPECT_FALSE(t.is_short());
+    EXPECT_FALSE(t.empty());
+    EXPECT_TRUE(t);
     EXPECT_EQ(16, resource.total_bytes_allocated_);
 }
 
@@ -54,6 +58,8 @@ TEST_F(text_test, short_version) {
     EXPECT_EQ(15, sv.size());
     EXPECT_EQ(s, sv);
     EXPECT_TRUE(t.is_short());
+    EXPECT_FALSE(t.empty());
+    EXPECT_TRUE(t);
     EXPECT_EQ(0, resource.total_bytes_allocated_);
 }
 
@@ -102,6 +108,37 @@ TEST_F(text_test, create_from_sv) {
     EXPECT_EQ(3, sv.size());
     EXPECT_EQ("ABC", sv);
     EXPECT_TRUE(t0.is_short());
+}
+
+TEST_F(text_test, print_content) {
+    mock_memory_resource resource;
+    text t0{&resource, "ABC"sv};
+    text t1{&resource, "D23456789012345678901234567890"sv};
+    std::stringstream ss;
+    ss << t0;
+    EXPECT_EQ("ABC", ss.str());
+    ss << t1;
+    EXPECT_EQ("ABCD23456789012345678901234567890", ss.str());
+
+    text empty{};
+    std::stringstream ss2;
+    ss2 << empty;
+    EXPECT_EQ("<empty>", ss2.str());
+}
+
+TEST_F(text_test, compare_default_constructed) {
+    mock_memory_resource resource;
+    text t0{&resource, "ABC"sv};
+    std::string_view sv{t0};
+
+    text e{};
+    EXPECT_NE(e, t0);
+    text z{&resource, ""sv};
+    EXPECT_EQ(e, z);
+    EXPECT_LE(e, t0);
+    EXPECT_LT(e, t0);
+    EXPECT_GE(t0, e);
+    EXPECT_GT(t0, e);
 }
 
 }

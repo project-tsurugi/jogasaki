@@ -69,6 +69,16 @@ public:
     [[nodiscard]] bool is_short() const noexcept;
 
     /**
+     * @brief returns whether the content is empty or not
+     */
+    [[nodiscard]] bool empty() const noexcept;
+
+    /**
+     * @brief returns whether the content is non-empty
+     */
+    [[nodiscard]] explicit operator bool() const noexcept;
+
+    /**
      * @brief compare contents of two text object lexicographically
      * @param a first arg to compare
      * @param b second arg to compare
@@ -132,6 +142,13 @@ public:
      */
     friend bool operator!=(text const& a, text const& b) noexcept;
 
+    /**
+     * @brief appends string representation of the given value.
+     * @param out the target output
+     * @param value the target value
+     * @return the output
+     */
+    friend std::ostream& operator<<(std::ostream& out, text const& value);
 private:
     class long_text {
     public:

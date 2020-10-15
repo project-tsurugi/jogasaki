@@ -42,6 +42,14 @@ bool text::is_short() const noexcept {
     return s_.is_short();  //NOLINT(cppcoreguidelines-pro-type-union-access)
 }
 
+bool text::empty() const noexcept {
+    return is_short() && s_.size() == 0;  //NOLINT(cppcoreguidelines-pro-type-union-access)
+}
+
+text::operator bool() const noexcept {
+    return !empty();
+}
+
 int compare(const text &a, const text &b) noexcept {
     std::string_view sv_a{a};
     std::string_view sv_b{b};
@@ -72,6 +80,16 @@ bool operator==(const text &a, const text &b) noexcept {
 
 bool operator!=(const text &a, const text &b) noexcept {
     return !(a == b);
+}
+
+std::ostream& operator<<(std::ostream& out, text const& value) {
+    auto sv = static_cast<std::string_view>(value);
+    if (sv.empty()) {
+        out << static_cast<std::string_view>("<empty>");
+    } else {
+        out << sv;
+    }
+    return out;
 }
 
 text::long_text::long_text(char *allocated_data, text::size_type size) noexcept

@@ -31,6 +31,7 @@ TEST_F(text_test, default_construct) {
     text t{};
     std::string_view sv{t};
     EXPECT_EQ(0, sv.size());
+    EXPECT_EQ(0, t.size());
     EXPECT_EQ(""sv, sv);
     EXPECT_TRUE(t.is_short());
     EXPECT_TRUE(t.empty());
@@ -43,6 +44,7 @@ TEST_F(text_test, long_version) {
     text t{&resource, s.data(), s.size()};
     std::string_view sv{t};
     EXPECT_EQ(16, sv.size());
+    EXPECT_EQ(16, t.size());
     EXPECT_EQ(s, sv);
     EXPECT_FALSE(t.is_short());
     EXPECT_FALSE(t.empty());
@@ -56,6 +58,7 @@ TEST_F(text_test, short_version) {
     text t{&resource, s.data(), s.size()};
     std::string_view sv{t};
     EXPECT_EQ(15, sv.size());
+    EXPECT_EQ(15, t.size());
     EXPECT_EQ(s, sv);
     EXPECT_TRUE(t.is_short());
     EXPECT_FALSE(t.empty());
@@ -141,5 +144,32 @@ TEST_F(text_test, compare_default_constructed) {
     EXPECT_GT(t0, e);
 }
 
+TEST_F(text_test, concat) {
+    mock_memory_resource resource;
+    text t0{&resource, "A23"sv};
+    text t1{&resource, "B23456789012345678901234567890"sv};
+    EXPECT_EQ(3, t0.size());
+    EXPECT_EQ(30, t1.size());
+    std::string_view sv{t0};
+    text t0t0{&resource, t0, t0};
+    EXPECT_TRUE(t0t0.is_short());
+    EXPECT_EQ("A23A23"sv, static_cast<std::string_view>(t0t0));
+    EXPECT_EQ(6, t0t0.size());
+
+    text t0t1{&resource, t0, t1};
+    EXPECT_FALSE(t0t1.is_short());
+    EXPECT_EQ("A23B23456789012345678901234567890"sv, static_cast<std::string_view>(t0t1));
+    EXPECT_EQ(33, t0t1.size());
+
+    text t1t0{&resource, t1, t0};
+    EXPECT_FALSE(t1t0.is_short());
+    EXPECT_EQ("B23456789012345678901234567890A23"sv, static_cast<std::string_view>(t1t0));
+    EXPECT_EQ(33, t1t0.size());
+
+    text t1t1{&resource, t1, t1};
+    EXPECT_FALSE(t1t1.is_short());
+    EXPECT_EQ("B23456789012345678901234567890B23456789012345678901234567890"sv, static_cast<std::string_view>(t1t1));
+    EXPECT_EQ(60, t1t1.size());
+}
 }
 

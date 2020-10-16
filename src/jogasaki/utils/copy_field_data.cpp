@@ -44,7 +44,7 @@ void copy_field(const meta::field_type &type, accessor::record_ref target, std::
         case k::character: {
             auto text = source.get_value<meta::field_type_traits<k::character>::runtime_type>(source_offset);
             target.set_value(target_offset,
-                resource != nullptr ? accessor::text(resource, static_cast<std::string_view>(text)) : text
+                resource != nullptr ? accessor::text(resource, text) : text
             );
             return;
         }

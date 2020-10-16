@@ -66,6 +66,14 @@ public:
     text(memory::paged_memory_resource* resource, text src);
 
     /**
+     * @brief concatenate two texts and construct new object allocating from the given memory resource when long format is needed
+     * @param resource memory resource used to allocate storage for long format
+     * @param src1 first argument for concatenating text strings copied into the new object
+     * @param src2 second argument for concatenating text strings copied into the new object
+     */
+    text(memory::paged_memory_resource* resource, text src1, text src2);
+
+    /**
      * @brief implicit conversion to string_view
      */
     [[nodiscard]] explicit operator std::string_view() const noexcept;
@@ -84,6 +92,11 @@ public:
      * @brief returns whether the content is non-empty
      */
     [[nodiscard]] explicit operator bool() const noexcept;
+
+    /**
+     * @brief returns the size of the content text string
+     */
+    [[nodiscard]] std::size_t size() const noexcept;
 
     /**
      * @brief compare contents of two text object lexicographically

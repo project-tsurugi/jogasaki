@@ -29,14 +29,10 @@ void expression_callback::binary<accessor::text>(takatori::scalar::binary_operat
     auto right = pop<accessor::text>(stack);
     auto left = pop<accessor::text>(stack);
     if (op == kind::concat) {
-        std::stringstream ss{};
-        ss << static_cast<std::string_view>(left);
-        ss << static_cast<std::string_view>(right);
-        accessor::text result{resource, ss.str()};
-        push<accessor::text>(stack, result);
-    } else {
-        fail();
+        push<accessor::text>(stack, accessor::text{resource, left, right});
+        return;
     }
+    fail();
 }
 
 void expression_callback::operator()(takatori::util::post_visit, const takatori::scalar::binary &arg,

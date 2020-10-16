@@ -33,6 +33,23 @@ text::text(memory::paged_memory_resource *resource, std::string_view str) : text
 
 text::text(memory::paged_memory_resource* resource, text src) : text(resource, static_cast<std::string_view>(src)) {}
 
+text:: text(memory::paged_memory_resource* resource, text src1, text src2) {
+    auto size = src1.size() + src2.size();
+    if (size <= short_text::max_size) {
+        auto size1 = src1.s_.size();
+        short_text tmp(src1.s_.data(), size1);
+        s_ = short_text(tmp.data(), size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
+        std::memcpy(const_cast<char*>(s_.data()+size1), src2.s_.data(), src2.s_.size());
+        return;
+    }
+    auto p = static_cast<char*>(resource->allocate(size, 1));
+    auto sv1 = static_cast<std::string_view>(src1);
+    auto sv2 = static_cast<std::string_view>(src2);
+    std::memcpy(p, sv1.data(), sv1.size());
+    std::memcpy(p+sv1.size(), sv2.data(), sv2.size()); //NOLINT
+    l_ = long_text(p, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
+}
+
 text::operator std::string_view() const noexcept {
     if (is_short()) {
         return {s_.data(), s_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)
@@ -46,6 +63,10 @@ bool text::is_short() const noexcept {
 
 bool text::empty() const noexcept {
     return is_short() && s_.size() == 0;  //NOLINT(cppcoreguidelines-pro-type-union-access)
+}
+
+std::size_t text::size() const noexcept {
+    return is_short() ? s_.size() : l_.size();  //NOLINT(cppcoreguidelines-pro-type-union-access)
 }
 
 text::operator bool() const noexcept {

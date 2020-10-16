@@ -64,7 +64,7 @@ to_runtime_type_t<Kind> value(to_runtime_type_t<Kind> arg, memory::paged_memory_
 template <>
 inline to_runtime_type_t<kind::character> value<kind::character>(to_runtime_type_t<kind::character> arg, memory::paged_memory_resource* resource) {
     if (resource != nullptr) {
-        return accessor::text{resource, static_cast<std::string_view>(arg)};
+        return accessor::text{resource, arg};
     }
     return arg;
 }

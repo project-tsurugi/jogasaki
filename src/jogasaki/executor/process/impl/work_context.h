@@ -32,6 +32,17 @@ public:
 
     work_context() = default;
 
+    work_context(
+        ops::context_container contexts,
+        block_scopes variables,
+        std::unique_ptr<memory_resource> resource
+    ) :
+    //TODO fix move semantics
+        contexts_(std::move(contexts)),
+        variables_(std::move(variables)),
+        resource_(std::move(resource))
+    {}
+
     ~work_context() override {
         contexts_.release();
     }

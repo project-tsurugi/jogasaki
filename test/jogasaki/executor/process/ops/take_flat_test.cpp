@@ -159,7 +159,9 @@ TEST_F(take_flat_test, simple) {
         {},
     };
 
-    take_flat_context ctx(&task_ctx, variables);
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    take_flat_context ctx(&task_ctx, variables, &resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();

@@ -189,7 +189,9 @@ TEST_F(filter_test, simple) {
         {},
     };
 
-    filter_context ctx(&task_ctx, variables);
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    filter_context ctx(&task_ctx, variables, &resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();

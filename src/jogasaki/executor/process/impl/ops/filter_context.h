@@ -38,7 +38,7 @@ public:
     filter_context(
         class abstract::task_context* ctx,
         block_scope& variables,
-        memory_resource* resource = nullptr
+        memory_resource* resource
     ) :
         context_base(ctx, variables, resource)
     {}

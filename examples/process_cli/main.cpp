@@ -321,7 +321,10 @@ private:
                     std::shared_ptr<abstract::scan_info>{}
                 );
 
-            ctx->work_context(std::make_unique<process::impl::work_context>());
+            ctx->work_context(std::make_unique<process::impl::work_context>(
+                ops::context_container{},
+                std::vector<block_scope>{},
+                std::make_unique<memory::lifo_paged_memory_resource>(&pool_)));
             custom_contexts.emplace_back(std::move(ctx));
         }
 

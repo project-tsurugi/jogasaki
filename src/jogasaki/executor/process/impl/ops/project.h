@@ -31,7 +31,7 @@
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/executor/process/impl/expression_evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "project_context.h"
 
@@ -107,12 +107,12 @@ public:
     }
 
 private:
-    std::vector<expression_evaluator> evaluators_{};
+    std::vector<expression::evaluator> evaluators_{};
     std::vector<takatori::descriptor::variable> variables_{};
     relation::expression const* downstream_{};
 
     template <typename T>
-    void copy_to(accessor::record_ref target_ref, std::size_t target_offset, any src) {
+    void copy_to(accessor::record_ref target_ref, std::size_t target_offset, expression::any src) {
         target_ref.set_value<T>(target_offset, src.to<T>());
     }
 };

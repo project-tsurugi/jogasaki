@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/expression_evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -131,7 +131,7 @@ TEST_F(expression_evaluator_test, add_int8) {
     expressions().bind(expr.right(), t::int8 {});
 
     compiled_info c_info{expressions_, variables_};
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
@@ -173,7 +173,7 @@ TEST_F(expression_evaluator_test, add_int4) {
     expressions().bind(expr.right(), t::int4 {});
 
     compiled_info c_info{expressions_, variables_};
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
@@ -214,7 +214,7 @@ TEST_F(expression_evaluator_test, add_float4) {
     expressions().bind(expr.right(), t::float4 {});
 
     compiled_info c_info{expressions_, variables_};
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
@@ -256,7 +256,7 @@ TEST_F(expression_evaluator_test, add_double) {
     expressions().bind(expr.right(), t::float8 {});
 
     compiled_info c_info{expressions_, variables_};
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
@@ -298,7 +298,7 @@ TEST_F(expression_evaluator_test, concat_text) {
     expressions().bind(expr.right(), t::character {type::varying, 100});
 
     compiled_info c_info{expressions_, variables_};
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
@@ -365,7 +365,7 @@ TEST_F(expression_evaluator_test, binary_expression) {
         expressions_,
         variables_
     };
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
@@ -410,7 +410,7 @@ TEST_F(expression_evaluator_test, unary_expression) {
         expressions_,
         variables_
     };
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     block_scope scope{};
     auto result = ev(scope).to<std::int64_t>();
@@ -426,7 +426,7 @@ TEST_F(expression_evaluator_test, conditional_not) {
     expressions().bind(expr.operand(), t::boolean {});
 
     compiled_info c_info{ expressions_, variables_ };
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     block_scope scope{};
     ASSERT_TRUE(ev(scope).to<bool>());
@@ -464,7 +464,7 @@ TEST_F(expression_evaluator_test, text_length) {
     auto&& ref = scope.store().ref();
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
     compiled_info c_info{ expressions_, variables_ };
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
     auto result = ev(scope, &resource).to<std::int32_t>();
     ASSERT_EQ(30, ev(scope, &resource).to<std::int32_t>());
 }
@@ -485,7 +485,7 @@ TEST_F(expression_evaluator_test, compare_int4) {
     expressions().bind(expr.right(), t::int4 {});
 
     compiled_info c_info{ expressions_, variables_ };
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
@@ -573,7 +573,7 @@ TEST_F(expression_evaluator_test, conditional_and) {
     expressions().bind(expr.right(), t::boolean {});
 
     compiled_info c_info{ expressions_, variables_ };
-    expression_evaluator ev{expr, c_info};
+    expression::evaluator ev{expr, c_info};
 
     std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(

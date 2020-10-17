@@ -31,7 +31,7 @@
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/executor/process/impl/expression_evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "filter_context.h"
 
@@ -91,7 +91,7 @@ public:
     }
 
 private:
-    expression_evaluator evaluator_{};
+    expression::evaluator evaluator_{};
     relation::expression const* downstream_{};
 };
 

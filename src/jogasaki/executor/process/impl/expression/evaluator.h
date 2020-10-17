@@ -30,10 +30,10 @@
 #include <takatori/type/character.h>
 
 #include <jogasaki/executor/process/impl/block_scope.h>
-#include <jogasaki/executor/process/impl/any.h>
+#include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::executor::process::impl::expression {
 
 using takatori::util::fail;
 
@@ -50,13 +50,12 @@ inline static typename T::view_type value_of(takatori::scalar::expression const&
     throw std::domain_error("unsupported expression");
 }
 
-class expression_callback {
+class callback {
 public:
     using stack_type = std::vector<any>;
-
     using memory_resource = memory::paged_memory_resource;
 
-    expression_callback(
+    callback(
         executor::process::impl::block_scope& scope,
         yugawara::compiled_info const& info
     ) noexcept :
@@ -260,25 +259,25 @@ private:
 };
 
 template <>
-void expression_callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource);
+void callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource);
 
 }
 
 /**
  * @brief expression evaluator
  */
-class expression_evaluator {
+class evaluator {
 public:
-    using memory_resource = details::expression_callback::memory_resource;
+    using memory_resource = details::callback::memory_resource;
     /**
      * @brief construct empty object
      */
-    expression_evaluator() = default;
+    evaluator() = default;
 
     /**
      * @brief construct new object
      */
-    explicit expression_evaluator(
+    explicit evaluator(
         takatori::scalar::expression const& expression,
         yugawara::compiled_info const& info
     ) noexcept :
@@ -300,8 +299,8 @@ public:
         executor::process::impl::block_scope& scope,
         memory_resource* resource = nullptr
     ) const {
-        details::expression_callback c{scope, *info_};
-        details::expression_callback::stack_type stack{};
+        details::callback c{scope, *info_};
+        details::callback::stack_type stack{};
         takatori::scalar::walk(c, *expression_, stack, resource);
         return stack.back();
     }

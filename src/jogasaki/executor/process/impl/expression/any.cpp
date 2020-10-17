@@ -15,10 +15,7 @@
  */
 #include "any.h"
 
-namespace jogasaki::executor::process::impl {
-
-template<>
-any::any(std::in_place_type_t<bool>, std::int8_t arg) : body_(std::in_place_type<bool>, arg != 0) {}
+namespace jogasaki::executor::process::impl::expression {
 
 }
 

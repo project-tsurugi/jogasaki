@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "expression_evaluator.h"
+#include "evaluator.h"
 
 #include <jogasaki/accessor/text.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::executor::process::impl::expression {
 
 using takatori::util::fail;
 
 namespace details {
 
 template <>
-void expression_callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource) {
+void callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource) {
     using kind = takatori::scalar::binary_operator;
     auto right = pop<accessor::text>(stack);
     auto left = pop<accessor::text>(stack);
@@ -35,8 +35,8 @@ void expression_callback::binary<accessor::text>(takatori::scalar::binary_operat
     fail();
 }
 
-void expression_callback::operator()(takatori::util::post_visit, const takatori::scalar::binary &arg,
-    expression_callback::stack_type &stack, expression_callback::memory_resource *resource) {
+void callback::operator()(takatori::util::post_visit, const takatori::scalar::binary &arg,
+    callback::stack_type &stack, callback::memory_resource *resource) {
     auto& type = info_.type_of(arg.left()); //TODO support cases where left/right types differ
     using t = takatori::type::type_kind;
     switch(type.kind()) {

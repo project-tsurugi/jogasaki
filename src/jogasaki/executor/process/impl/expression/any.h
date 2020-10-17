@@ -74,7 +74,7 @@ public:
      * @brief return whether any value is assigned to this object
      */
     [[nodiscard]] bool error() const noexcept {
-        return body_.index() != 1;
+        return body_.index() == 1;
     }
 
 private:

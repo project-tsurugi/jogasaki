@@ -33,13 +33,13 @@ text::text(memory::paged_memory_resource *resource, std::string_view str) : text
 
 text::text(memory::paged_memory_resource* resource, text src) : text(resource, static_cast<std::string_view>(src)) {}
 
-text:: text(memory::paged_memory_resource* resource, text src1, text src2) {
+text:: text(memory::paged_memory_resource* resource, text src1, text src2) {  //NOLINT
     auto size = src1.size() + src2.size();
     if (size <= short_text::max_size) {
-        auto size1 = src1.s_.size();
-        short_text tmp(src1.s_.data(), size1);
+        auto size1 = src1.s_.size();  //NOLINT(cppcoreguidelines-pro-type-union-access)
+        short_text tmp(src1.s_.data(), size1);  //NOLINT(cppcoreguidelines-pro-type-union-access)
         s_ = short_text(tmp.data(), size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
-        std::memcpy(const_cast<char*>(s_.data()+size1), src2.s_.data(), src2.s_.size());
+        std::memcpy(const_cast<char*>(s_.data()+size1), src2.s_.data(), src2.s_.size());  //NOLINT
         return;
     }
     auto p = static_cast<char*>(resource->allocate(size, 1));

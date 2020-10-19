@@ -53,6 +53,8 @@ public:
      * @brief create new object
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
+     * @param expression expression used as filter condition
+     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     filter(
         processor_info const& info,
@@ -62,13 +64,14 @@ public:
     ) : operator_base(info, block_index),
         evaluator_(expression, info.compiled_info()),
         downstream_(downstream)
-        {}
+    {}
 
     /**
-     * @brief conduct the operation
+     * @brief conduct the filter operation
+     * @details evaluate the filter condition and invoke downstream if the condition is met
+     * @tparam Callback the callback object type responsible for dispatching the control to downstream
      * @param ctx context object for the execution
-     * @return true when the filter condition is satisfied
-     * @return false otherwise
+     * @param visitor the callback object to dispatch to downstream. Pass nullptr if no dispatch is needed (e.g. test.)
      */
     template <typename Callback = void>
     void operator()(filter_context& ctx, Callback* visitor = nullptr) {

@@ -54,6 +54,8 @@ public:
      * @brief create new object
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
+     * @param columns list of columns newly added by this project operation
+     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     project(
         processor_info const& info,
@@ -71,8 +73,11 @@ public:
     }
 
     /**
-     * @brief conduct the operation
+     * @brief conduct the project operation
+     * @details evaluate the column expression and populate the variables so that downstream can use them.
+     * @tparam Callback the callback object type responsible for dispatching the control to downstream
      * @param ctx context object for the execution
+     * @param visitor the callback object to dispatch to downstream. Pass nullptr if no dispatch is needed (e.g. test.)
      */
     template <typename Callback = void>
     void operator()(project_context& ctx, Callback* visitor = nullptr) {

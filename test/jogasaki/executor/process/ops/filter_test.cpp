@@ -214,6 +214,9 @@ TEST_F(filter_test, simple) {
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 22);
     s(ctx, &verify_called);
     ASSERT_FALSE(called);
+
+    // test callable without verifier
+    s(ctx, (void*)nullptr);
 }
 
 }

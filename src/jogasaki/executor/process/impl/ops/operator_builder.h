@@ -40,7 +40,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/details/io_exchange_map.h>
-#include <jogasaki/storage/storage_context.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/shuffle/step.h>
 #include "operator_container.h"
@@ -103,7 +103,7 @@ public:
         (void)node;
     }
     void operator()(relation::scan const& node) {
-        auto stg = std::make_shared<storage::storage_context>();
+        auto stg = std::make_shared<kvs::database>();
         std::map<std::string, std::string> options{};
         (void)stg->open(options); //FIXME
         std::shared_ptr<abstract::scan_info> scan_info;

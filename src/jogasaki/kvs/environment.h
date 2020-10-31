@@ -17,7 +17,7 @@
 
 #include <sharksfin/Environment.h>
 
-namespace jogasaki::storage {
+namespace jogasaki::kvs {
 
 /**
  * @brief environment to initialize base components

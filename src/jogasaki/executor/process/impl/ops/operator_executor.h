@@ -112,7 +112,6 @@ private:
     compiled_info const* compiled_info_{};
     operator_container* operators_{};
     abstract::task_context *context_{};
-    bool continue_processing_{true};
     memory_resource* resource_{};
 
     [[nodiscard]] block_scope& get_block_variables(std::size_t index);

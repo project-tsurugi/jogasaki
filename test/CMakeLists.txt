@@ -42,7 +42,7 @@ file(GLOB SRCS
         "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"
         "jogasaki/scheduler/*.cpp"
-        "jogasaki/storage/*.cpp"
+        "jogasaki/kvs/*.cpp"
         "jogasaki/utils/*.cpp"
         )
 

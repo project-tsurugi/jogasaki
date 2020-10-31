@@ -15,7 +15,7 @@
  */
 #include "operator_executor.h"
 
-#include <jogasaki/storage/storage_context.h>
+#include <jogasaki/kvs/database.h>
 
 #include "scan.h"
 #include "scan_context.h"
@@ -76,7 +76,9 @@ void operator_executor::operator()(const relation::scan &node) {
     auto&s = to<scan>(node);
     auto* ctx = find_context<scan_context>(&s);
     if (! ctx) {
-        auto stg = std::make_shared<storage::storage_context>();
+        auto db = kvs::database::open(); // TODO retrieve from request context
+        std::string_view name("T0"); // TODO from node.source().entity()
+        auto stg = db->create_storage(name); // TODO use get_storage
         auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
         ctx = make_context<scan_context>(&s, std::move(stg), block_vars, resource_);
     }
@@ -195,7 +197,6 @@ void operator_executor::operator()(const relation::step::offer &node) {
 void operator_executor::operator()() {
     dispatch(*this, head());
     // TODO handling status code
-    (void)continue_processing_;
 }
 
 }

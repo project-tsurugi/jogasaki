@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>
-#include <jogasaki/storage/transaction_context.h>
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
@@ -43,7 +43,7 @@ using namespace boost::container::pmr;
 class emit_test : public test_root {};
 
 TEST_F(emit_test, simple) {
-    auto stg = std::make_shared<storage::storage_context>();
+    auto stg = std::make_shared<kvs::database>();
     std::map<std::string, std::string> options{};
     ASSERT_TRUE(stg->open(options));
 

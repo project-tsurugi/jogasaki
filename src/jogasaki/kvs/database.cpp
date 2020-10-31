@@ -15,47 +15,48 @@
  */
 #include <memory>
 
-#include "storage_context.h"
-#include "transaction_context.h"
+#include "database.h"
+#include "transaction.h"
 
-namespace jogasaki::storage {
+namespace jogasaki::kvs {
 
-storage_context::~storage_context() noexcept {
-    if (storage_) {
-        sharksfin::storage_dispose(storage_);
-    }
-    if (db_) {
-        sharksfin::database_dispose(db_);
+using namespace sharksfin;
+
+database::~database() noexcept {
+    if (handle_) {
+        if(auto res = database_dispose(handle_); res != StatusCode::OK) {
+            fail();
+        }
     }
 }
 
-bool storage_context::open(std::map<std::string, std::string> const& options) {
+std::unique_ptr<database> database::open(std::map<std::string, std::string> const& options) {
     sharksfin::DatabaseOptions dbopts{};
     for(auto& p : options) {
         dbopts.attribute(p.first, p.second);
     }
-    if(auto res = sharksfin::database_open(dbopts, &db_); res != sharksfin::StatusCode::OK) {
+    DatabaseHandle handle{};
+    if(auto res = sharksfin::database_open(dbopts, &handle); res != sharksfin::StatusCode::OK) {
         LOG(ERROR) << "database_open failed with " << res;
-        return false;
+        return {};
     }
-    return true;
+    return std::make_unique<database>(handle);
 }
 
-bool storage_context::close() {
-    if(auto res = sharksfin::database_close(db_); res != sharksfin::StatusCode::OK) {
+bool database::close() {
+    if(auto res = sharksfin::database_close(handle_); res != sharksfin::StatusCode::OK) {
         LOG(ERROR) << "database_close failed with " << res;
         return false;
     }
     return true;
 }
 
-sharksfin::DatabaseHandle storage_context::handle() const noexcept {
-    return db_;
+sharksfin::DatabaseHandle database::handle() const noexcept {
+    return handle_;
 }
 
-std::shared_ptr<transaction_context> const& storage_context::create_transaction() {
-    //TODO lock
-    return transactions_.emplace_back(std::make_shared<transaction_context>(*this));
+std::unique_ptr<transaction> database::create_transaction() {
+    return std::make_unique<transaction>(*this);
 }
 
 }

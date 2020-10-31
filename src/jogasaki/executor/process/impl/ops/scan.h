@@ -22,8 +22,8 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/storage/storage_context.h>
-#include <jogasaki/storage/transaction_context.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include "operator_base.h"
@@ -60,10 +60,8 @@ public:
     {}
 
     void operator()(scan_context& ctx, operator_executor* visitor = nullptr) {
-        if (! ctx.tx_) {
-            open(ctx);
-        }
-        while(next(ctx)) {
+        open(ctx);
+        while(ctx.it_ && ctx.it_->next()) { // TODO assume ctx.it_ always exist
             // TODO implement
             if (visitor) {
                 dispatch(*visitor, *downstream_);
@@ -73,21 +71,16 @@ public:
     }
 
     void open(scan_context& ctx) {
-        if(! ctx.storage_->open()) {
-            fail();
+        if (ctx.stg_ && ctx.tx_ && !ctx.it_) {
+            if(auto res = ctx.stg_->scan(*ctx.tx_, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, ctx.it_);
+                !res) {
+                fail();
+            }
         }
-        ctx.tx_ = ctx.storage_->create_transaction();
-        ctx.tx_->open_scan();
-    }
-
-    bool next(scan_context& ctx) {
-        return ctx.tx_->next_scan();
     }
 
     void close(scan_context& ctx) {
-        ctx.tx_->close_scan();
-        (void)ctx.tx_->commit(); //FIXME
-        (void)ctx.storage_->close(); //FIXME
+        ctx.it_.release();
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {

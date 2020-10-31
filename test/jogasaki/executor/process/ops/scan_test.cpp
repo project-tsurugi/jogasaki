@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>
-#include <jogasaki/storage/transaction_context.h>
+#include <jogasaki/kvs/transaction.h>
 
 #include <jogasaki/mock/basic_record.h>
 
@@ -39,7 +39,7 @@ using namespace boost::container::pmr;
 class scan_test : public test_root {};
 
 TEST_F(scan_test, simple) {
-    auto stg = std::make_shared<storage::storage_context>();
+    auto stg = std::make_shared<kvs::database>();
     std::map<std::string, std::string> options{};
 
     mock::record rec{};

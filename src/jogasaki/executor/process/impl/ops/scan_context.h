@@ -22,8 +22,9 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/storage/storage_context.h>
-#include <jogasaki/storage/transaction_context.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/kvs/iterator.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include "context_base.h"
@@ -46,11 +47,11 @@ public:
      */
     explicit scan_context(
         class abstract::task_context* ctx,
-        std::shared_ptr<storage::storage_context> storage,
+        std::unique_ptr<kvs::storage> stg,
         block_scope& variables,
         memory_resource* resource = nullptr
     ) : context_base(ctx, variables, resource),
-        storage_(std::move(storage))
+        stg_(std::move(stg))
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -58,15 +59,15 @@ public:
     }
 
     void release() override {
-        if(storage_) {
+        if(it_) {
             // TODO revisit the life-time of storage objects
-            // storage_->close();
-            storage_ = nullptr;
+            it_ = nullptr;
         }
     }
 private:
-    std::shared_ptr<storage::storage_context> storage_{};
-    std::shared_ptr<storage::transaction_context> tx_{};
+    std::unique_ptr<kvs::storage> stg_{};
+    std::shared_ptr<kvs::transaction> tx_{};
+    std::unique_ptr<kvs::iterator> it_{};
 };
 
 }

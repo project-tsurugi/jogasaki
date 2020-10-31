@@ -32,7 +32,7 @@ using namespace std::string_view_literals;
  */
 class database_test : public ::testing::Test {};
 
-TEST_F(database_test, simple) {
+TEST_F(database_test, DISABLED_simple) {
     std::string sql = "select * from T0";
     api::database db{};
     auto rs = db.execute(sql);

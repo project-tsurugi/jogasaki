@@ -297,5 +297,29 @@ TEST_F(coder_test, empty_text) {
     EXPECT_EQ('\x80', buf[0]);
     EXPECT_EQ('\x00', buf[1]);
 }
+
+
+TEST_F(coder_test, encode_decode) {
+    std::string src(100, 0);
+    std::string tgt(100, 0);
+    kvs::stream s{src};
+    kvs::stream t{tgt};
+
+    mock_memory_resource resource{};
+
+    mock::record source_record{2, 2.0};
+    mock::record target_record{1, 1.0};
+    auto src_meta = source_record.record_meta();
+    encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), s);
+    encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), s);
+    s.reset();
+    auto tgt_meta = target_record.record_meta();
+    decode(s, tgt_meta->at(0), target_record.ref(), tgt_meta->value_offset(0), &resource);
+    decode(s, tgt_meta->at(1), target_record.ref(), tgt_meta->value_offset(1), &resource);
+
+    ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
+    ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
+}
+
 }
 

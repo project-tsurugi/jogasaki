@@ -210,16 +210,14 @@ private:
     std::size_t length_{};
 };
 
-//template<std::size_t N>
-//void write(int_t<N> data, bool ascending) {
-//    do_write(key_encode(data, ascending));
-//}
-
 /**
  * @brief encode a field data to kvs binary representation
- * @return
+ * @param ref the record containing data to encode
+ * @param offset byte offset of the field containing data to encode
+ * @param type the type of the field
+ * @param dest the stream where the encoded data is written
  */
-std::size_t encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, stream& dest) {
+void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, stream& dest) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset)); break;
@@ -232,7 +230,15 @@ std::size_t encode(accessor::record_ref ref, std::size_t offset, meta::field_typ
     }
 }
 
-std::size_t decode(stream& src, meta::field_type const& type, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
+/**
+ * @brief decode kvs binary representation to a field data
+ * @param src the stream where the encoded data is read
+ * @param type the type of the field that holds decoded data
+ * @param ref the record to containing the field
+ * @param offset byte offset of the field
+ * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ */
+void decode(stream& src, meta::field_type const& type, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::int4: ref.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>()); break;

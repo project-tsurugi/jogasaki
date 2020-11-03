@@ -50,6 +50,14 @@ text:: text(memory::paged_memory_resource* resource, text src1, text src2) {  //
     l_ = long_text(p, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
 }
 
+text::text(char *data, text::size_type size) { //NOLINT
+    if (size <= short_text::max_size) {
+        s_ = short_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
+        return;
+    }
+    l_ = long_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
+}
+
 text::operator std::string_view() const noexcept {
     if (is_short()) {
         return {s_.data(), s_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)

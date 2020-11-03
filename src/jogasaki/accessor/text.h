@@ -74,6 +74,18 @@ public:
     text(memory::paged_memory_resource* resource, text src1, text src2);
 
     /**
+     * @brief construct new object by directly transferring the data area without copying the data
+     * @details this can be used to create text body beforehand in the memory resource provided area and associate it with
+     * new text object. If the size is small enough, the newly created object becomes short object.
+     * @param data the text data area which is allocated by the memory resource associated with the new object
+     * @param size the size of the data area
+     * @attention differently from other constructors receiving paged_memory_resource, this constructor doesn't receive one,
+     * but the resource allocating `data` area is implicitly associated with this object, and the area pointing by `data`
+     * should be kept as long as this object is actively used.
+     */
+    text(char *data, text::size_type size);
+
+    /**
      * @brief implicit conversion to string_view
      */
     [[nodiscard]] explicit operator std::string_view() const noexcept;

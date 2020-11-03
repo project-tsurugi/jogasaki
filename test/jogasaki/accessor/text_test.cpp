@@ -171,5 +171,22 @@ TEST_F(text_test, concat) {
     EXPECT_EQ("B23456789012345678901234567890B23456789012345678901234567890"sv, static_cast<std::string_view>(t1t1));
     EXPECT_EQ(60, t1t1.size());
 }
+
+TEST_F(text_test, construct_from_buffer) {
+    mock_memory_resource resource;
+    auto buf = resource.allocate(30, 1);
+    auto src = "123456789012345678901234567890"sv;
+    std::memcpy(buf, src.data(), 30);
+    text t0{static_cast<char*>(buf), 3};
+    text t1{static_cast<char*>(buf), 30};
+
+    text e0{&resource, "123"sv};
+    EXPECT_EQ(e0, t0);
+    EXPECT_TRUE(t0.is_short());
+    text e1{&resource, src};
+    EXPECT_EQ(e1, t1);
+    EXPECT_FALSE(t1.is_short());
+}
+
 }
 

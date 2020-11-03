@@ -29,6 +29,11 @@ namespace jogasaki::kvs {
 
 using takatori::util::fail;
 
+namespace details {
+
+using text_encoding_prefix_type = std::int16_t;
+constexpr static std::size_t text_encoding_prefix_type_bits = sizeof(std::int16_t) * bits_per_byte;
+
 template<typename To, typename From>
 static inline To type_change(From from) {
     static_assert(sizeof(To) == sizeof(From));
@@ -102,31 +107,37 @@ static inline void key_decode(float_t<N>& value, uint_t<N> data, bool ascending)
     value = type_change<float_t<N>>(u);
 }
 
-//template<class T, std::size_t N = sizeof(T) * bits_per_byte>
-//static inline void write_primitive(Stream &stream, std::any const& value, bool ascending) {
-//    static_assert(std::is_fundamental_v<T>);
-//    if (value.has_value()) {
-//        T val {};
-//        val = utils::any_cast<T>(value);
-//        do_write<uint_t<N>>(stream, key_encode<N>(val, ascending));
-//    } else {
-//        stream.put('\0', sizeof(T), ascending);
-//    }
-//}
+}  // namespace details
 
 class stream {
 public:
-    explicit stream(std::string& s) : base_(s.data()), pos_(0), length_(s.length()) {}
+    /**
+     * @brief create empty object
+     */
+    stream() = default;
+
+    /**
+     * @brief create new object
+     * @param buffer pointer to buffer that this instance can use
+     * @param length length of the buffer
+     */
+    stream(char* buffer, std::size_t length) : base_(buffer), length_(length) {}
+
+    /**
+     * @brief construct stream using string as its buffer (mainly for testing purpose)
+     * @param s string to use stream buffer
+     */
+    explicit stream(std::string& s) : stream(s.data(), s.length()) {}
 
     template<std::size_t N>
-    void do_write(uint_t<N> data) {
-        std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), N/bits_per_byte);
+    void do_write(details::uint_t<N> data) {
+        std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), N/bits_per_byte); //NOLINT
         pos_ += N/bits_per_byte;
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
     std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 32 || N == 64), void> write(T data, bool ascending = true) {
-        do_write<N>(key_encode<N>(data, ascending));
+        do_write<N>(details::key_encode<N>(data, ascending));
     }
 
     void do_write(char const* dt, std::size_t sz, bool ascending) {
@@ -148,40 +159,36 @@ public:
         std::string_view sv{data};
         // for key encoding, we are assuming the text is not so long
         assert(sv.length() < 32768); //NOLINT
-        std::int16_t len{static_cast<std::int16_t>(sv.length())};
-        do_write<16>(key_encode<16>(len, ascending));
+        details::text_encoding_prefix_type len{static_cast<details::text_encoding_prefix_type>(sv.length())};
+        do_write<details::text_encoding_prefix_type_bits>(details::key_encode<details::text_encoding_prefix_type_bits>(len, ascending));
         do_write(sv.data(), sv.size(), ascending);
     }
 
-//    template<class T>
-//    T read(memory::paged_memory_resource* resource = nullptr) {
-//        T data;
-//        std::memcpy(&data, base_+pos_, sizeof(T));
-//        pos_ += sizeof(T);
-//        return data;
-//    }
-
     template<std::size_t N>
-    uint_t<N> do_read() {
-        uint_t<N> ret{};
-        std::memcpy(&ret, base_+pos_, N/bits_per_byte);
-        pos_ += N/bits_per_byte;
+    details::uint_t<N> do_read() {
+        auto sz = N/bits_per_byte;
+        assert(pos_ + sz <= length_);  // NOLINT
+        details::uint_t<N> ret{};
+        std::memcpy(&ret, base_+pos_, sz);
+        pos_ += sz;
         return ret;
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
     std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 16 || N == 32 || N == 64), T> read(bool ascending = true) {
         T value{};
-        key_decode<N>(value, do_read<N>(), ascending);
+        details::key_decode<N>(value, do_read<N>(), ascending);
         return value;
     }
 
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(memory::paged_memory_resource* resource = nullptr, bool ascending = true) {
-        auto len = read<std::int16_t>(ascending);
-        assert(len >= 0);
-        auto p = static_cast<char*>(resource->allocate(len));
+        assert(pos_ + details::text_encoding_prefix_type_bits / bits_per_byte <= length_);  // NOLINT
+        auto len = read<details::text_encoding_prefix_type>(ascending);
+        assert(len >= 0); //NOLINT
+        assert(pos_ + len <= length_);  // NOLINT
         if (len > 0) {
+            auto p = static_cast<char*>(resource->allocate(len));
             if (ascending) {
                 std::memcpy(p, base_ + pos_, len);  // NOLINT
             } else {
@@ -189,9 +196,9 @@ public:
                     *(p + i) = ~(*(base_ + pos_ + i));  // NOLINT
                 }
             }
+            return accessor::text{p, static_cast<std::size_t>(len)};
         }
-        accessor::text t{resource, p, static_cast<std::size_t>(len)};
-        return t;
+        return accessor::text{};
     }
 
     void reset() {
@@ -203,10 +210,10 @@ private:
     std::size_t length_{};
 };
 
-template<std::size_t N>
-void write(int_t<N> data, bool ascending) {
-    do_write(key_encode(data, ascending));
-}
+//template<std::size_t N>
+//void write(int_t<N> data, bool ascending) {
+//    do_write(key_encode(data, ascending));
+//}
 
 /**
  * @brief encode a field data to kvs binary representation

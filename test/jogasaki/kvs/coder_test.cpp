@@ -38,6 +38,7 @@ using namespace std::string_literals;
 
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
+using namespace kvs::details;
 
 class coder_test : public test_root {
 public:
@@ -280,6 +281,21 @@ TEST_F(coder_test, text) {
     EXPECT_EQ('A', buf[2]);
     EXPECT_EQ('B', buf[3]);
     EXPECT_EQ('C', buf[4]);
+}
+
+TEST_F(coder_test, empty_text) {
+    std::string buf(100, 0);
+    kvs::stream s{buf};
+    mock_memory_resource resource{};
+    accessor::text txt{&resource, ""sv};
+    s.write(txt, true);
+
+    s.reset();
+    auto result = s.read<accessor::text>(&resource, true);
+    ASSERT_EQ(txt, result);
+    ASSERT_EQ(0, result.size());
+    EXPECT_EQ('\x80', buf[0]);
+    EXPECT_EQ('\x00', buf[1]);
 }
 }
 

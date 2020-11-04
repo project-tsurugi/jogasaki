@@ -16,7 +16,6 @@
 #include "storage.h"
 
 #include <memory>
-#include <takatori/util/fail.h>
 #include <sharksfin/api.h>
 #include <sharksfin/Slice.h>
 #include "transaction.h"
@@ -24,7 +23,6 @@
 
 namespace jogasaki::kvs {
 
-using takatori::util::fail;
 using sharksfin::Slice;
 using sharksfin::StatusCode;
 

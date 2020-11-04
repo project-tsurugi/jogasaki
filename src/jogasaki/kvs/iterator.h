@@ -114,7 +114,6 @@ public:
     }
 private:
     sharksfin::IteratorHandle handle_{};
-    bool active_{true};
 };
 
 /**

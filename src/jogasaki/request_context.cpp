@@ -26,26 +26,38 @@ request_context::request_context() :
     compiler_context_{std::make_shared<plan::compiler_context>()}
 {}
 
-request_context::request_context(std::shared_ptr<class channel> ch, std::shared_ptr<class configuration> config,
+request_context::request_context(
+    std::shared_ptr<class channel> ch,
+    std::shared_ptr<class configuration> config,
     std::shared_ptr<plan::compiler_context> compiler_context,
-    std::shared_ptr<data::iterable_record_store> result_store) :
-    channel_(std::move(ch)), config_(std::move(config)), compiler_context_(std::move(compiler_context)), result_store_(std::move(result_store))
+    std::shared_ptr<kvs::database> database,
+    std::shared_ptr<data::iterable_record_store> result_store
+) :
+    channel_(std::move(ch)),
+    config_(std::move(config)),
+    compiler_context_(std::move(compiler_context)),
+    database_(std::move(database)),
+    result_store_(std::move(result_store))
 {}
 
-std::shared_ptr<class channel> const &request_context::channel() const {
+std::shared_ptr<class channel> const& request_context::channel() const {
     return channel_;
 }
 
-std::shared_ptr<class configuration> const &request_context::configuration() const {
+std::shared_ptr<class configuration> const& request_context::configuration() const {
     return config_;
 }
 
-std::shared_ptr<data::iterable_record_store> const &request_context::result_store() const {
+std::shared_ptr<data::iterable_record_store> const& request_context::result_store() const {
     return result_store_;
 }
 
-std::shared_ptr<plan::compiler_context> const &request_context::compiler_context() const {
+std::shared_ptr<plan::compiler_context> const& request_context::compiler_context() const {
     return compiler_context_;
+}
+
+[[nodiscard]] std::shared_ptr<kvs::database> const& request_context::database() const {
+    return database_;
 }
 
 }

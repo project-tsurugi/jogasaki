@@ -18,6 +18,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/kvs/database.h>
 
 namespace jogasaki {
 
@@ -38,11 +39,14 @@ public:
      * @brief create new context object
      * @param ch channel used for the scope objects to communicate with scheduler
      * @param config global configuration
+     * @param compiler_context the compiler context for this request
+     * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
      * @param result_store store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
     request_context(std::shared_ptr<class channel> ch,
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
+        std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<data::iterable_record_store> result_store = {}
     );
 
@@ -70,10 +74,16 @@ public:
      */
     [[nodiscard]] std::shared_ptr<plan::compiler_context> const& compiler_context() const;
 
+    /**
+     * @brief accessor for the database
+     * @return database shared within this request
+     */
+    [[nodiscard]] std::shared_ptr<kvs::database> const& database() const;
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<plan::compiler_context> compiler_context_{};
+    std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<data::iterable_record_store> result_store_{};
 };
 

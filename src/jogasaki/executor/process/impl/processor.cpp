@@ -25,11 +25,13 @@ processor::processor(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
-    std::shared_ptr<relation_io_map> relation_io_map
+    std::shared_ptr<relation_io_map> relation_io_map,
+    std::shared_ptr<kvs::database> database
 ) :
     info_(std::move(info)),
     operators_(ops::create_operators(info_, compiler_ctx, std::move(io_info), std::move(relation_io_map))),
-    relation_io_map_(std::move(relation_io_map))
+    relation_io_map_(std::move(relation_io_map)),
+    database_(std::move(database))
 {}
 
 abstract::status processor::run(abstract::task_context *context) {
@@ -43,7 +45,8 @@ abstract::status processor::run(abstract::task_context *context) {
         info_->compiled_info(),
         &operators_,
         context,
-        work->resource()
+        work->resource(),
+        database_.get()
     };
     visitor();
     // TODO handling status code

@@ -119,15 +119,15 @@ public:
     /**
      * @brief create new object
      * @param buffer pointer to buffer that this instance can use
-     * @param length length of the buffer
+     * @param capacity length of the buffer
      */
-    stream(char* buffer, std::size_t length) : base_(buffer), length_(length) {}
+    stream(char* buffer, std::size_t capacity) : base_(buffer), capacity_(capacity) {}
 
     /**
      * @brief construct stream using string as its buffer (mainly for testing purpose)
      * @param s string to use stream buffer
      */
-    explicit stream(std::string& s) : stream(s.data(), s.length()) {}
+    explicit stream(std::string& s) : stream(s.data(), s.capacity()) {}
 
     template<std::size_t N>
     void do_write(details::uint_t<N> data) {
@@ -141,7 +141,7 @@ public:
     }
 
     void do_write(char const* dt, std::size_t sz, bool ascending) {
-        assert(pos_ + sz <= length_);  // NOLINT
+        assert(pos_ + sz <= capacity_);  // NOLINT
         if (sz > 0) {
             if (ascending) {
                 std::memcpy(base_ + pos_, dt, sz);  // NOLINT
@@ -167,7 +167,7 @@ public:
     template<std::size_t N>
     details::uint_t<N> do_read() {
         auto sz = N/bits_per_byte;
-        assert(pos_ + sz <= length_);  // NOLINT
+        assert(pos_ + sz <= capacity_);  // NOLINT
         details::uint_t<N> ret{};
         std::memcpy(&ret, base_+pos_, sz);
         pos_ += sz;
@@ -183,10 +183,11 @@ public:
 
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(memory::paged_memory_resource* resource = nullptr, bool ascending = true) {
-        assert(pos_ + details::text_encoding_prefix_type_bits / bits_per_byte <= length_);  // NOLINT
-        auto len = read<details::text_encoding_prefix_type>(ascending);
-        assert(len >= 0); //NOLINT
-        assert(pos_ + len <= length_);  // NOLINT
+        assert(pos_ + details::text_encoding_prefix_type_bits / bits_per_byte <= capacity_);  // NOLINT
+        auto l = read<details::text_encoding_prefix_type>(ascending);
+        assert(l >= 0); //NOLINT
+        auto len = static_cast<std::size_t>(l);
+        assert(pos_ + len <= capacity_);  // NOLINT
         if (len > 0) {
             auto p = static_cast<char*>(resource->allocate(len));
             if (ascending) {
@@ -204,10 +205,18 @@ public:
     void reset() {
         pos_ = 0;
     }
+
+    [[nodiscard]] std::size_t length() const noexcept {
+        return pos_;
+    }
+
+    [[nodiscard]] std::size_t capacity() const noexcept {
+        return capacity_;
+    }
 private:
     char* base_{};
     std::size_t pos_{};
-    std::size_t length_{};
+    std::size_t capacity_{};
 };
 
 /**
@@ -217,7 +226,7 @@ private:
  * @param type the type of the field
  * @param dest the stream where the encoded data is written
  */
-void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, stream& dest) {
+inline void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, stream& dest) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset)); break;
@@ -238,7 +247,7 @@ void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const
  * @param offset byte offset of the field
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  */
-void decode(stream& src, meta::field_type const& type, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
+inline void decode(stream& src, meta::field_type const& type, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::int4: ref.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>()); break;

@@ -43,7 +43,8 @@ public:
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<ops::io_info> io_info,
-        std::shared_ptr<relation_io_map> relation_io_map
+        std::shared_ptr<relation_io_map> relation_io_map,
+        std::shared_ptr<kvs::database> database
     );
 
     [[nodiscard]] abstract::status run(abstract::task_context* context) override;
@@ -56,6 +57,7 @@ private:
     std::shared_ptr<processor_info> info_{};
     ops::operator_container operators_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
+    std::shared_ptr<kvs::database> database_{};
 };
 
 }

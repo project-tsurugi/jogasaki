@@ -45,6 +45,7 @@ private:
     std::shared_ptr<configuration> cfg_{};
     scheduler::dag_controller scheduler_{};
     std::shared_ptr<configurable_provider> storage_provider_{std::make_shared<configurable_provider>()};
+    std::shared_ptr<kvs::database> kvs_db_{};
 
     void add_default_table_defs(configurable_provider* provider) {
         namespace type = ::takatori::type;
@@ -84,12 +85,17 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto result_store = std::make_shared<data::iterable_record_store>();
     // TODO specify memory stores
 
+    if (! kvs_db_) {
+        kvs_db_ = kvs::database::open();
+    }
+
     // TODO redesign how request context is passed
     auto* g = ctx->step_graph();
     auto request_ctx = std::make_shared<request_context>(
         std::make_shared<class channel>(),
         cfg_,
         std::move(ctx),
+        kvs_db_,
         result_store
     );
 

@@ -57,7 +57,8 @@ public:
         compiled_info const& compiled_info,
         operator_container* operators,
         abstract::task_context *context,
-        memory_resource* resource
+        memory_resource* resource,
+        kvs::database* database
     ) noexcept;
 
     relation::expression& head();
@@ -113,6 +114,7 @@ private:
     operator_container* operators_{};
     abstract::task_context *context_{};
     memory_resource* resource_{};
+    kvs::database* database_{};
 
     [[nodiscard]] block_scope& get_block_variables(std::size_t index);
 };

@@ -32,6 +32,7 @@
 
 #include <yugawara/binding/factory.h>
 #include <yugawara/binding/extract.h>
+#include <yugawara/binding/relation_info.h>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
@@ -40,6 +41,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/details/io_exchange_map.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/shuffle/step.h>
@@ -102,15 +104,22 @@ public:
     void operator()(relation::find const& node) {
         (void)node;
     }
+
     void operator()(relation::scan const& node) {
-        auto stg = std::make_shared<kvs::database>();
-        std::map<std::string, std::string> options{};
-        (void)stg->open(options); //FIXME
-        std::shared_ptr<abstract::scan_info> scan_info;
-        maybe_shared_ptr<meta::record_meta> meta;
         auto block_index = info_->scope_indices().at(&node);
         auto& downstream = node.output().opposite()->owner();
-        operators_[std::addressof(node)] = std::make_unique<scan>(*info_, block_index, scan_info, meta, &downstream);
+
+        auto index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+        maybe_shared_ptr<meta::record_meta> meta;
+        operators_[std::addressof(node)] = std::make_unique<scan>(
+            *info_,
+            block_index,
+            index.simple_name(),
+            meta,
+            index,
+            node.columns(),
+            &downstream
+        );
         dispatch(*this, downstream);
     }
     void operator()(relation::join_find const& node) {

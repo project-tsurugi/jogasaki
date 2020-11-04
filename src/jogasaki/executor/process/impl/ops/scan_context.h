@@ -27,6 +27,7 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -45,13 +46,17 @@ public:
     /**
      * @brief create new object
      */
-    explicit scan_context(
+    scan_context(
         class abstract::task_context* ctx,
-        std::unique_ptr<kvs::storage> stg,
         block_scope& variables,
+        std::unique_ptr<kvs::storage> stg,
+        std::unique_ptr<kvs::transaction> tx,
+        impl::scan_info const* scan_info,
         memory_resource* resource = nullptr
     ) : context_base(ctx, variables, resource),
-        stg_(std::move(stg))
+        stg_(std::move(stg)),
+        tx_(std::move(tx)),
+        scan_info_(std::move(scan_info))
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -64,10 +69,16 @@ public:
             it_ = nullptr;
         }
     }
+
+    [[nodiscard]] kvs::transaction* transaction() const noexcept {
+        return tx_.get();
+    }
+
 private:
     std::unique_ptr<kvs::storage> stg_{};
-    std::shared_ptr<kvs::transaction> tx_{};
+    std::unique_ptr<kvs::transaction> tx_{};
     std::unique_ptr<kvs::iterator> it_{};
+    impl::scan_info const* scan_info_{};
 };
 
 }

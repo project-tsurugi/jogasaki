@@ -16,6 +16,7 @@
 #include "operator_executor.h"
 
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
 
 #include "scan.h"
 #include "scan_context.h"
@@ -41,13 +42,15 @@ operator_executor::operator_executor(
     compiled_info const& compiled_info,
     operator_container* operators,
     abstract::task_context *context,
-    memory_resource* resource
+    memory_resource* resource,
+    kvs::database* database
 ) noexcept :
     relations_(std::addressof(relations)),
     compiled_info_(std::addressof(compiled_info)),
     operators_(operators),
     context_(context),
-    resource_(resource)
+    resource_(resource),
+    database_(database)
 {}
 
 relation::expression &operator_executor::head() {
@@ -76,13 +79,19 @@ void operator_executor::operator()(const relation::scan &node) {
     auto&s = to<scan>(node);
     auto* ctx = find_context<scan_context>(&s);
     if (! ctx) {
-        auto db = kvs::database::open(); // TODO retrieve from request context
-        std::string_view name("T0"); // TODO from node.source().entity()
-        auto stg = db->create_storage(name); // TODO use get_storage
+        auto stg = database_->get_storage(s.storage_name());
         auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        ctx = make_context<scan_context>(&s, std::move(stg), block_vars, resource_);
+        auto info = static_cast<impl::scan_info const*>(context_->scan_info());
+        // FIXME transaction should be passed from upper api
+        ctx = make_context<scan_context>(&s, block_vars, std::move(stg), database_->create_transaction(), info, resource_);
     }
     s(*ctx, this);
+    s.close(*ctx);
+    if (auto&& tx = ctx->transaction(); tx) {
+        if(! tx->commit()) {
+            fail();
+        }
+    }
 }
 
 void operator_executor::operator()(const relation::join_find &node) {

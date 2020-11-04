@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include <takatori/type/int.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_impl.h>
@@ -32,6 +33,7 @@
 namespace jogasaki::api {
 
 using configurable_provider = ::yugawara::storage::configurable_provider;
+using takatori::util::fail;
 
 class database::impl {
 public:
@@ -40,7 +42,8 @@ public:
         add_default_table_defs(storage_provider_.get());
     }
     std::unique_ptr<result_set> execute(std::string_view sql);
-
+    bool start();
+    bool stop();
 private:
     std::shared_ptr<configuration> cfg_{};
     scheduler::dag_controller scheduler_{};
@@ -86,7 +89,8 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     // TODO specify memory stores
 
     if (! kvs_db_) {
-        kvs_db_ = kvs::database::open();
+        LOG(ERROR) << "database not started";
+        fail();
     }
 
     // TODO redesign how request context is passed
@@ -104,11 +108,46 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(result_store)));
 }
 
+bool database::impl::start() {
+    if (! kvs_db_) {
+        kvs_db_ = kvs::database::open();
+    }
+    if (! kvs_db_) {
+        LOG(ERROR) << "opening db failed";
+        return false;
+    }
+    bool success = true;
+    storage_provider_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+        success = success && kvs_db_->create_storage(id);
+    });
+    if (! success) {
+        LOG(ERROR) << "creating table schema entries failed";
+    }
+    return success;
+}
+
+bool database::impl::stop() {
+    if (kvs_db_) {
+        if(!kvs_db_->close()) {
+            return false;
+        }
+        kvs_db_ = nullptr;
+    }
+    return true;
+}
 database::database() : impl_(std::make_unique<database::impl>()) {}
 database::~database() = default;
 
 std::unique_ptr<result_set> database::execute(std::string_view sql) {
     return impl_->execute(sql);
+}
+
+bool database::start() {
+    return impl_->start();
+}
+
+bool database::stop() {
+    return impl_->stop();
 }
 
 }

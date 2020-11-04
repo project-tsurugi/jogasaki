@@ -19,6 +19,7 @@
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/task_context.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
 
 namespace jogasaki::executor::process {
 
@@ -37,7 +38,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:
-            proc = std::make_shared<impl::processor>(info_, *context_->compiler_context(), step_->io_info(), step_->relation_io_map(), request_context().database());
+            proc = std::make_shared<impl::processor>(info_, *context_->compiler_context(), step_->io_info(), step_->relation_io_map(), context_->database());
             break;
         case takatori::statement::statement_kind::write:
             //FIXME
@@ -71,11 +72,10 @@ common::step_kind flow::kind() const noexcept {
 }
 
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::details::io_exchange_map const& io_exchange_map) {
-    std::unique_ptr<abstract::scan_info> sinfo{};
     auto ctx = std::make_shared<impl::task_context>(
         partition,
         io_exchange_map,
-        std::move(sinfo)
+        std::make_unique<impl::scan_info>() // TODO retrieve back from processor
     );
     ctx->work_context(std::make_unique<impl::work_context>());
     return ctx;

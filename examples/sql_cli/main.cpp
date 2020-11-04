@@ -29,6 +29,7 @@ using namespace std::string_view_literals;
 static int run(std::string_view sql) {
     if (sql.empty()) return 0;
     jogasaki::api::database db{};
+    db.start();
     auto rs = db.execute(sql);
     auto it = rs->begin();
     while(it != rs->end()) {
@@ -37,6 +38,7 @@ static int run(std::string_view sql) {
         ++it;
     }
     rs->close();
+    db.stop();
     return 0;
 }
 

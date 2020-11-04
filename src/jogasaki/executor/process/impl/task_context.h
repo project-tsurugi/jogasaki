@@ -99,7 +99,7 @@ public:
     }
 
     class abstract::scan_info const* scan_info() override {
-        return {};
+        return scan_info_.get();
     }
 
     [[nodiscard]] std::size_t partition() const noexcept {

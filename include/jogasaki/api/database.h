@@ -37,6 +37,8 @@ public:
     database(database&& other) noexcept = delete;
     database& operator=(database&& other) noexcept = delete;
 
+    bool start();
+    bool stop();
     std::unique_ptr<result_set> execute(std::string_view sql);
 
 private:

@@ -70,7 +70,7 @@ TEST_F(kvs_database_test, create_storage) {
     auto dup = db->create_storage("T");
     ASSERT_FALSE(dup); // already exists
     auto t2 = db->get_storage("T");
-    EXPECT_NE(*t1, *t2); // handles are different
+    ASSERT_TRUE(t2);
     ASSERT_TRUE(db->close());
 }
 

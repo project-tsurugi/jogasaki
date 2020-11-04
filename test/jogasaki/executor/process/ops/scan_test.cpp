@@ -213,7 +213,9 @@ TEST_F(scan_test, simple) {
     }
     ASSERT_TRUE(tx->commit());
 
-    scan_context ctx(&task_ctx, variables, std::move(stg), db->create_transaction(), sinfo.get(), &resource);
+    auto tx2 = db->create_transaction();
+    auto t = tx2.get();
+    scan_context ctx(&task_ctx, variables, std::move(stg), std::move(tx2), sinfo.get(), &resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
@@ -248,7 +250,7 @@ TEST_F(scan_test, simple) {
     s(ctx, &verifier);
     ctx.release();
     ASSERT_EQ(2, count);
-
+    (void)t->abort();
     (void)db->close();
 }
 

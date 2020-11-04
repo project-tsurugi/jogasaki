@@ -139,20 +139,11 @@ TEST_F(scan_test, simple) {
         {v2, c2},
     };
     using kind = meta::field_type_kind;
-    auto meta = std::make_shared<record_meta>(
-        std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::float8>),
-            field_type(enum_tag<kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{"000"s}
-    );
     relation::project dummy{};
     scan s{
         p_info,
         0,
         "I0"sv,
-        meta,
         *i0,
         scan_columns,
         &dummy

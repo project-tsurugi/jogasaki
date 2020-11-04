@@ -169,7 +169,7 @@ public:
         auto sz = N/bits_per_byte;
         assert(pos_ + sz <= capacity_);  // NOLINT
         details::uint_t<N> ret{};
-        std::memcpy(&ret, base_+pos_, sz);
+        std::memcpy(&ret, base_+pos_, sz); //NOLINT
         pos_ += sz;
         return ret;
     }

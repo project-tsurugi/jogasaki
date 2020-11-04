@@ -22,7 +22,6 @@
 
 namespace jogasaki::executor::process {
 
-namespace graph = takatori::graph;
 namespace relation = takatori::relation;
 
 /**

@@ -34,7 +34,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-namespace graph = takatori::graph;
 namespace relation = takatori::relation;
 
 using takatori::util::fail;

@@ -15,7 +15,6 @@
  */
 #include "processor.h"
 
-#include <jogasaki/executor/process/step.h>
 #include "block_scope_info.h"
 #include "ops/operator_builder.h"
 

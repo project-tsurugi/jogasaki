@@ -50,10 +50,10 @@ struct cache_align scan_field {
         nullable_(nullable)
     {}
 
-    meta::field_type type_{};
-    std::size_t target_offset_{};
-    std::size_t target_nullity_offset_{};
-    bool nullable_{};
+    meta::field_type type_{}; //NOLINT
+    std::size_t target_offset_{}; //NOLINT
+    std::size_t target_nullity_offset_{}; //NOLINT
+    bool nullable_{}; //NOLINT
 };
 
 }
@@ -78,13 +78,11 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::string_view storage_name,
-        maybe_shared_ptr<meta::record_meta> meta,
         std::vector<details::scan_field> key_fields,
         std::vector<details::scan_field> value_fields,
         relation::expression const* downstream
     ) : operator_base(info, block_index),
         storage_name_(storage_name),
-        meta_(std::move(meta)),
         key_fields_(std::move(key_fields)),
         value_fields_(std::move(value_fields)),
         downstream_(downstream)
@@ -97,7 +95,6 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::string_view storage_name,
-        maybe_shared_ptr<meta::record_meta> meta,
         yugawara::storage::index const& idx,
         std::vector<column, takatori::util::object_allocator<column>> const& columns,
         relation::expression const* downstream
@@ -105,7 +102,6 @@ public:
         info,
         block_index,
         storage_name,
-        meta,
         create_fields(idx, columns, info, block_index, true),
         create_fields(idx, columns, info, block_index, false),
         downstream
@@ -164,7 +160,6 @@ public:
     }
 private:
     std::string storage_name_{};
-    maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::scan_field> key_fields_{};
     std::vector<details::scan_field> value_fields_{};
     relation::expression const* downstream_{};

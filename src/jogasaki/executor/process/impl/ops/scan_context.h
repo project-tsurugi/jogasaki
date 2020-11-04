@@ -56,7 +56,7 @@ public:
     ) : context_base(ctx, variables, resource),
         stg_(std::move(stg)),
         tx_(std::move(tx)),
-        scan_info_(std::move(scan_info))
+        scan_info_(scan_info)
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {

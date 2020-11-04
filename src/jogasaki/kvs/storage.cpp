@@ -16,7 +16,6 @@
 #include "storage.h"
 
 #include <memory>
-#include <glog/logging.h>
 #include <takatori/util/fail.h>
 #include <sharksfin/api.h>
 #include <sharksfin/Slice.h>
@@ -30,10 +29,8 @@ using sharksfin::Slice;
 using sharksfin::StatusCode;
 
 bool storage::delete_storage() {
-    if (auto res = sharksfin::storage_delete(handle_); res != sharksfin::StatusCode::OK) {
-        return false;
-    }
-    return true;
+    auto res = sharksfin::storage_delete(handle_);
+    return res == sharksfin::StatusCode::OK;
 }
 
 bool storage::get(
@@ -58,27 +55,23 @@ bool storage::put(
     std::string_view key,
     std::string_view value
 ) {
-    if(auto res = sharksfin::content_put(
-            tx.handle(),
-            handle_,
-            key,
-            value); res != StatusCode::OK) {
-        return false;
-    }
-    return true;
+    auto res = sharksfin::content_put(
+        tx.handle(),
+        handle_,
+        key,
+        value);
+    return res == StatusCode::OK;
 }
 
 bool storage::remove(
     transaction& tx,
     std::string_view key
 ) {
-    if(auto res = sharksfin::content_delete(
-            tx.handle(),
-            handle_,
-            key); res != StatusCode::OK) {
-        return false;
-    }
-    return true;
+    auto res = sharksfin::content_delete(
+        tx.handle(),
+        handle_,
+        key);
+    return res == StatusCode::OK;
 }
 
 bool storage::scan(transaction &tx,

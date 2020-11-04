@@ -81,7 +81,7 @@ void operator_executor::operator()(const relation::scan &node) {
     if (! ctx) {
         auto stg = database_->get_storage(s.storage_name());
         auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        auto info = static_cast<impl::scan_info const*>(context_->scan_info());
+        auto info = static_cast<impl::scan_info const*>(context_->scan_info());  //NOLINT
         // FIXME transaction should be passed from upper api
         ctx = make_context<scan_context>(&s, block_vars, std::move(stg), database_->create_transaction(), info, resource_);
     }

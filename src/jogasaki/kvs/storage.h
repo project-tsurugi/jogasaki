@@ -28,7 +28,7 @@ class database;
 class iterator;
 
 enum class end_point_kind : std::uint32_t {
-    unbound = 0u,
+    unbound = 0U,
     inclusive,
     exclusive,
     prefixed_inclusive,
@@ -143,7 +143,6 @@ public:
 
 private:
     sharksfin::StorageHandle handle_{};
-    database* database_{};
 
     sharksfin::EndPointKind kind(end_point_kind k) {
         return sharksfin::EndPointKind(static_cast<std::uint32_t>(k));

@@ -42,6 +42,8 @@ public:
         end_endpoint_(end_endpoint)
     {}
 
+    ~scan_info() override = default;
+
     scan_info(scan_info const& other) = default;
     scan_info& operator=(scan_info const& other) = default;
     scan_info(scan_info&& other) noexcept = default;

@@ -110,12 +110,10 @@ public:
         auto& downstream = node.output().opposite()->owner();
 
         auto index = yugawara::binding::extract<yugawara::storage::index>(node.source());
-        maybe_shared_ptr<meta::record_meta> meta;
         operators_[std::addressof(node)] = std::make_unique<scan>(
             *info_,
             block_index,
             index.simple_name(),
-            meta,
             index,
             node.columns(),
             &downstream

@@ -102,6 +102,27 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
             ::yugawara::storage::index_feature::primary,
         },
     });
+    std::shared_ptr<::yugawara::storage::table> t1 = storages->add_table("T1", {
+        "T1",
+        {
+            { "C0", type::int8() },
+            { "C1", type::float8 () },
+        },
+    });
+    std::shared_ptr<::yugawara::storage::index> i1 = storages->add_index("I1", {
+        t1,
+        "I1",
+        {
+            t1->columns()[0],
+        },
+        {},
+        {
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        },
+    });
     return storages;
 }
 

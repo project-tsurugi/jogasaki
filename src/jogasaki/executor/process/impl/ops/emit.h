@@ -67,10 +67,11 @@ public:
      * @brief create new object
      */
     explicit emit(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         takatori::util::sequence_view<column const> columns
-    ) : operator_base(info, block_index),
+    ) : operator_base(index, info, block_index),
         meta_(create_meta(info, columns)),
         fields_(create_fields(meta_, columns))
     {}

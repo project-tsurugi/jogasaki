@@ -172,6 +172,7 @@ TEST_F(filter_test, simple) {
 
     relation::project verifier{};
     filter s{
+        0,
         p_info,
         0,
         r1.condition(),

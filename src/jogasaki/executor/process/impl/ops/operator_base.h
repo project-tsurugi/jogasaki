@@ -32,6 +32,8 @@ class operator_base {
 public:
     using block_index_type = std::size_t;
 
+    using operator_index_type = std::size_t;
+
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
     /**
      * @brief create empty object
@@ -41,9 +43,11 @@ public:
     virtual ~operator_base() = default;
 
     operator_base(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index
     ) noexcept :
+        index_(index),
         processor_info_(std::addressof(info)),
         block_index_(block_index)
     {}
@@ -70,9 +74,15 @@ public:
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
         return processor_info_->compiled_info();
     }
+
+    [[nodiscard]] operator_index_type index() const noexcept {
+        return index_;
+    }
 private:
+    operator_index_type index_{};
     processor_info const* processor_info_{};
     block_index_type block_index_{};
+
 };
 
 }

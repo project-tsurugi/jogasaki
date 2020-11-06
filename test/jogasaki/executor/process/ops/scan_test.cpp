@@ -141,6 +141,7 @@ TEST_F(scan_test, simple) {
     using kind = meta::field_type_kind;
     relation::project dummy{};
     scan s{
+        0,
         p_info,
         0,
         "I0"sv,

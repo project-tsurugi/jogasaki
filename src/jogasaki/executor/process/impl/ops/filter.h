@@ -51,17 +51,19 @@ public:
 
     /**
      * @brief create new object
+     * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param expression expression used as filter condition
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     filter(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         takatori::scalar::expression const& expression,
         relation::expression const* downstream = nullptr
-    ) : operator_base(info, block_index),
+    ) : operator_base(index, info, block_index),
         evaluator_(expression, info.compiled_info()),
         downstream_(downstream)
     {}

@@ -66,6 +66,7 @@ public:
 
     /**
      * @brief create new object
+     * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param order the exchange columns ordering information that assigns the field index of the input record. The index
@@ -77,6 +78,7 @@ public:
      * @param downstream downstream operator that should be invoked with the output from this operation
      */
     take_flat(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
@@ -84,7 +86,7 @@ public:
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
         relation::expression const* downstream = nullptr
-    ) : operator_base(info, block_index),
+    ) : operator_base(index, info, block_index),
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),

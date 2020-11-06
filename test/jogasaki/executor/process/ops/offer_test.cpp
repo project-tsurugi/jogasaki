@@ -141,6 +141,7 @@ TEST_F(offer_test, simple) {
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
     offer s{
+        0,
         p_info, 0,
         order,
         meta,

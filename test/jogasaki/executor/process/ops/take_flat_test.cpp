@@ -134,6 +134,7 @@ TEST_F(take_flat_test, simple) {
     );
     relation::project dummy{};
     take_flat s{
+        0,
         p_info, 0,
         order,
         meta,

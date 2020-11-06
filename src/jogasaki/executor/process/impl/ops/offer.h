@@ -65,6 +65,7 @@ public:
 
     /**
      * @brief create new object
+     * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param order the exchange columns ordering information that assigns the field index of the output record. The index
@@ -75,13 +76,14 @@ public:
      * number that the output exchange is connected.
      */
     offer(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         meta::variable_order const& order,
         maybe_shared_ptr<meta::record_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t writer_index
-    ) : operator_base(info, block_index),
+    ) : operator_base(index, info, block_index),
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         writer_index_(writer_index)

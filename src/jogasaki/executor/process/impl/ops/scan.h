@@ -73,15 +73,23 @@ public:
 
     /**
      * @brief create new object
+     * @param index the index to identify the operator in the process
+     * @param info processor's information where this operation is contained
+     * @param block_index the index of the block that this operation belongs to
+     * @param storage_name the storage name to scan
+     * @param key_fields field offset information for keys
+     * @param value_fields field offset information for values
+     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     scan(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         std::string_view storage_name,
         std::vector<details::scan_field> key_fields,
         std::vector<details::scan_field> value_fields,
         relation::expression const* downstream
-    ) : operator_base(info, block_index),
+    ) : operator_base(index, info, block_index),
         storage_name_(storage_name),
         key_fields_(std::move(key_fields)),
         value_fields_(std::move(value_fields)),
@@ -89,9 +97,16 @@ public:
     {}
 
     /**
-     * @brief create new object from takatori/yugawara
+     * @brief create new object from takatori columns
+     * @param index the index to identify the operator in the process
+     * @param info processor's information where this operation is contained
+     * @param block_index the index of the block that this operation belongs to
+     * @param storage_name the storage name to scan
+     * @param columns takatori scan column information
+     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     scan(
+        operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         std::string_view storage_name,
@@ -99,6 +114,7 @@ public:
         std::vector<column, takatori::util::object_allocator<column>> const& columns,
         relation::expression const* downstream
     ) : scan(
+        index,
         info,
         block_index,
         storage_name,

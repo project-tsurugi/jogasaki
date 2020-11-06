@@ -152,6 +152,7 @@ TEST_F(take_group_test, simple) {
     shuffle_info s_info{input_meta, {0,1}};
     relation::step::flatten dummy;
     take_group s{
+        0,
         p_info,
         0,
         order,

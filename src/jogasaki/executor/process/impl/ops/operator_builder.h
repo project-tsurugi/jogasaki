@@ -111,6 +111,7 @@ public:
 
         auto index = yugawara::binding::extract<yugawara::storage::index>(node.source());
         operators_[std::addressof(node)] = std::make_unique<scan>(
+            index_++,
             *info_,
             block_index,
             index.simple_name(),
@@ -129,14 +130,14 @@ public:
     void operator()(relation::project const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto& downstream = node.output().opposite()->owner();
-        auto e = std::make_unique<project>(*info_, block_index, node.columns(), &downstream);
+        auto e = std::make_unique<project>(index_++, *info_, block_index, node.columns(), &downstream);
         operators_[std::addressof(node)] = std::move(e);
         dispatch(*this, downstream);
     }
     void operator()(relation::filter const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto& downstream = node.output().opposite()->owner();
-        auto e = std::make_unique<filter>(*info_, block_index, node.condition(), &downstream);
+        auto e = std::make_unique<filter>(index_++, *info_, block_index, node.condition(), &downstream);
         operators_[std::addressof(node)] = std::move(e);
         dispatch(*this, downstream);
     }
@@ -146,7 +147,7 @@ public:
 
     void operator()(relation::emit const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto e = std::make_unique<emit>(*info_, block_index, node.columns());
+        auto e = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
         auto writer_index = io_exchange_map_.add_external_output(e.get());
         e->external_writer_index(writer_index);
         operators_[std::addressof(node)] = std::move(e);
@@ -182,6 +183,7 @@ public:
         assert(! input.is_group_input());  //NOLINT
 
         operators_[std::addressof(node)] = std::make_unique<take_flat>(
+            index_++,
             *info_,
             block_index,
             input.column_order(),
@@ -199,6 +201,7 @@ public:
         auto& downstream = node.output().opposite()->owner();
         auto& input = io_info_->input_at(reader_index);
         operators_[std::addressof(node)] = std::make_unique<take_group>(
+            index_++,
             *info_,
             block_index,
             input.column_order(),
@@ -219,7 +222,7 @@ public:
         auto writer_index = relation_io_map_->output_index(node.destination());
         auto& output = io_info_->output_at(writer_index);
         operators_[std::addressof(node)] =
-            std::make_unique<offer>(*info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
+            std::make_unique<offer>(index_++, *info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
     }
 
 private:
@@ -229,6 +232,7 @@ private:
     operators_type operators_{};
     impl::details::io_exchange_map io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
+    operator_base::operator_index_type index_{};
 };
 
 [[nodiscard]] inline operator_container create_operators(

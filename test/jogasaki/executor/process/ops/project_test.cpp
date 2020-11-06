@@ -202,6 +202,7 @@ TEST_F(project_test, simple) {
 
     relation::project downstream{};
     project s{
+        0,
         p_info,
         0,
         r1.columns()
@@ -340,6 +341,7 @@ TEST_F(project_test, text) {
 
     relation::project downstream{};
     project s{
+        0,
         p_info,
         0,
         r1.columns()

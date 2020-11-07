@@ -74,18 +74,18 @@ public:
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
-        memory::paged_memory_resource* resource = nullptr) :
+        memory::lifo_paged_memory_resource* resource = nullptr
+    ) :
         info_(std::move(info)),
         compiler_ctx_(std::addressof(compiler_ctx)),
         io_info_(std::move(io_info)),
-        relation_io_map_(std::move(relation_io_map))
-    {
-        (void)resource;
-    }
+        relation_io_map_(std::move(relation_io_map)),
+        resource_(resource)
+    {}
 
     [[nodiscard]] operator_container operator()() && {
         auto root = dispatch(*this, head());
-        return operator_container{std::move(root), index_, std::move(io_exchange_map_)};
+        return operator_container{std::move(root), index_, std::move(io_exchange_map_), std::move(scan_info_)};
     }
 
     [[nodiscard]] relation::expression& head() {
@@ -104,11 +104,60 @@ public:
         return {};
     }
 
+    kvs::end_point_kind from(relation::scan::endpoint::kind_type type) {
+        using t = relation::scan::endpoint::kind_type;
+        using k = kvs::end_point_kind;
+        switch(type) {
+            case t::unbound: return k::unbound;
+            case t::inclusive: return k::inclusive;
+            case t::exclusive: return k::exclusive;
+            case t::prefixed_inclusive: return k::prefixed_inclusive;
+            case t::prefixed_exclusive: return k::prefixed_exclusive;
+        }
+        fail();
+    }
+
+    std::string encode_scan_endpoint(relation::scan::endpoint const& e) {
+        std::size_t len = 0;
+        auto cp = resource_->get_checkpoint();
+        executor::process::impl::block_scope scope{};
+        for(auto&& k : e.keys()) {
+            kvs::stream s{};
+            expression::evaluator eval{k.value(), info_->compiled_info()};
+            auto res = eval(scope, resource_);
+            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
+            resource_->deallocate_after(cp);
+            len += s.length();
+        }
+        std::string buf(len, '\0');
+        kvs::stream s{buf};
+        for(auto&& k : e.keys()) {
+            expression::evaluator eval{k.value(), info_->compiled_info()};
+            auto res = eval(scope, resource_);
+            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
+            resource_->deallocate_after(cp);
+        }
+        return buf;
+    }
+
+    std::shared_ptr<impl::scan_info> create_scan_info(relation::scan const& node) {
+        return std::make_shared<impl::scan_info>(
+            encode_scan_endpoint(node.lower()),
+            from(node.lower().kind()),
+            encode_scan_endpoint(node.upper()),
+            from(node.upper().kind())
+        );
+    }
+
     std::unique_ptr<operator_base> operator()(relation::scan const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto downstream = dispatch(*this, node.output().opposite()->owner());
-
         auto index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+
+        // scan info is not passed to scan operator here, but passed back through task_context
+        // in order to support parallel scan in the future
+        scan_info_ = create_scan_info(node);
+
         return std::make_unique<scan>(
             index_++,
             *info_,
@@ -234,6 +283,8 @@ private:
     impl::details::io_exchange_map io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};
+    std::shared_ptr<impl::scan_info> scan_info_{};
+    memory::lifo_paged_memory_resource* resource_{};
 };
 
 [[nodiscard]] inline operator_container create_operators(
@@ -241,7 +292,7 @@ private:
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
-    memory::paged_memory_resource* resource = nullptr
+    memory::lifo_paged_memory_resource* resource = nullptr
 ) {
     return operator_builder{std::move(info), compiler_ctx, std::move(io_info), std::move(relation_io_map), resource}();
 }

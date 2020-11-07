@@ -21,6 +21,7 @@
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/details/io_exchange_map.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/group/flow.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
@@ -45,7 +46,7 @@ public:
 
     task_context(partition_index partition,
         impl::details::io_exchange_map const& io_exchange_map,
-        std::unique_ptr<abstract::scan_info> scan_info
+        std::shared_ptr<impl::scan_info> scan_info
     ) :
         partition_(partition),
         io_exchange_map_(std::addressof(io_exchange_map)),
@@ -109,7 +110,7 @@ public:
 private:
     std::size_t partition_{};
     impl::details::io_exchange_map const* io_exchange_map_{};
-    std::unique_ptr<abstract::scan_info> scan_info_{};
+    std::shared_ptr<impl::scan_info> scan_info_{};
 };
 
 }

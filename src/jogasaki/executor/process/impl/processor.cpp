@@ -25,12 +25,14 @@ processor::processor(
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
-    std::shared_ptr<kvs::database> database
+    std::shared_ptr<kvs::database> database,
+    std::unique_ptr<memory::lifo_paged_memory_resource> resource
 ) :
     info_(std::move(info)),
-    operators_(ops::create_operators(info_, compiler_ctx, std::move(io_info), std::move(relation_io_map))),
+    operators_(ops::create_operators(info_, compiler_ctx, std::move(io_info), std::move(relation_io_map), resource.get())),
     relation_io_map_(std::move(relation_io_map)),
-    database_(std::move(database))
+    database_(std::move(database)),
+    resource_(std::move(resource))
 {}
 
 abstract::status processor::run(abstract::task_context *context) {

@@ -19,6 +19,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/block_scope_info.h>
 #include <jogasaki/executor/process/impl/details/io_exchange_map.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -34,11 +35,13 @@ public:
     explicit operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
-        details::io_exchange_map io_exchange_map
+        details::io_exchange_map io_exchange_map,
+        std::shared_ptr<impl::scan_info> scan_info
     ) :
         root_(std::move(root)),
         operator_count_(operator_count),
-        io_exchange_map_(std::move(io_exchange_map))
+        io_exchange_map_(std::move(io_exchange_map)),
+        scan_info_(std::move(scan_info))
     {}
 
     [[nodiscard]] std::size_t size() const noexcept {
@@ -52,10 +55,15 @@ public:
     [[nodiscard]] ops::operator_base& root() const noexcept {
         return *root_;
     }
+
+    [[nodiscard]] std::shared_ptr<impl::scan_info> const& scan_info() const noexcept {
+        return scan_info_;
+    }
 private:
     std::unique_ptr<ops::operator_base> root_{};
     std::size_t operator_count_{};
     details::io_exchange_map io_exchange_map_{};
+    std::shared_ptr<impl::scan_info> scan_info_{};
 };
 
 }

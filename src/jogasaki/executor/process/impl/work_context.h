@@ -32,6 +32,8 @@ public:
 
     work_context() = default;
 
+    explicit work_context(std::size_t operator_count) : contexts_(operator_count) {}
+
     work_context(
         ops::context_container contexts,
         block_scopes variables,

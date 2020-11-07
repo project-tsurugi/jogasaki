@@ -24,6 +24,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/process/impl/expression/any.h>
 
 namespace jogasaki::kvs {
 
@@ -112,7 +113,7 @@ static inline void key_decode(float_t<N>& value, uint_t<N> data, bool ascending)
 class stream {
 public:
     /**
-     * @brief create empty object
+     * @brief create object with zero capacity. This object doesn't hold data, but can be used to calculate length.
      */
     stream() = default;
 
@@ -131,7 +132,9 @@ public:
 
     template<std::size_t N>
     void do_write(details::uint_t<N> data) {
-        std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), N/bits_per_byte); //NOLINT
+        if (capacity_ > 0) {
+            std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), N/bits_per_byte); //NOLINT
+        }
         pos_ += N/bits_per_byte;
     }
 
@@ -142,7 +145,7 @@ public:
 
     void do_write(char const* dt, std::size_t sz, bool ascending) {
         assert(pos_ + sz <= capacity_);  // NOLINT
-        if (sz > 0) {
+        if (sz > 0 && capacity_ > 0) {
             if (ascending) {
                 std::memcpy(base_ + pos_, dt, sz);  // NOLINT
             } else {
@@ -234,6 +237,26 @@ inline void encode(accessor::record_ref ref, std::size_t offset, meta::field_typ
         case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset)); break;
         case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float8>::runtime_type>(offset)); break;
         case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(ref.get_value<meta::field_type_traits<kind::character>::runtime_type>(offset)); break;
+        default:
+            fail();
+    }
+}
+
+/**
+ * @brief encode a field data to kvs binary representation
+ * @param ref the record containing data to encode
+ * @param offset byte offset of the field containing data to encode
+ * @param type the type of the field
+ * @param dest the stream where the encoded data is written
+ */
+inline void encode(executor::process::impl::expression::any src, meta::field_type const& type, stream& dest) {
+    using kind = meta::field_type_kind;
+    switch(type.kind()) {
+        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.to<meta::field_type_traits<kind::int4>::runtime_type>()); break;
+        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.to<meta::field_type_traits<kind::int8>::runtime_type>()); break;
+        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.to<meta::field_type_traits<kind::float4>::runtime_type>()); break;
+        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(src.to<meta::field_type_traits<kind::float8>::runtime_type>()); break;
+        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(src.to<meta::field_type_traits<kind::character>::runtime_type>()); break;
         default:
             fail();
     }

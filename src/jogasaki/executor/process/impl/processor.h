@@ -44,7 +44,8 @@ public:
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<ops::io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
-        std::shared_ptr<kvs::database> database
+        std::shared_ptr<kvs::database> database,
+        std::unique_ptr<memory::lifo_paged_memory_resource> resource
     );
 
     [[nodiscard]] abstract::status run(abstract::task_context* context) override;
@@ -58,6 +59,7 @@ private:
     ops::operator_container operators_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     std::shared_ptr<kvs::database> database_{};
+    std::unique_ptr<memory::lifo_paged_memory_resource> resource_{};
 };
 
 }

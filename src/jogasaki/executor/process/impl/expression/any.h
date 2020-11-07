@@ -23,6 +23,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 
 namespace jogasaki::executor::process::impl::expression {

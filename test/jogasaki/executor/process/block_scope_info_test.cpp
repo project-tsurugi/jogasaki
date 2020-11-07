@@ -286,8 +286,9 @@ TEST_F(block_scope_info_test, filter) {
 
     jogasaki::plan::compiler_context compiler_ctx{};
 
+    memory::lifo_paged_memory_resource resource{&global::page_pool()};
     // additionally test ops builder
-    auto ops = ops::operator_builder{pinfo, compiler_ctx, {}, {}}();
+    auto ops = ops::operator_builder{pinfo, compiler_ctx, {}, {}, &resource}();
 
     ASSERT_EQ(3, ops.size());
 }

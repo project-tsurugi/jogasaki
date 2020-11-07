@@ -38,7 +38,14 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:
-            proc = std::make_shared<impl::processor>(info_, *context_->compiler_context(), step_->io_info(), step_->relation_io_map(), context_->database());
+            proc = std::make_shared<impl::processor>(
+                info_,
+                *context_->compiler_context(),
+                step_->io_info(),
+                step_->relation_io_map(),
+                context_->database(),
+                std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
+            );
             break;
         case takatori::statement::statement_kind::write:
             //FIXME
@@ -52,7 +59,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     auto partitions = step_->partitions();
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(i, proc->operators().io_exchange_map()));
+        contexts.emplace_back(create_task_context(i, proc->operators()));
     }
     auto exec = factory(proc, contexts);
     for (std::size_t i=0; i < partitions; ++i) {
@@ -71,13 +78,13 @@ common::step_kind flow::kind() const noexcept {
     return common::step_kind::process;
 }
 
-std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::details::io_exchange_map const& io_exchange_map) {
+std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {
     auto ctx = std::make_shared<impl::task_context>(
         partition,
-        io_exchange_map,
-        std::make_unique<impl::scan_info>() // TODO retrieve back from processor
+        operators.io_exchange_map(),
+        operators.scan_info() // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
     );
-    ctx->work_context(std::make_unique<impl::work_context>());
+    ctx->work_context(std::make_unique<impl::work_context>(operators.size()));
     return ctx;
 }
 }

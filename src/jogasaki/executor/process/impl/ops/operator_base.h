@@ -42,15 +42,17 @@ public:
 
     virtual ~operator_base() = default;
 
+    /**
+     * @brief create new object
+     * @param index the index to identify the operator in the process
+     * @param info processor's information where this operation is contained
+     * @param block_index the index of the block that this operation belongs to
+     */
     operator_base(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index
-    ) noexcept :
-        index_(index),
-        processor_info_(std::addressof(info)),
-        block_index_(block_index)
-    {}
+    ) noexcept;
 
     operator_base(operator_base const& other) = default;
     operator_base& operator=(operator_base const& other) = default;
@@ -59,30 +61,48 @@ public:
 
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
-    [[nodiscard]] block_scope_info const& block_info() const noexcept {
-        return processor_info_->scopes_info()[block_index_];
-    }
+    [[nodiscard]] block_scope_info const& block_info() const noexcept;
 
-    [[nodiscard]] block_index_type block_index() const noexcept {
-        return block_index_;
-    }
+    [[nodiscard]] block_index_type block_index() const noexcept;
 
-    [[nodiscard]] std::vector<block_scope_info> const& blocks() const noexcept {
-        return processor_info_->scopes_info();
-    }
+    [[nodiscard]] std::vector<block_scope_info> const& blocks() const noexcept;
 
-    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
-        return processor_info_->compiled_info();
-    }
+    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
 
-    [[nodiscard]] operator_index_type index() const noexcept {
-        return index_;
-    }
+    [[nodiscard]] operator_index_type index() const noexcept;
 private:
     operator_index_type index_{};
     processor_info const* processor_info_{};
     block_index_type block_index_{};
 
+};
+
+class operator_executor;
+
+class record_operator : public operator_base {
+public:
+    record_operator() = default;
+
+    record_operator(
+        operator_index_type index,
+        processor_info const& info,
+        block_index_type block_index
+    ) noexcept;
+
+    virtual void process_record(operator_executor* parent) = 0;
+};
+
+class group_operator : public operator_base {
+public:
+    group_operator() = default;
+
+    group_operator(
+        operator_index_type index,
+        processor_info const& info,
+        block_index_type block_index
+    ) noexcept;
+
+    virtual void process_group(operator_executor* parent, bool first) = 0;
 };
 
 }

@@ -41,7 +41,6 @@ abstract::status processor::run(abstract::task_context *context) {
     }
     ops::operator_executor visitor{
         const_cast<relation::graph_type&>(info_->relations()),
-        info_->compiled_info(),
         &operators_,
         context,
         work->resource(),

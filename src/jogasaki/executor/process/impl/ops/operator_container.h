@@ -29,44 +29,32 @@ namespace relation = takatori::relation;
  */
 class operator_container {
 public:
-    using operators_type = std::unordered_map<relation::expression const*, std::unique_ptr<ops::operator_base>>;
-
     operator_container() = default;
 
     explicit operator_container(
-        operators_type operators,
+        std::unique_ptr<ops::operator_base> root,
+        std::size_t operator_count,
         details::io_exchange_map io_exchange_map
     ) :
-        operators_(std::move(operators)),
+        root_(std::move(root)),
+        operator_count_(operator_count),
         io_exchange_map_(std::move(io_exchange_map))
     {}
 
-    [[nodiscard]] std::size_t count(relation::expression const* op) const noexcept {
-        return operators_.count(op);
-    }
-
     [[nodiscard]] std::size_t size() const noexcept {
-        return operators_.size();
-    }
-
-    [[nodiscard]] ops::operator_base* at(relation::expression const* op) const noexcept {
-        return operators_.at(op).get();
-    }
-
-    auto begin() const noexcept {
-        return operators_.begin();
-    }
-
-    auto end() const noexcept {
-        return operators_.end();
+        return operator_count_;
     }
 
     [[nodiscard]] details::io_exchange_map const& io_exchange_map() const noexcept {
         return io_exchange_map_;
     };
 
+    [[nodiscard]] ops::operator_base& root() const noexcept {
+        return *root_;
+    }
 private:
-    operators_type operators_{};
+    std::unique_ptr<ops::operator_base> root_{};
+    std::size_t operator_count_{};
     details::io_exchange_map io_exchange_map_{};
 };
 

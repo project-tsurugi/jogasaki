@@ -33,7 +33,7 @@
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 
-#include "output_verifier.h"
+#include "verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -150,7 +150,9 @@ TEST_F(take_group_test, simple) {
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
     shuffle_info s_info{input_meta, {0,1}};
-    relation::step::flatten dummy;
+
+    auto d = std::make_unique<verifier>();
+    auto downstream = d.get();
     take_group s{
         0,
         p_info,
@@ -159,7 +161,7 @@ TEST_F(take_group_test, simple) {
         s_info.group_meta(),
         take_group_columns,
         0,
-        &dummy
+        std::move(d)
     };
 
     auto& block_info = p_info.scopes_info()[s.block_index()];
@@ -194,7 +196,7 @@ TEST_F(take_group_test, simple) {
     auto c2_offset = map.at(c2).value_offset();
 
     std::size_t count = 0;
-    output_verifier verifier{[&](relation::step::flatten const& node) {
+    downstream->body([&]() {
         switch(count) {
             case 0: {
                 EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
@@ -210,12 +212,11 @@ TEST_F(take_group_test, simple) {
             }
             default:
                 ADD_FAILURE();
-                return false;
         }
         ++count;
-        return true;
-    }};
-    s(ctx, &verifier);
+    });
+    s(ctx);
+    ASSERT_EQ(2, count);
     ctx.release();
 }
 

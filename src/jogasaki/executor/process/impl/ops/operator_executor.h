@@ -23,14 +23,9 @@
 #include <takatori/relation/emit.h>
 #include <takatori/relation/step/dispatch.h>
 
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/data/record_store.h>
-#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-
-#include "emit.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -53,7 +48,6 @@ public:
 
     operator_executor(
         relation::graph_type& relations,
-        compiled_info const& compiled_info,
         operator_container* operators,
         abstract::task_context *context,
         memory_resource* resource,
@@ -62,60 +56,35 @@ public:
 
     relation::expression& head();
 
-    template <class T>
-    [[nodiscard]] T& to(const relation::expression &node) {
-        return *static_cast<T*>(operators_->at(std::addressof(node)));
-    }
-
-    template<class T>
-    [[nodiscard]] T* find_context(ops::operator_base const* p) {
-        auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
-        if (container.count(p) == 0) {
-            return nullptr;
-        }
-        return static_cast<T*>(container.at(p));
-    }
-
     template<class T, class ... Args>
-    [[nodiscard]] T* make_context(ops::operator_base const* p, Args&&...args) {
+    [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
         auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
-        auto [it, b] = container.emplace(p, std::make_unique<T>(context_, std::forward<Args>(args)...));
-        if (!b) {
-            return nullptr;
-        }
-        return static_cast<T*>(it->second.get());
+        auto& p = container.set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
+        return static_cast<T*>(p.get());
     }
 
-    void operator()(relation::find const& node);
-    void operator()(relation::scan const& node);
-    void operator()(relation::join_find const& node);
-    void operator()(relation::join_scan const& node);
-    void operator()(relation::project const& node);
-    void operator()(relation::filter const& node);
-    void operator()(relation::buffer const& node);
-    void operator()(relation::emit const& node);
-    void operator()(relation::write const& node);
-    void operator()(relation::values const& node);
-    void operator()(relation::step::join const& node);
-    void operator()(relation::step::aggregate const& node);
-    void operator()(relation::step::intersection const& node);
-    void operator()(relation::step::difference const& node);
-    void operator()(relation::step::flatten const& node);
-    void operator()(relation::step::take_flat const& node);
-    void operator()(relation::step::take_group const& node);
-    void operator()(relation::step::take_cogroup const& node);
-    void operator()(relation::step::offer const& node);
     void operator()();
+
+    [[nodiscard]] operator_container& operators() const noexcept;
+
+    [[nodiscard]] context_container& contexts() const noexcept;
+
+    [[nodiscard]] memory_resource* resource() const noexcept;
+
+    [[nodiscard]] kvs::database* database() const noexcept;
+
+    [[nodiscard]] block_scope& get_block_variables(std::size_t index);
+
+    [[nodiscard]] abstract::task_context* task_context() const noexcept;
 
 private:
     relation::graph_type* relations_{};
-    compiled_info const* compiled_info_{};
     operator_container* operators_{};
     abstract::task_context *context_{};
     memory_resource* resource_{};
     kvs::database* database_{};
+    operator_base* root_{};
 
-    [[nodiscard]] block_scope& get_block_variables(std::size_t index);
 };
 
 }

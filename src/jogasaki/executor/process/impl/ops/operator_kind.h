@@ -20,6 +20,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 enum class operator_kind : std::size_t {
+    unknown = 0,
     emit,
     write,
     scan,
@@ -38,6 +39,7 @@ enum class operator_kind : std::size_t {
 constexpr inline std::string_view to_string_view(operator_kind value) noexcept {
     using namespace std::string_view_literals;
     switch (value) {
+        case operator_kind::unknown: return "unknown"sv;
         case operator_kind::emit: return "emit"sv;
         case operator_kind::write: return "write"sv;
         case operator_kind::scan: return "scan"sv;
@@ -63,6 +65,6 @@ inline std::ostream& operator<<(std::ostream& out, operator_kind value) {
 /// @brief a set of expression_kind.
 using operator_kind_set = takatori::util::enum_set<
     operator_kind,
-    operator_kind::emit,
+    operator_kind::unknown,
     operator_kind::project>;
 }

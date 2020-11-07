@@ -30,7 +30,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/plan/compiler.h>
-#include "output_verifier.h"
+#include "verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -132,7 +132,9 @@ TEST_F(take_flat_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
-    relation::project dummy{};
+
+    auto d = std::make_unique<verifier>();
+    auto downstream = d.get();
     take_flat s{
         0,
         p_info, 0,
@@ -140,7 +142,7 @@ TEST_F(take_flat_test, simple) {
         meta,
         take_flat_columns,
         0,
-        &dummy
+        std::move(d)
     };
 
     auto& block_info = p_info.scopes_info()[s.block_index()];
@@ -173,7 +175,8 @@ TEST_F(take_flat_test, simple) {
     auto c2_offset = map.at(c2).value_offset();
 
     std::size_t count = 0;
-    output_verifier verifier{[&](relation::project const& node) {
+
+    downstream->body([&]() {
         switch(count) {
             case 0: {
                 EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
@@ -192,9 +195,9 @@ TEST_F(take_flat_test, simple) {
                 return false;
         }
         ++count;
-        return true;
-    }};
-    s(ctx, &verifier);
+    });
+    s(ctx);
+    ASSERT_EQ(2, count);
     ctx.release();
 }
 

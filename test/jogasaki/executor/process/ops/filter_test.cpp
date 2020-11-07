@@ -30,7 +30,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 
-#include "output_verifier.h"
+#include "verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -170,13 +170,14 @@ TEST_F(filter_test, simple) {
     yugawara::compiled_info c_info{expressions_, variables_};
     processor_info p_info{p0.operators(), c_info};
 
-    relation::project verifier{};
+    auto d = std::make_unique<verifier>();
+    auto downstream = d.get();
     filter s{
         0,
         p_info,
         0,
         r1.condition(),
-        &verifier
+        std::move(d)
     };
 
     ASSERT_EQ(1, p_info.scopes_info().size());
@@ -202,22 +203,18 @@ TEST_F(filter_test, simple) {
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 10);
 
     bool called = false;
-    output_verifier verify_called{[&](relation::project const& node) {
+    downstream->body([&]() {
         called = true;
-        return true;
-    }};
-    s(ctx, &verify_called);
+    });
+    s(ctx);
     ASSERT_TRUE(called);
 
     called = false;
     vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 2);
     vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 20);
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 22);
-    s(ctx, &verify_called);
+    s(ctx);
     ASSERT_FALSE(called);
-
-    // test callable without verifier
-    s(ctx, (void*)nullptr);
 }
 
 }

@@ -40,7 +40,7 @@ namespace jogasaki::executor::process::impl::ops {
 /**
  * @brief filter operator
  */
-class project : public operator_base {
+class project : public record_operator {
 public:
     friend class project_context;
     using memory_resource = context_base::memory_resource;
@@ -63,15 +63,25 @@ public:
         processor_info const& info,
         block_index_type block_index,
         takatori::tree::tree_fragment_vector<takatori::relation::project::column> const& columns,
-        relation::expression const* downstream = nullptr
+        std::unique_ptr<operator_base> downstream = nullptr
     ) :
-        operator_base(index, info, block_index),
-        downstream_(downstream)
+        record_operator(index, info, block_index),
+        downstream_(std::move(downstream))
     {
         for(auto&& c: columns) {
             evaluators_.emplace_back(c.value(), info.compiled_info());
             variables_.emplace_back(c.variable());
         }
+    }
+
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr);  //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<project_context>(index(), container);
+        if (! p) {
+            p = parent->make_context<project_context>(index(), parent->get_block_variables(block_index()), parent->resource());
+        }
+        (*this)(*p, parent);
     }
 
     /**
@@ -81,8 +91,7 @@ public:
      * @param ctx context object for the execution
      * @param visitor the callback object to dispatch to downstream. Pass nullptr if no dispatch is needed (e.g. test.)
      */
-    template <typename Callback = void>
-    void operator()(project_context& ctx, Callback* visitor = nullptr) {
+    void operator()(project_context& ctx, operator_executor* parent = nullptr) {
         auto& scope = ctx.variables();
         // fill scope variables
         auto ref = scope.store().ref();
@@ -102,10 +111,8 @@ public:
                 default: fail();
             }
         }
-        if constexpr (!std::is_same_v<Callback, void>) {
-            if (visitor && downstream_) {
-                dispatch(*visitor, *downstream_);
-            }
+        if (downstream_) {
+            static_cast<record_operator*>(downstream_.get())->process_record(parent);
         }
     }
 
@@ -116,7 +123,7 @@ public:
 private:
     std::vector<expression::evaluator> evaluators_{};
     std::vector<takatori::descriptor::variable> variables_{};
-    relation::expression const* downstream_{};
+    std::unique_ptr<operator_base> downstream_{};
 
     template <typename T>
     void copy_to(accessor::record_ref target_ref, std::size_t target_offset, expression::any src) {

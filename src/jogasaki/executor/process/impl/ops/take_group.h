@@ -28,6 +28,7 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
 #include "take_group_context.h"
 
@@ -50,7 +51,7 @@ struct cache_align take_group_field {
 /**
  * @brief take_group operator
  */
-class take_group : public operator_base {
+class take_group : public record_operator {
 public:
     using column = takatori::relation::step::take_group::column;
 
@@ -79,16 +80,25 @@ public:
         maybe_shared_ptr<meta::group_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
-        relation::expression const* downstream
-    ) : operator_base(index, info, block_index),
+        std::unique_ptr<operator_base> downstream = nullptr
+    ) : record_operator(index, info, block_index),
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),
-        downstream_(downstream)
+        downstream_(std::move(downstream))
     {}
 
-    template <class Callback>
-    void operator()(take_group_context& ctx, Callback* visitor = nullptr) {
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr);  //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<take_group_context>(index(), container);
+        if (! p) {
+            p = parent->make_context<take_group_context>(index(), parent->get_block_variables(block_index()), parent->resource());
+        }
+        (*this)(*p, parent);
+    }
+
+    void operator()(take_group_context& ctx, operator_executor* parent = nullptr) {
         auto target = ctx.variables().store().ref();
         if (!ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
@@ -102,6 +112,7 @@ public:
                 if (! f.is_key_) continue;
                 utils::copy_field(f.type_, target, f.target_offset_, key, f.source_offset_, resource); // copy from outside process
             }
+            bool first_record = true;
             while(ctx.reader_->next_member()) {
                 auto member_cp = resource->get_checkpoint();
                 auto value = ctx.reader_->get_member();
@@ -109,10 +120,11 @@ public:
                     if (f.is_key_) continue;
                     utils::copy_field(f.type_, target, f.target_offset_, value, f.source_offset_, resource); // copy from outside process
                 }
-                if (visitor) {
-                    dispatch(*visitor, *downstream_);
+                if (downstream_) {
+                    static_cast<group_operator*>(downstream_.get())->process_group(parent, first_record);
                 }
                 resource->deallocate_after(member_cp);
+                first_record = false;
             }
             resource->deallocate_after(group_cp);
         }
@@ -130,7 +142,7 @@ private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
     std::size_t reader_index_{};
-    relation::expression const* downstream_{};
+    std::unique_ptr<operator_base> downstream_{};
 
     [[nodiscard]] std::vector<details::take_group_field> create_fields(
         maybe_shared_ptr<meta::group_meta> const& meta,

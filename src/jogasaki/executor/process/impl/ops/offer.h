@@ -52,7 +52,7 @@ struct cache_align offer_field {
 /**
  * @brief offer operator
  */
-class offer : public operator_base {
+class offer : public record_operator {
 public:
     friend class offer_context;
 
@@ -83,11 +83,21 @@ public:
         maybe_shared_ptr<meta::record_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t writer_index
-    ) : operator_base(index, info, block_index),
+    ) : record_operator(index, info, block_index),
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         writer_index_(writer_index)
     {}
+
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr);  //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<offer_context>(index(), container);
+        if (! p) {
+            p = parent->make_context<offer_context>(index(), meta(), parent->get_block_variables(block_index()), parent->resource());
+        }
+        (*this)(*p);
+    }
 
     /**
      * @brief conduct the operation

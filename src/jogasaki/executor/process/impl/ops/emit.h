@@ -31,10 +31,10 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 #include "operator_base.h"
+#include <jogasaki/executor/process/impl/ops/operator_executor.h>
 #include "emit_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
-
 
 namespace details {
 
@@ -52,7 +52,7 @@ struct cache_align emit_field {
 /**
  * @brief emit operator
  */
-class emit : public operator_base {
+class emit : public record_operator {
 public:
     friend class emit_context;
 
@@ -71,10 +71,20 @@ public:
         processor_info const& info,
         block_index_type block_index,
         takatori::util::sequence_view<column const> columns
-    ) : operator_base(index, info, block_index),
+    ) : record_operator(index, info, block_index),
         meta_(create_meta(info, columns)),
         fields_(create_fields(meta_, columns))
     {}
+
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr); //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<emit_context>(index(), container);
+        if (! p) {
+            p = parent->make_context<emit_context>(index(), meta(), parent->get_block_variables(block_index()), parent->resource());
+        }
+        (*this)(*p);
+    }
 
     void operator()(emit_context& ctx) {
         auto target = ctx.store_.ref();

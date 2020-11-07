@@ -40,7 +40,7 @@ namespace jogasaki::executor::process::impl::ops {
 /**
  * @brief filter operator
  */
-class filter : public operator_base {
+class filter : public record_operator {
 public:
     friend class filter_context;
 
@@ -62,12 +62,21 @@ public:
         processor_info const& info,
         block_index_type block_index,
         takatori::scalar::expression const& expression,
-        relation::expression const* downstream = nullptr
-    ) : operator_base(index, info, block_index),
+        std::unique_ptr<operator_base> downstream = nullptr
+    ) : record_operator(index, info, block_index),
         evaluator_(expression, info.compiled_info()),
-        downstream_(downstream)
+        downstream_(std::move(downstream))
     {}
 
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr);  //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<filter_context>(index(), container);
+        if (! p) {
+            p = parent->make_context<filter_context>(index(), parent->get_block_variables(block_index()), parent->resource());
+        }
+        (*this)(*p, parent);
+    }
     /**
      * @brief conduct the filter operation
      * @details evaluate the filter condition and invoke downstream if the condition is met
@@ -75,18 +84,15 @@ public:
      * @param ctx context object for the execution
      * @param visitor the callback object to dispatch to downstream. Pass nullptr if no dispatch is needed (e.g. test.)
      */
-    template <typename Callback = void>
-    void operator()(filter_context& ctx, Callback* visitor = nullptr) {
+    void operator()(filter_context& ctx, operator_executor* parent = nullptr) {
         auto& scope = ctx.variables();
         auto resource = ctx.resource();
         auto cp = resource->get_checkpoint();
         auto res = evaluator_(scope, resource).to<bool>();
         resource->deallocate_after(cp);
         if (res) {
-            if constexpr (!std::is_same_v<Callback, void>) {
-                if (visitor && downstream_) {
-                    dispatch(*visitor, *downstream_);
-                }
+            if (downstream_) {
+                static_cast<record_operator*>(downstream_.get())->process_record(parent);
             }
         }
     }
@@ -97,7 +103,7 @@ public:
 
 private:
     expression::evaluator evaluator_{};
-    relation::expression const* downstream_{};
+    std::unique_ptr<operator_base> downstream_{};
 };
 
 }

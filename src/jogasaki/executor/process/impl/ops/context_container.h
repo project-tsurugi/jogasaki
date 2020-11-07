@@ -28,14 +28,14 @@ namespace jogasaki::executor::process::impl::ops {
  */
 class cache_align context_container {
 public:
-    using contexts_type = std::unordered_map<ops::operator_base const*, std::unique_ptr<ops::context_base>>;
+    using contexts_type = std::vector<std::unique_ptr<ops::context_base>>;
 
     context_container() = default;
 
     explicit context_container(
-        contexts_type contexts
+        std::size_t size
     ) :
-        contexts_(std::move(contexts))
+        contexts_(size)
     {}
 
     template <typename ... Args>
@@ -43,26 +43,38 @@ public:
         return contexts_.emplace(std::forward<Args>(args)...);
     }
 
-    [[nodiscard]] std::size_t count(ops::operator_base const* op) const noexcept {
-        return contexts_.count(op);
+    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx) noexcept {
+        if (idx >= contexts_.size()) fail();
+        contexts_[idx] = std::move(ctx);
+        return contexts_[idx];
+    }
+
+    [[nodiscard]] bool exists(std::size_t idx) const noexcept {
+        return contexts_[idx] != nullptr;
     }
 
     [[nodiscard]] std::size_t size() const noexcept {
         return contexts_.size();
     }
 
-    [[nodiscard]] ops::context_base* at(ops::operator_base const* op) const noexcept {
-        return contexts_.at(op).get();
+    [[nodiscard]] ops::context_base* at(std::size_t idx) const noexcept {
+        if (idx >= contexts_.size()) return nullptr;
+        return contexts_.at(idx).get();
     }
 
     void release() {
         for(auto&& op : contexts_) {
-            op.second->release();
+            op.reset();
         }
     }
 private:
     contexts_type contexts_{};
 };
+
+template<class T>
+[[nodiscard]] T* find_context(std::size_t idx, context_container& container) {
+    return static_cast<T*>(container.at(idx));
+}
 
 }
 

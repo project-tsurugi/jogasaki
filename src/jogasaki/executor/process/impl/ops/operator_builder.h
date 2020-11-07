@@ -67,8 +67,6 @@ using takatori::util::maybe_shared_ptr;
  */
 class operator_builder {
 public:
-    using operators_type = operator_container::operators_type;
-
     operator_builder() = default;
 
     operator_builder(
@@ -86,8 +84,8 @@ public:
     }
 
     [[nodiscard]] operator_container operator()() && {
-        dispatch(*this, head());
-        return operator_container{std::move(operators_), std::move(io_exchange_map_)};
+        auto root = dispatch(*this, head());
+        return operator_container{std::move(root), index_, std::move(io_exchange_map_)};
     }
 
     [[nodiscard]] relation::expression& head() {
@@ -101,88 +99,94 @@ public:
         fail();
     }
 
-    void operator()(relation::find const& node) {
+    std::unique_ptr<operator_base> operator()(relation::find const& node) {
         (void)node;
+        return {};
     }
 
-    void operator()(relation::scan const& node) {
+    std::unique_ptr<operator_base> operator()(relation::scan const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto& downstream = node.output().opposite()->owner();
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
 
         auto index = yugawara::binding::extract<yugawara::storage::index>(node.source());
-        operators_[std::addressof(node)] = std::make_unique<scan>(
+        return std::make_unique<scan>(
             index_++,
             *info_,
             block_index,
             index.simple_name(),
             index,
             node.columns(),
-            &downstream
+            std::move(downstream)
         );
-        dispatch(*this, downstream);
     }
-    void operator()(relation::join_find const& node) {
+    std::unique_ptr<operator_base> operator()(relation::join_find const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::join_scan const& node) {
+    std::unique_ptr<operator_base> operator()(relation::join_scan const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::project const& node) {
+    std::unique_ptr<operator_base> operator()(relation::project const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto& downstream = node.output().opposite()->owner();
-        auto e = std::make_unique<project>(index_++, *info_, block_index, node.columns(), &downstream);
-        operators_[std::addressof(node)] = std::move(e);
-        dispatch(*this, downstream);
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
+        return std::make_unique<project>(index_++, *info_, block_index, node.columns(), std::move(downstream));
     }
-    void operator()(relation::filter const& node) {
+    std::unique_ptr<operator_base> operator()(relation::filter const& node) {
         auto block_index = info_->scope_indices().at(&node);
-        auto& downstream = node.output().opposite()->owner();
-        auto e = std::make_unique<filter>(index_++, *info_, block_index, node.condition(), &downstream);
-        operators_[std::addressof(node)] = std::move(e);
-        dispatch(*this, downstream);
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
+        return std::make_unique<filter>(index_++, *info_, block_index, node.condition(), std::move(downstream));
     }
-    void operator()(relation::buffer const& node) {
+    std::unique_ptr<operator_base> operator()(relation::buffer const& node) {
         (void)node;
+        return {};
     }
 
-    void operator()(relation::emit const& node) {
+    std::unique_ptr<operator_base> operator()(relation::emit const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto e = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
         auto writer_index = io_exchange_map_.add_external_output(e.get());
         e->external_writer_index(writer_index);
-        operators_[std::addressof(node)] = std::move(e);
+        return e;
     }
 
-    void operator()(relation::write const& node) {
+    std::unique_ptr<operator_base> operator()(relation::write const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::values const& node) {
+    std::unique_ptr<operator_base> operator()(relation::values const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::step::join const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::join const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::step::aggregate const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::aggregate const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::step::intersection const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::intersection const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::step::difference const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::difference const& node) {
         (void)node;
+        return {};
     }
-    void operator()(relation::step::flatten const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::flatten const& node) {
         (void)node;
+        return {};
     }
 
-    void operator()(relation::step::take_flat const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::take_flat const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto reader_index = relation_io_map_->input_index(node.source());
-        auto& downstream = node.output().opposite()->owner();
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
         auto& input = io_info_->input_at(reader_index);
         assert(! input.is_group_input());  //NOLINT
 
-        operators_[std::addressof(node)] = std::make_unique<take_flat>(
+        return std::make_unique<take_flat>(
             index_++,
             *info_,
             block_index,
@@ -190,17 +194,16 @@ public:
             input.record_meta(),
             node.columns(),
             reader_index,
-            &downstream
+            std::move(downstream)
         );
-        dispatch(*this, downstream);
     }
 
-    void operator()(relation::step::take_group const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::take_group const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto reader_index = relation_io_map_->input_index(node.source());
-        auto& downstream = node.output().opposite()->owner();
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
         auto& input = io_info_->input_at(reader_index);
-        operators_[std::addressof(node)] = std::make_unique<take_group>(
+        return std::make_unique<take_group>(
             index_++,
             *info_,
             block_index,
@@ -208,28 +211,26 @@ public:
             input.group_meta(),
             node.columns(),
             reader_index,
-            &downstream
+            std::move(downstream)
         );
-        dispatch(*this, downstream);
     }
 
-    void operator()(relation::step::take_cogroup const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::take_cogroup const& node) {
         (void)node;
+        return {};
     }
 
-    void operator()(relation::step::offer const& node) {
+    std::unique_ptr<operator_base> operator()(relation::step::offer const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto writer_index = relation_io_map_->output_index(node.destination());
         auto& output = io_info_->output_at(writer_index);
-        operators_[std::addressof(node)] =
-            std::make_unique<offer>(index_++, *info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
+        return std::make_unique<offer>(index_++, *info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
     }
 
 private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
     std::shared_ptr<io_info> io_info_{};
-    operators_type operators_{};
     impl::details::io_exchange_map io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};

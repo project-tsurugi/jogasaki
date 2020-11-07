@@ -29,6 +29,7 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include "operator_base.h"
 #include "take_flat_context.h"
 
@@ -53,7 +54,7 @@ struct cache_align take_flat_field {
 /**
  * @brief take_flat operator
  */
-class take_flat : public operator_base {
+class take_flat : public record_operator {
 public:
     friend class take_flat_context;
 
@@ -85,13 +86,23 @@ public:
         maybe_shared_ptr<meta::record_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
-        relation::expression const* downstream = nullptr
-    ) : operator_base(index, info, block_index),
+        std::unique_ptr<operator_base> downstream = nullptr
+    ) : record_operator(index, info, block_index),
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),
-        downstream_(downstream)
+        downstream_(std::move(downstream))
     {}
+
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr);  //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<take_flat_context>(index(), container);
+        if (! p) {
+            p = parent->make_context<take_flat_context>(index(), parent->get_block_variables(block_index()), parent->resource());
+        }
+        (*this)(*p, parent);
+    }
 
     /**
      * @brief conduct the operation
@@ -100,8 +111,7 @@ public:
      * @param visitor the callback object that should be invoked to process output of this operation. Pass nullptr if
      * this operation is executed stand-alone and no subsequent processing is needed (e.g. in testcases).
      */
-    template <class Callback = void>
-    void operator()(take_flat_context& ctx, Callback* visitor = nullptr) {
+    void operator()(take_flat_context& ctx, operator_executor* parent = nullptr) {
         auto target = ctx.variables().store().ref();
         if (! ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
@@ -114,10 +124,8 @@ public:
             for(auto &f : fields_) {
                 utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, ctx.resource()); // allocate using context memory resource
             }
-            if constexpr (!std::is_same_v<Callback, void>) {
-                if (downstream_ && visitor) {
-                    dispatch(*visitor, *downstream_);
-                }
+            if (downstream_) {
+                static_cast<record_operator*>(downstream_.get())->process_record(parent);
             }
             resource->deallocate_after(cp);
         }
@@ -135,7 +143,7 @@ private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::take_flat_field> fields_{};
     std::size_t reader_index_{};
-    relation::expression const* downstream_{};
+    std::unique_ptr<operator_base> downstream_{};
 
     [[nodiscard]] std::vector<details::take_flat_field> create_fields(
         maybe_shared_ptr<meta::record_meta> const& meta,

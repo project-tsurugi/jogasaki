@@ -290,9 +290,6 @@ TEST_F(block_scope_info_test, filter) {
     auto ops = ops::operator_builder{pinfo, compiler_ctx, {}, {}}();
 
     ASSERT_EQ(3, ops.size());
-    for(auto&& [e, o] : ops) {
-        EXPECT_EQ(0, o->block_index());
-    }
 }
 
 }

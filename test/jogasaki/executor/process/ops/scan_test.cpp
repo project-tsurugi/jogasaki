@@ -30,7 +30,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/plan/compiler.h>
-#include "output_verifier.h"
+#include "verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -139,7 +139,8 @@ TEST_F(scan_test, simple) {
         {v2, c2},
     };
     using kind = meta::field_type_kind;
-    relation::project dummy{};
+    auto d = std::make_unique<verifier>();
+    auto downstream = d.get();
     scan s{
         0,
         p_info,
@@ -147,7 +148,7 @@ TEST_F(scan_test, simple) {
         "I0"sv,
         *i0,
         scan_columns,
-        &dummy
+        std::move(d)
     };
 
     auto& block_info = p_info.scopes_info()[s.block_index()];
@@ -218,7 +219,7 @@ TEST_F(scan_test, simple) {
     auto c2_offset = map.at(c2).value_offset();
 
     std::size_t count = 0;
-    output_verifier verifier{[&](relation::project const& node) {
+    downstream->body([&]() {
         switch(count) {
             case 0: {
                 EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
@@ -234,12 +235,10 @@ TEST_F(scan_test, simple) {
             }
             default:
                 ADD_FAILURE();
-                return false;
         }
         ++count;
-        return true;
-    }};
-    s(ctx, &verifier);
+    });
+    s(ctx);
     ctx.release();
     ASSERT_EQ(2, count);
     (void)t->abort();

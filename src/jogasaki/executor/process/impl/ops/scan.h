@@ -61,7 +61,7 @@ struct cache_align scan_field {
 /**
  * @brief scanner
  */
-class scan : public operator_base {
+class scan : public record_operator {
 public:
     friend class scan_context;
 
@@ -88,12 +88,12 @@ public:
         std::string_view storage_name,
         std::vector<details::scan_field> key_fields,
         std::vector<details::scan_field> value_fields,
-        relation::expression const* downstream
-    ) : operator_base(index, info, block_index),
+        std::unique_ptr<operator_base> downstream = nullptr
+    ) : record_operator(index, info, block_index),
         storage_name_(storage_name),
         key_fields_(std::move(key_fields)),
         value_fields_(std::move(value_fields)),
-        downstream_(downstream)
+        downstream_(std::move(downstream))
     {}
 
     /**
@@ -112,7 +112,7 @@ public:
         std::string_view storage_name,
         yugawara::storage::index const& idx,
         std::vector<column, takatori::util::object_allocator<column>> const& columns,
-        relation::expression const* downstream
+        std::unique_ptr<operator_base> downstream
     ) : scan(
         index,
         info,
@@ -120,11 +120,35 @@ public:
         storage_name,
         create_fields(idx, columns, info, block_index, true),
         create_fields(idx, columns, info, block_index, false),
-        downstream
+        std::move(downstream)
     ) {}
 
-    template <typename Callback = void>
-    void operator()(scan_context& ctx, Callback* visitor = nullptr) {
+    void process_record(operator_executor* parent) override {
+        BOOST_ASSERT(parent != nullptr);  //NOLINT
+        context_container& container = parent->contexts();
+        auto* p = find_context<scan_context>(index(), container);
+        if (! p) {
+            auto stg = parent->database()->get_storage(storage_name());
+            // FIXME transaction should be passed from upper api
+            p = parent->make_context<scan_context>(index(),
+                parent->get_block_variables(block_index()),
+                std::move(stg),
+                parent->database()->create_transaction(),
+                static_cast<impl::scan_info const*>(parent->task_context()->scan_info()),  //NOLINT
+                parent->resource());
+        }
+        (*this)(*p, parent);
+
+        close(*p);
+        if (auto&& tx = p->transaction(); tx) {
+            if(! tx->commit()) {
+                fail();
+            }
+        }
+    }
+
+
+    void operator()(scan_context& ctx, operator_executor* parent = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
         while(ctx.it_ && ctx.it_->next()) { // TODO assume ctx.it_ always exist
@@ -141,8 +165,8 @@ public:
             for(auto&& f : value_fields_) {
                 kvs::decode(values, f.type_, target, f.target_offset_, ctx.resource());
             }
-            if (visitor) {
-                dispatch(*visitor, *downstream_);
+            if (downstream_) {
+                static_cast<record_operator*>(downstream_.get())->process_record(parent);
             }
         }
         close(ctx);
@@ -178,7 +202,7 @@ private:
     std::string storage_name_{};
     std::vector<details::scan_field> key_fields_{};
     std::vector<details::scan_field> value_fields_{};
-    relation::expression const* downstream_{};
+    std::unique_ptr<operator_base> downstream_{};
 
     std::vector<details::scan_field> create_fields(
         yugawara::storage::index const& idx,

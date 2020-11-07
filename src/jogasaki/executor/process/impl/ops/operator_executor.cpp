@@ -39,18 +39,17 @@ using takatori::relation::step::dispatch;
 
 operator_executor::operator_executor(
     relation::graph_type& relations,
-    compiled_info const& compiled_info,
     operator_container* operators,
     abstract::task_context *context,
     memory_resource* resource,
     kvs::database* database
 ) noexcept :
     relations_(std::addressof(relations)),
-    compiled_info_(std::addressof(compiled_info)),
     operators_(operators),
     context_(context),
     resource_(resource),
-    database_(database)
+    database_(database),
+    root_(operators_ ? &operators_->root() : nullptr)
 {}
 
 relation::expression &operator_executor::head() {
@@ -68,144 +67,29 @@ block_scope& operator_executor::get_block_variables(std::size_t index) {
     return static_cast<work_context *>(context_->work_context())->variables(index); //NOLINT
 }
 
-void operator_executor::operator()(const relation::find &node) {
-    (void)node;
-    (void)compiled_info_;
-    fail();
-}
-
-void operator_executor::operator()(const relation::scan &node) {
-    DLOG(INFO) << "scan op executed";
-    auto&s = to<scan>(node);
-    auto* ctx = find_context<scan_context>(&s);
-    if (! ctx) {
-        auto stg = database_->get_storage(s.storage_name());
-        auto& block_vars = static_cast<work_context *>(context_->work_context())->variables(s.block_index()); //NOLINT
-        auto info = static_cast<impl::scan_info const*>(context_->scan_info());  //NOLINT
-        // FIXME transaction should be passed from upper api
-        ctx = make_context<scan_context>(&s, block_vars, std::move(stg), database_->create_transaction(), info, resource_);
-    }
-    s(*ctx, this);
-    s.close(*ctx);
-    if (auto&& tx = ctx->transaction(); tx) {
-        if(! tx->commit()) {
-            fail();
-        }
-    }
-}
-
-void operator_executor::operator()(const relation::join_find &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::join_scan &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::project &node) {
-    auto&s = to<project>(node);
-    auto* ctx = find_context<project_context>(&s);
-    if (! ctx) {
-        ctx = make_context<project_context>(&s, get_block_variables(s.block_index()), resource_);
-    }
-    s(*ctx, this);
-}
-
-void operator_executor::operator()(const relation::filter &node) {
-    auto&s = to<filter>(node);
-    auto* ctx = find_context<filter_context>(&s);
-    if (! ctx) {
-        ctx = make_context<filter_context>(&s, get_block_variables(s.block_index()), resource_);
-    }
-    s(*ctx, this);
-}
-
-void operator_executor::operator()(const relation::buffer &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::emit &node) {
-    DLOG(INFO) << "emit op executed";
-    auto&s = to<emit>(node);
-    auto* ctx = find_context<emit_context>(&s);
-    if (! ctx) {
-        ctx = make_context<emit_context>(&s, s.meta(), get_block_variables(s.block_index()), resource_);
-    }
-//    s(*ctx);
-}
-
-void operator_executor::operator()(const relation::write &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::values &node) {
-    (void)node;
-    fail();
-}
-void operator_executor::operator()(const relation::step::join &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::step::aggregate &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::step::intersection &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::step::difference &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::step::flatten &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::step::take_flat &node) {
-    auto&s = to<take_flat>(node);
-    auto* ctx = find_context<take_flat_context>(&s);
-    if (! ctx) {
-        ctx = make_context<take_flat_context>(&s, get_block_variables(s.block_index()), resource_);
-    }
-    s(*ctx, this);
-}
-
-void operator_executor::operator()(const relation::step::take_group &node) {
-    auto&s = to<take_group>(node);
-    auto* ctx = find_context<take_group_context>(&s);
-    if (! ctx) {
-        ctx = make_context<take_group_context>(&s, get_block_variables(s.block_index()), resource_);
-    }
-    s(*ctx, this);
-}
-
-void operator_executor::operator()(const relation::step::take_cogroup &node) {
-    (void)node;
-    fail();
-}
-
-void operator_executor::operator()(const relation::step::offer &node) {
-    auto&s = to<offer>(node);
-    auto* ctx = find_context<offer_context>(&s);
-    if (! ctx) {
-        ctx = make_context<offer_context>(&s, s.meta(), get_block_variables(s.block_index()), resource_);
-    }
-    s(*ctx);
-}
-
 void operator_executor::operator()() {
-    dispatch(*this, head());
+    static_cast<record_operator*>(root_)->process_record(this);
     // TODO handling status code
+}
+
+operator_container &operator_executor::operators() const noexcept {
+    return *operators_;
+}
+
+context_container &operator_executor::contexts() const noexcept {
+    return static_cast<work_context*>(context_->work_context())->container();
+}
+
+operator_executor::memory_resource *operator_executor::resource() const noexcept {
+    return resource_;
+}
+
+kvs::database *operator_executor::database() const noexcept {
+    return database_;
+}
+
+abstract::task_context *operator_executor::task_context() const noexcept {
+    return context_;
 }
 
 }

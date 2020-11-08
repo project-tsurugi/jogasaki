@@ -96,6 +96,10 @@ public:
         downstream_(std::move(downstream))
     {}
 
+    /**
+     * @brief create context (if needed) and process record
+     * @param parent used to create context
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
@@ -107,11 +111,10 @@ public:
     }
 
     /**
-     * @brief conduct the operation
-     * @tparam Callback type of parent operator executor, which can be called via takatori::relation::step::dispatch.
+     * @brief process record with context object
+     * @details process record, fill variables, and invoke downstream
      * @param ctx context object for the execution
-     * @param visitor the callback object that should be invoked to process output of this operation. Pass nullptr if
-     * this operation is executed stand-alone and no subsequent processing is needed (e.g. in testcases).
+     * @param parent only used to invoke downstream
      */
     void operator()(take_flat_context& ctx, operator_executor* parent = nullptr) {
         auto target = ctx.variables().store().ref();

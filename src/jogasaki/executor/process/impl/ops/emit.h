@@ -76,6 +76,10 @@ public:
         fields_(create_fields(meta_, columns))
     {}
 
+    /**
+     * @brief create context (if needed) and process record
+     * @param parent used to create context
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr); //NOLINT
         context_container& container = parent->contexts();
@@ -86,6 +90,11 @@ public:
         (*this)(*p);
     }
 
+    /**
+     * @brief process record with context object
+     * @details emit the record and copy result to client buffer
+     * @param ctx context object for the execution
+     */
     void operator()(emit_context& ctx) {
         auto target = ctx.store_.ref();
         auto source = ctx.variables().store().ref();

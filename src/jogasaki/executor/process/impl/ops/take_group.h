@@ -91,6 +91,10 @@ public:
         downstream_(std::move(downstream))
     {}
 
+    /**
+     * @brief create context (if needed) and process record
+     * @param parent used to create context
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
@@ -101,6 +105,12 @@ public:
         (*this)(*p, parent);
     }
 
+    /**
+     * @brief process record with context object
+     * @details process record, fill variables, and invoke downstream
+     * @param ctx context object for the execution
+     * @param parent only used to invoke downstream
+     */
     void operator()(take_group_context& ctx, operator_executor* parent = nullptr) {
         auto target = ctx.variables().store().ref();
         if (!ctx.reader_) {

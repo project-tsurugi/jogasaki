@@ -89,6 +89,9 @@ public:
         writer_index_(writer_index)
     {}
 
+    /**
+     * @brief create context (if needed) and process record
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
@@ -100,7 +103,7 @@ public:
     }
 
     /**
-     * @brief conduct the operation
+     * @brief process record with context object
      * @param ctx context object for the execution
      */
     void operator()(offer_context& ctx) {

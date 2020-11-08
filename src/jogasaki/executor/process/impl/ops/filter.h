@@ -71,6 +71,10 @@ public:
         downstream_(std::move(downstream))
     {}
 
+    /**
+     * @brief create context (if needed) and process record
+     * @param parent used to create context
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
@@ -80,12 +84,12 @@ public:
         }
         (*this)(*p, parent);
     }
+
     /**
-     * @brief conduct the filter operation
+     * @brief process record with context object
      * @details evaluate the filter condition and invoke downstream if the condition is met
-     * @tparam Callback the callback object type responsible for dispatching the control to downstream
      * @param ctx context object for the execution
-     * @param visitor the callback object to dispatch to downstream. Pass nullptr if no dispatch is needed (e.g. test.)
+     * @param parent only used to invoke downstream
      */
     void operator()(filter_context& ctx, operator_executor* parent = nullptr) {
         auto& scope = ctx.variables();

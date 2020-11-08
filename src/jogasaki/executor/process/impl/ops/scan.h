@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <takatori/util/sequence_view.h>
+#include <takatori/util/downcast.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/executor/process/step.h>
@@ -34,9 +35,13 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::unsafe_downcast;
 
 namespace details {
 
+/**
+ * @brief field info of the scan operation
+ */
 struct cache_align scan_field {
     scan_field(
         meta::field_type type,
@@ -59,7 +64,7 @@ struct cache_align scan_field {
 }
 
 /**
- * @brief scanner
+ * @brief scan operator
  */
 class scan : public record_operator {
 public:
@@ -123,6 +128,10 @@ public:
         std::move(downstream)
     ) {}
 
+    /**
+     * @brief create context (if needed) and process record
+     * @param parent used to create context
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
@@ -147,7 +156,12 @@ public:
         }
     }
 
-
+    /**
+     * @brief process record with context object
+     * @details process record, fill variables with scanned result, and invoke downstream
+     * @param ctx the context for scan
+     * @param parent only used to invoke downstream
+     */
     void operator()(scan_context& ctx, operator_executor* parent = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
@@ -166,11 +180,28 @@ public:
                 kvs::decode(values, f.type_, target, f.target_offset_, ctx.resource());
             }
             if (downstream_) {
-                static_cast<record_operator*>(downstream_.get())->process_record(parent);
+                unsafe_downcast<record_operator>(downstream_.get())->process_record(parent);
             }
         }
         close(ctx);
     }
+
+    [[nodiscard]] operator_kind kind() const noexcept override {
+        return operator_kind::scan;
+    }
+
+    /**
+     * @brief return storage name
+     * @return the storage name of the scan target
+     */
+    [[nodiscard]] std::string_view storage_name() const noexcept {
+        return storage_name_;
+    }
+private:
+    std::string storage_name_{};
+    std::vector<details::scan_field> key_fields_{};
+    std::vector<details::scan_field> value_fields_{};
+    std::unique_ptr<operator_base> downstream_{};
 
     void open(scan_context& ctx) {
         if (ctx.stg_ && ctx.tx_ && !ctx.it_) {
@@ -190,19 +221,6 @@ public:
     void close(scan_context& ctx) {
         ctx.it_.reset();
     }
-
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::scan;
-    }
-
-    [[nodiscard]] std::string_view storage_name() const noexcept {
-        return storage_name_;
-    }
-private:
-    std::string storage_name_{};
-    std::vector<details::scan_field> key_fields_{};
-    std::vector<details::scan_field> value_fields_{};
-    std::unique_ptr<operator_base> downstream_{};
 
     std::vector<details::scan_field> create_fields(
         yugawara::storage::index const& idx,

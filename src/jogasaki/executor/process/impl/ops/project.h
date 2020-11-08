@@ -20,6 +20,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/downcast.h>
 #include <takatori/relation/filter.h>
 #include <takatori/descriptor/variable.h>
 
@@ -37,8 +38,9 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::unsafe_downcast;
 /**
- * @brief filter operator
+ * @brief project operator
  */
 class project : public record_operator {
 public:
@@ -74,6 +76,10 @@ public:
         }
     }
 
+    /**
+     * @brief create context (if needed) and process record
+     * @param parent used to create context
+     */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
@@ -85,11 +91,10 @@ public:
     }
 
     /**
-     * @brief conduct the project operation
+     * @brief process record with context object
      * @details evaluate the column expression and populate the variables so that downstream can use them.
-     * @tparam Callback the callback object type responsible for dispatching the control to downstream
      * @param ctx context object for the execution
-     * @param visitor the callback object to dispatch to downstream. Pass nullptr if no dispatch is needed (e.g. test.)
+     * @param parent only used to invoke downstream
      */
     void operator()(project_context& ctx, operator_executor* parent = nullptr) {
         auto& scope = ctx.variables();
@@ -112,7 +117,7 @@ public:
             }
         }
         if (downstream_) {
-            static_cast<record_operator*>(downstream_.get())->process_record(parent);
+            unsafe_downcast<record_operator>(downstream_.get())->process_record(parent);
         }
     }
 

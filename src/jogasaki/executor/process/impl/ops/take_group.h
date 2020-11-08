@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include <takatori/util/downcast.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
 #include <takatori/relation/step/offer.h>
@@ -33,6 +34,8 @@
 #include "take_group_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::unsafe_downcast;
 
 namespace details {
 
@@ -121,7 +124,7 @@ public:
                     utils::copy_field(f.type_, target, f.target_offset_, value, f.source_offset_, resource); // copy from outside process
                 }
                 if (downstream_) {
-                    static_cast<group_operator*>(downstream_.get())->process_group(parent, first_record);
+                    unsafe_downcast<group_operator>(downstream_.get())->process_group(parent, first_record);
                 }
                 resource->deallocate_after(member_cp);
                 first_record = false;

@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include <takatori/util/downcast.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
 #include <takatori/util/maybe_shared_ptr.h>
@@ -36,6 +37,8 @@
 #include "filter_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::unsafe_downcast;
 
 /**
  * @brief filter operator
@@ -92,7 +95,7 @@ public:
         resource->deallocate_after(cp);
         if (res) {
             if (downstream_) {
-                static_cast<record_operator*>(downstream_.get())->process_record(parent);
+                unsafe_downcast<record_operator>(downstream_.get())->process_record(parent);
             }
         }
     }

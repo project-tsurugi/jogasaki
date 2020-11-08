@@ -35,4 +35,19 @@ public:
     std::function<void(void)> f_{};
 };
 
+class group_verifier : public group_operator {
+public:
+    group_verifier() = default;
+    void body(std::function<void(bool first)> f) {
+        f_ = std::move(f);
+    }
+    void process_group(operator_executor* parent, bool first) override {
+        f_(first);
+    }
+    [[nodiscard]] operator_kind kind() const noexcept override {
+        return operator_kind::unknown;
+    }
+    std::function<void(bool first)> f_{};
+};
+
 }

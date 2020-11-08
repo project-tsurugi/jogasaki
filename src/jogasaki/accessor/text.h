@@ -86,6 +86,17 @@ public:
     text(char *data, text::size_type size);
 
     /**
+     * @brief construct new object using string literal
+     * @details this can be used to create text object associated with the literal data.
+     * If the size is small enough, the newly created object becomes short object.
+     * @param data the text data area which is allocated by the memory resource associated with the new object
+     * @attention differently from other constructors receiving paged_memory_resource, this constructor doesn't receive one
+     * and is not associated with memory resource. This object simply points to pre-allocated area for literal data.
+     */
+    template<std::size_t N>
+    explicit text(const char (&data)[N]) : text(const_cast<char*>(data), N-1) {} //NOLINT
+
+    /**
      * @brief implicit conversion to string_view
      */
     [[nodiscard]] explicit operator std::string_view() const noexcept;

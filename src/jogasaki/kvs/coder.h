@@ -144,7 +144,7 @@ public:
     }
 
     void do_write(char const* dt, std::size_t sz, bool ascending) {
-        assert(pos_ + sz <= capacity_);  // NOLINT
+        assert(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
         if (sz > 0 && capacity_ > 0) {
             if (ascending) {
                 std::memcpy(base_ + pos_, dt, sz);  // NOLINT

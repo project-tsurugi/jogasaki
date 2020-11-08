@@ -188,5 +188,16 @@ TEST_F(text_test, construct_from_buffer) {
     EXPECT_FALSE(t1.is_short());
 }
 
+TEST_F(text_test, literal) {
+    text t0{"123"};
+    EXPECT_EQ(3, t0.size());
+    EXPECT_TRUE(t0.is_short());
+    text t1{"123456789012345678901234567890"};
+    EXPECT_FALSE(t1.is_short());
+    mock_memory_resource resource;
+    text t2{&resource, t1};
+    ASSERT_EQ(t2, t1);
+}
+
 }
 

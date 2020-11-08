@@ -151,7 +151,7 @@ public:
     void operator()(scan_context& ctx, operator_executor* parent = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
-        while(ctx.it_ && ctx.it_->next()) { // TODO assume ctx.it_ always exist
+        while(ctx.it_->next()) {
             std::string_view k{};
             std::string_view v{};
             if(!ctx.it_->key(k) || !ctx.it_->value(v)) {

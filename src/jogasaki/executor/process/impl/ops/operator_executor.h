@@ -17,23 +17,11 @@
 
 #include <glog/logging.h>
 
-#include <yugawara/compiler_result.h>
-#include <takatori/relation/graph.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/step/dispatch.h>
-
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
-
-namespace relation = takatori::relation;
-
-using takatori::util::fail;
-using takatori::relation::step::dispatch;
-using yugawara::compiled_info;
 
 class operator_executor {
 public:
@@ -47,14 +35,11 @@ public:
     operator_executor& operator=(operator_executor&& other) noexcept = delete;
 
     operator_executor(
-        relation::graph_type& relations,
         operator_container* operators,
         abstract::task_context *context,
         memory_resource* resource,
         kvs::database* database
     ) noexcept;
-
-    relation::expression& head();
 
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
@@ -78,7 +63,6 @@ public:
     [[nodiscard]] abstract::task_context* task_context() const noexcept;
 
 private:
-    relation::graph_type* relations_{};
     operator_container* operators_{};
     abstract::task_context *context_{};
     memory_resource* resource_{};

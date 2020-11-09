@@ -212,8 +212,6 @@ TEST_F(operators_executor_test, scan_emit) {
     EXPECT_EQ(result.type_of(bindings(t0c1)), type::float8());
     EXPECT_EQ(result.type_of(c1p0), type::float8());
 
-    auto& ops = p0.operators();
-
     auto meta = test_record_meta1();
 
     memory::page_pool pool;
@@ -221,7 +219,7 @@ TEST_F(operators_executor_test, scan_emit) {
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
 
-    operator_executor e{ops, {}, {}, {}, {}}; //TODO
+    operator_executor e{{}, {}, {}, {}}; //TODO
 //    e.process();
 }
 

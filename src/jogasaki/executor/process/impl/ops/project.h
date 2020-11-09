@@ -21,7 +21,7 @@
 #include <takatori/util/object_creator.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/downcast.h>
-#include <takatori/relation/filter.h>
+#include <takatori/relation/project.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>

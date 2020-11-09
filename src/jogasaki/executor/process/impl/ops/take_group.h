@@ -20,7 +20,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/object_creator.h>
-#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_group.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>

@@ -20,36 +20,21 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-namespace relation = takatori::relation;
-
 using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
 operator_executor::operator_executor(
-    relation::graph_type& relations,
     operator_container* operators,
     abstract::task_context *context,
     memory_resource* resource,
     kvs::database* database
 ) noexcept :
-    relations_(std::addressof(relations)),
     operators_(operators),
     context_(context),
     resource_(resource),
     database_(database),
     root_(operators_ ? &operators_->root() : nullptr)
 {}
-
-relation::expression &operator_executor::head() {
-    relation::expression* result = nullptr;
-    takatori::relation::enumerate_top(*relations_, [&](relation::expression& v) {
-        result = &v;
-    });
-    if (result != nullptr) {
-        return *result;
-    }
-    fail();
-}
 
 block_scope& operator_executor::get_block_variables(std::size_t index) {
     return unsafe_downcast<work_context>(context_->work_context())->variables(index); //NOLINT

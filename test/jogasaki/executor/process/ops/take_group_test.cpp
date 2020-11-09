@@ -50,8 +50,6 @@ using namespace boost::container::pmr;
 
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
-using take = relation::step::take_group;
-using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 

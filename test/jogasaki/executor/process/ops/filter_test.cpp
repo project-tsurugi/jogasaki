@@ -51,8 +51,6 @@ namespace value = ::takatori::value;
 namespace statement = ::takatori::statement;
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
-using take = relation::step::take_flat;
-using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 

@@ -30,9 +30,20 @@ namespace relation = takatori::relation;
  */
 class operator_container {
 public:
+    /**
+     * @brief create empty object
+     */
     operator_container() = default;
 
-    explicit operator_container(
+    /**
+     * @brief create new object
+     * @param root the root of the operator tree
+     * @param operator_count the number of operators
+     * @param io_exchange_map the mapping from input/output index to exchange
+     * @param scan_info the scan information gathered from the scan operator in the operator tree (if any). Can be nullptr
+     * if the operators don't contain scan operation.
+     */
+    operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
         details::io_exchange_map io_exchange_map,
@@ -44,18 +55,34 @@ public:
         scan_info_(std::move(scan_info))
     {}
 
+    /**
+     * @brief accessor to operator count
+     * @return the number of operators
+     */
     [[nodiscard]] std::size_t size() const noexcept {
         return operator_count_;
     }
 
+    /**
+     * @brief accessor to I/O exchange mapping
+     * @return the mapping object
+     */
     [[nodiscard]] details::io_exchange_map const& io_exchange_map() const noexcept {
         return io_exchange_map_;
     };
 
+    /**
+     * @brief accessor to operator tree root
+     * @return the root object of the operators
+     */
     [[nodiscard]] ops::operator_base& root() const noexcept {
         return *root_;
     }
 
+    /**
+     * @brief accessor to scan info
+     * @return the scan info, or nullptr if there is no scan operation in the process
+     */
     [[nodiscard]] std::shared_ptr<impl::scan_info> const& scan_info() const noexcept {
         return scan_info_;
     }

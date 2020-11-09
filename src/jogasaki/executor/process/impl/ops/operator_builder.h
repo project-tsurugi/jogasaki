@@ -67,8 +67,19 @@ using takatori::util::maybe_shared_ptr;
  */
 class operator_builder {
 public:
+    /**
+     * @brief create empty object
+     */
     operator_builder() = default;
 
+    /**
+     * @brief create new object
+     * @param info the processor information
+     * @param compiler_ctx compiler context
+     * @param io_info I/O information
+     * @param relation_io_map mapping from relation to I/O index
+     * @param resource the memory resource used to building operators
+     */
     operator_builder(
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
@@ -104,50 +115,6 @@ public:
         return {};
     }
 
-    kvs::end_point_kind from(relation::scan::endpoint::kind_type type) {
-        using t = relation::scan::endpoint::kind_type;
-        using k = kvs::end_point_kind;
-        switch(type) {
-            case t::unbound: return k::unbound;
-            case t::inclusive: return k::inclusive;
-            case t::exclusive: return k::exclusive;
-            case t::prefixed_inclusive: return k::prefixed_inclusive;
-            case t::prefixed_exclusive: return k::prefixed_exclusive;
-        }
-        fail();
-    }
-
-    std::string encode_scan_endpoint(relation::scan::endpoint const& e) {
-        std::size_t len = 0;
-        auto cp = resource_->get_checkpoint();
-        executor::process::impl::block_scope scope{};
-        for(auto&& k : e.keys()) {
-            kvs::stream s{};
-            expression::evaluator eval{k.value(), info_->compiled_info()};
-            auto res = eval(scope, resource_);
-            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
-            resource_->deallocate_after(cp);
-            len += s.length();
-        }
-        std::string buf(len, '\0');
-        kvs::stream s{buf};
-        for(auto&& k : e.keys()) {
-            expression::evaluator eval{k.value(), info_->compiled_info()};
-            auto res = eval(scope, resource_);
-            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
-            resource_->deallocate_after(cp);
-        }
-        return buf;
-    }
-
-    std::shared_ptr<impl::scan_info> create_scan_info(relation::scan const& node) {
-        return std::make_shared<impl::scan_info>(
-            encode_scan_endpoint(node.lower()),
-            from(node.lower().kind()),
-            encode_scan_endpoint(node.upper()),
-            from(node.upper().kind())
-        );
-    }
 
     std::unique_ptr<operator_base> operator()(relation::scan const& node) {
         auto block_index = info_->scope_indices().at(&node);
@@ -285,8 +252,62 @@ private:
     operator_base::operator_index_type index_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
     memory::lifo_paged_memory_resource* resource_{};
+
+    kvs::end_point_kind from(relation::scan::endpoint::kind_type type) {
+        using t = relation::scan::endpoint::kind_type;
+        using k = kvs::end_point_kind;
+        switch(type) {
+            case t::unbound: return k::unbound;
+            case t::inclusive: return k::inclusive;
+            case t::exclusive: return k::exclusive;
+            case t::prefixed_inclusive: return k::prefixed_inclusive;
+            case t::prefixed_exclusive: return k::prefixed_exclusive;
+        }
+        fail();
+    }
+
+    std::string encode_scan_endpoint(relation::scan::endpoint const& e) {
+        std::size_t len = 0;
+        auto cp = resource_->get_checkpoint();
+        executor::process::impl::block_scope scope{};
+        for(auto&& k : e.keys()) {
+            kvs::stream s{};
+            expression::evaluator eval{k.value(), info_->compiled_info()};
+            auto res = eval(scope, resource_);
+            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
+            resource_->deallocate_after(cp);
+            len += s.length();
+        }
+        std::string buf(len, '\0');
+        kvs::stream s{buf};
+        for(auto&& k : e.keys()) {
+            expression::evaluator eval{k.value(), info_->compiled_info()};
+            auto res = eval(scope, resource_);
+            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
+            resource_->deallocate_after(cp);
+        }
+        return buf;
+    }
+
+    std::shared_ptr<impl::scan_info> create_scan_info(relation::scan const& node) {
+        return std::make_shared<impl::scan_info>(
+            encode_scan_endpoint(node.lower()),
+            from(node.lower().kind()),
+            encode_scan_endpoint(node.upper()),
+            from(node.upper().kind())
+        );
+    }
 };
 
+/**
+ * @brief create operators for a processor
+ * @param info the processor information
+ * @param compiler_ctx compiler context
+ * @param io_info I/O information
+ * @param relation_io_map mapping from relation to I/O index
+ * @param resource the memory resource used to building operators
+ * @return the container holding created operators and related information
+ */
 [[nodiscard]] inline operator_container create_operators(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,

@@ -23,6 +23,10 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+/**
+ * @brief task wide operator executor
+ * @details this object is responsible for holding necessary context/operators for the task to run
+ */
 class operator_executor {
 public:
     using memory_resource = context_base::memory_resource;
@@ -68,7 +72,6 @@ private:
     memory_resource* resource_{};
     kvs::database* database_{};
     operator_base* root_{};
-
 };
 
 }

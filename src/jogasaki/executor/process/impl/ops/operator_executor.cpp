@@ -20,7 +20,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
 operator_executor::operator_executor(

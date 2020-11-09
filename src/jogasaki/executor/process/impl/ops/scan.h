@@ -140,7 +140,7 @@ public:
             auto stg = parent->database()->get_storage(storage_name());
             // FIXME transaction should be passed from upper api
             p = parent->make_context<scan_context>(index(),
-                parent->get_block_variables(block_index()),
+                parent->block_scope(block_index()),
                 std::move(stg),
                 parent->database()->create_transaction(),
                 static_cast<impl::scan_info const*>(parent->task_context()->scan_info()),  //NOLINT

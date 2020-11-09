@@ -54,7 +54,7 @@ public:
     work_context(work_context&& other) noexcept = delete;
     work_context& operator=(work_context&& other) noexcept = delete;
 
-    [[nodiscard]] ops::context_container& container() noexcept {
+    [[nodiscard]] ops::context_container& contexts() noexcept {
         return contexts_;
     }
 

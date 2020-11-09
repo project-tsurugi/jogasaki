@@ -43,7 +43,7 @@ public:
 
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
-        auto& container = static_cast<work_context *>(context_->work_context())->container();  //NOLINT
+        auto& container = static_cast<work_context *>(context_->work_context())->contexts();  //NOLINT
         auto& p = container.set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
         return static_cast<T*>(p.get());
     }
@@ -58,7 +58,7 @@ public:
 
     [[nodiscard]] kvs::database* database() const noexcept;
 
-    [[nodiscard]] block_scope& get_block_variables(std::size_t index);
+    [[nodiscard]] class block_scope& block_scope(std::size_t index);
 
     [[nodiscard]] abstract::task_context* task_context() const noexcept;
 

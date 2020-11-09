@@ -97,7 +97,7 @@ public:
         context_container& container = parent->contexts();
         auto* p = find_context<offer_context>(index(), container);
         if (! p) {
-            p = parent->make_context<offer_context>(index(), meta(), parent->get_block_variables(block_index()), parent->resource());
+            p = parent->make_context<offer_context>(index(), meta(), parent->block_scope(block_index()), parent->resource());
         }
         (*this)(*p);
     }

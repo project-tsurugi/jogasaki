@@ -36,7 +36,7 @@ operator_executor::operator_executor(
     root_(operators_ ? &operators_->root() : nullptr)
 {}
 
-block_scope& operator_executor::get_block_variables(std::size_t index) {
+block_scope& operator_executor::block_scope(std::size_t index) {
     return unsafe_downcast<work_context>(context_->work_context())->variables(index); //NOLINT
 }
 
@@ -50,7 +50,7 @@ operator_container &operator_executor::operators() const noexcept {
 }
 
 context_container &operator_executor::contexts() const noexcept {
-    return unsafe_downcast<work_context>(context_->work_context())->container();
+    return unsafe_downcast<work_context>(context_->work_context())->contexts();
 }
 
 operator_executor::memory_resource *operator_executor::resource() const noexcept {

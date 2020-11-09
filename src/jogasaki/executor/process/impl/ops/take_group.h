@@ -100,7 +100,7 @@ public:
         context_container& container = parent->contexts();
         auto* p = find_context<take_group_context>(index(), container);
         if (! p) {
-            p = parent->make_context<take_group_context>(index(), parent->get_block_variables(block_index()), parent->resource());
+            p = parent->make_context<take_group_context>(index(), parent->block_scope(block_index()), parent->resource());
         }
         (*this)(*p, parent);
     }

@@ -322,9 +322,11 @@ private:
                 );
 
             ctx->work_context(std::make_unique<process::impl::work_context>(
-                ops::context_container{2},  // operator count
-                std::vector<block_scope>{},
-                std::make_unique<memory::lifo_paged_memory_resource>(&pool_)));
+                2UL, // operator count
+                1UL, // block_scope count
+                std::make_unique<memory::lifo_paged_memory_resource>(&pool_),
+                std::shared_ptr<kvs::database>{}
+            ));
             custom_contexts.emplace_back(std::move(ctx));
         }
 

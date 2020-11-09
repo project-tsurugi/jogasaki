@@ -43,8 +43,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
                 *context_->compiler_context(),
                 step_->io_info(),
                 step_->relation_io_map(),
-                context_->database(),
-                std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
+                resource_.get()
             );
             break;
         case takatori::statement::statement_kind::write:
@@ -84,7 +83,12 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
         operators.io_exchange_map(),
         operators.scan_info() // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
     );
-    ctx->work_context(std::make_unique<impl::work_context>(operators.size()));
+    ctx->work_context(std::make_unique<impl::work_context>(
+        operators.size(),
+        info_->scopes_info().size(),
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        context_->database()
+    ));
     return ctx;
 }
 }

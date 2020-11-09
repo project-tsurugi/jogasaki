@@ -15,27 +15,15 @@
  */
 #include "operator_executor.h"
 
+#include <takatori/util/downcast.h>
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
-
-#include "scan.h"
-#include "scan_context.h"
-#include "emit.h"
-#include "emit_context.h"
-#include "filter.h"
-#include "filter_context.h"
-#include "project.h"
-#include "project_context.h"
-#include "take_group.h"
-#include "offer.h"
-#include "take_flat.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
 
 using takatori::util::fail;
-using takatori::relation::step::dispatch;
+using takatori::util::unsafe_downcast;
 
 operator_executor::operator_executor(
     relation::graph_type& relations,
@@ -64,11 +52,11 @@ relation::expression &operator_executor::head() {
 }
 
 block_scope& operator_executor::get_block_variables(std::size_t index) {
-    return static_cast<work_context *>(context_->work_context())->variables(index); //NOLINT
+    return unsafe_downcast<work_context>(context_->work_context())->variables(index); //NOLINT
 }
 
 void operator_executor::operator()() {
-    static_cast<record_operator*>(root_)->process_record(this);
+    unsafe_downcast<record_operator>(root_)->process_record(this);
     // TODO handling status code
 }
 
@@ -77,7 +65,7 @@ operator_container &operator_executor::operators() const noexcept {
 }
 
 context_container &operator_executor::contexts() const noexcept {
-    return static_cast<work_context*>(context_->work_context())->container();
+    return unsafe_downcast<work_context>(context_->work_context())->container();
 }
 
 operator_executor::memory_resource *operator_executor::resource() const noexcept {

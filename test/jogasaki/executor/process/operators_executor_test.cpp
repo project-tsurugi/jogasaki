@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/operator_executor.h>
+#include <jogasaki/executor/process/impl/ops/context_helper.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -219,7 +219,7 @@ TEST_F(operators_executor_test, scan_emit) {
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     auto store = std::make_shared<data::record_store>(&record_resource, &varlen_resource, test_record_meta1());
 
-    operator_executor e{}; //TODO
+    context_helper e{}; //TODO
 //    e.process();
 }
 

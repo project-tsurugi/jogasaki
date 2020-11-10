@@ -92,7 +92,7 @@ public:
     /**
      * @brief create context (if needed) and process record
      */
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
         auto* p = find_context<offer_context>(index(), container);

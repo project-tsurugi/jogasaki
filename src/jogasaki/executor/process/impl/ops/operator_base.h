@@ -77,7 +77,7 @@ private:
 
 };
 
-class operator_executor;
+class context_helper;
 
 class record_operator : public operator_base {
 public:
@@ -89,7 +89,7 @@ public:
         block_index_type block_index
     ) noexcept;
 
-    virtual void process_record(operator_executor* parent) = 0;
+    virtual void process_record(context_helper* parent) = 0;
 };
 
 class group_operator : public operator_base {
@@ -102,7 +102,7 @@ public:
         block_index_type block_index
     ) noexcept;
 
-    virtual void process_group(operator_executor* parent, bool first) = 0;
+    virtual void process_group(context_helper* parent, bool first) = 0;
 };
 
 }

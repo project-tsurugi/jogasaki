@@ -26,7 +26,7 @@ public:
     void body(std::function<void(void)> f) {
         f_ = std::move(f);
     }
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         f_();
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -41,7 +41,7 @@ public:
     void body(std::function<void(bool first)> f) {
         f_ = std::move(f);
     }
-    void process_group(operator_executor* parent, bool first) override {
+    void process_group(context_helper* parent, bool first) override {
         f_(first);
     }
     [[nodiscard]] operator_kind kind() const noexcept override {

@@ -31,7 +31,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 #include "operator_base.h"
-#include <jogasaki/executor/process/impl/ops/operator_executor.h>
+#include <jogasaki/executor/process/impl/ops/context_helper.h>
 #include "emit_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -80,7 +80,7 @@ public:
      * @brief create context (if needed) and process record
      * @param parent used to create context
      */
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         BOOST_ASSERT(parent != nullptr); //NOLINT
         context_container& container = parent->contexts();
         auto* p = find_context<emit_context>(index(), container);

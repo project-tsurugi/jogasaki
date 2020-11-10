@@ -100,7 +100,7 @@ public:
      * @brief create context (if needed) and process record
      * @param parent used to create context
      */
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
         auto* p = find_context<take_flat_context>(index(), container);
@@ -116,7 +116,7 @@ public:
      * @param ctx context object for the execution
      * @param parent only used to invoke downstream
      */
-    void operator()(take_flat_context& ctx, operator_executor* parent = nullptr) {
+    void operator()(take_flat_context& ctx, context_helper* parent = nullptr) {
         auto target = ctx.variables().store().ref();
         if (! ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);

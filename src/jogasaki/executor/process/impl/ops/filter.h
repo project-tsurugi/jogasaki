@@ -75,7 +75,7 @@ public:
      * @brief create context (if needed) and process record
      * @param parent used to create context
      */
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
         auto* p = find_context<filter_context>(index(), container);
@@ -91,7 +91,7 @@ public:
      * @param ctx context object for the execution
      * @param parent only used to invoke downstream
      */
-    void operator()(filter_context& ctx, operator_executor* parent = nullptr) {
+    void operator()(filter_context& ctx, context_helper* parent = nullptr) {
         auto& scope = ctx.variables();
         auto resource = ctx.resource();
         auto cp = resource->get_checkpoint();

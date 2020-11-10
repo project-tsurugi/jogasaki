@@ -27,18 +27,18 @@ namespace jogasaki::executor::process::impl::ops {
  * @brief task wide operator executor
  * @details this object is responsible for holding necessary context/operators for the task to run
  */
-class operator_executor {
+class context_helper {
 public:
     using memory_resource = context_base::memory_resource;
 
-    operator_executor() = default;
-    ~operator_executor() = default;
-    operator_executor(operator_executor const& other) = delete;
-    operator_executor& operator=(operator_executor const& other) = delete;
-    operator_executor(operator_executor&& other) noexcept = delete;
-    operator_executor& operator=(operator_executor&& other) noexcept = delete;
+    context_helper() = default;
+    ~context_helper() = default;
+    context_helper(context_helper const& other) = delete;
+    context_helper& operator=(context_helper const& other) = delete;
+    context_helper(context_helper&& other) noexcept = delete;
+    context_helper& operator=(context_helper&& other) noexcept = delete;
 
-    explicit operator_executor(
+    explicit context_helper(
         abstract::task_context &context
     ) noexcept;
 

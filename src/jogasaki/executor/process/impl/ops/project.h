@@ -80,7 +80,7 @@ public:
      * @brief create context (if needed) and process record
      * @param parent used to create context
      */
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         auto* p = find_context<project_context>(index(), parent->contexts());
         if (! p) {
@@ -95,7 +95,7 @@ public:
      * @param ctx context object for the execution
      * @param parent only used to invoke downstream
      */
-    void operator()(project_context& ctx, operator_executor* parent = nullptr) {
+    void operator()(project_context& ctx, context_helper* parent = nullptr) {
         auto& scope = ctx.variables();
         // fill scope variables
         auto ref = scope.store().ref();

@@ -132,7 +132,7 @@ public:
      * @brief create context (if needed) and process record
      * @param parent used to create context
      */
-    void process_record(operator_executor* parent) override {
+    void process_record(context_helper* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
         context_container& container = parent->contexts();
         auto* p = find_context<scan_context>(index(), container);
@@ -162,7 +162,7 @@ public:
      * @param ctx the context for scan
      * @param parent only used to invoke downstream
      */
-    void operator()(scan_context& ctx, operator_executor* parent = nullptr) {
+    void operator()(scan_context& ctx, context_helper* parent = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
         while(ctx.it_->next()) {

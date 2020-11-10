@@ -144,7 +144,7 @@ private:
     ) {
         std::vector<details::emit_field> fields{};
         std::size_t sz = meta->field_count();
-        fields.resize(sz);
+        fields.reserve(sz);
         for(std::size_t ind = 0 ; ind < sz; ++ind) {
             auto&& c = columns[ind];
             auto& info = blocks().at(block_index()).value_map().at(c.source());

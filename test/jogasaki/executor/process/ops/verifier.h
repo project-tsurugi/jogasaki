@@ -26,13 +26,13 @@ public:
     void body(std::function<void(void)> f) {
         f_ = std::move(f);
     }
-    void process_record(context_helper* parent) override {
+    void process_record(abstract::task_context* context) override {
         f_();
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
     }
-    std::function<void(void)> f_{};
+    std::function<void(void)> f_{}; //NOLINT
 };
 
 class group_verifier : public group_operator {
@@ -41,13 +41,13 @@ public:
     void body(std::function<void(bool first)> f) {
         f_ = std::move(f);
     }
-    void process_group(context_helper* parent, bool first) override {
+    void process_group(abstract::task_context* context, bool first) override {
         f_(first);
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
     }
-    std::function<void(bool first)> f_{};
+    std::function<void(bool first)> f_{}; //NOLINT
 };
 
 }

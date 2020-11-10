@@ -78,14 +78,14 @@ public:
 
     /**
      * @brief create context (if needed) and process record
-     * @param parent used to create context
+     * @param context task-wide context used to create operator context
      */
-    void process_record(context_helper* parent) override {
-        BOOST_ASSERT(parent != nullptr); //NOLINT
-        context_container& container = parent->contexts();
-        auto* p = find_context<emit_context>(index(), container);
+    void process_record(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<emit_context>(index(), ctx.contexts());
         if (! p) {
-            p = parent->make_context<emit_context>(index(), meta(), parent->block_scope(block_index()), parent->resource());
+            p = ctx.make_context<emit_context>(index(), meta(), ctx.block_scope(block_index()), ctx.resource());
         }
         (*this)(*p);
     }
@@ -93,7 +93,7 @@ public:
     /**
      * @brief process record with context object
      * @details emit the record and copy result to client buffer
-     * @param ctx context object for the execution
+     * @param ctx operator context object for the execution
      */
     void operator()(emit_context& ctx) {
         auto target = ctx.store_.ref();

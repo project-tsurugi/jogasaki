@@ -130,23 +130,23 @@ public:
 
     /**
      * @brief create context (if needed) and process record
-     * @param parent used to create context
+     * @param context task-wide context used to create operator context
      */
-    void process_record(context_helper* parent) override {
-        BOOST_ASSERT(parent != nullptr);  //NOLINT
-        context_container& container = parent->contexts();
-        auto* p = find_context<scan_context>(index(), container);
+    void process_record(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<scan_context>(index(), ctx.contexts());
         if (! p) {
-            auto stg = parent->database()->get_storage(storage_name());
+            auto stg = ctx.database()->get_storage(storage_name());
             // FIXME transaction should be passed from upper api
-            p = parent->make_context<scan_context>(index(),
-                parent->block_scope(block_index()),
+            p = ctx.make_context<scan_context>(index(),
+                ctx.block_scope(block_index()),
                 std::move(stg),
-                parent->database()->create_transaction(),
-                static_cast<impl::scan_info const*>(parent->task_context()->scan_info()),  //NOLINT
-                parent->resource());
+                ctx.database()->create_transaction(),
+                static_cast<impl::scan_info const*>(ctx.task_context()->scan_info()),  //NOLINT
+                ctx.resource());
         }
-        (*this)(*p, parent);
+        (*this)(*p, context);
 
         close(*p);
         if (auto&& tx = p->transaction(); tx) {
@@ -159,10 +159,10 @@ public:
     /**
      * @brief process record with context object
      * @details process record, fill variables with scanned result, and invoke downstream
-     * @param ctx the context for scan
-     * @param parent only used to invoke downstream
+     * @param ctx operator context object for the execution
+     * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(scan_context& ctx, context_helper* parent = nullptr) {
+    void operator()(scan_context& ctx, abstract::task_context* context = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
         while(ctx.it_->next()) {
@@ -180,7 +180,7 @@ public:
                 kvs::decode(values, f.type_, target, f.target_offset_, ctx.resource());
             }
             if (downstream_) {
-                unsafe_downcast<record_operator>(downstream_.get())->process_record(parent);
+                unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
         }
         close(ctx);

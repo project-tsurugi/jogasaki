@@ -78,24 +78,25 @@ public:
 
     /**
      * @brief create context (if needed) and process record
-     * @param parent used to create context
+     * @param context task-wide context used to create operator context
      */
-    void process_record(context_helper* parent) override {
-        BOOST_ASSERT(parent != nullptr);  //NOLINT
-        auto* p = find_context<project_context>(index(), parent->contexts());
+    void process_record(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<project_context>(index(), ctx.contexts());
         if (! p) {
-            p = parent->make_context<project_context>(index(), parent->block_scope(block_index()), parent->resource());
+            p = ctx.make_context<project_context>(index(), ctx.block_scope(block_index()), ctx.resource());
         }
-        (*this)(*p, parent);
+        (*this)(*p, context);
     }
 
     /**
      * @brief process record with context object
      * @details evaluate the column expression and populate the variables so that downstream can use them.
-     * @param ctx context object for the execution
-     * @param parent only used to invoke downstream
+     * @param ctx operator context object for the execution
+     * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(project_context& ctx, context_helper* parent = nullptr) {
+    void operator()(project_context& ctx, abstract::task_context* context = nullptr) {
         auto& scope = ctx.variables();
         // fill scope variables
         auto ref = scope.store().ref();
@@ -116,7 +117,7 @@ public:
             }
         }
         if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->process_record(parent);
+            unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
         }
     }
 

@@ -98,25 +98,25 @@ public:
 
     /**
      * @brief create context (if needed) and process record
-     * @param parent used to create context
+     * @param context task-wide context used to create operator context
      */
-    void process_record(context_helper* parent) override {
-        BOOST_ASSERT(parent != nullptr);  //NOLINT
-        context_container& container = parent->contexts();
-        auto* p = find_context<take_flat_context>(index(), container);
+    void process_record(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<take_flat_context>(index(), ctx.contexts());
         if (! p) {
-            p = parent->make_context<take_flat_context>(index(), parent->block_scope(block_index()), parent->resource());
+            p = ctx.make_context<take_flat_context>(index(), ctx.block_scope(block_index()), ctx.resource());
         }
-        (*this)(*p, parent);
+        (*this)(*p, context);
     }
 
     /**
      * @brief process record with context object
      * @details process record, fill variables, and invoke downstream
-     * @param ctx context object for the execution
-     * @param parent only used to invoke downstream
+     * @param ctx operator context object for the execution
+     * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(take_flat_context& ctx, context_helper* parent = nullptr) {
+    void operator()(take_flat_context& ctx, abstract::task_context* context = nullptr) {
         auto target = ctx.variables().store().ref();
         if (! ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
@@ -130,7 +130,7 @@ public:
                 utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, ctx.resource()); // allocate using context memory resource
             }
             if (downstream_) {
-                unsafe_downcast<record_operator>(downstream_.get())->process_record(parent);
+                unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
             resource->deallocate_after(cp);
         }

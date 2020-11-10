@@ -43,10 +43,7 @@ abstract::status processor::run(abstract::task_context *context) {
     for(auto& block_info : info_->scopes_info()) {
         work->scopes().emplace_back(block_info);
     }
-    ops::context_helper execution_context{
-        *context
-    };
-    unsafe_downcast<ops::record_operator>(operators_.root()).process_record(&execution_context);
+    unsafe_downcast<ops::record_operator>(operators_.root()).process_record(context);
     // TODO handling status code
     return abstract::status::completed;
 }

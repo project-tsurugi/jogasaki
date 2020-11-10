@@ -16,7 +16,9 @@
 #pragma once
 
 #include <takatori/relation/expression.h>
+
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
@@ -89,7 +91,7 @@ public:
         block_index_type block_index
     ) noexcept;
 
-    virtual void process_record(context_helper* parent) = 0;
+    virtual void process_record(abstract::task_context* context) = 0;
 };
 
 class group_operator : public operator_base {
@@ -102,7 +104,7 @@ public:
         block_index_type block_index
     ) noexcept;
 
-    virtual void process_group(context_helper* parent, bool first) = 0;
+    virtual void process_group(abstract::task_context* context, bool first) = 0;
 };
 
 }

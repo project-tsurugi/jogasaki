@@ -24,14 +24,13 @@
 namespace jogasaki::executor::process::impl::ops {
 
 /**
- * @brief task wide operator executor
- * @details this object is responsible for holding necessary context/operators for the task to run
+ * @brief context access helper
+ * @details a wrapper to task context that helps extracting objects
  */
 class context_helper {
 public:
     using memory_resource = context_base::memory_resource;
 
-    context_helper() = default;
     ~context_helper() = default;
     context_helper(context_helper const& other) = delete;
     context_helper& operator=(context_helper const& other) = delete;
@@ -44,8 +43,7 @@ public:
 
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
-        auto& container = contexts();
-        auto& p = container.set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
+        auto& p = contexts().set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
         return static_cast<T*>(p.get());
     }
 

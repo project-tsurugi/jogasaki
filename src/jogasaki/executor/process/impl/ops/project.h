@@ -82,8 +82,7 @@ public:
      */
     void process_record(operator_executor* parent) override {
         BOOST_ASSERT(parent != nullptr);  //NOLINT
-        context_container& container = parent->contexts();
-        auto* p = find_context<project_context>(index(), container);
+        auto* p = find_context<project_context>(index(), parent->contexts());
         if (! p) {
             p = parent->make_context<project_context>(index(), parent->block_scope(block_index()), parent->resource());
         }

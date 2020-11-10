@@ -38,23 +38,16 @@ public:
     operator_executor(operator_executor&& other) noexcept = delete;
     operator_executor& operator=(operator_executor&& other) noexcept = delete;
 
-    operator_executor(
-        operator_container* operators,
-        abstract::task_context *context,
-        memory_resource* resource,
-        kvs::database* database
+    explicit operator_executor(
+        abstract::task_context &context
     ) noexcept;
 
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
-        auto& container = static_cast<work_context *>(context_->work_context())->contexts();  //NOLINT
+        auto& container = contexts();
         auto& p = container.set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
         return static_cast<T*>(p.get());
     }
-
-    void operator()();
-
-    [[nodiscard]] operator_container& operators() const noexcept;
 
     [[nodiscard]] context_container& contexts() const noexcept;
 
@@ -67,11 +60,8 @@ public:
     [[nodiscard]] abstract::task_context* task_context() const noexcept;
 
 private:
-    operator_container* operators_{};
     abstract::task_context *context_{};
-    memory_resource* resource_{};
-    kvs::database* database_{};
-    operator_base* root_{};
+    impl::work_context* work_context_{};
 };
 
 }

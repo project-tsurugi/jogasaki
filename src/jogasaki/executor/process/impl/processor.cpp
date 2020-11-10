@@ -15,10 +15,15 @@
  */
 #include "processor.h"
 
+#include <takatori/util/downcast.h>
+
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include "block_scope_info.h"
 #include "ops/operator_builder.h"
 
 namespace jogasaki::executor::process::impl {
+
+using takatori::util::unsafe_downcast;
 
 processor::processor(
     std::shared_ptr<processor_info> info,
@@ -38,13 +43,10 @@ abstract::status processor::run(abstract::task_context *context) {
     for(auto& block_info : info_->scopes_info()) {
         work->scopes().emplace_back(block_info);
     }
-    ops::operator_executor visitor{
-        &operators_,
-        context,
-        work->resource(),
-        work->database()
+    ops::operator_executor execution_context{
+        *context
     };
-    visitor();
+    unsafe_downcast<ops::record_operator>(operators_.root()).process_record(&execution_context);
     // TODO handling status code
     return abstract::status::completed;
 }

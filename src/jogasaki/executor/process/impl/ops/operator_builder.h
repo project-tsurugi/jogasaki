@@ -243,6 +243,15 @@ public:
         return std::make_unique<offer>(index_++, *info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
     }
 
+    // keeping in public for testing
+    std::shared_ptr<impl::scan_info> create_scan_info(relation::scan const& node) {
+        return std::make_shared<impl::scan_info>(
+            encode_scan_endpoint(node.lower()),
+            from(node.lower().kind()),
+            encode_scan_endpoint(node.upper()),
+            from(node.upper().kind())
+        );
+    }
 private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
@@ -289,14 +298,6 @@ private:
         return buf;
     }
 
-    std::shared_ptr<impl::scan_info> create_scan_info(relation::scan const& node) {
-        return std::make_shared<impl::scan_info>(
-            encode_scan_endpoint(node.lower()),
-            from(node.lower().kind()),
-            encode_scan_endpoint(node.upper()),
-            from(node.upper().kind())
-        );
-    }
 };
 
 /**

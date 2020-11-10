@@ -23,44 +23,29 @@ namespace jogasaki::executor::process::impl::ops {
 using takatori::util::unsafe_downcast;
 
 operator_executor::operator_executor(
-    operator_container* operators,
-    abstract::task_context *context,
-    memory_resource* resource,
-    kvs::database* database
+    abstract::task_context &context
 ) noexcept :
-    operators_(operators),
-    context_(context),
-    resource_(resource),
-    database_(database),
-    root_(operators_ ? &operators_->root() : nullptr)
+    context_(std::addressof(context)),
+    work_context_(unsafe_downcast<work_context>(context_->work_context()))
 {}
 
 block_scope& operator_executor::block_scope(std::size_t index) {
-    return unsafe_downcast<work_context>(context_->work_context())->variables(index); //NOLINT
+    return work_context_->variables(index); //NOLINT
 }
 
-void operator_executor::operator()() {
-    unsafe_downcast<record_operator>(root_)->process_record(this);
-    // TODO handling status code
+context_container& operator_executor::contexts() const noexcept {
+    return work_context_->contexts();
 }
 
-operator_container &operator_executor::operators() const noexcept {
-    return *operators_;
+operator_executor::memory_resource* operator_executor::resource() const noexcept {
+    return work_context_->resource();
 }
 
-context_container &operator_executor::contexts() const noexcept {
-    return unsafe_downcast<work_context>(context_->work_context())->contexts();
+kvs::database* operator_executor::database() const noexcept {
+    return work_context_->database();
 }
 
-operator_executor::memory_resource *operator_executor::resource() const noexcept {
-    return resource_;
-}
-
-kvs::database *operator_executor::database() const noexcept {
-    return database_;
-}
-
-abstract::task_context *operator_executor::task_context() const noexcept {
+abstract::task_context* operator_executor::task_context() const noexcept {
     return context_;
 }
 

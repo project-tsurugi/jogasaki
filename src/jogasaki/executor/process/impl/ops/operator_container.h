@@ -15,15 +15,12 @@
  */
 #pragma once
 
-#include <takatori/relation/expression.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/block_scope_info.h>
 #include <jogasaki/executor/process/impl/details/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 
 namespace jogasaki::executor::process::impl::ops {
-
-namespace relation = takatori::relation;
 
 /**
  * @brief relational operators container

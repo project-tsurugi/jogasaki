@@ -37,24 +37,51 @@ public:
     context_helper(context_helper&& other) noexcept = delete;
     context_helper& operator=(context_helper&& other) noexcept = delete;
 
+    /**
+     * @brief create helper object for the task context
+     * @param context the original task context
+     */
     explicit context_helper(
         abstract::task_context &context
     ) noexcept;
 
+    /**
+     * @brief make operator context and store it in the context list held by task context (work context)
+     * @tparam T the operator context type
+     * @tparam Args arguments types to construct operator context
+     * @param index the index to position the context in the context list
+     * @param args arguments to construct operator context
+     * @return pointer to the created/stored context
+     */
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
         auto& p = contexts().set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
         return static_cast<T*>(p.get());
     }
 
+    /**
+     * @brief accessor to context_container
+     */
     [[nodiscard]] context_container& contexts() const noexcept;
 
+    /**
+     * @brief accessor to memory resource for work area
+     */
     [[nodiscard]] memory_resource* resource() const noexcept;
 
+    /**
+     * @brief accessor to kvs database
+     */
     [[nodiscard]] kvs::database* database() const noexcept;
 
+    /**
+     * @brief accessor to block_scope
+     */
     [[nodiscard]] class block_scope& block_scope(std::size_t index);
 
+    /**
+     * @brief accessor to task context
+     */
     [[nodiscard]] abstract::task_context* task_context() const noexcept;
 
 private:

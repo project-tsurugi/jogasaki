@@ -115,11 +115,10 @@ public:
         return {};
     }
 
-
     std::unique_ptr<operator_base> operator()(relation::scan const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto downstream = dispatch(*this, node.output().opposite()->owner());
-        auto index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+        auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
 
         // scan info is not passed to scan operator here, but passed back through task_context
         // in order to support parallel scan in the future

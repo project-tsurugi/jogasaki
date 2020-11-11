@@ -109,10 +109,7 @@ using ::takatori::util::string_builder;
 using namespace ::yugawara;
 using namespace ::yugawara::variable;
 
-using custom_memory_resource = jogasaki::memory::monotonic_paged_memory_resource;
-
 using kind = meta::field_type_kind;
-
 constexpr std::size_t max_char_len = 100;
 
 class cli {
@@ -120,15 +117,25 @@ public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
         utils::get_watch().set_point(time_point_begin, 0);
 
+        // for threads
+        //   create and load data
+
+        // for threads
+        //   prepare
+        //   wait
+        //   run
+
+        std::string_view table_name("T0");
+        std::string_view index_name("I0");
         // generate takatori compile info and statement
         auto compiler_context = std::make_shared<plan::compiler_context>();
-        create_compiled_info(compiler_context);
+        create_compiled_info(compiler_context, table_name, index_name);
 
         auto db = kvs::database::open();
         compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
             db->create_storage(id);
         });
-        load_data(db.get(), "I0", param);
+        load_data(db.get(), index_name, param);
 
         // create step graph with only process
         auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
@@ -154,6 +161,13 @@ public:
         dc.schedule(g);
         utils::get_watch().set_point(time_point_completed, 0);
 
+        dump_debug_data(stores, param);
+        dump_perf_info();
+
+        return 0;
+    }
+
+    void dump_debug_data(request_context::result_stores stores, params& param) {
         if(param.debug) {
             auto store = stores[0];
             auto record_meta = store->meta();
@@ -170,12 +184,7 @@ public:
             }
 
         }
-
-        dump_perf_info();
-
-        return 0;
     }
-
     void load_data(kvs::database* db, std::string_view storage_name, params& param) {
         auto tx = db->create_transaction();
         auto stg = db->get_storage(storage_name);
@@ -222,7 +231,6 @@ public:
     }
 private:
     memory::page_pool pool_;
-    std::vector<std::shared_ptr<custom_memory_resource>> resources_{};
 
     void dump_perf_info() {
         auto& watch = utils::get_watch();
@@ -238,12 +246,16 @@ private:
 #endif
     }
 
-    void create_compiled_info(std::shared_ptr<plan::compiler_context> compiler_context) {
+    void create_compiled_info(
+        std::shared_ptr<plan::compiler_context> compiler_context,
+        std::string_view table_name,
+        std::string_view index_name
+    ) {
         binding::factory bindings;
         std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
 
-        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
-            "T0",
+        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table(table_name, {
+            table_name,
             {
                 { "C0", t::int4() },
                 { "C1", t::int8() },
@@ -252,9 +264,9 @@ private:
                 { "C4", t::character(t::varying, max_char_len) },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
+        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index(index_name, {
             t0,
-            "I0",
+            index_name,
             {
                 t0->columns()[0],
                 t0->columns()[1],

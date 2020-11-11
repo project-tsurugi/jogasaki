@@ -44,7 +44,7 @@ public:
         maybe_shared_ptr<meta::record_meta> meta,
         memory_resource* resource = nullptr
     ) : context_base(ctx, variables, resource),
-        buffer_(meta)
+        buffer_(std::move(meta))
     {}
 
     // for test

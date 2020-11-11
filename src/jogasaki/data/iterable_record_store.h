@@ -188,6 +188,13 @@ public:
         return record_size_;
     }
 
+    /**
+     * @brief accessor to metadata
+     * @return record meta held by this object
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept {
+        return base_.meta();
+    }
 private:
     std::size_t record_size_{};
     record_store base_{};

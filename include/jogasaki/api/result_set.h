@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <jogasaki/accessor/record_ref.h> // FIXME using internal accessor temporarily
+#include <jogasaki/data/iterable_record_store.h>
 
 namespace jogasaki::api {
 
@@ -29,7 +30,7 @@ namespace jogasaki::api {
 class result_set {
 public:
     class impl;
-    using iterator = std::vector<accessor::record_ref>::iterator;
+    using iterator = data::iterable_record_store::iterator;
 
     explicit result_set(std::unique_ptr<impl> i);
     ~result_set();

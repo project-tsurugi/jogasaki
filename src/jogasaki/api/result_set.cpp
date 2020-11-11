@@ -20,15 +20,14 @@
 namespace jogasaki::api {
 
 result_set::iterator result_set::impl::begin() {
-    return refs_.begin();
+    return store_->begin();
 }
 
 result_set::iterator result_set::impl::end() {
-    return refs_.end();
+    return store_->end();
 }
 
 void result_set::impl::close() {
-    refs_.clear();
     store_.reset();
     record_resource_.reset();
     varlen_resource_.reset();

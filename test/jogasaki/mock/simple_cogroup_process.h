@@ -35,6 +35,9 @@ public:
     void activate() override {
         data_flow_object(std::make_unique<simple_cogroup_process_flow>(nullptr, this, context()));
     }
+    std::size_t partitions() const noexcept override {
+        return default_partitions;
+    }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
 };

@@ -22,6 +22,8 @@ class params {
 public:
     std::size_t records_per_partition_ = 1000;
     std::size_t partitions_ = 10;
+    bool debug = false;
+    bool sequential_data = false;
 };
 
 }

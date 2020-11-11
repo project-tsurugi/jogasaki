@@ -48,7 +48,7 @@ public:
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
         std::shared_ptr<kvs::database> database = {},
-        result_stores stores = {},
+        result_stores* stores = {},
         memory::paged_memory_resource* record_resource = {},
         memory::paged_memory_resource* varlen_resource = {}
     );
@@ -69,7 +69,7 @@ public:
      * @brief accessor for the result store
      * @return result store
      */
-    [[nodiscard]] result_stores& stores();
+    [[nodiscard]] result_stores* stores();
 
     /**
      * @brief accessor for the compiler context
@@ -102,8 +102,8 @@ private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<plan::compiler_context> compiler_context_{};
+    result_stores* stores_{};
     std::shared_ptr<kvs::database> database_{};
-    result_stores stores_{};
     memory::paged_memory_resource* record_resource_{};
     memory::paged_memory_resource* varlen_resource_{};
 };

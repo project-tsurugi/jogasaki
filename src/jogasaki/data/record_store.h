@@ -90,6 +90,13 @@ public:
      */
     void reset() noexcept;
 
+    /**
+     * @brief accessor to metadata
+     * @return record meta held by this object
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
+        return meta_;
+    }
 private:
     memory::paged_memory_resource* resource_{};
     maybe_shared_ptr<meta::record_meta> meta_{};

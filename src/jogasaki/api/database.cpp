@@ -88,7 +88,6 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         LOG(ERROR) << "database not started";
         fail();
     }
-    // TODO specify memory stores
     request_context::result_stores stores{};
     // TODO redesign how request context is passed
     auto* g = ctx->step_graph();
@@ -97,14 +96,15 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         cfg_,
         std::move(ctx),
         kvs_db_,
-        stores
+        &stores
     );
 
     dynamic_cast<executor::common::graph*>(g)->context(*request_ctx);
     scheduler_.schedule(*g);
 
     // for now, assume only one result is returned
-    return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(stores[0])));
+    auto result = (!stores.empty() && stores[0] != nullptr ) ? stores[0] : std::make_shared<data::iterable_record_store>();
+    return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(result)));
 }
 
 bool database::impl::start() {

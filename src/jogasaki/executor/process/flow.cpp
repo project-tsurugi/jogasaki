@@ -78,14 +78,20 @@ common::step_kind flow::kind() const noexcept {
 }
 
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {
+    auto external_output = operators.io_exchange_map().external_output_count();
+    auto* stores = context_->stores();
+    if (stores) {
+        stores->resize(stores->size() + external_output);
+    }
     auto ctx = std::make_shared<impl::task_context>(
         partition,
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
-        context_->stores(),
+        stores,
         context_->record_resource(),
         context_->varlen_resource()
     );
+
     ctx->work_context(std::make_unique<impl::work_context>(
         operators.size(),
         info_->scopes_info().size(),

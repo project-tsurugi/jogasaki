@@ -37,18 +37,12 @@ public:
     explicit impl(
         std::shared_ptr<data::iterable_record_store> store
     ) noexcept :
-    impl(
-        std::move(store),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
-    ) {
-        //FIXME temp. implementation for client access
-        refs_.reserve(store_->count());
-        auto sz = store_->record_size();
-        for(auto it : *store_) {
-            refs_.emplace_back(it, sz);
-        }
-    }
+        impl(
+            std::move(store),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
+        )
+    {}
 
     [[nodiscard]] iterator begin();
     [[nodiscard]] iterator end();
@@ -58,7 +52,6 @@ private:
     std::shared_ptr<data::iterable_record_store> store_{};
     std::unique_ptr<memory::monotonic_paged_memory_resource> record_resource_{};
     std::unique_ptr<memory::monotonic_paged_memory_resource> varlen_resource_{};
-    std::vector<accessor::record_ref> refs_{}; //FIXME
 };
 
 }

@@ -36,6 +36,9 @@ public:
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
         data_flow_object(std::make_unique<simple_emit_process_flow>(p, this, context()));
     }
+    std::size_t partitions() const noexcept override {
+        return 1;
+    }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};
 };

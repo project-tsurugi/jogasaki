@@ -53,14 +53,14 @@ public:
     task_context(partition_index partition,
         impl::details::io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
-        result_stores& stores,
+        result_stores* stores,
         memory::paged_memory_resource* record_resource = {},
         memory::paged_memory_resource* varlen_resource = {}
     ) :
         partition_(partition),
         io_exchange_map_(std::addressof(io_exchange_map)),
         scan_info_(std::move(scan_info)),
-        stores_(std::addressof(stores)),
+        stores_(stores),
         external_writers_(io_exchange_map_->external_output_count()),
         record_resource_(record_resource),
         varlen_resource_(varlen_resource)
@@ -101,7 +101,8 @@ public:
     }
 
     record_writer* external_writer(writer_index idx) override {
-        BOOST_ASSERT(idx < external_writers_.size());
+        BOOST_ASSERT(idx < external_writers_.size());  //NOLINT
+        BOOST_ASSERT(stores_ != nullptr);  //NOLINT
         auto& op = unsafe_downcast<ops::emit>(io_exchange_map_->external_output_at(idx));
         auto& slot = external_writers_.operator[](idx);
         if (! slot) {

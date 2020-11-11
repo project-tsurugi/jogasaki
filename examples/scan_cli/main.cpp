@@ -65,6 +65,8 @@ DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NO
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
+DEFINE_bool(debug, false, "debug mode");  //NOLINT
+DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -135,7 +137,18 @@ public:
         auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<class channel>();
-        auto context = std::make_shared<request_context>(channel, cfg, compiler_context, std::shared_ptr<kvs::database>(std::move(db)));
+        memory::monotonic_paged_memory_resource record_resource{&global::page_pool()};
+        memory::monotonic_paged_memory_resource varlen_resource{&global::page_pool()};
+        request_context::result_stores stores{};
+        auto context = std::make_shared<request_context>(
+            channel,
+            cfg,
+            compiler_context,
+            std::shared_ptr<kvs::database>(std::move(db)),
+            &stores,
+            &record_resource,
+            &varlen_resource
+        );
         common::graph g{*context};
         g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
 
@@ -143,6 +156,23 @@ public:
         utils::get_watch().set_point(time_point_schedule, 0);
         dc.schedule(g);
         utils::get_watch().set_point(time_point_completed, 0);
+
+        if(param.debug) {
+            auto store = stores[0];
+            auto record_meta = store->meta();
+            auto it = store->begin();
+            while(it != store->end()) {
+                auto record = it.ref();
+                LOG(INFO) <<
+                    "C0: " << record.get_value<std::int32_t>(record_meta->value_offset(0)) <<
+                    " C1: " << record.get_value<double>(record_meta->value_offset(1)) <<
+                    " C2: " << record.get_value<std::int64_t>(record_meta->value_offset(2));
+                ++it;
+            }
+
+        }
+
+
         dump_perf_info();
 
         return 0;
@@ -164,9 +194,9 @@ public:
 
         utils::xorshift_random64 rnd{};
         for(std::size_t i=0; i < param.records_per_partition_; ++i) {
-            key_record key_rec{key_meta, static_cast<std::int32_t>(rnd())};
+            key_record key_rec{key_meta, static_cast<std::int32_t>(param.sequential_data ? i : rnd())};
             kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
-            value_record val_rec{val_meta, static_cast<double>(rnd()), static_cast<std::int64_t>(rnd())};
+            value_record val_rec{val_meta, static_cast<double>(param.sequential_data ? i*10 : rnd()), static_cast<std::int64_t>(param.sequential_data ? i*100 : rnd())};
             kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
             kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), val_stream);
             if(auto res = stg->put(*tx,
@@ -283,106 +313,6 @@ private:
         if (! p0) fail();
         return *p0;
     }
-
-    /*
-    void customize_process(
-        params& param,
-        process::step& process,
-        maybe_shared_ptr<meta::record_meta> meta
-    ) {
-        // create custom contexts
-        utils::xorshift_random64 rnd{1234567U};
-        auto records_per_partition = param.records_per_partition_;
-        auto record_size = sizeof(test_record);
-        auto write_buffer_record_count = param.write_buffer_size_ / record_size;
-        auto read_buffer_record_count = param.read_buffer_size_ / record_size;
-        auto partitions = param.partitions_;
-        std::vector<std::shared_ptr<process::abstract::task_context>> custom_contexts{};
-        if (param.std_allocator) {
-            resources_.reserve(partitions*2);
-        }
-        for(std::size_t i=0; i < partitions; ++i) {
-            pmr::memory_resource* reader_resource =
-                param.std_allocator ?
-                    static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
-                    resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
-            std::size_t seq = 0;
-            auto& reader = readers_.emplace_back(std::make_shared<reader_type>(
-                read_buffer_record_count,
-                (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
-                [&rnd, &meta, &seq, &param]() {
-                    ++seq;
-                    return test_record{
-                        meta,
-                        static_cast<double>(param.sequential_data ? seq : rnd()),
-                        static_cast<std::int32_t>(param.sequential_data ? seq*10 : rnd()),
-                        static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd()),
-                    };
-                },
-                reader_resource
-                )
-            );
-            reader_container r{reader.get()};
-            pmr::memory_resource* writer_resource =
-                param.std_allocator ?
-                    static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
-                    resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
-            auto& writer = writers_.emplace_back(std::make_shared<writer_type>(
-                write_buffer_record_count,
-                writer_resource
-            ));
-            auto ctx =
-                std::make_shared<process::mock::task_context>(
-                    std::vector<reader_container>{r},
-                    std::vector<std::shared_ptr<executor::record_writer>>{writer},
-                    std::vector<std::shared_ptr<executor::record_writer>>{},
-                    std::shared_ptr<abstract::scan_info>{}
-                );
-
-            ctx->work_context(std::make_unique<process::impl::work_context>(
-                2UL, // operator count
-                1UL, // block_scope count
-                std::make_unique<memory::lifo_paged_memory_resource>(&pool_),
-                std::shared_ptr<kvs::database>{}
-            ));
-            custom_contexts.emplace_back(std::move(ctx));
-        }
-
-        // insert custom contexts via executor factory
-        auto f = std::make_shared<abstract::process_executor_factory>([custom_contexts = std::move(custom_contexts)](
-            std::shared_ptr<abstract::processor> processor,
-            std::vector<std::shared_ptr<abstract::task_context>> contexts //NOLINT
-        ){
-            (void)contexts;
-            auto ret = std::make_shared<process::mock::process_executor>(std::move(processor), custom_contexts);
-
-            ret->will_run(
-                std::make_shared<callback_type>([](callback_arg* arg){
-                    utils::get_watch().set_point(time_point_run, arg->identity_);
-                })
-            );
-            ret->did_run(
-                std::make_shared<callback_type>([](callback_arg* arg){
-                    utils::get_watch().set_point(time_point_ran, arg->identity_);
-                })
-            );
-            return ret;
-        });
-        process.executor_factory(f);
-        process.partitions(partitions);
-        process.will_create_tasks(
-            std::make_shared<callback_type>([](callback_arg*){
-                utils::get_watch().set_point(time_point_create_task, 0);
-            })
-        );
-        process.did_create_tasks(
-            std::make_shared<callback_type>([](callback_arg*){
-                utils::get_watch().set_point(time_point_created_task, 0);
-            })
-        );
-
-    }
-     */
 }; // class cli
 
 }  // namespace
@@ -408,6 +338,8 @@ extern "C" int main(int argc, char* argv[]) {
 
     s.partitions_ = FLAGS_partitions;
     s.records_per_partition_ = FLAGS_records_per_partition;
+    s.debug = FLAGS_debug;
+    s.sequential_data = FLAGS_sequential_data;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);
@@ -420,7 +352,7 @@ extern "C" int main(int argc, char* argv[]) {
         cfg->core_affinity(false);
 
         s.partitions_ = 1;
-        s.records_per_partition_ = 1;
+        s.records_per_partition_ = 3;
     }
 
     if (cfg->assign_numa_nodes_uniformly()) {

@@ -33,7 +33,7 @@ static int run(std::string_view sql) {
     auto rs = db.execute(sql);
     auto it = rs->begin();
     while(it != rs->end()) {
-        auto record = *it;
+        auto record = it.ref();
         LOG(INFO) << "C0: " << record.get_value<std::int64_t>(0) << " C1: " << record.get_value<double>(8); //FIXME use record_meta
         ++it;
     }

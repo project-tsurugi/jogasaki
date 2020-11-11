@@ -30,6 +30,8 @@ result_set::iterator result_set::impl::end() {
 void result_set::impl::close() {
     refs_.clear();
     store_.reset();
+    record_resource_.reset();
+    varlen_resource_.reset();
 };
 
 result_set::result_set(std::unique_ptr<result_set::impl> i) : impl_(std::move(i)) {}

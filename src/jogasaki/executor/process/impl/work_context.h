@@ -19,6 +19,7 @@
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/kvs/database.h>
 
 namespace jogasaki::executor::process::impl {
 

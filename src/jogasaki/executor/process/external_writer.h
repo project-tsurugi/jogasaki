@@ -40,23 +40,13 @@ public:
     external_writer(
         data::iterable_record_store& store,
         maybe_shared_ptr<meta::record_meta> meta
-    ) :
-        store_(std::addressof(store)),
-        meta_(std::move(meta))
-    {}
+    );
 
-    bool write(accessor::record_ref rec) override {
-        store_->append(rec);
-        return false;
-    }
+    bool write(accessor::record_ref rec) override;
 
-    void flush() override {
-        // no-op
-    }
+    void flush() override;
 
-    void release() override {
-        store_ = nullptr;
-    }
+    void release() override;
 
 private:
     data::iterable_record_store* store_{};

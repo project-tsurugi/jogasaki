@@ -17,6 +17,7 @@
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/utils/performance_tools.h>
 

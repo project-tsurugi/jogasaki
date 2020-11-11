@@ -48,7 +48,9 @@ public:
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
         std::shared_ptr<kvs::database> database = {},
-        result_stores stores = {}
+        result_stores stores = {},
+        memory::paged_memory_resource* record_resource = {},
+        memory::paged_memory_resource* varlen_resource = {}
     );
 
     /**
@@ -67,7 +69,7 @@ public:
      * @brief accessor for the result store
      * @return result store
      */
-    [[nodiscard]] result_stores const& stores() const;
+    [[nodiscard]] result_stores& stores();
 
     /**
      * @brief accessor for the compiler context
@@ -80,12 +82,30 @@ public:
      * @return database shared within this request
      */
     [[nodiscard]] std::shared_ptr<kvs::database> const& database() const;
+
+    /**
+     * @brief accessor for the record resource
+     * @return record resource
+     */
+    [[nodiscard]] memory::paged_memory_resource* record_resource() const noexcept {
+        return record_resource_;
+    }
+
+    /**
+     * @brief accessor for the varlen resource
+     * @return varlen resource
+     */
+    [[nodiscard]] memory::paged_memory_resource* varlen_resource() const noexcept {
+        return varlen_resource_;
+    }
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<plan::compiler_context> compiler_context_{};
     std::shared_ptr<kvs::database> database_{};
     result_stores stores_{};
+    memory::paged_memory_resource* record_resource_{};
+    memory::paged_memory_resource* varlen_resource_{};
 };
 
 }

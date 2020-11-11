@@ -15,7 +15,9 @@
  */
 #pragma once
 
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/external_writer.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -25,6 +27,8 @@ namespace jogasaki::executor::process::impl::ops {
  */
 class emit_context : public context_base {
 public:
+    using memory_resource = memory::lifo_paged_memory_resource;
+
     friend class emit;
     /**
      * @brief create empty object
@@ -34,28 +38,30 @@ public:
     /**
      * @brief create new object
      */
-    explicit emit_context(
+    emit_context(
         class abstract::task_context* ctx,
-        maybe_shared_ptr<meta::record_meta> meta,
         block_scope& variables,
+        maybe_shared_ptr<meta::record_meta> meta,
         memory_resource* resource = nullptr
     ) : context_base(ctx, variables, resource),
-        store_(std::move(meta))
+        buffer_(meta)
     {}
+
+    // for test
+    [[nodiscard]] data::small_record_store& store() noexcept {
+        return buffer_;
+    }
 
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::emit;
     }
 
     void release() override {
-        if(writer_) {
-            writer_->release();
-            writer_ = nullptr;
-        }
+        // TODO
     }
 private:
-    data::small_record_store store_{};
-    record_writer* writer_{};
+    data::small_record_store buffer_{};
+    external_writer* writer_{};
 };
 
 }

@@ -19,7 +19,6 @@
 
 #include <takatori/relation/expression.h>
 #include <takatori/util/fail.h>
-#include <takatori/relation/emit.h>
 #include <takatori/relation/step/offer.h>
 #include <yugawara/compiled_info.h>
 

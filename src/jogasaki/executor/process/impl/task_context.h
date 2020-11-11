@@ -20,8 +20,10 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/external_writer.h>
 #include <jogasaki/executor/process/impl/details/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/group/flow.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
@@ -29,12 +31,16 @@
 
 namespace jogasaki::executor::process::impl {
 
+using takatori::util::unsafe_downcast;
+
 /**
  * @brief task context implementation for production
  */
 class task_context : public abstract::task_context {
 public:
     using partition_index = std::size_t;
+
+    using result_stores = request_context::result_stores;
     /**
      * @brief create new empty instance
      */
@@ -46,11 +52,18 @@ public:
 
     task_context(partition_index partition,
         impl::details::io_exchange_map const& io_exchange_map,
-        std::shared_ptr<impl::scan_info> scan_info
+        std::shared_ptr<impl::scan_info> scan_info,
+        result_stores& stores,
+        memory::paged_memory_resource* record_resource = {},
+        memory::paged_memory_resource* varlen_resource = {}
     ) :
         partition_(partition),
         io_exchange_map_(std::addressof(io_exchange_map)),
-        scan_info_(std::move(scan_info))
+        scan_info_(std::move(scan_info)),
+        stores_(std::addressof(stores)),
+        external_writers_(io_exchange_map_->external_output_count()),
+        record_resource_(record_resource),
+        varlen_resource_(varlen_resource)
     {}
 
     reader_container reader(reader_index idx) override {
@@ -88,15 +101,18 @@ public:
     }
 
     record_writer* external_writer(writer_index idx) override {
-        auto& p = io_exchange_map_->external_output_at(idx);
-        using kind = ops::operator_kind;
-        switch(p.kind()) {
-            case kind::emit:
-            case kind::write:
-            default:
-                break;
+        BOOST_ASSERT(idx < external_writers_.size());
+        auto& op = unsafe_downcast<ops::emit>(io_exchange_map_->external_output_at(idx));
+        auto& slot = external_writers_.operator[](idx);
+        if (! slot) {
+            auto& st = stores_->operator[](idx) = std::make_shared<data::iterable_record_store>(
+                record_resource_,
+                varlen_resource_,
+                op.meta()
+            );
+            slot = std::make_shared<class external_writer>(*st, op.meta());
         }
-        return {};
+        return slot.get();
     }
 
     class abstract::scan_info const* scan_info() override {
@@ -111,6 +127,10 @@ private:
     std::size_t partition_{};
     impl::details::io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
+    result_stores* stores_{};
+    std::vector<std::shared_ptr<class external_writer>> external_writers_{};
+    memory::paged_memory_resource* record_resource_{};
+    memory::paged_memory_resource* varlen_resource_{};
 };
 
 }

@@ -36,6 +36,8 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::unsafe_downcast;
+
 namespace details {
 
 struct cache_align emit_field {
@@ -85,7 +87,11 @@ public:
         context_helper ctx{*context};
         auto* p = find_context<emit_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<emit_context>(index(), meta(), ctx.block_scope(block_index()), ctx.resource());
+            p = ctx.make_context<emit_context>(
+                index(),
+                ctx.block_scope(block_index()),
+                meta(),
+                ctx.resource());
         }
         (*this)(*p);
     }
@@ -96,16 +102,16 @@ public:
      * @param ctx operator context object for the execution
      */
     void operator()(emit_context& ctx) {
-        auto target = ctx.store_.ref();
+        auto target = ctx.buffer_.ref();
         auto source = ctx.variables().store().ref();
         for(auto &f : fields_) {
             utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
         }
 
-        if (ctx.writer_) {
-            // FIXME fetch writer when needed
-            ctx.writer_->write(target);
+        if (!ctx.writer_) {
+            ctx.writer_ = unsafe_downcast<external_writer>(ctx.task_context().external_writer(external_writer_index_));
         }
+        ctx.writer_->write(target);
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {

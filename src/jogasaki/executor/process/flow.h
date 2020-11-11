@@ -20,12 +20,16 @@
 
 #include <jogasaki/request_context.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/processor.h>
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/task_context.h>
 #include "task.h"
 
 namespace jogasaki::executor::process {
+
+namespace impl {
+class task_context;
+}
 
 using ::takatori::util::sequence_view;
 class step;

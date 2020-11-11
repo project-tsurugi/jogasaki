@@ -15,14 +15,33 @@
  */
 #pragma once
 
+#include <jogasaki/executor/global.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::api {
 
 class result_set::impl {
 public:
-    explicit impl(std::shared_ptr<data::iterable_record_store> store) noexcept : store_(std::move(store)) {
+    impl(
+        std::shared_ptr<data::iterable_record_store> store,
+        std::unique_ptr<memory::monotonic_paged_memory_resource> record_resource,
+        std::unique_ptr<memory::monotonic_paged_memory_resource> varlen_resource
+    ) noexcept :
+        store_(std::move(store)),
+        record_resource_(std::move(record_resource)),
+        varlen_resource_(std::move(varlen_resource))
+    {}
+
+    explicit impl(
+        std::shared_ptr<data::iterable_record_store> store
+    ) noexcept :
+    impl(
+        std::move(store),
+        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
+    ) {
         //FIXME temp. implementation for client access
         refs_.reserve(store_->count());
         auto sz = store_->record_size();
@@ -37,6 +56,8 @@ public:
 
 private:
     std::shared_ptr<data::iterable_record_store> store_{};
+    std::unique_ptr<memory::monotonic_paged_memory_resource> record_resource_{};
+    std::unique_ptr<memory::monotonic_paged_memory_resource> varlen_resource_{};
     std::vector<accessor::record_ref> refs_{}; //FIXME
 };
 

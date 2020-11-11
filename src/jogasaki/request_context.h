@@ -30,6 +30,7 @@ class channel;
  */
 class request_context {
 public:
+    using result_stores = std::vector<std::shared_ptr<data::iterable_record_store>>;
     /**
      * @brief create default context object
      */
@@ -47,7 +48,7 @@ public:
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
         std::shared_ptr<kvs::database> database = {},
-        std::shared_ptr<data::iterable_record_store> result_store = {}
+        result_stores stores = {}
     );
 
     /**
@@ -66,7 +67,7 @@ public:
      * @brief accessor for the result store
      * @return result store
      */
-    [[nodiscard]] std::shared_ptr<data::iterable_record_store> const& result_store() const;
+    [[nodiscard]] result_stores const& stores() const;
 
     /**
      * @brief accessor for the compiler context
@@ -84,7 +85,7 @@ private:
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<plan::compiler_context> compiler_context_{};
     std::shared_ptr<kvs::database> database_{};
-    std::shared_ptr<data::iterable_record_store> result_store_{};
+    result_stores stores_{};
 };
 
 }

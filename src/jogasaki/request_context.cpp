@@ -31,13 +31,13 @@ request_context::request_context(
     std::shared_ptr<class configuration> config,
     std::shared_ptr<plan::compiler_context> compiler_context,
     std::shared_ptr<kvs::database> database,
-    std::shared_ptr<data::iterable_record_store> result_store
+    result_stores stores
 ) :
     channel_(std::move(ch)),
     config_(std::move(config)),
     compiler_context_(std::move(compiler_context)),
     database_(std::move(database)),
-    result_store_(std::move(result_store))
+    stores_(std::move(stores))
 {}
 
 std::shared_ptr<class channel> const& request_context::channel() const {
@@ -48,8 +48,8 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
     return config_;
 }
 
-std::shared_ptr<data::iterable_record_store> const& request_context::result_store() const {
-    return result_store_;
+request_context::result_stores const& request_context::stores() const {
+    return stores_;
 }
 
 std::shared_ptr<plan::compiler_context> const& request_context::compiler_context() const {

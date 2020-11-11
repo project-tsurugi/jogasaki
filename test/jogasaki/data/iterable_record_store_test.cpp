@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/comparator.h>
 
 #include <jogasaki/mock_memory_resource.h>
 
@@ -33,6 +34,7 @@ using namespace takatori::util;
 using namespace std::string_view_literals;
 
 using namespace jogasaki::memory;
+using namespace jogasaki::executor;
 using namespace boost::container::pmr;
 
 class iterable_record_store_test : public test_root {};
@@ -140,5 +142,17 @@ TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
     ASSERT_NE(r.begin(), it);
 }
 
+TEST_F(iterable_record_store_test, record_ref) {
+    mock_memory_resource memory{};
+    mock::record rec{2, 2.0};
+    auto meta = rec.record_meta();
+    iterable_record_store r{&memory, &memory, meta};
+    auto p1 = r.append(rec.ref());
+    auto sz = rec.record_meta()->record_size();
+    record_ref res1{p1, sz};
+    comparator comp{meta.get()};
+    auto it = r.begin();
+    EXPECT_EQ(0, comp(res1, it.ref()));
 }
 
+}

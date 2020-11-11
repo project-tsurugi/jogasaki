@@ -23,6 +23,7 @@
 
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::data {
 
@@ -96,6 +97,12 @@ public:
         [[nodiscard]] reference operator*() {
             return pos_;
         }
+
+        /**
+         * @brief dereference the iterator and return record ref
+         * @return record ref to the record that the iterator is on
+         */
+        [[nodiscard]] accessor::record_ref ref() const noexcept;
 
         /// @brief equivalent comparison
         constexpr bool operator==(iterator const& r) const noexcept {

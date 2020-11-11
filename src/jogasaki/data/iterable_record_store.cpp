@@ -37,6 +37,10 @@ const iterable_record_store::iterator iterable_record_store::iterator::operator+
     return it;
 }
 
+accessor::record_ref iterable_record_store::iterator::ref() const noexcept {
+    return accessor::record_ref{pos_, container_->record_size_};
+}
+
 iterable_record_store::iterator::iterator(const iterable_record_store &container,
     std::vector<iterable_record_store::record_range>::iterator range) :
     container_(&container), pos_(range != container_->ranges_.end() ? range->b_ : nullptr), range_(range)

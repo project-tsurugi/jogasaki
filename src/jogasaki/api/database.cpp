@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/database.h>
+#include "database_impl.h"
 
 #include <string_view>
 #include <glog/logging.h>
 
-#include <takatori/type/int.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/api/result_set.h>
@@ -35,48 +34,6 @@ namespace jogasaki::api {
 using configurable_provider = ::yugawara::storage::configurable_provider;
 using takatori::util::fail;
 
-class database::impl {
-public:
-    impl() : impl(std::make_shared<configuration>()) {}
-    explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)), scheduler_{cfg_} {
-        add_default_table_defs(storage_provider_.get());
-    }
-    std::unique_ptr<result_set> execute(std::string_view sql);
-    bool start();
-    bool stop();
-private:
-    std::shared_ptr<configuration> cfg_{};
-    scheduler::dag_controller scheduler_{};
-    std::shared_ptr<configurable_provider> storage_provider_{std::make_shared<configurable_provider>()};
-    std::shared_ptr<kvs::database> kvs_db_{};
-
-    void add_default_table_defs(configurable_provider* provider) {
-        namespace type = ::takatori::type;
-
-        std::shared_ptr<::yugawara::storage::table> t0 = provider->add_table("T0", {
-            "T0",
-            {
-                { "C0", type::int8() },
-                { "C1", type::float8 () },
-            },
-        });
-        std::shared_ptr<::yugawara::storage::index> i0 = provider->add_index("I0", {
-            t0,
-            "I0",
-            {
-                t0->columns()[0],
-            },
-            {},
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        });
-    }
-};
-
 std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->storage_provider(storage_provider_);
@@ -88,6 +45,8 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         LOG(ERROR) << "database not started";
         fail();
     }
+    auto record_resource = std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool());
+    auto varlen_resource = std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool());
     request_context::result_stores stores{};
     // TODO redesign how request context is passed
     auto* g = ctx->step_graph();
@@ -96,7 +55,9 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         cfg_,
         std::move(ctx),
         kvs_db_,
-        &stores
+        &stores,
+        record_resource.get(),
+        varlen_resource.get()
     );
 
     dynamic_cast<executor::common::graph*>(g)->context(*request_ctx);
@@ -104,7 +65,11 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
 
     // for now, assume only one result is returned
     auto result = (!stores.empty() && stores[0] != nullptr ) ? stores[0] : std::make_shared<data::iterable_record_store>();
-    return std::make_unique<result_set>(std::make_unique<result_set::impl>(std::move(result)));
+    return std::make_unique<result_set>(std::make_unique<result_set::impl>(
+        std::move(result),
+        std::move(record_resource),
+        std::move(varlen_resource)
+    ));
 }
 
 bool database::impl::start() {

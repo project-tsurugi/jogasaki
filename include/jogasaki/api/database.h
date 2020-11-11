@@ -41,9 +41,11 @@ public:
     bool stop();
     std::unique_ptr<result_set> execute(std::string_view sql);
 
-private:
     class impl;
+private:
     std::unique_ptr<impl> impl_;
+
+    friend impl;
 };
 
 }

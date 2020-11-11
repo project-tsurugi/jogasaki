@@ -41,7 +41,7 @@ result_set::iterator result_set::begin() {
 }
 
 result_set::iterator result_set::end() {
-    return impl_->begin();
+    return impl_->end();
 }
 
 void result_set::close() {

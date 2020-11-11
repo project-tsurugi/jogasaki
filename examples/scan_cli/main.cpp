@@ -26,6 +26,7 @@
 
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
+#include <takatori/type/character.h>
 #include <takatori/value/int.h>
 #include <takatori/value/float.h>
 #include <takatori/util/string_builder.h>
@@ -111,17 +112,13 @@ using namespace ::yugawara::variable;
 using custom_memory_resource = jogasaki::memory::monotonic_paged_memory_resource;
 
 using kind = meta::field_type_kind;
-using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-using reader_type = process::mock::basic_record_reader<test_record>;
-using writer_type = process::mock::basic_record_writer<test_record>;
+
+constexpr std::size_t max_char_len = 100;
 
 class cli {
 public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
         utils::get_watch().set_point(time_point_begin, 0);
-        assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
-        static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
-        auto meta = test_record{}.record_meta();
 
         // generate takatori compile info and statement
         auto compiler_context = std::make_shared<plan::compiler_context>();
@@ -165,13 +162,14 @@ public:
                 auto record = it.ref();
                 LOG(INFO) <<
                     "C0: " << record.get_value<std::int32_t>(record_meta->value_offset(0)) <<
-                    " C1: " << record.get_value<double>(record_meta->value_offset(1)) <<
-                    " C2: " << record.get_value<std::int64_t>(record_meta->value_offset(2));
+                    " C1: " << record.get_value<std::int64_t>(record_meta->value_offset(1)) <<
+                    " C2: " << record.get_value<double>(record_meta->value_offset(2)) <<
+                    " C3: " << record.get_value<float>(record_meta->value_offset(3)) <<
+                    " C4: " << record.get_value<accessor::text>(record_meta->value_offset(4));
                 ++it;
             }
 
         }
-
 
         dump_perf_info();
 
@@ -187,18 +185,28 @@ public:
         kvs::stream key_stream{key_buf};
         kvs::stream val_stream{val_buf};
 
-        using key_record = jogasaki::mock::basic_record<kind::int4>;
-        using value_record = jogasaki::mock::basic_record<kind::float8, kind::int8>;
+        using key_record = jogasaki::mock::basic_record<kind::int4, kind::int8>;
+        using value_record = jogasaki::mock::basic_record<kind::float8, kind::float4, kind::character>;
         auto key_meta = key_record{}.record_meta();
         auto val_meta = value_record{}.record_meta();
 
         utils::xorshift_random64 rnd{};
         for(std::size_t i=0; i < param.records_per_partition_; ++i) {
-            key_record key_rec{key_meta, static_cast<std::int32_t>(param.sequential_data ? i : rnd())};
+            key_record key_rec{key_meta,
+                static_cast<std::int32_t>(param.sequential_data ? i : rnd()),
+                static_cast<std::int64_t>(param.sequential_data ? i*2 : rnd()),
+            };
             kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
-            value_record val_rec{val_meta, static_cast<double>(param.sequential_data ? i*10 : rnd()), static_cast<std::int64_t>(param.sequential_data ? i*100 : rnd())};
+            kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), key_stream);
+            std::string str(rnd() % max_char_len, static_cast<char>(param.sequential_data ? 'A'+(i % 26) : rnd()));
+            value_record val_rec{val_meta,
+                static_cast<double>(param.sequential_data ? i*10 : rnd()),
+                static_cast<float>(param.sequential_data ? i*100 : rnd()),
+                accessor::text(str.data(), str.size())
+            };
             kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
             kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), val_stream);
+            kvs::encode(val_rec.ref(), val_meta->value_offset(2), val_meta->at(2), val_stream);
             if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}
@@ -215,10 +223,6 @@ public:
 private:
     memory::page_pool pool_;
     std::vector<std::shared_ptr<custom_memory_resource>> resources_{};
-    std::vector<maybe_shared_ptr<takatori::plan::exchange>> input_exchanges_{};
-    std::vector<maybe_shared_ptr<takatori::plan::exchange>> output_exchanges_{};
-    std::vector<std::shared_ptr<writer_type>> writers_{};
-    std::vector<std::shared_ptr<reader_type>> readers_{};
 
     void dump_perf_info() {
         auto& watch = utils::get_watch();
@@ -242,8 +246,10 @@ private:
             "T0",
             {
                 { "C0", t::int4() },
-                { "C1", t::float8() },
-                { "C2", t::int8() },
+                { "C1", t::int8() },
+                { "C2", t::float8() },
+                { "C3", t::float4() },
+                { "C4", t::character(t::varying, max_char_len) },
             },
         });
         std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
@@ -251,6 +257,7 @@ private:
             "I0",
             {
                 t0->columns()[0],
+                t0->columns()[1],
             },
             {},
             {
@@ -264,18 +271,24 @@ private:
         storage::column const& t0c0 = t0->columns()[0];
         storage::column const& t0c1 = t0->columns()[1];
         storage::column const& t0c2 = t0->columns()[2];
+        storage::column const& t0c3 = t0->columns()[3];
+        storage::column const& t0c4 = t0->columns()[4];
 
         auto p = std::make_shared<takatori::plan::graph_type>();
         auto&& p0 = p->insert(takatori::plan::process {});
         auto c0 = bindings.stream_variable("c0");
         auto c1 = bindings.stream_variable("c1");
         auto c2 = bindings.stream_variable("c2");
+        auto c3 = bindings.stream_variable("c3");
+        auto c4 = bindings.stream_variable("c4");
         auto& r0 = p0.operators().insert(relation::scan {
             bindings(*i0),
             {
                 { bindings(t0c0), c0 },
                 { bindings(t0c1), c1 },
                 { bindings(t0c2), c2 },
+                { bindings(t0c3), c3 },
+                { bindings(t0c4), c4 },
             },
         });
 
@@ -284,6 +297,8 @@ private:
                 { c0, "c0"},
                 { c1, "c1"},
                 { c2, "c2"},
+                { c3, "c3"},
+                { c4, "c4"},
             },
         });
 
@@ -291,11 +306,15 @@ private:
 
         auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
         vm->bind(c0, t::int4{});
-        vm->bind(c1, t::float8{});
-        vm->bind(c2, t::int8{});
+        vm->bind(c1, t::int8{});
+        vm->bind(c2, t::float8{});
+        vm->bind(c3, t::float4{});
+        vm->bind(c4, t::character{t::varying, max_char_len});
         vm->bind(bindings(t0c0), t::int4{});
-        vm->bind(bindings(t0c1), t::float8{});
-        vm->bind(bindings(t0c2), t::int8{});
+        vm->bind(bindings(t0c1), t::int8{});
+        vm->bind(bindings(t0c2), t::float8{});
+        vm->bind(bindings(t0c3), t::float4{});
+        vm->bind(bindings(t0c4), t::character{t::varying, max_char_len});
         yugawara::compiled_info c_info{{}, vm};
 
         compiler_context->storage_provider(std::move(storages));

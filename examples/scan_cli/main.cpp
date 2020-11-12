@@ -265,11 +265,11 @@ public:
         }
     }
     void load_data(kvs::database* db, std::string_view storage_name, params& param) {
-        auto tx = db->create_transaction();
         auto stg = db->get_storage(storage_name);
 
-        std::string key_buf(1024, '\0');
-        std::string val_buf(1024, '\0');
+        static std::size_t buflen = 1024;
+        std::string key_buf(buflen, '\0');
+        std::string val_buf(buflen, '\0');
         kvs::stream key_stream{key_buf};
         kvs::stream val_stream{val_buf};
 
@@ -278,8 +278,13 @@ public:
         auto key_meta = key_record{}.record_meta();
         auto val_meta = value_record{}.record_meta();
 
+        static std::size_t record_per_transaction = 10000;
         utils::xorshift_random64 rnd{};
-        for(std::size_t i=0; i < param.records_per_partition_; ++i) {
+        std::unique_ptr<kvs::transaction> tx{};
+        for(std::size_t i=0, n=param.records_per_partition_; i < n; ++i) {
+            if (! tx) {
+                tx = db->create_transaction();
+            }
             key_record key_rec{key_meta,
                 static_cast<std::int32_t>(param.sequential_data ? i : rnd()),
                 static_cast<std::int64_t>(param.sequential_data ? i*2 : rnd()),
@@ -303,9 +308,13 @@ public:
             }
             key_stream.reset();
             val_stream.reset();
-        }
-        if (auto res = tx->commit(); !res) {
-            fail();
+            if (i == n-1 || (i != 0 && (i % record_per_transaction) == 0)) {
+                if (auto res = tx->commit(); !res) {
+                    fail();
+                }
+                VLOG(2) << "committed after " << i << "-th record";
+                tx.reset();
+            }
         }
     }
 

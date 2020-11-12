@@ -60,7 +60,6 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 
-DEFINE_int32(thread_pool_size, 3, "Thread pool size");  //NOLINT
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(partitions, 1, "Number of partitions");  //NOLINT
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
@@ -70,6 +69,7 @@ DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
+DEFINE_bool(randomize_partition, true, "randomize read partition and avoid read/write happening on the same thread");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -316,8 +316,10 @@ public:
         for(std::size_t i=0; i < param.partitions_; ++i) {
             ret.emplace_back(i);
         }
-        std::mt19937_64 mt{};
-        std::shuffle(ret.begin(), ret.end(), mt);
+        if (param.randomize_partition) {
+            std::mt19937_64 mt{};
+            std::shuffle(ret.begin(), ret.end(), mt);
+        }
         return ret;
     }
 private:
@@ -451,12 +453,12 @@ extern "C" int main(int argc, char* argv[]) {
     jogasaki::scan_cli::params s{};
     auto cfg = std::make_shared<jogasaki::configuration>();
     cfg->single_thread(!FLAGS_use_multithread);
-    cfg->thread_pool_size(FLAGS_thread_pool_size);
 
     s.partitions_ = FLAGS_partitions;
     s.records_per_partition_ = FLAGS_records_per_partition;
     s.debug = FLAGS_debug;
     s.sequential_data = FLAGS_sequential_data;
+    s.randomize_partition = FLAGS_randomize_partition;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

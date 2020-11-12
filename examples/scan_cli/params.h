@@ -24,6 +24,7 @@ public:
     std::size_t partitions_ = 10;
     bool debug = false;
     bool sequential_data = false;
+    bool randomize_partition = true;
 };
 
 }

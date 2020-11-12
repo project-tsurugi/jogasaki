@@ -25,6 +25,8 @@ namespace jogasaki {
  */
 class configuration {
 public:
+    static constexpr std::size_t numa_node_unspecified = static_cast<std::size_t>(-1);
+
     [[nodiscard]] bool single_thread() const noexcept {
         return single_thread_task_scheduler_;
     }
@@ -104,6 +106,14 @@ public:
     void randomize_memory_usage(std::size_t arg) noexcept {
         randomize_memory_usage_ = arg;
     }
+
+    [[nodiscard]] std::size_t force_numa_node() const noexcept {
+        return force_numa_node_;
+    }
+
+    void force_numa_node(std::size_t arg) noexcept {
+        force_numa_node_ = arg;
+    }
 private:
     bool single_thread_task_scheduler_ = true;
     std::size_t thread_pool_size_ = 5;
@@ -115,6 +125,7 @@ private:
     bool noop_pregroup_ = false;
     bool assign_numa_nodes_uniformly_ = false;
     std::size_t randomize_memory_usage_ = 0;
+    std::size_t force_numa_node_ = numa_node_unspecified;
 };
 
 }

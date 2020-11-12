@@ -19,7 +19,9 @@
 
 namespace jogasaki::utils {
 
-bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes = false);
+constexpr std::size_t numa_node_unspecified = static_cast<std::size_t>(-1); // same constant on configuration.h
+
+bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes = false, std::size_t force_numa_node = numa_node_unspecified);
 
 }
 

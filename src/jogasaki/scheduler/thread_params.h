@@ -20,6 +20,8 @@ namespace jogasaki::scheduler {
 
 class thread_params {
 public:
+    static constexpr std::size_t numa_node_unspecified = configuration::numa_node_unspecified;
+
     thread_params() = default;
 
     explicit thread_params(
@@ -27,13 +29,15 @@ public:
         bool set_core_affinity = true,
         std::size_t initial_core = 1,
         bool assign_numa_nodes_uniformly = false,
-        std::size_t randomize_memory_usage = 0
+        std::size_t randomize_memory_usage = 0,
+        std::size_t force_numa_node = numa_node_unspecified
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),
         initial_core_(initial_core),
         assign_numa_nodes_uniformly_(assign_numa_nodes_uniformly),
-        randomize_memory_usage_(randomize_memory_usage)
+        randomize_memory_usage_(randomize_memory_usage),
+        force_numa_node_(force_numa_node)
     {}
 
     explicit thread_params(std::shared_ptr<configuration> const& cfg) :
@@ -42,7 +46,8 @@ public:
             cfg->core_affinity(),
             cfg->initial_core(),
             cfg->assign_numa_nodes_uniformly(),
-            cfg->randomize_memory_usage()
+            cfg->randomize_memory_usage(),
+            cfg->force_numa_node()
         )
     {}
 
@@ -65,12 +70,17 @@ public:
     [[nodiscard]] std::size_t randomize_memory_usage() const noexcept {
         return randomize_memory_usage_;
     }
+
+    [[nodiscard]] std::size_t force_numa_node() const noexcept {
+        return force_numa_node_;
+    }
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
     std::size_t initial_core_{};
     bool assign_numa_nodes_uniformly_{};
     std::size_t randomize_memory_usage_{};
+    std::size_t force_numa_node_{};
 };
 
 } // namespace

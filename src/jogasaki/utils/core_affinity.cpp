@@ -16,6 +16,7 @@
 #include "core_affinity.h"
 
 #include <boost/thread/thread.hpp>
+
 #include <numa.h>
 
 namespace jogasaki::utils {
@@ -27,7 +28,10 @@ namespace jogasaki::utils {
  * @return true when successful
  * @return false otherwise
  */
-bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes) {
+bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes, std::size_t force_numa_node) {
+    if (force_numa_node != numa_node_unspecified) {
+        return 0 == numa_run_on_node(force_numa_node);
+    }
     if (uniform_on_nodes) {
         static std::size_t nodes = numa_max_node()+1;
         return 0 == numa_run_on_node(static_cast<int>(cpu % nodes));

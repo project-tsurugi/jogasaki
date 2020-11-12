@@ -82,6 +82,7 @@ private:
     bool assign_numa_nodes_uniformly_{};
     std::size_t randomize_memory_usage_{};
     bool started_{false};
+    std::size_t force_numa_node_{};
 
     void prepare_threads_();
     void cleanup_threads_();

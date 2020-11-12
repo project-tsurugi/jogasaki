@@ -34,7 +34,8 @@ thread_pool::thread_pool(thread_params params) :
     set_core_affinity_(params.is_set_core_affinity()),
     initial_core_(params.inititial_core()),
     assign_numa_nodes_uniformly_(params.assign_numa_nodes_uniformly()),
-    randomize_memory_usage_(params.randomize_memory_usage())
+    randomize_memory_usage_(params.randomize_memory_usage()),
+    force_numa_node_(params.force_numa_node())
 {
     start();
 }
@@ -76,8 +77,8 @@ void thread_pool::prepare_threads_() {
         auto& thread = threads_.emplace_back();
         auto core = i+initial_core_;
         thread([this, &thread, core]() {
-            if(set_core_affinity_) {
-                utils::thread_core_affinity(core, assign_numa_nodes_uniformly_);
+            if(set_core_affinity_ || force_numa_node_ != thread_params::numa_node_unspecified) {
+                utils::thread_core_affinity(core, assign_numa_nodes_uniformly_, force_numa_node_);
             }
             if (randomize_memory_usage_ != 0) {
                 thread.allocate_randomly(randomize_memory_usage_);

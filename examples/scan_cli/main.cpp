@@ -108,6 +108,7 @@ class cli {
 public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
         map_thread_to_storage_ = init_map(param);
+        numa_nodes_ = numa_max_node()+1;
         auto num_threads = param.partitions_;
         std::vector<std::shared_ptr<plan::compiler_context>> contexts{num_threads};
         utils::get_watch().set_point(time_point_begin, 0);
@@ -148,8 +149,7 @@ public:
         if(cfg->core_affinity()) {
             auto cpu = thread_id+cfg->initial_core();
             if (cfg->assign_numa_nodes_uniformly()) {
-                static std::size_t nodes = numa_max_node()+1;
-                numa_run_on_node(static_cast<int>(cpu % nodes));
+                numa_run_on_node(static_cast<int>(cpu % numa_nodes_));
             } else {
                 pthread_t x = t->native_handle();
                 cpu_set_t cpuset;
@@ -228,7 +228,16 @@ public:
         common::graph g{*context};
         g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
 
-        dag_controller dc{std::move(cfg)};
+        std::shared_ptr<configuration> thread_cfg = std::make_shared<configuration>(*cfg);
+        if (cfg->core_affinity()) {
+            if (cfg->assign_numa_nodes_uniformly()) {
+                // update cfg for this thread so that newly created thread in dag_controller runs on specified num node
+                thread_cfg->force_numa_node(static_cast<int>((thread_id-1+thread_cfg->initial_core()) % numa_nodes_));
+            } else {
+                thread_cfg->initial_core(static_cast<int>(thread_id-1+cfg->initial_core()));
+            }
+        }
+        dag_controller dc{std::move(thread_cfg)};
         utils::get_watch().set_point(time_point_request_created, thread_id);
         prepare_completion_latch.count_down_and_wait();
         utils::get_watch().set_point(time_point_schedule, thread_id);
@@ -314,6 +323,7 @@ public:
     }
 private:
     std::vector<std::size_t> map_thread_to_storage_{};
+    std::size_t numa_nodes_{};
 
     void dump_perf_info() {
         auto& watch = utils::get_watch();

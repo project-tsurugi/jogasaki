@@ -21,9 +21,7 @@
 #include <boost/thread/latch.hpp>
 
 #include <yugawara/storage/configurable_provider.h>
-#include <yugawara/runtime_feature.h>
 #include <yugawara/compiler.h>
-#include <yugawara/compiler_options.h>
 #include <yugawara/binding/factory.h>
 
 #include <takatori/type/int.h>
@@ -36,26 +34,19 @@
 #include <takatori/relation/emit.h>
 #include <takatori/relation/scan.h>
 #include <takatori/relation/filter.h>
-#include <takatori/relation/project.h>
-#include <takatori/statement/write.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
-#include <takatori/serializer/json_printer.h>
 #include <takatori/statement/execute.h>
 
 #include "params.h"
 #include "cli_constants.h"
 
-#include <jogasaki/executor/process/impl/ops/take_flat.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/performance_tools.h>
-#include <jogasaki/names.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/process/mock/record_reader.h>
-#include <jogasaki/executor/process/mock/record_writer.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
@@ -102,7 +93,6 @@ namespace descriptor = ::takatori::descriptor;
 namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
 namespace statement = ::takatori::statement;
-//namespace plan = ::takatori::plan;
 namespace binding = ::yugawara::binding;
 
 using ::takatori::util::fail;
@@ -164,7 +154,7 @@ public:
                 pthread_t x = t->native_handle();
                 cpu_set_t cpuset;
                 CPU_ZERO(&cpuset);
-                CPU_SET(cpu, &cpuset);
+                CPU_SET(cpu, &cpuset); //NOLINT
                 ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
             }
         }
@@ -216,11 +206,11 @@ public:
         std::shared_ptr<kvs::database> db,
         boost::latch& prepare_completion_latch,
         std::size_t thread_id,
-        std::shared_ptr<plan::compiler_context> compiler_context
+        std::shared_ptr<plan::compiler_context> const& compiler_context
     ) {
         (void)prepare_completion_latch;
         // create step graph with only process
-        auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<class channel>();
         memory::monotonic_paged_memory_resource record_resource{&global::page_pool()};
@@ -317,14 +307,13 @@ public:
             ret.emplace_back(i);
         }
         if (param.randomize_partition) {
-            std::mt19937_64 mt{};
+            std::mt19937_64 mt{};  //NOLINT
             std::shuffle(ret.begin(), ret.end(), mt);
         }
         return ret;
     }
 private:
     std::vector<std::size_t> map_thread_to_storage_{};
-    memory::page_pool pool_;
 
     void dump_perf_info() {
         auto& watch = utils::get_watch();
@@ -335,7 +324,7 @@ private:
     }
 
     void create_compiled_info(
-        std::shared_ptr<plan::compiler_context> compiler_context,
+        std::shared_ptr<plan::compiler_context> const& compiler_context,
         std::string_view table_name,
         std::string_view index_name
     ) {

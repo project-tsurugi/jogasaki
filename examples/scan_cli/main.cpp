@@ -144,20 +144,30 @@ public:
                 contexts[thread_id-1] = prepare_storage(param, db, thread_id, cfg);
                 LOG(INFO) << "thread " << thread_id << " storage creation end";
             });
-            if(cfg->core_affinity()) {
-                set_core_affinity(thread, thread_id+cfg->initial_core());
-            }
+            set_core_affinity(thread, thread_id, cfg);
             thread_group.add_thread(thread);
         }
         thread_group.join_all();
     }
 
-    inline bool set_core_affinity(boost::thread* t, std::size_t cpu) {
-        pthread_t x = t->native_handle();
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu, &cpuset);
-        return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
+    void set_core_affinity(
+        boost::thread* t,
+        std::size_t thread_id,
+        configuration const* cfg
+    ) {
+        if(cfg->core_affinity()) {
+            auto cpu = thread_id+cfg->initial_core();
+            if (cfg->assign_numa_nodes_uniformly()) {
+                static std::size_t nodes = numa_max_node()+1;
+                numa_run_on_node(static_cast<int>(cpu % nodes));
+            } else {
+                pthread_t x = t->native_handle();
+                cpu_set_t cpuset;
+                CPU_ZERO(&cpuset);
+                CPU_SET(cpu, &cpuset);
+                ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
+            }
+        }
     }
 
     std::shared_ptr<plan::compiler_context> prepare_storage(params& param, kvs::database* db, std::size_t storage_id, configuration const* cfg) {
@@ -194,9 +204,7 @@ public:
                 create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
                 LOG(INFO) << "thread " << thread_id << " schedule request end";
             });
-            if(cfg->core_affinity()) {
-                set_core_affinity(thread, thread_id+cfg->initial_core());
-            }
+            set_core_affinity(thread, thread_id, cfg.get());
             thread_group.add_thread(thread);
         }
         thread_group.join_all();

@@ -15,8 +15,10 @@
  */
 #include <iostream>
 #include <vector>
+#include <random>
 
 #include <glog/logging.h>
+#include <boost/thread/latch.hpp>
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/runtime_feature.h>
@@ -115,28 +117,100 @@ constexpr std::size_t max_char_len = 100;
 class cli {
 public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
+        map_thread_to_storage_ = init_map(param);
+        auto num_threads = param.partitions_;
+        std::vector<std::shared_ptr<plan::compiler_context>> contexts{num_threads};
         utils::get_watch().set_point(time_point_begin, 0);
+        std::shared_ptr<kvs::database> db = kvs::database::open();
+        threading_prepare_storage(param, db.get(), cfg.get(), contexts);
+        utils::get_watch().set_point(time_point_storage_prepared, 0);
+        threading_create_and_schedule_request(param, db, cfg, contexts);
+        dump_perf_info();
+        return 0;
+    }
 
-        // for threads
-        //   create and load data
+    void threading_prepare_storage(
+        params& param,
+        kvs::database* db,
+        configuration const* cfg,
+        std::vector<std::shared_ptr<plan::compiler_context>>& contexts
+    ) {
+        auto num_threads = param.partitions_;
+        boost::thread_group thread_group{};
+        std::vector<int> result(num_threads);
+        for(std::size_t thread_id = 1; thread_id <= num_threads; ++thread_id) {
+            auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts]() {
+                LOG(INFO) << "thread " << thread_id << " storage creation start";
+                contexts[thread_id-1] = prepare_storage(param, db, thread_id, cfg);
+                LOG(INFO) << "thread " << thread_id << " storage creation end";
+            });
+            if(cfg->core_affinity()) {
+                set_core_affinity(thread, thread_id+cfg->initial_core());
+            }
+            thread_group.add_thread(thread);
+        }
+        thread_group.join_all();
+    }
 
-        // for threads
-        //   prepare
-        //   wait
-        //   run
+    inline bool set_core_affinity(boost::thread* t, std::size_t cpu) {
+        pthread_t x = t->native_handle();
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu, &cpuset);
+        return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
+    }
 
-        std::string_view table_name("T0");
-        std::string_view index_name("I0");
+    std::shared_ptr<plan::compiler_context> prepare_storage(params& param, kvs::database* db, std::size_t storage_id, configuration const* cfg) {
+        (void)cfg;
+        std::string table_name("T");
+        table_name.append(std::to_string(storage_id));
+        std::string index_name("I");
+        index_name.append(std::to_string(storage_id));
         // generate takatori compile info and statement
         auto compiler_context = std::make_shared<plan::compiler_context>();
         create_compiled_info(compiler_context, table_name, index_name);
 
-        auto db = kvs::database::open();
         compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
             db->create_storage(id);
         });
-        load_data(db.get(), index_name, param);
+        load_data(db, index_name, param);
+        return compiler_context;
+    }
 
+    void threading_create_and_schedule_request(
+        params& param,
+        std::shared_ptr<kvs::database> db,
+        std::shared_ptr<configuration> cfg,
+        std::vector<std::shared_ptr<plan::compiler_context>>& contexts
+        ) {
+        auto num_threads = param.partitions_;
+        boost::thread_group thread_group{};
+        boost::latch prepare_completion_latch(num_threads);
+        std::vector<int> result(num_threads);
+        for(std::size_t thread_id = 1; thread_id <= num_threads; ++thread_id) {
+            auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts, &prepare_completion_latch]() {
+                LOG(INFO) << "thread " << thread_id << " create request start";
+                auto storage_id = map_thread_to_storage_[thread_id-1]+1;
+                create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
+                LOG(INFO) << "thread " << thread_id << " schedule request end";
+            });
+            if(cfg->core_affinity()) {
+                set_core_affinity(thread, thread_id+cfg->initial_core());
+            }
+            thread_group.add_thread(thread);
+        }
+        thread_group.join_all();
+    }
+
+    void create_and_schedule_request(
+        params const& param,
+        std::shared_ptr<configuration> cfg,
+        std::shared_ptr<kvs::database> db,
+        boost::latch& prepare_completion_latch,
+        std::size_t thread_id,
+        std::shared_ptr<plan::compiler_context> compiler_context
+    ) {
+        (void)prepare_completion_latch;
         // create step graph with only process
         auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
@@ -148,7 +222,7 @@ public:
             channel,
             cfg,
             compiler_context,
-            std::shared_ptr<kvs::database>(std::move(db)),
+            std::move(db),
             &stores,
             &record_resource,
             &varlen_resource
@@ -157,17 +231,15 @@ public:
         g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
 
         dag_controller dc{std::move(cfg)};
-        utils::get_watch().set_point(time_point_schedule, 0);
+        utils::get_watch().set_point(time_point_request_created, thread_id);
+        prepare_completion_latch.count_down_and_wait();
+        utils::get_watch().set_point(time_point_schedule, thread_id);
         dc.schedule(g);
-        utils::get_watch().set_point(time_point_completed, 0);
-
+        utils::get_watch().set_point(time_point_completed, thread_id);
         dump_debug_data(stores, param);
-        dump_perf_info();
-
-        return 0;
     }
 
-    void dump_debug_data(request_context::result_stores stores, params& param) {
+    void dump_debug_data(request_context::result_stores stores, params const& param) {
         if(param.debug) {
             auto store = stores[0];
             auto record_meta = store->meta();
@@ -189,8 +261,8 @@ public:
         auto tx = db->create_transaction();
         auto stg = db->get_storage(storage_name);
 
-        std::string key_buf(100, '\0');
-        std::string val_buf(100, '\0');
+        std::string key_buf(1024, '\0');
+        std::string val_buf(1024, '\0');
         kvs::stream key_stream{key_buf};
         kvs::stream val_stream{val_buf};
 
@@ -229,21 +301,27 @@ public:
             fail();
         }
     }
+
+    std::vector<std::size_t> init_map(params& param) {
+        std::vector<std::size_t> ret{};
+        ret.reserve(param.partitions_);
+        for(std::size_t i=0; i < param.partitions_; ++i) {
+            ret.emplace_back(i);
+        }
+        std::mt19937_64 mt{};
+        std::shuffle(ret.begin(), ret.end(), mt);
+        return ret;
+    }
 private:
+    std::vector<std::size_t> map_thread_to_storage_{};
     memory::page_pool pool_;
 
     void dump_perf_info() {
         auto& watch = utils::get_watch();
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_schedule, "create graph");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_create_task, "schedule");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_create_task, time_point_created_task, "create tasks");
-#ifndef PERFORMANCE_TOOLS
-        LOG(INFO) << "wait before run: total " << watch.duration(time_point_created_task, time_point_run) << "ms" ;
-#endif
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_run, time_point_ran, "run");
-#ifndef PERFORMANCE_TOOLS
-        LOG(INFO) << "finish: total " << watch.duration(time_point_ran, time_point_completed) << "ms" ;
-#endif
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_storage_prepared, "prepare storage");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_storage_prepared, time_point_request_created, "create request");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_request_created, time_point_schedule, "wait all requests");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_completed, "process request");
     }
 
     void create_compiled_info(

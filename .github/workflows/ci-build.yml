@@ -25,7 +25,6 @@ jobs:
         name: Install_shirakami
         run: |
           cd third_party/sharksfin/third_party/shirakami
-          ./bootstrap.sh
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..

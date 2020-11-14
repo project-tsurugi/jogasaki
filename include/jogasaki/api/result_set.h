@@ -18,10 +18,15 @@
 #include <memory>
 #include <vector>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/accessor/record_ref.h> // FIXME using internal accessor temporarily
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/data/iterable_record_store.h>
 
 namespace jogasaki::api {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief result set interface to provide iterator/disposal method
@@ -38,6 +43,8 @@ public:
     result_set& operator=(result_set const& other) = delete;
     result_set(result_set&& other) noexcept = delete;
     result_set& operator=(result_set&& other) noexcept = delete;
+
+    maybe_shared_ptr<meta::record_meta> meta() const noexcept;
 
     iterator begin();
     iterator end();

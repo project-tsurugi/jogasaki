@@ -27,6 +27,10 @@ result_set::iterator result_set::impl::end() {
     return store_->end();
 }
 
+maybe_shared_ptr<meta::record_meta> result_set::impl::meta() const noexcept {
+    return store_->meta();
+}
+
 void result_set::impl::close() {
     store_.reset();
     record_resource_.reset();
@@ -42,6 +46,10 @@ result_set::iterator result_set::begin() {
 
 result_set::iterator result_set::end() {
     return impl_->end();
+}
+
+maybe_shared_ptr<meta::record_meta> result_set::meta() const noexcept {
+    return impl_->meta();
 }
 
 void result_set::close() {

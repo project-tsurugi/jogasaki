@@ -44,6 +44,8 @@ public:
         )
     {}
 
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept;
+
     [[nodiscard]] iterator begin();
     [[nodiscard]] iterator end();
     void close();

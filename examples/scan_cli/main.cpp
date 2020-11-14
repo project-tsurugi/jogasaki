@@ -104,6 +104,10 @@ using namespace ::yugawara::variable;
 using kind = meta::field_type_kind;
 constexpr std::size_t max_char_len = 100;
 
+constexpr kvs::order asc = kvs::order::ascending;
+constexpr kvs::order desc = kvs::order::descending;
+constexpr kvs::order undef = kvs::order::undefined;
+
 class cli {
 public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
@@ -289,17 +293,17 @@ public:
                 static_cast<std::int32_t>(param.sequential_data ? i : rnd()),
                 static_cast<std::int64_t>(param.sequential_data ? i*2 : rnd()),
             };
-            kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
-            kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), key_stream);
+            kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
+            kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
             std::string str(rnd() % max_char_len, static_cast<char>(param.sequential_data ? 'A'+(i % 26) : rnd()));
             value_record val_rec{val_meta,
                 static_cast<double>(param.sequential_data ? i*10 : rnd()),
                 static_cast<float>(param.sequential_data ? i*100 : rnd()),
                 accessor::text(str.data(), str.size())
             };
-            kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
-            kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), val_stream);
-            kvs::encode(val_rec.ref(), val_meta->value_offset(2), val_meta->at(2), val_stream);
+            kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
+            kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), undef, val_stream);
+            kvs::encode(val_rec.ref(), val_meta->value_offset(2), val_meta->at(2), undef, val_stream);
             if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}
@@ -367,7 +371,11 @@ private:
                 t0->columns()[0],
                 t0->columns()[1],
             },
-            {},
+            {
+                t0->columns()[2],
+                t0->columns()[3],
+                t0->columns()[4],
+            },
             {
                 ::yugawara::storage::index_feature::find,
                 ::yugawara::storage::index_feature::scan,

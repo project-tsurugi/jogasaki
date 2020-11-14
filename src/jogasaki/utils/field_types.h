@@ -30,8 +30,7 @@ namespace jogasaki::utils {
 using ::takatori::util::fail;
 using ::takatori::util::enum_tag_t;
 
-[[nodiscard]] inline meta::field_type type_for(yugawara::compiled_info const& info, ::takatori::descriptor::variable const& var) {
-    auto const& type = info.type_of(var);
+[[nodiscard]] inline meta::field_type type_for(::takatori::type::data const& type) {
     using t = takatori::type::type_kind;
     using k = meta::field_type_kind;
     switch(type.kind()) {
@@ -60,6 +59,11 @@ using ::takatori::util::enum_tag_t;
             fail();
     }
     fail();
+}
+
+[[nodiscard]] inline meta::field_type type_for(yugawara::compiled_info const& info, ::takatori::descriptor::variable const& var) {
+    auto const& type = info.type_of(var);
+    return type_for(type);
 }
 
 }

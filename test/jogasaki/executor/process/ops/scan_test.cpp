@@ -56,7 +56,12 @@ using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 
-class scan_test : public test_root {};
+class scan_test : public test_root {
+public:
+    static constexpr kvs::order undef = kvs::order::undefined;
+    static constexpr kvs::order asc = kvs::order::ascending;
+    static constexpr kvs::order desc = kvs::order::descending;
+};
 
 TEST_F(scan_test, simple) {
 
@@ -80,7 +85,10 @@ TEST_F(scan_test, simple) {
         {
             t0->columns()[0],
         },
-        {},
+        {
+            t0->columns()[1],
+            t0->columns()[2],
+        },
         {
             ::yugawara::storage::index_feature::find,
             ::yugawara::storage::index_feature::scan,
@@ -183,11 +191,11 @@ TEST_F(scan_test, simple) {
     {
         key_record key_rec{10};
         auto key_meta = key_rec.record_meta();
-        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
         value_record val_rec{1.0, 100};
         auto val_meta = val_rec.record_meta();
-        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
-        kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}
@@ -198,11 +206,11 @@ TEST_F(scan_test, simple) {
     {
         key_record key_rec{20};
         auto key_meta = key_rec.record_meta();
-        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
         value_record val_rec{2.0, 200};
         auto val_meta = val_rec.record_meta();
-        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
-        kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}
@@ -272,7 +280,9 @@ TEST_F(scan_test, scan_info) {
             t1->columns()[0],
             t1->columns()[1],
         },
-        {},
+        {
+            t1->columns()[2],
+        },
         {
             ::yugawara::storage::index_feature::find,
             ::yugawara::storage::index_feature::scan,
@@ -386,7 +396,7 @@ TEST_F(scan_test, scan_info) {
     memory::lifo_paged_memory_resource resource{&global::page_pool()};
     jogasaki::plan::compiler_context compiler_ctx{};
     operator_builder builder{p_info, compiler_ctx, {}, {}, &resource};
-    auto sinfo = builder.create_scan_info(r0);
+    auto sinfo = builder.create_scan_info(r0, i1->keys());
     mock::task_context task_ctx{
         {},
         {},
@@ -408,11 +418,11 @@ TEST_F(scan_test, scan_info) {
     {
         key_record key_rec{100, accessor::text{"123456789012345678901234567890/B"}};
         auto key_meta = key_rec.record_meta();
-        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
-        kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
         value_record val_rec{1.0};
         auto val_meta = val_rec.record_meta();
-        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}
@@ -423,11 +433,11 @@ TEST_F(scan_test, scan_info) {
     {
         key_record key_rec{100, accessor::text{"123456789012345678901234567890/C"}};
         auto key_meta = key_rec.record_meta();
-        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
-        kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
         value_record val_rec{2.0};
         auto val_meta = val_rec.record_meta();
-        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}
@@ -438,11 +448,11 @@ TEST_F(scan_test, scan_info) {
     {
         key_record key_rec{100, accessor::text{"123456789012345678901234567890/D"}};
         auto key_meta = key_rec.record_meta();
-        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
-        kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
         value_record val_rec{3.0};
         auto val_meta = val_rec.record_meta();
-        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}

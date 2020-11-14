@@ -43,22 +43,37 @@ namespace details {
  * @brief field info of the scan operation
  */
 struct cache_align scan_field {
+    /**
+     * @brief create new scan field
+     * @param type type of the scanned field
+     * @param target_exists whether the target storage exists. If not, there is no room to copy the data to.
+     * @param target_offset byte offset of the target field in the target record reference
+     * @param target_nullity_offset bit offset of the target field nullity in the target record reference
+     * @param nullable whether the target field is nullable or not
+     * @param order the ordering (asc/desc) of the target field used for encode/decode
+     */
     scan_field(
         meta::field_type type,
+        bool target_exists,
         std::size_t target_offset,
         std::size_t target_nullity_offset,
-        bool nullable
+        bool nullable,
+        kvs::order order
     ) :
         type_(std::move(type)),
+        target_exists_(target_exists),
         target_offset_(target_offset),
         target_nullity_offset_(target_nullity_offset),
-        nullable_(nullable)
-    {}
+        nullable_(nullable),
+        order_(order)
+        {}
 
     meta::field_type type_{}; //NOLINT
+    bool target_exists_{};
     std::size_t target_offset_{}; //NOLINT
     std::size_t target_nullity_offset_{}; //NOLINT
     bool nullable_{}; //NOLINT
+    kvs::order order_{}; //NOLINT
 };
 
 }
@@ -174,10 +189,18 @@ public:
             kvs::stream keys{const_cast<char*>(k.data()), k.length()}; //TODO create read-only stream
             kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
             for(auto&& f : key_fields_) {
-                kvs::decode(keys, f.type_, target, f.target_offset_, ctx.resource());
+                if (! f.target_exists_) {
+                    kvs::consume_stream(keys, f.type_, f.order_);
+                    continue;
+                }
+                kvs::decode(keys, f.type_, f.order_, target, f.target_offset_, ctx.resource());
             }
             for(auto&& f : value_fields_) {
-                kvs::decode(values, f.type_, target, f.target_offset_, ctx.resource());
+                if (! f.target_exists_) {
+                    kvs::consume_stream(values, f.type_, f.order_);
+                    continue;
+                }
+                kvs::decode(values, f.type_, f.order_, target, f.target_offset_, ctx.resource());
             }
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
@@ -228,7 +251,6 @@ private:
         processor_info const& info,
         block_index_type block_index,
         bool key) {
-        // TODO currently using the order passed from the index. Re-visit column order.
         std::vector<details::scan_field> ret{};
         using variable = takatori::descriptor::variable;
         yugawara::binding::factory bindings{};
@@ -236,43 +258,61 @@ private:
         for(auto&& m : columns) {
             table_to_stream.emplace(m.source(), m.destination());
         }
-        auto num_keys = idx.keys().size();
-        auto num_values = idx.table().columns().size() - num_keys;
-
         auto& block = info.scopes_info()[block_index];
         if (key) {
-            ret.reserve(num_keys);
+            ret.reserve(idx.keys().size());
             for(auto&& k : idx.keys()) {
                 auto b = bindings(k.column());
+                auto t = utils::type_for(k.column().type());
+                auto odr = k.direction() == relation::sort_direction::ascendant ?
+                    kvs::order::ascending : kvs::order::descending;
+                if (table_to_stream.count(b) == 0) {
+                    ret.emplace_back(
+                        t,
+                        false,
+                        0,
+                        0,
+                        false,// TODO nullity
+                        odr
+                    );
+                    continue;
+                }
                 auto&& var = table_to_stream.at(b);
                 ret.emplace_back(
-                    utils::type_for(info.compiled_info(), var),
+                    t,
+                    true,
                     block.value_map().at(var).value_offset(),
                     block.value_map().at(var).nullity_offset(),
-                    false // TODO nullity
+                    false, // TODO nullity
+                    odr
                 );
             }
-        } else {
-            ret.reserve(num_values);
-            for(auto&& v : idx.table().columns()) {
-                bool not_key = true;
-                for(auto&& k : idx.keys()) {
-                    if (k == v) {
-                        not_key = false;
-                        break;
-                    }
-                }
-                if (not_key) {
-                    auto b = bindings(v);
-                    auto&& var = table_to_stream.at(b);
-                    ret.emplace_back(
-                        utils::type_for(info.compiled_info(), var),
-                        block.value_map().at(var).value_offset(),
-                        block.value_map().at(var).nullity_offset(),
-                        false // TODO nullity
-                    );
-                }
+            return ret;
+        }
+        ret.reserve(idx.values().size());
+        for(auto&& v : idx.values()) {
+            auto b = bindings(v);
+            auto t = utils::type_for(static_cast<yugawara::storage::column const&>(v).type());
+            if (table_to_stream.count(b) == 0) {
+                ret.emplace_back(
+                    t,
+                    false,
+                    0,
+                    0,
+                    false,// TODO nullity
+                    kvs::order::undefined
+                );
+                continue;
             }
+            auto&& var = table_to_stream.at(b);
+            ret.emplace_back(
+                t,
+                true,
+                block.value_map().at(var).value_offset(),
+                block.value_map().at(var).nullity_offset(),
+                false, // TODO nullity
+                kvs::order::undefined
+            );
         }
         return ret;
     }

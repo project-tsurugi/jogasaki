@@ -121,7 +121,7 @@ public:
 
         // scan info is not passed to scan operator here, but passed back through task_context
         // in order to support parallel scan in the future
-        scan_info_ = create_scan_info(node);
+        scan_info_ = create_scan_info(node, index.keys());
 
         return std::make_unique<scan>(
             index_++,
@@ -242,13 +242,25 @@ public:
     }
 
     // keeping in public for testing
-    std::shared_ptr<impl::scan_info> create_scan_info(relation::scan const& node) {
+    using key = yugawara::storage::index::key;
+    using endpoint = takatori::relation::scan::endpoint;
+    std::shared_ptr<impl::scan_info> create_scan_info(
+        endpoint const& lower,
+        endpoint const& upper,
+        std::vector<key, takatori::util::object_allocator<key>> const& index_keys
+    ) {
         return std::make_shared<impl::scan_info>(
-            encode_scan_endpoint(node.lower()),
-            from(node.lower().kind()),
-            encode_scan_endpoint(node.upper()),
-            from(node.upper().kind())
+            encode_scan_endpoint(lower, index_keys),
+            from(lower.kind()),
+            encode_scan_endpoint(upper, index_keys),
+            from(upper.kind())
         );
+    }
+    std::shared_ptr<impl::scan_info> create_scan_info(
+        relation::scan const& node,
+        std::vector<key, takatori::util::object_allocator<key>> index_keys
+    ) {
+        return create_scan_info(node.lower(), node.upper(), std::move(index_keys));
     }
 private:
     std::shared_ptr<processor_info> info_{};
@@ -273,29 +285,33 @@ private:
         fail();
     }
 
-    std::string encode_scan_endpoint(relation::scan::endpoint const& e) {
-        std::size_t len = 0;
+    std::string encode_scan_endpoint(
+        relation::scan::endpoint const& e,
+        std::vector<key, takatori::util::object_allocator<key>> const& index_keys
+    ) {
+        BOOST_ASSERT(e.keys().size() <= index_keys.size());  //NOLINT
         auto cp = resource_->get_checkpoint();
         executor::process::impl::block_scope scope{};
-        for(auto&& k : e.keys()) {
-            kvs::stream s{};
-            expression::evaluator eval{k.value(), info_->compiled_info()};
-            auto res = eval(scope, resource_);
-            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
-            resource_->deallocate_after(cp);
-            len += s.length();
-        }
-        std::string buf(len, '\0');
-        kvs::stream s{buf};
-        for(auto&& k : e.keys()) {
-            expression::evaluator eval{k.value(), info_->compiled_info()};
-            auto res = eval(scope, resource_);
-            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), s);
-            resource_->deallocate_after(cp);
+        std::string buf{};  //TODO create own buffer class
+        for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
+            auto capacity = loop == 0 ? 0 : buf.capacity(); // capacity 0 makes stream empty write to calc. length
+            kvs::stream s{buf.data(), capacity};
+            std::size_t i = 0;
+            for(auto&& k : e.keys()) {
+                expression::evaluator eval{k.value(), info_->compiled_info()};
+                auto res = eval(scope, resource_);
+                auto odr = index_keys[i].direction() == relation::sort_direction::ascendant ?
+                    kvs::order::ascending : kvs::order::descending;
+                kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), odr, s);
+                resource_->deallocate_after(cp);
+                ++i;
+            }
+            if (loop == 0) {
+                buf.resize(s.length());
+            }
         }
         return buf;
     }
-
 };
 
 /**

@@ -19,6 +19,8 @@
 #include <glog/logging.h>
 
 #include <takatori/type/int.h>
+#include <takatori/type/float.h>
+#include <takatori/type/character.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/api/result_set.h>
@@ -58,30 +60,96 @@ private:
     std::shared_ptr<configurable_provider> storage_provider_{std::make_shared<configurable_provider>()};
     std::shared_ptr<kvs::database> kvs_db_{};
 
+    // predefined table definitions
     void add_default_table_defs(configurable_provider* provider) {
         namespace type = ::takatori::type;
-
-        std::shared_ptr<::yugawara::storage::table> t0 = provider->add_table("T0", {
-            "T0",
-            {
-                { "C0", type::int8() },
-                { "C1", type::float8 () },
-            },
-        });
-        std::shared_ptr<::yugawara::storage::index> i0 = provider->add_index("I0", {
-            t0,
-            "I0",
-            {
-                t0->columns()[0],
-            },
-            {},
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        });
+        {
+            std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T0", {
+                "T0",
+                {
+                    { "C0", type::int8() },
+                    { "C1", type::float8 () },
+                },
+            });
+            std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I0", {
+                t,
+                "I0",
+                {
+                    t->columns()[0],
+                },
+                {
+                    t->columns()[1],
+                },
+                {
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                    ::yugawara::storage::index_feature::unique,
+                    ::yugawara::storage::index_feature::primary,
+                },
+            });
+        }
+        {
+            std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T1", {
+                "T1",
+                {
+                    { "C0", type::int4() },
+                    { "C1", type::int8() },
+                    { "C2", type::float8() },
+                    { "C3", type::float4() },
+                    { "C4", type::character(type::varying, 100) },
+                },
+            });
+            std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I1", {
+                t,
+                "I1",
+                {
+                    t->columns()[0],
+                    t->columns()[1],
+                },
+                {
+                    t->columns()[2],
+                    t->columns()[3],
+                    t->columns()[4],
+                },
+                {
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                    ::yugawara::storage::index_feature::unique,
+                    ::yugawara::storage::index_feature::primary,
+                },
+            });
+        }
+        {
+            std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T2", {
+                "T2",
+                {
+                    { "C0", type::int4() },
+                    { "C1", type::int8() },
+                    { "C2", type::float8() },
+                    { "C3", type::float4() },
+                    { "C4", type::character(type::varying, 100) },
+                },
+            });
+            std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I2", {
+                t,
+                "I2",
+                {
+                    t->columns()[0],
+                    t->columns()[1],
+                },
+                {
+                    t->columns()[2],
+                    t->columns()[3],
+                    t->columns()[4],
+                },
+                {
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                    ::yugawara::storage::index_feature::unique,
+                    ::yugawara::storage::index_feature::primary,
+                },
+            });
+        }
     }
 };
 

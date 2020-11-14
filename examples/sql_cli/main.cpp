@@ -34,6 +34,10 @@ using namespace std::string_view_literals;
 using kind = meta::field_type_kind;
 using takatori::util::fail;
 
+constexpr kvs::order asc = kvs::order::ascending;
+constexpr kvs::order desc = kvs::order::descending;
+constexpr kvs::order undef = kvs::order::undefined;
+
 static void load_data(kvs::database* db, std::string_view storage_name, std::size_t records_per_partition, bool sequential_data) {
     auto tx = db->create_transaction();
     auto stg = db->get_storage(storage_name);
@@ -54,9 +58,9 @@ static void load_data(kvs::database* db, std::string_view storage_name, std::siz
     utils::xorshift_random64 rnd{};
     for(std::size_t i=0; i < records_per_partition; ++i) {
         key_record key_rec{key_meta, static_cast<std::int64_t>(sequential_data ? i : rnd())};
-        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), key_stream);
+        kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
         value_record val_rec{val_meta, static_cast<double>(sequential_data ? i*10 : rnd())};
-        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), val_stream);
+        kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}

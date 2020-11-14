@@ -30,6 +30,12 @@ namespace jogasaki::kvs {
 
 using takatori::util::fail;
 
+enum class order {
+    undefined,
+    ascending,
+    descending,
+};
+
 namespace details {
 
 using text_encoding_prefix_type = std::int16_t;
@@ -60,19 +66,19 @@ template<std::size_t N>
 static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // NOLINT
 
 template<std::size_t N>
-static inline uint_t<N> key_encode(int_t<N> data, bool ascending) {
+static inline uint_t<N> key_encode(int_t<N> data, order odr) {
     auto u = type_change<uint_t<N>>(data);
     u ^= SIGN_BIT<N>;
-    if (!ascending) {
+    if (odr != order::ascending) {
         u = ~u;
     }
     return boost::endian::native_to_big(u);
 }
 
 template<std::size_t N>
-static inline void key_decode(int_t<N>& value, uint_t<N> data, bool ascending) {
+static inline void key_decode(int_t<N>& value, uint_t<N> data, order odr) {
     auto u = boost::endian::big_to_native(data);
-    if (!ascending) {
+    if (odr != order::ascending) {
         u = ~u;
     }
     u ^= SIGN_BIT<N>;
@@ -81,23 +87,23 @@ static inline void key_decode(int_t<N>& value, uint_t<N> data, bool ascending) {
 
 // encode and decode logic for double with considering the key is ascending or not
 template<std::size_t N>
-static inline uint_t<N> key_encode(float_t<N> data, bool ascending) {
+static inline uint_t<N> key_encode(float_t<N> data, order odr) {
     auto u = type_change<uint_t<N>>(std::isnan(data) ? std::numeric_limits<float_t<N>>::quiet_NaN() : data);
     if ((u & SIGN_BIT<N>) == 0) {
         u ^= SIGN_BIT<N>;
     } else {
         u = ~u;
     }
-    if (!ascending) {
+    if (odr != order::ascending) {
         u = ~u;
     }
     return boost::endian::native_to_big(u);
 }
 
 template<std::size_t N>
-static inline void key_decode(float_t<N>& value, uint_t<N> data, bool ascending) {
+static inline void key_decode(float_t<N>& value, uint_t<N> data, order odr) {
     auto u = boost::endian::big_to_native(data);
-    if (!ascending) {
+    if (odr != order::ascending) {
         u = ~u;
     }
     if ((u & SIGN_BIT<N>) != 0) {
@@ -125,7 +131,7 @@ public:
     stream(char* buffer, std::size_t capacity) : base_(buffer), capacity_(capacity) {}
 
     /**
-     * @brief construct stream using string as its buffer (mainly for testing purpose)
+     * @brief construct stream using string as its buffer
      * @param s string to use stream buffer
      */
     explicit stream(std::string& s) : stream(s.data(), s.capacity()) {}
@@ -139,14 +145,14 @@ public:
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
-    std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 32 || N == 64), void> write(T data, bool ascending = true) {
-        do_write<N>(details::key_encode<N>(data, ascending));
+    std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 32 || N == 64), void> write(T data, order odr) {
+        do_write<N>(details::key_encode<N>(data, odr));
     }
 
-    void do_write(char const* dt, std::size_t sz, bool ascending) {
+    void do_write(char const* dt, std::size_t sz, order odr) {
         assert(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
         if (sz > 0 && capacity_ > 0) {
-            if (ascending) {
+            if (odr == order::ascending) {
                 std::memcpy(base_ + pos_, dt, sz);  // NOLINT
             } else {
                 for (std::size_t i = 0; i < sz; ++i) {
@@ -158,46 +164,53 @@ public:
     }
 
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, bool ascending = true) {
+    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr) {
         std::string_view sv{data};
         // for key encoding, we are assuming the text is not so long
         assert(sv.length() < 32768); //NOLINT
         details::text_encoding_prefix_type len{static_cast<details::text_encoding_prefix_type>(sv.length())};
-        do_write<details::text_encoding_prefix_type_bits>(details::key_encode<details::text_encoding_prefix_type_bits>(len, ascending));
-        do_write(sv.data(), sv.size(), ascending);
+        do_write<details::text_encoding_prefix_type_bits>(details::key_encode<details::text_encoding_prefix_type_bits>(len, odr));
+        do_write(sv.data(), sv.size(), odr);
     }
 
     template<std::size_t N>
-    details::uint_t<N> do_read() {
+    details::uint_t<N> do_read(bool discard) {
         auto sz = N/bits_per_byte;
         assert(pos_ + sz <= capacity_);  // NOLINT
-        details::uint_t<N> ret{};
-        std::memcpy(&ret, base_+pos_, sz); //NOLINT
+        auto pos = pos_;
         pos_ += sz;
+        details::uint_t<N> ret{};
+        if (! discard) {
+            std::memcpy(&ret, base_+pos, sz); //NOLINT
+        }
         return ret;
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
-    std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 16 || N == 32 || N == 64), T> read(bool ascending = true) {
+    std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 16 || N == 32 || N == 64), T> read(order odr, bool discard) {
         T value{};
-        details::key_decode<N>(value, do_read<N>(), ascending);
+        auto d = do_read<N>(discard);
+        if (! discard) {
+            details::key_decode<N>(value, d, odr);
+        }
         return value;
     }
 
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(memory::paged_memory_resource* resource = nullptr, bool ascending = true) {
-        assert(pos_ + details::text_encoding_prefix_type_bits / bits_per_byte <= capacity_);  // NOLINT
-        auto l = read<details::text_encoding_prefix_type>(ascending);
+    std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
+        auto l = read<details::text_encoding_prefix_type>(odr, false);
         assert(l >= 0); //NOLINT
         auto len = static_cast<std::size_t>(l);
         assert(pos_ + len <= capacity_);  // NOLINT
-        if (len > 0) {
+        auto pos = pos_;
+        pos_ += len;
+        if (!discard && len > 0) {
             auto p = static_cast<char*>(resource->allocate(len));
-            if (ascending) {
-                std::memcpy(p, base_ + pos_, len);  // NOLINT
+            if (odr == order::ascending) {
+                std::memcpy(p, base_ + pos, len);  // NOLINT
             } else {
                 for (std::size_t i = 0; i < len; ++i) {
-                    *(p + i) = ~(*(base_ + pos_ + i));  // NOLINT
+                    *(p + i) = ~(*(base_ + pos + i));  // NOLINT
                 }
             }
             return accessor::text{p, static_cast<std::size_t>(len)};
@@ -227,16 +240,17 @@ private:
  * @param ref the record containing data to encode
  * @param offset byte offset of the field containing data to encode
  * @param type the type of the field
+ * @param odr the field ordering used for encode/decode
  * @param dest the stream where the encoded data is written
  */
-inline void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, stream& dest) {
+inline void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, order odr, stream& dest) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
-        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset)); break;
-        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int8>::runtime_type>(offset)); break;
-        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset)); break;
-        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float8>::runtime_type>(offset)); break;
-        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(ref.get_value<meta::field_type_traits<kind::character>::runtime_type>(offset)); break;
+        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset), odr); break;
+        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int8>::runtime_type>(offset), odr); break;
+        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset), odr); break;
+        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float8>::runtime_type>(offset), odr); break;
+        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(ref.get_value<meta::field_type_traits<kind::character>::runtime_type>(offset), odr); break;
         default:
             fail();
     }
@@ -247,16 +261,17 @@ inline void encode(accessor::record_ref ref, std::size_t offset, meta::field_typ
  * @param ref the record containing data to encode
  * @param offset byte offset of the field containing data to encode
  * @param type the type of the field
+ * @param odr the field ordering used for encode/decode
  * @param dest the stream where the encoded data is written
  */
-inline void encode(executor::process::impl::expression::any src, meta::field_type const& type, stream& dest) {
+inline void encode(executor::process::impl::expression::any src, meta::field_type const& type, order odr, stream& dest) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
-        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.to<meta::field_type_traits<kind::int4>::runtime_type>()); break;
-        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.to<meta::field_type_traits<kind::int8>::runtime_type>()); break;
-        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.to<meta::field_type_traits<kind::float4>::runtime_type>()); break;
-        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(src.to<meta::field_type_traits<kind::float8>::runtime_type>()); break;
-        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(src.to<meta::field_type_traits<kind::character>::runtime_type>()); break;
+        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.to<meta::field_type_traits<kind::int4>::runtime_type>(), odr); break;
+        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.to<meta::field_type_traits<kind::int8>::runtime_type>(), odr); break;
+        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.to<meta::field_type_traits<kind::float4>::runtime_type>(), odr); break;
+        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(src.to<meta::field_type_traits<kind::float8>::runtime_type>(), odr); break;
+        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(src.to<meta::field_type_traits<kind::character>::runtime_type>(), odr); break;
         default:
             fail();
     }
@@ -266,18 +281,38 @@ inline void encode(executor::process::impl::expression::any src, meta::field_typ
  * @brief decode kvs binary representation to a field data
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
+ * @param odr the field ordering used for encode/decode
  * @param ref the record to containing the field
  * @param offset byte offset of the field
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  */
-inline void decode(stream& src, meta::field_type const& type, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
+inline void decode(stream& src, meta::field_type const& type, order odr, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
-        case kind::int4: ref.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>()); break;
-        case kind::int8: ref.set_value<meta::field_type_traits<kind::int8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int8>::runtime_type>()); break;
-        case kind::float4: ref.set_value<meta::field_type_traits<kind::float4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float4>::runtime_type>()); break;
-        case kind::float8: ref.set_value<meta::field_type_traits<kind::float8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float8>::runtime_type>()); break;
-        case kind::character: ref.set_value<meta::field_type_traits<kind::character>::runtime_type>(offset, src.read<meta::field_type_traits<kind::character>::runtime_type>(resource)); break;
+        case kind::int4: ref.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)); break;
+        case kind::int8: ref.set_value<meta::field_type_traits<kind::int8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)); break;
+        case kind::float4: ref.set_value<meta::field_type_traits<kind::float4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)); break;
+        case kind::float8: ref.set_value<meta::field_type_traits<kind::float8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, false)); break;
+        case kind::character: ref.set_value<meta::field_type_traits<kind::character>::runtime_type>(offset, src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, false, resource)); break;
+        default:
+            fail();
+    }
+}
+
+/**
+ * @brief read kvs binary representation, proceed the stream, and discard the result
+ * @param src the stream where the encoded data is read
+ * @param type the type of the field that holds decoded data
+ * @param odr the field ordering used for encode/decode
+ */
+inline void consume_stream(stream& src, meta::field_type const& type, order odr) {
+    using kind = meta::field_type_kind;
+    switch(type.kind()) {
+        case kind::int4: src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, true); break;
+        case kind::int8: src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, true); break;
+        case kind::float4: src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, true); break;
+        case kind::float8: src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, true); break;
+        case kind::character: src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, true, nullptr); break;
         default:
             fail();
     }

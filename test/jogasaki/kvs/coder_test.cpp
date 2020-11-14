@@ -47,6 +47,9 @@ public:
 private:
 };
 
+constexpr kvs::order asc = kvs::order::ascending;
+constexpr kvs::order desc = kvs::order::descending;
+
 TEST_F(coder_test, simple) {
     std::string buf(100, 0);
     kvs::stream s{buf};
@@ -57,19 +60,19 @@ TEST_F(coder_test, simple) {
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
     accessor::text txt2{&resource, "ABC"sv};
-    s.write(i32, true);
-    s.write(f32, true);
-    s.write(i64, true);
-    s.write(f64, true);
-    s.write(txt, true);
+    s.write(i32, asc);
+    s.write(f32, asc);
+    s.write(i64, asc);
+    s.write(f64, asc);
+    s.write(txt, asc);
 
     s.reset();
 
-    ASSERT_EQ(i32, s.read<std::int32_t>(true));
-    ASSERT_EQ(f32, s.read<float>(true));
-    ASSERT_EQ(i64, s.read<std::int64_t>(true));
-    ASSERT_EQ(f64, s.read<double>(true));
-    ASSERT_EQ(txt2, s.read<accessor::text>(&resource, true));
+    ASSERT_EQ(i32, s.read<std::int32_t>(asc, false));
+    ASSERT_EQ(f32, s.read<float>(asc, false));
+    ASSERT_EQ(i64, s.read<std::int64_t>(asc, false));
+    ASSERT_EQ(f64, s.read<double>(asc, false));
+    ASSERT_EQ(txt2, s.read<accessor::text>(asc, false, &resource));
 }
 
 TEST_F(coder_test, descendant) {
@@ -82,19 +85,19 @@ TEST_F(coder_test, descendant) {
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
     accessor::text txt2{&resource, "ABC"sv};
-    s.write(i32, false);
-    s.write(f32, false);
-    s.write(i64, false);
-    s.write(f64, false);
-    s.write(txt, false);
+    s.write(i32, desc);
+    s.write(f32, desc);
+    s.write(i64, desc);
+    s.write(f64, desc);
+    s.write(txt, desc);
 
     s.reset();
 
-    ASSERT_EQ(i32, s.read<std::int32_t>(false));
-    ASSERT_EQ(f32, s.read<float>(false));
-    ASSERT_EQ(i64, s.read<std::int64_t>(false));
-    ASSERT_EQ(f64, s.read<double>(false));
-    ASSERT_EQ(txt, s.read<accessor::text>(&resource, false));
+    ASSERT_EQ(i32, s.read<std::int32_t>(desc, false));
+    ASSERT_EQ(f32, s.read<float>(desc, false));
+    ASSERT_EQ(i64, s.read<std::int64_t>(desc, false));
+    ASSERT_EQ(f64, s.read<double>(desc, false));
+    ASSERT_EQ(txt, s.read<accessor::text>(desc, false, &resource));
 }
 
 TEST_F(coder_test, i32_asc) {
@@ -102,13 +105,13 @@ TEST_F(coder_test, i32_asc) {
     kvs::stream s{buf};
     int_t<32> i1{2};
     int_t<32> i2{-2};
-    s.write(i1, true);
-    s.write(i2, true);
+    s.write(i1, asc);
+    s.write(i2, asc);
 
     s.reset();
 
-    ASSERT_EQ(i1, s.read<std::int32_t>(true));
-    ASSERT_EQ(i2, s.read<std::int32_t>(true));
+    ASSERT_EQ(i1, s.read<std::int32_t>(asc, false));
+    ASSERT_EQ(i2, s.read<std::int32_t>(asc, false));
     EXPECT_EQ('\x80', buf[0]);
     EXPECT_EQ('\x00', buf[1]);
     EXPECT_EQ('\x00', buf[2]);
@@ -124,13 +127,13 @@ TEST_F(coder_test, i32_desc) {
     kvs::stream s{buf};
     int_t<32> i1{2};
     int_t<32> i2{-2};
-    s.write(i1, false);
-    s.write(i2, false);
+    s.write(i1, desc);
+    s.write(i2, desc);
 
     s.reset();
 
-    ASSERT_EQ(i1, s.read<std::int32_t>(false));
-    ASSERT_EQ(i2, s.read<std::int32_t>(false));
+    ASSERT_EQ(i1, s.read<std::int32_t>(desc, false));
+    ASSERT_EQ(i2, s.read<std::int32_t>(desc, false));
     EXPECT_EQ('\x7F', buf[0]);
     EXPECT_EQ('\xFF', buf[1]);
     EXPECT_EQ('\xFF', buf[2]);
@@ -146,13 +149,13 @@ TEST_F(coder_test, i64_asc) {
     kvs::stream s{buf};
     int_t<64> i1{2};
     int_t<64> i2{-2};
-    s.write(i1, true);
-    s.write(i2, true);
+    s.write(i1, asc);
+    s.write(i2, asc);
 
     s.reset();
 
-    ASSERT_EQ(i1, s.read<std::int64_t>(true));
-    ASSERT_EQ(i2, s.read<std::int64_t>(true));
+    ASSERT_EQ(i1, s.read<std::int64_t>(asc, false));
+    ASSERT_EQ(i2, s.read<std::int64_t>(asc, false));
     EXPECT_EQ('\x80', buf[0]);
     EXPECT_EQ('\x00', buf[1]);
     EXPECT_EQ('\x00', buf[2]);
@@ -177,13 +180,13 @@ TEST_F(coder_test, f32_asc) {
     kvs::stream s{buf};
     float_t<32> f1{2};
     float_t<32> f2{-2};
-    s.write(f1, true);
-    s.write(f2, true);
+    s.write(f1, asc);
+    s.write(f2, asc);
 
     s.reset();
 
-    ASSERT_EQ(f1, s.read<float>(true));
-    ASSERT_EQ(f2, s.read<float>(true));
+    ASSERT_EQ(f1, s.read<float>(asc, false));
+    ASSERT_EQ(f2, s.read<float>(asc, false));
     EXPECT_EQ('\xC0', buf[0]);
     EXPECT_EQ('\x00', buf[1]);
     EXPECT_EQ('\x00', buf[2]);
@@ -199,13 +202,13 @@ TEST_F(coder_test, f32_desc) {
     kvs::stream s{buf};
     float_t<32> f1{2};
     float_t<32> f2{-2};
-    s.write(f1, false);
-    s.write(f2, false);
+    s.write(f1, desc);
+    s.write(f2, desc);
 
     s.reset();
 
-    ASSERT_EQ(f1, s.read<float>(false));
-    ASSERT_EQ(f2, s.read<float>(false));
+    ASSERT_EQ(f1, s.read<float>(desc, false));
+    ASSERT_EQ(f2, s.read<float>(desc, false));
     EXPECT_EQ('\x3F', buf[0]);
     EXPECT_EQ('\xFF', buf[1]);
     EXPECT_EQ('\xFF', buf[2]);
@@ -223,17 +226,17 @@ TEST_F(coder_test, float_nan) {
     float_t<32> f2{std::nanf("2")};
     float_t<64> f3{std::nan("3")};
     float_t<64> f4{std::nan("4")};
-    s.write(f1, true);
-    s.write(f2, false);
-    s.write(f3, true);
-    s.write(f4, false);
+    s.write(f1, asc);
+    s.write(f2, desc);
+    s.write(f3, asc);
+    s.write(f4, desc);
 
     s.reset();
 
-    ASSERT_TRUE(std::isnan(s.read<float>(true)));
-    ASSERT_TRUE(std::isnan(s.read<float>(false)));
-    ASSERT_TRUE(std::isnan(s.read<double>(true)));
-    ASSERT_TRUE(std::isnan(s.read<double>(false)));
+    ASSERT_TRUE(std::isnan(s.read<float>(asc, false)));
+    ASSERT_TRUE(std::isnan(s.read<float>(desc, false)));
+    ASSERT_TRUE(std::isnan(s.read<double>(asc, false)));
+    ASSERT_TRUE(std::isnan(s.read<double>(desc, false)));
 }
 
 TEST_F(coder_test, f64_asc) {
@@ -241,13 +244,13 @@ TEST_F(coder_test, f64_asc) {
     kvs::stream s{buf};
     float_t<64> f1{2};
     float_t<64> f2{-2};
-    s.write(f1, true);
-    s.write(f2, true);
+    s.write(f1, asc);
+    s.write(f2, asc);
 
     s.reset();
 
-    ASSERT_EQ(f1, s.read<double>(true));
-    ASSERT_EQ(f2, s.read<double>(true));
+    ASSERT_EQ(f1, s.read<double>(asc, false));
+    ASSERT_EQ(f2, s.read<double>(asc, false));
     EXPECT_EQ('\xC0', buf[0]);
     EXPECT_EQ('\x00', buf[1]);
     EXPECT_EQ('\x00', buf[2]);
@@ -271,11 +274,11 @@ TEST_F(coder_test, text) {
     kvs::stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    s.write(txt, true);
+    s.write(txt, asc);
 
     s.reset();
 
-    ASSERT_EQ(txt, s.read<accessor::text>(&resource, true));
+    ASSERT_EQ(txt, s.read<accessor::text>(asc, false, &resource));
     EXPECT_EQ('\x80', buf[0]);
     EXPECT_EQ('\x03', buf[1]);
     EXPECT_EQ('A', buf[2]);
@@ -288,10 +291,10 @@ TEST_F(coder_test, empty_text) {
     kvs::stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, ""sv};
-    s.write(txt, true);
+    s.write(txt, asc);
 
     s.reset();
-    auto result = s.read<accessor::text>(&resource, true);
+    auto result = s.read<accessor::text>(asc, false, &resource);
     ASSERT_EQ(txt, result);
     ASSERT_EQ(0, result.size());
     EXPECT_EQ('\x80', buf[0]);
@@ -310,12 +313,12 @@ TEST_F(coder_test, encode_decode) {
     mock::record source_record{2, 2.0};
     mock::record target_record{1, 1.0};
     auto src_meta = source_record.record_meta();
-    encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), s);
-    encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), s);
+    encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), asc, s);
+    encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), asc, s);
     s.reset();
     auto tgt_meta = target_record.record_meta();
-    decode(s, tgt_meta->at(0), target_record.ref(), tgt_meta->value_offset(0), &resource);
-    decode(s, tgt_meta->at(1), target_record.ref(), tgt_meta->value_offset(1), &resource);
+    decode(s, tgt_meta->at(0), asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
+    decode(s, tgt_meta->at(1), asc, target_record.ref(), tgt_meta->value_offset(1), &resource);
 
     ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));

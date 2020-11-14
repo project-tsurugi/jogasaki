@@ -100,7 +100,7 @@ public:
             case k::subtract: result = left-right; break;
             case k::divide: result = left/right; break;
             case k::multiply:
-                if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {  //NOLINT
+                if constexpr ((std::is_integral_v<T> || std::is_floating_point_v<T>) && !std::is_same_v<T, bool>) {  //NOLINT
                     result = left*right; break;
                 }
                 break;

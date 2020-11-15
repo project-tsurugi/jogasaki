@@ -22,9 +22,11 @@ class params {
 public:
     std::size_t records_per_partition_ = 1000;
     std::size_t partitions_ = 10;
-    bool debug = false;
-    bool sequential_data = false;
-    bool randomize_partition = true;
+    bool debug_ = false;
+    bool sequential_data_ = false;
+    bool randomize_partition_ = true;
+    bool dump_ = false;
+    bool load_ = false;
 };
 
 }

@@ -63,6 +63,8 @@ DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all nu
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
 DEFINE_bool(randomize_partition, true, "randomize read partition and avoid read/write happening on the same thread");  //NOLINT
+DEFINE_bool(dump, false, "dump mode: generate data, and dump it into files. Must be exclusively used with --load.");  //NOLINT
+DEFINE_bool(load, false, "load mode: instead of generating data, load data from files and run. Must be exclusively used with --dump.");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -121,6 +123,7 @@ public:
         std::shared_ptr<kvs::database> db = kvs::database::open();
         threading_prepare_storage(param, db.get(), cfg.get(), contexts);
         utils::get_watch().set_point(time_point_storage_prepared, 0);
+        if (param.dump_) return 0;
         threading_create_and_schedule_request(param, db, cfg, contexts);
         dump_perf_info();
         return 0;
@@ -179,7 +182,14 @@ public:
         compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
             db->create_storage(id);
         });
-        common_cli::load_data(db, compiler_context->storage_provider(), index_name, param.records_per_partition_, param.sequential_data);
+        if (param.load_) {
+            common_cli::load_storage("db", db, index_name);
+            return compiler_context;
+        }
+        common_cli::populate_storage_data(db, compiler_context->storage_provider(), index_name, param.records_per_partition_, param.sequential_data_);
+        if (param.dump_) {
+            common_cli::dump_storage("db", db, index_name);
+        }
         return compiler_context;
     }
 
@@ -250,26 +260,30 @@ public:
         utils::get_watch().set_point(time_point_schedule, thread_id);
         dc.schedule(g);
         utils::get_watch().set_point(time_point_completed, thread_id);
-        dump_debug_data(stores, param);
+        dump_result_data(stores, param);
     }
 
-    void dump_debug_data(request_context::result_stores stores, params const& param) {
-        if(param.debug) {
-            auto store = stores[0];
-            auto record_meta = store->meta();
-            auto it = store->begin();
-            while(it != store->end()) {
-                auto record = it.ref();
+    void dump_result_data(request_context::result_stores stores, params const& param) {
+        auto store = stores[0];
+        auto record_meta = store->meta();
+        auto it = store->begin();
+        std::size_t count = 0;
+        std::size_t hash = 0;
+        while(it != store->end()) {
+            auto record = it.ref();
+            if(param.debug_ && count < 100) {
                 LOG(INFO) <<
                     "C0: " << record.get_value<std::int32_t>(record_meta->value_offset(0)) <<
                     " C1: " << record.get_value<std::int64_t>(record_meta->value_offset(1)) <<
                     " C2: " << record.get_value<double>(record_meta->value_offset(2)) <<
                     " C3: " << record.get_value<float>(record_meta->value_offset(3)) <<
                     " C4: " << record.get_value<accessor::text>(record_meta->value_offset(4));
-                ++it;
             }
-
+            hash ^= std::hash<std::string_view>{}(std::string_view{static_cast<char*>(record.data()), record.size()});
+            ++it;
+            ++count;
         }
+        LOG(INFO) << "record count: " << count << " hash: " << std::hex << hash;
     }
 
     std::vector<std::size_t> init_map(params& param) {
@@ -278,7 +292,7 @@ public:
         for(std::size_t i=0; i < param.partitions_; ++i) {
             ret.emplace_back(i);
         }
-        if (param.randomize_partition) {
+        if (param.randomize_partition_) {
             std::mt19937_64 mt{};  //NOLINT
             std::shuffle(ret.begin(), ret.end(), mt);
         }
@@ -422,9 +436,16 @@ extern "C" int main(int argc, char* argv[]) {
 
     s.partitions_ = FLAGS_partitions;
     s.records_per_partition_ = FLAGS_records_per_partition;
-    s.debug = FLAGS_debug;
-    s.sequential_data = FLAGS_sequential_data;
-    s.randomize_partition = FLAGS_randomize_partition;
+    s.debug_ = FLAGS_debug;
+    s.sequential_data_ = FLAGS_sequential_data;
+    s.randomize_partition_ = FLAGS_randomize_partition;
+    s.dump_ = FLAGS_dump;
+    s.load_ = FLAGS_load;
+
+    if (s.dump_ && s.load_) {
+        LOG(ERROR) << "--dump and --load must be exclusively used with each other.";
+        return -1;
+    }
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

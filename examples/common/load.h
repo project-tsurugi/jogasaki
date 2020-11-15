@@ -15,7 +15,10 @@
  */
 #pragma once
 
+#include <fstream>
 #include <glog/logging.h>
+#include <boost/filesystem.hpp>
+
 #include <takatori/util/fail.h>
 
 #include <jogasaki/executor/process/impl/expression/any.h>
@@ -23,6 +26,7 @@
 #include <jogasaki/utils/random.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage_dump.h>
 
 namespace jogasaki::common_cli {
 
@@ -81,7 +85,7 @@ static void fill_fields(meta::record_meta const& meta, kvs::stream& target, bool
     }
 }
 
-void load_data(
+void populate_storage_data(
     kvs::database* db,
     std::shared_ptr<configurable_provider> const& provider,
     std::string_view storage_name,
@@ -136,6 +140,37 @@ void load_data(
             tx.reset();
         }
     }
+}
+
+void dump_storage(std::string_view dir, kvs::database* db, std::string_view storage_name) {
+    boost::filesystem::path path{boost::filesystem::current_path()};
+    path /= std::string(dir);
+    if (! boost::filesystem::exists(path)) {
+        if (boost::filesystem::create_directories(path)) {
+            LOG(ERROR) << "creating directory failed";
+        }
+    }
+    std::string file(storage_name);
+    file += ".dat";
+    path /= file;
+    boost::filesystem::ofstream out{path};
+    kvs::storage_dump dumper{*db};
+    dumper.dump(out, storage_name, 10000);
+}
+
+void load_storage(std::string_view dir, kvs::database* db, std::string_view storage_name) {
+    boost::filesystem::path path{boost::filesystem::current_path()};
+    path /= std::string(dir);
+    std::string file(storage_name);
+    file += ".dat";
+    path /= file;
+    if (! boost::filesystem::exists(path)) {
+        LOG(ERROR) << "File not found: " << path.string();
+        fail();
+    }
+    boost::filesystem::ifstream in{path};
+    kvs::storage_dump dumper{*db};
+    dumper.load(in, storage_name, 10000);
 }
 
 } //namespace

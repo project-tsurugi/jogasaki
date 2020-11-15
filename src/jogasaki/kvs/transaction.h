@@ -40,7 +40,7 @@ public:
      * @param db the parent database that the transaction runs on
      * @param readonly whether the transaction is read-only
      */
-    explicit transaction(database& db, bool readonly = false);
+    explicit transaction(class database& db, bool readonly = false);
 
     /**
      * @brief destruct object
@@ -82,10 +82,16 @@ public:
      */
     [[nodiscard]] sharksfin::TransactionHandle handle() noexcept;
 
+
+    /**
+     * @brief return the parent database object
+     * @return the parent database
+     */
+    [[nodiscard]] class database* database() const noexcept;
 private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
-    database* parent_{};
+    class database* database_{};
     bool active_{true};
 };
 

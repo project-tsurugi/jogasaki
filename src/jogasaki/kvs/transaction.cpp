@@ -18,7 +18,7 @@
 
 namespace jogasaki::kvs {
 
-transaction::transaction(database &db, bool readonly) : parent_(std::addressof(db)) {
+transaction::transaction(class database &db, bool readonly) : database_(std::addressof(db)) {
     sharksfin::TransactionOptions options{};
     if (readonly) {
         options.operation_kind(sharksfin::TransactionOptions::OperationKind::READ_ONLY);
@@ -58,6 +58,10 @@ sharksfin::TransactionHandle transaction::handle() noexcept {
         }
     }
     return handle_;
+}
+
+class database* transaction::database() const noexcept {
+    return database_;
 }
 
 }

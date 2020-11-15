@@ -69,7 +69,7 @@ struct cache_align scan_field {
         {}
 
     meta::field_type type_{}; //NOLINT
-    bool target_exists_{};
+    bool target_exists_{}; //NOLINT
     std::size_t target_offset_{}; //NOLINT
     std::size_t target_nullity_offset_{}; //NOLINT
     bool nullable_{}; //NOLINT

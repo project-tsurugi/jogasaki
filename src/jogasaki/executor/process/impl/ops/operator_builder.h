@@ -258,9 +258,9 @@ public:
     }
     std::shared_ptr<impl::scan_info> create_scan_info(
         relation::scan const& node,
-        std::vector<key, takatori::util::object_allocator<key>> index_keys
+        std::vector<key, takatori::util::object_allocator<key>> const& index_keys
     ) {
-        return create_scan_info(node.lower(), node.upper(), std::move(index_keys));
+        return create_scan_info(node.lower(), node.upper(), index_keys);
     }
 private:
     std::shared_ptr<processor_info> info_{};

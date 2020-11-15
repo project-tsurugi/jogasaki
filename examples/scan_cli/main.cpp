@@ -51,6 +51,8 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 
+#include "../common/load.h"
+
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(partitions, 1, "Number of partitions");  //NOLINT
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
@@ -177,7 +179,7 @@ public:
         compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
             db->create_storage(id);
         });
-        load_data(db, index_name, param);
+        common_cli::load_data(db, compiler_context->storage_provider(), index_name, param.records_per_partition_, param.sequential_data);
         return compiler_context;
     }
 
@@ -266,59 +268,6 @@ public:
                 ++it;
             }
 
-        }
-    }
-    void load_data(kvs::database* db, std::string_view storage_name, params& param) {
-        auto stg = db->get_storage(storage_name);
-
-        static std::size_t buflen = 1024;
-        std::string key_buf(buflen, '\0');
-        std::string val_buf(buflen, '\0');
-        kvs::stream key_stream{key_buf};
-        kvs::stream val_stream{val_buf};
-
-        using key_record = jogasaki::mock::basic_record<kind::int4, kind::int8>;
-        using value_record = jogasaki::mock::basic_record<kind::float8, kind::float4, kind::character>;
-        auto key_meta = key_record{}.record_meta();
-        auto val_meta = value_record{}.record_meta();
-
-        static std::size_t record_per_transaction = 10000;
-        utils::xorshift_random64 rnd{};
-        std::unique_ptr<kvs::transaction> tx{};
-        for(std::size_t i=0, n=param.records_per_partition_; i < n; ++i) {
-            if (! tx) {
-                tx = db->create_transaction();
-            }
-            key_record key_rec{key_meta,
-                static_cast<std::int32_t>(param.sequential_data ? i : rnd()),
-                static_cast<std::int64_t>(param.sequential_data ? i*2 : rnd()),
-            };
-            kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
-            kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
-            std::string str(rnd() % max_char_len, static_cast<char>(param.sequential_data ? 'A'+(i % 26) : rnd()));
-            value_record val_rec{val_meta,
-                static_cast<double>(param.sequential_data ? i*10 : rnd()),
-                static_cast<float>(param.sequential_data ? i*100 : rnd()),
-                accessor::text(str.data(), str.size())
-            };
-            kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
-            kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), undef, val_stream);
-            kvs::encode(val_rec.ref(), val_meta->value_offset(2), val_meta->at(2), undef, val_stream);
-            if(auto res = stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
-            ); !res) {
-                fail();
-            }
-            key_stream.reset();
-            val_stream.reset();
-            if (i == n-1 || (i != 0 && (i % record_per_transaction) == 0)) {
-                if (auto res = tx->commit(); !res) {
-                    fail();
-                }
-                VLOG(2) << "committed after " << i << "-th record";
-                tx.reset();
-            }
         }
     }
 

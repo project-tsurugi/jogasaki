@@ -44,10 +44,10 @@ public:
     result_set(result_set&& other) noexcept = delete;
     result_set& operator=(result_set&& other) noexcept = delete;
 
-    maybe_shared_ptr<meta::record_meta> meta() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept;
 
-    iterator begin();
-    iterator end();
+    [[nodiscard]] iterator begin();
+    [[nodiscard]] iterator end();
     void close();
 private:
     std::unique_ptr<impl> impl_;

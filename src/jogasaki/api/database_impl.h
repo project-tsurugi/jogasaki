@@ -54,6 +54,10 @@ public:
     [[nodiscard]] std::shared_ptr<kvs::database> const& kvs_db() const noexcept {
         return kvs_db_;
     }
+
+    [[nodiscard]] std::shared_ptr<configurable_provider> const& provider() const noexcept {
+        return storage_provider_;
+    }
 private:
     std::shared_ptr<configuration> cfg_{};
     scheduler::dag_controller scheduler_{};

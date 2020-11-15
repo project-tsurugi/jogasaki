@@ -237,20 +237,20 @@ private:
 
 /**
  * @brief encode a field data to kvs binary representation
- * @param ref the record containing data to encode
+ * @param src the record containing data to encode
  * @param offset byte offset of the field containing data to encode
  * @param type the type of the field
  * @param odr the field ordering used for encode/decode
  * @param dest the stream where the encoded data is written
  */
-inline void encode(accessor::record_ref ref, std::size_t offset, meta::field_type const& type, order odr, stream& dest) {
+inline void encode(accessor::record_ref src, std::size_t offset, meta::field_type const& type, order odr, stream& dest) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
-        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset), odr); break;
-        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::int8>::runtime_type>(offset), odr); break;
-        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset), odr); break;
-        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(ref.get_value<meta::field_type_traits<kind::float8>::runtime_type>(offset), odr); break;
-        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(ref.get_value<meta::field_type_traits<kind::character>::runtime_type>(offset), odr); break;
+        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset), odr); break;
+        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.get_value<meta::field_type_traits<kind::int8>::runtime_type>(offset), odr); break;
+        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset), odr); break;
+        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(src.get_value<meta::field_type_traits<kind::float8>::runtime_type>(offset), odr); break;
+        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(src.get_value<meta::field_type_traits<kind::character>::runtime_type>(offset), odr); break;
         default:
             fail();
     }
@@ -282,18 +282,18 @@ inline void encode(executor::process::impl::expression::any src, meta::field_typ
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param odr the field ordering used for encode/decode
- * @param ref the record to containing the field
+ * @param dest the record to containing the field
  * @param offset byte offset of the field
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  */
-inline void decode(stream& src, meta::field_type const& type, order odr, accessor::record_ref ref, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
+inline void decode(stream& src, meta::field_type const& type, order odr, accessor::record_ref dest, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
-        case kind::int4: ref.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)); break;
-        case kind::int8: ref.set_value<meta::field_type_traits<kind::int8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)); break;
-        case kind::float4: ref.set_value<meta::field_type_traits<kind::float4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)); break;
-        case kind::float8: ref.set_value<meta::field_type_traits<kind::float8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, false)); break;
-        case kind::character: ref.set_value<meta::field_type_traits<kind::character>::runtime_type>(offset, src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, false, resource)); break;
+        case kind::int4: dest.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)); break;
+        case kind::int8: dest.set_value<meta::field_type_traits<kind::int8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)); break;
+        case kind::float4: dest.set_value<meta::field_type_traits<kind::float4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)); break;
+        case kind::float8: dest.set_value<meta::field_type_traits<kind::float8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, false)); break;
+        case kind::character: dest.set_value<meta::field_type_traits<kind::character>::runtime_type>(offset, src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, false, resource)); break;
         default:
             fail();
     }

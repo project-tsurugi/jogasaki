@@ -55,8 +55,8 @@ sharksfin::DatabaseHandle database::handle() const noexcept {
     return handle_;
 }
 
-std::unique_ptr<transaction> database::create_transaction() {
-    return std::make_unique<transaction>(*this);
+std::unique_ptr<transaction> database::create_transaction(bool readonly) {
+    return std::make_unique<transaction>(*this, readonly);
 }
 
 }

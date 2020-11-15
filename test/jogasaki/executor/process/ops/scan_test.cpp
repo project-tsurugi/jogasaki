@@ -220,7 +220,7 @@ TEST_F(scan_test, simple) {
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), std::move(tx2), sinfo.get(), &resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
@@ -462,7 +462,7 @@ TEST_F(scan_test, scan_info) {
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), std::move(tx2), sinfo.get(), &resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();

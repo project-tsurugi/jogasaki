@@ -75,6 +75,11 @@ public:
     [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
+     * @brief accessor to kvs transaction
+     */
+    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+
+    /**
      * @brief accessor to block_scope
      */
     [[nodiscard]] class block_scope& block_scope(std::size_t index);

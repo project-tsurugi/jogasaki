@@ -55,6 +55,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         cfg_,
         std::move(ctx),
         kvs_db_,
+        kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
         &stores,
         record_resource.get(),
         varlen_resource.get()

@@ -83,9 +83,10 @@ public:
 
     /**
      * @brief create and start new transaction
+     * @param readonly whether the transaction is read-only
      * @return transaction object
      */
-    [[nodiscard]] std::unique_ptr<transaction> create_transaction();
+    [[nodiscard]] std::unique_ptr<transaction> create_transaction(bool readonly = false);
 
     /**
      * @brief create new storage on the database

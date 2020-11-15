@@ -214,7 +214,6 @@ public:
         std::size_t thread_id,
         std::shared_ptr<plan::compiler_context> const& compiler_context
     ) {
-        (void)prepare_completion_latch;
         // create step graph with only process
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
@@ -222,11 +221,13 @@ public:
         memory::monotonic_paged_memory_resource record_resource{&global::page_pool()};
         memory::monotonic_paged_memory_resource varlen_resource{&global::page_pool()};
         request_context::result_stores stores{};
+        auto tx = db->create_transaction(true);
         auto context = std::make_shared<request_context>(
             channel,
             cfg,
             compiler_context,
             std::move(db),
+            std::move(tx),
             &stores,
             &record_resource,
             &varlen_resource

@@ -37,8 +37,10 @@ public:
 
     /**
      * @brief create new object
+     * @param db the parent database that the transaction runs on
+     * @param readonly whether the transaction is read-only
      */
-    explicit transaction(database& db);
+    explicit transaction(database& db, bool readonly = false);
 
     /**
      * @brief destruct object

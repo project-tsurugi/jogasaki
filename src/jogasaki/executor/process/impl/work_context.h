@@ -47,11 +47,13 @@ public:
         std::size_t operator_count,
         std::size_t block_count,
         std::unique_ptr<memory_resource> resource,
-        std::shared_ptr<kvs::database> database
+        std::shared_ptr<kvs::database> database,
+        std::shared_ptr<kvs::transaction> transaction
     ) :
         contexts_(operator_count),
         resource_(std::move(resource)),
-        database_(std::move(database))
+        database_(std::move(database)),
+        transaction_(std::move(transaction))
     {
         variables_.reserve(block_count);
     }
@@ -107,11 +109,20 @@ public:
     [[nodiscard]] kvs::database* database() const noexcept {
         return database_.get();
     }
+
+    /**
+     * @brief accessor to kvs transaction
+     * @return the transaction that is shared within request
+     */
+    [[nodiscard]] kvs::transaction* transaction() const noexcept {
+        return transaction_.get();
+    }
 private:
     ops::context_container contexts_{};
     block_scopes variables_{};
     std::unique_ptr<memory_resource> resource_{};
     std::shared_ptr<kvs::database> database_{};
+    std::shared_ptr<kvs::transaction> transaction_{};
 };
 
 }

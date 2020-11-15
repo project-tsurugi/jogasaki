@@ -45,6 +45,10 @@ kvs::database* context_helper::database() const noexcept {
     return work_context_->database();
 }
 
+kvs::transaction* context_helper::transaction() const noexcept {
+    return work_context_->transaction();
+}
+
 abstract::task_context* context_helper::task_context() const noexcept {
     return context_;
 }

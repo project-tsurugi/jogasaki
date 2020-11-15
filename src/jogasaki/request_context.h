@@ -48,6 +48,7 @@ public:
         std::shared_ptr<class configuration> config,
         std::shared_ptr<plan::compiler_context> compiler_context,
         std::shared_ptr<kvs::database> database = {},
+        std::shared_ptr<kvs::transaction> transaction = {},
         result_stores* stores = {},
         memory::paged_memory_resource* record_resource = {},
         memory::paged_memory_resource* varlen_resource = {}
@@ -84,6 +85,12 @@ public:
     [[nodiscard]] std::shared_ptr<kvs::database> const& database() const;
 
     /**
+     * @brief accessor for the transaction
+     * @return transaction shared within this request
+     */
+    [[nodiscard]] std::shared_ptr<kvs::transaction> const& transaction() const;
+
+    /**
      * @brief accessor for the record resource
      * @return record resource
      */
@@ -104,6 +111,7 @@ private:
     std::shared_ptr<plan::compiler_context> compiler_context_{};
     result_stores* stores_{};
     std::shared_ptr<kvs::database> database_{};
+    std::shared_ptr<kvs::transaction> transaction_{};
     memory::paged_memory_resource* record_resource_{};
     memory::paged_memory_resource* varlen_resource_{};
 };

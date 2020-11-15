@@ -31,6 +31,7 @@ request_context::request_context(
     std::shared_ptr<class configuration> config,
     std::shared_ptr<plan::compiler_context> compiler_context,
     std::shared_ptr<kvs::database> database,
+    std::shared_ptr<kvs::transaction> transaction,
     result_stores* stores,
     memory::paged_memory_resource* record_resource,
     memory::paged_memory_resource* varlen_resource
@@ -40,6 +41,7 @@ request_context::request_context(
     compiler_context_(std::move(compiler_context)),
     stores_(stores),
     database_(std::move(database)),
+    transaction_(std::move(transaction)),
     record_resource_(record_resource),
     varlen_resource_(varlen_resource)
 {}
@@ -62,6 +64,10 @@ std::shared_ptr<plan::compiler_context> const& request_context::compiler_context
 
 [[nodiscard]] std::shared_ptr<kvs::database> const& request_context::database() const {
     return database_;
+}
+
+[[nodiscard]] std::shared_ptr<kvs::transaction> const& request_context::transaction() const {
+    return transaction_;
 }
 
 }

@@ -325,7 +325,8 @@ private:
                 2UL, // operator count
                 1UL, // block_scope count
                 std::make_unique<memory::lifo_paged_memory_resource>(&pool_),
-                std::shared_ptr<kvs::database>{}
+                std::shared_ptr<kvs::database>{},
+                std::shared_ptr<kvs::transaction>{}
             ));
             custom_contexts.emplace_back(std::move(ctx));
         }

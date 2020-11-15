@@ -18,9 +18,12 @@
 
 namespace jogasaki::kvs {
 
-transaction::transaction(database &db) : parent_(std::addressof(db)) {
-    sharksfin::TransactionOptions txopts{};
-    if(auto res = sharksfin::transaction_begin(db.handle(), txopts, &tx_); res != sharksfin::StatusCode::OK) {
+transaction::transaction(database &db, bool readonly) : parent_(std::addressof(db)) {
+    sharksfin::TransactionOptions options{};
+    if (readonly) {
+        options.operation_kind(sharksfin::TransactionOptions::OperationKind::READ_ONLY);
+    }
+    if(auto res = sharksfin::transaction_begin(db.handle(), options, &tx_); res != sharksfin::StatusCode::OK) {
         fail();
     }
 }

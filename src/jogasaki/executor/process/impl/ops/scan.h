@@ -153,11 +153,10 @@ public:
         auto* p = find_context<scan_context>(index(), ctx.contexts());
         if (! p) {
             auto stg = ctx.database()->get_storage(storage_name());
-            // FIXME transaction should be passed from upper api
             p = ctx.make_context<scan_context>(index(),
                 ctx.block_scope(block_index()),
                 std::move(stg),
-                ctx.database()->create_transaction(),
+                ctx.transaction(),
                 static_cast<impl::scan_info const*>(ctx.task_context()->scan_info()),  //NOLINT
                 ctx.resource());
         }

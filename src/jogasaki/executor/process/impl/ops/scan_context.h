@@ -50,12 +50,12 @@ public:
         class abstract::task_context* ctx,
         block_scope& variables,
         std::unique_ptr<kvs::storage> stg,
-        std::unique_ptr<kvs::transaction> tx,
+        kvs::transaction* tx,
         impl::scan_info const* scan_info,
         memory_resource* resource = nullptr
     ) : context_base(ctx, variables, resource),
         stg_(std::move(stg)),
-        tx_(std::move(tx)),
+        tx_(tx),
         scan_info_(scan_info)
     {}
 
@@ -71,12 +71,12 @@ public:
     }
 
     [[nodiscard]] kvs::transaction* transaction() const noexcept {
-        return tx_.get();
+        return tx_;
     }
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
-    std::unique_ptr<kvs::transaction> tx_{};
+    kvs::transaction* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     impl::scan_info const* scan_info_{};
 };

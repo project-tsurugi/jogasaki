@@ -140,18 +140,17 @@ public:
         std::vector<int> result(num_threads);
         for(std::size_t thread_id = 1; thread_id <= num_threads; ++thread_id) {
             auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts]() {
+                set_core_affinity(thread_id, cfg);
                 LOG(INFO) << "thread " << thread_id << " storage creation start";
                 contexts[thread_id-1] = prepare_storage(param, db, thread_id, cfg);
                 LOG(INFO) << "thread " << thread_id << " storage creation end";
             });
-            set_core_affinity(thread, thread_id, cfg);
             thread_group.add_thread(thread);
         }
         thread_group.join_all();
     }
 
     void set_core_affinity(
-        boost::thread* t,
         std::size_t thread_id,
         configuration const* cfg
     ) {
@@ -160,7 +159,7 @@ public:
             if (cfg->assign_numa_nodes_uniformly()) {
                 numa_run_on_node(static_cast<int>(cpu % numa_nodes_));
             } else {
-                pthread_t x = t->native_handle();
+                pthread_t x = pthread_self();
                 cpu_set_t cpuset;
                 CPU_ZERO(&cpuset);
                 CPU_SET(cpu, &cpuset); //NOLINT
@@ -205,12 +204,12 @@ public:
         std::vector<int> result(num_threads);
         for(std::size_t thread_id = 1; thread_id <= num_threads; ++thread_id) {
             auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts, &prepare_completion_latch]() {
+                set_core_affinity(thread_id, cfg.get());
                 LOG(INFO) << "thread " << thread_id << " create request start";
                 auto storage_id = map_thread_to_storage_[thread_id-1]+1;
                 create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
                 LOG(INFO) << "thread " << thread_id << " schedule request end";
             });
-            set_core_affinity(thread, thread_id, cfg.get());
             thread_group.add_thread(thread);
         }
         thread_group.join_all();

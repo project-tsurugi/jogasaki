@@ -146,7 +146,7 @@ void dump_storage(std::string_view dir, kvs::database* db, std::string_view stor
     boost::filesystem::path path{boost::filesystem::current_path()};
     path /= std::string(dir);
     if (! boost::filesystem::exists(path)) {
-        if (boost::filesystem::create_directories(path)) {
+        if (! boost::filesystem::create_directories(path)) {
             LOG(ERROR) << "creating directory failed";
         }
     }

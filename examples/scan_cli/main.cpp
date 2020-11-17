@@ -65,6 +65,7 @@ DEFINE_bool(sequential_data, false, "use sequential data instead of randomly gen
 DEFINE_bool(randomize_partition, true, "randomize read partition and avoid read/write happening on the same thread");  //NOLINT
 DEFINE_bool(dump, false, "dump mode: generate data, and dump it into files. Must be exclusively used with --load.");  //NOLINT
 DEFINE_bool(load, false, "load mode: instead of generating data, load data from files and run. Must be exclusively used with --dump.");  //NOLINT
+DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -176,7 +177,11 @@ public:
         index_name.append(std::to_string(storage_id));
         // generate takatori compile info and statement
         auto compiler_context = std::make_shared<plan::compiler_context>();
-        create_compiled_info(compiler_context, table_name, index_name);
+        if (param.no_text_) {
+            create_compiled_info_no_text(compiler_context, table_name, index_name);
+        } else {
+            create_compiled_info(compiler_context, table_name, index_name);
+        }
 
         compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
             db->create_storage(id);
@@ -271,12 +276,9 @@ public:
         while(it != store->end()) {
             auto record = it.ref();
             if(param.debug_ && count < 100) {
-                LOG(INFO) <<
-                    "C0: " << record.get_value<std::int32_t>(record_meta->value_offset(0)) <<
-                    " C1: " << record.get_value<std::int64_t>(record_meta->value_offset(1)) <<
-                    " C2: " << record.get_value<double>(record_meta->value_offset(2)) <<
-                    " C3: " << record.get_value<float>(record_meta->value_offset(3)) <<
-                    " C4: " << record.get_value<accessor::text>(record_meta->value_offset(4));
+                std::stringstream ss{};
+                ss << record << *record_meta;
+                LOG(INFO) << ss.str();
             }
             hash ^= std::hash<std::string_view>{}(std::string_view{static_cast<char*>(record.data()), record.size()});
             ++it;
@@ -401,6 +403,170 @@ private:
         compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
     }
 
+    void create_compiled_info_no_text(
+        std::shared_ptr<plan::compiler_context> const& compiler_context,
+        std::string_view table_name,
+        std::string_view index_name
+    ) {
+        binding::factory bindings;
+        std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
+
+        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table(table_name, {
+            table_name,
+            {
+                { "C0", t::int4() },
+                { "C1", t::int8() },
+                { "C2", t::float8() },
+                { "C3", t::float4() },
+                { "C4", t::int8() },
+                { "C5", t::int8() },
+                { "C6", t::int8() },
+                { "C7", t::int8() },
+                { "C8", t::int8() },
+                { "C9", t::int8() },
+                { "C10", t::int8() },
+                { "C11", t::int8() },
+                { "C12", t::int8() },
+                { "C13", t::int8() },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index(index_name, {
+            t0,
+            index_name,
+            {
+                t0->columns()[0],
+                t0->columns()[1],
+            },
+            {
+                t0->columns()[2],
+                t0->columns()[3],
+                t0->columns()[4],
+                t0->columns()[5],
+                t0->columns()[6],
+                t0->columns()[7],
+                t0->columns()[8],
+                t0->columns()[9],
+                t0->columns()[10],
+                t0->columns()[11],
+                t0->columns()[12],
+                t0->columns()[13],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        });
+
+        storage::column const& t0c0 = t0->columns()[0];
+        storage::column const& t0c1 = t0->columns()[1];
+        storage::column const& t0c2 = t0->columns()[2];
+        storage::column const& t0c3 = t0->columns()[3];
+        storage::column const& t0c4 = t0->columns()[4];
+        storage::column const& t0c5 = t0->columns()[5];
+        storage::column const& t0c6 = t0->columns()[6];
+        storage::column const& t0c7 = t0->columns()[7];
+        storage::column const& t0c8 = t0->columns()[8];
+        storage::column const& t0c9 = t0->columns()[9];
+        storage::column const& t0c10 = t0->columns()[10];
+        storage::column const& t0c11 = t0->columns()[11];
+        storage::column const& t0c12 = t0->columns()[12];
+        storage::column const& t0c13 = t0->columns()[13];
+
+        auto p = std::make_shared<takatori::plan::graph_type>();
+        auto&& p0 = p->insert(takatori::plan::process {});
+        auto c0 = bindings.stream_variable("c0");
+        auto c1 = bindings.stream_variable("c1");
+        auto c2 = bindings.stream_variable("c2");
+        auto c3 = bindings.stream_variable("c3");
+        auto c4 = bindings.stream_variable("c4");
+        auto c5 = bindings.stream_variable("c5");
+        auto c6 = bindings.stream_variable("c6");
+        auto c7 = bindings.stream_variable("c7");
+        auto c8 = bindings.stream_variable("c8");
+        auto c9 = bindings.stream_variable("c9");
+        auto c10 = bindings.stream_variable("c10");
+        auto c11 = bindings.stream_variable("c11");
+        auto c12 = bindings.stream_variable("c12");
+        auto c13 = bindings.stream_variable("c13");
+        auto& r0 = p0.operators().insert(relation::scan {
+            bindings(*i0),
+            {
+                { bindings(t0c0), c0 },
+                { bindings(t0c1), c1 },
+                { bindings(t0c2), c2 },
+                { bindings(t0c3), c3 },
+                { bindings(t0c4), c4 },
+                { bindings(t0c5), c5 },
+                { bindings(t0c6), c6 },
+                { bindings(t0c7), c7 },
+                { bindings(t0c8), c8 },
+                { bindings(t0c9), c9 },
+                { bindings(t0c10), c10 },
+                { bindings(t0c11), c11 },
+                { bindings(t0c12), c12 },
+                { bindings(t0c13), c13 },
+            },
+        });
+
+        auto&& r1 = p0.operators().insert(relation::emit {
+            {
+                { c0, "c0"},
+                { c1, "c1"},
+                { c2, "c2"},
+                { c3, "c3"},
+                { c4, "c4"},
+                { c5, "c5"},
+                { c6, "c6"},
+                { c7, "c7"},
+                { c8, "c8"},
+                { c9, "c9"},
+                { c10, "c10"},
+                { c11, "c11"},
+                { c12, "c12"},
+                { c13, "c13"},
+            },
+        });
+
+        r0.output() >> r1.input();
+
+        auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
+        vm->bind(c0, t::int4{});
+        vm->bind(c1, t::int8{});
+        vm->bind(c2, t::float8{});
+        vm->bind(c3, t::float4{});
+        vm->bind(c4, t::int8{});
+        vm->bind(c5, t::int8{});
+        vm->bind(c6, t::int8{});
+        vm->bind(c7, t::int8{});
+        vm->bind(c8, t::int8{});
+        vm->bind(c9, t::int8{});
+        vm->bind(c10, t::int8{});
+        vm->bind(c11, t::int8{});
+        vm->bind(c12, t::int8{});
+        vm->bind(c13, t::int8{});
+        vm->bind(bindings(t0c0), t::int4{});
+        vm->bind(bindings(t0c1), t::int8{});
+        vm->bind(bindings(t0c2), t::float8{});
+        vm->bind(bindings(t0c3), t::float4{});
+        vm->bind(bindings(t0c4), t::int8{});
+        vm->bind(bindings(t0c5), t::int8{});
+        vm->bind(bindings(t0c6), t::int8{});
+        vm->bind(bindings(t0c7), t::int8{});
+        vm->bind(bindings(t0c8), t::int8{});
+        vm->bind(bindings(t0c9), t::int8{});
+        vm->bind(bindings(t0c10), t::int8{});
+        vm->bind(bindings(t0c11), t::int8{});
+        vm->bind(bindings(t0c12), t::int8{});
+        vm->bind(bindings(t0c13), t::int8{});
+        yugawara::compiled_info c_info{{}, vm};
+
+        compiler_context->storage_provider(std::move(storages));
+        compiler_context->compiled_info(c_info);
+        compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
+    }
+
     takatori::plan::process& find_process(takatori::plan::graph_type& p) {
         takatori::plan::process* p0{};
         takatori::plan::sort_from_upstream(p, [&p0](takatori::plan::step& s){
@@ -440,6 +606,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.randomize_partition_ = FLAGS_randomize_partition;
     s.dump_ = FLAGS_dump;
     s.load_ = FLAGS_load;
+    s.no_text_ = FLAGS_no_text;
 
     if (s.dump_ && s.load_) {
         LOG(ERROR) << "--dump and --load must be exclusively used with each other.";

@@ -27,6 +27,7 @@ public:
     bool randomize_partition_ = true;
     bool dump_ = false;
     bool load_ = false;
+    bool no_text_ = false;
 };
 
 }

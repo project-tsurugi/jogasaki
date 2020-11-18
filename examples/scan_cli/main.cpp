@@ -66,7 +66,7 @@ DEFINE_bool(randomize_partition, true, "randomize read partition and avoid read/
 DEFINE_bool(dump, false, "dump mode: generate data, and dump it into files. Must be exclusively used with --load.");  //NOLINT
 DEFINE_bool(load, false, "load mode: instead of generating data, load data from files and run. Must be exclusively used with --dump.");  //NOLINT
 DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
-DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages that are first touched beforehand");  //NOLINT
+DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages per partition that are first touched beforehand");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -126,8 +126,6 @@ public:
         threading_prepare_storage(param, db.get(), cfg.get(), contexts);
         utils::get_watch().set_point(time_point_storage_prepared, 0);
         if (param.dump_) return 0;
-        if (param.prepare_pages_ != -1) prepare_pages(param.prepare_pages_);
-        utils::get_watch().set_point(time_point_output_buffer_prepared, 0);
         threading_create_and_schedule_request(param, db, cfg, contexts);
         dump_perf_info();
         return 0;
@@ -228,6 +226,7 @@ public:
             auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts, &prepare_completion_latch]() {
                 set_core_affinity(thread_id, cfg.get());
                 LOG(INFO) << "thread " << thread_id << " create request start";
+
                 auto storage_id = map_thread_to_storage_[thread_id-1]+1;
                 create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
                 LOG(INFO) << "thread " << thread_id << " schedule request end";
@@ -245,6 +244,8 @@ public:
         std::size_t thread_id,
         std::shared_ptr<plan::compiler_context> const& compiler_context
     ) {
+        if (param.prepare_pages_ != -1) prepare_pages(param.prepare_pages_);
+        utils::get_watch().set_point(time_point_output_buffer_prepared, thread_id);
         // create step graph with only process
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);

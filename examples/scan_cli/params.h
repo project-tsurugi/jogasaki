@@ -28,6 +28,7 @@ public:
     bool dump_ = false;
     bool load_ = false;
     bool no_text_ = false;
+    std::int32_t prepare_pages_ = -1;
 };
 
 }

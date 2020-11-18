@@ -22,8 +22,9 @@ namespace jogasaki::scan_cli {
 
 constexpr static std::size_t time_point_begin = 0;
 constexpr static std::size_t time_point_storage_prepared = 1;
-constexpr static std::size_t time_point_request_created = 2;
-constexpr static std::size_t time_point_schedule = 3;
-constexpr static std::size_t time_point_completed = 4;
+constexpr static std::size_t time_point_output_buffer_prepared = 2;
+constexpr static std::size_t time_point_request_created = 3;
+constexpr static std::size_t time_point_schedule = 4;
+constexpr static std::size_t time_point_completed = 5;
 
 }

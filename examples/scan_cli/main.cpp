@@ -66,6 +66,7 @@ DEFINE_bool(randomize_partition, true, "randomize read partition and avoid read/
 DEFINE_bool(dump, false, "dump mode: generate data, and dump it into files. Must be exclusively used with --load.");  //NOLINT
 DEFINE_bool(load, false, "load mode: instead of generating data, load data from files and run. Must be exclusively used with --dump.");  //NOLINT
 DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
+DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages that are first touched beforehand");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -125,9 +126,25 @@ public:
         threading_prepare_storage(param, db.get(), cfg.get(), contexts);
         utils::get_watch().set_point(time_point_storage_prepared, 0);
         if (param.dump_) return 0;
+        if (param.prepare_pages_ != -1) prepare_pages(param.prepare_pages_);
+        utils::get_watch().set_point(time_point_output_buffer_prepared, 0);
         threading_create_and_schedule_request(param, db, cfg, contexts);
         dump_perf_info();
         return 0;
+    }
+
+    void prepare_pages(std::int32_t pages) {
+        auto& pool = global::page_pool();
+        std::vector<void*> v{};
+        v.reserve(pages);
+        for(std::size_t i=0, n=pages; i<n; ++i) {
+            auto* p = pool.acquire_page();
+            std::memset(p, 0, memory::page_size);
+            v.emplace_back(p);
+        }
+        for(auto* p : v) {
+            pool.release_page(p);
+        }
     }
 
     void threading_prepare_storage(
@@ -306,7 +323,8 @@ private:
     void dump_perf_info() {
         auto& watch = utils::get_watch();
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_storage_prepared, "prepare storage");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_storage_prepared, time_point_request_created, "create request");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_storage_prepared, time_point_output_buffer_prepared, "prepare out buffer");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_output_buffer_prepared, time_point_request_created, "create request");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_request_created, time_point_schedule, "wait all requests");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_completed, "process request");
     }
@@ -607,6 +625,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.dump_ = FLAGS_dump;
     s.load_ = FLAGS_load;
     s.no_text_ = FLAGS_no_text;
+    s.prepare_pages_ = FLAGS_prepare_pages;
 
     if (s.dump_ && s.load_) {
         LOG(ERROR) << "--dump and --load must be exclusively used with each other.";

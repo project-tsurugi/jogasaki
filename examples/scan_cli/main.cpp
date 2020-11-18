@@ -279,6 +279,7 @@ public:
         dag_controller dc{std::move(thread_cfg)};
         utils::get_watch().set_point(time_point_request_created, thread_id);
         prepare_completion_latch.count_down_and_wait();
+        LOG(INFO) << "thread " << thread_id << " schedule request begin";
         utils::get_watch().set_point(time_point_schedule, thread_id);
         dc.schedule(g);
         utils::get_watch().set_point(time_point_completed, thread_id);

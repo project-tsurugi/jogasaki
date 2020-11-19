@@ -50,20 +50,29 @@ public:
         partition_(partition)
     {}
 
+    /**
+     * @brief create new object
+     * @param partition the index of partition assigned to this object
+     * @param io_exchange_map mapping from input/output indices to exchanges
+     * @param scan_info the scan information, nullptr if the task doesn't contain scan
+     * @param stores the stores to keep the result data
+     * @param external_output_record_resource the memory resource backing the result store
+     * @param external_output_varlen_resource the memory resource backing the result store
+     */
     task_context(partition_index partition,
         impl::details::io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
         result_stores* stores,
-        memory::paged_memory_resource* record_resource = {},
-        memory::paged_memory_resource* varlen_resource = {}
+        memory::paged_memory_resource* external_output_record_resource = {},
+        memory::paged_memory_resource* external_output_varlen_resource = {}
     ) :
         partition_(partition),
         io_exchange_map_(std::addressof(io_exchange_map)),
         scan_info_(std::move(scan_info)),
         stores_(stores),
         external_writers_(io_exchange_map_->external_output_count()),
-        record_resource_(record_resource),
-        varlen_resource_(varlen_resource)
+        external_output_record_resource_(external_output_record_resource),
+        external_output_varlen_resource_(external_output_varlen_resource)
     {}
 
     reader_container reader(reader_index idx) override {
@@ -107,8 +116,8 @@ public:
         auto& slot = external_writers_.operator[](idx);
         if (! slot) {
             auto& st = stores_->operator[](idx) = std::make_shared<data::iterable_record_store>(
-                record_resource_,
-                varlen_resource_,
+                external_output_record_resource_,
+                external_output_varlen_resource_,
                 op.meta()
             );
             slot = std::make_shared<class external_writer>(*st, op.meta());
@@ -130,8 +139,8 @@ private:
     std::shared_ptr<impl::scan_info> scan_info_{};
     result_stores* stores_{};
     std::vector<std::shared_ptr<class external_writer>> external_writers_{};
-    memory::paged_memory_resource* record_resource_{};
-    memory::paged_memory_resource* varlen_resource_{};
+    memory::paged_memory_resource* external_output_record_resource_{};
+    memory::paged_memory_resource* external_output_varlen_resource_{};
 };
 
 }

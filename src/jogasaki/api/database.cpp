@@ -54,6 +54,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         std::make_shared<class channel>(),
         cfg_,
         std::move(ctx),
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
         kvs_db_,
         kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
         &stores,

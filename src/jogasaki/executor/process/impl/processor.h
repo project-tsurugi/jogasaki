@@ -32,12 +32,22 @@ namespace jogasaki::executor::process::impl {
 
 /**
  * @brief processor implementation
+ * @details this object holds structural information about the process, e.g. operators logic object,
+ * and shared by multiple threads or tasks. Immutable after construction.
  */
 class processor : public process::abstract::processor {
 public:
     processor() = default;
 
-    explicit processor(
+    /**
+     * @brief create new object
+     * @param info processor information
+     * @param compiler_ctx compiler context
+     * @param io_info input/output information
+     * @param relation_io_map mapping from relation to input/output indices
+     * @param resource the memory resource to build the structures needed by this processor
+     */
+    processor(
         std::shared_ptr<processor_info> info,
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<ops::io_info> io_info,
@@ -45,8 +55,17 @@ public:
         memory::lifo_paged_memory_resource* resource
     );
 
+    /**
+     * @brief run the process logic on the given context
+     * @param context the context object of the task
+     * @return task execution status
+     */
     [[nodiscard]] abstract::status run(abstract::task_context* context) override;
 
+    /**
+     * @brief accessor to the operators contained in the processor
+     * @return the operators container
+     */
     [[nodiscard]] ops::operator_container const& operators() const noexcept {
         return operators_;
     }

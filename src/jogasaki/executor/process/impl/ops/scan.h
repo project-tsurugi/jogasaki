@@ -179,7 +179,9 @@ public:
     void operator()(scan_context& ctx, abstract::task_context* context = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
+        auto resource = ctx.resource();
         while(ctx.it_->next()) {
+            auto cp = resource->get_checkpoint();
             std::string_view k{};
             std::string_view v{};
             if(!ctx.it_->key(k) || !ctx.it_->value(v)) {
@@ -192,18 +194,19 @@ public:
                     kvs::consume_stream(keys, f.type_, f.order_);
                     continue;
                 }
-                kvs::decode(keys, f.type_, f.order_, target, f.target_offset_, ctx.resource());
+                kvs::decode(keys, f.type_, f.order_, target, f.target_offset_, resource);
             }
             for(auto&& f : value_fields_) {
                 if (! f.target_exists_) {
                     kvs::consume_stream(values, f.type_, f.order_);
                     continue;
                 }
-                kvs::decode(values, f.type_, f.order_, target, f.target_offset_, ctx.resource());
+                kvs::decode(values, f.type_, f.order_, target, f.target_offset_, resource);
             }
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
+            resource->deallocate_after(cp);
         }
         close(ctx);
     }

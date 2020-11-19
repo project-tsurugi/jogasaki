@@ -451,6 +451,7 @@ public:
             channel,
             cfg,
             compiler_context,
+            std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::move(db),
             std::move(tx),
             &stores,

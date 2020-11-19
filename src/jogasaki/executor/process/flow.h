@@ -69,7 +69,6 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     step* step_{};
     std::shared_ptr<processor_info> info_{};
-    std::unique_ptr<memory::lifo_paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
 
     [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(std::size_t partition, impl::ops::operator_container const& operators);
 };

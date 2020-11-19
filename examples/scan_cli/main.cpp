@@ -257,7 +257,8 @@ public:
             "    q : quit" << std::endl
             ;
     }
-    void run_interactive(params& param, std::shared_ptr<configuration> cfg) {
+
+    void run_interactive(params& param, std::shared_ptr<configuration> const& cfg) {
         bool to_exit = false;
         while(! to_exit) {
             std::cerr << "> ";

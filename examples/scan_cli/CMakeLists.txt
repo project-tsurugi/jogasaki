@@ -22,13 +22,10 @@ target_link_libraries(scan-cli
         PRIVATE gflags::gflags
 )
 
-if (PERFORMANCE_TOOLS)
-    target_link_libraries(scan-cli
-            PRIVATE performance-tools::api
-            PRIVATE performance-tools::lib
-            )
-    target_compile_definitions(scan-cli PUBLIC PERFORMANCE_TOOLS)
-endif()
+target_link_libraries(scan-cli
+        PRIVATE performance-tools::api
+        PRIVATE performance-tools::lib
+        )
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(scan-cli

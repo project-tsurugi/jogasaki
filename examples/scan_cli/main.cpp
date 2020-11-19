@@ -43,6 +43,8 @@
 #include <takatori/plan/process.h>
 #include <takatori/statement/execute.h>
 
+#include <performance-tools/synchronizer.h>
+
 #include "params.h"
 #include "cli_constants.h"
 
@@ -72,7 +74,8 @@ DEFINE_bool(load, false, "load mode: instead of generating data, load data from 
 DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
 DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages per partition that are first touched beforehand");  //NOLINT
 DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
-DEFINE_bool(mutex_prepare_pages, true, "use mutex when preparing pages.");  //NOLINT
+DEFINE_bool(mutex_prepare_pages, false, "use mutex when preparing pages.");  //NOLINT
+DEFINE_bool(wait_prepare_pages, false, "wait for all threads completing preparing pages.");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -144,6 +147,7 @@ bool fill_from_flags(
     s.interactive_ = FLAGS_interactive;
     s.prepare_pages_ = FLAGS_prepare_pages;
     s.mutex_prepare_pages_ = FLAGS_mutex_prepare_pages;
+    s.wait_prepare_pages_ = FLAGS_wait_prepare_pages;
 
     if (s.dump_ && s.load_) {
         LOG(ERROR) << "--dump and --load must be exclusively used with each other.";
@@ -421,6 +425,9 @@ public:
         boost::thread_group thread_group{};
         boost::latch prepare_completion_latch(partitions);
         std::vector<int> result(partitions);
+        if (param.wait_prepare_pages_) {
+            sync_start_request_.set_threads(partitions);
+        }
         for(std::size_t thread_id = 1; thread_id <= partitions; ++thread_id) {
             auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts, &prepare_completion_latch]() {
                 set_core_affinity(thread_id, cfg.get());
@@ -428,6 +435,9 @@ public:
                 create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
             });
             thread_group.add_thread(thread);
+        }
+        if (param.wait_prepare_pages_) {
+            sync_start_request_.notify_start();
         }
         thread_group.join_all();
         return true;
@@ -453,7 +463,9 @@ public:
         }
         utils::get_watch().set_point(time_point_output_buffer_prepared, thread_id);
         LOG(INFO) << "thread " << thread_id << " output buffer prepared";
-        //TODO synchronize 
+        if (param.wait_prepare_pages_) {
+            sync_start_request_.wait_start();
+        }
         utils::get_watch().set_point(time_point_start_creating_request, thread_id);
         LOG(INFO) << "thread " << thread_id << " create request start";
         // create step graph with only process
@@ -543,6 +555,7 @@ private:
     std::vector<std::shared_ptr<plan::compiler_context>> contexts_{};
     std::string common_options_{};
     std::mutex mutex_on_prepare_pages_{};
+    performance_tools::Synchronizer sync_start_request_{};
 
     void create_compiled_info(
         std::shared_ptr<plan::compiler_context> const& compiler_context,

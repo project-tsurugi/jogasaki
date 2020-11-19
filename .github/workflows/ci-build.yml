@@ -146,6 +146,14 @@ jobs:
           cd build
           make doxygen 2> >(tee doxygen-error.log)
 
+      - id: Generate_Annotations
+        name: Generate_Annotations
+        uses: ./.github/actions/tsurugi-annotations-action
+        if: always()
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          ctest-input: 'build*/**/*_gtest_result.xml'
+
       - id: Notify_Slack
         name: Notify_Slack
         uses: ./.github/actions/tsurugi-slack-action

@@ -45,9 +45,15 @@ constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
 constexpr kvs::order undef = kvs::order::undefined;
 
-static void fill_fields(meta::record_meta const& meta, kvs::stream& target, bool key, std::size_t record_count, bool sequential) {
+static void fill_fields(
+    meta::record_meta const& meta,
+    kvs::stream& target,
+    bool key,
+    std::size_t record_count,
+    bool sequential,
+    utils::xorshift_random64& rnd
+) {
     auto odr = key ? kvs::order::ascending : kvs::order::descending;
-    static utils::xorshift_random64 rnd{};
     for(auto&& f: meta) {
         switch(f.kind()) {
             case kind::int4: {
@@ -118,12 +124,13 @@ void populate_storage_data(
 
     static std::size_t record_per_transaction = 10000;
     std::unique_ptr<kvs::transaction> tx{};
+    utils::xorshift_random64 rnd{};
     for(std::size_t i=0, n=records_per_partition; i < n; ++i) {
         if (! tx) {
             tx = db->create_transaction();
         }
-        fill_fields(key_meta, key_stream, true, i, sequential_data);
-        fill_fields(val_meta, val_stream, false, i, sequential_data);
+        fill_fields(key_meta, key_stream, true, i, sequential_data, rnd);
+        fill_fields(val_meta, val_stream, false, i, sequential_data, rnd);
         if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}

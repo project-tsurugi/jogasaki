@@ -19,6 +19,8 @@
 
 #include <glog/logging.h>
 #include <boost/thread/latch.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/compiler.h>
@@ -67,6 +69,7 @@ DEFINE_bool(dump, false, "dump mode: generate data, and dump it into files. Must
 DEFINE_bool(load, false, "load mode: instead of generating data, load data from files and run. Must be exclusively used with --dump.");  //NOLINT
 DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
 DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages per partition that are first touched beforehand");  //NOLINT
+DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -114,21 +117,191 @@ constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
 constexpr kvs::order undef = kvs::order::undefined;
 
+bool fill_from_flags(
+    jogasaki::scan_cli::params& s,
+    jogasaki::configuration& cfg,
+    std::string const& str = {}
+) {
+    gflags::FlagSaver saver{};
+    if (! str.empty()) {
+        if(! gflags::ReadFlagsFromString(str, "", false)) {
+            std::cerr << "parsing options failed" << std::endl;
+        }
+    }
+    cfg.single_thread(!FLAGS_use_multithread);
+
+    s.partitions_ = FLAGS_partitions;
+    s.records_per_partition_ = FLAGS_records_per_partition;
+    s.debug_ = FLAGS_debug;
+    s.sequential_data_ = FLAGS_sequential_data;
+    s.randomize_partition_ = FLAGS_randomize_partition;
+    s.dump_ = FLAGS_dump;
+    s.load_ = FLAGS_load;
+    s.no_text_ = FLAGS_no_text;
+    s.interactive_ = FLAGS_interactive;
+    s.prepare_pages_ = FLAGS_prepare_pages;
+
+    if (s.dump_ && s.load_) {
+        LOG(ERROR) << "--dump and --load must be exclusively used with each other.";
+        return false;
+    }
+
+    cfg.core_affinity(FLAGS_core_affinity);
+    cfg.initial_core(FLAGS_initial_core);
+    cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+
+    if (FLAGS_minimum) {
+        cfg.single_thread(true);
+        cfg.thread_pool_size(1);
+        cfg.initial_core(1);
+        cfg.core_affinity(false);
+
+        s.partitions_ = 1;
+        s.records_per_partition_ = 3;
+    }
+
+    if (cfg.assign_numa_nodes_uniformly()) {
+        cfg.core_affinity(true);
+    }
+
+    std::cout << std::boolalpha <<
+        "partitions:" << s.partitions_ <<
+        " records_per_partition:" << s.records_per_partition_ <<
+        " debug:" << s.debug_ <<
+        " sequential:" << s.sequential_data_ <<
+        " randomize:" << s.randomize_partition_ <<
+        " dump:" << s.dump_ <<
+        " load:" << s.load_ <<
+        " no_text:" << s.no_text_ <<
+        std::endl;
+    return true;
+}
+
+void dump_perf_info(bool prepare = true, bool run = true, bool completion = false) {
+    auto& watch = utils::get_watch();
+    if (prepare) {
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_storage_prepared, "prepare storage");
+    }
+    if (run) {
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_creating_request, time_point_output_buffer_prepared, "prepare out buffer");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_output_buffer_prepared, time_point_request_created, "create request");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_request_created, time_point_schedule, "wait all requests");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_schedule_completed, "process request");
+    }
+    if (completion) {
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_completion, time_point_end_completion, "complete and clean-up");
+    }
+}
+
 class cli {
 public:
-    int operator()(params& param, std::shared_ptr<configuration> cfg) {
+    // entry point from main
+    int operator()(params& param, std::shared_ptr<configuration> const& cfg) {
         map_thread_to_storage_ = init_map(param);
         numa_nodes_ = numa_max_node()+1;
-        auto num_threads = param.partitions_;
-        std::vector<std::shared_ptr<plan::compiler_context>> contexts{num_threads};
-        utils::get_watch().set_point(time_point_begin, 0);
-        std::shared_ptr<kvs::database> db = kvs::database::open();
-        threading_prepare_storage(param, db.get(), cfg.get(), contexts);
-        utils::get_watch().set_point(time_point_storage_prepared, 0);
-        if (param.dump_) return 0;
-        threading_create_and_schedule_request(param, db, cfg, contexts);
-        dump_perf_info();
+        db_ = kvs::database::open();
+        if (param.interactive_) {
+            common_options_ = param.original_args_;
+            run_interactive(param, cfg);
+        } else {
+            run(param, cfg);
+        }
+        utils::get_watch().set_point(time_point_start_completion, 0);
         return 0;
+    }
+
+    void run(params& param, std::shared_ptr<configuration> const& cfg) {
+        utils::get_watch().set_point(time_point_begin, 0);
+        threading_prepare_storage(param, db_.get(), cfg.get(), contexts_);
+        utils::get_watch().set_point(time_point_storage_prepared, 0);
+        if (param.dump_) return;
+        threading_create_and_schedule_request(param, db_, cfg, contexts_);
+        dump_perf_info(true, true, false);
+    }
+
+    std::string merge_options(std::string const& line = {}) {
+        std::string str{common_options_};
+        str.append(1, ' ');
+        str.append(line);
+        std::vector<std::string> options{};
+        boost::split(options, str, boost::is_space());
+        std::vector<std::string> formatted{};
+        for(auto&&o : options) {
+            if(o.empty()) continue;
+            if(o[0] != '-') {
+                if (formatted.empty()) return {};
+                auto& prev = formatted.back();
+                prev.append(1, '=');
+                prev.append(o);
+            } else {
+                formatted.emplace_back(o);
+            }
+        }
+        std::stringstream ss{};
+        for(auto&&s : formatted) {
+            ss << s;
+            ss << std::endl;
+        }
+        return ss.str();
+    }
+
+    void show_interactive_usage() {
+        std::cout <<
+            " usage: " << std::endl <<
+            " > <command> [<options>]" << std::endl <<
+            "  command: " << std::endl <<
+            "    h : show this help" << std::endl <<
+            "    o : set/show common options" << std::endl <<
+            "    p : prepare data" << std::endl <<
+            "    r : run" << std::endl <<
+            "    q : quit" << std::endl
+            ;
+    }
+    void run_interactive(params& param, std::shared_ptr<configuration> cfg) {
+        bool to_exit = false;
+        while(! to_exit) {
+            std::cerr << "> ";
+            std::string line{};
+            int command = std::cin.get();
+            if (command == 0x0a) continue;
+            std::getline(std::cin, line);
+            switch (command) {
+                case 'o': {
+                    if (! line.empty()) {
+                        common_options_ = std::move(line);
+                    }
+                    std::cout << common_options_ << std::endl;
+                    fill_from_flags(param, *cfg, merge_options());
+                    break;
+                }
+                case 'p': {
+                    map_thread_to_storage_ = init_map(param);
+                    fill_from_flags(param, *cfg, merge_options(line));
+                    utils::get_watch().restart();
+                    utils::get_watch().set_point(time_point_begin, 0);
+                    threading_prepare_storage(param, db_.get(), cfg.get(), contexts_);
+                    utils::get_watch().set_point(time_point_storage_prepared, 0);
+                    dump_perf_info(true, false, false);
+                    break;
+                }
+                case 'r': {
+                    fill_from_flags(param, *cfg, merge_options(line));
+                    utils::get_watch().restart();
+                    threading_create_and_schedule_request(param, db_, cfg, contexts_);
+                    dump_perf_info(false, true, false);
+                    break;
+                }
+                case 'q': {
+                    to_exit = true;
+                    break;
+                }
+                case 'h':
+                default: {
+                    show_interactive_usage();
+                    break;
+                }
+            }
+        }
     }
 
     void prepare_pages(std::int32_t pages) {
@@ -152,6 +325,7 @@ public:
         std::vector<std::shared_ptr<plan::compiler_context>>& contexts
     ) {
         auto num_threads = param.partitions_;
+        contexts.resize(num_threads);
         boost::thread_group thread_group{};
         std::vector<int> result(num_threads);
         for(std::size_t thread_id = 1; thread_id <= num_threads; ++thread_id) {
@@ -212,21 +386,28 @@ public:
         return compiler_context;
     }
 
-    void threading_create_and_schedule_request(
+    bool threading_create_and_schedule_request(
         params& param,
         std::shared_ptr<kvs::database> db,
         std::shared_ptr<configuration> cfg,
         std::vector<std::shared_ptr<plan::compiler_context>>& contexts
-        ) {
-        auto num_threads = param.partitions_;
+    ) {
+        auto partitions = param.partitions_;
+        std::size_t prepared = 0;
+        for(auto&& p : contexts) {
+            if (p) prepared++;
+        }
+        if (prepared < partitions) {
+            std::cerr << "Only " << prepared << " of " << partitions << " partitions are prepared" << std::endl;
+            return false;
+        }
         boost::thread_group thread_group{};
-        boost::latch prepare_completion_latch(num_threads);
-        std::vector<int> result(num_threads);
-        for(std::size_t thread_id = 1; thread_id <= num_threads; ++thread_id) {
+        boost::latch prepare_completion_latch(partitions);
+        std::vector<int> result(partitions);
+        for(std::size_t thread_id = 1; thread_id <= partitions; ++thread_id) {
             auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts, &prepare_completion_latch]() {
                 set_core_affinity(thread_id, cfg.get());
                 LOG(INFO) << "thread " << thread_id << " create request start";
-
                 auto storage_id = map_thread_to_storage_[thread_id-1]+1;
                 create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
                 LOG(INFO) << "thread " << thread_id << " schedule request end";
@@ -234,16 +415,18 @@ public:
             thread_group.add_thread(thread);
         }
         thread_group.join_all();
+        return true;
     }
 
     void create_and_schedule_request(
         params const& param,
-        std::shared_ptr<configuration> cfg,
+        std::shared_ptr<configuration> const& cfg,
         std::shared_ptr<kvs::database> db,
         boost::latch& prepare_completion_latch,
         std::size_t thread_id,
         std::shared_ptr<plan::compiler_context> const& compiler_context
     ) {
+        utils::get_watch().set_point(time_point_start_creating_request, thread_id);
         if (param.prepare_pages_ != -1) prepare_pages(param.prepare_pages_);
         utils::get_watch().set_point(time_point_output_buffer_prepared, thread_id);
         // create step graph with only process
@@ -282,7 +465,7 @@ public:
         LOG(INFO) << "thread " << thread_id << " schedule request begin";
         utils::get_watch().set_point(time_point_schedule, thread_id);
         dc.schedule(g);
-        utils::get_watch().set_point(time_point_completed, thread_id);
+        utils::get_watch().set_point(time_point_schedule_completed, thread_id);
         dump_result_data(stores, param);
     }
 
@@ -299,7 +482,12 @@ public:
                 ss << record << *record_meta;
                 LOG(INFO) << ss.str();
             }
-            hash ^= std::hash<std::string_view>{}(std::string_view{static_cast<char*>(record.data()), record.size()});
+            if (count % 1000 == 0) {
+                std::stringstream ss{};
+                ss << record << *record_meta;
+                // check only 1/1000 records to save time
+                hash ^= std::hash<std::string>{}(ss.str());
+            }
             ++it;
             ++count;
         }
@@ -321,15 +509,10 @@ public:
 private:
     std::vector<std::size_t> map_thread_to_storage_{};
     std::size_t numa_nodes_{};
+    std::shared_ptr<kvs::database> db_{};
+    std::vector<std::shared_ptr<plan::compiler_context>> contexts_{};
+    std::string common_options_{};
 
-    void dump_perf_info() {
-        auto& watch = utils::get_watch();
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_storage_prepared, "prepare storage");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_storage_prepared, time_point_output_buffer_prepared, "prepare out buffer");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_output_buffer_prepared, time_point_request_created, "create request");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_request_created, time_point_schedule, "wait all requests");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_completed, "process request");
-    }
 
     void create_compiled_info(
         std::shared_ptr<plan::compiler_context> const& compiler_context,
@@ -609,54 +792,30 @@ extern "C" int main(int argc, char* argv[]) {
     google::InitGoogleLogging("scan cli");
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("scan cli");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    if (argc != 1) {
-        gflags::ShowUsageWithFlags(argv[0]); // NOLINT
-        return -1;
-    }
-
+    gflags::ParseCommandLineFlags(&argc, &argv, false);
     jogasaki::scan_cli::params s{};
     auto cfg = std::make_shared<jogasaki::configuration>();
-    cfg->single_thread(!FLAGS_use_multithread);
 
-    s.partitions_ = FLAGS_partitions;
-    s.records_per_partition_ = FLAGS_records_per_partition;
-    s.debug_ = FLAGS_debug;
-    s.sequential_data_ = FLAGS_sequential_data;
-    s.randomize_partition_ = FLAGS_randomize_partition;
-    s.dump_ = FLAGS_dump;
-    s.load_ = FLAGS_load;
-    s.no_text_ = FLAGS_no_text;
-    s.prepare_pages_ = FLAGS_prepare_pages;
-
-    if (s.dump_ && s.load_) {
-        LOG(ERROR) << "--dump and --load must be exclusively used with each other.";
-        return -1;
+    if(! fill_from_flags(s, *cfg)) return -1;
+    if (s.interactive_) {
+        std::stringstream ss{};
+        if (argc > 1) {
+            for(std::size_t i=1, n=argc; i < n; ++i) {
+                std::string arg{argv[i]};  //NOLINT
+                if(arg.rfind("interactive") != std::string::npos) continue;
+                ss << arg;
+                ss << " ";
+            }
+            s.original_args_ = ss.str();
+        }
     }
-
-    cfg->core_affinity(FLAGS_core_affinity);
-    cfg->initial_core(FLAGS_initial_core);
-    cfg->assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
-
-    if (FLAGS_minimum) {
-        cfg->single_thread(true);
-        cfg->thread_pool_size(1);
-        cfg->initial_core(1);
-        cfg->core_affinity(false);
-
-        s.partitions_ = 1;
-        s.records_per_partition_ = 3;
-    }
-
-    if (cfg->assign_numa_nodes_uniformly()) {
-        cfg->core_affinity(true);
-    }
-
     try {
         jogasaki::scan_cli::cli{}(s, cfg);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
+    jogasaki::utils::get_watch().set_point(jogasaki::scan_cli::time_point_end_completion, 0);
+    jogasaki::scan_cli::dump_perf_info(false, false, true);
     return 0;
 }

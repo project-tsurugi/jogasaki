@@ -25,6 +25,7 @@ watch::watch() noexcept {
 
 void watch::restart() {
     std::scoped_lock lk{guard_};
+    records_.clear();
     begin_ = Clock::now();
 }
 

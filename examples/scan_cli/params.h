@@ -29,6 +29,8 @@ public:
     bool load_ = false;
     bool no_text_ = false;
     std::int32_t prepare_pages_ = -1;
+    bool interactive_ = false;
+    std::string original_args_{};
 };
 
 }

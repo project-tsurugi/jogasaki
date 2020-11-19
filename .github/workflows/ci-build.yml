@@ -10,16 +10,12 @@ jobs:
       BISON_DIR: /opt/bison-3.6.2
 
     steps:
-      - id: Begin
-        name: Begin
-        run: |
-          echo "Begin ${GITHUB_WORKFLOW}/${GITHUB_JOB} hostname:$(hostname)"
-
-      - name: Checkout
+      - id: Checkout
+        name: Checkout
         uses: actions/checkout@v2
         with:
           submodules: recursive
-          ssh-key: ${{ secrets.SSH_KEY }}
+          token: ${{ secrets.GHA_PAT }}
 
       - id: Install_shirakami
         name: Install_shirakami
@@ -150,9 +146,10 @@ jobs:
         name: Generate_Annotations
         uses: ./.github/actions/tsurugi-annotations-action
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          ctest-input: 'build*/**/*_gtest_result.xml'
+          ctest_input: 'build*/**/*_gtest_result.xml'
 
       - id: Notify_Slack
         name: Notify_Slack

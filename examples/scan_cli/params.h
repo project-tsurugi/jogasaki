@@ -31,6 +31,7 @@ public:
     std::int32_t prepare_pages_ = -1;
     bool interactive_ = false;
     std::string original_args_{};
+    bool mutex_prepare_pages_ = true;
 };
 
 }

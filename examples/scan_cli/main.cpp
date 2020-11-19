@@ -70,6 +70,7 @@ DEFINE_bool(load, false, "load mode: instead of generating data, load data from 
 DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
 DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages per partition that are first touched beforehand");  //NOLINT
 DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
+DEFINE_bool(mutex_prepare_pages, true, "use mutex when preparing pages.");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -140,6 +141,7 @@ bool fill_from_flags(
     s.no_text_ = FLAGS_no_text;
     s.interactive_ = FLAGS_interactive;
     s.prepare_pages_ = FLAGS_prepare_pages;
+    s.mutex_prepare_pages_ = FLAGS_mutex_prepare_pages;
 
     if (s.dump_ && s.load_) {
         LOG(ERROR) << "--dump and --load must be exclusively used with each other.";
@@ -428,7 +430,14 @@ public:
         std::shared_ptr<plan::compiler_context> const& compiler_context
     ) {
         utils::get_watch().set_point(time_point_start_creating_request, thread_id);
-        if (param.prepare_pages_ != -1) prepare_pages(param.prepare_pages_);
+        if (param.prepare_pages_ != -1) {
+            if (param.mutex_prepare_pages_) {
+                std::lock_guard lock{mutex_on_prepare_pages_};
+                prepare_pages(param.prepare_pages_);
+            } else {
+                prepare_pages(param.prepare_pages_);
+            }
+        }
         utils::get_watch().set_point(time_point_output_buffer_prepared, thread_id);
         // create step graph with only process
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
@@ -513,7 +522,7 @@ private:
     std::shared_ptr<kvs::database> db_{};
     std::vector<std::shared_ptr<plan::compiler_context>> contexts_{};
     std::string common_options_{};
-
+    std::mutex mutex_on_prepare_pages_{};
 
     void create_compiled_info(
         std::shared_ptr<plan::compiler_context> const& compiler_context,

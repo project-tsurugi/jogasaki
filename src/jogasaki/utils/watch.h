@@ -48,7 +48,7 @@ public:
     /**
      * @brief the number of points in source code to be recorded
      */
-    const static int num_points = 10;
+    const static int num_points = 20;
 
     watch() noexcept;
 

@@ -185,10 +185,12 @@ void dump_perf_info(bool prepare = true, bool run = true, bool completion = fals
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_begin, time_point_storage_prepared, "prepare storage");
     }
     if (run) {
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_creating_request, time_point_output_buffer_prepared, "prepare out buffer");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_output_buffer_prepared, time_point_request_created, "create request");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_preparing_output_buffer, time_point_output_buffer_prepared, "prepare out buffer");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_output_buffer_prepared, time_point_start_creating_request, "wait preparing all buffers");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_creating_request, time_point_request_created, "create request");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_request_created, time_point_schedule, "wait all requests");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule, time_point_schedule_completed, "process request");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule_completed, time_point_result_dumped, "dump result");
     }
     if (completion) {
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_completion, time_point_end_completion, "complete and clean-up");
@@ -209,6 +211,7 @@ public:
             run(param, cfg);
         }
         utils::get_watch().set_point(time_point_start_completion, 0);
+        LOG(INFO) << "start completion";
         return 0;
     }
 
@@ -341,6 +344,7 @@ public:
             thread_group.add_thread(thread);
         }
         thread_group.join_all();
+        LOG(INFO) << "joined all threads for storage creation";
     }
 
     void set_core_affinity(
@@ -410,10 +414,8 @@ public:
         for(std::size_t thread_id = 1; thread_id <= partitions; ++thread_id) {
             auto thread = new boost::thread([&db, &cfg, thread_id, &param, this, &contexts, &prepare_completion_latch]() {
                 set_core_affinity(thread_id, cfg.get());
-                LOG(INFO) << "thread " << thread_id << " create request start";
                 auto storage_id = map_thread_to_storage_[thread_id-1]+1;
                 create_and_schedule_request(param, cfg, db, prepare_completion_latch, storage_id, contexts[storage_id-1]);
-                LOG(INFO) << "thread " << thread_id << " schedule request end";
             });
             thread_group.add_thread(thread);
         }
@@ -429,7 +431,8 @@ public:
         std::size_t thread_id,
         std::shared_ptr<plan::compiler_context> const& compiler_context
     ) {
-        utils::get_watch().set_point(time_point_start_creating_request, thread_id);
+        utils::get_watch().set_point(time_point_start_preparing_output_buffer, thread_id);
+        LOG(INFO) << "thread " << thread_id << " start preparing output buffer";
         if (param.prepare_pages_ != -1) {
             if (param.mutex_prepare_pages_) {
                 std::lock_guard lock{mutex_on_prepare_pages_};
@@ -439,6 +442,10 @@ public:
             }
         }
         utils::get_watch().set_point(time_point_output_buffer_prepared, thread_id);
+        LOG(INFO) << "thread " << thread_id << " output buffer prepared";
+        //TODO synchronize 
+        utils::get_watch().set_point(time_point_start_creating_request, thread_id);
+        LOG(INFO) << "thread " << thread_id << " create request start";
         // create step graph with only process
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
@@ -477,7 +484,9 @@ public:
         utils::get_watch().set_point(time_point_schedule, thread_id);
         dc.schedule(g);
         utils::get_watch().set_point(time_point_schedule_completed, thread_id);
+        LOG(INFO) << "thread " << thread_id << " schedule request end";
         dump_result_data(stores, param);
+        utils::get_watch().set_point(time_point_result_dumped, thread_id);
     }
 
     void dump_result_data(request_context::result_stores stores, params const& param) {
@@ -827,6 +836,7 @@ extern "C" int main(int argc, char* argv[]) {
         return -1;
     }
     jogasaki::utils::get_watch().set_point(jogasaki::scan_cli::time_point_end_completion, 0);
+    LOG(INFO) << "end completion";
     jogasaki::scan_cli::dump_perf_info(false, false, true);
     return 0;
 }

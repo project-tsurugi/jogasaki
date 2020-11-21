@@ -16,9 +16,11 @@
 #pragma once
 
 #include <takatori/relation/expression.h>
+#include <takatori/util/sequence_view.h>
 
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/utils/iterator_pair.h>
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
@@ -26,6 +28,8 @@ class block_scope_info;
 }
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::sequence_view;
 
 /**
  * @brief relational operator base class
@@ -105,6 +109,58 @@ public:
     ) noexcept;
 
     virtual void process_group(abstract::task_context* context, bool first) = 0;
+};
+
+// TODO move to cogroup.h
+struct cache_align group_field {
+    meta::field_type type_{};
+    std::size_t source_offset_{};
+    std::size_t target_offset_{};
+    std::size_t source_nullity_offset_{};
+    std::size_t target_nullity_offset_{};
+    bool nullable_{};
+    bool is_key_{};
+};
+
+// TODO move to cogroup.h
+class cogroup {
+public:
+    using iterator = data::iterable_record_store::iterator;
+    using iterator_pair = utils::iterator_pair<iterator>;
+
+    cogroup() = default;
+
+    cogroup(
+        sequence_view<iterator_pair> iterators,
+        std::vector<sequence_view<group_field>> const& fields
+    ) noexcept :
+        iterators_(iterators),
+        fields_(std::addressof(fields))
+    {}
+
+    [[nodiscard]] sequence_view<iterator_pair> iterators() {
+        return iterators_;
+    }
+
+    [[nodiscard]] std::vector<sequence_view<group_field>> const& fields() {
+        return *fields_;
+    }
+private:
+    sequence_view<iterator_pair> iterators_{};
+    std::vector<sequence_view<group_field>> const* fields_{};
+};
+
+class cogroup_operator : public operator_base {
+public:
+    cogroup_operator() = default;
+
+    cogroup_operator(
+        operator_index_type index,
+        processor_info const& info,
+        block_index_type block_index
+    ) noexcept;
+
+    virtual void process_cogroup(abstract::task_context* context, cogroup& cgrp) = 0;
 };
 
 }

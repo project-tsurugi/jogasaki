@@ -33,6 +33,9 @@ namespace jogasaki::data {
  * The stored records are accessible with the pointer-based iterator, which is pointer with custom increment operator
  * treats gaps between the pages (i.e. not all records are on the same continuous memory region, but iterator allow users
  * to iterate them sequentially as if they are continuous region)
+ * @note the backing memory resource is expected to be used almost exclusively for this store. Even if the resource is shared
+ * by others and the appended records are not in the adjacent position, this class handles that case, but the ranges become
+ * granule, the number of ranges become large and the performance possibly gets affected.
  */
 class cache_align iterable_record_store {
 public:

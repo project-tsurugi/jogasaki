@@ -13,29 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <jogasaki/executor/process/impl/ops/take_cogroup.h>
 
-#include <memory>
+#include <gtest/gtest.h>
 #include <glog/logging.h>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/group_reader.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/comparator.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/test_root.h>
+
+#include <jogasaki/executor/process/impl/ops/join.h>
+
+#include <jogasaki/executor/process/mock/group_reader.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
-class join {
+using namespace std::string_literals;
+using namespace std::string_view_literals;
+using namespace meta;
+using namespace takatori::util;
+
+class take_cogroup_test : public test_root {
+
 public:
-    using input_index = std::size_t;
+    using kind = field_type_kind;
 
 };
 
+using group_type = mock::group_reader::group_type;
+using keys_type = group_type::key_type;
+using values_type = group_type::value_type;
+
 }
+

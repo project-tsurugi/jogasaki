@@ -43,7 +43,7 @@ public:
     operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
-        details::io_exchange_map io_exchange_map,
+        impl::details::io_exchange_map io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info
     ) :
         root_(std::move(root)),
@@ -64,7 +64,7 @@ public:
      * @brief accessor to I/O exchange mapping
      * @return the mapping object
      */
-    [[nodiscard]] details::io_exchange_map const& io_exchange_map() const noexcept {
+    [[nodiscard]] impl::details::io_exchange_map const& io_exchange_map() const noexcept {
         return io_exchange_map_;
     };
 
@@ -86,7 +86,7 @@ public:
 private:
     std::unique_ptr<ops::operator_base> root_{};
     std::size_t operator_count_{};
-    details::io_exchange_map io_exchange_map_{};
+    impl::details::io_exchange_map io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
 };
 

@@ -50,6 +50,7 @@
 #include "filter.h"
 #include "project.h"
 #include "take_group.h"
+#include "take_cogroup.h"
 #include "offer.h"
 #include "take_flat.h"
 
@@ -230,8 +231,29 @@ public:
     }
 
     std::unique_ptr<operator_base> operator()(relation::step::take_cogroup const& node) {
-        (void)node;
-        return {};
+        auto block_index = info_->scope_indices().at(&node);
+        auto& block_info = info_->scopes_info()[block_index];
+        std::vector<size_t> reader_indices{};
+        std::vector<group_element> groups{};
+        for(auto&& g : node.groups()) {
+            auto reader_index = relation_io_map_->input_index(g.source());
+            auto& input = io_info_->input_at(reader_index);
+            groups.emplace_back(
+                input.column_order(),
+                input.group_meta(),
+                g.columns(),
+                reader_index,
+                block_info
+            );
+        }
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
+        return std::make_unique<take_cogroup>(
+            index_++,
+            *info_,
+            block_index,
+            std::move(groups),
+            std::move(downstream)
+        );
     }
 
     std::unique_ptr<operator_base> operator()(relation::step::offer const& node) {

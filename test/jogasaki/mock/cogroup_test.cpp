@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/cogroup.h>
+#include <jogasaki/executor/process/mock/cogroup.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -24,7 +24,7 @@
 
 #include <jogasaki/executor/process/mock/group_reader.h>
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::mock {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -83,7 +83,7 @@ TEST_F(cogroup_test, simple) {
     auto value_offset = meta->value().value_offset(0);
 
     cogroup cgrp{
-        std::vector<group_reader*>{&r1, &r2},
+        std::vector<executor::group_reader*>{&r1, &r2},
         std::vector<maybe_shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1()}
     };
 
@@ -179,7 +179,7 @@ TEST_F(cogroup_test, three_inputs) {
     auto value_offset = meta->value().value_offset(0);
 
     cogroup cgrp{
-            std::vector<group_reader*>{&r1, &r2, &r3},
+            std::vector<executor::group_reader*>{&r1, &r2, &r3},
             std::vector<maybe_shared_ptr<meta::group_meta>>{test_group_meta1(), test_group_meta1(), test_group_meta1()}
     };
 
@@ -271,7 +271,7 @@ TEST_F(cogroup_test, key_value_reversed) {
     auto key_offset = meta->key().value_offset(0);
 
     cogroup cgrp{
-            std::vector<group_reader*>{&r1, &r2},
+            std::vector<executor::group_reader*>{&r1, &r2},
             std::vector<maybe_shared_ptr<meta::group_meta>>{test_group_meta1_kv_reversed(), test_group_meta1_kv_reversed()}
     };
 

@@ -26,7 +26,7 @@
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/process/impl/ops/cogroup.h>
+#include <jogasaki/executor/process/mock/cogroup.h>
 
 #include "../common/task_base.h"
 #include "params.h"
@@ -89,7 +89,7 @@ public:
 
         auto* l_reader = left_reader_.reader<executor::group_reader>();
         auto* r_reader = right_reader_.reader<executor::group_reader>();
-        using cogroup = process::impl::ops::cogroup;
+        using cogroup = process::mock::cogroup;
         cogroup cgrp{{l_reader, r_reader}, {l_meta_, r_meta_}};
 
         l_records_ = 0;

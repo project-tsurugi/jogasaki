@@ -35,7 +35,7 @@
 #include <jogasaki/utils/iterator_pair.h>
 #include <jogasaki/utils/interference_size.h>
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::mock {
 
 using takatori::util::maybe_shared_ptr;
 

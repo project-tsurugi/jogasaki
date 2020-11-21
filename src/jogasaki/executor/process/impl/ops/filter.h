@@ -80,7 +80,12 @@ public:
         context_helper ctx{*context};
         auto* p = find_context<filter_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<filter_context>(index(), ctx.block_scope(block_index()), ctx.resource());
+            p = ctx.make_context<filter_context>(
+                index(),
+                ctx.block_scope(block_index()),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p, context);
     }
@@ -93,7 +98,7 @@ public:
      */
     void operator()(filter_context& ctx, abstract::task_context* context = nullptr) {
         auto& scope = ctx.variables();
-        auto resource = ctx.resource();
+        auto resource = ctx.varlen_resource();
         auto cp = resource->get_checkpoint();
         auto res = evaluator_(scope, resource).to<bool>();
         resource->deallocate_after(cp);

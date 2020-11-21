@@ -47,11 +47,13 @@ public:
         std::size_t operator_count,
         std::size_t block_count,
         std::unique_ptr<memory_resource> resource,
+        std::unique_ptr<memory_resource> varlen_resource,
         std::shared_ptr<kvs::database> database,
         std::shared_ptr<kvs::transaction> transaction
     ) :
         contexts_(operator_count),
         resource_(std::move(resource)),
+        varlen_resource_(std::move(varlen_resource)),
         database_(std::move(database)),
         transaction_(std::move(transaction))
     {
@@ -103,6 +105,14 @@ public:
     }
 
     /**
+     * @brief accessor to varlen memory resource
+     * @return the memory resource that processor can use to work on varlen data
+     */
+    [[nodiscard]] memory_resource* varlen_resource() const noexcept {
+        return varlen_resource_.get();
+    }
+
+    /**
      * @brief accessor to kvs database
      * @return the database that is shared within request
      */
@@ -121,6 +131,7 @@ private:
     ops::context_container contexts_{};
     block_scopes variables_{};
     std::unique_ptr<memory_resource> resource_{};
+    std::unique_ptr<memory_resource> varlen_resource_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
 };

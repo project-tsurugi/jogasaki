@@ -221,7 +221,8 @@ TEST_F(project_test, simple) {
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
-    project_context ctx(&task_ctx, variables, &resource);
+    memory::lifo_paged_memory_resource varlen_resource{&pool};
+    project_context ctx(&task_ctx, variables, &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
@@ -360,7 +361,8 @@ TEST_F(project_test, text) {
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource res{&pool};
-    project_context ctx(&task_ctx, variables, &res);
+    memory::lifo_paged_memory_resource varlen_resource{&pool};
+    project_context ctx(&task_ctx, variables, &res, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();

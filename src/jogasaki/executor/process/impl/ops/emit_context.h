@@ -42,8 +42,9 @@ public:
         class abstract::task_context* ctx,
         block_scope& variables,
         maybe_shared_ptr<meta::record_meta> meta,
-        memory_resource* resource = nullptr
-    ) : context_base(ctx, variables, resource),
+        memory_resource* resource = nullptr,
+        memory_resource* varlen_resource = nullptr
+    ) : context_base(ctx, variables, resource, varlen_resource),
         buffer_(std::move(meta))
     {}
 

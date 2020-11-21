@@ -41,6 +41,10 @@ context_helper::memory_resource* context_helper::resource() const noexcept {
     return work_context_->resource();
 }
 
+context_helper::memory_resource* context_helper::varlen_resource() const noexcept {
+    return work_context_->varlen_resource();
+}
+
 kvs::database* context_helper::database() const noexcept {
     return work_context_->database();
 }

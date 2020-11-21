@@ -190,7 +190,7 @@ TEST_F(take_group_test, simple) {
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
-    take_group_context ctx(&task_ctx, variables, &resource);
+    take_group_context ctx(&task_ctx, variables, nullptr, &resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();

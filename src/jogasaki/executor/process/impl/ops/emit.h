@@ -91,7 +91,9 @@ public:
                 index(),
                 ctx.block_scope(block_index()),
                 meta(),
-                ctx.resource());
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p);
     }

@@ -158,7 +158,9 @@ public:
                 std::move(stg),
                 ctx.transaction(),
                 static_cast<impl::scan_info const*>(ctx.task_context()->scan_info()),  //NOLINT
-                ctx.resource());
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p, context);
 
@@ -179,7 +181,7 @@ public:
     void operator()(scan_context& ctx, abstract::task_context* context = nullptr) {
         open(ctx);
         auto target = ctx.variables().store().ref();
-        auto resource = ctx.resource();
+        auto resource = ctx.varlen_resource();
         while(ctx.it_->next()) {
             auto cp = resource->get_checkpoint();
             std::string_view k{};

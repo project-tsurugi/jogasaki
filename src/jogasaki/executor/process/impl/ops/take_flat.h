@@ -105,7 +105,12 @@ public:
         context_helper ctx{*context};
         auto* p = find_context<take_flat_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<take_flat_context>(index(), ctx.block_scope(block_index()), ctx.resource());
+            p = ctx.make_context<take_flat_context>(
+                index(),
+                ctx.block_scope(block_index()),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p, context);
     }
@@ -122,12 +127,12 @@ public:
             auto r = ctx.task_context().reader(reader_index_);
             ctx.reader_ = r.reader<record_reader>();
         }
-        auto resource = ctx.resource();
+        auto resource = ctx.varlen_resource();
         while(ctx.reader_->next_record()) {
             auto cp = resource->get_checkpoint();
             auto source = ctx.reader_->get_record();
             for(auto &f : fields_) {
-                utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, ctx.resource()); // allocate using context memory resource
+                utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, resource);
             }
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);

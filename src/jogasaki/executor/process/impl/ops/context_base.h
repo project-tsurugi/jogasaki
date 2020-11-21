@@ -40,11 +40,13 @@ public:
     context_base(
         class abstract::task_context* context,
         block_scope& variables,
-        memory_resource* resource
+        memory_resource* resource,
+        memory_resource* varlen_resource
     ) :
         task_context_(context),
         variables_(std::addressof(variables)),
-        resource_(resource)
+        resource_(resource),
+        varlen_resource_(varlen_resource)
     {}
 
     context_base(context_base const& other) = default;
@@ -71,6 +73,10 @@ public:
     [[nodiscard]] memory_resource* resource() {
         return resource_;
     }
+
+    [[nodiscard]] memory_resource* varlen_resource() {
+        return varlen_resource_;
+    }
     /**
      * @brief subclass releases any resources acquired after context initialization
      */
@@ -79,6 +85,7 @@ private:
     class abstract::task_context* task_context_{};
     block_scope* variables_{};
     memory_resource* resource_{};
+    memory_resource* varlen_resource_{};
 };
 
 }

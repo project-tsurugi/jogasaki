@@ -70,6 +70,11 @@ public:
     [[nodiscard]] memory_resource* resource() const noexcept;
 
     /**
+     * @brief accessor to memory resource for work area
+     */
+    [[nodiscard]] memory_resource* varlen_resource() const noexcept;
+
+    /**
      * @brief accessor to kvs database
      */
     [[nodiscard]] kvs::database* database() const noexcept;

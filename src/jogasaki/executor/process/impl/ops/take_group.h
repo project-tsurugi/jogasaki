@@ -100,7 +100,12 @@ public:
         context_helper ctx{*context};
         auto* p = find_context<take_group_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<take_group_context>(index(), ctx.block_scope(block_index()), ctx.resource());
+            p = ctx.make_context<take_group_context>(
+                index(),
+                ctx.block_scope(block_index()),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p, context);
     }
@@ -113,11 +118,11 @@ public:
      */
     void operator()(take_group_context& ctx, abstract::task_context* context = nullptr) {
         auto target = ctx.variables().store().ref();
-        if (!ctx.reader_) {
+        if (! ctx.reader_) {
             auto r = ctx.task_context().reader(reader_index_);
             ctx.reader_ = r.reader<group_reader>();
         }
-        auto resource = ctx.resource();
+        auto resource = ctx.varlen_resource();
         while(ctx.reader_->next_group()) {
             auto group_cp = resource->get_checkpoint();
             auto key = ctx.reader_->get_group();

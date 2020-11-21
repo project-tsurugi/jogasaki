@@ -85,7 +85,12 @@ public:
         context_helper ctx{*context};
         auto* p = find_context<project_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<project_context>(index(), ctx.block_scope(block_index()), ctx.resource());
+            p = ctx.make_context<project_context>(
+                index(),
+                ctx.block_scope(block_index()),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p, context);
     }
@@ -105,7 +110,7 @@ public:
             auto& v = variables_[i];
             auto info = scope.value_map().at(variables_[i]);
             auto& ev = evaluators_[i];
-            auto result = ev(scope, ctx.resource()); // result resource will be deallocated at once by take/scan operator
+            auto result = ev(scope, ctx.varlen_resource()); // result resource will be deallocated at once by take/scan operator
             using t = takatori::type::type_kind;
             switch(cinfo.type_of(v).kind()) {
                 case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), result); break;

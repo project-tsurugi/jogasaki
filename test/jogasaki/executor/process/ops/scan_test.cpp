@@ -176,6 +176,7 @@ TEST_F(scan_test, simple) {
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
+    memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
 
     auto db = kvs::database::open();
     auto stg = db->create_storage("I0");
@@ -220,7 +221,7 @@ TEST_F(scan_test, simple) {
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
@@ -394,6 +395,8 @@ TEST_F(scan_test, scan_info) {
     block_scope variables{block_info};
 
     memory::lifo_paged_memory_resource resource{&global::page_pool()};
+    memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+
     jogasaki::plan::compiler_context compiler_ctx{};
     operator_builder builder{p_info, compiler_ctx, {}, {}, &resource};
     auto sinfo = builder.create_scan_info(r0, i1->keys());
@@ -462,7 +465,7 @@ TEST_F(scan_test, scan_info) {
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();

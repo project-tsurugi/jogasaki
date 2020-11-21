@@ -26,8 +26,14 @@ namespace jogasaki::utils {
 
 using takatori::util::fail;
 
-void copy_field(const meta::field_type &type, accessor::record_ref target, std::size_t target_offset,
-    accessor::record_ref source, std::size_t source_offset, memory::paged_memory_resource* resource) {
+void copy_field(
+    const meta::field_type &type,
+    accessor::record_ref target,
+    std::size_t target_offset,
+    accessor::record_ref source,
+    std::size_t source_offset,
+    memory::paged_memory_resource* resource
+) {
     using k = meta::field_type_kind;
     switch(type.kind()) {
         case k::undefined:

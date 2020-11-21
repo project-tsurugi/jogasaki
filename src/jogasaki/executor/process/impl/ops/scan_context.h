@@ -52,8 +52,10 @@ public:
         std::unique_ptr<kvs::storage> stg,
         kvs::transaction* tx,
         impl::scan_info const* scan_info,
-        memory_resource* resource = nullptr
-    ) : context_base(ctx, variables, resource),
+        memory_resource* resource,
+        memory_resource* varlen_resource
+    ) :
+        context_base(ctx, variables, resource, varlen_resource),
         stg_(std::move(stg)),
         tx_(tx),
         scan_info_(scan_info)

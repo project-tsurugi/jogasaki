@@ -98,7 +98,13 @@ public:
         context_helper ctx{*context};
         auto* p = find_context<offer_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<offer_context>(index(), meta(), ctx.block_scope(block_index()), ctx.resource());
+            p = ctx.make_context<offer_context>(
+                index(),
+                meta(),
+                ctx.block_scope(block_index()),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
         }
         (*this)(*p);
     }

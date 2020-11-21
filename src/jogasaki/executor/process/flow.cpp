@@ -96,6 +96,7 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
         operators.size(),
         info_->scopes_info().size(),
         std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
         context_->database(),
         context_->transaction()
     ));

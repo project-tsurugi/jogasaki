@@ -105,6 +105,28 @@ TEST_F(lifo_paged_memory_resource_test, deallocate_after_at_odd) {
     EXPECT_EQ(my_resource->page_remaining(), remaining);
 }
 
+TEST_F(lifo_paged_memory_resource_test, checkpoint_at_the_beginning) {
+    auto my_pool = std::make_unique<memory::page_pool>();
+    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    EXPECT_TRUE(my_pool);
+    EXPECT_TRUE(my_resource);
+
+    ByteArrayAllocator my_allocator(my_resource.get());
+    std::size_t count, remaining;
+
+    memory::lifo_paged_memory_resource::checkpoint point;
+    point = my_resource->get_checkpoint();
+    count = my_resource->count_pages();
+    remaining = my_resource->page_remaining();
+    for(std::size_t i = 0; i < loop; i++) {
+        my_allocator.allocate(1);
+    }
+    // deallocate to the checkpoint
+    my_resource->deallocate_after(point);
+    EXPECT_EQ(my_resource->count_pages(), count);
+    EXPECT_EQ(my_resource->page_remaining(), remaining);
+}
+
 TEST_F(lifo_paged_memory_resource_test, end_current_page) {
     auto my_pool = std::make_unique<memory::page_pool>();
     auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());

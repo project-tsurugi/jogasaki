@@ -37,12 +37,9 @@ lifo_paged_memory_resource::checkpoint lifo_paged_memory_resource::get_checkpoin
 }
 
 void lifo_paged_memory_resource::deallocate_after(const lifo_paged_memory_resource::checkpoint &point) {
-    if (point.head_ == nullptr) {
-        return;
-    }
     while (!pages_.empty()) {
         auto&& page = pages_.back();
-        if (page.head() == point.head_) {
+        if (page.head() == point.head_) { // point.head_ can be nullptr
             // LB <= offset <= UB
             if (point.offset_ < page.lower_bound_offset()
                 || point.offset_ > page.upper_bound_offset()) {

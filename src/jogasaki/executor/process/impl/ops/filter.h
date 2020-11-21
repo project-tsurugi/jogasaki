@@ -32,6 +32,7 @@
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "filter_context.h"
@@ -99,9 +100,11 @@ public:
     void operator()(filter_context& ctx, abstract::task_context* context = nullptr) {
         auto& scope = ctx.variables();
         auto resource = ctx.varlen_resource();
-        auto cp = resource->get_checkpoint();
-        auto res = evaluator_(scope, resource).to<bool>();
-        resource->deallocate_after(cp);
+        bool res;
+        {
+            utils::checkpoint_holder cp{resource};
+            res = evaluator_(scope, resource).to<bool>();
+        }
         if (res) {
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);

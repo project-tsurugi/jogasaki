@@ -28,6 +28,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
 #include "scan_context.h"
@@ -183,7 +184,7 @@ public:
         auto target = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
         while(ctx.it_->next()) {
-            auto cp = resource->get_checkpoint();
+            utils::checkpoint_holder cp{resource};
             std::string_view k{};
             std::string_view v{};
             if(!ctx.it_->key(k) || !ctx.it_->value(v)) {
@@ -208,7 +209,6 @@ public:
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
-            resource->deallocate_after(cp);
         }
         close(ctx);
     }

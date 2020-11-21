@@ -31,6 +31,7 @@
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include "operator_base.h"
 #include "take_flat_context.h"
 
@@ -129,7 +130,7 @@ public:
         }
         auto resource = ctx.varlen_resource();
         while(ctx.reader_->next_record()) {
-            auto cp = resource->get_checkpoint();
+            utils::checkpoint_holder cp{resource};
             auto source = ctx.reader_->get_record();
             for(auto &f : fields_) {
                 utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, resource);
@@ -137,7 +138,6 @@ public:
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
-            resource->deallocate_after(cp);
         }
     }
 

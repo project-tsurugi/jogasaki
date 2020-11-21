@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include "operator_base.h"
 #include "take_group_context.h"
 
@@ -124,7 +125,7 @@ public:
         }
         auto resource = ctx.varlen_resource();
         while(ctx.reader_->next_group()) {
-            auto group_cp = resource->get_checkpoint();
+            utils::checkpoint_holder group_cp{resource};
             auto key = ctx.reader_->get_group();
             for(auto &f : fields_) {
                 if (! f.is_key_) continue;
@@ -132,7 +133,7 @@ public:
             }
             bool first_record = true;
             while(ctx.reader_->next_member()) {
-                auto member_cp = resource->get_checkpoint();
+                utils::checkpoint_holder member_cp{resource};
                 auto value = ctx.reader_->get_member();
                 for(auto &f : fields_) {
                     if (f.is_key_) continue;
@@ -141,10 +142,8 @@ public:
                 if (downstream_) {
                     unsafe_downcast<group_operator>(downstream_.get())->process_group(context, first_record);
                 }
-                resource->deallocate_after(member_cp);
                 first_record = false;
             }
-            resource->deallocate_after(group_cp);
         }
     }
 

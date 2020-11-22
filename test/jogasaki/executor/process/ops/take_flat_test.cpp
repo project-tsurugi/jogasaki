@@ -193,7 +193,6 @@ TEST_F(take_flat_test, simple) {
             }
             default:
                 ADD_FAILURE();
-                return false;
         }
         ++count;
     });

@@ -15,6 +15,8 @@
  */
 #include "operator_base.h"
 
+#include <jogasaki/executor/process/processor_info.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 operator_base::operator_base(operator_base::operator_index_type index, const processor_info &info,
@@ -58,5 +60,16 @@ group_operator::group_operator(operator_base::operator_index_type index, const p
         index,
         info,
         block_index
-    ) {}
+    )
+{}
+
+cogroup_operator::cogroup_operator(operator_base::operator_index_type index, const processor_info &info,
+    operator_base::block_index_type block_index) noexcept:
+    operator_base(
+        index,
+        info,
+        block_index
+    )
+{}
+
 }

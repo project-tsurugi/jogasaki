@@ -40,7 +40,6 @@ public:
         maybe_shared_ptr<meta::group_meta> meta
     ) :
         reader_(std::addressof(reader)),
-
         store_(std::move(store)),
 
         resource_(resource),
@@ -50,12 +49,19 @@ public:
 
         meta_(std::move(meta)),
         key_size_(meta_->key().record_size()),
-        key_(meta_->key_shared())
+        current_key_(meta_->key_shared()),
+        next_key_(meta_->key_shared())
     {}
 
-    [[nodiscard]] accessor::record_ref key_record() const noexcept {
-        BOOST_ASSERT(key_filled_);  //NOLINT
-        return key_.ref();
+    [[nodiscard]] accessor::record_ref current_key() const noexcept {
+        BOOST_ASSERT(values_filled_);  //NOLINT
+        return current_key_.ref();
+    }
+
+    [[nodiscard]] accessor::record_ref next_key() const noexcept {
+        BOOST_ASSERT(next_key_read_);  //NOLINT
+        BOOST_ASSERT(! reader_eof_);  //NOLINT
+        return next_key_.ref();
     }
 
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() {
@@ -70,8 +76,12 @@ public:
         return values_filled_;
     }
 
-    [[nodiscard]] bool key_filled() const noexcept {
-        return key_filled_;
+    /**
+     * @return true if key has been read
+     * @return false if key has not been read, or reader reached eof
+     */
+    [[nodiscard]] bool next_key_read() const noexcept {
+        return next_key_read_;
     }
 
     [[nodiscard]] iterator begin() {
@@ -82,47 +92,51 @@ public:
         return store_->end();
     }
 
-    [[nodiscard]] bool next() {
-        if(!reader_->next_group()) {
-            key_filled_ = false;
+    [[nodiscard]] bool read_next_key() {
+        if(! reader_->next_group()) {
+            next_key_read_ = false;
             reader_eof_ = true;
             return false;
         }
-        key_.set(reader_->get_group());
-        key_filled_ = true;
+        next_key_.set(reader_->get_group());
+        next_key_read_ = true;
+        reader_eof_ = false;
         return true;
     }
 
+    /**
+     * @brief fill values
+     */
     void fill() noexcept {
+        BOOST_ASSERT(next_key_read_);
+        BOOST_ASSERT(! reader_eof_);
         while(reader_->next_member()) {
             auto rec = reader_->get_member();
             store_->append(rec);
         }
+        current_key_.set(next_key_.ref());
+        next_key_read_ = false;
         values_filled_ = true;
     }
 
-    void reset_store() {
+    void reset_values() {
         if (values_filled_) {
             store_->reset();
+            if (resource_) {
+                resource_->deallocate_after(resource_last_checkpoint_);
+                resource_last_checkpoint_ = resource_->get_checkpoint();
+            }
+            if (varlen_resource_) {
+                varlen_resource_->deallocate_after(varlen_resource_last_checkpoint_);
+                varlen_resource_last_checkpoint_ = varlen_resource_->get_checkpoint();
+            }
             values_filled_ = false;
         }
     }
 
-    void reset() {
-        store_->reset();
-        if (resource_) {
-            resource_->deallocate_after(resource_last_checkpoint_);
-            resource_last_checkpoint_ = resource_->get_checkpoint();
-        }
-        if (varlen_resource_) {
-            varlen_resource_->deallocate_after(varlen_resource_last_checkpoint_);
-            varlen_resource_last_checkpoint_ = varlen_resource_->get_checkpoint();
-        }
-    }
-
 private:
-    executor::group_reader* reader_{};
 
+    executor::group_reader* reader_{};
     std::unique_ptr<data::iterable_record_store> store_{};
     memory::lifo_paged_memory_resource* resource_{};
     memory::lifo_paged_memory_resource* varlen_resource_{};
@@ -131,10 +145,11 @@ private:
 
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::size_t key_size_ = 0;
-    data::small_record_store key_; // shallow copy of key (varlen body is held by reader)
+    data::small_record_store current_key_; // shallow copy of key (varlen body is held by reader)
+    data::small_record_store next_key_;
     bool reader_eof_{false};
     bool values_filled_{false};
-    bool key_filled_{false};
+    bool next_key_read_{false};
 };
 
 /**
@@ -164,7 +179,7 @@ public:
     [[nodiscard]] bool operator()(input_index const& x, input_index const& y) {
         auto& l = inputs_->operator[](x);
         auto& r = inputs_->operator[](y);
-        return key_comparator_(l.key_record(), r.key_record()) > 0;
+        return key_comparator_(l.next_key(), r.next_key()) > 0;
     }
 
 private:
@@ -182,6 +197,7 @@ public:
     friend class take_cogroup;
     using input_index = std::size_t;
     using queue_type = std::priority_queue<input_index, std::vector<input_index>, details::group_input_comparator>;
+
     /**
      * @brief create empty object
      */

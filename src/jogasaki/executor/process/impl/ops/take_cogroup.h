@@ -65,10 +65,10 @@ public:
         fields_(create_fields(meta_, *order_, columns, block_info))
     {}
 
-    meta::variable_order const* order_{};
-    maybe_shared_ptr<meta::group_meta> meta_{};
-    std::size_t reader_index_{};
-    std::vector<group_field> fields_{};
+    meta::variable_order const* order_{}; //NOLINT
+    maybe_shared_ptr<meta::group_meta> meta_{}; //NOLINT
+    std::size_t reader_index_{}; //NOLINT
+    std::vector<group_field> fields_{}; //NOLINT
 
     [[nodiscard]] std::vector<group_field> create_fields(
         maybe_shared_ptr<meta::group_meta> const& meta,
@@ -106,7 +106,6 @@ public:
 class take_cogroup : public record_operator {
 public:
     using iterator_pair = utils::iterator_pair<details::group_input::iterator>;
-//    using group = takatori::relation::step::take_cogroup::group;
     using queue_type = take_cogroup_context::queue_type;
     using input_index = take_cogroup_context::input_index;
 
@@ -164,9 +163,16 @@ public:
         BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
 
         enum class state {
+            // @brief initial state
             init,
+
+            // @brief all inputs keys are read and if reader is not on eof, queue entry is pushed with the key
             keys_filled,
+
+            // @brief all inputs values are read and kept in the input stores
             values_filled,
+
+            // @brief end of the state machine
             end,
         };
 
@@ -178,7 +184,7 @@ public:
                 case state::init:
                     for(input_index idx = 0, n = inputs.size(); idx < n; ++idx) {
                         auto& in = inputs[idx];
-                        if(in.next()) {
+                        if(in.read_next_key()) {
                             queue.emplace(idx);
                         } else {
                             BOOST_ASSERT(in.eof());  //NOLINT
@@ -188,25 +194,26 @@ public:
                     break;
                 case state::keys_filled: {
                     if (queue.empty()) {
+                        // all inputs are eof
                         s = state::end;
                         break;
                     }
                     auto idx = queue.top();
                     queue.pop();
                     inputs[idx].fill();
-                    ctx.key_buf_.set(inputs[idx].key_record());
+                    ctx.key_buf_.set(inputs[idx].current_key());
                     auto key = ctx.key_buf_.ref();
-                    if(inputs[idx].next()) {
+                    if(inputs[idx].read_next_key()) {
                         queue.emplace(idx);
                     }
-                    while(!queue.empty()) {
+                    while(! queue.empty()) {
                         auto idx2 = queue.top();
-                        if (key_comparator_(inputs[idx2].key_record(), key) != 0) {
+                        if (key_comparator_(inputs[idx2].next_key(), key) != 0) {
                             break;
                         }
                         queue.pop();
                         inputs[idx2].fill();
-                        if(inputs[idx2].next()) {
+                        if(inputs[idx2].read_next_key()) {
                             queue.emplace(idx2);
                         }
                     }
@@ -222,14 +229,14 @@ public:
                             groups.emplace_back(
                                 iterator_pair{in.begin(), in.end()},
                                 groups_[i].fields_,
-                                in.eof() ? accessor::record_ref{} : in.key_record()
+                                in.filled() ? in.current_key() : accessor::record_ref{}
                             );
                         }
                         cogroup cgrp{ groups };
                         unsafe_downcast<cogroup_operator>(downstream_.get())->process_cogroup(context, cgrp);
                     }
-                    for(std::size_t i = 0, n = inputs.size(); i < n; ++i) {
-                        inputs[i].reset_store();
+                    for(auto&& in : inputs) {
+                        in.reset_values();
                     }
                     s = state::keys_filled;
                     break;

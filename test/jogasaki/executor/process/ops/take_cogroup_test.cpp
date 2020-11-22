@@ -68,44 +68,6 @@ using keys_type = group_type::key_type;
 using values_type = group_type::value_type;
 
 TEST_F(take_cogroup_test, simple) {
-    group_reader reader1 {
-        {
-            group_type{
-                keys_type{1, 10},
-                {
-                    values_type{100},
-                    values_type{101},
-                },
-            },
-            group_type{
-                keys_type{2, 20},
-                {
-                    values_type{200},
-                },
-            },
-        }
-    };
-    group_reader reader2 {
-        {
-            group_type{
-                keys_type{1, 10},
-                {
-                    values_type{1000},
-                    values_type{1001},
-                },
-            },
-            group_type{
-                keys_type{3, 30},
-                {
-                    values_type{300},
-                },
-            },
-        }
-    };
-
-    auto meta = test_group_meta1();
-    auto key_offset = meta->key().value_offset(0);
-    auto value_offset = meta->value().value_offset(0);
 
     binding::factory bindings;
 
@@ -207,13 +169,11 @@ TEST_F(take_cogroup_test, simple) {
 
     processor_info p_info{p0.operators(), c_info};
 
-    std::vector<group_element> groups{};
     meta::variable_order order0{
         variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>,
             g0.columns(),
             g0.group_keys()
     };
-    meta::group_meta gmeta{};
     meta::variable_order order1{
         variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>,
         g1.columns(),
@@ -233,6 +193,7 @@ TEST_F(take_cogroup_test, simple) {
     auto& block_info = p_info.scopes_info()[0];
     block_scope variables{block_info};
 
+    std::vector<group_element> groups{};
     groups.emplace_back(
         order0,
         s_info.group_meta(),
@@ -258,10 +219,46 @@ TEST_F(take_cogroup_test, simple) {
         std::move(d)
     };
 
+    group_reader reader0 {
+        {
+            group_type{
+                keys_type{1, 10},
+                {
+                    values_type{100},
+                    values_type{101},
+                },
+            },
+            group_type{
+                keys_type{2, 20},
+                {
+                    values_type{200},
+                },
+            },
+        },
+        s_info.group_meta()
+    };
+    group_reader reader1 {
+        {
+            group_type{
+                keys_type{1, 10},
+                {
+                    values_type{1000},
+                    values_type{1001},
+                },
+            },
+            group_type{
+                keys_type{3, 30},
+                {
+                    values_type{300},
+                },
+            },
+        },
+        s_info.group_meta()
+    };
     mock::task_context task_ctx{
         {
-            reader_container{&reader1},
-            reader_container{&reader2}
+            reader_container{&reader0},
+            reader_container{&reader1}
         },
         {},
         {},
@@ -281,7 +278,6 @@ TEST_F(take_cogroup_test, simple) {
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
-    auto vars_meta = variables.meta();
 
     auto g0v0_offset = map.at(g0v0).value_offset();
     auto g0v1_offset = map.at(g0v1).value_offset();
@@ -291,43 +287,82 @@ TEST_F(take_cogroup_test, simple) {
     auto g1v2_offset = map.at(g1v2).value_offset();
 
     std::size_t count = 0;
-    auto keys_type_meta = keys_type{}.record_meta();
-    auto values_type_meta = values_type{}.record_meta();
 
     downstream->body([&](cogroup& c) {
         ASSERT_EQ(2, c.groups().size());
         comparator comp{key_meta.get()};
-        auto value_size = value_meta->record_size();
         switch(count) {
             case 0: {
-                auto& g = c.groups()[0];
-                auto b = g.begin();
-                ASSERT_NE(g.end(), b);
-                values_type v1{record_ref{*b, value_size}, values_type_meta};
-                EXPECT_EQ(values_type{100}, v1);
-                ++b;
-                ASSERT_NE(g.end(), b);
-                values_type v2{record_ref{*b, value_size}, values_type_meta};
-                EXPECT_EQ(values_type{101}, v2);
-                ++b;
-                EXPECT_EQ(g.end(), b);
+                {
+                    auto& g0 = c.groups()[0];
+                    keys_type k1{g0.key(), key_meta};
+                    EXPECT_EQ(keys_type(1,10), k1);
+                    auto b = g0.begin();
+                    ASSERT_NE(g0.end(), b);
+                    values_type v1{*b, value_meta};
+                    EXPECT_EQ(values_type{100}, v1);
+                    ++b;
+                    ASSERT_NE(g0.end(), b);
+                    values_type v2{*b, value_meta};
+                    EXPECT_EQ(values_type{101}, v2);
+                    ++b;
+                    EXPECT_EQ(g0.end(), b);
+                }
+                {
+                    auto& g1 = c.groups()[1];
+                    keys_type k1{g1.key(), key_meta};
+                    EXPECT_EQ(keys_type(1,10), k1);
+                    auto b = g1.begin();
+                    ASSERT_NE(g1.end(), b);
+                    values_type v1{*b, value_meta};
+                    EXPECT_EQ(values_type{1000}, v1);
+                    ++b;
+                    ASSERT_NE(g1.end(), b);
+                    values_type v2{*b, value_meta};
+                    EXPECT_EQ(values_type{1001}, v2);
+                    ++b;
+                    EXPECT_EQ(g1.end(), b);
+                }
                 break;
             }
             case 1: {
-                auto& g = c.groups()[0];
-                auto b = g.begin();
-                ASSERT_NE(g.end(), b);
-                values_type v1{record_ref{*b, value_size}, values_type_meta};
-                EXPECT_EQ(values_type{200}, v1);
-                ++b;
-                EXPECT_EQ(g.end(), b);
+                {
+                    auto& g = c.groups()[0];
+                    keys_type k1{g.key(), key_meta};
+                    EXPECT_EQ(keys_type(2,20), k1);
+                    auto b = g.begin();
+                    ASSERT_NE(g.end(), b);
+                    values_type v1{*b, value_meta};
+                    EXPECT_EQ(values_type{200}, v1);
+                    ++b;
+                    EXPECT_EQ(g.end(), b);
+                }
+                {
+                    auto& g1 = c.groups()[1];
+                    auto b = g1.begin();
+                    EXPECT_EQ(g1.end(), b);
+                    EXPECT_TRUE(g1.empty());
+                }
                 break;
             }
             case 2: {
-                auto& g = c.groups()[0];
-                auto b = g.begin();
-                EXPECT_EQ(g.end(), b);
-                EXPECT_TRUE(g.empty());
+                {
+                    auto& g0 = c.groups()[0];
+                    auto b = g0.begin();
+                    EXPECT_EQ(g0.end(), b);
+                    EXPECT_TRUE(g0.empty());
+                }
+                {
+                    auto& g1= c.groups()[1];
+                    keys_type k1{g1.key(), key_meta};
+                    EXPECT_EQ(keys_type(3,30), k1);
+                    auto b = g1.begin();
+                    ASSERT_NE(g1.end(), b);
+                    values_type v1{*b, value_meta};
+                    EXPECT_EQ(values_type{300}, v1);
+                    ++b;
+                    EXPECT_EQ(g1.end(), b);
+                }
                 break;
             }
             default:

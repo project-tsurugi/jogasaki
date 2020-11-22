@@ -170,6 +170,16 @@ public:
     }
 
     /**
+     * @brief construct new object from pointer to record data with given meta data
+     * @param src the record data area whose values are copied to new object
+     * @param meta the meta data for sharing among multiple basic_record instances (this must be compatible with
+     * the underlying entity's memory layout)
+     */
+    basic_record(void* src, maybe_shared_ptr<meta::record_meta> meta, memory::paged_memory_resource* resource = nullptr) :
+        basic_record(accessor::record_ref{src, meta->record_size()}, meta)  // NOLINT(performance-unnecessary-value-param)
+    {}
+
+    /**
      * @brief accessor to the meta data of the record
      * @return the meta data
      */

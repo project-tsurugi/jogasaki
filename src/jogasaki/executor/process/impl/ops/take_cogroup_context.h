@@ -193,11 +193,12 @@ public:
     take_cogroup_context(
         class abstract::task_context* ctx,
         block_scope& variables,
+        maybe_shared_ptr<meta::record_meta> key_meta,
         memory_resource* resource,
         memory_resource* varlen_resource
     ) :
         context_base(ctx, variables, resource, varlen_resource),
-        key_buf_()
+        key_buf_(std::move(key_meta))
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {

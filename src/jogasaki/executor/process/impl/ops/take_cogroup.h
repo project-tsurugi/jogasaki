@@ -106,7 +106,7 @@ public:
 class take_cogroup : public record_operator {
 public:
     using iterator_pair = utils::iterator_pair<details::group_input::iterator>;
-    using group = takatori::relation::step::take_cogroup::group;
+//    using group = takatori::relation::step::take_cogroup::group;
     using queue_type = take_cogroup_context::queue_type;
     using input_index = take_cogroup_context::input_index;
 
@@ -123,14 +123,11 @@ public:
         key_comparator_(key_meta_.get()),
         downstream_(std::move(downstream))
     {
-        // key meta are identical on all inputs
+        fields_.reserve(groups_.size());
         for(auto&& g : groups_) {
+            // key meta are identical on all inputs
             BOOST_ASSERT(g.meta_->key() == *key_meta_);  //NOLINT
-        }
-        std::vector<sequence_view<group_field>> fields{};
-        fields.reserve(groups_.size());
-        for(auto&& g : groups_) {
-            fields.emplace_back(g.fields_);
+            fields_.emplace_back(g.fields_);
         }
     }
 
@@ -146,6 +143,7 @@ public:
             p = ctx.make_context<take_cogroup_context>(
                 index(),
                 ctx.block_scope(block_index()),
+                key_meta_,
                 ctx.resource(),
                 ctx.varlen_resource()
             );
@@ -160,10 +158,10 @@ public:
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
     void operator()(take_cogroup_context& ctx, abstract::task_context* context = nullptr) {
-        BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
         if (ctx.readers_.empty()) {
             create_readers(ctx);
         }
+        BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
 
         enum class state {
             init,
@@ -217,13 +215,21 @@ public:
                 }
                 case state::values_filled:
                     if (downstream_) {
-                        std::vector<iterator_pair> iterators{};
-                        iterators.reserve(inputs.size());
-                        for(auto&& in : inputs) {
-                            iterators.emplace_back(in.begin(), in.end());
+                        std::vector<group> groups{};
+                        groups.reserve(inputs.size());
+                        for(std::size_t i = 0, n = inputs.size(); i < n; ++i) {
+                            auto& in = inputs[i];
+                            groups.emplace_back(
+                                iterator_pair{in.begin(), in.end()},
+                                groups_[i].fields_,
+                                in.eof() ? accessor::record_ref{} : in.key_record()
+                            );
                         }
-                        cogroup cgrp{ iterators, fields_};
+                        cogroup cgrp{ groups };
                         unsafe_downcast<cogroup_operator>(downstream_.get())->process_cogroup(context, cgrp);
+                    }
+                    for(std::size_t i = 0, n = inputs.size(); i < n; ++i) {
+                        inputs[i].reset_store();
                     }
                     s = state::keys_filled;
                     break;

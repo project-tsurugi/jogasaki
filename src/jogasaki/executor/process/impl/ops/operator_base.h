@@ -123,6 +123,42 @@ struct cache_align group_field {
 };
 
 // TODO move to cogroup.h
+class group {
+public:
+    using iterator = data::iterable_record_store::iterator;
+    using iterator_pair = utils::iterator_pair<iterator>;
+    group(
+        iterator_pair iterators,
+        sequence_view<group_field> fields,
+        accessor::record_ref key
+    ) noexcept :
+        iterators_(iterators),
+        fields_(fields),
+        key_(key)
+    {}
+
+    [[nodiscard]] iterator begin() const noexcept {
+        return iterators_.first;
+    }
+    [[nodiscard]] iterator end() const noexcept {
+        return iterators_.second;
+    }
+    [[nodiscard]] sequence_view<group_field> fields() const noexcept {
+        return fields_;
+    }
+    [[nodiscard]] accessor::record_ref key() const noexcept {
+        return key_;
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return iterators_.first == iterators_.second;
+    }
+private:
+    iterator_pair iterators_;
+    sequence_view<group_field> fields_{};
+    accessor::record_ref key_{};
+};
+
 class cogroup {
 public:
     using iterator = data::iterable_record_store::iterator;
@@ -131,23 +167,17 @@ public:
     cogroup() = default;
 
     cogroup(
-        sequence_view<iterator_pair> iterators,
-        std::vector<sequence_view<group_field>> const& fields
+        sequence_view<group> groups
     ) noexcept :
-        iterators_(iterators),
-        fields_(std::addressof(fields))
+        groups_(groups)
     {}
 
-    [[nodiscard]] sequence_view<iterator_pair> iterators() {
-        return iterators_;
+    [[nodiscard]] sequence_view<group> groups() const noexcept {
+        return groups_;
     }
 
-    [[nodiscard]] std::vector<sequence_view<group_field>> const& fields() {
-        return *fields_;
-    }
 private:
-    sequence_view<iterator_pair> iterators_{};
-    std::vector<sequence_view<group_field>> const* fields_{};
+    sequence_view<group> groups_{};
 };
 
 class cogroup_operator : public operator_base {

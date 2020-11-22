@@ -30,8 +30,6 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 
-#include "output_verifier.h"
-
 namespace jogasaki::executor::process::impl::ops {
 
 using namespace meta;
@@ -51,8 +49,6 @@ namespace value = ::takatori::value;
 namespace statement = ::takatori::statement;
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
-using take = relation::step::take_flat;
-using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 

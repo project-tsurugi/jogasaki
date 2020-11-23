@@ -166,11 +166,6 @@ public:
         (*this)(*p, context);
 
         close(*p);
-        if (auto&& tx = p->transaction(); tx) {
-            if(! tx->commit()) {
-                fail();
-            }
-        }
     }
 
     /**

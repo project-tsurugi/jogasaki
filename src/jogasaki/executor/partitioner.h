@@ -80,6 +80,7 @@ private:
             case meta::field_type_kind::int8: return std::hash<runtime_type<kind::int8>>()(key.get_value<runtime_type<kind::int8>>(offset));
             case meta::field_type_kind::float4: return std::hash<runtime_type<kind::float4>>()(key.get_value<runtime_type<kind::float4>>(offset));
             case meta::field_type_kind::float8: return std::hash<runtime_type<kind::float8>>()(key.get_value<runtime_type<kind::float8>>(offset));
+            case meta::field_type_kind::character: return std::hash<runtime_type<kind::character>>()(key.get_value<runtime_type<kind::character>>(offset));
             default:
                 // TODO implement other types
                 std::abort();

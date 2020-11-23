@@ -106,9 +106,6 @@ public:
         std::size_t n = iterators.size();
         utils::iterator_incrementer<iterator> incr{std::move(iterators)};
         while(cont) {
-            if(! incr.increment()) {
-                break;
-            }
             auto& cur = incr.current();
             for(std::size_t i=0; i < n; ++i) { // TODO assign only first one when semi/anti-join
                 auto&& g = cgrp.groups()[i];
@@ -128,6 +125,9 @@ public:
             }
             if (res && downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            }
+            if(! incr.increment()) {
+                break;
             }
         }
     }

@@ -105,7 +105,13 @@ bool create_step_graph(std::string_view sql, compiler_context& ctx) {
         {},
     };
 
-    yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
+    yugawara::runtime_feature_set runtime_features {
+        //TODO enable features
+//        yugawara::runtime_feature::broadcast_exchange,
+//        yugawara::runtime_feature::aggregate_exchange,
+//        yugawara::runtime_feature::index_join,
+//        yugawara::runtime_feature::broadcast_join_scan,
+    };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
     yugawara::compiler_options c_options{

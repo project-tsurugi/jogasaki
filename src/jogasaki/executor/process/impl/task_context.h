@@ -21,7 +21,7 @@
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/external_writer.h>
-#include <jogasaki/executor/process/impl/details/io_exchange_map.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/exchange/step.h>
@@ -60,7 +60,7 @@ public:
      * @param external_output_varlen_resource the memory resource backing the result store
      */
     task_context(partition_index partition,
-        impl::details::io_exchange_map const& io_exchange_map,
+        io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
         result_stores* stores,
         memory::paged_memory_resource* external_output_record_resource = {},
@@ -135,7 +135,7 @@ public:
 
 private:
     std::size_t partition_{};
-    impl::details::io_exchange_map const* io_exchange_map_{};
+    io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
     result_stores* stores_{};
     std::vector<std::shared_ptr<class external_writer>> external_writers_{};

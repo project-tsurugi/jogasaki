@@ -30,10 +30,11 @@ processor::processor(
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
+    io_exchange_map* io_exchange_map,
     memory::lifo_paged_memory_resource* resource
 ) :
     info_(std::move(info)),
-    operators_(ops::create_operators(info_, compiler_ctx, std::move(io_info), std::move(relation_io_map), resource)),
+    operators_(ops::create_operators(info_, compiler_ctx, std::move(io_info), std::move(relation_io_map), io_exchange_map, resource)),
     relation_io_map_(std::move(relation_io_map))
 {}
 

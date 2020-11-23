@@ -49,6 +49,7 @@
 #include <takatori/serializer/json_printer.h>
 #include <takatori/statement/statement_kind.h>
 #include <takatori/plan/graph.h>
+#include <takatori/plan/forward.h>
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
@@ -57,7 +58,7 @@
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/relation_io_map.h>
-#include <takatori/plan/forward.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
 #include "compiler_context.h"
 
 namespace jogasaki::plan {
@@ -75,6 +76,8 @@ using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
 
 namespace relation = takatori::relation;
+
+using takatori::util::unsafe_downcast;
 
 std::unique_ptr<shakujo::model::program::Program> generate_program(std::string_view sql) {
     shakujo::parser::Parser parser{};
@@ -243,10 +246,25 @@ void create_mirror_for_execute(compiler_context& ctx) {
         }
     });
     for(auto&& [s, step] : steps) {
+        auto map = std::make_shared<executor::process::io_exchange_map>();
         if(takatori::plan::has_upstream(*s)) {
-            takatori::plan::enumerate_upstream(*s, [step=step, &steps](takatori::plan::step const& up){
+            takatori::plan::enumerate_upstream(*s, [step=step, &steps, &map](takatori::plan::step const& up){
+                // assuming enumerate_upstream respects the input port ordering TODO confirm
                 *step << *steps[&up];
+                if(step->kind() == executor::common::step_kind::process) {
+                    map->add_input(unsafe_downcast<executor::exchange::step>(steps[&up]));
+                }
             });
+        }
+        if(takatori::plan::has_downstream(*s)) {
+            takatori::plan::enumerate_downstream(*s, [step=step, &steps, &map](takatori::plan::step const& down){
+                if(step->kind() == executor::common::step_kind::process) {
+                    map->add_output(unsafe_downcast<executor::exchange::step>(steps[&down]));
+                }
+            });
+        }
+        if(step->kind() == executor::common::step_kind::process) {
+            unsafe_downcast<executor::process::step>(step)->io_exchange_map(std::move(map));
         }
     }
     ctx.step_graph(std::move(mirror));

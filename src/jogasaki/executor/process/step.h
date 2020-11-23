@@ -25,6 +25,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
 #include "flow.h"
 
 namespace jogasaki::executor::process {
@@ -93,12 +94,20 @@ public:
         return relation_io_map_;
     }
 
+    void io_exchange_map(std::shared_ptr<class io_exchange_map> arg) noexcept {
+        io_exchange_map_ = std::move(arg);
+    }
+
+    [[nodiscard]] std::shared_ptr<class io_exchange_map> const& io_exchange_map() const noexcept {
+        return io_exchange_map_;
+    }
 private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<abstract::process_executor_factory> executor_factory_{};
     std::shared_ptr<class io_info> io_info_{};
     std::size_t partitions_{default_partitions};
     std::shared_ptr<class relation_io_map> relation_io_map_{};
+    std::shared_ptr<class io_exchange_map> io_exchange_map_{};
 
     std::shared_ptr<class io_info> create_io_info();
 };

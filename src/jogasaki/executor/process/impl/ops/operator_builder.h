@@ -39,7 +39,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
-#include <jogasaki/executor/process/impl/details/io_exchange_map.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/executor/exchange/forward/step.h>
@@ -86,18 +86,20 @@ public:
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
+        io_exchange_map* io_exchange_map,
         memory::lifo_paged_memory_resource* resource = nullptr
     ) :
         info_(std::move(info)),
         compiler_ctx_(std::addressof(compiler_ctx)),
         io_info_(std::move(io_info)),
+        io_exchange_map_(io_exchange_map),
         relation_io_map_(std::move(relation_io_map)),
         resource_(resource)
     {}
 
     [[nodiscard]] operator_container operator()() && {
         auto root = dispatch(*this, head());
-        return operator_container{std::move(root), index_, std::move(io_exchange_map_), std::move(scan_info_)};
+        return operator_container{std::move(root), index_, io_exchange_map_, std::move(scan_info_)};
     }
 
     [[nodiscard]] relation::expression& head() {
@@ -161,7 +163,7 @@ public:
     std::unique_ptr<operator_base> operator()(relation::emit const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto e = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
-        auto writer_index = io_exchange_map_.add_external_output(e.get());
+        auto writer_index = io_exchange_map_->add_external_output(e.get());
         e->external_writer_index(writer_index);
         return e;
     }
@@ -290,7 +292,7 @@ private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
     std::shared_ptr<io_info> io_info_{};
-    impl::details::io_exchange_map io_exchange_map_{};
+    io_exchange_map* io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
@@ -352,9 +354,10 @@ private:
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
+    io_exchange_map* io_exchange_map,
     memory::lifo_paged_memory_resource* resource = nullptr
 ) {
-    return operator_builder{std::move(info), compiler_ctx, std::move(io_info), std::move(relation_io_map), resource}();
+    return operator_builder{std::move(info), compiler_ctx, std::move(io_info), std::move(relation_io_map), io_exchange_map, resource}();
 }
 
 }

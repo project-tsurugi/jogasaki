@@ -43,6 +43,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
                 *context_->compiler_context(),
                 step_->io_info(),
                 step_->relation_io_map(),
+                step_->io_exchange_map().get(),
                 context_->request_resource()
             );
             break;
@@ -60,6 +61,11 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     for (std::size_t i=0; i < partitions; ++i) {
         contexts.emplace_back(create_task_context(i, proc->operators()));
     }
+    auto& exchange_map = step_->io_exchange_map();
+    for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
+        (void)dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object()).setup_partitions(partitions);
+    }
+
     auto exec = factory(proc, contexts);
     for (std::size_t i=0; i < partitions; ++i) {
         tasks_.emplace_back(std::make_unique<task>(context_, step_, exec, proc));

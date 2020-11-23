@@ -45,6 +45,7 @@ public:
      * @param compiler_ctx compiler context
      * @param io_info input/output information
      * @param relation_io_map mapping from relation to input/output indices
+     * @param io_exchange_map map from input/output to exchange operator
      * @param resource the memory resource to build the structures needed by this processor
      */
     processor(
@@ -52,6 +53,7 @@ public:
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<ops::io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
+        io_exchange_map* io_exchange_map,
         memory::lifo_paged_memory_resource* resource
     );
 

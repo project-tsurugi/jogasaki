@@ -32,6 +32,7 @@
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include "join_context.h"
@@ -85,16 +86,6 @@ public:
         (*this)(*p, cgrp, context);
     }
 
-    bool increment_iterator(std::size_t pos, std::vector<iterator_pair>& iterators, cogroup& cgrp) {
-        if(++iterators[pos].first != iterators[pos].second) {
-            return true;
-        }
-        if(pos == 0) {
-            return false;
-        }
-        iterators[pos].first = cgrp.groups()[pos].begin();
-        return increment_iterator(pos-1, iterators, cgrp);
-    }
 
     /**
      * @brief process record with context object
@@ -109,15 +100,16 @@ public:
         auto target = ctx.variables().store().ref();
         bool cont = true;
         std::size_t n = iterators.size();
-        std::size_t cur = n-1;
+        utils::iterator_incrementer<iterator> incr{std::move(iterators)};
         while(cont) {
-            if(! increment_iterator(cur, iterators, cgrp)) {
+            if(! incr.increment()) {
                 break;
             }
+            auto& cur = incr.current();
             for(std::size_t i=0; i < n; ++i) { // TODO assign only first one when semi/anti-join
                 auto&& g = cgrp.groups()[i];
                 if (g.empty()) continue; // TODO outer join
-                auto it = iterators[i].first;
+                auto it = cur[i].first;
                 for(auto&& f : g.fields()) {
                     auto src = f.is_key_ ? g.key() : accessor::record_ref{*it, g.record_size()};
                     utils::copy_field(f.type_, target, f.target_offset_, src, f.source_offset_, ctx.varlen_resource()); // TODO no need to copy between resources

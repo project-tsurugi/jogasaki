@@ -94,7 +94,7 @@ flow::source_list_view flow::sources() {
 void flow::transfer() {
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        assert(partitions.size() == sources_.size()); //NOLINT
+        BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT
         for(std::size_t i=0; i < partitions.size(); ++i) {
             sources_[i]->receive(std::move(partitions[i]));
         }

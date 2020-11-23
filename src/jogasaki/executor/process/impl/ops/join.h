@@ -30,9 +30,11 @@
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/utils/iterator_pair.h>
 #include <jogasaki/utils/iterator_incrementer.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include "join_context.h"
@@ -60,9 +62,12 @@ public:
         processor_info const& info,
         block_index_type block_index,
         join_kind kind,
+        takatori::util::optional_ptr<takatori::scalar::expression const> expression,
         std::unique_ptr<operator_base> downstream = nullptr
     ) : cogroup_operator(index, info, block_index),
         kind_(kind),
+        evaluator_(create_evaluator(expression, info.compiled_info())),
+        has_condition_(expression.has_value()),
         downstream_(std::move(downstream))
     {}
 
@@ -85,7 +90,6 @@ public:
         }
         (*this)(*p, cgrp, context);
     }
-
 
     /**
      * @brief process record with context object
@@ -115,8 +119,14 @@ public:
                     utils::copy_field(f.type_, target, f.target_offset_, src, f.source_offset_, ctx.varlen_resource()); // TODO no need to copy between resources
                 }
             }
-            // TODO evaluate additional join condition
-            if (downstream_) {
+            auto resource = ctx.varlen_resource();
+            auto& scope = ctx.variables();
+            bool res = true;
+            if (has_condition_) {
+                utils::checkpoint_holder cp{resource};
+                res = evaluator_(scope, resource).to<bool>();
+            }
+            if (res && downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
         }
@@ -128,7 +138,19 @@ public:
 
 private:
     join_kind kind_{};
+    expression::evaluator evaluator_{};
+    bool has_condition_{};
     std::unique_ptr<operator_base> downstream_{};
+
+    expression::evaluator create_evaluator(
+        takatori::util::optional_ptr<takatori::scalar::expression const> expression,
+        yugawara::compiled_info const& compiled_info
+    ) {
+        if (expression) {
+            return expression::evaluator(*expression, compiled_info);
+        }
+        return {};
+    }
 };
 
 }

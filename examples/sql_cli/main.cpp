@@ -55,6 +55,7 @@ static int run(std::string_view sql) {
     auto db_impl = api::database::impl::get_impl(db);
     common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->provider(), "I0", 5, true);
     common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->provider(), "I1", 5, true);
+    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->provider(), "I2", 5, true);
 
     auto rs = db.execute(sql);
     auto it = rs->begin();

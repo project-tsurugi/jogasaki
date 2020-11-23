@@ -81,8 +81,8 @@ public:
         auto& value_meta = meta->value();
         auto num_keys = key_meta.field_count();
         auto num_fields = num_keys+value_meta.field_count();
-        fields.resize(num_fields);
-        assert(num_fields == columns.size());  //NOLINT
+        BOOST_ASSERT(columns.size() <= num_fields);  //NOLINT // it's possible requested columns are only part of exchange fields
+        fields.resize(columns.size());
         auto& vmap = block_info.value_map();
         for(auto&& c : columns) {
             auto [src_idx, is_key] = order.key_value_index(c.source());

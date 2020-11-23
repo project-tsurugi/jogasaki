@@ -43,7 +43,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
                 *context_->compiler_context(),
                 step_->io_info(),
                 step_->relation_io_map(),
-                step_->io_exchange_map().get(),
+                *step_->io_exchange_map(),
                 context_->request_resource()
             );
             break;

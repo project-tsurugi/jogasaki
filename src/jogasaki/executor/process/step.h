@@ -107,7 +107,7 @@ private:
     std::shared_ptr<class io_info> io_info_{};
     std::size_t partitions_{default_partitions};
     std::shared_ptr<class relation_io_map> relation_io_map_{};
-    std::shared_ptr<class io_exchange_map> io_exchange_map_{};
+    std::shared_ptr<class io_exchange_map> io_exchange_map_{std::make_shared<class io_exchange_map>()};
 
     std::shared_ptr<class io_info> create_io_info();
 };

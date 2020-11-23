@@ -43,12 +43,12 @@ public:
     operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
-        io_exchange_map* io_exchange_map,
+        io_exchange_map& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info
     ) :
         root_(std::move(root)),
         operator_count_(operator_count),
-        io_exchange_map_(io_exchange_map),
+        io_exchange_map_(std::addressof(io_exchange_map)),
         scan_info_(std::move(scan_info))
     {}
 

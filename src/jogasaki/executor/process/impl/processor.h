@@ -53,7 +53,7 @@ public:
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<ops::io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
-        io_exchange_map* io_exchange_map,
+        io_exchange_map& io_exchange_map,
         memory::lifo_paged_memory_resource* resource
     );
 

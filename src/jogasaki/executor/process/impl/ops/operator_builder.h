@@ -86,20 +86,20 @@ public:
         plan::compiler_context const& compiler_ctx,
         std::shared_ptr<io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
-        io_exchange_map* io_exchange_map,
+        io_exchange_map& io_exchange_map,
         memory::lifo_paged_memory_resource* resource = nullptr
     ) :
         info_(std::move(info)),
         compiler_ctx_(std::addressof(compiler_ctx)),
         io_info_(std::move(io_info)),
-        io_exchange_map_(io_exchange_map),
+        io_exchange_map_(std::addressof(io_exchange_map)),
         relation_io_map_(std::move(relation_io_map)),
         resource_(resource)
     {}
 
     [[nodiscard]] operator_container operator()() && {
         auto root = dispatch(*this, head());
-        return operator_container{std::move(root), index_, io_exchange_map_, std::move(scan_info_)};
+        return operator_container{std::move(root), index_, *io_exchange_map_, std::move(scan_info_)};
     }
 
     [[nodiscard]] relation::expression& head() {
@@ -354,7 +354,7 @@ private:
     plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
-    io_exchange_map* io_exchange_map,
+    io_exchange_map& io_exchange_map,
     memory::lifo_paged_memory_resource* resource = nullptr
 ) {
     return operator_builder{std::move(info), compiler_ctx, std::move(io_info), std::move(relation_io_map), io_exchange_map, resource}();

@@ -398,7 +398,8 @@ TEST_F(scan_test, scan_info) {
     memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
 
     jogasaki::plan::compiler_context compiler_ctx{};
-    operator_builder builder{p_info, compiler_ctx, {}, {}, &resource};
+    io_exchange_map exchange_map{};
+    operator_builder builder{p_info, compiler_ctx, {}, {}, exchange_map, &resource};
     auto sinfo = builder.create_scan_info(r0, i1->keys());
     mock::task_context task_ctx{
         {},

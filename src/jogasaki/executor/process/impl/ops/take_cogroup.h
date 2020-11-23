@@ -80,8 +80,7 @@ public:
         auto& key_meta = meta->key();
         auto& value_meta = meta->value();
         auto num_keys = key_meta.field_count();
-        auto num_fields = num_keys+value_meta.field_count();
-        BOOST_ASSERT(columns.size() <= num_fields);  //NOLINT // it's possible requested columns are only part of exchange fields
+        BOOST_ASSERT(columns.size() <= num_keys+value_meta.field_count());  //NOLINT // it's possible requested columns are only part of exchange fields
         fields.resize(columns.size());
         auto& vmap = block_info.value_map();
         for(auto&& c : columns) {

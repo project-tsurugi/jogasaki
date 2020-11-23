@@ -53,6 +53,7 @@
 #include "take_cogroup.h"
 #include "offer.h"
 #include "take_flat.h"
+#include "join.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -174,8 +175,9 @@ public:
         return {};
     }
     std::unique_ptr<operator_base> operator()(relation::step::join const& node) {
-        (void)node;
-        return {};
+        auto block_index = info_->scope_indices().at(&node);
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
+        return std::make_unique<join>(index_++, *info_, block_index, node.operator_kind(), std::move(downstream));
     }
     std::unique_ptr<operator_base> operator()(relation::step::aggregate const& node) {
         (void)node;

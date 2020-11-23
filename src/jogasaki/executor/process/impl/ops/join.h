@@ -18,6 +18,9 @@
 #include <memory>
 #include <glog/logging.h>
 
+#include <takatori/relation/step/join.h>
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/group_meta.h>
@@ -29,13 +32,111 @@
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include "join_context.h"
+#include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
-class join {
+using takatori::util::unsafe_downcast;
+
+class join : public cogroup_operator {
 public:
+    friend class join_context;
+
     using input_index = std::size_t;
 
+    using join_kind = takatori::relation::join_kind;
+
+    using iterator = data::iterable_record_store::iterator;
+    using iterator_pair = utils::iterator_pair<iterator>;
+
+    join() = default;
+
+    join(
+        operator_index_type index,
+        processor_info const& info,
+        block_index_type block_index,
+        join_kind kind,
+        std::unique_ptr<operator_base> downstream = nullptr
+    ) : cogroup_operator(index, info, block_index),
+        kind_(kind),
+        downstream_(std::move(downstream))
+    {}
+
+    /**
+     * @brief create context (if needed) and process cogroup
+     * @param context task-wide context used to create operator context
+     * @param cgrp the cogroup to process
+     */
+    void process_cogroup(abstract::task_context* context, cogroup& cgrp) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<join_context>(index(), ctx.contexts());
+        if (! p) {
+            p = ctx.make_context<join_context>(
+                index(),
+                ctx.block_scope(block_index()),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
+        }
+        (*this)(*p, cgrp, context);
+    }
+
+    bool increment_iterator(std::size_t pos, std::vector<iterator_pair>& iterators, cogroup& cgrp) {
+        if(++iterators[pos].first != iterators[pos].second) {
+            return true;
+        }
+        if(pos == 0) {
+            return false;
+        }
+        iterators[pos].first = cgrp.groups()[pos].begin();
+        return increment_iterator(pos-1, iterators, cgrp);
+    }
+
+    /**
+     * @brief process record with context object
+     * @param ctx operator context object for the execution
+     */
+    void operator()(join_context& ctx, cogroup& cgrp, abstract::task_context* context = nullptr) {
+        std::vector<iterator_pair> iterators{};
+        iterators.reserve(cgrp.groups().size());
+        for(auto&& g : cgrp.groups()) {
+            iterators.emplace_back(g.begin(), g.end());
+        }
+        auto target = ctx.variables().store().ref();
+        bool cont = true;
+        std::size_t n = iterators.size();
+        std::size_t cur = n-1;
+        while(cont) {
+            if(! increment_iterator(cur, iterators, cgrp)) {
+                break;
+            }
+            for(std::size_t i=0; i < n; ++i) { // TODO assign only first one when semi/anti-join
+                auto&& g = cgrp.groups()[i];
+                if (g.empty()) continue; // TODO outer join
+                auto it = iterators[i].first;
+                for(auto&& f : g.fields()) {
+                    auto src = f.is_key_ ? g.key() : accessor::record_ref{*it, g.record_size()};
+                    utils::copy_field(f.type_, target, f.target_offset_, src, f.source_offset_, ctx.varlen_resource()); // TODO no need to copy between resources
+                }
+            }
+            // TODO evaluate additional join condition
+            if (downstream_) {
+                unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            }
+        }
+    }
+
+    [[nodiscard]] operator_kind kind() const noexcept override {
+        return operator_kind::join;
+    }
+
+private:
+    join_kind kind_{};
+    std::unique_ptr<operator_base> downstream_{};
 };
 
 }

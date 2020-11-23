@@ -44,11 +44,13 @@ public:
     group(
         iterator_pair iterators,
         sequence_view<group_field> fields,
-        accessor::record_ref key
+        accessor::record_ref key,
+        std::size_t record_size
     ) noexcept :
         iterators_(iterators),
         fields_(fields),
-        key_(key)
+        key_(key),
+        record_size_(record_size)
     {}
 
     [[nodiscard]] iterator begin() const noexcept {
@@ -67,10 +69,15 @@ public:
     [[nodiscard]] bool empty() const noexcept {
         return iterators_.first == iterators_.second;
     }
+
+    [[nodiscard]] std::size_t record_size() const noexcept {
+        return record_size_;
+    }
 private:
     iterator_pair iterators_;
     sequence_view<group_field> fields_{};
     accessor::record_ref key_{};
+    std::size_t record_size_{};
 };
 
 class cogroup {

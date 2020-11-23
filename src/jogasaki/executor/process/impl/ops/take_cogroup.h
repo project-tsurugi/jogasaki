@@ -229,7 +229,8 @@ public:
                             groups.emplace_back(
                                 iterator_pair{in.begin(), in.end()},
                                 groups_[i].fields_,
-                                in.filled() ? in.current_key() : accessor::record_ref{}
+                                in.filled() ? in.current_key() : accessor::record_ref{},
+                                in.meta()->value().record_size()
                             );
                         }
                         cogroup cgrp{ groups };

@@ -15,13 +15,18 @@
  */
 #pragma once
 
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/utils/performance_tools.h>
+#include "task_context.h"
 
 namespace jogasaki::executor::process::mock {
+
+using takatori::util::unsafe_downcast;
 
 class process_executor : public abstract::process_executor {
 public:
@@ -46,7 +51,7 @@ public:
     [[nodiscard]] status run() override {
         // assign context
         auto context = pool_->pop();
-        auto& impl = *static_cast<impl::task_context*>(context.get());  //NOLINT
+        auto& impl = *unsafe_downcast<mock::task_context>(context.get());  //NOLINT
         callback_arg arg{impl.partition()};
         if (will_run()) {
             (*will_run())(&arg);

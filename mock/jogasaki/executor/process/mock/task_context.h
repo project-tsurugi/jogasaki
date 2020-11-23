@@ -79,7 +79,11 @@ public:
         return nullptr;
     }
 
+    [[nodiscard]] std::size_t partition() const noexcept {
+        return partition_;
+    }
 private:
+    std::size_t partition_{};
     std::vector<reader_container> readers_{};
     std::vector<std::shared_ptr<executor::record_writer>> downstream_writers_{};
     std::vector<std::shared_ptr<executor::record_writer>> external_writers_{};

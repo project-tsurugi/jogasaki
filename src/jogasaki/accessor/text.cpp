@@ -16,6 +16,7 @@
 #include "text.h"
 
 #include <cassert>
+#include <ostream>
 
 namespace jogasaki::accessor {
 
@@ -116,7 +117,7 @@ bool operator!=(const text &a, const text &b) noexcept {
 std::ostream& operator<<(std::ostream& out, text const& value) {
     auto sv = static_cast<std::string_view>(value);
     if (sv.empty()) {
-        out << static_cast<std::string_view>("<empty>");
+        out << "<empty>";
     } else {
         out << sv;
     }

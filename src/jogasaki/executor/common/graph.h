@@ -19,11 +19,15 @@
 #include <optional>
 
 #include <takatori/util/optional_ptr.h>
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/model/graph.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
 
 namespace jogasaki::executor::common {
+
+using takatori::util::unsafe_downcast;
 
 /**
  * @brief graph common implementation
@@ -55,7 +59,7 @@ public:
     }
 
     model::step& insert(std::unique_ptr<model::step> step) {
-        auto impl = static_cast<common::step*>(step.get()); //NOLINT
+        auto impl = unsafe_downcast<common::step>(step.get()); //NOLINT
         impl->owner(this);
         impl->id(steps_.size());
         auto& p = steps_.emplace_back(std::move(step));
@@ -66,7 +70,7 @@ public:
     T& emplace(Args&& ... args) {
         auto n = steps_.size();
         auto& step = steps_.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
-        auto* impl = static_cast<T*>(step.get()); //NOLINT
+        auto* impl = unsafe_downcast<T>(step.get()); //NOLINT
         impl->owner(this);
         impl->id(n);
         return *impl;

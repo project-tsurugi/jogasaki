@@ -40,7 +40,7 @@ processor::processor(
 
 abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
-    auto* work = static_cast<work_context*>(context->work_context()); //NOLINT
+    auto* work = unsafe_downcast<work_context>(context->work_context()); //NOLINT
     for(auto& block_info : info_->scopes_info()) {
         work->scopes().emplace_back(block_info);
     }

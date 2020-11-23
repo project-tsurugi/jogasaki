@@ -158,7 +158,7 @@ public:
                 ctx.block_scope(block_index()),
                 std::move(stg),
                 ctx.transaction(),
-                static_cast<impl::scan_info const*>(ctx.task_context()->scan_info()),  //NOLINT
+                unsafe_downcast<impl::scan_info const>(ctx.task_context()->scan_info()),  //NOLINT
                 ctx.resource(),
                 ctx.varlen_resource()
             );

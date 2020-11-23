@@ -126,7 +126,7 @@ public:
         create_compiled_info(compiler_context);
 
         // create step graph with only process
-        auto& p = static_cast<takatori::statement::execute&>(compiler_context->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<class channel>();
         auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
@@ -365,8 +365,8 @@ private:
             })
         );
 
-        auto& f0 = static_cast<takatori::plan::forward&>(*input_exchanges_[0]);
-        auto& f1 = static_cast<takatori::plan::forward&>(*output_exchanges_[0]);
+        auto& f0 = unsafe_downcast<takatori::plan::forward>(*input_exchanges_[0]);
+        auto& f1 = unsafe_downcast<takatori::plan::forward>(*output_exchanges_[0]);
         process.io_info(
             std::make_shared<io_info>(
                 std::vector<input_info>{

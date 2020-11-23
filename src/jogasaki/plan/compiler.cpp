@@ -215,14 +215,14 @@ void create_mirror_for_execute(compiler_context& ctx) {
     takatori::plan::sort_from_upstream(c.execution_plan(), [&mirror, &ctx, &bindings, &steps](takatori::plan::step const& s){
         switch(s.kind()) {
             case takatori::plan::step_kind::forward: {
-                auto& forward = static_cast<takatori::plan::forward const&>(s);  //NOLINT
+                auto& forward = unsafe_downcast<takatori::plan::forward const>(s);  //NOLINT
                 auto* step = &mirror->emplace<executor::exchange::forward::step>(create(forward, ctx));
                 auto relation_desc = bindings(forward);
                 steps[&forward] = step;
                 break;
             }
             case takatori::plan::step_kind::group: {
-                auto& group = static_cast<takatori::plan::group const&>(s);  //NOLINT
+                auto& group = unsafe_downcast<takatori::plan::group const>(s);  //NOLINT
                 auto* step = &mirror->emplace<executor::exchange::group::step>(create(group, ctx));
                 auto relation_desc = bindings(group);
                 steps[&group] = step;
@@ -237,7 +237,7 @@ void create_mirror_for_execute(compiler_context& ctx) {
             case takatori::plan::step_kind::discard:
                 break;
             case takatori::plan::step_kind::process: {
-                auto& process = static_cast<takatori::plan::process const&>(s);  //NOLINT
+                auto& process = unsafe_downcast<takatori::plan::process const>(s);  //NOLINT
                 steps[&process] = &mirror->emplace<executor::process::step>(create(process, ctx));
                 break;
             }

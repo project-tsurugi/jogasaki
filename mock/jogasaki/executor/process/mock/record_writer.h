@@ -157,14 +157,5 @@ private:
 
 using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
 
-template <class Record>
-[[nodiscard]] basic_record_writer<Record>* unwrap(executor::record_writer* writer) {
-    return static_cast<basic_record_writer<Record>*>(writer);
-}
-
-[[nodiscard]] inline record_writer* unwrap_record_writer(executor::record_writer* writer) {
-    return unwrap<record_writer::record_type>(writer);
-}
-
 }
 

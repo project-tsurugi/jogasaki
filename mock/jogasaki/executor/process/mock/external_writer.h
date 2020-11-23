@@ -107,14 +107,5 @@ private:
 
 using external_writer = basic_external_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
 
-template <class Record>
-basic_external_writer<Record>* unwrap_external(executor::record_writer* writer) {
-    return static_cast<basic_external_writer<Record>*>(writer);
-}
-
-inline external_writer* unwrap_external_writer(executor::record_writer* writer) {
-    return unwrap_external<external_writer::record_type>(writer);
-}
-
 }
 

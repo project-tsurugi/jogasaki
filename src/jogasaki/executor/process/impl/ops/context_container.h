@@ -17,11 +17,15 @@
 
 #include <unordered_map>
 
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::unsafe_downcast;
 
 /**
  * @brief relational operator context container
@@ -100,7 +104,7 @@ private:
  */
 template<class T>
 [[nodiscard]] T* find_context(std::size_t idx, context_container& container) {
-    return static_cast<T*>(container.at(idx));
+    return unsafe_downcast<T>(container.at(idx));
 }
 
 }

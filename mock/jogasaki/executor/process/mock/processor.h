@@ -33,7 +33,6 @@ class processor : public abstract::processor {
 public:
     [[nodiscard]] status run(abstract::task_context* ctx) override {
         auto* r = ctx->reader(0).reader<executor::record_reader>();
-        auto meta = unwrap_record_reader(r)->meta(); // FIXME
         auto* w = ctx->downstream_writer(0);
         auto* e = ctx->external_writer(0);
         while(r->next_record()) {

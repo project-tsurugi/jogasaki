@@ -183,14 +183,5 @@ private:
 
 using record_reader = basic_record_reader<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
 
-template <class Record>
-basic_record_reader<Record>* unwrap(executor::record_reader* reader) {
-    return static_cast<basic_record_reader<Record>*>(reader);
-}
-
-inline record_reader* unwrap_record_reader(executor::record_reader* reader) {
-    return unwrap<record_reader::record_type>(reader);
-}
-
 }
 

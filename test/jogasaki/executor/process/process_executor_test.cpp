@@ -45,7 +45,6 @@ public:
 
         reader_ = std::make_shared<mock::record_reader>(records_);
         reader_container r{reader_.get()};
-        auto meta = unwrap_record_reader(reader_.get())->meta();
         downstream_writer_ = std::make_shared<mock::record_writer>();
         external_writer_ = std::make_shared<mock::record_writer>();
         contexts_.emplace_back(std::make_shared<mock::task_context>(
@@ -72,8 +71,8 @@ using kind = meta::field_type_kind;
 TEST_F(process_executor_test, basic) {
     process_executor exec{proc_, contexts_};
     ASSERT_EQ(abstract::status::completed, exec.run());
-    auto writer = unwrap_record_writer(downstream_writer_.get());
-    auto ewriter = unwrap_record_writer(external_writer_.get());
+    auto writer = downstream_writer_.get();
+    auto ewriter = external_writer_.get();
     EXPECT_EQ(4, reader_->num_calls_next_record());
     EXPECT_EQ(3, writer->size());
     EXPECT_EQ(3, ewriter->size());
@@ -86,8 +85,8 @@ TEST_F(process_executor_test, default_factory) {
     abstract::process_executor_factory f = impl::default_process_executor_factory();
     auto executor = f(proc_, contexts_);
     ASSERT_EQ(abstract::status::completed, executor->run());
-    auto writer = unwrap_record_writer(downstream_writer_.get());
-    auto ewriter = unwrap_record_writer(external_writer_.get());
+    auto writer = downstream_writer_.get();
+    auto ewriter = external_writer_.get();
     EXPECT_EQ(4, reader_->num_calls_next_record());
     EXPECT_EQ(3, writer->size());
     EXPECT_EQ(3, ewriter->size());
@@ -119,8 +118,8 @@ TEST_F(process_executor_test, custom_factory) {
 
     auto executor = f(proc_, contexts_);
     ASSERT_EQ(abstract::status::completed, executor->run());
-    auto writer = unwrap_record_writer(downstream_writer_.get());
-    auto ewriter = unwrap_record_writer(external_writer_.get());
+    auto writer = downstream_writer_.get();
+    auto ewriter = external_writer_.get();
     EXPECT_EQ(0, reader_->num_calls_next_record());
     EXPECT_EQ(2, reader->num_calls_next_record());
     EXPECT_EQ(1, writer->size());

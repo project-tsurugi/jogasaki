@@ -17,11 +17,15 @@
 
 #include <glog/logging.h>
 
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::unsafe_downcast;
 
 /**
  * @brief context access helper
@@ -56,7 +60,7 @@ public:
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
         auto& p = contexts().set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
-        return static_cast<T*>(p.get());
+        return unsafe_downcast<T>(p.get());
     }
 
     /**

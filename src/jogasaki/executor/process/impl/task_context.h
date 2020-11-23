@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
@@ -80,11 +82,11 @@ public:
         using step_kind = common::step_kind;
         switch(flow.kind()) {
             case step_kind::group:
-                return static_cast<exchange::group::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
+                return unsafe_downcast<exchange::group::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
             case step_kind::aggregate:
-                return static_cast<exchange::aggregate::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
+                return unsafe_downcast<exchange::aggregate::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
             case step_kind::forward:
-                return static_cast<exchange::forward::flow&>(flow).sources()[partition_].acquire_reader(); //NOLINT
+                return unsafe_downcast<exchange::forward::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
             //TODO other exchanges
             default:
                 fail();
@@ -97,11 +99,11 @@ public:
         using step_kind = common::step_kind;
         switch(flow.kind()) {
             case step_kind::group:
-                return &static_cast<exchange::group::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+                return &unsafe_downcast<exchange::group::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
             case step_kind::aggregate:
-                return &static_cast<exchange::aggregate::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+                return &unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
             case step_kind::forward:
-                return &static_cast<exchange::forward::flow&>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+                return &unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
             //TODO other exchanges
             default:
                 fail();

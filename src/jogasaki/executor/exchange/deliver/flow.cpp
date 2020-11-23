@@ -15,19 +15,21 @@
  */
 #include <vector>
 
-#include <jogasaki/executor/exchange/group/writer.h>
+#include <takatori/util/downcast.h>
 #include "flow.h"
 #include "sink.h"
 #include "source.h"
 
 namespace jogasaki::executor::exchange::deliver {
 
+using takatori::util::unsafe_downcast;
+
 namespace impl {
 
 flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<deliver::source>>& vp) {
     takatori::util::universal_extractor<exchange::source> ext {
             [](void* cursor) -> exchange::source& {
-                return static_cast<exchange::source&>(**static_cast<std::unique_ptr<deliver::source>*>(cursor));
+                return unsafe_downcast<exchange::source>(**static_cast<std::unique_ptr<deliver::source>*>(cursor));
             },
             [](void* cursor, std::ptrdiff_t offset) {
                 return static_cast<void*>(static_cast<std::unique_ptr<deliver::source>*>(cursor) + offset); //NOLINT
@@ -38,7 +40,7 @@ flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<deliv
 flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<deliver::sink>>& vp) {
     takatori::util::universal_extractor<exchange::sink> ext {
             [](void* cursor) -> exchange::sink& {
-                return static_cast<exchange::sink&>(**static_cast<std::unique_ptr<deliver::sink>*>(cursor));
+                return unsafe_downcast<exchange::sink>(**static_cast<std::unique_ptr<deliver::sink>*>(cursor));
             },
             [](void* cursor, std::ptrdiff_t offset) {
                 return static_cast<void*>(static_cast<std::unique_ptr<deliver::sink>*>(cursor) + offset); //NOLINT

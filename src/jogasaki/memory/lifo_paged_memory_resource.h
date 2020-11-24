@@ -26,7 +26,7 @@
 namespace jogasaki::memory {
 
 /**
- * @brief an implementation of paged_memory_resource that only can deallocate memory fragments by FIFO order.
+ * @brief an implementation of paged_memory_resource that only can deallocate memory fragments by LIFO order.
  */
 class cache_align lifo_paged_memory_resource : public paged_memory_resource {
 public:
@@ -87,12 +87,12 @@ protected:
 
     /**
      * @brief deallocates the buffer previously allocated by this resource.
-     * @details this only can deallocate by FIFO order, that is, this function only accepts the eldest
+     * @details this only can deallocate by LIFO order, that is, this function only accepts the youngest
      *      memory region which has not yet been deallocated.
      * @param p pointer to the buffer to be deallocated
      * @param bytes the buffer size in bytes
      * @param alignment the alignment size of the head of buffer
-     * @warning undefined behavior if the given memory fragment is not the eldest one
+     * @warning undefined behavior if the given memory fragment is not the youngest one
      */
     void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override;
 

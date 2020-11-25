@@ -38,11 +38,11 @@ lifo_paged_memory_resource::checkpoint lifo_paged_memory_resource::get_checkpoin
 
 void lifo_paged_memory_resource::deallocate_after(const lifo_paged_memory_resource::checkpoint &point) {
     auto point_head = point.head_;
+    if (point.head_ == nullptr && !pages_.empty()) {
+        point_head = pages_.front().head(); // point.head_ is nullptr indicating that the checkpoint was taken when the pages_ was empty
+    }
     while (!pages_.empty()) {
         auto&& page = pages_.back();
-        if (point.head_ == nullptr) {
-            point_head = pages_.front().head(); // point.head_ is nullptr indicating that the checkpoint was taken when the pages_ was empty
-        }
         if (page.head() == point_head) {
             // LB <= offset <= UB
             if (point.offset_ < page.lower_bound_offset()

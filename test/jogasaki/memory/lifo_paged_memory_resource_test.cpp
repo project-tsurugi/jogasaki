@@ -123,8 +123,10 @@ TEST_F(lifo_paged_memory_resource_test, checkpoint_at_the_beginning) {
     }
     // deallocate to the checkpoint
     my_resource->deallocate_after(point);
-    EXPECT_EQ(my_resource->count_pages(), count);
-    EXPECT_EQ(my_resource->page_remaining(), remaining);
+    EXPECT_TRUE((my_resource->count_pages() == count) ||
+                ((count == 0) && (my_resource->count_pages() == 1)));
+    EXPECT_TRUE((my_resource->page_remaining() == remaining) ||
+                ((remaining == 0) && (my_resource->page_remaining() == memory::page_size)));
 }
 
 TEST_F(lifo_paged_memory_resource_test, end_current_page) {

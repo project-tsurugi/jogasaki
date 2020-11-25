@@ -4,22 +4,26 @@ on: [push, pull_request]
 
 jobs:
   Build:
-    runs-on: [self-hosted, oltp]
+    runs-on: [self-hosted, docker]
     timeout-minutes: 30
+    container:
+      image:  ghcr.io/project-tsurugi/oltp-sandbox:latest
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GHCR_PAT }}
+    defaults:
+      run:
+        shell: bash
     env:
       BISON_DIR: /opt/bison-3.6.2
 
     steps:
-      - id: Begin
-        name: Begin
-        run: |
-          echo "Begin ${GITHUB_WORKFLOW}/${GITHUB_JOB} hostname:$(hostname)"
-
-      - name: Checkout
+      - id: Checkout
+        name: Checkout
         uses: actions/checkout@v2
         with:
           submodules: recursive
-          ssh-key: ${{ secrets.SSH_KEY }}
+          token: ${{ secrets.GHA_PAT }}
 
       - id: Install_shirakami
         name: Install_shirakami
@@ -145,6 +149,15 @@ jobs:
         run: |
           cd build
           make doxygen 2> >(tee doxygen-error.log)
+
+      - id: Generate_Annotations
+        name: Generate_Annotations
+        uses: ./.github/actions/tsurugi-annotations-action
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          ctest_input: 'build*/**/*_gtest_result.xml'
 
       - id: Notify_Slack
         name: Notify_Slack

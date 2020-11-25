@@ -42,6 +42,7 @@ public:
     /// @brief pointer type
     using record_pointer = record_store::record_pointer;
 
+    using value_type = accessor::record_ref;
 private:
     struct record_range {
         record_range(record_pointer b, record_pointer e) : b_(b), e_(e) {}
@@ -63,7 +64,7 @@ public:
         using iterator_category = std::input_iterator_tag;
 
         /// @brief type of value
-        using value_type = iterable_record_store::record_pointer;
+        using value_type = iterable_record_store::value_type;
 
         /// @brief type of difference
         using difference_type = std::ptrdiff_t;
@@ -95,10 +96,10 @@ public:
 
         /**
          * @brief dereference the iterator
-         * @return pointer to the record that the iterator is on
+         * @return record ref to the record that the iterator is on
          */
-        [[nodiscard]] reference operator*() {
-            return pos_;
+        [[nodiscard]] value_type operator*() {
+            return ref();
         }
 
         /**
@@ -150,9 +151,13 @@ public:
             maybe_shared_ptr<meta::record_meta> meta);
 
     /**
-     * @copydoc record_store::append()
+     * @brief copy and store the record
+     * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
+     * this object unless it's nullptr.
+     * @param record source of the record added to this container
+     * @return record ref to the stored record
      */
-    record_pointer append(accessor::record_ref record);
+    value_type append(accessor::record_ref record);
 
     /**
      * @copydoc record_store::count()

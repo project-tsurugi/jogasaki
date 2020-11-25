@@ -54,17 +54,14 @@ TEST_F(iterable_record_store_test, basic) {
     auto meta = rec.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());
-    auto p1 = r.append(rec.ref());
+    auto res1 = r.append(rec.ref());
     ASSERT_FALSE(r.empty());
     rec.key(1);
     rec.value(1.0);
-    auto p2 = r.append(rec.ref());
+    auto res2 = r.append(rec.ref());
     ASSERT_EQ(2, r.count());
-    auto sz = rec.record_meta()->record_size();
-    record_ref res1{p1, sz};
     auto offset_c0 = meta->value_offset(0);
     EXPECT_EQ(2, res1.get_value<std::int64_t>(offset_c0));
-    record_ref res2{p2, sz};
     EXPECT_EQ(1, res2.get_value<std::int64_t>(offset_c0));
 
     // iterate
@@ -76,13 +73,15 @@ TEST_F(iterable_record_store_test, basic) {
     EXPECT_EQ(at0, it);
     ASSERT_EQ(r.begin(), it);
     ASSERT_NE(r.end(), it);
-    EXPECT_EQ(p1, *it);
-    EXPECT_NE(p2, *it);
+
+    comparator comp{meta.get()};
+    EXPECT_EQ(0, comp(res1, *it));
+    EXPECT_NE(0, comp(res2, *it));
 
     auto it2 = it++;
     EXPECT_EQ(at0, it2);
     EXPECT_EQ(at1, it);
-    EXPECT_EQ(p2, *it);
+    EXPECT_EQ(0, comp(res2, *it));
     ASSERT_NE(r.begin(), it);
     ASSERT_NE(r.end(), it);
 
@@ -117,23 +116,24 @@ TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
     EXPECT_EQ(at0, it);
     ASSERT_EQ(r.begin(), it);
     ASSERT_NE(r.end(), it);
-    EXPECT_EQ(p2, *it);
-    EXPECT_NE(p1, *it);
+    comparator comp{meta.get()};
+    EXPECT_EQ(0, comp(p2, *it));
+    EXPECT_NE(0, comp(p1, *it));
 
     auto it2 = it++;
     EXPECT_EQ(at0, it2);
     EXPECT_EQ(at1, it);
-    EXPECT_EQ(p1, *it);
+    EXPECT_EQ(0, comp(p1, *it));
     ASSERT_NE(r.begin(), it);
     ASSERT_NE(r.end(), it);
-    EXPECT_EQ(p1, *it);
+    EXPECT_EQ(0, comp(p1, *it));
 
     auto it3 = it++;
     EXPECT_EQ(at1, it3);
     EXPECT_EQ(at2, it);
     ASSERT_NE(r.end(), it);
     ASSERT_NE(r.begin(), it);
-    EXPECT_EQ(p3, *it);
+    EXPECT_EQ(0, comp(p3, *it));
 
     auto it4 = it++;
     EXPECT_EQ(at2, it4);
@@ -147,9 +147,7 @@ TEST_F(iterable_record_store_test, record_ref) {
     mock::record rec{2, 2.0};
     auto meta = rec.record_meta();
     iterable_record_store r{&memory, &memory, meta};
-    auto p1 = r.append(rec.ref());
-    auto sz = rec.record_meta()->record_size();
-    record_ref res1{p1, sz};
+    auto res1 = r.append(rec.ref());
     comparator comp{meta.get()};
     auto it = r.begin();
     EXPECT_EQ(0, comp(res1, it.ref()));

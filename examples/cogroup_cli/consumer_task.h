@@ -104,9 +104,7 @@ public:
     }
 
     void consume(std::function<void(std::int64_t, double, double)> consumer) {
-        auto r_value_len = r_meta_->value().record_size();
         auto r_value_offset = r_meta_->value().value_offset(0);
-        auto l_value_len = l_meta_->value().record_size();
         auto l_value_offset = l_meta_->value().value_offset(0);
         if(l_store_->empty()) {
             ++keys_right_only_;
@@ -114,8 +112,7 @@ public:
             auto end = r_store_->end();
             DVLOG(2) << *this << " key : " << read_key(r_key_, *r_meta_);
             while(it != end) {
-                auto rec = accessor::record_ref(*it, r_value_len);
-                consumer(read_key(r_key_, *r_meta_), -1.0, rec.get_value<double>(r_value_offset));
+                consumer(read_key(r_key_, *r_meta_), -1.0, (*it).get_value<double>(r_value_offset));
                 ++it;
                 ++values_right_only_;
             }
@@ -125,8 +122,7 @@ public:
             auto end = l_store_->end();
             DVLOG(2) << *this << " key : " << read_key(l_key_, *l_meta_);
             while(it != end) {
-                auto rec = accessor::record_ref(*it, l_value_len);
-                consumer(read_key(l_key_, *l_meta_) ,rec.get_value<double>(l_value_offset), -1.0);
+                consumer(read_key(l_key_, *l_meta_) ,(*it).get_value<double>(l_value_offset), -1.0);
                 ++it;
                 ++values_left_only_;
             }
@@ -139,9 +135,7 @@ public:
             while(l_it != l_end) {
                 auto r_it = r_store_->begin();
                 while(r_it != r_end) {
-                    auto l_rec = accessor::record_ref(*l_it, l_value_len);
-                    auto r_rec = accessor::record_ref(*r_it, r_value_len);
-                    consumer(read_key(r_key_, *r_meta_) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
+                    consumer(read_key(r_key_, *r_meta_) ,(*l_it).get_value<double>(l_value_offset), (*r_it).get_value<double>(r_value_offset));
                     ++r_it;
                     ++values_matched_;
                 }

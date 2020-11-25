@@ -52,7 +52,7 @@ iterable_record_store::iterable_record_store(memory::paged_memory_resource *reco
     base_(record_resource, varlen_resource, std::move(meta))
 {}
 
-iterable_record_store::record_pointer iterable_record_store::append(accessor::record_ref record) {
+iterable_record_store::value_type iterable_record_store::append(accessor::record_ref record) {
     auto p = base_.append(record);
     if (prev_ == nullptr || p != static_cast<unsigned char*>(prev_) + record_size_) { //NOLINT
         // starting new range
@@ -60,7 +60,7 @@ iterable_record_store::record_pointer iterable_record_store::append(accessor::re
     }
     ranges_.back().e_ = static_cast<unsigned char*>(p) + record_size_; //NOLINT
     prev_ = p;
-    return p;
+    return accessor::record_ref(p, record_size_);
 }
 
 std::size_t iterable_record_store::count() const noexcept {

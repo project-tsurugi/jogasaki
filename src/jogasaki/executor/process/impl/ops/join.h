@@ -112,7 +112,7 @@ public:
                 if (g.empty()) continue; // TODO outer join
                 auto it = cur[i].first;
                 for(auto&& f : g.fields()) {
-                    auto src = f.is_key_ ? g.key() : accessor::record_ref{*it, g.record_size()};
+                    auto src = f.is_key_ ? g.key() : *it;
                     utils::copy_field(f.type_, target, f.target_offset_, src, f.source_offset_, ctx.varlen_resource()); // TODO no need to copy between resources
                 }
             }

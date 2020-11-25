@@ -101,9 +101,7 @@ public:
 
         using namespace jogasaki::executor;
         cogroup::consumer_type consumer = [&](accessor::record_ref key, std::vector<cogroup::iterator_pair>& values) {
-            auto r_value_len = r_meta_->value().record_size();
             auto r_value_offset = r_meta_->value().value_offset(0);
-            auto l_value_len = l_meta_->value().record_size();
             auto l_value_offset = l_meta_->value().value_offset(0);
 
             auto check_total = [&](std::int64_t key, double x, double y) {
@@ -117,8 +115,7 @@ public:
                 auto it = values[1].first;
                 auto end = values[1].second;
                 while(it != end) {
-                    auto rec = accessor::record_ref(*it, r_value_len);
-                    check_total(key.get_value<std::int64_t>(key_offset_) ,-1.0, rec.get_value<double>(r_value_offset));
+                    check_total(key.get_value<std::int64_t>(key_offset_) ,-1.0, (*it).get_value<double>(r_value_offset));
                     ++it;
                     ++values_right_only_;
                 }
@@ -127,8 +124,7 @@ public:
                 auto it = values[0].first;
                 auto end = values[0].second;
                 while(it != end) {
-                    auto rec = accessor::record_ref(*it, l_value_len);
-                    check_total(key.get_value<std::int64_t>(key_offset_) ,rec.get_value<double>(l_value_offset), -1.0);
+                    check_total(key.get_value<std::int64_t>(key_offset_) ,(*it).get_value<double>(l_value_offset), -1.0);
                     ++it;
                     ++values_left_only_;
                 }
@@ -140,9 +136,7 @@ public:
                 while(l_it != l_end) {
                     auto r_it = values[1].first;
                     while(r_it != r_end) {
-                        auto l_rec = accessor::record_ref(*l_it, l_value_len);
-                        auto r_rec = accessor::record_ref(*r_it, r_value_len);
-                        check_total(key.get_value<std::int64_t>(key_offset_) ,l_rec.get_value<double>(l_value_offset), r_rec.get_value<double>(r_value_offset));
+                        check_total(key.get_value<std::int64_t>(key_offset_) ,(*l_it).get_value<double>(l_value_offset), (*r_it).get_value<double>(r_value_offset));
                         ++r_it;
                         ++values_matched_;
                     }

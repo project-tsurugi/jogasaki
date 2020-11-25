@@ -20,7 +20,11 @@ namespace jogasaki::memory {
 
 lifo_paged_memory_resource::~lifo_paged_memory_resource() {
     for (const auto& p : pages_) {
-        page_pool_->release_page(p.head());
+        release_deallocated_page(p.head());
+    }
+    if (reserved_page_ != nullptr) {
+        page_pool_->release_page(reserved_page_);
+        reserved_page_ = nullptr;
     }
 }
 
@@ -50,9 +54,13 @@ void lifo_paged_memory_resource::deallocate_after(const lifo_paged_memory_resour
                 std::abort();
             }
             page.upper_bound_offset(point.offset_);
+            if (page.empty()) {
+                release_deallocated_page(page.head());
+                pages_.pop_back();
+            }
             break;
         }
-        page_pool_->release_page(page.head());
+        release_deallocated_page(page.head());
         pages_.pop_back();
     }
 }
@@ -97,7 +105,7 @@ void lifo_paged_memory_resource::do_deallocate(void *p, std::size_t bytes, std::
 
     // release if the page is empty
     if (last.empty()) {
-        page_pool_->release_page(last.head());
+        release_deallocated_page(last.head());
         pages_.pop_back();
     }
 }
@@ -114,10 +122,23 @@ std::size_t lifo_paged_memory_resource::do_page_remaining(std::size_t alignment)
 }
 
 details::page_allocation_info &lifo_paged_memory_resource::acquire_new_page() {
-    void* new_page = page_pool_->acquire_page();
-    if (new_page == nullptr) {
-        throw std::bad_alloc();
+    void* new_page;
+    if (reserved_page_ != nullptr) {
+        new_page = reserved_page_;
+        reserved_page_ = nullptr;
+    } else {
+        new_page = page_pool_->acquire_page();
+        if (new_page == nullptr) {
+            throw std::bad_alloc();
+        }
     }
     return pages_.emplace_back(new_page);
+}
+
+void lifo_paged_memory_resource::release_deallocated_page(void *deallocated_page) {
+    if (reserved_page_ != nullptr) {
+        page_pool_->release_page(reserved_page_);
+    }
+    reserved_page_ = deallocated_page;
 }
 } // jogasaki::memory

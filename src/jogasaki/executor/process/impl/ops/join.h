@@ -96,6 +96,7 @@ public:
      * @param ctx operator context object for the execution
      */
     void operator()(join_context& ctx, cogroup& cgrp, abstract::task_context* context = nullptr) {
+        (void)kind_;
         std::vector<iterator_pair> iterators{};
         iterators.reserve(cgrp.groups().size());
         for(auto&& g : cgrp.groups()) {

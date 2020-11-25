@@ -87,7 +87,7 @@ public:
 
     cogroup() = default;
 
-    cogroup(
+    explicit cogroup(
         sequence_view<group> groups
     ) noexcept :
         groups_(groups)

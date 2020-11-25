@@ -108,8 +108,8 @@ public:
      * @brief fill values
      */
     void fill() noexcept {
-        BOOST_ASSERT(next_key_read_);
-        BOOST_ASSERT(! reader_eof_);
+        BOOST_ASSERT(next_key_read_);  //NOLINT
+        BOOST_ASSERT(! reader_eof_);  //NOLINT
         while(reader_->next_member()) {
             auto rec = reader_->get_member();
             store_->append(rec);

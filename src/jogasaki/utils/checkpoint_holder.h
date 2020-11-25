@@ -30,7 +30,12 @@ public:
     using memory_resource = memory::lifo_paged_memory_resource;
     using checkpoint = typename memory_resource::checkpoint;
 
-    checkpoint_holder(memory_resource* resource) noexcept :
+    checkpoint_holder(checkpoint_holder const& other) = delete;
+    checkpoint_holder& operator=(checkpoint_holder const& other) = delete;
+    checkpoint_holder(checkpoint_holder&& other) noexcept = delete;
+    checkpoint_holder& operator=(checkpoint_holder&& other) noexcept = delete;
+
+    explicit checkpoint_holder(memory_resource* resource) noexcept :
         resource_(resource),
         checkpoint_(resource_->get_checkpoint())
     {}

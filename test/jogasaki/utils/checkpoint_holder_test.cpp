@@ -45,7 +45,8 @@ TEST_F(checkpoint_holder_test, checkpoint_at_beginning_of_page) {
         resource.allocate(page_size * 2 / 3);
         ASSERT_GT(page_size / 2, resource.page_remaining());
     }
-    ASSERT_EQ(remaining, resource.page_remaining());
+    ASSERT_TRUE((resource->page_remaining() == remaining) ||
+                ((remaining == 0) && (resource->page_remaining() == page_size)));
 }
 
 

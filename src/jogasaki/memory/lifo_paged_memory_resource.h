@@ -103,8 +103,10 @@ protected:
 private:
     page_pool *page_pool_{};
     std::deque<details::page_allocation_info> pages_{};
+    void *reserved_page_{};
 
     details::page_allocation_info& acquire_new_page();
+    void release_deallocated_page(void *);
 };
 
 } // jogasaki::memory

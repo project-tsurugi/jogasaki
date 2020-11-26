@@ -231,8 +231,13 @@ TEST_F(take_cogroup_test, simple) {
         groups,
         std::move(d)
     };
+    auto k = create_key(0, 0);
+    auto v = create_value(0);
+    auto internal_meta = group_meta(
+        k.record_meta(),
+        v.record_meta()
+    );
 
-//using group_reader = mock::basic_group_reader<jogasaki::mock::basic_record<kind::int8, kind::int4>, jogasaki::mock::basic_record<kind::int8>>;
     group_reader reader0 {
         {
             group_type{
@@ -249,6 +254,7 @@ TEST_F(take_cogroup_test, simple) {
                 },
             },
         },
+        maybe_shared_ptr(&internal_meta),
         s_info.group_meta()
     };
     group_reader reader1 {
@@ -267,6 +273,7 @@ TEST_F(take_cogroup_test, simple) {
                 },
             },
         },
+        maybe_shared_ptr(&internal_meta),
         s_info.group_meta()
     };
     mock::task_context task_ctx{

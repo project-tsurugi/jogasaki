@@ -195,7 +195,15 @@ TEST_F(take_group_test, simple) {
                 },
         }
     };
-    auto r = std::make_shared<reader>(groups, s_info.group_meta());
+    auto internal_meta = group_meta(
+        groups[0].key().record_meta(),
+        groups[0].values()[0].record_meta()
+    );
+    auto r = std::make_shared<reader>(
+        groups,
+        maybe_shared_ptr(&internal_meta),
+        s_info.group_meta()
+    );
     mock::task_context task_ctx{
         {reader_container{r.get()}},
         {},

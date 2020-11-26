@@ -98,12 +98,18 @@ void lifo_paged_memory_resource::do_deallocate(void *p, std::size_t bytes, std::
         std::abort();
     }
 
+  retry:
     auto&& last = pages_.back();
+    // release first if the current page is empty
+    if (last.empty()) {
+        release_deallocated_page(last.head());
+        pages_.pop_back();
+        goto retry;
+    }
     if (!last.try_deallocate_back(p, bytes, alignment)) {
         std::abort();
     }
-
-    // release if the page is empty
+    // release if the resulting page is empty
     if (last.empty()) {
         release_deallocated_page(last.head());
         pages_.pop_back();

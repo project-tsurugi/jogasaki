@@ -22,7 +22,6 @@
 #include <takatori/plan/group.h>
 #include <takatori/plan/forward.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/storage/basic_configurable_provider.h>
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
@@ -150,11 +149,9 @@ TEST_F(take_group_test, simple) {
     };
     using kind = meta::field_type_kind;
 
-//    using key_record = jogasaki::mock::basic_record<kind::float8, kind::int4>;
-//    using value_record = jogasaki::mock::basic_record<kind::int8>;
     using key_record = jogasaki::mock::basic_record;
     using value_record = jogasaki::mock::basic_record;
-    using reader = mock::basic_group_reader<key_record, value_record>;
+    using reader = mock::basic_group_reader;
     using group_type = reader::group_type;
     using groups_type = reader::groups_type;
     auto input_meta = std::make_shared<record_meta>(

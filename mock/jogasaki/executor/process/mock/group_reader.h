@@ -28,13 +28,13 @@ namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 
-template <class Key, class Value>
 class basic_group_entry {
 public:
-    using key_type = Key;
-    using value_type = Value;
-    using value_groups = std::vector<Value>;
-    explicit basic_group_entry(Key key, value_groups values) : key_(key), values_(std::move(values)) {}
+    using key_type = jogasaki::mock::basic_record;
+    using value_type = jogasaki::mock::basic_record;
+    using value_groups = std::vector<value_type>;
+
+    basic_group_entry(key_type key, value_groups values) : key_(std::move(key)), values_(std::move(values)) {}
 
     [[nodiscard]] key_type const& key() const noexcept {
         return key_;
@@ -49,20 +49,33 @@ private:
     value_groups values_{};
 };
 
-template <class Key, class Value>
+/**
+ * @brief mock group reader
+ * @details this object holds group entries internally and provide them on demand.
+ * External metadata is supported, that allows receiver to get the key/value record as they want.
+ */
 class cache_align basic_group_reader : public executor::group_reader {
 public:
-    using group_type = basic_group_entry<Key, Value>;
+    using group_type = basic_group_entry;
     using groups_type = std::vector<group_type>;
 
-    explicit basic_group_reader(
+    /**
+     * @brief create new object
+     * @param groups the group entries the mock object output
+     * @param meta the metadata of the records in the internal store
+     * @param external_meta the metadata of the output records, when null, output records are in the form defined
+     * by the internal metadata (meta parameter above).
+     */
+    basic_group_reader(
         groups_type groups,
-        maybe_shared_ptr<meta::group_meta> meta = {}
+        maybe_shared_ptr<meta::group_meta> meta,
+        maybe_shared_ptr<meta::group_meta> external_meta = {}
     ) :
         groups_(std::move(groups)),
         meta_(std::move(meta)),
-        key_store_(meta_ ? std::make_shared<data::small_record_store>(meta_->key_shared()) : nullptr),
-        value_store_(meta_ ? std::make_shared<data::small_record_store>(meta_->value_shared()) : nullptr)
+        external_meta_(std::move(external_meta)),
+        key_store_(external_meta_ ? std::make_shared<data::small_record_store>(external_meta_->key_shared()) : nullptr),
+        value_store_(external_meta_ ? std::make_shared<data::small_record_store>(external_meta_->value_shared()) : nullptr)
     {}
 
     bool next_group() override {
@@ -78,10 +91,10 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_group() const override {
-        if (meta_) {
+        if (external_meta_) {
             auto& r = *current_group_;
             auto rec = key_store_->ref();
-            auto& m = meta_->key();
+            auto& m = external_meta_->key();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
                 utils::copy_field(m.at(i), rec, m.value_offset(i), r.key().ref(), r.key().record_meta()->value_offset(i));
             }
@@ -101,10 +114,10 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_member() const override {
-        if (meta_) {
+        if (external_meta_) {
             auto& r = *current_member_;
             auto rec = value_store_->ref();
-            auto& m = meta_->value();
+            auto& m = external_meta_->value();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
                 utils::copy_field(m.at(i), rec, m.value_offset(i), r.ref(), r.record_meta()->value_offset(i));
             }
@@ -138,6 +151,7 @@ public:
 private:
     groups_type groups_{};
     maybe_shared_ptr<meta::group_meta> meta_{};
+    maybe_shared_ptr<meta::group_meta> external_meta_{};
     std::shared_ptr<data::small_record_store> key_store_{};
     std::shared_ptr<data::small_record_store> value_store_{};
     typename groups_type::iterator current_group_{};
@@ -148,6 +162,5 @@ private:
     bool on_member_{false};
 };
 
-using group_reader = basic_group_reader<jogasaki::mock::basic_record, jogasaki::mock::basic_record>;
 }
 

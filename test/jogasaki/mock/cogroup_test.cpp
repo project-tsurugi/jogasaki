@@ -20,8 +20,6 @@
 
 #include <jogasaki/test_root.h>
 
-#include <jogasaki/executor/process/impl/ops/join.h>
-
 #include <jogasaki/executor/process/mock/group_reader.h>
 
 namespace jogasaki::executor::process::mock {
@@ -37,26 +35,26 @@ class cogroup_test : public test_root {
 public:
     using kind = field_type_kind;
 
+    basic_record create_key(
+        std::int64_t arg0
+    ) {
+        return create_record<kind::int8>(arg0);
+    }
+
+    basic_record create_value(
+        double arg0
+    ) {
+        return create_record<kind::float8>(arg0);
+    }
 };
 
-using group_type = mock::group_reader::group_type;
+using group_type = mock::basic_group_reader::group_type;
 using keys_type = group_type::key_type;
-using values_type = group_type::value_type;
-
-basic_record create_key(
-    std::int64_t arg0
-) {
-    return create_record<kind::int8>(arg0);
-}
-
-basic_record create_value(
-    double arg0
-) {
-    return create_record<kind::float8>(arg0);
-}
+using value_type = group_type::value_type;
 
 TEST_F(cogroup_test, simple) {
-    mock::group_reader r1 {
+    auto meta = test_group_meta1();
+    mock::basic_group_reader r1 {
         {
             group_type{
                 create_key(1),
@@ -71,9 +69,10 @@ TEST_F(cogroup_test, simple) {
                     create_value(200.0),
                 },
             },
-        }
+        },
+        meta
     };
-    mock::group_reader r2 {
+    mock::basic_group_reader r2 {
         {
             group_type{
                 create_key(1),
@@ -88,10 +87,10 @@ TEST_F(cogroup_test, simple) {
                     create_value(300.0),
                 },
             },
-        }
+        },
+        meta
     };
 
-    auto meta = test_group_meta1();
     auto key_offset = meta->key().value_offset(0);
     auto value_offset = meta->value().value_offset(0);
 
@@ -135,7 +134,8 @@ TEST_F(cogroup_test, simple) {
 }
 
 TEST_F(cogroup_test, three_inputs) {
-    mock::group_reader r1 {
+    auto meta = test_group_meta1();
+    mock::basic_group_reader r1 {
         {
             group_type{
                 create_key(1),
@@ -150,9 +150,10 @@ TEST_F(cogroup_test, three_inputs) {
                     create_value(201.0),
                 },
             },
-        }
+        },
+        meta
     };
-    mock::group_reader r2 {
+    mock::basic_group_reader r2 {
         {
             group_type{
                 create_key(1),
@@ -172,9 +173,10 @@ TEST_F(cogroup_test, three_inputs) {
                     create_value(300.0),
                 },
             },
-        }
+        },
+        meta
     };
-    mock::group_reader r3 {
+    mock::basic_group_reader r3 {
         {
             group_type{
                 create_key(3),
@@ -182,10 +184,10 @@ TEST_F(cogroup_test, three_inputs) {
                     create_value(301.0),
                 },
             },
-        }
+        },
+        meta
     };
 
-    auto meta = test_group_meta1();
     auto key_offset = meta->key().value_offset(0);
     auto value_offset = meta->value().value_offset(0);
 
@@ -239,7 +241,8 @@ TEST_F(cogroup_test, three_inputs) {
 }
 
 TEST_F(cogroup_test, key_value_reversed) {
-    mock::group_reader r1 {
+    auto meta = test_group_meta1_kv_reversed();
+    mock::basic_group_reader r1 {
         {
             group_type{
                 create_key(1),
@@ -254,9 +257,10 @@ TEST_F(cogroup_test, key_value_reversed) {
                     create_value(200.0),
                 },
             },
-        }
+        },
+        meta
     };
-    mock::group_reader r2 {
+    mock::basic_group_reader r2 {
         {
             group_type{
                 create_key(1),
@@ -271,10 +275,10 @@ TEST_F(cogroup_test, key_value_reversed) {
                     create_value(300.0),
                 },
             },
-        }
+        },
+        meta
     };
 
-    auto meta = test_group_meta1_kv_reversed();
     auto value_offset = meta->value().value_offset(0);
     auto key_offset = meta->key().value_offset(0);
 

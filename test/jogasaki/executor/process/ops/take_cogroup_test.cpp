@@ -75,7 +75,7 @@ public:
 };
 
 using kind = field_type_kind;
-using group_reader = mock::basic_group_reader<jogasaki::mock::basic_record, jogasaki::mock::basic_record>;
+using group_reader = mock::basic_group_reader;
 using group_type = group_reader::group_type;
 using keys_type = group_type::key_type;
 using values_type = group_type::value_type;

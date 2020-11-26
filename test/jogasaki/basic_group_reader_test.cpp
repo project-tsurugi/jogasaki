@@ -42,7 +42,10 @@ TEST_F(basic_group_reader_test, simple) {
     key_record key3{create_record<kind::int4, kind::int8>(3, 30)};
     value_record value3{create_record<kind::float4, kind::float8>(300.0, 3000.0)};
 
-    using reader_type = basic_group_reader<key_record, value_record>;
+    auto& k_meta = key1.record_meta();
+    auto& v_meta = value1.record_meta();
+    group_meta meta{k_meta, v_meta};
+    using reader_type = basic_group_reader;
     reader_type reader{
         {
             reader_type::group_type{
@@ -58,10 +61,9 @@ TEST_F(basic_group_reader_test, simple) {
                     value3,
                 }
             },
-        }
+        },
+        maybe_shared_ptr<group_meta>(&meta)
     };
-    auto& k_meta = key1.record_meta();
-    auto& v_meta = value1.record_meta();
 
     ASSERT_TRUE(reader.next_group());
     auto k1 = reader.get_group();
@@ -84,12 +86,7 @@ TEST_F(basic_group_reader_test, simple) {
 }
 
 TEST_F(basic_group_reader_test, meta) {
-    // reader type is same, but output metadata is specified
-    using input_record = basic_record;
-
-    using key_record = basic_record;
-    using value_record = basic_record;
-
+    // reader type is same, but external metadata is specified
     using key_record = basic_record;
     using value_record = basic_record;
     key_record key1{create_record<kind::int4, kind::int8>(1, 10)};
@@ -98,8 +95,9 @@ TEST_F(basic_group_reader_test, meta) {
     key_record key3{create_record<kind::int4, kind::int8>(3, 30)};
     value_record value3{create_record<kind::float4, kind::float8>(300.0, 3000.0)};
 
+    group_meta meta{key1.record_meta(), value1.record_meta()};
     shuffle_info s_info(create_meta<kind::int4, kind::float4, kind::float8, kind::int8>(), {0,3});
-    using reader_type = basic_group_reader<key_record, value_record>;
+    using reader_type = basic_group_reader;
     reader_type reader{
         {
             reader_type::group_type{
@@ -116,6 +114,7 @@ TEST_F(basic_group_reader_test, meta) {
                 }
             },
         },
+        maybe_shared_ptr<group_meta>(&meta),
         s_info.group_meta()
     };
     auto& k_meta = s_info.key_meta();

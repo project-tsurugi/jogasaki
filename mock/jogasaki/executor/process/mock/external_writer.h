@@ -105,7 +105,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
 };
 
-using external_writer = basic_external_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
+using external_writer = basic_external_writer<jogasaki::mock::basic_record>;
 
 }
 

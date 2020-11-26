@@ -50,7 +50,7 @@ TEST_F(iterable_record_store_test, empty) {
 
 TEST_F(iterable_record_store_test, basic) {
     mock_memory_resource memory{};
-    mock::record rec{2, 2.0};
+    test::record rec{2, 2.0};
     auto meta = rec.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());
@@ -94,15 +94,15 @@ TEST_F(iterable_record_store_test, basic) {
 
 TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
     mock_memory_resource memory{0, 1};
-    mock::record rec2{2, 2.0};
+    test::record rec2{2, 2.0};
     auto meta = rec2.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     auto p2 = r.append(rec2.ref());
 
-    mock::record rec1{1, 1.0};
+    test::record rec1{1, 1.0};
     auto p1 = r.append(rec1.ref());
 
-    mock::record rec3{3, 3.0};
+    test::record rec3{3, 3.0};
     auto p3 = r.append(rec3.ref());
     ASSERT_EQ(3, r.count());
 
@@ -144,7 +144,7 @@ TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
 
 TEST_F(iterable_record_store_test, record_ref) {
     mock_memory_resource memory{};
-    mock::record rec{2, 2.0};
+    test::record rec{2, 2.0};
     auto meta = rec.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     auto res1 = r.append(rec.ref());

@@ -30,6 +30,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace meta;
 using namespace takatori::util;
+using namespace jogasaki::mock;
 
 class cogroup_test : public test_root {
 
@@ -42,20 +43,32 @@ using group_type = mock::group_reader::group_type;
 using keys_type = group_type::key_type;
 using values_type = group_type::value_type;
 
+basic_record create_key(
+    std::int64_t arg0
+) {
+    return create_record<kind::int8>(arg0);
+}
+
+basic_record create_value(
+    double arg0
+) {
+    return create_record<kind::float8>(arg0);
+}
+
 TEST_F(cogroup_test, simple) {
     mock::group_reader r1 {
         {
             group_type{
-                keys_type{1},
+                create_key(1),
                 {
-                    values_type{100.0},
-                    values_type{101.0},
+                    create_value(100.0),
+                    create_value(101.0),
                 },
             },
             group_type{
-                keys_type{2},
+                create_key(2),
                 {
-                    values_type{200.0},
+                    create_value(200.0),
                 },
             },
         }
@@ -63,16 +76,16 @@ TEST_F(cogroup_test, simple) {
     mock::group_reader r2 {
         {
             group_type{
-                keys_type{1},
+                create_key(1),
                 {
-                    values_type{100.0},
-                    values_type{101.0},
+                    create_value(100.0),
+                    create_value(101.0),
                 },
             },
             group_type{
-                keys_type{3},
+                create_key(3),
                 {
-                    values_type{300.0},
+                    create_value(300.0),
                 },
             },
         }
@@ -125,16 +138,16 @@ TEST_F(cogroup_test, three_inputs) {
     mock::group_reader r1 {
         {
             group_type{
-                keys_type{1},
+                create_key(1),
                 {
-                    values_type{100.0},
+                    create_value(100.0),
                 },
             },
             group_type{
-                keys_type{2},
+                create_key(2),
                 {
-                    values_type{200.0},
-                    values_type{201.0},
+                    create_value(200.0),
+                    create_value(201.0),
                 },
             },
         }
@@ -142,21 +155,21 @@ TEST_F(cogroup_test, three_inputs) {
     mock::group_reader r2 {
         {
             group_type{
-                keys_type{1},
+                create_key(1),
                 {
-                    values_type{101.0},
+                    create_value(101.0),
                 },
             },
             group_type{
-                keys_type{2},
+                create_key(2),
                 {
-                    values_type{200.0},
+                    create_value(200.0),
                 },
             },
             group_type{
-                keys_type{3},
+                create_key(3),
                 {
-                    values_type{300.0},
+                    create_value(300.0),
                 },
             },
         }
@@ -164,9 +177,9 @@ TEST_F(cogroup_test, three_inputs) {
     mock::group_reader r3 {
         {
             group_type{
-                keys_type{3},
+                create_key(3),
                 {
-                    values_type{301.0},
+                    create_value(301.0),
                 },
             },
         }
@@ -229,16 +242,16 @@ TEST_F(cogroup_test, key_value_reversed) {
     mock::group_reader r1 {
         {
             group_type{
-                keys_type{1},
+                create_key(1),
                 {
-                    values_type{100.0},
-                    values_type{101.0},
+                    create_value(100.0),
+                    create_value(101.0),
                 },
             },
             group_type{
-                keys_type{2},
+                create_key(2),
                 {
-                    values_type{200.0},
+                    create_value(200.0),
                 },
             },
         }
@@ -246,16 +259,16 @@ TEST_F(cogroup_test, key_value_reversed) {
     mock::group_reader r2 {
         {
             group_type{
-                keys_type{1},
+                create_key(1),
                 {
-                    values_type{100.0},
-                    values_type{101.0},
+                    create_value(100.0),
+                    create_value(101.0),
                 },
             },
             group_type{
-                keys_type{3},
+                create_key(3),
                 {
-                    values_type{300.0},
+                    create_value(300.0),
                 },
             },
         }

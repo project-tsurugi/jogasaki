@@ -148,6 +148,6 @@ private:
     bool on_member_{false};
 };
 
-using group_reader = basic_group_reader<jogasaki::mock::basic_record<kind::int8>, jogasaki::mock::basic_record<kind::float8>>;
+using group_reader = basic_group_reader<jogasaki::mock::basic_record, jogasaki::mock::basic_record>;
 }
 

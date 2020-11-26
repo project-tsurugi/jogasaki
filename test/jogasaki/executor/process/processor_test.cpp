@@ -39,10 +39,13 @@ using namespace boost::container::pmr;
 class processor_test : public test_root {};
 
 TEST_F(processor_test, basic) {
-    auto reader = std::make_shared<mock::record_reader>();
+    using kind = meta::field_type_kind;
+    auto meta = jogasaki::mock::create_meta<kind::int8>();
+    jogasaki::executor::process::mock::basic_record_writer::records_type records{};
+    auto reader = jogasaki::executor::process::mock::create_reader_shared<kind::int8>(records);
     reader_container r{reader.get()};
-    auto downstream_writer = std::make_shared<mock::record_writer>();
-    auto external_writer = std::make_shared<mock::record_writer>();
+    auto downstream_writer = mock::create_writer_shared();
+    auto external_writer = mock::create_writer_shared();
     auto context = std::make_shared<mock::task_context>(
         std::vector<reader_container>{r},
         std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer},

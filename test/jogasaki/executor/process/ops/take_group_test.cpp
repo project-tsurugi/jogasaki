@@ -46,6 +46,7 @@ using namespace std::string_view_literals;
 using namespace std::string_literals;
 
 using namespace jogasaki::memory;
+using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
 namespace relation = ::takatori::relation;
@@ -55,7 +56,22 @@ namespace storage = yugawara::storage;
 
 using namespace jogasaki::executor::exchange::group;
 
-class take_group_test : public test_root {};
+class take_group_test : public test_root {
+public:
+
+    basic_record create_key(
+        double arg0,
+        std::int32_t arg1
+    ) {
+        return create_record<kind::float8, kind::int4>(arg0, arg1);
+    }
+
+    basic_record create_value(
+        std::int64_t arg0
+    ) {
+        return create_record<kind::int8>(arg0);
+    }
+};
 
 TEST_F(take_group_test, simple) {
     binding::factory bindings;
@@ -134,8 +150,10 @@ TEST_F(take_group_test, simple) {
     };
     using kind = meta::field_type_kind;
 
-    using key_record = jogasaki::mock::basic_record<kind::float8, kind::int4>;
-    using value_record = jogasaki::mock::basic_record<kind::int8>;
+//    using key_record = jogasaki::mock::basic_record<kind::float8, kind::int4>;
+//    using value_record = jogasaki::mock::basic_record<kind::int8>;
+    using key_record = jogasaki::mock::basic_record;
+    using value_record = jogasaki::mock::basic_record;
     using reader = mock::basic_group_reader<key_record, value_record>;
     using group_type = reader::group_type;
     using groups_type = reader::groups_type;
@@ -166,17 +184,17 @@ TEST_F(take_group_test, simple) {
     block_scope variables{block_info};
     groups_type groups{
         group_type{
-            key_record{1.0, 10},
+            create_key(1.0, 10),
             {
-                value_record {100},
-                value_record {200},
+                create_value (100),
+                create_value (200),
             },
         },
         group_type{
-            key_record{2.0, 20},
+            create_key(2.0, 20),
                 {
-                    value_record {100},
-                    value_record {200},
+                    create_value (100),
+                    create_value (200),
                 },
         }
     };

@@ -75,17 +75,17 @@ TEST_F(sorted_vector_reader_test, basic) {
             context.get()
     ));
 
-    mock::record arr[] = {
+    test::record arr[] = {
             {1, 1.0},
             {1, 2.0},
             {3, 3.0},
     };
     auto sz = sizeof(arr[0]);
 
-    p1->write({&arr[2], sz});
-    p1->write({&arr[1], sz});
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
 //    p1->flush();
-    p2->write({&arr[0], sz});
+    p2->write(arr[0].ref());
 //    p2->flush();
 
 
@@ -134,7 +134,7 @@ TEST_F(sorted_vector_reader_test, multiple_partitions) {
             context.get()
             ));
 
-    mock::record arr[] = {
+    test::record arr[] = {
             {0, 5.0},
             {1, 1.0},
             {1, 2.0},
@@ -143,11 +143,11 @@ TEST_F(sorted_vector_reader_test, multiple_partitions) {
     };
     auto sz = sizeof(arr[0]);
 
-    p1->write({&arr[2], sz});
-    p2->write({&arr[1], sz});
-    p3->write({&arr[3], sz});
-    p2->write({&arr[0], sz});
-    p2->write({&arr[4], sz});
+    p1->write(arr[2].ref());
+    p2->write(arr[1].ref());
+    p3->write(arr[3].ref());
+    p2->write(arr[0].ref());
+    p2->write(arr[4].ref());
 //    p1->flush();
 //    p2->flush();
 //    p3->flush();
@@ -198,16 +198,16 @@ TEST_F(sorted_vector_reader_test, empty_partition) {
             context.get()
     ));
 
-    mock::record arr[] = {
+    test::record arr[] = {
             {1, 1.0},
             {1, 2.0},
             {3, 3.0},
     };
     auto sz = sizeof(arr[0]);
 
-    p1->write({&arr[0], sz});
-    p1->write({&arr[2], sz});
-    p1->write({&arr[1], sz});
+    p1->write(arr[0].ref());
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
 //    p1->flush();
 //    p2->flush();
     (void)p2;

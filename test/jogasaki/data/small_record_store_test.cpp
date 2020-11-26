@@ -23,6 +23,7 @@
 #include <jogasaki/mock_memory_resource.h>
 
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::data {
 
@@ -37,7 +38,7 @@ using namespace boost::container::pmr;
 class small_record_store_test : public test_root {};
 
 TEST_F(small_record_store_test, basic) {
-    mock::record record{};
+    test::record record{};
     auto meta = record.record_meta();
     small_record_store r{meta};
     auto c0_offset = meta->value_offset(0);
@@ -52,7 +53,7 @@ TEST_F(small_record_store_test, basic) {
 
 TEST_F(small_record_store_test, memory_resource) {
     mock_memory_resource resource{};
-    mock::record record{};
+    test::record record{};
     auto meta = record.record_meta();
     small_record_store r{meta, &resource};
     auto c0_offset = meta->value_offset(0);
@@ -67,9 +68,9 @@ TEST_F(small_record_store_test, memory_resource) {
 
 TEST_F(small_record_store_test, multiple_records) {
     mock_memory_resource resource{};
-    mock::record record0{};
-    mock::record record1{};
-    mock::record record2{};
+    test::record record0{};
+    test::record record1{};
+    test::record record2{};
     auto meta = record0.record_meta();
     small_record_store r{meta, &resource, 3};
     auto c0_offset = meta->value_offset(0);
@@ -96,7 +97,7 @@ TEST_F(small_record_store_test, multiple_records) {
 TEST_F(small_record_store_test, metadata_variation) {
     mock_memory_resource resource{};
     mock_memory_resource varlen_resource{};
-    mock::record_f4f8ch record{};
+    test::record_f4f8ch record{};
     auto meta = record.record_meta();
     small_record_store r{meta, &resource};
     auto c0_offset = meta->value_offset(0);
@@ -116,7 +117,7 @@ TEST_F(small_record_store_test, metadata_variation) {
 }
 
 TEST_F(small_record_store_test, comparison) {
-    mock::record record{};
+    test::record record{};
     auto meta = record.record_meta();
     small_record_store r1{meta};
     small_record_store r2{meta};
@@ -135,7 +136,7 @@ TEST_F(small_record_store_test, comparison) {
 }
 
 TEST_F(small_record_store_test, print) {
-    mock::record record{};
+    test::record record{};
     auto meta = record.record_meta();
     small_record_store r1{meta};
     std::cout << r1; // manually check the output

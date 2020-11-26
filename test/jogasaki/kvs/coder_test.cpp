@@ -310,8 +310,8 @@ TEST_F(coder_test, encode_decode) {
 
     mock_memory_resource resource{};
 
-    mock::record source_record{2, 2.0};
-    mock::record target_record{1, 1.0};
+    test::record source_record{2, 2.0};
+    test::record target_record{1, 1.0};
     auto src_meta = source_record.record_meta();
     encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), asc, s);
     encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), asc, s);

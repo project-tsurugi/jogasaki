@@ -43,6 +43,7 @@ using namespace testing;
 using namespace executor;
 using namespace accessor;
 using namespace takatori::util;
+using namespace jogasaki::mock;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
@@ -61,7 +62,21 @@ public:
     static constexpr kvs::order undef = kvs::order::undefined;
     static constexpr kvs::order asc = kvs::order::ascending;
     static constexpr kvs::order desc = kvs::order::descending;
+
+    basic_record create_key(
+        std::int32_t arg0
+    ) {
+        return create_record<kind::int4>(arg0);
+    }
+
+    basic_record create_value(
+        double arg0,
+        std::int64_t arg1
+    ) {
+        return create_record<kind::float8, kind::int8>(arg0, arg1);
+    }
 };
+
 
 TEST_F(scan_test, simple) {
 
@@ -187,13 +202,13 @@ TEST_F(scan_test, simple) {
     kvs::stream key_stream{key_buf};
     kvs::stream val_stream{val_buf};
 
-    using key_record = jogasaki::mock::basic_record<kind::int4>;
-    using value_record = jogasaki::mock::basic_record<kind::float8, kind::int8>;
+    using key_record = jogasaki::mock::basic_record;
+    using value_record = jogasaki::mock::basic_record;
     {
-        key_record key_rec{10};
+        key_record key_rec{create_key(10)};
         auto key_meta = key_rec.record_meta();
         kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
-        value_record val_rec{1.0, 100};
+        value_record val_rec{create_value(1.0, 100)};
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), undef, val_stream);
@@ -205,10 +220,10 @@ TEST_F(scan_test, simple) {
     key_stream.reset();
     val_stream.reset();
     {
-        key_record key_rec{20};
+        key_record key_rec{create_key(20)};
         auto key_meta = key_rec.record_meta();
         kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
-        value_record val_rec{2.0, 200};
+        value_record val_rec{create_value(2.0, 200)};
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), undef, val_stream);
@@ -417,14 +432,14 @@ TEST_F(scan_test, scan_info) {
     kvs::stream key_stream{key_buf};
     kvs::stream val_stream{val_buf};
 
-    using key_record = jogasaki::mock::basic_record<kind::int8, kind::character>;
-    using value_record = jogasaki::mock::basic_record<kind::float8>;
+    using key_record = jogasaki::mock::basic_record;
+    using value_record = jogasaki::mock::basic_record;
     {
-        key_record key_rec{100, accessor::text{"123456789012345678901234567890/B"}};
+        key_record key_rec{create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"})};
         auto key_meta = key_rec.record_meta();
         kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
         kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
-        value_record val_rec{1.0};
+        value_record val_rec{create_record<kind::float8>(1.0)};
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
@@ -435,11 +450,11 @@ TEST_F(scan_test, scan_info) {
     key_stream.reset();
     val_stream.reset();
     {
-        key_record key_rec{100, accessor::text{"123456789012345678901234567890/C"}};
+        key_record key_rec{create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/C"})};
         auto key_meta = key_rec.record_meta();
         kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
         kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
-        value_record val_rec{2.0};
+        value_record val_rec{create_record<kind::float8>(2.0)};
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,
@@ -450,11 +465,11 @@ TEST_F(scan_test, scan_info) {
     key_stream.reset();
     val_stream.reset();
     {
-        key_record key_rec{100, accessor::text{"123456789012345678901234567890/D"}};
+        key_record key_rec{create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"})};
         auto key_meta = key_rec.record_meta();
         kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), asc, key_stream);
         kvs::encode(key_rec.ref(), key_meta->value_offset(1), key_meta->at(1), asc, key_stream);
-        value_record val_rec{3.0};
+        value_record val_rec{create_record<kind::float8>(3.0)};
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), undef, val_stream);
         ASSERT_TRUE(stg->put(*tx,

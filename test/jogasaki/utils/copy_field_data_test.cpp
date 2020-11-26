@@ -23,15 +23,16 @@
 namespace jogasaki::utils {
 
 using namespace testing;
+using namespace jogasaki::mock;
 
 using kind = meta::field_type_kind;
 
 class copy_field_data_test : public ::testing::Test {};
 
 TEST_F(copy_field_data_test, simple) {
-    mock::basic_record<kind::float4, kind::int8> src{1.0, 100};
-    mock::basic_record<kind::int8, kind::float4> tgt{200, 2.0};
-    mock::basic_record<kind::int8, kind::float4> exp{100, 1.0};
+    mock::basic_record src{create_record<kind::float4, kind::int8>(1.0, 100)};
+    mock::basic_record tgt{create_record<kind::int8, kind::float4>(200, 2.0)};
+    mock::basic_record exp{create_record<kind::int8, kind::float4>(100, 1.0)};
     auto src_meta = src.record_meta();
     auto tgt_meta = tgt.record_meta();
     auto cnt = src_meta->field_count();
@@ -47,10 +48,9 @@ TEST_F(copy_field_data_test, simple) {
 }
 
 TEST_F(copy_field_data_test, types) {
-    using test_record = mock::basic_record<kind::boolean, kind::int1, kind::int2, kind::int4, kind::int8, kind::float4, kind::float8>;
-
-    test_record src{1, 1, 1, 1, 1, 1.0, 1.0};
-    test_record tgt{2, 2, 2, 2, 2, 2.0, 2.0};
+    using test_record = mock::basic_record;
+    test_record src{create_record<kind::boolean, kind::int1, kind::int2, kind::int4, kind::int8, kind::float4, kind::float8>(1, 1, 1, 1, 1, 1.0, 1.0)};
+    test_record tgt{create_record<kind::boolean, kind::int1, kind::int2, kind::int4, kind::int8, kind::float4, kind::float8>(2, 2, 2, 2, 2, 2.0, 2.0)};
     auto src_meta = src.record_meta();
     auto tgt_meta = tgt.record_meta();
     auto cnt = src_meta->field_count();
@@ -64,12 +64,12 @@ TEST_F(copy_field_data_test, types) {
 }
 
 TEST_F(copy_field_data_test, text) {
-    using test_record = mock::basic_record<kind::character, kind::character>;
+    using test_record = mock::basic_record;
     using text = accessor::text;
     mock_memory_resource r1{};
     mock_memory_resource r2{};
-    test_record src{text{&r1, "A23456789012345678901234567890"}, text{&r1, "111"}};
-    test_record tgt{text{&r1, "B23456789012345678901234567890"}, text{&r1, "222"}};
+    test_record src{create_record<kind::character, kind::character>(text{&r1, "A23456789012345678901234567890"}, text{&r1, "111"})};
+    test_record tgt{create_record<kind::character, kind::character>(text{&r1, "B23456789012345678901234567890"}, text{&r1, "222"})};
     ASSERT_EQ(60, r1.total_bytes_allocated_);  // long strings
     auto src_meta = src.record_meta();
     auto tgt_meta = tgt.record_meta();

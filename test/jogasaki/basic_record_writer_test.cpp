@@ -31,11 +31,10 @@ using kind = field_type_kind;
 using namespace jogasaki::mock;
 
 TEST_F(basic_record_writer_test, simple) {
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    test_record rec1{1, 10, 100.0, 1000.0};
-    test_record rec2{2, 20, 200.0, 2000.0};
+    basic_record rec1{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)};
+    basic_record rec2{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(2, 20, 200.0, 2000.0)};
 
-    basic_record_writer<test_record> writer{};
+    basic_record_writer writer{create_writer<kind::int4, kind::int8, kind::float4, kind::float8>()};
     writer.write(rec1.ref());
     writer.write(rec2.ref());
     auto result = writer.records();
@@ -47,9 +46,8 @@ TEST_F(basic_record_writer_test, simple) {
 }
 
 TEST_F(basic_record_writer_test, given_meta) {
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    test_record rec{1, 10, 100.0, 1000.0};
-    basic_record_writer<test_record> writer{rec.record_meta()};
+    basic_record rec{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)};
+    basic_record_writer writer{rec.record_meta()};
 
     writer.write(rec.ref());
     auto result = writer.records();
@@ -59,37 +57,13 @@ TEST_F(basic_record_writer_test, given_meta) {
     EXPECT_EQ(rec, result[0]);
 }
 
-TEST_F(basic_record_writer_test, given_meta_with_map) {
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    using reversed_record = basic_record<kind::float8, kind::float4, kind::int8, kind::int4>;
-
-    test_record rec{1, 10, 100.0, 1000.0};
-    reversed_record rev{1000, 100.0, 10, 1};
-
-    basic_record_writer<test_record> writer{rev.record_meta(),
-        {
-            {0, 3},
-            {1, 2},
-            {2, 1},
-            {3, 0},
-        }};
-
-    writer.write(rev.ref());
-    auto result = writer.records();
-    ASSERT_EQ(1, result.size());
-    auto meta = result[0].record_meta();
-    ASSERT_EQ(*meta, *rec.record_meta());  // only field types are equal
-    EXPECT_EQ(rec, result[0]);
-}
-
 TEST_F(basic_record_writer_test, capacity) {
-    using test_record = basic_record<kind::int4>;
-    test_record rec1{1};
-    test_record rec2{2};
-    test_record rec3{3};
-    test_record rec4{4};
+    basic_record rec1{create_record<kind::int4>(1)};
+    basic_record rec2{create_record<kind::int4>(2)};
+    basic_record rec3{create_record<kind::int4>(3)};
+    basic_record rec4{create_record<kind::int4>(4)};
 
-    basic_record_writer<test_record> writer{3};
+    basic_record_writer writer{create_meta<kind::int4>(), 3};
     writer.write(rec1.ref());
     writer.write(rec2.ref());
     writer.write(rec3.ref());

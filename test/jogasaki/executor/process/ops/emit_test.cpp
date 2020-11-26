@@ -55,9 +55,9 @@ TEST_F(emit_test, simple) {
     relation::emit const& node{};
     emit e{0, {}, 0, node.columns()};
 
-    mock::record rec0{0, 0.0};
-    mock::record rec1{1, 1.0};
-    mock::record rec2{2, 2.0};
+    test::record rec0{0, 0.0};
+    test::record rec1{1, 1.0};
+    test::record rec2{2, 2.0};
 //    e(accessor::record_ref{&rec0, sizeof(record)});
 //    e.write(accessor::record_ref{&rec1, sizeof(record)});
 //    e.write(accessor::record_ref{&rec2, sizeof(record)});

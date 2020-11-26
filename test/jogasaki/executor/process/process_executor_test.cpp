@@ -24,7 +24,9 @@
 
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/executor/process/mock/process_executor.h>
+#include <jogasaki/executor/process/mock/record_writer.h>
 #include <jogasaki/executor/process/mock/processor.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -38,15 +40,17 @@ using namespace testing;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
+using namespace jogasaki::mock;
+
 class process_executor_test : public test_root {
 public:
-    using record_type = mock::record_reader::record_type;
+    using record_type = mock::basic_record_reader::record_type;
+    using kind = meta::field_type_kind;
     void SetUp() override {
-
-        reader_ = std::make_shared<mock::record_reader>(records_);
+        reader_ = std::make_shared<mock::basic_record_reader>(records_, records_[0].record_meta());
         reader_container r{reader_.get()};
-        downstream_writer_ = std::make_shared<mock::record_writer>();
-        external_writer_ = std::make_shared<mock::record_writer>();
+        downstream_writer_ = mock::create_writer_shared<kind::int8, kind::float8>();
+        external_writer_ = mock::create_writer_shared<kind::int8, kind::float8>();
         contexts_.emplace_back(std::make_shared<mock::task_context>(
             std::vector<reader_container>{r},
             std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
@@ -54,15 +58,15 @@ public:
             std::shared_ptr<abstract::scan_info>{}
         ));
     }
-    mock::basic_record_reader<record_type>::records_type records_{
-        record_type{1, 1.0},
-        record_type{2, 2.0},
-        record_type{3, 3.0},
+    mock::basic_record_reader::records_type records_{
+        create_record<kind::int8, kind::float8>(1, 1.0),
+        create_record<kind::int8, kind::float8>(2, 2.0),
+        create_record<kind::int8, kind::float8>(3, 3.0),
     };
-    std::shared_ptr<mock::record_reader> reader_{};
+    std::shared_ptr<mock::basic_record_reader> reader_{};
     std::vector<std::shared_ptr<abstract::task_context>> contexts_{};
-    std::shared_ptr<mock::record_writer> downstream_writer_{};
-    std::shared_ptr<mock::record_writer> external_writer_{};
+    std::shared_ptr<mock::basic_record_writer> downstream_writer_{};
+    std::shared_ptr<mock::basic_record_writer> external_writer_{};
     std::shared_ptr<mock::processor> proc_ = std::make_shared<mock::processor>();
 };
 
@@ -97,10 +101,10 @@ TEST_F(process_executor_test, default_factory) {
 
 TEST_F(process_executor_test, custom_factory) {
     // custom factory discarding passed contexts and use customized one
-    mock::basic_record_reader<record_type>::records_type records{
-        record_type{1, 1.0},
+    mock::basic_record_reader::records_type records{
+        create_record<kind::int8, kind::float8>(1, 1.0),
     };
-    auto reader = std::make_shared<mock::record_reader>(records);
+    auto reader = std::make_shared<mock::basic_record_reader>(records, records[0].record_meta());
     reader_container r{reader.get()};
     std::vector<std::shared_ptr<abstract::task_context>> custom_contexts{};
     custom_contexts.emplace_back(std::make_shared<mock::task_context>(

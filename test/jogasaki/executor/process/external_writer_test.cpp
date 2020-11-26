@@ -36,6 +36,7 @@ using namespace std::string_view_literals;
 using namespace std::string_literals;
 
 using namespace jogasaki::memory;
+using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
 class external_writer_test : public test_root {};
@@ -46,8 +47,8 @@ TEST_F(external_writer_test, basic) {
     mock_memory_resource varlen_resource{};
 
     using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::int4, kind::float8, kind::int8>;
-    auto meta = test_record{}.record_meta();
+    using test_record = jogasaki::mock::basic_record;
+    auto meta = create_meta<kind::int4, kind::float8, kind::int8>();
     data::iterable_record_store store{
         &record_resource,
         &varlen_resource,
@@ -55,8 +56,8 @@ TEST_F(external_writer_test, basic) {
     };
     external_writer writer{store, meta};
 
-    test_record rec1{meta, 1, 10.0, 100};
-    test_record rec2{meta, 2, 20.0, 200};
+    test_record rec1{create_record<kind::int4, kind::float8, kind::int8>(1, 10.0, 100)};
+    test_record rec2{create_record<kind::int4, kind::float8, kind::int8>(2, 20.0, 200)};
     auto record_size = meta->record_size();
     writer.write(rec1.ref());
     writer.write(rec2.ref());

@@ -124,14 +124,7 @@ TEST_F(take_flat_test, simple) {
         {f0c2, c2},
     };
     using kind = meta::field_type_kind;
-    auto meta = std::make_shared<record_meta>(
-        std::vector<field_type>{
-            field_type(enum_tag<kind::float8>),
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{"000"s}
-    );
+    auto meta = jogasaki::mock::create_meta<kind::float8, kind::int4, kind::int8>();
 
     auto d = std::make_unique<verifier>();
     auto downstream = d.get();
@@ -148,12 +141,12 @@ TEST_F(take_flat_test, simple) {
     auto& block_info = p_info.scopes_info()[s.block_index()];
     block_scope variables{block_info};
 
-    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    mock::basic_record_reader<test_record>::records_type records{
-        test_record{1.0, 10, 100},
-        test_record{2.0, 20, 200},
+    using test_record = jogasaki::mock::basic_record;
+    mock::basic_record_reader::records_type records{
+        jogasaki::mock::create_record<kind::float8, kind::int4, kind::int8>(1.0, 10, 100),
+        jogasaki::mock::create_record<kind::float8, kind::int4, kind::int8>(2.0, 20, 200),
     };
-    auto reader = std::make_shared<mock::basic_record_reader<test_record>>(records, meta);
+    auto reader = std::make_shared<mock::basic_record_reader>(records, meta);
 
     mock::task_context task_ctx{
         {reader_container{reader.get()}},

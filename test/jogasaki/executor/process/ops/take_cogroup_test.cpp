@@ -50,6 +50,7 @@ using namespace std::string_view_literals;
 using namespace std::string_literals;
 
 using namespace jogasaki::memory;
+using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
 namespace relation = ::takatori::relation;
@@ -59,10 +60,22 @@ namespace storage = yugawara::storage;
 
 class take_cogroup_test : public test_root {
 public:
+    basic_record create_key(
+        std::int64_t arg0,
+        std::int32_t arg1
+    ) {
+        return create_record<kind::int8, kind::int4>(arg0, arg1);
+    }
+
+    basic_record create_value(
+        std::int64_t arg0
+    ) {
+        return create_record<kind::int8>(arg0);
+    }
 };
 
 using kind = field_type_kind;
-using group_reader = mock::basic_group_reader<jogasaki::mock::basic_record<kind::int8, kind::int4>, jogasaki::mock::basic_record<kind::int8>>;
+using group_reader = mock::basic_group_reader<jogasaki::mock::basic_record, jogasaki::mock::basic_record>;
 using group_type = group_reader::group_type;
 using keys_type = group_type::key_type;
 using values_type = group_type::value_type;
@@ -219,19 +232,20 @@ TEST_F(take_cogroup_test, simple) {
         std::move(d)
     };
 
+//using group_reader = mock::basic_group_reader<jogasaki::mock::basic_record<kind::int8, kind::int4>, jogasaki::mock::basic_record<kind::int8>>;
     group_reader reader0 {
         {
             group_type{
-                keys_type{1, 10},
+                create_key(1, 10),
                 {
-                    values_type{100},
-                    values_type{101},
+                    create_value(100),
+                    create_value(101),
                 },
             },
             group_type{
-                keys_type{2, 20},
+                create_key(2, 20),
                 {
-                    values_type{200},
+                    create_value(200),
                 },
             },
         },
@@ -240,16 +254,16 @@ TEST_F(take_cogroup_test, simple) {
     group_reader reader1 {
         {
             group_type{
-                keys_type{1, 10},
+                create_key(1, 10),
                 {
-                    values_type{1000},
-                    values_type{1001},
+                    create_value(1000),
+                    create_value(1001),
                 },
             },
             group_type{
-                keys_type{3, 30},
+                create_key(3, 30),
                 {
-                    values_type{300},
+                    create_value(300),
                 },
             },
         },
@@ -290,36 +304,35 @@ TEST_F(take_cogroup_test, simple) {
 
     downstream->body([&](cogroup& c) {
         ASSERT_EQ(2, c.groups().size());
-        comparator comp{key_meta.get()};
         switch(count) {
             case 0: {
                 {
                     auto& g0 = c.groups()[0];
                     keys_type k1{g0.key(), key_meta};
-                    EXPECT_EQ(keys_type(1,10), k1);
+                    EXPECT_EQ(create_key(1,10), k1);
                     auto b = g0.begin();
                     ASSERT_NE(g0.end(), b);
                     values_type v1{*b, value_meta};
-                    EXPECT_EQ(values_type{100}, v1);
+                    EXPECT_EQ(create_value(100), v1);
                     ++b;
                     ASSERT_NE(g0.end(), b);
                     values_type v2{*b, value_meta};
-                    EXPECT_EQ(values_type{101}, v2);
+                    EXPECT_EQ(create_value(101), v2);
                     ++b;
                     EXPECT_EQ(g0.end(), b);
                 }
                 {
                     auto& g1 = c.groups()[1];
                     keys_type k1{g1.key(), key_meta};
-                    EXPECT_EQ(keys_type(1,10), k1);
+                    EXPECT_EQ(create_key(1,10), k1);
                     auto b = g1.begin();
                     ASSERT_NE(g1.end(), b);
                     values_type v1{*b, value_meta};
-                    EXPECT_EQ(values_type{1000}, v1);
+                    EXPECT_EQ(create_value(1000), v1);
                     ++b;
                     ASSERT_NE(g1.end(), b);
                     values_type v2{*b, value_meta};
-                    EXPECT_EQ(values_type{1001}, v2);
+                    EXPECT_EQ(create_value(1001), v2);
                     ++b;
                     EXPECT_EQ(g1.end(), b);
                 }
@@ -329,11 +342,11 @@ TEST_F(take_cogroup_test, simple) {
                 {
                     auto& g = c.groups()[0];
                     keys_type k1{g.key(), key_meta};
-                    EXPECT_EQ(keys_type(2,20), k1);
+                    EXPECT_EQ(create_key(2,20), k1);
                     auto b = g.begin();
                     ASSERT_NE(g.end(), b);
                     values_type v1{*b, value_meta};
-                    EXPECT_EQ(values_type{200}, v1);
+                    EXPECT_EQ(create_value(200), v1);
                     ++b;
                     EXPECT_EQ(g.end(), b);
                 }
@@ -355,11 +368,11 @@ TEST_F(take_cogroup_test, simple) {
                 {
                     auto& g1= c.groups()[1];
                     keys_type k1{g1.key(), key_meta};
-                    EXPECT_EQ(keys_type(3,30), k1);
+                    EXPECT_EQ(create_key(3,30), k1);
                     auto b = g1.begin();
                     ASSERT_NE(g1.end(), b);
                     values_type v1{*b, value_meta};
-                    EXPECT_EQ(values_type{300}, v1);
+                    EXPECT_EQ(create_value(300), v1);
                     ++b;
                     EXPECT_EQ(g1.end(), b);
                 }

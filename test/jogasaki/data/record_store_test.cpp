@@ -38,7 +38,7 @@ class record_store_test : public test_root {};
 
 TEST_F(record_store_test, basic) {
     mock_memory_resource memory{};
-    mock::record rec{2, 2.0};
+    test::record rec{2, 2.0};
     auto meta = rec.record_meta();
     record_store r{&memory, &memory, meta};
     ASSERT_TRUE(r.empty());

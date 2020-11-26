@@ -27,20 +27,6 @@ using namespace takatori::util;
 
 class basic_record_reader_test : public test_root {
 public:
-    bool eq(accessor::record_ref a, accessor::record_ref b, record_meta const& meta) {
-        std::stringstream ss_a{};
-        std::stringstream ss_b{};
-        ss_a << a << meta;
-        ss_b << b << meta;
-        return ss_a.str() == ss_b.str();
-    }
-    bool eq(accessor::record_ref a, accessor::record_ref b, record_meta const& meta_a, record_meta const& meta_b) {
-        std::stringstream ss_a{};
-        std::stringstream ss_b{};
-        ss_a << a << meta_a;
-        ss_b << b << meta_b;
-        return ss_a.str() == ss_b.str();
-    }
 };
 
 using kind = field_type_kind;
@@ -48,29 +34,28 @@ using kind = field_type_kind;
 using namespace jogasaki::mock;
 
 TEST_F(basic_record_reader_test, simple) {
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    test_record src1{1, 10, 100.0, 1000.0};
-    test_record src2{2, 20, 200.0, 2000.0};
+    basic_record src1{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)};
+    basic_record src2{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(2, 20, 200.0, 2000.0)};
 
-    basic_record_reader<test_record> reader{
+    basic_record_reader reader{
         {
             src1,
             src2,
-        }
+        },
+        src1.record_meta()
     };
     ASSERT_TRUE(reader.next_record());
     auto rec1 = reader.get_record();
     ASSERT_TRUE(reader.next_record());
     auto rec2 = reader.get_record();
     ASSERT_FALSE(reader.next_record());
-    EXPECT_TRUE(eq(src1.ref(), rec1, *src1.record_meta()));
-    EXPECT_TRUE(eq(src2.ref(), rec2, *src2.record_meta()));
+    EXPECT_EQ(src1, basic_record(rec1, src1.record_meta()));
+    EXPECT_EQ(src2, basic_record(rec2, src2.record_meta()));
 }
 
 TEST_F(basic_record_reader_test, given_meta) {
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    test_record src{1, 10, 100.0, 1000.0};
-    basic_record_reader<test_record> reader{
+    basic_record src{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)};
+    basic_record_reader reader{
         {
             src,
         },
@@ -80,118 +65,89 @@ TEST_F(basic_record_reader_test, given_meta) {
     ASSERT_TRUE(reader.next_record());
     auto rec = reader.get_record();
     ASSERT_FALSE(reader.next_record());
-    EXPECT_TRUE(eq(src.ref(), rec, *src.record_meta()));
-}
-
-TEST_F(basic_record_reader_test, given_meta_with_map) {
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    using reversed_record = basic_record<kind::float8, kind::float4, kind::int8, kind::int4>;
-    test_record src{1, 10, 100.0, 1000.0};
-    reversed_record rev{1000, 100.0, 10, 1};
-
-    basic_record_reader<test_record> reader{
-        {
-            src,
-        },
-        rev.record_meta(),
-        {
-            {0, 3},
-            {1, 2},
-            {2, 1},
-            {3, 0},
-        }
-    };
-
-    ASSERT_TRUE(reader.next_record());
-    auto rec = reader.get_record();
-    ASSERT_FALSE(reader.next_record());
-    EXPECT_TRUE(eq(rev.ref(), rec, *rev.record_meta()));
+    EXPECT_EQ(src, basic_record(rec, src.record_meta()));
 }
 
 TEST_F(basic_record_reader_test, generate) {
-    using test_record = basic_record<kind::int4>;
-
-    using reader_type = basic_record_reader<test_record>;
-    test_record src{1};
+    using reader_type = basic_record_reader;
+    basic_record src{create_record<kind::int4>(1)};
     reader_type reader{
-        2, reader_type::npos, []() { return test_record{1}; }
+        2, reader_type::npos, []() { return create_record<kind::int4>(1); }
     };
     ASSERT_TRUE(reader.next_record());
     auto rec1 = reader.get_record();
-    EXPECT_TRUE(eq(src.ref(), rec1, *src.record_meta()));
+    EXPECT_EQ(src, basic_record(rec1, src.record_meta()));
     ASSERT_TRUE(reader.next_record());
     auto rec2 = reader.get_record();
-    EXPECT_TRUE(eq(src.ref(), rec2, *src.record_meta()));
+    EXPECT_EQ(src, basic_record(rec2, src.record_meta()));
     ASSERT_FALSE(reader.next_record());
 }
 
 TEST_F(basic_record_reader_test, repeats) {
-    using test_record = basic_record<kind::int4>;
-    using reader_type = basic_record_reader<test_record>;
-    test_record src{1};
+    using reader_type = basic_record_reader;
+    basic_record src{create_record<kind::int4>(1)};
     reader_type reader{
         {
-            test_record{1},
+            create_record<kind::int4>(1),
         },
+        src.record_meta()
     };
     reader.repeats(2);
     ASSERT_TRUE(reader.next_record());
     auto rec1 = reader.get_record();
-    EXPECT_TRUE(eq(src.ref(), rec1, *src.record_meta()));
+    EXPECT_EQ(src, basic_record(rec1, src.record_meta()));
     ASSERT_TRUE(reader.next_record());
     auto rec2 = reader.get_record();
-    EXPECT_TRUE(eq(src.ref(), rec2, *src.record_meta()));
+    EXPECT_EQ(src, basic_record(rec2, src.record_meta()));
     ASSERT_FALSE(reader.next_record());
 }
 
 TEST_F(basic_record_reader_test, use_memory_allocator) {
-
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    test_record src1{1, 10, 100.0, 1000.0};
-    test_record src2{2, 20, 200.0, 2000.0};
-    using records_type = boost::container::pmr::vector<test_record>;
+    basic_record src1{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)};
+    basic_record src2{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(2, 20, 200.0, 2000.0)};
+    using records_type = boost::container::pmr::vector<basic_record>;
     memory::page_pool pool{};
     memory::monotonic_paged_memory_resource resource{&pool};
     records_type records{&resource};
     records.emplace_back(src1);
     records.emplace_back(src2);
 
-    basic_record_reader<test_record> reader{
+    basic_record_reader reader{
         std::move(records),
+        src1.record_meta(),
     };
     ASSERT_TRUE(reader.next_record());
     auto rec1 = reader.get_record();
     ASSERT_TRUE(reader.next_record());
     auto rec2 = reader.get_record();
     ASSERT_FALSE(reader.next_record());
-    EXPECT_TRUE(eq(src1.ref(), rec1, *src1.record_meta()));
-    EXPECT_TRUE(eq(src2.ref(), rec2, *src2.record_meta()));
+    EXPECT_EQ(src1, basic_record(rec1, src1.record_meta()));
+    EXPECT_EQ(src2, basic_record(rec2, src2.record_meta()));
 }
 
 TEST_F(basic_record_reader_test, generate_records_with_memory_allocator) {
-
-    using test_record = basic_record<kind::int4, kind::int8, kind::float4, kind::float8>;
-    test_record src1{1, 10, 100.0, 1000.0};
-    test_record src2{2, 20, 200.0, 2000.0};
-    using records_type = boost::container::pmr::vector<test_record>;
+    basic_record src1{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)};
+    basic_record src2{create_record<kind::int4, kind::int8, kind::float4, kind::float8>(2, 20, 200.0, 2000.0)};
+    using records_type = boost::container::pmr::vector<basic_record>;
     memory::page_pool pool{};
     memory::monotonic_paged_memory_resource resource{&pool};
 
-    basic_record_reader<test_record> reader{
+    basic_record_reader reader{
         2,
         std::size_t(-1),
         []() {
-            return test_record{1, 10, 100.0, 1000.0};
+            return create_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0);
         },
-        &resource
+        &resource,
+        src1.record_meta()
     };
     ASSERT_TRUE(reader.next_record());
     auto rec1 = reader.get_record();
     ASSERT_TRUE(reader.next_record());
     auto rec2 = reader.get_record();
     ASSERT_FALSE(reader.next_record());
-    EXPECT_TRUE(eq(src1.ref(), rec1, *src1.record_meta()));
-    EXPECT_TRUE(eq(src1.ref(), rec2, *src2.record_meta()));
+    EXPECT_EQ(src1, basic_record(rec1, src1.record_meta()));
+    EXPECT_EQ(src1, basic_record(rec2, src2.record_meta()));
 }
 
 }

@@ -68,9 +68,8 @@ public:
             info_, context);
 
         for(auto& p: map) {
-            mock::record r1 {p.first, p.second};
-            accessor::record_ref ref{&r1, sizeof(r1)};
-            partition->write(ref);
+            test::record r1 {p.first, p.second};
+            partition->write(r1.ref());
         }
         partition->flush();
         return partition;

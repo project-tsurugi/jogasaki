@@ -40,6 +40,8 @@ using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
+using namespace jogasaki::mock;
+
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
@@ -152,8 +154,8 @@ TEST_F(offer_test, simple) {
     block_scope variables{block_info};
 
     using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-    auto writer = std::make_shared<mock::basic_record_writer<test_record>>(s.meta());
+    using test_record = jogasaki::mock::basic_record;
+    auto writer = std::make_shared<mock::basic_record_writer>(s.meta());
 
     mock::task_context task_ctx{
         {},
@@ -180,13 +182,13 @@ TEST_F(offer_test, simple) {
     ASSERT_EQ(1, writer->size());
     auto& records = writer->records();
 
-    test_record exp{1.0, 0, 2};
+    test_record exp{create_record<kind::float8, kind::int4, kind::int8>(1.0, 0, 2)};
     EXPECT_EQ(exp, records[0]);
 
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
     s(ctx);
     ASSERT_EQ(2, writer->size());
-    test_record exp2{1.0, 3, 2};
+    test_record exp2{create_record<kind::float8, kind::int4, kind::int8>(1.0, 3, 2)};
     EXPECT_EQ(exp2, records[1]);
 }
 

@@ -25,7 +25,6 @@
 #include <jogasaki/executor/record_reader.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -34,35 +33,33 @@ namespace jogasaki::executor::process::mock {
 using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
 
-template <class Record>
 class cache_align basic_record_reader : public executor::record_reader {
 public:
-    using record_type = Record;
-
+    using record_type = jogasaki::mock::basic_record;
     using records_type = boost::container::pmr::vector<record_type>;
     using memory_resource_type = boost::container::pmr::memory_resource;
 
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
+
     /**
-     * @brief create default instance - read records are output as they are.
+     * @brief create empty object
      */
     basic_record_reader() = default;
 
     /**
      * @brief create new instance considering field metadata and its mapping
      * @param records the source records stored internally in this reader
-     * @param meta metadata of the record_ref output by get_record()
+     * @param meta metadata of the record_ref used to store internally or to output via get_record()
      * @param map field mapping represented by the pair {source index, target index} where source is
      * the stored record, and target is the output record by get_record()
      */
     explicit basic_record_reader(
         records_type records,
-        maybe_shared_ptr<meta::record_meta> meta = {},
+        maybe_shared_ptr<meta::record_meta> meta,
         std::unordered_map<std::size_t, std::size_t> map = {}
     ) noexcept :
         records_(std::move(records)),
         meta_(std::move(meta)),
-        store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
         map_(std::move(map))
     {
         assert(map.empty() || map.size() == meta->field_count()); //FIXME when repeats is set
@@ -79,7 +76,6 @@ public:
     ) noexcept :
         records_(resource),
         meta_(std::move(meta)),
-        store_(meta_ ? std::make_shared<data::small_record_store>(meta_) : nullptr),
         map_(std::move(map)),
         repeats_(repeats)
     {
@@ -113,22 +109,7 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_record() const override {
-        auto rec = it_->ref();
-        if (meta_) {
-            auto r = *it_;
-            rec = store_->ref();
-            for(std::size_t i = 0; i < meta_->field_count(); ++i) {
-                auto j = map_.empty() ? i : map_.at(i);
-                utils::copy_field(
-                    meta_->at(j),
-                    rec,
-                    meta_->value_offset(j),
-                    r.ref(),
-                    r.record_meta()->value_offset(i)
-                );
-            }
-        }
-        return rec;
+        return it_->ref();
     }
 
     void release() override {
@@ -149,11 +130,7 @@ public:
     }
 
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
-        static record_type rec{};
-        if (meta_) {
-            return meta_;
-        }
-        return rec.record_meta();
+        return meta_;
     }
 
     [[nodiscard]] bool is_released() const noexcept {
@@ -170,7 +147,6 @@ public:
 private:
     records_type records_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
-    std::shared_ptr<data::small_record_store> store_{};
     std::unordered_map<std::size_t, std::size_t> map_{};
     bool initialized_{false};
     bool released_{false};
@@ -181,7 +157,24 @@ private:
     std::size_t times_{};
 };
 
-using record_reader = basic_record_reader<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
+template <kind ...Kinds>
+basic_record_reader create_reader(
+    basic_record_reader::records_type records
+) {
+    return basic_record_reader{
+        std::move(records),
+        jogasaki::mock::create_meta<Kinds...>()
+    };
+}
 
+template <kind ...Kinds>
+std::shared_ptr<basic_record_reader> create_reader_shared(
+    basic_record_reader::records_type records
+) {
+    return std::make_shared<basic_record_reader>(
+        std::move(records),
+        jogasaki::mock::create_meta<Kinds...>()
+    );
+}
 }
 

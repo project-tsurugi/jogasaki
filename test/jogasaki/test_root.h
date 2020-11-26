@@ -24,6 +24,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki {
 
@@ -36,7 +37,7 @@ public:
      * @brief providing typical record metadata
      */
     static inline maybe_shared_ptr<meta::record_meta> test_record_meta1() {
-        jogasaki::mock::record r1{};
+        test::record r1{};
         return r1.record_meta();
     }
 

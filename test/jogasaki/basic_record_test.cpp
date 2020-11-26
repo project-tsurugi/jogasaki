@@ -31,22 +31,22 @@ using kind = field_type_kind;
 using namespace jogasaki::mock;
 
 TEST_F(basic_record_test, simple) {
-    basic_record<kind::int4> r{2};
+    basic_record r{create_record<kind::int4>(2)};
 
-    record rec{1, 100.0};
+    test::record rec{1, 100.0};
     EXPECT_EQ(1, rec.key());
     EXPECT_EQ(100.0, rec.value());
 }
 
 TEST_F(basic_record_test, meta) {
     {
-        basic_record<kind::int4> r{};
+        basic_record r{create_record<kind::int4>()};
         auto meta = r.record_meta();
         EXPECT_EQ(1, meta->field_count());
         EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta->at(0));
     }
     {
-        basic_record<kind::int4, kind::int8> r{};
+        basic_record r{create_record<kind::int4, kind::int8>()};
         auto meta = r.record_meta();
         EXPECT_EQ(2, meta->field_count());
         EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta->at(0));
@@ -55,8 +55,8 @@ TEST_F(basic_record_test, meta) {
 }
 
 TEST_F(basic_record_test, default_metadata) {
-    basic_record<kind::float4, kind::int8> r{1.0, 100};
-    basic_record<kind::float4, kind::int8> r2{r.ref()};
+    basic_record r{create_record<kind::float4, kind::int8>(1.0, 100)};
+    basic_record r2{r.ref(), create_meta<kind::float4, kind::int8>()};
     auto meta = r2.record_meta();
 
     EXPECT_EQ(1.0, r2.ref().get_value<float>(meta->value_offset(0)));
@@ -64,9 +64,9 @@ TEST_F(basic_record_test, default_metadata) {
 }
 
 TEST_F(basic_record_test, share_metadata) {
-    basic_record<kind::int4> r{1};
+    basic_record r{create_record<kind::int4>(1)};
     auto meta = r.record_meta();
-    basic_record<kind::int4> r2{meta, 2};
+    basic_record r2{create_record<kind::int4>(meta, 2)};
     auto meta2 = r2.record_meta();
     EXPECT_EQ(1, meta2->field_count());
     EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta2->at(0));

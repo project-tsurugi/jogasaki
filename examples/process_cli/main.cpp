@@ -109,17 +109,16 @@ using namespace ::yugawara::variable;
 using custom_memory_resource = jogasaki::memory::monotonic_paged_memory_resource;
 
 using kind = meta::field_type_kind;
-using test_record = jogasaki::mock::basic_record<kind::float8, kind::int4, kind::int8>;
-using reader_type = process::mock::basic_record_reader<test_record>;
-using writer_type = process::mock::basic_record_writer<test_record>;
+using test_record = jogasaki::mock::basic_record;
+using reader_type = process::mock::basic_record_reader;
+using writer_type = process::mock::basic_record_writer;
 
 class cli {
 public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
         utils::get_watch().set_point(time_point_begin, 0);
-        assert(test_record{}.record_meta()->record_size() == 24); //NOLINT
-        static_assert(sizeof(test_record) == 48); // record_ref + maybe_shared_ptr
-        auto meta = test_record{}.record_meta();
+        auto meta = jogasaki::mock::create_meta<kind::float8, kind::int4, kind::int8>();
+        assert(meta->record_size() == 48); //NOLINT
 
         // generate takatori compile info and statement
         auto compiler_context = std::make_shared<plan::compiler_context>();
@@ -275,7 +274,7 @@ private:
         // create custom contexts
         utils::xorshift_random64 rnd{1234567U};
         auto records_per_partition = param.records_per_partition_;
-        auto record_size = sizeof(test_record);
+        auto record_size = sizeof(test_record); // use object size because they are placed in read/write buffers
         auto write_buffer_record_count = param.write_buffer_size_ / record_size;
         auto read_buffer_record_count = param.read_buffer_size_ / record_size;
         auto partitions = param.partitions_;
@@ -294,12 +293,12 @@ private:
                 (records_per_partition + read_buffer_record_count - 1)/ read_buffer_record_count,
                 [&rnd, &meta, &seq, &param]() {
                     ++seq;
-                    return test_record{
+                    return jogasaki::mock::create_record<kind::float8, kind::int4, kind::int8>(
                         meta,
                         static_cast<double>(param.sequential_data ? seq : rnd()),
                         static_cast<std::int32_t>(param.sequential_data ? seq*10 : rnd()),
-                        static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd()),
-                    };
+                        static_cast<std::int64_t>(param.sequential_data ? seq*100 : rnd())
+                    );
                 },
                 reader_resource
                 )
@@ -309,7 +308,7 @@ private:
                 param.std_allocator ?
                     static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
                     resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
-            auto& writer = writers_.emplace_back(std::make_shared<writer_type>(
+            auto& writer = writers_.emplace_back(jogasaki::executor::process::mock::create_writer_shared<kind::float8, kind::int4, kind::int8>(
                 write_buffer_record_count,
                 writer_resource
             ));

@@ -90,12 +90,12 @@ TEST_F(record_copier_test, simple) {
 
 TEST_F(record_copier_test, non_standard_layout_record) {
     using kind = meta::field_type_kind;
-    mock::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> rec{
+    mock::basic_record rec{mock::create_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1>(
         record_meta::nullability_entity_type{"11110"s},
-        record_meta::nullity_offset_table_type{0, 1, 2, 3, 4}, // last int1 is for nullity bits
-        1, 2, 100.0, 200.0, 0};
+        record_meta::nullity_offset_table_type{64+0, 64+1, 64+2, 64+3, 64+4}, // last int1 is for nullity bits
+        1, 2, 100.0, 200.0, 0)};
     auto r{rec.ref()};
-    ASSERT_EQ(40, r.size());
+    ASSERT_EQ(80, r.size());
     auto meta = rec.record_meta();
 
     std::size_t nullity_bit_base = meta->nullity_offset(0);
@@ -104,9 +104,9 @@ TEST_F(record_copier_test, non_standard_layout_record) {
     r.set_null(nullity_bit_base + 2, true);
     r.set_null(nullity_bit_base + 3, false);
 
-    ASSERT_EQ(40, meta->record_size());
+    ASSERT_EQ(80, meta->record_size());
     record_copier copier{meta};
-    mock::basic_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1> dst{};
+    mock::basic_record dst{mock::create_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1>()};
     record_ref t{dst.ref()};
     copier(t, r);
 

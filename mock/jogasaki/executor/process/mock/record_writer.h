@@ -36,73 +36,54 @@ namespace jogasaki::executor::process::mock {
 
 using kind = meta::field_type_kind;
 
-template <class Record>
 class cache_align basic_record_writer : public executor::record_writer {
 public:
 
-    using record_type = Record;
+    using record_type = jogasaki::mock::basic_record;
     using records_type = boost::container::pmr::vector<record_type>;
     using memory_resource_type = boost::container::pmr::memory_resource;
 
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 
     /**
-     * @brief create default instance - written records are stored internally as they are.
+     * @brief create empty object
      */
     basic_record_writer() = default;
 
     /**
-     * @brief create new instance considering field metadata and its mapping
-     * @param external_meta metadata of the record_ref passed to write()
-     * @param map field mapping represented by the pair {source index, target index} where source is the input record, and target is the stored record
+     * @brief create new object with give metadata
+     * @param meta metadata used to store the records
      */
     explicit basic_record_writer(
-        maybe_shared_ptr<meta::record_meta> external_meta,
-        std::unordered_map<std::size_t, std::size_t> map = {}
+        maybe_shared_ptr<meta::record_meta> meta
     ) :
-        external_meta_(std::move(external_meta)),
-        map_(std::move(map))
-    {
-        assert(map.empty() || map.size() == external_meta_->field_count());
-    }
+        meta_(std::move(meta))
+    {}
 
-    explicit basic_record_writer(
+    /**
+     * @brief create new object
+     * @param meta metadata used to store the records
+     * @param capacity the number of records stored in this writer internal buffer
+     * @param resource the backing memory resource for the internal buffer
+     */
+    basic_record_writer(
+        maybe_shared_ptr<meta::record_meta> meta,
         std::size_t capacity,
-        memory_resource_type* resource = takatori::util::get_standard_memory_resource(),
-        maybe_shared_ptr<meta::record_meta> external_meta = {},
-        std::unordered_map<std::size_t, std::size_t> map = {}
+        memory_resource_type* resource = takatori::util::get_standard_memory_resource()
     ) :
-        external_meta_(std::move(external_meta)),
+        meta_(std::move(meta)),
         records_(resource),
-        map_(std::move(map)),
         capacity_(capacity)
     {
-        assert(map.empty() || map.size() == external_meta_->field_count());
         records_.reserve(capacity);
     }
 
     /**
      * @brief write record and store internal storage as basic_record.
-     * The record_meta, if passed to constructor, is used to convert the offset between input record ref and basic_record::record_meta().
-     * Only offsets are converted, nothing done for field ordering.
+     * The record_meta passed to constructor is used to convert the input ref to basic_record.
      */
     bool write(accessor::record_ref rec) override {
-        record_type r{maybe_shared_ptr<meta::record_meta>{meta_.get()}};
-        if (external_meta_) {
-            for(std::size_t i = 0; i < external_meta_->field_count(); ++i) {
-                auto j = map_.empty() ? i : map_.at(i);
-                utils::copy_field(
-                    external_meta_->at(i),
-                    r.ref(),
-                    r.record_meta()->value_offset(j),
-                    rec,
-                    external_meta_->value_offset(i),
-                    resource_.get()
-                );
-            }
-        } else {
-            r = record_type{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}, resource_.get()};
-        }
+        record_type r{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}, resource_.get()};
         if (capacity_ == npos || records_.size() < capacity_) {
             auto& x = records_.emplace_back(r);
             DVLOG(2) << x;
@@ -143,10 +124,8 @@ public:
         return acquired_;
     }
 private:
-    maybe_shared_ptr<meta::record_meta> meta_{record_type{}.record_meta()};
-    maybe_shared_ptr<meta::record_meta> external_meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
     records_type records_{};
-    std::unordered_map<std::size_t, std::size_t> map_{};
     bool released_{false};
     bool acquired_{false};
     std::size_t capacity_{npos};
@@ -155,7 +134,25 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
 };
 
-using record_writer = basic_record_writer<jogasaki::mock::basic_record<kind::int8, kind::float8>>;
+template <kind ...Kinds>
+basic_record_writer create_writer() {
+    return basic_record_writer{jogasaki::mock::create_meta<Kinds...>()};
+}
 
+template <kind ...Kinds>
+std::shared_ptr<basic_record_writer> create_writer_shared() {
+    return std::make_shared<basic_record_writer>(jogasaki::mock::create_meta<Kinds...>());
+}
+
+template <kind ...Kinds>
+std::shared_ptr<basic_record_writer> create_writer_shared(
+    std::size_t capacity,
+    basic_record_writer::memory_resource_type* resource) {
+    return std::make_shared<basic_record_writer>(
+        jogasaki::mock::create_meta<Kinds...>(),
+        capacity,
+        resource
+    );
+}
 }
 

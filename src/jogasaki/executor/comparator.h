@@ -34,10 +34,30 @@ public:
 
     /**
      * @brief construct new object
-     * @param meta schema information for the records to be compared
+     * @param meta schema information for the records to be compared. This applies to both lhs/rhs records assuming their metadata are identical.
      * @attention record_meta is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    explicit comparator(meta::record_meta const* meta) noexcept : meta_(meta) {}
+    explicit comparator(meta::record_meta const* meta) noexcept : l_meta_(meta), r_meta_(meta) {}
+
+    /**
+     * @brief construct new object
+     * @param l_meta schema information for the lhs records to be compared
+     * @param r_meta schema information for the rhs records to be compared
+     * @attention record_meta are kept and used by the comparator. The caller must ensure it outlives this object.
+     */
+    comparator(
+        meta::record_meta const* l_meta,
+        meta::record_meta const* r_meta
+    ) noexcept :
+        l_meta_(l_meta),
+        r_meta_(r_meta)
+    {
+        BOOST_ASSERT(l_meta_->field_count() == r_meta_->field_count());  //NOLINT
+        for(std::size_t i=0, n = l_meta_->field_count(); i < n; ++i) {
+            (void)i;
+            BOOST_ASSERT(l_meta_->at(i) == r_meta_->at(i));  //NOLINT
+        }
+    }
 
     /**
      * @brief compare function
@@ -48,7 +68,7 @@ public:
      * @return zero if a is equivalent to b
      */
     [[nodiscard]] int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept {
-        for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
+        for(std::size_t i = 0, n = l_meta_->field_count(); i < n; ++i) {
             auto res = compare_field(a, b, i);
             if (res != 0) {
                 return res;
@@ -58,7 +78,8 @@ public:
     }
 
 private:
-    meta::record_meta const* meta_{};
+    meta::record_meta const* l_meta_{};
+    meta::record_meta const* r_meta_{};
 
     template <meta::field_type_kind Kind>
     using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
@@ -66,10 +87,10 @@ private:
 
     template <kind K>
     struct field_comparator {
-        int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t offset) {
+        int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
             using rtype = runtime_type<K>;
-            auto l = a.get_value<rtype>(offset);
-            auto r = b.get_value<rtype>(offset);
+            auto l = a.get_value<rtype>(l_offset);
+            auto r = b.get_value<rtype>(r_offset);
             if (std::less<rtype>{}(l, r)) return -1;
             if (std::less<rtype>{}(r, l)) return 1;
             return 0;
@@ -77,17 +98,18 @@ private:
     };
 
     [[nodiscard]] int compare_field(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t field_index) const {
-        auto& type = meta_->at(field_index);
-        auto offset = meta_->value_offset(field_index);
+        auto& type = l_meta_->at(field_index);
+        auto l_offset = l_meta_->value_offset(field_index);
+        auto r_offset = r_meta_->value_offset(field_index);
         switch(type.kind()) {
-            case meta::field_type_kind::boolean: return field_comparator<kind::boolean>{}(a, b, offset);
-            case meta::field_type_kind::int1: return field_comparator<kind::int1>{}(a, b, offset);
-            case meta::field_type_kind::int2: return field_comparator<kind::int2>{}(a, b, offset);
-            case meta::field_type_kind::int4: return field_comparator<kind::int4>{}(a, b, offset);
-            case meta::field_type_kind::int8: return field_comparator<kind::int8>{}(a, b, offset);
-            case meta::field_type_kind::float4: return field_comparator<kind::float4>{}(a, b, offset);
-            case meta::field_type_kind::float8: return field_comparator<kind::float8>{}(a, b, offset);
-            case meta::field_type_kind::character: return field_comparator<kind::character>{}(a, b, offset);
+            case meta::field_type_kind::boolean: return field_comparator<kind::boolean>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::int1: return field_comparator<kind::int1>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::int2: return field_comparator<kind::int2>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::int4: return field_comparator<kind::int4>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::int8: return field_comparator<kind::int8>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::float4: return field_comparator<kind::float4>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::float8: return field_comparator<kind::float8>{}(a, b, l_offset, r_offset);
+            case meta::field_type_kind::character: return field_comparator<kind::character>{}(a, b, l_offset, r_offset);
             default:
                 // TODO implement other types
                 std::abort();

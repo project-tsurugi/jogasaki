@@ -98,19 +98,11 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
         context_->varlen_resource()  // TODO for now only one task within a request emits, fix when multiple emits happen
     );
 
-    auto resource = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
-    auto varlen_resource = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
-
-    // FIXME work-around lifo_paged_memory_resource repeating acquiring/releasing pages to pool
-    resource->allocate(64);
-    varlen_resource->allocate(64);
-    // FIXME end of work-around
-
     ctx->work_context(std::make_unique<impl::work_context>(
         operators.size(),
         info_->scopes_info().size(),
-        std::move(resource),
-        std::move(varlen_resource),
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
         context_->database(),
         context_->transaction()
     ));

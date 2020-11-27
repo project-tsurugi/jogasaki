@@ -66,7 +66,7 @@ public:
         processor_info const& info,
         operator_base::block_index_type block_index,
         join_kind kind,
-        takatori::util::optional_ptr<takatori::scalar::expression const> expression,
+        takatori::util::optional_ptr<takatori::scalar::expression const> expression,  //NOLINT
         std::unique_ptr<operator_base> downstream = nullptr
     ) : cogroup_operator<Iterator>(index, info, block_index),
         kind_(kind),
@@ -148,7 +148,7 @@ private:
     std::unique_ptr<operator_base> downstream_{};
 
     expression::evaluator create_evaluator(
-        takatori::util::optional_ptr<takatori::scalar::expression const> expression,
+        takatori::util::optional_ptr<takatori::scalar::expression const> expression,  //NOLINT
         yugawara::compiled_info const& compiled_info
     ) {
         if (expression) {

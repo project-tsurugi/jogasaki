@@ -45,13 +45,13 @@ struct cache_align group_field {
         is_key_(is_key)
     {}
 
-    meta::field_type type_{};
-    std::size_t source_offset_{};
-    std::size_t target_offset_{};
-    std::size_t source_nullity_offset_{};
-    std::size_t target_nullity_offset_{};
-    bool nullable_{};
-    bool is_key_{};
+    meta::field_type type_{};  //NOLINT
+    std::size_t source_offset_{};  //NOLINT
+    std::size_t target_offset_{};  //NOLINT
+    std::size_t source_nullity_offset_{};  //NOLINT
+    std::size_t target_nullity_offset_{};  //NOLINT
+    bool nullable_{};  //NOLINT
+    bool is_key_{};  //NOLINT
 };
 
 template <class Iterator>

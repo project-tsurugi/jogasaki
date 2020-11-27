@@ -50,19 +50,20 @@ public:
     std::function<void(bool first)> f_{}; //NOLINT
 };
 
-class cogroup_verifier : public cogroup_operator {
+template<class Iterator>
+class cogroup_verifier : public cogroup_operator<Iterator> {
 public:
     cogroup_verifier() = default;
-    void body(std::function<void(cogroup& c)> f) {
+    void body(std::function<void(cogroup<Iterator>& c)> f) {
         f_ = std::move(f);
     }
-    void process_cogroup(abstract::task_context* context, cogroup& c) override {
+    void process_cogroup(abstract::task_context* context, cogroup<Iterator>& c) override {
         f_(c);
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
     }
-    std::function<void(cogroup& c)> f_{}; //NOLINT
+    std::function<void(cogroup<Iterator>& c)> f_{}; //NOLINT
 };
 
 }

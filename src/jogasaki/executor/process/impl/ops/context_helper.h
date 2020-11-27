@@ -19,7 +19,6 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 

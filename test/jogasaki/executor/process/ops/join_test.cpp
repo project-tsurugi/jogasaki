@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/take_cogroup.h>
+#include <jogasaki/executor/process/impl/ops/join.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -24,18 +24,21 @@
 #include <takatori/util/object_creator.h>
 #include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/join.h>
+#include <takatori/plan/group.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/impl/ops/join.h>
-
+#include <jogasaki/executor/process/impl/ops/take_cogroup.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
-#include <takatori/plan/group.h>
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/executor/process/mock/iterable_group_store.h>
 
 #include "verifier.h"
 
@@ -50,7 +53,6 @@ using namespace std::string_view_literals;
 using namespace std::string_literals;
 
 using namespace jogasaki::memory;
-using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
 namespace relation = ::takatori::relation;
@@ -58,20 +60,8 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class take_cogroup_test : public test_root {
+class join_test : public test_root {
 public:
-    basic_record create_key(
-        std::int64_t arg0,
-        std::int32_t arg1
-    ) {
-        return create_record<kind::int8, kind::int4>(arg0, arg1);
-    }
-
-    basic_record create_value(
-        std::int64_t arg0
-    ) {
-        return create_record<kind::int8>(arg0);
-    }
 };
 
 using kind = field_type_kind;
@@ -80,7 +70,7 @@ using group_type = group_reader::group_type;
 using keys_type = group_type::key_type;
 using values_type = group_type::value_type;
 
-TEST_F(take_cogroup_test, simple) {
+TEST_F(join_test, simple) {
 
     binding::factory bindings;
 
@@ -184,8 +174,8 @@ TEST_F(take_cogroup_test, simple) {
 
     meta::variable_order order0{
         variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>,
-            g0.columns(),
-            g0.group_keys()
+        g0.columns(),
+        g0.group_keys()
     };
     meta::variable_order order1{
         variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>,
@@ -200,88 +190,64 @@ TEST_F(take_cogroup_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s}
     );
-    exchange::group::shuffle_info s_info{input_meta, {0,1}};
-    auto key_meta = s_info.key_meta();
-    auto value_meta = s_info.value_meta();
-    auto& block_info = p_info.scopes_info()[0];
+
+    auto tgt = jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>();
+    auto key = jogasaki::mock::create_record<kind::int8, kind::int4>();
+    auto value = jogasaki::mock::create_record<kind::int8>();
+    auto key_meta = key.record_meta();
+    auto value_meta = value.record_meta();
+    auto g_meta = group_meta{key_meta, value_meta};
+    auto tmeta = tgt.record_meta();
+    variable_value_map vvmap{
+        {
+            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), } },
+            { g0v1, { tmeta->value_offset(1), tmeta->nullity_offset(1), } },
+            { g0v2, { tmeta->value_offset(2), tmeta->nullity_offset(2), } },
+            { g1v0, { tmeta->value_offset(3), tmeta->nullity_offset(3), } },
+            { g1v1, { tmeta->value_offset(4), tmeta->nullity_offset(4), } },
+            { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), } },
+        }
+    };
+    block_scope_info block_info{
+        vvmap,
+        tmeta,
+    };
+//    auto& block_info = p_info.scopes_info()[0];
     block_scope variables{block_info};
 
-    std::vector<group_element> groups{};
+    std::vector<ops::group_element> groups{};
     groups.emplace_back(
         order0,
-        s_info.group_meta(),
+        maybe_shared_ptr(&g_meta),
         r0.groups()[0].columns(),
         0,
         block_info
     );
     groups.emplace_back(
         order1,
-        s_info.group_meta(),
+        maybe_shared_ptr(&g_meta),
         r0.groups()[1].columns(),
         1,
         block_info
     );
 
-    using iterator = data::iterable_record_store::iterator;
-    auto d = std::make_unique<cogroup_verifier<iterator>>();
+    using join_kind = relation::step::join::operator_kind_type;
+
+    using iterator = mock::iterable_group_store::iterator;
+    auto d = std::make_unique<verifier>();
     auto downstream = d.get();
-    take_cogroup cgrp{
+
+    join<iterator> j{
         0,
         p_info,
         0,
-        groups,
+        join_kind::inner,
+        takatori::util::optional_ptr<takatori::scalar::expression const>{},  //TODO add expression
         std::move(d)
     };
-    auto k = create_key(0, 0);
-    auto v = create_value(0);
-    auto internal_meta = group_meta(
-        k.record_meta(),
-        v.record_meta()
-    );
 
-    group_reader reader0 {
-        {
-            group_type{
-                create_key(1, 10),
-                {
-                    create_value(100),
-                    create_value(101),
-                },
-            },
-            group_type{
-                create_key(2, 20),
-                {
-                    create_value(200),
-                },
-            },
-        },
-        maybe_shared_ptr(&internal_meta),
-        s_info.group_meta()
-    };
-    group_reader reader1 {
-        {
-            group_type{
-                create_key(1, 10),
-                {
-                    create_value(1000),
-                    create_value(1001),
-                },
-            },
-            group_type{
-                create_key(3, 30),
-                {
-                    create_value(300),
-                },
-            },
-        },
-        maybe_shared_ptr(&internal_meta),
-        s_info.group_meta()
-    };
     mock::task_context task_ctx{
-        {
-            reader_container{&reader0},
-            reader_container{&reader1}
-        },
+        {},
         {},
         {},
         {},
@@ -290,10 +256,9 @@ TEST_F(take_cogroup_test, simple) {
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     memory::lifo_paged_memory_resource varlen_resource{&pool};
-    take_cogroup_context ctx(
+    join_context ctx(
         &task_ctx,
         variables,
-        key_meta,
         &resource,
         &varlen_resource
     );
@@ -310,90 +275,95 @@ TEST_F(take_cogroup_test, simple) {
 
     std::size_t count = 0;
 
-    downstream->body([&](cogroup<iterator>& c) {
-        ASSERT_EQ(2, c.groups().size());
-        switch(count) {
-            case 0: {
-                {
-                    auto& g0 = c.groups()[0];
-                    keys_type k1{g0.key(), key_meta};
-                    EXPECT_EQ(create_key(1,10), k1);
-                    auto b = g0.begin();
-                    ASSERT_NE(g0.end(), b);
-                    values_type v1{*b, value_meta};
-                    EXPECT_EQ(create_value(100), v1);
-                    ++b;
-                    ASSERT_NE(g0.end(), b);
-                    values_type v2{*b, value_meta};
-                    EXPECT_EQ(create_value(101), v2);
-                    ++b;
-                    EXPECT_EQ(g0.end(), b);
-                }
-                {
-                    auto& g1 = c.groups()[1];
-                    keys_type k1{g1.key(), key_meta};
-                    EXPECT_EQ(create_key(1,10), k1);
-                    auto b = g1.begin();
-                    ASSERT_NE(g1.end(), b);
-                    values_type v1{*b, value_meta};
-                    EXPECT_EQ(create_value(1000), v1);
-                    ++b;
-                    ASSERT_NE(g1.end(), b);
-                    values_type v2{*b, value_meta};
-                    EXPECT_EQ(create_value(1001), v2);
-                    ++b;
-                    EXPECT_EQ(g1.end(), b);
-                }
-                break;
-            }
-            case 1: {
-                {
-                    auto& g = c.groups()[0];
-                    keys_type k1{g.key(), key_meta};
-                    EXPECT_EQ(create_key(2,20), k1);
-                    auto b = g.begin();
-                    ASSERT_NE(g.end(), b);
-                    values_type v1{*b, value_meta};
-                    EXPECT_EQ(create_value(200), v1);
-                    ++b;
-                    EXPECT_EQ(g.end(), b);
-                }
-                {
-                    auto& g1 = c.groups()[1];
-                    auto b = g1.begin();
-                    EXPECT_EQ(g1.end(), b);
-                    EXPECT_TRUE(g1.empty());
-                }
-                break;
-            }
-            case 2: {
-                {
-                    auto& g0 = c.groups()[0];
-                    auto b = g0.begin();
-                    EXPECT_EQ(g0.end(), b);
-                    EXPECT_TRUE(g0.empty());
-                }
-                {
-                    auto& g1= c.groups()[1];
-                    keys_type k1{g1.key(), key_meta};
-                    EXPECT_EQ(create_key(3,30), k1);
-                    auto b = g1.begin();
-                    ASSERT_NE(g1.end(), b);
-                    values_type v1{*b, value_meta};
-                    EXPECT_EQ(create_value(300), v1);
-                    ++b;
-                    EXPECT_EQ(g1.end(), b);
-                }
-                break;
-            }
-            default:
-                ADD_FAILURE();
-        }
-        ++count;
-    });
-    cgrp(ctx);
+    std::vector<jogasaki::mock::basic_record> result{};
 
-    ASSERT_EQ(3, count);
+    downstream->body([&]() {
+        result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
+    });
+
+    mock::iterable_group_store ge1{
+        jogasaki::mock::create_record<kind::int8, kind::int4>(1,10),
+        {
+            jogasaki::mock::create_record<kind::int8>(100),
+            jogasaki::mock::create_record<kind::int8>(101),
+        }
+    };
+    mock::iterable_group_store ge2{
+        jogasaki::mock::create_record<kind::int8, kind::int4>(1,10),
+        {
+            jogasaki::mock::create_record<kind::int8>(200),
+            jogasaki::mock::create_record<kind::int8>(201),
+            jogasaki::mock::create_record<kind::int8>(202),
+        }
+    };
+
+    std::vector<group_field> fields[2];
+    std::size_t tgt_field = 0;
+    for(std::size_t loop = 0; loop < 2; ++loop) { // left then right
+        for(std::size_t i=0, n=key.record_meta()->field_count() ; i < n; ++i) {
+            auto& meta = key.record_meta();
+            fields[loop].emplace_back(
+                meta->at(i),
+                meta->value_offset(i),
+                tgt.record_meta()->value_offset(tgt_field++),
+                0,
+                0,
+                false,
+                true
+            );
+        }
+        for(std::size_t i=0, n=value.record_meta()->field_count() ; i < n; ++i) {
+            auto& meta = value.record_meta();
+            fields[loop].emplace_back(
+                meta->at(i),
+                meta->value_offset(i),
+                tgt.record_meta()->value_offset(tgt_field++),
+                0,
+                0,
+                false,
+                false
+            );
+        }
+    }
+    using iterator_pair = utils::iterator_pair<iterator>;
+    std::vector<ops::group<iterator>> mygroups{
+        group{
+            iterator_pair{
+                ge1.begin(),
+                ge1.end()
+            },
+            fields[0],
+            ge1.key().ref(),
+            ge1.values()[0].record_meta()->record_size()
+        },
+        group{
+            iterator_pair{
+                ge2.begin(),
+                ge2.end()
+            },
+            fields[1],
+            ge2.key().ref(),
+            ge2.values()[0].record_meta()->record_size()
+        }
+    };
+    cogroup<iterator> mycgrp{
+        mygroups
+    };
+    j(ctx, mycgrp);
+
+    comparator comp{key_meta.get()};
+    ASSERT_EQ(6, result.size());
+    std::vector<jogasaki::mock::basic_record> exp{
+        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,200),
+        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,201),
+        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,202),
+        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,200),
+        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,201),
+        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,202),
+    };
+    std::sort(exp.begin(), exp.end());
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(exp, result);
     ctx.release();
 }
 

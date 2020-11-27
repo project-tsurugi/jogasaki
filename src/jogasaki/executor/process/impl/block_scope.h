@@ -52,7 +52,7 @@ public:
     /**
      * @brief accessor to variable value map
      */
-    [[nodiscard]] variable_value_map& value_map() const noexcept {
+    [[nodiscard]] variable_value_map const& value_map() const noexcept {
         return info_->value_map();
     }
 

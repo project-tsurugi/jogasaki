@@ -26,7 +26,9 @@ using takatori::util::maybe_shared_ptr;
  */
 class join_context : public context_base {
 public:
+    template <class Iterator>
     friend class join;
+
     /**
      * @brief create empty object
      */

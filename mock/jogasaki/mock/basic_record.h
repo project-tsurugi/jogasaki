@@ -215,6 +215,23 @@ public:
         return !(a == b);
     }
 
+    /// @brief less than comparison operator
+    friend bool operator<(basic_record const& a, basic_record const& b) noexcept {
+        if (a.meta_->field_count() != b.meta_->field_count()) {
+            return false;
+        }
+        executor::comparator comp{a.meta_.get(), b.meta_.get()};
+        return comp(a.ref(), b.ref()) < 0;
+    }
+
+    /// @brief greater than comparison operator
+    friend bool operator>(basic_record const& a, basic_record const& b) noexcept {
+        if (a.meta_->field_count() != b.meta_->field_count()) {
+            return false;
+        }
+        executor::comparator comp{a.meta_.get(), b.meta_.get()};
+        return comp(a.ref(), b.ref()) > 0;
+    }
     /**
      * @brief appends string representation of the given value.
      * @param out the target output

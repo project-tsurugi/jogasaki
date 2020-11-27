@@ -18,8 +18,6 @@
 #include <takatori/relation/expression.h>
 #include <takatori/util/sequence_view.h>
 
-#include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/utils/iterator_pair.h>
 #include "operator_kind.h"
 
@@ -28,6 +26,25 @@ namespace jogasaki::executor::process::impl::ops {
 using takatori::util::sequence_view;
 
 struct cache_align group_field {
+    group_field() = default;
+    group_field(
+        meta::field_type type,
+        std::size_t source_offset,
+        std::size_t target_offset,
+        std::size_t source_nullity_offset,
+        std::size_t target_nullity_offset,
+        bool nullable,
+        bool is_key
+    ) :
+        type_(std::move(type)),
+        source_offset_(source_offset),
+        target_offset_(target_offset),
+        source_nullity_offset_(source_nullity_offset),
+        target_nullity_offset_(target_nullity_offset),
+        nullable_(nullable),
+        is_key_(is_key)
+    {}
+
     meta::field_type type_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
@@ -37,9 +54,10 @@ struct cache_align group_field {
     bool is_key_{};
 };
 
+template <class Iterator>
 class group {
 public:
-    using iterator = data::iterable_record_store::iterator;
+    using iterator = Iterator;
     using iterator_pair = utils::iterator_pair<iterator>;
     group(
         iterator_pair iterators,
@@ -80,25 +98,26 @@ private:
     std::size_t record_size_{};
 };
 
+template <class Iterator>
 class cogroup {
 public:
-    using iterator = data::iterable_record_store::iterator;
+    using iterator = Iterator;
     using iterator_pair = utils::iterator_pair<iterator>;
 
     cogroup() = default;
 
     explicit cogroup(
-        sequence_view<group> groups
+        sequence_view<group<iterator>> groups
     ) noexcept :
         groups_(groups)
     {}
 
-    [[nodiscard]] sequence_view<group> groups() const noexcept {
+    [[nodiscard]] sequence_view<group<iterator>> groups() const noexcept {
         return groups_;
     }
 
 private:
-    sequence_view<group> groups_{};
+    sequence_view<group<iterator>> groups_{};
 };
 
 }

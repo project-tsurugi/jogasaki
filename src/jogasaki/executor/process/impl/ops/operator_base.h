@@ -106,6 +106,7 @@ public:
     virtual void process_group(abstract::task_context* context, bool first) = 0;
 };
 
+template<class Iterator>
 class cogroup_operator : public operator_base {
 public:
     cogroup_operator() = default;
@@ -114,9 +115,15 @@ public:
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index
-    ) noexcept;
+    ) noexcept :
+        operator_base(
+            index,
+            info,
+            block_index
+        )
+    {}
 
-    virtual void process_cogroup(abstract::task_context* context, cogroup& cgrp) = 0;
+    virtual void process_cogroup(abstract::task_context* context, cogroup<Iterator>& cgrp) = 0;
 };
 
 }

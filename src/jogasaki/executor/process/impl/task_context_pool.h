@@ -16,6 +16,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include <tbb/concurrent_queue.h>
 #include <jogasaki/executor/process/abstract/task_context.h>

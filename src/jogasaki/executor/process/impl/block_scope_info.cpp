@@ -34,14 +34,14 @@ namespace jogasaki::executor::process::impl {
 using takatori::util::fail;
 
 block_scope_info::block_scope_info(
-    std::unique_ptr<variable_value_map> value_map,
+    variable_value_map value_map,
     maybe_shared_ptr<meta::record_meta> meta
 ) noexcept :
     value_map_(std::move(value_map)),
     meta_(std::move(meta))
 {}
 
-std::unique_ptr<variable_value_map> from_indices(
+variable_value_map from_indices(
     block_scope_info::variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> const& meta
 ) {
@@ -49,7 +49,7 @@ std::unique_ptr<variable_value_map> from_indices(
     for(auto&& [v, i] : indices) {
         map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
     }
-    return std::make_unique<variable_value_map>(std::move(map));
+    return variable_value_map{map};
 }
 
 block_scope_info::block_scope_info(
@@ -62,8 +62,8 @@ block_scope_info::block_scope_info(
 
 }
 
-variable_value_map& block_scope_info::value_map() const noexcept {
-    return *value_map_;
+variable_value_map const& block_scope_info::value_map() const noexcept {
+    return value_map_;
 }
 
 maybe_shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexcept {

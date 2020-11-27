@@ -28,6 +28,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/reader_container.h>
@@ -87,7 +88,7 @@ public:
             auto [src_idx, is_key] = order.key_value_index(c.source());
             auto& target_info = vmap.at(c.destination());
             auto idx = src_idx + (is_key ? 0 : num_keys); // copy keys first, then values
-            fields[idx]=group_field{
+            fields[idx] = group_field{
                 is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
                 is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),
                 target_info.value_offset(),
@@ -221,7 +222,8 @@ public:
                 }
                 case state::values_filled:
                     if (downstream_) {
-                        std::vector<group> groups{};
+                        using iterator = data::iterable_record_store::iterator;
+                        std::vector<group<iterator>> groups{};
                         groups.reserve(inputs.size());
                         for(std::size_t i = 0, n = inputs.size(); i < n; ++i) {
                             auto& in = inputs[i];
@@ -232,8 +234,8 @@ public:
                                 in.meta()->value().record_size()
                             );
                         }
-                        cogroup cgrp{ groups };
-                        unsafe_downcast<cogroup_operator>(downstream_.get())->process_cogroup(context, cgrp);
+                        cogroup<iterator> cgrp{ groups };
+                        unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->process_cogroup(context, cgrp);
                     }
                     for(auto&& in : inputs) {
                         in.reset_values();

@@ -179,7 +179,7 @@ public:
     std::unique_ptr<operator_base> operator()(relation::step::join const& node) {
         auto block_index = info_->scope_indices().at(&node);
         auto downstream = dispatch(*this, node.output().opposite()->owner());
-        return std::make_unique<join>(index_++, *info_, block_index, node.operator_kind(), node.condition(), std::move(downstream));
+        return std::make_unique<join<data::iterable_record_store::iterator>>(index_++, *info_, block_index, node.operator_kind(), node.condition(), std::move(downstream));
     }
     std::unique_ptr<operator_base> operator()(relation::step::aggregate const& node) {
         (void)node;

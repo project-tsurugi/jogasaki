@@ -51,7 +51,7 @@ public:
      * Constructor below is more convenient if meta and variable indices are available.
      */
     block_scope_info(
-        std::unique_ptr<variable_value_map> value_map,
+        variable_value_map value_map,
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
 
@@ -68,7 +68,7 @@ public:
     /**
      * @brief accessor to variable value map
      */
-    [[nodiscard]] variable_value_map& value_map() const noexcept;
+    [[nodiscard]] variable_value_map const& value_map() const noexcept;
 
     /**
      * @brief accessor to metadata of variable store
@@ -76,7 +76,7 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
-    std::unique_ptr<variable_value_map> value_map_{};
+    variable_value_map value_map_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
 };
 

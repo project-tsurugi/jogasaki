@@ -24,7 +24,6 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/reader_container.h>
 #include <jogasaki/data/iterable_record_store.h>
@@ -44,7 +43,8 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-class join : public cogroup_operator {
+template <class Iterator>
+class join : public cogroup_operator<Iterator> {
 public:
     friend class join_context;
 
@@ -52,19 +52,23 @@ public:
 
     using join_kind = takatori::relation::join_kind;
 
-    using iterator = data::iterable_record_store::iterator;
+    using iterator = Iterator;
     using iterator_pair = utils::iterator_pair<iterator>;
+
+    // parent is class template, so you should tell compiler the names in ancestors
+    using operator_base::index;
+    using operator_base::block_index;
 
     join() = default;
 
     join(
-        operator_index_type index,
+        operator_base::operator_index_type index,
         processor_info const& info,
-        block_index_type block_index,
+        operator_base::block_index_type block_index,
         join_kind kind,
         takatori::util::optional_ptr<takatori::scalar::expression const> expression,
         std::unique_ptr<operator_base> downstream = nullptr
-    ) : cogroup_operator(index, info, block_index),
+    ) : cogroup_operator<Iterator>(index, info, block_index),
         kind_(kind),
         evaluator_(create_evaluator(expression, info.compiled_info())),
         has_condition_(expression.has_value()),
@@ -76,7 +80,7 @@ public:
      * @param context task-wide context used to create operator context
      * @param cgrp the cogroup to process
      */
-    void process_cogroup(abstract::task_context* context, cogroup& cgrp) override {
+    void process_cogroup(abstract::task_context* context, cogroup<iterator>& cgrp) override {
         BOOST_ASSERT(context != nullptr);  //NOLINT
         context_helper ctx{*context};
         auto* p = find_context<join_context>(index(), ctx.contexts());
@@ -95,7 +99,7 @@ public:
      * @brief process record with context object
      * @param ctx operator context object for the execution
      */
-    void operator()(join_context& ctx, cogroup& cgrp, abstract::task_context* context = nullptr) {
+    void operator()(join_context& ctx, cogroup<iterator>& cgrp, abstract::task_context* context = nullptr) {
         (void)kind_;
         std::vector<iterator_pair> iterators{};
         iterators.reserve(cgrp.groups().size());

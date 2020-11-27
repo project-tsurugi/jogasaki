@@ -16,9 +16,11 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <numa.h>
 
 #include <glog/logging.h>
 #include <boost/thread/latch.hpp>
+#include <boost/thread.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 

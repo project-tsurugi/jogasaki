@@ -63,13 +63,4 @@ group_operator::group_operator(operator_base::operator_index_type index, const p
     )
 {}
 
-cogroup_operator::cogroup_operator(operator_base::operator_index_type index, const processor_info &info,
-    operator_base::block_index_type block_index) noexcept:
-    operator_base(
-        index,
-        info,
-        block_index
-    )
-{}
-
 }

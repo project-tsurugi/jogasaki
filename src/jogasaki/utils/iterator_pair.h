@@ -28,6 +28,14 @@ struct iterator_pair {
         static_assert(std::is_trivially_copyable_v<Iterator>);
         static_assert(std::is_trivially_copyable_v<iterator_pair<Iterator>>);
     }
+
+    iterator_pair() = default;
+    ~iterator_pair() = default;
+    iterator_pair(iterator_pair const& other) = default;
+    iterator_pair& operator=(iterator_pair const& other) = default;
+    iterator_pair(iterator_pair&& other) noexcept = default;
+    iterator_pair& operator=(iterator_pair&& other) noexcept = default;
+
     Iterator first; //NOLINT
     Iterator second; //NOLINT
 };

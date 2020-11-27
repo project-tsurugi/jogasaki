@@ -126,7 +126,7 @@ public:
             bool res = true;
             if (has_condition_) {
                 utils::checkpoint_holder cp{resource};
-                res = evaluator_(scope, resource).to<bool>();
+                res = evaluator_(scope, resource).template to<bool>();
             }
             if (res && downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);

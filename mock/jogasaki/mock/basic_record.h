@@ -17,6 +17,7 @@
 
 #include <tuple>
 #include <sstream>
+#include <type_traits>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -35,7 +36,8 @@ using takatori::util::fail;
 
 constexpr static std::size_t basic_record_field_size = 16;
 constexpr static std::size_t basic_record_field_alignment = 8;
-constexpr static std::size_t basic_record_buffer_size = basic_record_field_size * 8;
+constexpr static std::size_t basic_record_max_field_count = 7;
+constexpr static std::size_t basic_record_buffer_size = basic_record_field_size * (basic_record_max_field_count + 1); // +1 for nullity bits
 using basic_record_entity_type = std::array<char, basic_record_buffer_size>;
 
 template<kind Kind>
@@ -87,32 +89,38 @@ inline void create_entity(basic_record_entity_type& entity, accessor::record_ref
     std::memcpy(&entity[0], record.data(), meta.record_size());
 }
 
+template <std::size_t ...Is>
+std::vector<std::size_t> index_vector(std::size_t init, std::index_sequence<Is...>) {
+    return std::vector<std::size_t>{(init + Is)...};
+}
+
 }  //namespace details
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 std::shared_ptr<meta::record_meta> create_meta(
     boost::dynamic_bitset<std::uint64_t> nullability,
-    std::vector<std::size_t> nullity_offset_table
+    bool all_fields_nullable = false
 ) {
+    (void)all_fields_nullable;  // for now nulliti bits always exist
+    static_assert(sizeof...(Kinds) <= basic_record_max_field_count);
+    static_assert(sizeof...(Kinds) <= basic_record_field_size * bits_per_byte); // nullity bits should be contained in a field
     // too many creation is likely to be a program error (e.g. using wrong constructor)
     static constexpr std::size_t limit_creating_meta = 1000;
     cache_align thread_local std::size_t create_count = 0;
     if (++create_count > limit_creating_meta) {
         fail();
     }
+
+    std::vector<std::size_t> offsets{details::offsets<Kinds...>()};
+    auto nullity_offset_base = (offsets.back()+basic_record_field_size)*bits_per_byte;
     return std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
         std::move(nullability),
-        std::vector<std::size_t>{details::offsets<Kinds...>()},
-        std::move(nullity_offset_table),
+        std::move(offsets),
+        details::index_vector(nullity_offset_base, std::make_index_sequence<sizeof...(Kinds)>()),
         basic_record_field_alignment,
-        sizeof...(Kinds) * basic_record_field_size
+        (sizeof...(Kinds) + 1) * basic_record_field_size  // +1 for nullity bits at the bottom
     );
-}
-
-template <std::size_t ...Is>
-std::vector<std::size_t> index_vector(std::size_t init, std::index_sequence<Is...>) {
-    return std::vector<std::size_t>{(init + Is)...};
 }
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
@@ -121,11 +129,8 @@ std::shared_ptr<meta::record_meta> create_meta(bool all_fields_nullable = false)
     if (all_fields_nullable) {
         bitset.flip();
     }
-    std::vector<std::size_t> offsets{details::offsets<Kinds...>()};
-    auto nullity_offset_base = (offsets.back()+basic_record_field_size)*bits_per_byte;
     return create_meta<Kinds...>(
-        bitset,
-        index_vector(nullity_offset_base, std::make_index_sequence<sizeof...(Kinds)>())
+        bitset
     );
 }
 
@@ -291,8 +296,7 @@ basic_record create_record() {
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(to_runtime_type_t<Kinds>...args) {
     auto meta = create_meta<Kinds...>(
-        boost::dynamic_bitset<std::uint64_t>{sizeof...(args)},  // all fields non-nullable
-        std::vector<std::size_t>{(void(args), 0)...}
+        boost::dynamic_bitset<std::uint64_t>{sizeof...(args)}  // all fields non-nullable
     );
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, (args)...);
@@ -325,10 +329,9 @@ basic_record create_record(
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(
     boost::dynamic_bitset<std::uint64_t> nullability,
-    std::vector<std::size_t> nullity_offset_table,
     to_runtime_type_t<Kinds>...args
 ) {
-    auto meta = create_meta<Kinds...>(std::move(nullability), std::move(nullity_offset_table));
+    auto meta = create_meta<Kinds...>(std::move(nullability));
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
     return basic_record(std::move(meta), buf);
@@ -344,10 +347,30 @@ template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_nullable_record(
     to_runtime_type_t<Kinds>...args
 ) {
-    auto meta = create_meta<Kinds...>();
+    auto meta = create_meta<Kinds...>(true);
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
     return basic_record(std::move(meta), buf);
 }
 
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
+basic_record create_nullable_record(
+    std::tuple<to_runtime_type_t<Kinds>...> args,
+    std::initializer_list<bool> nullities = {}
+) {
+    BOOST_ASSERT(nullities.size() == 0 || nullities.size() == sizeof...(Kinds));
+    auto meta = create_meta<Kinds...>(true);
+    basic_record_entity_type buf{};
+    std::apply([&](to_runtime_type_t<Kinds>... values){
+        details::create_entity<Kinds...>(buf, nullptr, *meta, values...);
+    }, args);
+
+    auto ret = basic_record(std::move(meta), buf);
+    std::size_t i=0;
+    for(auto nullity : nullities) {
+        ret.ref().set_null(ret.record_meta()->nullity_offset(i), nullity);
+        ++i;
+    }
+    return ret;
+}
 }

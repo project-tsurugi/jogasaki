@@ -89,7 +89,7 @@ inline void create_entity(basic_record_entity_type& entity, accessor::record_ref
 
 }  //namespace details
 
-template <kind ...Kinds, typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 std::shared_ptr<meta::record_meta> create_meta(
     boost::dynamic_bitset<std::uint64_t> nullability,
     std::vector<std::size_t> nullity_offset_table
@@ -110,11 +110,22 @@ std::shared_ptr<meta::record_meta> create_meta(
     );
 }
 
-template <kind ...Kinds, typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
-std::shared_ptr<meta::record_meta> create_meta() {
+template <std::size_t ...Is>
+std::vector<std::size_t> index_vector(std::size_t init, std::index_sequence<Is...>) {
+    return std::vector<std::size_t>{(init + Is)...};
+}
+
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
+std::shared_ptr<meta::record_meta> create_meta(bool all_fields_nullable = false) {
+    boost::dynamic_bitset<std::uint64_t> bitset{sizeof...(Kinds)};
+    if (all_fields_nullable) {
+        bitset.flip();
+    }
+    std::vector<std::size_t> offsets{details::offsets<Kinds...>()};
+    auto nullity_offset_base = (offsets.back()+basic_record_field_size)*bits_per_byte;
     return create_meta<Kinds...>(
-        boost::dynamic_bitset<std::uint64_t>{sizeof...(Kinds)},  // all fields non-nullable
-        std::vector<std::size_t>{(void(Kinds), 0)...}
+        bitset,
+        index_vector(nullity_offset_base, std::make_index_sequence<sizeof...(Kinds)>())
     );
 }
 
@@ -266,7 +277,7 @@ private:
 /**
  * @brief create empty record object - only meta data is meaningful
  */
-template <kind ...Kinds, typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record() {
     return basic_record(create_meta<Kinds...>());
 }
@@ -277,7 +288,7 @@ basic_record create_record() {
  * @warning new record_meta is created based on the template parameter. This function should not be used
  * when creating large number of (e.g. thousands of) records.
  */
-template <kind ...Kinds, typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(to_runtime_type_t<Kinds>...args) {
     auto meta = create_meta<Kinds...>(
         boost::dynamic_bitset<std::uint64_t>{sizeof...(args)},  // all fields non-nullable
@@ -293,7 +304,7 @@ basic_record create_record(to_runtime_type_t<Kinds>...args) {
  * @param meta the meta data for sharing among multiple basic_record instances
  * @param args values for each field
  */
-template <kind ...Kinds, typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(
     maybe_shared_ptr<meta::record_meta> meta,
     to_runtime_type_t<Kinds>...args
@@ -311,13 +322,29 @@ basic_record create_record(
  * @warning new record_meta is created based on the template parameter. This constructor should not be used
  * when creating large number of (e.g. thousands of) records.
  */
-template <kind ...Kinds, typename T = std::enable_if<sizeof...(Kinds) != 0, void>>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(
     boost::dynamic_bitset<std::uint64_t> nullability,
     std::vector<std::size_t> nullity_offset_table,
     to_runtime_type_t<Kinds>...args
 ) {
     auto meta = create_meta<Kinds...>(std::move(nullability), std::move(nullity_offset_table));
+    basic_record_entity_type buf{};
+    details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
+    return basic_record(std::move(meta), buf);
+}
+
+/**
+ * @brief construct new object with all fields nullable
+ * @param args values for each field
+ * @warning new record_meta is created based on the template parameter. This constructor should not be used
+ * when creating large number of (e.g. thousands of) records.
+ */
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
+basic_record create_nullable_record(
+    to_runtime_type_t<Kinds>...args
+) {
+    auto meta = create_meta<Kinds...>();
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
     return basic_record(std::move(meta), buf);

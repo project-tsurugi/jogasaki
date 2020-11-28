@@ -134,17 +134,17 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
 };
 
-template <kind ...Kinds>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record_writer create_writer() {
     return basic_record_writer{jogasaki::mock::create_meta<Kinds...>()};
 }
 
-template <kind ...Kinds>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 std::shared_ptr<basic_record_writer> create_writer_shared() {
     return std::make_shared<basic_record_writer>(jogasaki::mock::create_meta<Kinds...>());
 }
 
-template <kind ...Kinds>
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 std::shared_ptr<basic_record_writer> create_writer_shared(
     std::size_t capacity,
     basic_record_writer::memory_resource_type* resource) {

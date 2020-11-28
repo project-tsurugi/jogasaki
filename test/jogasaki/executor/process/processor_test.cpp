@@ -44,8 +44,8 @@ TEST_F(processor_test, basic) {
     jogasaki::executor::process::mock::basic_record_writer::records_type records{};
     auto reader = jogasaki::executor::process::mock::create_reader_shared<kind::int8>(records);
     reader_container r{reader.get()};
-    auto downstream_writer = mock::create_writer_shared();
-    auto external_writer = mock::create_writer_shared();
+    auto downstream_writer = mock::create_writer_shared<kind::int8>();
+    auto external_writer = mock::create_writer_shared<kind::int8>();
     auto context = std::make_shared<mock::task_context>(
         std::vector<reader_container>{r},
         std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer},

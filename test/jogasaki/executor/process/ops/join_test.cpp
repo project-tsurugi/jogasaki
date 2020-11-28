@@ -212,7 +212,6 @@ TEST_F(join_test, simple) {
         vvmap,
         tmeta,
     };
-//    auto& block_info = p_info.scopes_info()[0];
     block_scope variables{block_info};
 
     std::vector<ops::group_element> groups{};
@@ -351,7 +350,6 @@ TEST_F(join_test, simple) {
     };
     j(ctx, mycgrp);
 
-    comparator comp{key_meta.get()};
     ASSERT_EQ(6, result.size());
     std::vector<jogasaki::mock::basic_record> exp{
         jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,200),

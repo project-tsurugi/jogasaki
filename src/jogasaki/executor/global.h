@@ -15,13 +15,42 @@
  */
 #pragma once
 
+#include <memory>
 #include <jogasaki/memory/page_pool.h>
 
 namespace jogasaki::global {
 
-[[nodiscard]] inline memory::page_pool& page_pool() {
-    static memory::page_pool pool{};
-    return pool;
+/**
+ * @brief operations for the global paged memory pool
+ */
+enum class pool_operation : std::int32_t {
+    /**
+     * @brief get global paged memory resource pool
+     */
+    get = 0,
+
+    /**
+     * @brief release current global paged memory resource pool and reset to new one
+     */
+    reset,
+};
+
+/**
+ * @brief thread-safe accessor to the global page pool
+ * @details the pool will be initialized on the first call and can be shared by multiple threads
+ * @param op operation on the page pool
+ * @return reference to the pool
+ */
+[[nodiscard]] inline memory::page_pool& page_pool(pool_operation op = pool_operation::get) {
+    static std::unique_ptr<memory::page_pool> pool = std::make_unique<memory::page_pool>();
+    switch(op) {
+        case pool_operation::get:
+            break;
+        case pool_operation::reset:
+            pool = std::make_unique<memory::page_pool>();
+            break;
+    }
+    return *pool;
 }
 
 }

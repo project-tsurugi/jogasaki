@@ -195,7 +195,8 @@ void dump_perf_info(bool prepare = true, bool run = true, bool completion = fals
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_schedule_completed, time_point_result_dumped, "dump result");
     }
     if (completion) {
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_close_db, time_point_start_completion, "close db");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_close_db, time_point_release_pool, "close db");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_release_pool, time_point_start_completion, "release memory pool");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_start_completion, time_point_end_completion, "complete and clean-up");
     }
 }
@@ -216,6 +217,9 @@ public:
         utils::get_watch().set_point(time_point_close_db, 0);
         LOG(INFO) << "start closing db";
         (void)db_->close();
+        utils::get_watch().set_point(time_point_release_pool, 0);
+        LOG(INFO) << "start releasing memory pool";
+        (void)global::page_pool(global::pool_operation::reset);
         utils::get_watch().set_point(time_point_start_completion, 0);
         LOG(INFO) << "start completion";
         return 0;

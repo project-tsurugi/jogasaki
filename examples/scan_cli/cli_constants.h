@@ -30,7 +30,8 @@ constexpr static std::size_t time_point_schedule = 6;
 constexpr static std::size_t time_point_schedule_completed = 7;
 constexpr static std::size_t time_point_result_dumped = 8;
 constexpr static std::size_t time_point_close_db = 9;
-constexpr static std::size_t time_point_start_completion = 10;
-constexpr static std::size_t time_point_end_completion = 11;
+constexpr static std::size_t time_point_release_pool = 10;
+constexpr static std::size_t time_point_start_completion = 11;
+constexpr static std::size_t time_point_end_completion = 12;
 
 }

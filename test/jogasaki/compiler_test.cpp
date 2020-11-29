@@ -28,6 +28,7 @@
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/binding/variable_info.h>
 #include <yugawara/runtime_feature.h>
 #include <yugawara/compiler.h>
 #include <yugawara/compiler_options.h>
@@ -56,6 +57,8 @@
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <yugawara/binding/extract.h>
+#include <takatori/relation/step/take_cogroup.h>
+#include <takatori/relation/step/join.h>
 #include "test_utils.h"
 
 namespace jogasaki::plan {
@@ -111,7 +114,32 @@ public:
             {
                 t0->columns()[0],
             },
-            {},
+            {
+                t0->columns()[1],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        });
+        std::shared_ptr<::yugawara::storage::table> t1 = storages->add_table("T1", {
+            "T1",
+            {
+                { "C0", type::int8(), criteria{nullity{false}}},
+                { "C1", type::float8 () },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i1 = storages->add_index("I1", {
+            t1,
+            "I1",
+            {
+                t1->columns()[0],
+            },
+            {
+                t1->columns()[1],
+            },
             {
                 ::yugawara::storage::index_feature::find,
                 ::yugawara::storage::index_feature::scan,
@@ -311,6 +339,65 @@ TEST_F(compiler_test, join) {
     auto s = jogasaki::plan::impl::create(b, ctx);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
+}
+
+TEST_F(compiler_test, left_outer_join) {
+    std::string sql = "select T0.C0, T1.C1 from T0 LEFT OUTER JOIN T1 ON T0.C1 = T1.C1";
+    compiler_context ctx{};
+    ctx.storage_provider(yugawara_provider());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto&& c = downcast<statement::execute>(ctx.statement());
+    dump(ctx.compiled_info(), ctx.statement());
+    auto& cinfo = ctx.compiled_info();
+
+    ASSERT_EQ(c.execution_plan().size(), 5);
+
+    auto& b = top(c.execution_plan());
+    auto&& graph = takatori::util::downcast<takatori::plan::process>(b).operators();
+    auto&& offer = last<relation::step::offer>(graph);
+    auto&& scan = next<relation::scan>(offer.input());
+    {
+        auto&& p0 = find(c.execution_plan(), scan);
+        auto&& p1 = find(c.execution_plan(), offer);
+        ASSERT_EQ(p0, p1);
+    }
+
+    auto& b2 = next_top(c.execution_plan(), b);
+    auto&& graph2 = takatori::util::downcast<takatori::plan::process>(b2).operators();
+    auto&& offer2 = last<relation::step::offer>(graph2);
+    auto&& scan2 = next<relation::scan>(offer2.input());
+    {
+        auto&& p0 = find(c.execution_plan(), scan2);
+        auto&& p1 = find(c.execution_plan(), offer2);
+        ASSERT_EQ(p0, p1);
+    }
+
+    auto& grp1 = b.downstreams()[0];
+    auto& grp2 = b2.downstreams()[0];
+
+    auto s = jogasaki::plan::impl::create(b, ctx);
+    auto io_map = s.relation_io_map();
+    ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
+
+    auto& b3 = grp1.downstreams()[0];
+    auto&& graph3 = takatori::util::downcast<takatori::plan::process>(b3).operators();
+    auto&& emit = last<relation::emit>(graph3);
+    auto&& join = next<relation::step::join>(emit.input());
+    auto&& take = next<relation::step::take_cogroup>(join.input());
+    {
+        auto&& p0 = find(c.execution_plan(), take);
+        auto&& p1 = find(c.execution_plan(), join);
+        auto&& p2 = find(c.execution_plan(), emit);
+        ASSERT_EQ(p0, p1);
+        ASSERT_EQ(p1, p2);
+        {
+            // some experiments
+            auto g0 = take.groups()[0];
+            auto src_c0 = g0.columns()[0].source();
+            auto dest_c0 = g0.columns()[0].destination();
+            auto& resolved = cinfo.type_of(dest_c0);
+        }
+    }
 }
 
 }

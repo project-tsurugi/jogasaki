@@ -62,6 +62,8 @@ namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
 namespace statement = ::takatori::statement;
 
+using ::yugawara::variable::criteria;
+using ::yugawara::variable::nullity;
 namespace tinfo = ::shakujo::common::core::type;
 
 std::unique_ptr<shakujo::model::program::Program> shakujo_program(std::string_view sql) {
@@ -81,11 +83,12 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
     std::shared_ptr<::yugawara::storage::configurable_provider> storages
         = std::make_shared<::yugawara::storage::configurable_provider>();
 
+    static constexpr auto not_nullable = nullity{false};
     std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
         "T0",
         {
-            { "C0", type::int8() },
-            { "C1", type::float8 () },
+            { "C0", type::int8(), not_nullable },
+            { "C1", type::float8(), not_nullable },
         },
     });
     std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
@@ -105,8 +108,8 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
     std::shared_ptr<::yugawara::storage::table> t1 = storages->add_table("T1", {
         "T1",
         {
-            { "C0", type::int8() },
-            { "C1", type::float8 () },
+            { "C0", type::int8(), not_nullable },
+            { "C1", type::float8(), not_nullable },
         },
     });
     std::shared_ptr<::yugawara::storage::index> i1 = storages->add_index("I1", {
@@ -114,6 +117,27 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
         "I1",
         {
             t1->columns()[0],
+        },
+        {},
+        {
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        },
+    });
+    std::shared_ptr<::yugawara::storage::table> t2 = storages->add_table("T2", {
+        "T1",
+        {
+            { "C0", type::int8(), not_nullable },
+            { "C1", type::float8(), not_nullable },
+        },
+    });
+    std::shared_ptr<::yugawara::storage::index> i2 = storages->add_index("I2", {
+        t2,
+        "I2",
+        {
+            t2->columns()[0],
         },
         {},
         {

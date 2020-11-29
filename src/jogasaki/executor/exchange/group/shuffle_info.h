@@ -104,8 +104,8 @@ private:
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(std::vector<std::size_t> const& indices) {
         auto num = indices.size();
-        meta::record_meta::value_entity_type fields{};
-        meta::record_meta::nullability_entity_type  nullables(num);
+        meta::record_meta::fields_type fields{};
+        meta::record_meta::nullability_type  nullables(num);
         meta::record_meta::value_offset_table_type value_offset_table{};
         meta::record_meta::nullity_offset_table_type nullity_offset_table{};
         fields.reserve(num);

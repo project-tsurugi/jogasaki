@@ -40,10 +40,6 @@ TEST_F(record_meta_test, single_field) {
     EXPECT_TRUE(meta.nullable(0));
     EXPECT_EQ(field_type(enum_tag<kind::int1>), meta[0]);
     EXPECT_NE(field_type(enum_tag<kind::int4>), meta[0]);
-    EXPECT_EQ(4,  meta.record_alignment());
-    EXPECT_EQ(8,  meta.record_size());
-    EXPECT_EQ(0,  meta.value_offset(0));
-    EXPECT_EQ(4*8,  meta.nullity_offset(0));
 }
 
 TEST_F(record_meta_test, non_nullables) {
@@ -59,12 +55,6 @@ TEST_F(record_meta_test, non_nullables) {
     EXPECT_FALSE(meta.nullable(0));
     EXPECT_FALSE(meta.nullable(1));
     EXPECT_EQ(field_type(enum_tag<kind::int4>), meta[0]);
-    EXPECT_EQ(8,  meta.record_alignment());
-    EXPECT_EQ(40,  meta.record_size());
-    EXPECT_EQ(0,  meta.value_offset(0));
-    EXPECT_EQ(8,  meta.value_offset(1));
-    EXPECT_EQ(16,  meta.value_offset(2));
-    EXPECT_EQ(24,  meta.value_offset(3));
 }
 
 TEST_F(record_meta_test, multiple_nullable_fields) {
@@ -85,83 +75,6 @@ TEST_F(record_meta_test, multiple_nullable_fields) {
     EXPECT_EQ(field_type(enum_tag<kind::int2>), meta[1]);
     EXPECT_EQ(field_type(enum_tag<kind::int4>), meta[2]);
     EXPECT_EQ(field_type(enum_tag<kind::int8>), meta[3]);
-    EXPECT_EQ(8,  meta.record_alignment());
-    EXPECT_EQ(32,  meta.record_size());
-    EXPECT_EQ(0,  meta.value_offset(0));
-    EXPECT_EQ(4,  meta.value_offset(1));
-    EXPECT_EQ(8,  meta.value_offset(2));
-    EXPECT_EQ(16,  meta.value_offset(3));
-    EXPECT_EQ(24*8,  meta.nullity_offset(0));
-    EXPECT_EQ(24*8+1,  meta.nullity_offset(2));
-}
-
-TEST_F(record_meta_test, 16_nullable_fields) {
-    record_meta meta{
-            std::vector<field_type>{
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-            },
-            boost::dynamic_bitset<std::uint64_t>{16}.flip()};
-    EXPECT_EQ(16, meta.field_count());
-    EXPECT_TRUE(meta.nullable(0));
-    EXPECT_TRUE(meta.nullable(15));
-    EXPECT_EQ(field_type(enum_tag<kind::boolean>), meta[0]);
-    EXPECT_EQ(field_type(enum_tag<kind::boolean>), meta[15]);
-    EXPECT_EQ(1,  meta.record_alignment());
-    EXPECT_EQ(18,  meta.record_size());
-    EXPECT_EQ(0,  meta.value_offset(0));
-    EXPECT_EQ(15,  meta.value_offset(15));
-    EXPECT_EQ(16*8,  meta.nullity_offset(0));
-    EXPECT_EQ(16*8+15,  meta.nullity_offset(15));
-}
-
-TEST_F(record_meta_test, 17_nullable_fields) {
-    record_meta meta{
-            std::vector<field_type>{
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-            },
-            boost::dynamic_bitset<std::uint64_t>{17}.flip()};
-    EXPECT_EQ(17, meta.field_count());
-    EXPECT_TRUE(meta.nullable(0));
-    EXPECT_TRUE(meta.nullable(16));
-    EXPECT_EQ(field_type(enum_tag<kind::boolean>), meta[0]);
-    EXPECT_EQ(field_type(enum_tag<kind::boolean>), meta[16]);
-    EXPECT_EQ(1,  meta.record_alignment());
-    EXPECT_EQ(20,  meta.record_size());
-    EXPECT_EQ(0,  meta.value_offset(0));
-    EXPECT_EQ(16,  meta.value_offset(16));
-    EXPECT_EQ(17*8,  meta.nullity_offset(0));
-    EXPECT_EQ(17*8+16,  meta.nullity_offset(16));
 }
 
 TEST_F(record_meta_test, type_variaties) {
@@ -197,22 +110,6 @@ TEST_F(record_meta_test, type_variaties) {
     EXPECT_EQ(field_type(enum_tag<kind::float4>), meta[6]);
     EXPECT_EQ(field_type(enum_tag<kind::float8>), meta[7]);
     EXPECT_EQ(field_type(enum_tag<kind::decimal>), meta[8]);
-    EXPECT_EQ(8,  meta.record_alignment());
-    EXPECT_EQ(80,  meta.record_size());
-    EXPECT_EQ(0,  meta.value_offset(0));
-    EXPECT_EQ(4,  meta.value_offset(1));
-    EXPECT_EQ(8,  meta.value_offset(2));
-    EXPECT_EQ(12,  meta.value_offset(3));
-    EXPECT_EQ(16,  meta.value_offset(4));
-    EXPECT_EQ(24,  meta.value_offset(5));
-    EXPECT_EQ(40,  meta.value_offset(6));
-    EXPECT_EQ(48,  meta.value_offset(7));
-    EXPECT_EQ(56,  meta.value_offset(8));
-    EXPECT_EQ(72*8,  meta.nullity_offset(0));
-    EXPECT_EQ(72*8+1,  meta.nullity_offset(2));
-    EXPECT_EQ(72*8+2,  meta.nullity_offset(4));
-    EXPECT_EQ(72*8+3,  meta.nullity_offset(6));
-    EXPECT_EQ(72*8+4,  meta.nullity_offset(8));
 }
 
 TEST_F(record_meta_test, equality1) {

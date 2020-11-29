@@ -33,11 +33,11 @@ namespace jogasaki::meta {
  */
 class record_meta final {
 public:
-    /// @brief entity type
-    using value_entity_type = std::vector<field_type>;
+    /// @brief fields type
+    using fields_type = std::vector<field_type>;
 
     /// @brief iterator for fields
-    using field_iterator = value_entity_type::const_iterator;
+    using field_iterator = fields_type::const_iterator;
 
     /// @brief byte offset of field value
     using value_offset_type = std::size_t;
@@ -48,8 +48,8 @@ public:
     /// @brief field index type (origin = 0)
     using field_index_type = std::size_t;
 
-    /// @brief the bitset entity type for nullability
-    using nullability_entity_type = boost::dynamic_bitset<std::uint64_t>;
+    /// @brief the bitset type for nullability
+    using nullability_type = boost::dynamic_bitset<std::uint64_t>;
 
     /// @brief the value offset table type
     using value_offset_table_type = std::vector<value_offset_type>;
@@ -92,24 +92,24 @@ public:
 
     /**
      * @brief construct new object
-     * @param entity ordered list of field types
+     * @param fields ordered list of field types
      * @param nullability ordered list of nullability bits, whose size must be equal to number of fields in the record
      * @param value_offset_table ordered list of value offset, whose size must be equal to number of fields in the record
      * @param nullity_offset_table ordered list of nullity offset, whose size must be equal to number of fields in the record
      */
-    record_meta(value_entity_type entity,
-            nullability_entity_type nullability,
+    record_meta(fields_type fields,
+            nullability_type nullability,
             value_offset_table_type value_offset_table,
             nullity_offset_table_type nullity_offset_table,
             std::size_t record_alignment,
             std::size_t record_size);
 
     /**
-     * @brief construct new object
-     * @param entity ordered list of field types
+     * @brief construct new object with default layout defined by field types and nullability
+     * @param fields ordered list of field types
      * @param nullability ordered list of nullability bits, whose size must be equal to number of fields in the record
      */
-    record_meta(value_entity_type entity, nullability_entity_type nullability);
+    record_meta(fields_type fields, nullability_type nullability);
 
     /**
      * @brief getter for field type
@@ -195,20 +195,14 @@ public:
         return out;
     }
 private:
-    value_entity_type entity_{};
-    nullability_entity_type nullability_{};
+    fields_type fields_{};
+    nullability_type nullability_{};
     std::size_t field_count_{};
     value_offset_table_type value_offset_table_{};
     nullity_offset_table_type nullity_offset_table_{};
     std::size_t record_alignment_{};
     std::size_t record_size_{};
 
-    /**
-     * Records are binary encoded as follows: First, the field values encoded by the native format of its runtime type are ordered
-     * respecting alignment of each runtime type. (The field order has been given to record_meta via constructor.) Then,
-     * nullity bits field follows, whose alignment is 1 byte and its size is the ceiling of number of fields divided by 8(bits_per_byte).
-     */
-    void calculate_default_layout_offset();
 };
 
 /**

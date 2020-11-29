@@ -182,19 +182,19 @@ TEST_F(record_printer_test, text) {
 }
 
 TEST_F(record_printer_test, nullable) {
-    struct {
+    struct S {
         std::int64_t x_;
         std::int64_t y_;
         std::int64_t z_;
         std::int64_t nullity_;
     } buffer;
     record_ref r{&buffer, sizeof(buffer)};
-    ASSERT_EQ(32, r.size());
     buffer.x_ = 1;
     buffer.y_ = 2;
     buffer.z_ = 3;
     buffer.nullity_ = 1;
 
+    auto nullity_base = offsetof(S, nullity_)*bits_per_byte;
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
@@ -202,11 +202,24 @@ TEST_F(record_printer_test, nullable) {
             field_type(enum_tag<kind::int8>),
             field_type(enum_tag<kind::int8>)
         },
-        boost::dynamic_bitset<std::uint64_t>{"101"s}};
+        boost::dynamic_bitset<std::uint64_t>{"101"s},
+        std::vector<std::size_t>{
+            offsetof(S, x_),
+            offsetof(S, y_),
+            offsetof(S, z_),
+        },
+        std::vector<std::size_t>{
+            nullity_base,
+            nullity_base+1,
+            nullity_base+2,
+        },
+        alignof(S),
+        sizeof(S)
+    };
     EXPECT_EQ(3, meta.field_count());
-    EXPECT_EQ(1, r.get_value<std::int64_t>(0));
-    EXPECT_EQ(2, r.get_value<std::int64_t>(8));
-    EXPECT_EQ(3, r.get_value<std::int64_t>(16));
+    EXPECT_EQ(1, r.get_value<std::int64_t>(meta.value_offset(0)));
+    EXPECT_EQ(2, r.get_value<std::int64_t>(meta.value_offset(1)));
+    EXPECT_EQ(3, r.get_value<std::int64_t>(meta.value_offset(2)));
 
     std::stringstream ss{};
     ss << r << meta;

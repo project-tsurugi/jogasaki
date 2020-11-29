@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <takatori/util/object_creator.h>
+#include <cstddef>
 #include <gtest/gtest.h>
 
 #include <jogasaki/accessor/record_ref.h>
@@ -48,20 +47,31 @@ TEST_F(record_copier_test, simple) {
         double f2_{};
         char n_[1]{};
     };
+
+    std::vector<std::size_t> offsets{
+        offsetof(S, x_),
+        offsetof(S, y_),
+        offsetof(S, f1_),
+        offsetof(S, f2_),
+    };
     S src{};
-    static_assert(sizeof(S) == 40);
     record_ref r{&src, sizeof(src)};
-    ASSERT_EQ(40, r.size());
     src.x_ = 1;
     src.y_ = 2;
     src.f1_ = 100.0;
     src.f2_ = 200.0;
 
-    std::size_t nullity_bit_base = 32*8;
+    std::size_t nullity_bit_base = offsetof(S, n_)*bits_per_byte;
     r.set_null(nullity_bit_base + 0, false);
     r.set_null(nullity_bit_base + 1, false);
     r.set_null(nullity_bit_base + 2, true);
     r.set_null(nullity_bit_base + 3, false);
+    std::vector<std::size_t> nullity_offsets{
+        nullity_bit_base + 0,
+        nullity_bit_base + 1,
+        nullity_bit_base + 2,
+        nullity_bit_base + 3,
+    };
 
     auto meta = std::make_shared<meta::record_meta>(
             std::vector<field_type>{
@@ -70,8 +80,12 @@ TEST_F(record_copier_test, simple) {
                     field_type(enum_tag<kind::float4>),
                     field_type(enum_tag<kind::float8>),
             },
-            boost::dynamic_bitset<std::uint64_t>{"1111"s});
-    ASSERT_EQ(40, meta->record_size());
+            boost::dynamic_bitset<std::uint64_t>{"1111"s},
+            offsets,
+            nullity_offsets,
+            alignof(S),
+            sizeof(S)
+    );
     record_copier copier{meta};
     S dst{};
     record_ref t{&dst, sizeof(dst)};
@@ -88,10 +102,10 @@ TEST_F(record_copier_test, simple) {
     EXPECT_FALSE(t.is_null(nullity_bit_base+3));
 }
 
-TEST_F(record_copier_test, non_standard_layout_record) {
+TEST_F(record_copier_test, layout_by_basic_record) {
     using kind = meta::field_type_kind;
     mock::basic_record rec{mock::create_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1>(
-        record_meta::nullability_entity_type{"11110"s},
+        record_meta::nullability_type{"11110"s},
         1, 2, 100.0, 200.0, 0)};
     auto r{rec.ref()};
     auto meta = rec.record_meta();
@@ -104,7 +118,7 @@ TEST_F(record_copier_test, non_standard_layout_record) {
 
     record_copier copier{meta};
     mock::basic_record dst{mock::create_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::int1>(
-        record_meta::nullability_entity_type{"11110"s},
+        record_meta::nullability_type{"11110"s},
         0, 0, 0.0, 0.0, 0)};
     record_ref t{dst.ref()};
     copier(t, r);
@@ -127,9 +141,7 @@ TEST_F(record_copier_test, text) {
         text t2_{};
     };
     S src{};
-    static_assert(sizeof(S) == 40);
     record_ref r{&src, sizeof(src)};
-    ASSERT_EQ(40, r.size());
     mock_memory_resource resource{};
     src.x_ = 1;
     auto s1 = "ABC456789012345"s;
@@ -139,16 +151,23 @@ TEST_F(record_copier_test, text) {
     ASSERT_EQ(16, resource.total_bytes_allocated_);
 
     auto meta = std::make_shared<meta::record_meta>(
-            std::vector<field_type>{
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::character>),
-                    field_type(enum_tag<kind::character>),
-            },
-            boost::dynamic_bitset<std::uint64_t>{"000"s});
-    ASSERT_EQ(40, meta->record_size());
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int4>),
+            field_type(enum_tag<kind::character>),
+            field_type(enum_tag<kind::character>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{"000"s},
+        std::vector<size_t>{
+            offsetof(S, x_),
+            offsetof(S, t1_),
+            offsetof(S, t2_),
+        },
+        std::vector<size_t>{0, 0, 0},
+        alignof(S),
+        sizeof(S)
+    );
     {
         record_copier copier{meta, &resource};
-
         S dst{};
         record_ref t{&dst, sizeof(dst)};
         copier(t, r);

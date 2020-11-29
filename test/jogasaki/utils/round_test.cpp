@@ -23,7 +23,7 @@ namespace jogasaki::testing {
 class round_test : public ::testing::Test {};
 
 
-TEST_F(round_test, simple) {
+TEST_F(round_test, round_down) {
     EXPECT_EQ(0, utils::round_down_to_power_of_two(0));
     EXPECT_EQ(1, utils::round_down_to_power_of_two(1));
     EXPECT_EQ(2, utils::round_down_to_power_of_two(2));
@@ -40,5 +40,21 @@ TEST_F(round_test, simple) {
     EXPECT_EQ(two_mega, utils::round_down_to_power_of_two(two_mega+1));
 }
 
+TEST_F(round_test, round_up) {
+    EXPECT_EQ(0, utils::round_up_to_power_of_two(0));
+    EXPECT_EQ(1, utils::round_up_to_power_of_two(1));
+    EXPECT_EQ(2, utils::round_up_to_power_of_two(2));
+    EXPECT_EQ(4, utils::round_up_to_power_of_two(3));
+    EXPECT_EQ(4, utils::round_up_to_power_of_two(4));
+    EXPECT_EQ(8, utils::round_up_to_power_of_two(5));
+    EXPECT_EQ(8, utils::round_up_to_power_of_two(7));
+    EXPECT_EQ(8, utils::round_up_to_power_of_two(8));
+    EXPECT_EQ(16, utils::round_up_to_power_of_two(9));
+
+    std::size_t two_mega = 2*1024*1024;
+    EXPECT_EQ(two_mega, utils::round_up_to_power_of_two(two_mega-1));
+    EXPECT_EQ(two_mega, utils::round_up_to_power_of_two(two_mega));
+    EXPECT_EQ(two_mega*2, utils::round_up_to_power_of_two(two_mega+1));
+}
 }
 

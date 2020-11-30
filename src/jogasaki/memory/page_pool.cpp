@@ -30,9 +30,8 @@ void *memory::page_pool::acquire_page() {
     {
         std::lock_guard<std::mutex> lock(page_mtx_);
         if (!free_pages_.empty()) {
-            auto it = free_pages_.begin();
-            page = *it;
-            free_pages_.erase(it);
+            page = free_pages_.back();
+            free_pages_.pop_back();
             return page;
         }
     }

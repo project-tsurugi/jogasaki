@@ -1,6 +1,7 @@
 # データフォーマット案
 
-version: 1
+version: 1 (umikongo)
+version: 2 (2020-11 kurosawa jogasaki用に修正)
 
 ## この文書について
 
@@ -71,7 +72,8 @@ version: 1
 ### character strings
 
 * エンコード形式
-  * 末尾を 0-fill したバイト列を格納する
+  * 先頭2バイトがu2で長さを表す
+  * 長さ分のバイト列が後続
 
 ### nullable values
 
@@ -81,10 +83,9 @@ version: 1
        * `0` - 存在しない
        * `1` - 存在する
   2. `T value`
-     * 実際の値
-       * key encoded value - 実際の値 (非NULL)
-       * all `0` - `NULL` の場合の値 (固定長)
-       * zero width - `NULL` の場合の値 (可変長)
+     * 実際の値 (値が存在する場合のみ)
+       * key encoded value - 実際の値
+     * 値が存在しない場合、`value`も存在しない
 
 ### ascendant/descendant order
 
@@ -96,11 +97,7 @@ version: 1
 
 ## ペイロードエンコーディング
 
-* ペイロードエンコーディングは、
-[MessagePack](https://github.com/msgpack/msgpack) でバイト列に変換し、そのバイト列を格納
-  * TBD: ここのエンコード方式はなんでもよい
-  * `NULL` は `NIL` として表現する
-  * https://github.com/msgpack/msgpack-c
+TBD
 
 ## スキーマ情報
 

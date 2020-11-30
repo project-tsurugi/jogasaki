@@ -50,6 +50,7 @@ static inline To type_change(From from) {
 }
 
 template<std::size_t N> struct int_n {};
+template<> struct int_n<8> { using type = std::int8_t; };
 template<> struct int_n<16> { using type = std::int16_t; };
 template<> struct int_n<32> { using type = std::int32_t; };
 template<> struct int_n<64> { using type = std::int64_t; };
@@ -145,7 +146,8 @@ public:
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
-    std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 32 || N == 64), void> write(T data, order odr) {
+    std::enable_if_t<(std::is_integral_v<T> && (N == 8 || N == 16 || N == 32 || N == 64)) ||
+        (std::is_floating_point_v<T> && (N == 32 || N == 64)), void> write(T data, order odr) {
         do_write<N>(details::key_encode<N>(data, odr));
     }
 
@@ -187,7 +189,8 @@ public:
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
-    std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>) && (N == 16 || N == 32 || N == 64), T> read(order odr, bool discard) {
+    std::enable_if_t<(std::is_integral_v<T> && (N == 8 || N == 16 || N == 32 || N == 64)) ||
+        (std::is_floating_point_v<T> && (N == 32 || N == 64)), T> read(order odr, bool discard) {
         T value{};
         auto d = do_read<N>(discard);
         if (! discard) {
@@ -236,7 +239,7 @@ private:
 };
 
 /**
- * @brief encode a field data to kvs binary representation
+ * @brief encode a non-nullable field data to kvs binary representation
  * @param src the record containing data to encode
  * @param offset byte offset of the field containing data to encode
  * @param type the type of the field
@@ -246,6 +249,9 @@ private:
 inline void encode(accessor::record_ref src, std::size_t offset, meta::field_type const& type, order odr, stream& dest) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
+        case kind::boolean: dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(src.get_value<meta::field_type_traits<kind::boolean>::runtime_type>(offset), odr); break;
+        case kind::int1: dest.write<meta::field_type_traits<kind::int1>::runtime_type>(src.get_value<meta::field_type_traits<kind::int1>::runtime_type>(offset), odr); break;
+        case kind::int2: dest.write<meta::field_type_traits<kind::int2>::runtime_type>(src.get_value<meta::field_type_traits<kind::int2>::runtime_type>(offset), odr); break;
         case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset), odr); break;
         case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.get_value<meta::field_type_traits<kind::int8>::runtime_type>(offset), odr); break;
         case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset), odr); break;
@@ -257,16 +263,37 @@ inline void encode(accessor::record_ref src, std::size_t offset, meta::field_typ
 }
 
 /**
- * @brief encode a field data to kvs binary representation
- * @param ref the record containing data to encode
+ * @brief encode a nullable field data to kvs binary representation
+ * @param src the record containing data to encode
  * @param offset byte offset of the field containing data to encode
+ * @param nullity_offset bit offset of the field nullity
  * @param type the type of the field
  * @param odr the field ordering used for encode/decode
  * @param dest the stream where the encoded data is written
  */
-inline void encode(executor::process::impl::expression::any src, meta::field_type const& type, order odr, stream& dest) {
+inline void encode_nullable(accessor::record_ref src, std::size_t offset, std::size_t nullity_offset, meta::field_type const& type, order odr, stream& dest) {
     using kind = meta::field_type_kind;
+    bool is_null = src.is_null(nullity_offset);
+    dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(is_null ? 0 : 1, odr);
+    if (! is_null) {
+        encode(src, offset, type, odr, dest);
+    }
+}
+
+/**
+ * @brief encode a non-nullable field data to kvs binary representation
+ * @param src the source data to encode
+ * @param type the type of the field
+ * @param odr the field ordering used for encode/decode
+ * @param dest the stream where the encoded data is written
+ */
+inline void encode(executor::process::impl::expression::any const& src, meta::field_type const& type, order odr, stream& dest) {
+    using kind = meta::field_type_kind;
+    BOOST_ASSERT(src.has_value());  //NOLINT
     switch(type.kind()) {
+        case kind::boolean: dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(src.to<meta::field_type_traits<kind::boolean>::runtime_type>(), odr); break;
+        case kind::int1: dest.write<meta::field_type_traits<kind::int1>::runtime_type>(src.to<meta::field_type_traits<kind::int1>::runtime_type>(), odr); break;
+        case kind::int2: dest.write<meta::field_type_traits<kind::int2>::runtime_type>(src.to<meta::field_type_traits<kind::int2>::runtime_type>(), odr); break;
         case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.to<meta::field_type_traits<kind::int4>::runtime_type>(), odr); break;
         case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.to<meta::field_type_traits<kind::int8>::runtime_type>(), odr); break;
         case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.to<meta::field_type_traits<kind::float4>::runtime_type>(), odr); break;
@@ -278,17 +305,37 @@ inline void encode(executor::process::impl::expression::any src, meta::field_typ
 }
 
 /**
- * @brief decode kvs binary representation to a field data
+ * @brief encode a nullable field data to kvs binary representation
+ * @param src the source data to encode
+ * @param type the type of the field
+ * @param odr the field ordering used for encode/decode
+ * @param dest the stream where the encoded data is written
+ */
+inline void encode_nullable(executor::process::impl::expression::any const& src, meta::field_type const& type, order odr, stream& dest) {
+    using kind = meta::field_type_kind;
+    bool is_null = !src.has_value();
+    dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(is_null ? 0 : 1, odr);
+    if(! is_null) {
+        encode(src, type, odr, dest);
+    }
+}
+
+/**
+ * @brief decode a non-nullable field's kvs binary representation to a field data
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param odr the field ordering used for encode/decode
  * @param dest the record to containing the field
  * @param offset byte offset of the field
+ * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  */
 inline void decode(stream& src, meta::field_type const& type, order odr, accessor::record_ref dest, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
+        case kind::boolean: dest.set_value<meta::field_type_traits<kind::boolean>::runtime_type>(offset, src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false)); break;
+        case kind::int1: dest.set_value<meta::field_type_traits<kind::int1>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, false)); break;
+        case kind::int2: dest.set_value<meta::field_type_traits<kind::int2>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int2>::runtime_type>(odr, false)); break;
         case kind::int4: dest.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)); break;
         case kind::int8: dest.set_value<meta::field_type_traits<kind::int8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)); break;
         case kind::float4: dest.set_value<meta::field_type_traits<kind::float4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)); break;
@@ -300,7 +347,34 @@ inline void decode(stream& src, meta::field_type const& type, order odr, accesso
 }
 
 /**
- * @brief read kvs binary representation, proceed the stream, and discard the result
+ * @brief decode a nullable field's kvs binary representation to a field data
+ * @param src the stream where the encoded data is read
+ * @param type the type of the field that holds decoded data
+ * @param odr the field ordering used for encode/decode
+ * @param dest the record to containing the field
+ * @param offset byte offset of the field
+ * @param nullity_offset bit offset of the field nullity
+ * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ */
+inline void decode_nullable(
+    stream& src,
+    meta::field_type const& type,
+    order odr,
+    accessor::record_ref dest,
+    std::size_t offset,
+    std::size_t nullity_offset,
+    memory::paged_memory_resource* resource = nullptr
+) {
+    using kind = meta::field_type_kind;
+    bool is_null = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false) == 0;
+    dest.set_null(nullity_offset, is_null);
+    if (! is_null) {
+        decode(src, type, odr, dest, offset, resource);
+    }
+}
+
+/**
+ * @brief read kvs binary representation which is not nullable, proceed the stream, and discard the result
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param odr the field ordering used for encode/decode
@@ -308,6 +382,9 @@ inline void decode(stream& src, meta::field_type const& type, order odr, accesso
 inline void consume_stream(stream& src, meta::field_type const& type, order odr) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
+        case kind::boolean: src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, true); break;
+        case kind::int1: src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, true); break;
+        case kind::int2: src.read<meta::field_type_traits<kind::int2>::runtime_type>(odr, true); break;
         case kind::int4: src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, true); break;
         case kind::int8: src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, true); break;
         case kind::float4: src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, true); break;
@@ -315,6 +392,20 @@ inline void consume_stream(stream& src, meta::field_type const& type, order odr)
         case kind::character: src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, true, nullptr); break;
         default:
             fail();
+    }
+}
+
+/**
+ * @brief read kvs binary representation which is nullable, proceed the stream, and discard the result
+ * @param src the stream where the encoded data is read
+ * @param type the type of the field that holds decoded data
+ * @param odr the field ordering used for encode/decode
+ */
+inline void consume_stream_nullable(stream& src, meta::field_type const& type, order odr) {
+    using kind = meta::field_type_kind;
+    bool is_null = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false) == 0;
+    if (! is_null) {
+        consume_stream(src, type, odr);
     }
 }
 

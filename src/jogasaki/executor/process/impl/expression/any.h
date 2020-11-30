@@ -50,7 +50,7 @@ public:
      * @brief accessor of the content value in given type
      */
     template<typename T>
-    T to() {
+    [[nodiscard]] T to() const noexcept {
         if(auto* p = std::get_if<T>(&body_); p != nullptr) {
             return *p;
         }
@@ -83,6 +83,8 @@ private:
         std::monostate,
         class error,
         bool,
+        std::int8_t,
+        std::int16_t,
         std::int32_t,
         std::int64_t,
         float,

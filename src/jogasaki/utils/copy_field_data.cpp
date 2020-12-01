@@ -82,5 +82,21 @@ void copy_field(
     fail();
 }
 
+void copy_nullable_field(
+    const meta::field_type &type,
+    accessor::record_ref target,
+    std::size_t target_offset,
+    std::size_t target_nullity_offset,
+    accessor::record_ref source,
+    std::size_t source_offset,
+    std::size_t source_nullity_offset,
+    memory::paged_memory_resource* resource
+) {
+    bool is_null = source.is_null(source_nullity_offset);
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
+    copy_field(type, target, target_offset, source, source_offset, resource);
+}
+
 }
 

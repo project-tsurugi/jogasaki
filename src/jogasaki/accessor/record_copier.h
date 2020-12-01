@@ -74,6 +74,8 @@ private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     memory::paged_memory_resource* resource_{};
     std::vector<offset_type> text_field_offsets_{};
+    std::vector<offset_type> text_field_nullity_offsets_{};
+    std::vector<bool> text_field_nullability_{};
 };
 
 }

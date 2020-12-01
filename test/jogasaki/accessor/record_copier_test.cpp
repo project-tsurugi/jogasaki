@@ -136,7 +136,7 @@ TEST_F(record_copier_test, layout_by_basic_record) {
 
 TEST_F(record_copier_test, text) {
     struct S {
-        std::int64_t x_{};
+        std::int32_t x_{};
         text t1_{};
         text t2_{};
     };
@@ -173,9 +173,9 @@ TEST_F(record_copier_test, text) {
         copier(t, r);
         ASSERT_EQ(32, resource.total_bytes_allocated_);
 
-        EXPECT_EQ(1, t.get_value<std::int32_t>(0));
-        EXPECT_EQ(src.t1_, t.get_value<text>(8));
-        EXPECT_EQ(src.t2_, t.get_value<text>(24));
+        EXPECT_EQ(1, t.get_value<std::int32_t>(meta->value_offset(0)));
+        EXPECT_EQ(src.t1_, t.get_value<text>(meta->value_offset(1)));
+        EXPECT_EQ(src.t2_, t.get_value<text>(meta->value_offset(2)));
     }
     {
         record_copier shallow_copier{meta};
@@ -185,9 +185,9 @@ TEST_F(record_copier_test, text) {
         shallow_copier(t, r);
         ASSERT_EQ(32, resource.total_bytes_allocated_);
 
-        EXPECT_EQ(1, t.get_value<std::int32_t>(0));
-        EXPECT_EQ(src.t1_, t.get_value<text>(8));
-        EXPECT_EQ(src.t2_, t.get_value<text>(24));
+        EXPECT_EQ(1, t.get_value<std::int32_t>(meta->value_offset(0)));
+        EXPECT_EQ(src.t1_, t.get_value<text>(meta->value_offset(1)));
+        EXPECT_EQ(src.t2_, t.get_value<text>(meta->value_offset(2)));
     }
 }
 

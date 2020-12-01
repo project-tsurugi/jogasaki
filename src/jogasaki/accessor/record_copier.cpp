@@ -22,6 +22,8 @@ record_copier::record_copier(maybe_shared_ptr<meta::record_meta> meta, memory::p
     for(std::size_t i=0, n = meta_->field_count(); i < n; ++i) {
         if (meta_->at(i).kind() == meta::field_type_kind::character) {
             text_field_offsets_.emplace_back(meta_->value_offset(i));
+            text_field_nullity_offsets_.emplace_back(meta_->nullity_offset(i));
+            text_field_nullability_.emplace_back(meta_->nullable(i));
         }
     }
 }
@@ -29,11 +31,16 @@ record_copier::record_copier(maybe_shared_ptr<meta::record_meta> meta, memory::p
 void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref src) {
     std::memcpy(dst, src.data(), size);
     if (resource_ != nullptr) {
-        for(auto& i : text_field_offsets_) {
-            auto t = src.get_value<accessor::text>(i);
+        for(std::size_t i = 0, n = text_field_offsets_.size(); i < n ; ++i) {
+            if (text_field_nullability_[i]) {
+                auto nullity_offset = text_field_nullity_offsets_[i];
+                if(src.is_null(nullity_offset)) continue;
+            }
+            auto value_offset = text_field_offsets_[i];
+            auto t = src.get_value<accessor::text>(value_offset);
             auto sv = static_cast<std::string_view>(t);
             text copied{resource_, sv.data(), sv.size()};
-            std::memcpy(static_cast<unsigned char*>(dst)+i, &copied, sizeof(text)); //NOLINT
+            std::memcpy(static_cast<unsigned char*>(dst)+value_offset, &copied, sizeof(text)); //NOLINT
         }
     }
 }

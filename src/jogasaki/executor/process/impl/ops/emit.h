@@ -107,9 +107,8 @@ public:
         auto target = ctx.buffer_.ref();
         auto source = ctx.variables().store().ref();
         for(auto &f : fields_) {
-            utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+            utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, source, f.source_offset_, f.source_nullity_offset_);
         }
-
         if (!ctx.writer_) {
             ctx.writer_ = unsafe_downcast<external_writer>(ctx.task_context().external_writer(external_writer_index_));
         }
@@ -143,7 +142,10 @@ private:
         for(auto&& c : columns) {
             fields.emplace_back(utils::type_for(info.compiled_info(), c.source()));
         }
-        return std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset<std::uint64_t>(sz)); // TODO nullity
+        return std::make_shared<meta::record_meta>(
+            std::move(fields),
+            boost::dynamic_bitset<std::uint64_t>(sz).flip()
+        ); // assuming all fields nullable
     }
 
     [[nodiscard]] std::vector<details::emit_field> create_fields(
@@ -162,8 +164,7 @@ private:
                 meta_->value_offset(ind),
                 info.nullity_offset(),
                 meta_->nullity_offset(ind),
-                //TODO nullity
-                false // nullable
+                true // assuming variables and output columns are all nullable
             });
         }
         return fields;

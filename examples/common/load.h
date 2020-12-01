@@ -58,6 +58,19 @@ void encode_field(
     }
     kvs::encode(a, f, spec, target);
 }
+
+template <class T>
+any create_value(
+    T val,
+    std::size_t record_count,
+    bool nullable
+) {
+    if (nullable && record_count % 5 == 0) {
+        return {};
+    }
+    return expression::any{std::in_place_type<T>, val};
+}
+
 static void fill_fields(
     meta::record_meta const& meta,
     kvs::stream& target,
@@ -75,22 +88,22 @@ static void fill_fields(
         bool nullable = meta.nullable(field_index);
         switch(f.kind()) {
             case kind::int4: {
-                expression::any a{std::in_place_type<std::int32_t>, sequential ? record_count : rnd()};
+                expression::any a{create_value<std::int32_t>(sequential ? record_count : rnd(), record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::int4>), spec, nullable, target);
                 break;
             }
             case kind::int8: {
-                expression::any a{std::in_place_type<std::int64_t>, sequential ? record_count : rnd()};
+                expression::any a{create_value<std::int64_t>(sequential ? record_count : rnd(), record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::int8>), spec, nullable, target);
                 break;
             }
             case kind::float4: {
-                expression::any a{std::in_place_type<float>, sequential ? record_count : rnd()};
+                expression::any a{create_value<float>(sequential ? record_count : rnd(), record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::float4>), spec, nullable, target);
                 break;
             }
             case kind::float8: {
-                expression::any a{std::in_place_type<double>, sequential ? record_count : rnd()};
+                expression::any a{create_value<double>(sequential ? record_count : rnd(), record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
@@ -99,7 +112,7 @@ static void fill_fields(
                 std::size_t len = 1 + (sequential ? record_count : rnd()) % 70;
                 len = record_count % 2 == 1 ? len + 20 : len;
                 std::string d(len, c);
-                expression::any a{std::in_place_type<accessor::text>, accessor::text{d.data(), d.size()}};
+                expression::any a{create_value<accessor::text>(accessor::text{d.data(), d.size()}, record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::character>), spec, nullable, target);
                 break;
             }

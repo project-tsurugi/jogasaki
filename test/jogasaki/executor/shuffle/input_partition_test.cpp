@@ -127,18 +127,35 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
 
 TEST_F(input_partition_test, text) {
     auto context = std::make_shared<request_context>();
-    input_partition partition{
-            std::make_unique<mock_memory_resource>(),
-            std::make_unique<mock_memory_resource>(),
-            std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta2(), std::vector<std::size_t>{0}),
-            context.get(),
-            };
-
     struct S {
         text t1_{};
         double f_{};
         text t2_{};
+    };
+    auto meta = std::make_shared<meta::record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::character>),
+            field_type(enum_tag<kind::float8>),
+            field_type(enum_tag<kind::character>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{"000"s},
+        std::vector<std::size_t>{
+            offsetof(S, t1_),
+            offsetof(S, f_),
+            offsetof(S, t2_),
+        },
+        std::vector<std::size_t>{0, 0, 0},
+        alignof(S),
+        sizeof(S)
+    );
+    input_partition partition{
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_shared<shuffle_info>(
+            meta,
+            std::vector<std::size_t>{0}),
+        context.get(),
     };
 
     mock_memory_resource res{};
@@ -161,8 +178,7 @@ TEST_F(input_partition_test, text) {
     accessor::record_ref res2{*it++, sizeof(S)};
     accessor::record_ref res3{*it++, sizeof(S)};
 
-    auto meta2 = test_record_meta2();
-    comparator comp{meta2.get()};
+    comparator comp{meta.get()};
     EXPECT_EQ(0, comp(ref1, res1));
     EXPECT_EQ(0, comp(ref2, res2));
     EXPECT_EQ(0, comp(ref3, res3));

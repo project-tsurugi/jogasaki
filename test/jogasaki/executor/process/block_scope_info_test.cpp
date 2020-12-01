@@ -274,9 +274,8 @@ TEST_F(block_scope_info_test, filter) {
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
     EXPECT_EQ(emit.columns()[1].source(), c1p0);
 
-    // TODO conform to column ordering rule
-    EXPECT_EQ(8, map.at(c0p0).value_offset());
-    EXPECT_EQ(0, map.at(c1p0).value_offset());
+    EXPECT_NO_THROW(map.at(c0p0));
+    EXPECT_NO_THROW(map.at(c1p0));
 
     auto& inds = v.second;
     ASSERT_EQ(3, inds.size());

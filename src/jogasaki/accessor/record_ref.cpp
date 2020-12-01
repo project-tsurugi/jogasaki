@@ -15,11 +15,13 @@
  */
 #include "record_ref.h"
 
+#include <takatori/util/assertion.h>
+
 namespace jogasaki::accessor {
 
 
 bool record_ref::is_null(record_ref::offset_type nullity_offset) const noexcept {
-    assert(nullity_offset / bits_per_byte < size_); //NOLINT
+    BOOST_ASSERT(nullity_offset / bits_per_byte < size_); //NOLINT
     offset_type byte_offset = nullity_offset / bits_per_byte;
     offset_type offset_in_byte = nullity_offset % bits_per_byte;
     unsigned char bitmask = 1U << offset_in_byte;
@@ -28,7 +30,7 @@ bool record_ref::is_null(record_ref::offset_type nullity_offset) const noexcept 
 }
 
 void record_ref::set_null(record_ref::offset_type nullity_offset, bool nullity) noexcept {
-    assert(nullity_offset / bits_per_byte < size_); //NOLINT
+    BOOST_ASSERT(nullity_offset / bits_per_byte < size_); //NOLINT
     offset_type byte_offset = nullity_offset / bits_per_byte;
     offset_type offset_in_byte = nullity_offset % bits_per_byte;
     unsigned char bitmask = 1U << offset_in_byte;

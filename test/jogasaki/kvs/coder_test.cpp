@@ -462,5 +462,10 @@ TEST_F(coder_test, encode_any_nullable) {
     ASSERT_FALSE(target_record.ref().get_if<double>(tgt_meta->nullity_offset(3), tgt_meta->value_offset(3)));
 }
 
+TEST_F(coder_test, streams) {
+    std::string src(100, 0);
+    kvs::stream s{src};
+    ASSERT_EQ(100, s.capacity());
 }
 
+}

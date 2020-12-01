@@ -87,6 +87,8 @@ public:
     friend class scan_context;
 
     using column = takatori::relation::scan::column;
+
+    using memory_resource = memory::lifo_paged_memory_resource;
     /**
      * @brief create empty object
      */
@@ -187,20 +189,8 @@ public:
             }
             kvs::stream keys{const_cast<char*>(k.data()), k.length()}; //TODO create read-only stream
             kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
-            for(auto&& f : key_fields_) {
-                if (! f.target_exists_) {
-                    kvs::consume_stream(keys, f.type_, f.order_);
-                    continue;
-                }
-                kvs::decode(keys, f.type_, f.order_, target, f.target_offset_, resource);
-            }
-            for(auto&& f : value_fields_) {
-                if (! f.target_exists_) {
-                    kvs::consume_stream(values, f.type_, f.order_);
-                    continue;
-                }
-                kvs::decode(values, f.type_, f.order_, target, f.target_offset_, resource);
-            }
+            decode_fields(key_fields_, keys, target, resource);
+            decode_fields(value_fields_, values, target, resource);
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
@@ -244,6 +234,24 @@ private:
         ctx.it_.reset();
     }
 
+    void decode_fields(std::vector<details::scan_field> const& fields, kvs::stream& stream, accessor::record_ref target, memory_resource* resource) {
+        for(auto&& f : fields) {
+            if (! f.target_exists_) {
+                if (f.nullable_) {
+                    kvs::consume_stream_nullable(stream, f.type_, f.order_);
+                    continue;
+                }
+                kvs::consume_stream(stream, f.type_, f.order_);
+                continue;
+            }
+            if (f.nullable_) {
+                kvs::decode_nullable(stream, f.type_, f.order_, target, f.target_offset_, f.target_nullity_offset_, resource);
+                continue;
+            }
+            kvs::decode(stream, f.type_, f.order_, target, f.target_offset_, resource);
+        }
+    }
+
     std::vector<details::scan_field> create_fields(
         yugawara::storage::index const& idx,
         std::vector<column, takatori::util::object_allocator<column>> const& columns,
@@ -271,7 +279,7 @@ private:
                         false,
                         0,
                         0,
-                        false,// TODO nullity
+                        k.column().criteria().nullity().nullable(),
                         odr
                     );
                     continue;
@@ -282,7 +290,7 @@ private:
                     true,
                     block.value_map().at(var).value_offset(),
                     block.value_map().at(var).nullity_offset(),
-                    false, // TODO nullity
+                    k.column().criteria().nullity().nullable(),
                     odr
                 );
             }
@@ -291,14 +299,15 @@ private:
         ret.reserve(idx.values().size());
         for(auto&& v : idx.values()) {
             auto b = bindings(v);
-            auto t = utils::type_for(static_cast<yugawara::storage::column const&>(v).type());
+            auto& c = static_cast<yugawara::storage::column const&>(v);
+            auto t = utils::type_for(c.type());
             if (table_to_stream.count(b) == 0) {
                 ret.emplace_back(
                     t,
                     false,
                     0,
                     0,
-                    false,// TODO nullity
+                    c.criteria().nullity().nullable(),
                     kvs::order::undefined
                 );
                 continue;
@@ -309,7 +318,7 @@ private:
                 true,
                 block.value_map().at(var).value_offset(),
                 block.value_map().at(var).nullity_offset(),
-                false, // TODO nullity
+                c.criteria().nullity().nullable(),
                 kvs::order::undefined
             );
         }

@@ -139,10 +139,12 @@ public:
 
     template<std::size_t N>
     void do_write(details::uint_t<N> data) {
+        auto len = N/bits_per_byte;
+        BOOST_ASSERT(capacity_ == 0 || pos_ + len <= capacity_);  //NOLINT
         if (capacity_ > 0) {
-            std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), N/bits_per_byte); //NOLINT
+            std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), len); //NOLINT
         }
-        pos_ += N/bits_per_byte;
+        pos_ += len;
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
@@ -152,7 +154,7 @@ public:
     }
 
     void do_write(char const* dt, std::size_t sz, order odr) {
-        assert(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
+        BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
         if (sz > 0 && capacity_ > 0) {
             if (odr == order::ascending) {
                 std::memcpy(base_ + pos_, dt, sz);  // NOLINT
@@ -169,7 +171,7 @@ public:
     std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr) {
         std::string_view sv{data};
         // for key encoding, we are assuming the text is not so long
-        assert(sv.length() < 32768); //NOLINT
+        BOOST_ASSERT(sv.length() < 32768); //NOLINT
         details::text_encoding_prefix_type len{static_cast<details::text_encoding_prefix_type>(sv.length())};
         do_write<details::text_encoding_prefix_type_bits>(details::key_encode<details::text_encoding_prefix_type_bits>(len, odr));
         do_write(sv.data(), sv.size(), odr);
@@ -178,7 +180,7 @@ public:
     template<std::size_t N>
     details::uint_t<N> do_read(bool discard) {
         auto sz = N/bits_per_byte;
-        assert(pos_ + sz <= capacity_);  // NOLINT
+        BOOST_ASSERT(pos_ + sz <= capacity_);  // NOLINT
         auto pos = pos_;
         pos_ += sz;
         details::uint_t<N> ret{};
@@ -202,9 +204,9 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
         auto l = read<details::text_encoding_prefix_type>(odr, false);
-        assert(l >= 0); //NOLINT
+        BOOST_ASSERT(l >= 0); //NOLINT
         auto len = static_cast<std::size_t>(l);
-        assert(pos_ + len <= capacity_);  // NOLINT
+        BOOST_ASSERT(pos_ + len <= capacity_);  // NOLINT
         auto pos = pos_;
         pos_ += len;
         if (!discard && len > 0) {

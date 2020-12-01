@@ -82,11 +82,9 @@ create_scopes_info(relation::graph_type &relations, const yugawara::compiled_inf
     // FIXME support multiple blocks
     auto b0 = find_unique_head(bg);
     if (!b0) {
-        // TODO multiple heads supported?
         fail();
     }
     auto&& n0 = analyzer.inspect(*b0);
-
     auto& killed = n0.kill();
     std::unordered_map<takatori::descriptor::variable, std::size_t> map{};
     std::vector<meta::field_type> fields{};
@@ -100,10 +98,9 @@ create_scopes_info(relation::graph_type &relations, const yugawara::compiled_inf
         }
     }
     boost::dynamic_bitset<std::uint64_t> nullability{};
-
-    nullability.resize(fields.size()); // TODO fetch nullability
+    nullability.resize(fields.size(), true); // currently stream variables are all nullable
     auto meta = std::make_shared<meta::record_meta>(std::move(fields), std::move(nullability));
-    assert(meta->field_count() == variables.size()); //NOLINT
+    BOOST_ASSERT(meta->field_count() == variables.size()); //NOLINT
     for(std::size_t i=0, n = meta->field_count(); i < n; ++i) {
         auto& v = variables[i];
         map[v] = i;

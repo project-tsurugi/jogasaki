@@ -52,6 +52,10 @@ private:
 constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
 
+constexpr kvs::coding_spec spec_asc = kvs::spec_key_ascending;
+constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
+constexpr kvs::coding_spec spec_val = kvs::spec_value;
+
 TEST_F(coder_test, simple) {
     std::string buf(100, 0);
     kvs::stream s{buf};
@@ -348,12 +352,12 @@ TEST_F(coder_test, encode_decode) {
     test::record source_record{2, 2.0};
     test::record target_record{1, 1.0};
     auto src_meta = source_record.record_meta();
-    encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), asc, s);
-    encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), asc, s);
+    encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), spec_asc, s);
+    encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), spec_asc, s);
     s.reset();
     auto tgt_meta = target_record.record_meta();
-    decode(s, tgt_meta->at(0), asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
-    decode(s, tgt_meta->at(1), asc, target_record.ref(), tgt_meta->value_offset(1), &resource);
+    decode(s, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
+    decode(s, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), &resource);
 
     ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
@@ -373,12 +377,12 @@ TEST_F(coder_test, encode_any) {
 
     executor::process::impl::expression::any src0{std::in_place_type<std::int64_t>, 2};
     executor::process::impl::expression::any src1{std::in_place_type<double>, 2.0};
-    encode(src0, src_meta->at(0), asc, s);
-    encode(src1, src_meta->at(1), asc, s);
+    encode(src0, src_meta->at(0), spec_asc, s);
+    encode(src1, src_meta->at(1), spec_asc, s);
     s.reset();
     auto tgt_meta = target_record.record_meta();
-    decode(s, tgt_meta->at(0), asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
-    decode(s, tgt_meta->at(1), asc, target_record.ref(), tgt_meta->value_offset(1), &resource);
+    decode(s, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
+    decode(s, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), &resource);
 
     ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
@@ -394,12 +398,12 @@ TEST_F(coder_test, nullable) {
         test::record source_record{2, 2.0};
         test::record target_record{1, 1.0};
         auto src_meta = source_record.record_meta();
-        encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), asc, s);
+        encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s);
+        encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s);
         s.reset();
         auto tgt_meta = target_record.record_meta();
-        decode_nullable(s, tgt_meta->at(0), asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
-        decode_nullable(s, tgt_meta->at(1), asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource);
+        decode_nullable(s, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
+        decode_nullable(s, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource);
 
         ASSERT_EQ(2, *target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
         ASSERT_EQ(2.0, *target_record.ref().get_if<double>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
@@ -412,16 +416,16 @@ TEST_F(coder_test, nullable) {
         mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(2, 2, 2.0, 2.0), {false, true, false, true})};
         mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(1, 1, 1.0, 1.0), {false, false, false, false})};
         auto src_meta = source_record.record_meta();
-        encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(2), src_meta->nullity_offset(2), src_meta->at(2), asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(3), src_meta->nullity_offset(3), src_meta->at(3), asc, s);
+        encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s);
+        encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s);
+        encode_nullable(source_record.ref(), src_meta->value_offset(2), src_meta->nullity_offset(2), src_meta->at(2), spec_asc, s);
+        encode_nullable(source_record.ref(), src_meta->value_offset(3), src_meta->nullity_offset(3), src_meta->at(3), spec_asc, s);
         s.reset();
         auto tgt_meta = target_record.record_meta();
-        decode_nullable(s, tgt_meta->at(0), asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
-        decode_nullable(s, tgt_meta->at(1), asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource);
-        decode_nullable(s, tgt_meta->at(2), asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource);
-        decode_nullable(s, tgt_meta->at(3), asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource);
+        decode_nullable(s, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
+        decode_nullable(s, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource);
+        decode_nullable(s, tgt_meta->at(2), spec_asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource);
+        decode_nullable(s, tgt_meta->at(3), spec_asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource);
 
         ASSERT_EQ(2, *target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
         ASSERT_FALSE(target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
@@ -445,16 +449,16 @@ TEST_F(coder_test, encode_any_nullable) {
     executor::process::impl::expression::any src2{std::in_place_type<double>, 2.0};
     executor::process::impl::expression::any src3{};
 
-    encode_nullable(src0, src_meta->at(0), asc, s);
-    encode_nullable(src1, src_meta->at(1), asc, s);
-    encode_nullable(src2, src_meta->at(2), asc, s);
-    encode_nullable(src3, src_meta->at(3), asc, s);
+    encode_nullable(src0, src_meta->at(0), spec_asc, s);
+    encode_nullable(src1, src_meta->at(1), spec_asc, s);
+    encode_nullable(src2, src_meta->at(2), spec_asc, s);
+    encode_nullable(src3, src_meta->at(3), spec_asc, s);
     s.reset();
     auto tgt_meta = target_record.record_meta();
-    decode_nullable(s, tgt_meta->at(0), asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
-    decode_nullable(s, tgt_meta->at(1), asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource);
-    decode_nullable(s, tgt_meta->at(2), asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource);
-    decode_nullable(s, tgt_meta->at(3), asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource);
+    decode_nullable(s, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
+    decode_nullable(s, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource);
+    decode_nullable(s, tgt_meta->at(2), spec_asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource);
+    decode_nullable(s, tgt_meta->at(3), spec_asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource);
 
     ASSERT_EQ(2, *target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
     ASSERT_FALSE(target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));

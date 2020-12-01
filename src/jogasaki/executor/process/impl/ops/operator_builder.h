@@ -326,9 +326,9 @@ private:
             for(auto&& k : e.keys()) {
                 expression::evaluator eval{k.value(), info_->compiled_info()};
                 auto res = eval(scope, resource_);
-                auto odr = index_keys[i].direction() == relation::sort_direction::ascendant ?
-                    kvs::order::ascending : kvs::order::descending;
-                kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), odr, s);
+                auto spec = index_keys[i].direction() == relation::sort_direction::ascendant ?
+                    kvs::spec_key_ascending: kvs::spec_key_descending;
+                kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), spec, s);
                 resource_->deallocate_after(cp);
                 ++i;
             }

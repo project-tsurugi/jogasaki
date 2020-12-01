@@ -67,12 +67,13 @@ private:
     // predefined table definitions
     void add_default_table_defs(configurable_provider* provider) {
         namespace type = ::takatori::type;
+        using ::yugawara::variable::nullity;
         {
             std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T0", {
                 "T0",
                 {
-                    { "C0", type::int8() },
-                    { "C1", type::float8 () },
+                    { "C0", type::int8(), nullity{false} },
+                    { "C1", type::float8 (), nullity{true} },
                 },
             });
             std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I0", {
@@ -96,11 +97,11 @@ private:
             std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T1", {
                 "T1",
                 {
-                    { "C0", type::int4() },
-                    { "C1", type::int8() },
-                    { "C2", type::float8() },
-                    { "C3", type::float4() },
-                    { "C4", type::character(type::varying, 100) },
+                    { "C0", type::int4(), nullity{false} },
+                    { "C1", type::int8(), nullity{true}  },
+                    { "C2", type::float8() , nullity{true} },
+                    { "C3", type::float4() , nullity{true} },
+                    { "C4", type::character(type::varying, 100) , nullity{true} },
                 },
             });
             std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I1", {
@@ -127,11 +128,11 @@ private:
             std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T2", {
                 "T2",
                 {
-                    { "C0", type::int4() },
-                    { "C1", type::int8() },
-                    { "C2", type::float8() },
-                    { "C3", type::float4() },
-                    { "C4", type::character(type::varying, 100) },
+                    { "C0", type::int4(), nullity{false} },
+                    { "C1", type::int8(), nullity{true}  },
+                    { "C2", type::float8() , nullity{true} },
+                    { "C3", type::float4() , nullity{true} },
+                    { "C4", type::character(type::varying, 100) , nullity{true} },
                 },
             });
             std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I2", {

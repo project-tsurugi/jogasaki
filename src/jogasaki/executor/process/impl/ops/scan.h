@@ -51,7 +51,7 @@ struct cache_align scan_field {
      * @param target_offset byte offset of the target field in the target record reference
      * @param target_nullity_offset bit offset of the target field nullity in the target record reference
      * @param nullable whether the target field is nullable or not
-     * @param order the ordering (asc/desc) of the target field used for encode/decode
+     * @param spec the spec of the target field used for encode/decode
      */
     scan_field(
         meta::field_type type,
@@ -59,14 +59,14 @@ struct cache_align scan_field {
         std::size_t target_offset,
         std::size_t target_nullity_offset,
         bool nullable,
-        kvs::order order
+        kvs::coding_spec spec
     ) :
         type_(std::move(type)),
         target_exists_(target_exists),
         target_offset_(target_offset),
         target_nullity_offset_(target_nullity_offset),
         nullable_(nullable),
-        order_(order)
+        spec_(spec)
         {}
 
     meta::field_type type_{}; //NOLINT
@@ -74,7 +74,7 @@ struct cache_align scan_field {
     std::size_t target_offset_{}; //NOLINT
     std::size_t target_nullity_offset_{}; //NOLINT
     bool nullable_{}; //NOLINT
-    kvs::order order_{}; //NOLINT
+    kvs::coding_spec spec_{}; //NOLINT
 };
 
 }
@@ -238,17 +238,17 @@ private:
         for(auto&& f : fields) {
             if (! f.target_exists_) {
                 if (f.nullable_) {
-                    kvs::consume_stream_nullable(stream, f.type_, f.order_);
+                    kvs::consume_stream_nullable(stream, f.type_, f.spec_);
                     continue;
                 }
-                kvs::consume_stream(stream, f.type_, f.order_);
+                kvs::consume_stream(stream, f.type_, f.spec_);
                 continue;
             }
             if (f.nullable_) {
-                kvs::decode_nullable(stream, f.type_, f.order_, target, f.target_offset_, f.target_nullity_offset_, resource);
+                kvs::decode_nullable(stream, f.type_, f.spec_, target, f.target_offset_, f.target_nullity_offset_, resource);
                 continue;
             }
-            kvs::decode(stream, f.type_, f.order_, target, f.target_offset_, resource);
+            kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
         }
     }
 
@@ -257,7 +257,8 @@ private:
         std::vector<column, takatori::util::object_allocator<column>> const& columns,
         processor_info const& info,
         block_index_type block_index,
-        bool key) {
+        bool key
+    ) {
         std::vector<details::scan_field> ret{};
         using variable = takatori::descriptor::variable;
         yugawara::binding::factory bindings{};
@@ -271,8 +272,8 @@ private:
             for(auto&& k : idx.keys()) {
                 auto b = bindings(k.column());
                 auto t = utils::type_for(k.column().type());
-                auto odr = k.direction() == relation::sort_direction::ascendant ?
-                    kvs::order::ascending : kvs::order::descending;
+                auto spec = k.direction() == relation::sort_direction::ascendant ?
+                    kvs::spec_key_ascending : kvs::spec_key_descending;
                 if (table_to_stream.count(b) == 0) {
                     ret.emplace_back(
                         t,
@@ -280,7 +281,7 @@ private:
                         0,
                         0,
                         k.column().criteria().nullity().nullable(),
-                        odr
+                        spec
                     );
                     continue;
                 }
@@ -291,7 +292,7 @@ private:
                     block.value_map().at(var).value_offset(),
                     block.value_map().at(var).nullity_offset(),
                     k.column().criteria().nullity().nullable(),
-                    odr
+                    spec
                 );
             }
             return ret;
@@ -308,7 +309,7 @@ private:
                     0,
                     0,
                     c.criteria().nullity().nullable(),
-                    kvs::order::undefined
+                    kvs::spec_value
                 );
                 continue;
             }
@@ -319,7 +320,7 @@ private:
                 block.value_map().at(var).value_offset(),
                 block.value_map().at(var).nullity_offset(),
                 c.criteria().nullity().nullable(),
-                kvs::order::undefined
+                kvs::spec_value
             );
         }
         return ret;

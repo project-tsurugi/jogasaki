@@ -36,6 +36,52 @@ enum class order {
     descending,
 };
 
+inline constexpr order operator~(order o) noexcept {
+    switch(o) {
+        case order::undefined: return order::undefined;
+        case order::ascending: return order::descending;
+        case order::descending: return order::ascending;
+    }
+}
+
+/**
+ * @brief specification on encoding/decoding
+ */
+class coding_spec {
+public:
+    /**
+     * @brief create default coding spec
+     */
+    coding_spec() = default;
+
+    /**
+     * @brief create new coding spec
+     */
+    constexpr coding_spec(bool is_key, order order) : is_key_(is_key), order_(order) {}
+
+    /**
+     * @brief returns whether the key encoding rule should apply
+     */
+    [[nodiscard]] bool is_key() const noexcept {
+        return is_key_;
+    }
+
+    /**
+     * @brief returns the order
+     */
+    [[nodiscard]] order ordering() const noexcept {
+        return order_;
+    }
+private:
+    bool is_key_{false};
+    order order_{order::undefined};
+};
+
+// predefined coding specs
+constexpr coding_spec spec_key_ascending = coding_spec(true, order::ascending);
+constexpr coding_spec spec_key_descending = coding_spec(true, order::descending);
+constexpr coding_spec spec_value = coding_spec(false, order::undefined);
+
 namespace details {
 
 using text_encoding_prefix_type = std::int16_t;
@@ -139,12 +185,12 @@ public:
 
     template<std::size_t N>
     void do_write(details::uint_t<N> data) {
-        auto len = N/bits_per_byte;
-        BOOST_ASSERT(capacity_ == 0 || pos_ + len <= capacity_);  //NOLINT
+        auto sz = N/bits_per_byte;
+        BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  //NOLINT
         if (capacity_ > 0) {
-            std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), len); //NOLINT
+            std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), sz); //NOLINT
         }
-        pos_ += len;
+        pos_ += sz;
     }
 
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
@@ -245,11 +291,12 @@ private:
  * @param src the record containing data to encode
  * @param offset byte offset of the field containing data to encode
  * @param type the type of the field
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  */
-inline void encode(accessor::record_ref src, std::size_t offset, meta::field_type const& type, order odr, stream& dest) {
+inline void encode(accessor::record_ref src, std::size_t offset, meta::field_type const& type, coding_spec spec, stream& dest) {
     using kind = meta::field_type_kind;
+    auto odr = spec.ordering();
     switch(type.kind()) {
         case kind::boolean: dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(src.get_value<meta::field_type_traits<kind::boolean>::runtime_type>(offset), odr); break;
         case kind::int1: dest.write<meta::field_type_traits<kind::int1>::runtime_type>(src.get_value<meta::field_type_traits<kind::int1>::runtime_type>(offset), odr); break;
@@ -270,15 +317,16 @@ inline void encode(accessor::record_ref src, std::size_t offset, meta::field_typ
  * @param offset byte offset of the field containing data to encode
  * @param nullity_offset bit offset of the field nullity
  * @param type the type of the field
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  */
-inline void encode_nullable(accessor::record_ref src, std::size_t offset, std::size_t nullity_offset, meta::field_type const& type, order odr, stream& dest) {
+inline void encode_nullable(accessor::record_ref src, std::size_t offset, std::size_t nullity_offset, meta::field_type const& type, coding_spec spec, stream& dest) {
     using kind = meta::field_type_kind;
+    auto odr = spec.ordering();
     bool is_null = src.is_null(nullity_offset);
     dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(is_null ? 0 : 1, odr);
     if (! is_null) {
-        encode(src, offset, type, odr, dest);
+        encode(src, offset, type, spec, dest);
     }
 }
 
@@ -286,12 +334,13 @@ inline void encode_nullable(accessor::record_ref src, std::size_t offset, std::s
  * @brief encode a non-nullable field data to kvs binary representation
  * @param src the source data to encode
  * @param type the type of the field
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  */
-inline void encode(executor::process::impl::expression::any const& src, meta::field_type const& type, order odr, stream& dest) {
+inline void encode(executor::process::impl::expression::any const& src, meta::field_type const& type, coding_spec spec, stream& dest) {
     using kind = meta::field_type_kind;
     BOOST_ASSERT(src.has_value());  //NOLINT
+    auto odr = spec.ordering();
     switch(type.kind()) {
         case kind::boolean: dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(src.to<meta::field_type_traits<kind::boolean>::runtime_type>(), odr); break;
         case kind::int1: dest.write<meta::field_type_traits<kind::int1>::runtime_type>(src.to<meta::field_type_traits<kind::int1>::runtime_type>(), odr); break;
@@ -310,15 +359,16 @@ inline void encode(executor::process::impl::expression::any const& src, meta::fi
  * @brief encode a nullable field data to kvs binary representation
  * @param src the source data to encode
  * @param type the type of the field
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  */
-inline void encode_nullable(executor::process::impl::expression::any const& src, meta::field_type const& type, order odr, stream& dest) {
+inline void encode_nullable(executor::process::impl::expression::any const& src, meta::field_type const& type, coding_spec spec, stream& dest) {
     using kind = meta::field_type_kind;
+    auto odr = spec.ordering();
     bool is_null = !src.has_value();
     dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(is_null ? 0 : 1, odr);
     if(! is_null) {
-        encode(src, type, odr, dest);
+        encode(src, type, spec, dest);
     }
 }
 
@@ -326,14 +376,15 @@ inline void encode_nullable(executor::process::impl::expression::any const& src,
  * @brief decode a non-nullable field's kvs binary representation to a field data
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the decoded field
  * @param dest the record to containing the field
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  */
-inline void decode(stream& src, meta::field_type const& type, order odr, accessor::record_ref dest, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
+inline void decode(stream& src, meta::field_type const& type, coding_spec spec, accessor::record_ref dest, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
     using kind = meta::field_type_kind;
+    auto odr = spec.ordering();
     switch(type.kind()) {
         case kind::boolean: dest.set_value<meta::field_type_traits<kind::boolean>::runtime_type>(offset, src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false)); break;
         case kind::int1: dest.set_value<meta::field_type_traits<kind::int1>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, false)); break;
@@ -352,7 +403,7 @@ inline void decode(stream& src, meta::field_type const& type, order odr, accesso
  * @brief decode a nullable field's kvs binary representation to a field data
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the decoded field
  * @param dest the record to containing the field
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
@@ -361,17 +412,20 @@ inline void decode(stream& src, meta::field_type const& type, order odr, accesso
 inline void decode_nullable(
     stream& src,
     meta::field_type const& type,
-    order odr,
+    coding_spec spec,
     accessor::record_ref dest,
     std::size_t offset,
     std::size_t nullity_offset,
     memory::paged_memory_resource* resource = nullptr
 ) {
     using kind = meta::field_type_kind;
-    bool is_null = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false) == 0;
+    auto odr = spec.ordering();
+    auto flag = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false);
+    BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
+    bool is_null = flag == 0;
     dest.set_null(nullity_offset, is_null);
     if (! is_null) {
-        decode(src, type, odr, dest, offset, resource);
+        decode(src, type, spec, dest, offset, resource);
     }
 }
 
@@ -379,10 +433,11 @@ inline void decode_nullable(
  * @brief read kvs binary representation which is not nullable, proceed the stream, and discard the result
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the decoded field
  */
-inline void consume_stream(stream& src, meta::field_type const& type, order odr) {
+inline void consume_stream(stream& src, meta::field_type const& type, coding_spec spec) {
     using kind = meta::field_type_kind;
+    auto odr = spec.ordering();
     switch(type.kind()) {
         case kind::boolean: src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, true); break;
         case kind::int1: src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, true); break;
@@ -401,13 +456,16 @@ inline void consume_stream(stream& src, meta::field_type const& type, order odr)
  * @brief read kvs binary representation which is nullable, proceed the stream, and discard the result
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
- * @param odr the field ordering used for encode/decode
+ * @param spec the coding spec for the decoded field
  */
-inline void consume_stream_nullable(stream& src, meta::field_type const& type, order odr) {
+inline void consume_stream_nullable(stream& src, meta::field_type const& type, coding_spec spec) {
     using kind = meta::field_type_kind;
-    bool is_null = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false) == 0;
+    auto odr = spec.ordering();
+    auto flag = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false);
+    BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
+    bool is_null = flag == 0;
     if (! is_null) {
-        consume_stream(src, type, odr);
+        consume_stream(src, type, spec);
     }
 }
 

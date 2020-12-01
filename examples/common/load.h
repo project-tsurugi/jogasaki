@@ -45,35 +45,53 @@ constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
 constexpr kvs::order undef = kvs::order::undefined;
 
+void encode_field(
+    expression::any const& a,
+    meta::field_type f,
+    kvs::coding_spec spec,
+    bool nullable,
+    kvs::stream& target
+) {
+    if (nullable) {
+        kvs::encode_nullable(a, f, spec, target);
+        return;
+    }
+    kvs::encode(a, f, spec, target);
+}
 static void fill_fields(
     meta::record_meta const& meta,
     kvs::stream& target,
     bool key,
     std::size_t record_count,
     bool sequential,
-    utils::xorshift_random64& rnd
+    utils::xorshift_random64& rnd,
+    std::vector<bool> const& key_order_asc = {}
 ) {
-    auto odr = key ? kvs::order::ascending : kvs::order::descending;
+    std::size_t field_index = 0;
     for(auto&& f: meta) {
+        auto spec = key ?
+            (key_order_asc[field_index] ? kvs::spec_key_ascending : kvs::spec_key_descending) :
+            kvs::spec_value;
+        bool nullable = meta.nullable(field_index);
         switch(f.kind()) {
             case kind::int4: {
                 expression::any a{std::in_place_type<std::int32_t>, sequential ? record_count : rnd()};
-                kvs::encode(a, meta::field_type(enum_tag<kind::int4>), odr, target);
+                encode_field(a, meta::field_type(enum_tag<kind::int4>), spec, nullable, target);
                 break;
             }
             case kind::int8: {
                 expression::any a{std::in_place_type<std::int64_t>, sequential ? record_count : rnd()};
-                kvs::encode(a, meta::field_type(enum_tag<kind::int8>), odr, target);
+                encode_field(a, meta::field_type(enum_tag<kind::int8>), spec, nullable, target);
                 break;
             }
             case kind::float4: {
                 expression::any a{std::in_place_type<float>, sequential ? record_count : rnd()};
-                kvs::encode(a, meta::field_type(enum_tag<kind::float4>), odr, target);
+                encode_field(a, meta::field_type(enum_tag<kind::float4>), spec, nullable, target);
                 break;
             }
             case kind::float8: {
                 expression::any a{std::in_place_type<double>, sequential ? record_count : rnd()};
-                kvs::encode(a, meta::field_type(enum_tag<kind::float8>), odr, target);
+                encode_field(a, meta::field_type(enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
             case kind::character: {
@@ -82,12 +100,14 @@ static void fill_fields(
                 len = record_count % 2 == 1 ? len + 20 : len;
                 std::string d(len, c);
                 expression::any a{std::in_place_type<accessor::text>, accessor::text{d.data(), d.size()}};
-                kvs::encode(a, meta::field_type(enum_tag<kind::character>), odr, target);
+                encode_field(a, meta::field_type(enum_tag<kind::character>), spec, nullable, target);
                 break;
             }
             default:
+                fail();
                 break;
         }
+        ++field_index;
     }
 }
 
@@ -112,15 +132,22 @@ void populate_storage_data(
     auto idx = provider->find_index(storage_name);
 
     std::vector<meta::field_type> flds{};
+    boost::dynamic_bitset<std::uint64_t> nullabilities{};
+    std::vector<bool> key_order_asc{};
     for(auto&& k : idx->keys()) {
         flds.emplace_back(utils::type_for(k.column().type()));
+        nullabilities.push_back(k.column().criteria().nullity().nullable());
+        key_order_asc.emplace_back(k.direction() == yugawara::storage::sort_direction::ascendant);
     }
-    meta::record_meta key_meta{std::move(flds), boost::dynamic_bitset<std::uint64_t>{idx->keys().size()}};
+    meta::record_meta key_meta{std::move(flds), std::move(nullabilities)};
     flds.clear();
+    nullabilities.clear();
     for(auto&& v : idx->values()) {
-        flds.emplace_back(utils::type_for(static_cast<yugawara::storage::column const&>(v).type()));
+        auto& c = static_cast<yugawara::storage::column const&>(v);
+        flds.emplace_back(utils::type_for(c.type()));
+        nullabilities.push_back(c.criteria().nullity().nullable());
     }
-    meta::record_meta val_meta{std::move(flds), boost::dynamic_bitset<std::uint64_t>{idx->values().size()}};
+    meta::record_meta val_meta{std::move(flds), std::move(nullabilities)};
 
     static std::size_t record_per_transaction = 10000;
     std::unique_ptr<kvs::transaction> tx{};
@@ -129,7 +156,7 @@ void populate_storage_data(
         if (! tx) {
             tx = db->create_transaction();
         }
-        fill_fields(key_meta, key_stream, true, i, sequential_data, rnd);
+        fill_fields(key_meta, key_stream, true, i, sequential_data, rnd, key_order_asc);
         fill_fields(val_meta, val_stream, false, i, sequential_data, rnd);
         if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},

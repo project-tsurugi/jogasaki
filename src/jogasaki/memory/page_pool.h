@@ -71,6 +71,7 @@ public:
 
     /**
      * @brief acquire page from the pool
+     * @param brandnew if true, page will always be newly created
      * @return pointer to the acquired pool
      * @return nullptr if page allocation failed
      */

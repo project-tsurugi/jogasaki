@@ -19,6 +19,8 @@
 #include <vector>
 #include <mutex>
 #include <sys/mman.h>
+#include <numa.h>
+#include <sched.h>
 
 #include <boost/container/pmr/memory_resource.hpp>
 
@@ -46,7 +48,7 @@ public:
     /**
      * @brief construct
      */
-    page_pool() = default;
+    page_pool();
     /**
      * @brief copy construct
      */
@@ -84,8 +86,18 @@ public:
     void release_page(void* page) noexcept;
 
 private:
-    std::vector<void *> free_pages_{};
+    std::vector<std::vector<void *>> free_pages_vector_{};
     std::mutex page_mtx_{};
+
+    std::vector<void *>& get_free_pages() {
+        if(int cpu = sched_getcpu(); cpu >= 0) {
+            if (int node = numa_node_of_cpu(cpu); node >= 0) {
+                return free_pages_vector_.at(node);
+            }
+        }
+        std::abort();
+    }
+
 };
 
 }

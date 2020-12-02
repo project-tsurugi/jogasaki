@@ -25,9 +25,9 @@ memory::page_pool::~page_pool() {
     }
 }
 
-void *memory::page_pool::acquire_page() {
+void *memory::page_pool::acquire_page(bool brandnew) {
     void* page;
-    {
+    if (!brandnew) {
         std::lock_guard<std::mutex> lock(page_mtx_);
         if (!free_pages_.empty()) {
             page = free_pages_.back();

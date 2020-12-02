@@ -74,7 +74,7 @@ public:
      * @return pointer to the acquired pool
      * @return nullptr if page allocation failed
      */
-    [[nodiscard]] void* acquire_page();
+    [[nodiscard]] void* acquire_page(bool brandnew = false);
 
     /**
      * @brief release page to the pool

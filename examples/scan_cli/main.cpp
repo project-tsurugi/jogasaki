@@ -338,7 +338,7 @@ public:
         std::vector<void*> v{};
         v.reserve(pages);
         for(std::size_t i=0, n=pages; i<n; ++i) {
-            auto* p = pool.acquire_page(true);
+            auto* p = pool.acquire_page(! first_touched_);
             std::memset(p, '\1', memory::page_size);
             v.emplace_back(p);
         }
@@ -448,6 +448,7 @@ public:
         if (param.wait_prepare_pages_) {
             sync_start_request_.notify_start();
         }
+        first_touched_ = true;
         thread_group.join_all();
         return true;
     }
@@ -565,6 +566,7 @@ private:
     std::string common_options_{};
     std::mutex mutex_on_prepare_pages_{};
     performance_tools::Synchronizer sync_start_request_{};
+    bool first_touched_{};
 
     void create_compiled_info(
         std::shared_ptr<plan::compiler_context> const& compiler_context,

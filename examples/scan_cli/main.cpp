@@ -40,6 +40,9 @@
 #include <takatori/relation/filter.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
+#include <takatori/scalar/compare.h>
+#include <takatori/scalar/binary.h>
+#include <takatori/scalar/variable_reference.h>
 #include <takatori/plan/process.h>
 #include <takatori/statement/execute.h>
 
@@ -76,6 +79,7 @@ DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages per pa
 DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
 DEFINE_bool(mutex_prepare_pages, false, "use mutex when preparing pages.");  //NOLINT
 DEFINE_bool(wait_prepare_pages, false, "wait for all threads completing preparing pages.");  //NOLINT
+DEFINE_bool(filter, false, "additionally filter records by a condition");  //NOLINT
 
 namespace jogasaki::scan_cli {
 
@@ -148,6 +152,7 @@ bool fill_from_flags(
     s.prepare_pages_ = FLAGS_prepare_pages;
     s.mutex_prepare_pages_ = FLAGS_mutex_prepare_pages;
     s.wait_prepare_pages_ = FLAGS_wait_prepare_pages;
+    s.filter_ = FLAGS_filter;
 
     if (s.dump_ && s.load_) {
         LOG(ERROR) << "--dump and --load must be exclusively used with each other.";
@@ -181,6 +186,10 @@ bool fill_from_flags(
         " dump:" << s.dump_ <<
         " load:" << s.load_ <<
         " no_text:" << s.no_text_ <<
+        " prepare_pages:" << s.prepare_pages_ <<
+        " mutex_prepare_pages:" << s.mutex_prepare_pages_ <<
+        " wait_prepare_pages:" << s.wait_prepare_pages_ <<
+        " filter:" << s.filter_ <<
         std::endl;
     return true;
 }
@@ -390,7 +399,7 @@ public:
         if (param.no_text_) {
             create_compiled_info_no_text(compiler_context, table_name, index_name);
         } else {
-            create_compiled_info(compiler_context, table_name, index_name);
+            create_compiled_info(compiler_context, table_name, index_name, param);
         }
 
         compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
@@ -560,7 +569,8 @@ private:
     void create_compiled_info(
         std::shared_ptr<plan::compiler_context> const& compiler_context,
         std::string_view table_name,
-        std::string_view index_name
+        std::string_view index_name,
+        params const& param
     ) {
         binding::factory bindings;
         std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
@@ -619,6 +629,40 @@ private:
             },
         });
 
+        object_creator creator{};
+        std::shared_ptr<yugawara::analyzer::expression_mapping> expressions = std::make_shared<yugawara::analyzer::expression_mapping>();
+        relation::filter* f1{};
+        if (param.filter_) {
+            using namespace takatori::scalar;
+            auto expr = creator.create_unique<scalar::binary>(
+                binary_operator::conditional_and,
+                scalar::compare {
+                    comparison_operator::greater,
+                    variable_reference(c1),
+                    immediate { value::int8(5), type::int8() }
+                },
+                scalar::compare {
+                    comparison_operator::greater,
+                    variable_reference(c2),
+                    immediate { value::float8(5.0), type::float8() }
+                }
+            );
+            expressions->bind(*expr, t::boolean {});
+            expressions->bind(expr->left(), t::boolean{});
+            expressions->bind(expr->right(), t::boolean{});
+            auto& l = static_cast<scalar::compare&>(expr->left());
+            expressions->bind(l.left(), t::int8 {});
+            expressions->bind(l.right(), t::int8 {});
+            auto& r = static_cast<scalar::compare&>(expr->right());
+            expressions->bind(r.left(), t::float8 {});
+            expressions->bind(r.right(), t::float8 {});
+
+            // use emplace to avoid copying expr, whose parts have been registered by bind() above
+            f1 = &p0.operators().emplace<relation::filter>(
+                std::move(expr)
+            );
+        }
+
         auto&& r1 = p0.operators().insert(relation::emit {
             {
                 { c0, "c0"},
@@ -629,7 +673,12 @@ private:
             },
         });
 
-        r0.output() >> r1.input();
+        if (! param.filter_) {
+            r0.output() >> r1.input();
+        } else {
+            r0.output() >> (*f1).input();
+            (*f1).output() >> r1.input();
+        }
 
         auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
         vm->bind(c0, t::int4{});
@@ -642,7 +691,7 @@ private:
         vm->bind(bindings(t0c2), t::float8{});
         vm->bind(bindings(t0c3), t::float4{});
         vm->bind(bindings(t0c4), t::character{t::varying, max_char_len});
-        yugawara::compiled_info c_info{{}, vm};
+        yugawara::compiled_info c_info{expressions, vm};
 
         compiler_context->storage_provider(std::move(storages));
         compiler_context->compiled_info(c_info);

@@ -33,6 +33,7 @@ public:
     std::string original_args_{};
     bool mutex_prepare_pages_ = false;
     bool wait_prepare_pages_ = false;
+    bool filter_ = false;
 };
 
 }

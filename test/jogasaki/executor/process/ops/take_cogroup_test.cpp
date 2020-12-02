@@ -64,13 +64,13 @@ public:
         std::int64_t arg0,
         std::int32_t arg1
     ) {
-        return create_record<kind::int8, kind::int4>(arg0, arg1);
+        return create_nullable_record<kind::int8, kind::int4>(arg0, arg1);
     }
 
     basic_record create_value(
         std::int64_t arg0
     ) {
-        return create_record<kind::int8>(arg0);
+        return create_nullable_record<kind::int8>(arg0);
     }
 };
 
@@ -198,7 +198,7 @@ TEST_F(take_cogroup_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{"000"s}
+        boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
     exchange::group::shuffle_info s_info{input_meta, {0,1}};
     auto key_meta = s_info.key_meta();

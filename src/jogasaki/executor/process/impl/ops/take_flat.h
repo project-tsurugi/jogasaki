@@ -32,6 +32,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/validation.h>
 #include "operator_base.h"
 #include "take_flat_context.h"
 
@@ -95,7 +96,9 @@ public:
         fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),
         downstream_(std::move(downstream))
-    {}
+    {
+        utils::assert_all_fields_nullable(*meta_);
+    }
 
     /**
      * @brief create context (if needed) and process record
@@ -133,7 +136,16 @@ public:
             utils::checkpoint_holder cp{resource};
             auto source = ctx.reader_->get_record();
             for(auto &f : fields_) {
-                utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_, resource);
+                utils::copy_nullable_field(
+                    f.type_,
+                    target,
+                    f.target_offset_,
+                    f.target_nullity_offset_,
+                    source,
+                    f.source_offset_,
+                    f.source_nullity_offset_,
+                    resource
+                );
             }
             if (downstream_) {
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
@@ -172,8 +184,7 @@ private:
                 info.value_offset(),
                 meta->nullity_offset(ind),
                 info.nullity_offset(),
-                //TODO nullity
-                false // nullable
+                meta->nullable(ind)
             };
         }
         return fields;

@@ -39,6 +39,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/iterator_pair.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/validation.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include "take_cogroup_context.h"
 #include "context_helper.h"
@@ -64,7 +65,10 @@ public:
         meta_(std::move(meta)),
         reader_index_(reader_index),
         fields_(create_fields(meta_, *order_, columns, block_info))
-    {}
+    {
+        utils::assert_all_fields_nullable(meta_->key());
+        utils::assert_all_fields_nullable(meta_->value());
+    }
 
     meta::variable_order const* order_{}; //NOLINT
     maybe_shared_ptr<meta::group_meta> meta_{}; //NOLINT

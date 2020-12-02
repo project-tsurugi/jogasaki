@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/validation.h>
 #include "operator_base.h"
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
 #include "emit_context.h"
@@ -76,7 +77,9 @@ public:
     ) : record_operator(index, info, block_index),
         meta_(create_meta(info, columns)),
         fields_(create_fields(meta_, columns))
-    {}
+    {
+        utils::assert_all_fields_nullable(*meta_);
+    }
 
     /**
      * @brief create context (if needed) and process record

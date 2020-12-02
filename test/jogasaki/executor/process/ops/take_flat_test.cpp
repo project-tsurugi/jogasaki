@@ -124,7 +124,7 @@ TEST_F(take_flat_test, simple) {
         {f0c2, c2},
     };
     using kind = meta::field_type_kind;
-    auto meta = jogasaki::mock::create_meta<kind::float8, kind::int4, kind::int8>();
+    auto meta = jogasaki::mock::create_meta<kind::float8, kind::int4, kind::int8>(true);
 
     auto d = std::make_unique<verifier>();
     auto downstream = d.get();
@@ -143,8 +143,8 @@ TEST_F(take_flat_test, simple) {
 
     using test_record = jogasaki::mock::basic_record;
     mock::basic_record_reader::records_type records{
-        jogasaki::mock::create_record<kind::float8, kind::int4, kind::int8>(1.0, 10, 100),
-        jogasaki::mock::create_record<kind::float8, kind::int4, kind::int8>(2.0, 20, 200),
+        jogasaki::mock::create_nullable_record<kind::float8, kind::int4, kind::int8>(1.0, 10, 100),
+        jogasaki::mock::create_nullable_record<kind::float8, kind::int4, kind::int8>(2.0, 20, 200),
     };
     auto reader = std::make_shared<mock::basic_record_reader>(records, meta);
 

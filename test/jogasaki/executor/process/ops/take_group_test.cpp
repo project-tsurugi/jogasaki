@@ -62,13 +62,13 @@ public:
         double arg0,
         std::int32_t arg1
     ) {
-        return create_record<kind::float8, kind::int4>(arg0, arg1);
+        return create_nullable_record<kind::float8, kind::int4>(arg0, arg1);
     }
 
     basic_record create_value(
         std::int64_t arg0
     ) {
-        return create_record<kind::int8>(arg0);
+        return create_nullable_record<kind::int8>(arg0);
     }
 };
 
@@ -85,8 +85,8 @@ TEST_F(take_group_test, simple) {
             g0c2,
         },
         {
-            g0c0,
             g0c1,
+            g0c0,
         },
     };
     takatori::plan::graph_type p;
@@ -160,7 +160,7 @@ TEST_F(take_group_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{"000"s}
+        boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
     shuffle_info s_info{input_meta, {0,1}};
 

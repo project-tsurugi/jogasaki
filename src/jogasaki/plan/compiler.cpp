@@ -177,7 +177,10 @@ executor::exchange::forward::step create(takatori::plan::forward const& forward,
     for(auto&& c: forward.columns()) {
         fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
     }
-    auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
+    auto meta = std::make_shared<meta::record_meta>(
+        std::move(fields),
+        boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
+    );
     return executor::exchange::forward::step(
         std::move(meta),
         std::move(column_order));
@@ -199,7 +202,10 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
         fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
     }
     auto cnt = fields.size();
-    auto meta = std::make_shared<meta::record_meta>(std::move(fields), boost::dynamic_bitset{cnt}); // TODO nullity
+    auto meta = std::make_shared<meta::record_meta>(
+        std::move(fields),
+        boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
+    );
     std::vector<std::size_t> key_indices{};
     key_indices.resize(group.group_keys().size());
     for(auto&& k : group.group_keys()) {

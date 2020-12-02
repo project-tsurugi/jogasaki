@@ -188,12 +188,12 @@ TEST_F(join_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{"000"s}
+        boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
 
-    auto tgt = jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>();
-    auto key = jogasaki::mock::create_record<kind::int8, kind::int4>();
-    auto value = jogasaki::mock::create_record<kind::int8>();
+    auto tgt = jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>();
+    auto key = jogasaki::mock::create_nullable_record<kind::int8, kind::int4>();
+    auto value = jogasaki::mock::create_nullable_record<kind::int8>();
     auto key_meta = key.record_meta();
     auto value_meta = value.record_meta();
     auto g_meta = group_meta{key_meta, value_meta};
@@ -262,18 +262,6 @@ TEST_F(join_test, simple) {
         &varlen_resource
     );
 
-    auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
-
-    auto g0v0_offset = map.at(g0v0).value_offset();
-    auto g0v1_offset = map.at(g0v1).value_offset();
-    auto g0v2_offset = map.at(g0v2).value_offset();
-    auto g1v0_offset = map.at(g1v0).value_offset();
-    auto g1v1_offset = map.at(g1v1).value_offset();
-    auto g1v2_offset = map.at(g1v2).value_offset();
-
-    std::size_t count = 0;
-
     std::vector<jogasaki::mock::basic_record> result{};
 
     downstream->body([&]() {
@@ -281,18 +269,18 @@ TEST_F(join_test, simple) {
     });
 
     mock::iterable_group_store ge1{
-        jogasaki::mock::create_record<kind::int8, kind::int4>(1,10),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4>(1,10),
         {
-            jogasaki::mock::create_record<kind::int8>(100),
-            jogasaki::mock::create_record<kind::int8>(101),
+            jogasaki::mock::create_nullable_record<kind::int8>(100),
+            jogasaki::mock::create_nullable_record<kind::int8>(101),
         }
     };
     mock::iterable_group_store ge2{
-        jogasaki::mock::create_record<kind::int8, kind::int4>(1,10),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4>(1,10),
         {
-            jogasaki::mock::create_record<kind::int8>(200),
-            jogasaki::mock::create_record<kind::int8>(201),
-            jogasaki::mock::create_record<kind::int8>(202),
+            jogasaki::mock::create_nullable_record<kind::int8>(200),
+            jogasaki::mock::create_nullable_record<kind::int8>(201),
+            jogasaki::mock::create_nullable_record<kind::int8>(202),
         }
     };
 
@@ -304,24 +292,26 @@ TEST_F(join_test, simple) {
             fields[loop].emplace_back(
                 meta->at(i),
                 meta->value_offset(i),
-                tgt.record_meta()->value_offset(tgt_field++),
-                0,
-                0,
-                false,
+                tgt.record_meta()->value_offset(tgt_field),
+                meta->nullity_offset(i),
+                tgt.record_meta()->nullity_offset(tgt_field),
+                true,
                 true
             );
+            ++tgt_field;
         }
         for(std::size_t i=0, n=value.record_meta()->field_count() ; i < n; ++i) {
             auto& meta = value.record_meta();
             fields[loop].emplace_back(
                 meta->at(i),
                 meta->value_offset(i),
-                tgt.record_meta()->value_offset(tgt_field++),
-                0,
-                0,
-                false,
+                tgt.record_meta()->value_offset(tgt_field),
+                meta->nullity_offset(i),
+                tgt.record_meta()->nullity_offset(tgt_field),
+                true,
                 false
             );
+            ++tgt_field;
         }
     }
     using iterator_pair = utils::iterator_pair<iterator>;
@@ -352,12 +342,12 @@ TEST_F(join_test, simple) {
 
     ASSERT_EQ(6, result.size());
     std::vector<jogasaki::mock::basic_record> exp{
-        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,200),
-        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,201),
-        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,202),
-        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,200),
-        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,201),
-        jogasaki::mock::create_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,202),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,200),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,201),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,100,1,10,202),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,200),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,201),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int4, kind::int8, kind::int8, kind::int4, kind::int8>(1,10,101,1,10,202),
     };
     std::sort(exp.begin(), exp.end());
     std::sort(result.begin(), result.end());

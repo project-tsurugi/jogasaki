@@ -96,7 +96,7 @@ public:
             auto rec = key_store_->ref();
             auto& m = external_meta_->key();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
-                utils::copy_field(m.at(i), rec, m.value_offset(i), r.key().ref(), r.key().record_meta()->value_offset(i));
+                utils::copy_nullable_field(m.at(i), rec, m.value_offset(i), m.nullity_offset(i), r.key().ref(), r.key().record_meta()->value_offset(i), r.key().record_meta()->nullity_offset(i));
             }
             return rec;
         }
@@ -119,7 +119,7 @@ public:
             auto rec = value_store_->ref();
             auto& m = external_meta_->value();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
-                utils::copy_field(m.at(i), rec, m.value_offset(i), r.ref(), r.record_meta()->value_offset(i));
+                utils::copy_nullable_field(m.at(i), rec, m.value_offset(i), m.nullity_offset(i), r.ref(), r.record_meta()->value_offset(i), r.record_meta()->nullity_offset(i));
             }
             return rec;
         }

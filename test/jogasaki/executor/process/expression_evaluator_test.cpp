@@ -139,7 +139,7 @@ TEST_F(expression_evaluator_test, add_int8) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -180,7 +180,7 @@ TEST_F(expression_evaluator_test, add_int4) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -222,7 +222,7 @@ TEST_F(expression_evaluator_test, add_float4) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float4>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float4>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -264,7 +264,7 @@ TEST_F(expression_evaluator_test, add_double) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -306,7 +306,7 @@ TEST_F(expression_evaluator_test, concat_text) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -373,7 +373,7 @@ TEST_F(expression_evaluator_test, binary_expression) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -448,7 +448,7 @@ TEST_F(expression_evaluator_test, text_length) {
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("0")}
+        boost::dynamic_bitset<std::uint64_t>{1}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -493,7 +493,7 @@ TEST_F(expression_evaluator_test, compare_int4) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{
@@ -581,7 +581,7 @@ TEST_F(expression_evaluator_test, conditional_and) {
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::boolean>),
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::boolean>),
         },
-        boost::dynamic_bitset<std::uint64_t>{std::string("00")}
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
 
     std::unordered_map<variable, std::size_t> m{

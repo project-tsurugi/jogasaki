@@ -42,6 +42,7 @@ namespace details {
 
 /**
  * @brief field info of the scan operation
+ * @details scan operator uses these fields to know how the scanned key/value are mapped to scope variables
  */
 struct cache_align scan_field {
     /**
@@ -50,7 +51,7 @@ struct cache_align scan_field {
      * @param target_exists whether the target storage exists. If not, there is no room to copy the data to.
      * @param target_offset byte offset of the target field in the target record reference
      * @param target_nullity_offset bit offset of the target field nullity in the target record reference
-     * @param nullable whether the target field is nullable or not
+     * @param source_nullable whether the target field is nullable or not
      * @param spec the spec of the target field used for encode/decode
      */
     scan_field(
@@ -58,14 +59,14 @@ struct cache_align scan_field {
         bool target_exists,
         std::size_t target_offset,
         std::size_t target_nullity_offset,
-        bool nullable,
+        bool source_nullable,
         kvs::coding_spec spec
     ) :
         type_(std::move(type)),
         target_exists_(target_exists),
         target_offset_(target_offset),
         target_nullity_offset_(target_nullity_offset),
-        nullable_(nullable),
+        source_nullable_(source_nullable),
         spec_(spec)
         {}
 
@@ -73,7 +74,7 @@ struct cache_align scan_field {
     bool target_exists_{}; //NOLINT
     std::size_t target_offset_{}; //NOLINT
     std::size_t target_nullity_offset_{}; //NOLINT
-    bool nullable_{}; //NOLINT
+    bool source_nullable_{}; //NOLINT
     kvs::coding_spec spec_{}; //NOLINT
 };
 
@@ -237,19 +238,19 @@ private:
     void decode_fields(std::vector<details::scan_field> const& fields, kvs::stream& stream, accessor::record_ref target, memory_resource* resource) {
         for(auto&& f : fields) {
             if (! f.target_exists_) {
-                if (f.nullable_) {
+                if (f.source_nullable_) {
                     kvs::consume_stream_nullable(stream, f.type_, f.spec_);
                     continue;
                 }
                 kvs::consume_stream(stream, f.type_, f.spec_);
                 continue;
             }
-            if (f.nullable_) {
+            if (f.source_nullable_) {
                 kvs::decode_nullable(stream, f.type_, f.spec_, target, f.target_offset_, f.target_nullity_offset_, resource);
                 continue;
             }
             kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-            target.set_null(f.target_nullity_offset_, false); // currently assuming variable fields are nullable and f.target_nullity_offset_ is valid even if f.nullable_ is false
+            target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are nullable and f.target_nullity_offset_ is valid even if f.source_nullable_ is false
         }
     }
 

@@ -118,7 +118,7 @@ public:
                 auto it = cur[i].first;
                 for(auto&& f : g.fields()) {
                     auto src = f.is_key_ ? g.key() : *it;
-                    utils::copy_field(f.type_, target, f.target_offset_, src, f.source_offset_, ctx.varlen_resource()); // TODO no need to copy between resources
+                    utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, src, f.source_offset_, f.source_nullity_offset_, ctx.varlen_resource()); // TODO no need to copy between resources
                 }
             }
             auto resource = ctx.varlen_resource();

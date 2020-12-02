@@ -117,7 +117,7 @@ class cli {
 public:
     int operator()(params& param, std::shared_ptr<configuration> cfg) {
         utils::get_watch().set_point(time_point_begin, 0);
-        auto meta = jogasaki::mock::create_meta<kind::float8, kind::int4, kind::int8>();
+        auto meta = jogasaki::mock::create_meta<kind::float8, kind::int4, kind::int8>(true);
 
         // generate takatori compile info and statement
         auto compiler_context = std::make_shared<plan::compiler_context>();

@@ -138,7 +138,7 @@ TEST_F(offer_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
         },
-        boost::dynamic_bitset<std::uint64_t>{"000"s}
+        boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
     offer s{
         0,
@@ -155,7 +155,7 @@ TEST_F(offer_test, simple) {
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record;
-    auto writer = std::make_shared<mock::basic_record_writer>(s.meta());
+    auto writer = std::make_shared<mock::basic_record_writer>(meta);
 
     mock::task_context task_ctx{
         {},
@@ -164,31 +164,33 @@ TEST_F(offer_test, simple) {
         {},
     };
 
-    offer_context ctx(&task_ctx, s.meta(), variables);
+    offer_context ctx(&task_ctx, meta, variables);
 
     auto vars_ref = variables.store().ref();
     auto map = variables.value_map();
-    auto vars_meta = variables.meta();
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
     vars_ref.set_value<double>(map.at(c1).value_offset(), 1.0);
+    vars_ref.set_null(map.at(c1).nullity_offset(), false);
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 2);
+    vars_ref.set_null(map.at(c2).nullity_offset(), false);
     s(ctx);
     auto internal_cols_ref = ctx.store().ref();
-    auto& internal_cols_meta = s.meta();
-    EXPECT_EQ(1.0, internal_cols_ref.get_value<double>(internal_cols_meta->value_offset(0)));
-    EXPECT_EQ(0, internal_cols_ref.get_value<std::int32_t>(internal_cols_meta->value_offset(1)));
-    EXPECT_EQ(2, internal_cols_ref.get_value<std::int64_t>(internal_cols_meta->value_offset(2)));
+    EXPECT_EQ(1.0, internal_cols_ref.get_value<double>(meta->value_offset(0)));
+    EXPECT_EQ(0, internal_cols_ref.get_value<std::int32_t>(meta->value_offset(1)));
+    EXPECT_EQ(2, internal_cols_ref.get_value<std::int64_t>(meta->value_offset(2)));
 
     ASSERT_EQ(1, writer->size());
     auto& records = writer->records();
 
-    test_record exp{create_record<kind::float8, kind::int4, kind::int8>(1.0, 0, 2)};
+    test_record exp{create_nullable_record<kind::float8, kind::int4, kind::int8>(1.0, 0, 2)};
     EXPECT_EQ(exp, records[0]);
 
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
     s(ctx);
     ASSERT_EQ(2, writer->size());
-    test_record exp2{create_record<kind::float8, kind::int4, kind::int8>(1.0, 3, 2)};
+    test_record exp2{create_nullable_record<kind::float8, kind::int4, kind::int8>(1.0, 3, 2)};
     EXPECT_EQ(exp2, records[1]);
 }
 

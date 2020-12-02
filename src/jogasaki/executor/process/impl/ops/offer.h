@@ -31,6 +31,7 @@
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/validation.h>
 #include "operator_base.h"
 #include "offer_context.h"
 
@@ -87,7 +88,9 @@ public:
         meta_(std::move(meta)),
         fields_(create_fields(meta_, order, columns)),
         writer_index_(writer_index)
-    {}
+    {
+        utils::assert_all_fields_nullable(*meta_);
+    }
 
     /**
      * @brief create context (if needed) and process record
@@ -117,7 +120,7 @@ public:
         auto target = ctx.store_.ref();
         auto source = ctx.variables().store().ref();
         for(auto &f : fields_) {
-            utils::copy_field(f.type_, target, f.target_offset_, source, f.source_offset_);
+            utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, source, f.source_offset_, f.source_nullity_offset_);
         }
 
         if (!ctx.writer_) {
@@ -156,8 +159,7 @@ private:
                 meta->value_offset(ind),
                 info.nullity_offset(),
                 meta->nullity_offset(ind),
-                //TODO nullity
-                false // nullable
+                meta->nullable(ind)
             };
         }
         return fields;

@@ -83,7 +83,7 @@ public:
      * The record_meta passed to constructor is used to convert the input ref to basic_record.
      */
     bool write(accessor::record_ref rec) override {
-        record_type r{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}, resource_.get()};
+        record_type r{rec, meta_, resource_.get()};
         if (capacity_ == npos || records_.size() < capacity_) {
             auto& x = records_.emplace_back(r);
             DVLOG(2) << x;

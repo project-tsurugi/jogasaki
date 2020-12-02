@@ -31,6 +31,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/validation.h>
 #include "operator_base.h"
 #include "take_group_context.h"
 
@@ -90,7 +91,10 @@ public:
         fields_(create_fields(meta_, order, columns)),
         reader_index_(reader_index),
         downstream_(std::move(downstream))
-    {}
+    {
+        utils::assert_all_fields_nullable(meta_->key());
+        utils::assert_all_fields_nullable(meta_->value());
+    }
 
     /**
      * @brief create context (if needed) and process record
@@ -129,7 +133,16 @@ public:
             auto key = ctx.reader_->get_group();
             for(auto &f : fields_) {
                 if (! f.is_key_) continue;
-                utils::copy_field(f.type_, target, f.target_offset_, key, f.source_offset_, resource); // copy from outside process
+                utils::copy_nullable_field(
+                    f.type_,
+                    target,
+                    f.target_offset_,
+                    f.target_nullity_offset_,
+                    key,
+                    f.source_offset_,
+                    f.source_nullity_offset_,
+                    resource
+                );
             }
             bool first_record = true;
             while(ctx.reader_->next_member()) {
@@ -137,7 +150,16 @@ public:
                 auto value = ctx.reader_->get_member();
                 for(auto &f : fields_) {
                     if (f.is_key_) continue;
-                    utils::copy_field(f.type_, target, f.target_offset_, value, f.source_offset_, resource); // copy from outside process
+                    utils::copy_nullable_field(
+                        f.type_,
+                        target,
+                        f.target_offset_,
+                        f.target_nullity_offset_,
+                        value,
+                        f.source_offset_,
+                        f.source_nullity_offset_,
+                        resource
+                    );
                 }
                 if (downstream_) {
                     unsafe_downcast<group_operator>(downstream_.get())->process_group(context, first_record);
@@ -177,14 +199,13 @@ private:
             auto [src_idx, is_key] = order.key_value_index(c.source());
             auto& target_info = vmap.at(c.destination());
             auto idx = src_idx + (is_key ? 0 : num_keys); // copy keys first, then values
-            fields[idx]=details::take_group_field{
+            fields[idx] = details::take_group_field{
                 is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
                 is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),
                 target_info.value_offset(),
                 is_key ? key_meta.nullity_offset(src_idx) : value_meta.nullity_offset(src_idx),
                 target_info.nullity_offset(),
-                //TODO nullity
-                false, // nullable
+                is_key ? key_meta.nullable(src_idx) : value_meta.nullable(src_idx),
                 is_key
             };
         }

@@ -27,6 +27,7 @@
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/validation.h>
 #include "variable_value_map.h"
 
 namespace jogasaki::executor::process::impl {
@@ -39,7 +40,10 @@ block_scope_info::block_scope_info(
 ) noexcept :
     value_map_(std::move(value_map)),
     meta_(std::move(meta))
-{}
+{
+    // currently assuming any stream variables are nullable for now
+    utils::assert_all_fields_nullable(*meta_);
+}
 
 variable_value_map from_indices(
     block_scope_info::variable_indices const& indices,
@@ -59,7 +63,8 @@ block_scope_info::block_scope_info(
     value_map_(from_indices(indices, meta)),
     meta_(std::move(meta))
 {
-
+    // currently assuming any stream variables are nullable for now
+    utils::assert_all_fields_nullable(*meta_);
 }
 
 variable_value_map const& block_scope_info::value_map() const noexcept {

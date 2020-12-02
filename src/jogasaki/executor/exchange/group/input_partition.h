@@ -52,20 +52,20 @@ public:
      * @param info
      */
     input_partition(
-            std::unique_ptr<memory::paged_memory_resource> resource_for_records,
-            std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
-            std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
-            std::shared_ptr<shuffle_info> info,
-            request_context* context,
-            [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
-            ) :
-            resource_for_records_(std::move(resource_for_records)),
-            resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
-            resource_for_varlen_data_(std::move(resource_for_varlen_data)),
-            info_(std::move(info)),
-            context_(context),
-            comparator_(info_->key_meta().get()),
-            max_pointers_(pointer_table_size)
+        std::unique_ptr<memory::paged_memory_resource> resource_for_records,
+        std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
+        std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
+        std::shared_ptr<shuffle_info> info,
+        request_context* context,
+        [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
+    ) :
+        resource_for_records_(std::move(resource_for_records)),
+        resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
+        resource_for_varlen_data_(std::move(resource_for_varlen_data)),
+        info_(std::move(info)),
+        context_(context),
+        comparator_(info_->key_meta().get()),
+        max_pointers_(pointer_table_size)
     {}
 
     /**
@@ -136,9 +136,9 @@ private:
     void initialize_lazy() {
         if (!records_) {
             records_ = std::make_unique<data::record_store>(
-                    resource_for_records_.get(),
-                    resource_for_varlen_data_.get(),
-                    info_->record_meta());
+                resource_for_records_.get(),
+                resource_for_varlen_data_.get(),
+                info_->record_meta());
         }
         if(!current_pointer_table_active_) {
             pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);

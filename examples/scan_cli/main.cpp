@@ -338,7 +338,7 @@ public:
         std::vector<void*> v{};
         v.reserve(pages);
         for(std::size_t i=0, n=pages; i<n; ++i) {
-            auto* p = pool.acquire_page();
+            auto* p = pool.acquire_page(true);
             std::memset(p, 0, memory::page_size);
             v.emplace_back(p);
         }

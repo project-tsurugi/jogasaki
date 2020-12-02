@@ -17,16 +17,23 @@
 
 namespace jogasaki::memory {
 
+memory::page_pool::page_pool() {
+    free_pages_vector_.resize(numa_num_configured_nodes());
+}
+
 memory::page_pool::~page_pool() {
-    for (const auto& c : free_pages_) {
-        if (munmap(c, page_size) < 0) {
-            std::abort();
+    for (const auto& free_pages_ : free_pages_vector_) {
+        for (const auto& c : free_pages_) {
+            if (munmap(c, page_size) < 0) {
+                std::abort();
+            }
         }
     }
 }
 
 void *memory::page_pool::acquire_page(bool brandnew) {
     void* page;
+    auto& free_pages_ = get_free_pages();
     if (!brandnew) {
         std::lock_guard<std::mutex> lock(page_mtx_);
         if (!free_pages_.empty()) {
@@ -48,8 +55,11 @@ void *memory::page_pool::acquire_page(bool brandnew) {
 }
 
 void page_pool::release_page(void *page) noexcept {
-    std::lock_guard<std::mutex> lock(page_mtx_);
-    free_pages_.emplace_back(page);
+    auto& free_pages_ = get_free_pages();
+    {
+        std::lock_guard<std::mutex> lock(page_mtx_);
+        free_pages_.emplace_back(page);
+    }
 }
 
 

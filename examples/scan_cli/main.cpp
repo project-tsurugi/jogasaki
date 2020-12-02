@@ -75,10 +75,10 @@ DEFINE_bool(randomize_partition, true, "randomize read partition and avoid read/
 DEFINE_bool(dump, false, "dump mode: generate data, and dump it into files. Must be exclusively used with --load.");  //NOLINT
 DEFINE_bool(load, false, "load mode: instead of generating data, load data from files and run. Must be exclusively used with --dump.");  //NOLINT
 DEFINE_bool(no_text, false, "use record schema without text type");  //NOLINT
-DEFINE_int32(prepare_pages, -1, "prepare specified number of memory pages per partition that are first touched beforehand");  //NOLINT
+DEFINE_int32(prepare_pages, 600, "prepare specified number of memory pages per partition that are first touched beforehand. Specify -1 to disable.");  //NOLINT
 DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
 DEFINE_bool(mutex_prepare_pages, false, "use mutex when preparing pages.");  //NOLINT
-DEFINE_bool(wait_prepare_pages, false, "wait for all threads completing preparing pages.");  //NOLINT
+DEFINE_bool(wait_prepare_pages, true, "wait for all threads completing preparing pages.");  //NOLINT
 DEFINE_bool(filter, false, "additionally filter records by a condition");  //NOLINT
 
 namespace jogasaki::scan_cli {

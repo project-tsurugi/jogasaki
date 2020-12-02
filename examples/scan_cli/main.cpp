@@ -578,11 +578,11 @@ private:
         std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table(table_name, {
             table_name,
             {
-                { "C0", t::int4() },
-                { "C1", t::int8() },
-                { "C2", t::float8() },
-                { "C3", t::float4() },
-                { "C4", t::character(t::varying, max_char_len) },
+                { "C0", t::int4(), nullity(false) },
+                { "C1", t::int8() , nullity(true) },
+                { "C2", t::float8() , nullity(true) },
+                { "C3", t::float4() , nullity(true) },
+                { "C4", t::character(t::varying, max_char_len) , nullity(true) },
             },
         });
         std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index(index_name, {
@@ -709,20 +709,20 @@ private:
         std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table(table_name, {
             table_name,
             {
-                { "C0", t::int4() },
-                { "C1", t::int8() },
-                { "C2", t::float8() },
-                { "C3", t::float4() },
-                { "C4", t::int8() },
-                { "C5", t::int8() },
-                { "C6", t::int8() },
-                { "C7", t::int8() },
-                { "C8", t::int8() },
-                { "C9", t::int8() },
-                { "C10", t::int8() },
-                { "C11", t::int8() },
-                { "C12", t::int8() },
-                { "C13", t::int8() },
+                { "C0", t::int4() , nullity(true) },
+                { "C1", t::int8() , nullity(false) },
+                { "C2", t::float8(), nullity(false) },
+                { "C3", t::float4(), nullity(false)  },
+                { "C4", t::int8() , nullity(false) },
+                { "C5", t::int8(), nullity(false)  },
+                { "C6", t::int8(), nullity(false)  },
+                { "C7", t::int8(), nullity(false)  },
+                { "C8", t::int8(), nullity(false)  },
+                { "C9", t::int8(), nullity(false)  },
+                { "C10", t::int8(), nullity(false)  },
+                { "C11", t::int8(), nullity(false)  },
+                { "C12", t::int8(), nullity(false)  },
+                { "C13", t::int8(), nullity(false)  },
             },
         });
         std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index(index_name, {

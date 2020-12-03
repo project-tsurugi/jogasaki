@@ -150,6 +150,7 @@ bool fill_from_flags(
     s.debug_ = FLAGS_debug;
     s.sequential_data_ = FLAGS_sequential_data;
     s.interactive_ = FLAGS_interactive;
+    s.key_modulo_ = FLAGS_key_modulo;
 
     cfg.core_affinity(FLAGS_core_affinity);
     cfg.initial_core(FLAGS_initial_core);
@@ -176,6 +177,7 @@ bool fill_from_flags(
         " records_per_upstream_partition:" << s.records_per_upstream_partition_ <<
         " debug:" << s.debug_ <<
         " sequential:" << s.sequential_data_ <<
+        " key_modulo:" << s.key_modulo_ <<
         std::endl;
     return true;
 }
@@ -383,8 +385,8 @@ public:
         };
 
         common::graph g{*context};
-        producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.sequential_data_};
-        producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.sequential_data_};
+        producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.sequential_data_, s.key_modulo_};
+        producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.sequential_data_, s.key_modulo_};
         auto& producer1 = g.emplace<producer_process>(meta, l_params);
         auto& producer2 = g.emplace<producer_process>(meta, r_params);
         auto& xch1 = g.emplace<exchange::group::step>(info, input_order, order0);
@@ -418,6 +420,7 @@ public:
 
     void dump_result_data(request_context::result_stores stores, params const& param) {
         auto store = stores[0];
+        if (! store) return;
         auto record_meta = store->meta();
         auto it = store->begin();
         std::size_t count = 0;

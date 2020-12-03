@@ -27,6 +27,7 @@ public:
     bool sequential_data_ = false;
     bool interactive_ = false;
     std::string original_args_{};
+    std::size_t key_modulo_ = -1;
 };
 
 }

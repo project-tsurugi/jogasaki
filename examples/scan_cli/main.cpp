@@ -316,14 +316,14 @@ public:
 
     void prepare_pages(std::int32_t pages) {
         auto& pool = global::page_pool();
-        std::vector<void*> v{};
+        std::vector<memory::page_pool::page_info> v{};
         v.reserve(pages);
         for(std::size_t i=0, n=pages; i<n; ++i) {
-            auto* p = pool.acquire_page(true);
-            std::memset(p, 0, memory::page_size);
+            auto p = pool.acquire_page(true);
+            std::memset(p.address(), 0, memory::page_size);
             v.emplace_back(p);
         }
-        for(auto* p : v) {
+        for(auto&& p : v) {
             pool.release_page(p);
         }
     }

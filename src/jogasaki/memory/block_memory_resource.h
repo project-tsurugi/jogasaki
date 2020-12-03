@@ -110,7 +110,7 @@ protected:
         }
 
         // acquire a new page
-        auto* next_head = page_pool_->acquire_page();
+        auto next_head = page_pool_->acquire_page();
         auto [iter, success] = blocks_.emplace(next_head, block_info { next_head });
         if (!success) {
             throw std::bad_alloc();
@@ -139,7 +139,7 @@ protected:
         assert(reinterpret_cast<std::uintptr_t>(p) >= page_size); // NOLINT
 
         // find a page which contains this block
-        void* prev = static_cast<char*>(p) - page_size; //NOLINT
+        page_pool::page_info prev(static_cast<char*>(p) - page_size, 0); //NOLINT
         auto iter = blocks_.upper_bound(prev);
         if (iter == blocks_.end()) {
             // no such page
@@ -148,7 +148,7 @@ protected:
 
         // releases the blocks in the found page
         auto&& block = iter->second;
-        auto offset = static_cast<std::size_t>(static_cast<char*>(p) - static_cast<char*>(block.head()));
+        auto offset = static_cast<std::size_t>(static_cast<char*>(p) - static_cast<char*>(block.head().address()));
         if (offset >= page_size) {
             // no such page
             return;
@@ -197,12 +197,12 @@ protected:
 private:
     class block_info {
     public:
-        explicit constexpr block_info(void* head) noexcept : head_(head) {}
-        [[nodiscard]] constexpr void* head() const noexcept { return head_; }
+        explicit constexpr block_info(page_pool::page_info head) noexcept : head_(head) {}
+        [[nodiscard]] constexpr page_pool::page_info head() const noexcept { return head_; }
         [[nodiscard]] constexpr bool empty() const noexcept { return released_.count() == acquired_; }
         [[nodiscard]] constexpr std::size_t remaining_blocks() const noexcept { return nblocks_in_page - acquired_; }
         [[nodiscard]] std::size_t remaining(std::size_t alignment) const noexcept {
-            auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+            auto head = reinterpret_cast<std::uintptr_t>(head_.address()); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
             auto last = head + page_size;
             auto ua_next = head + acquired_ * block_size;
             auto next = (ua_next + (alignment - 1)) / alignment * alignment;
@@ -213,7 +213,7 @@ private:
         }
         [[nodiscard]] void* try_acquire(std::size_t bytes, std::size_t alignment) noexcept {
             // the next available block
-            auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+            auto head = reinterpret_cast<std::uintptr_t>(head_.address()); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
             auto ua_next = head + acquired_ * block_size;
             auto next = (ua_next + (alignment - 1)) / alignment * alignment;
             assert(next >= ua_next); // NOLINT
@@ -252,14 +252,14 @@ private:
             }
         }
     private:
-        void* head_ {};
+        page_pool::page_info head_ {};
         std::size_t acquired_ { 0 };
         std::bitset<nblocks_in_page> released_ {};
     };
 
     page_pool* page_pool_;
     bool reuse_page_;
-    std::map<void*, block_info> blocks_ {};
+    std::map<page_pool::page_info, block_info> blocks_ {};
     block_info* active_ {};
 };
 

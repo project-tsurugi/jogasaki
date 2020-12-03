@@ -18,7 +18,7 @@
 namespace jogasaki::memory::details {
 
 std::size_t page_allocation_info::remaining(std::size_t alignment) const noexcept {
-    auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto head = reinterpret_cast<std::uintptr_t>(head_.address()); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto last = head + page_size;
     auto ua_next = head + upper_bound_offset_;
     auto next = (ua_next + (alignment - 1)) / alignment * alignment;
@@ -30,7 +30,7 @@ std::size_t page_allocation_info::remaining(std::size_t alignment) const noexcep
 
 void *page_allocation_info::try_allocate_back(std::size_t bytes, std::size_t alignment) noexcept {
     // the next available block
-    auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto head = reinterpret_cast<std::uintptr_t>(head_.address()); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto ua_next = head + upper_bound_offset_;
     auto next = (ua_next + (alignment - 1)) / alignment * alignment;
     auto next_lower_offset = next - head; // inclusive
@@ -48,10 +48,10 @@ void *page_allocation_info::try_allocate_back(std::size_t bytes, std::size_t ali
 }
 
 bool page_allocation_info::try_deallocate_front(void *p, std::size_t bytes, std::size_t alignment) {
-    if (p < head_) {
+    if (p < head_.address()) {
         return false;
     }
-    auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto head = reinterpret_cast<std::uintptr_t>(head_.address()); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto start = reinterpret_cast<std::uintptr_t>(p) - head; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto end = start + bytes;
 
@@ -67,10 +67,10 @@ bool page_allocation_info::try_deallocate_front(void *p, std::size_t bytes, std:
 }
 
 bool page_allocation_info::try_deallocate_back(void *p, std::size_t bytes, std::size_t) {
-    if (p < head_) {
+    if (p < head_.address()) {
         return false;
     }
-    auto head = reinterpret_cast<std::uintptr_t>(head_); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto head = reinterpret_cast<std::uintptr_t>(head_.address()); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto start = reinterpret_cast<std::uintptr_t>(p) - head; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto end = start + bytes;
 

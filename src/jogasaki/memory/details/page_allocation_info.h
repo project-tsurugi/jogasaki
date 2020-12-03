@@ -33,13 +33,13 @@ public:
      * @brief creates a new instance.
      * @param ptr the page pointer
      */
-    explicit constexpr page_allocation_info(void* ptr) noexcept : head_(ptr) {}
+    explicit page_allocation_info(page_pool::page_info ptr) noexcept : head_(ptr) {}
 
     /**
      * @brief returns pointer to the allocated page.
      * @return the page pointer
      */
-    [[nodiscard]] constexpr void* head() const noexcept { return head_; }
+    [[nodiscard]] page_pool::page_info head() const noexcept { return head_; }
 
     /**
      * @brief returns whether or not this page is empty.
@@ -116,7 +116,7 @@ public:
 
 private:
     // the page head
-    void* head_;
+    page_pool::page_info head_;
 
     using offset_type = std::uint32_t;
     static_assert(page_size <= std::numeric_limits<offset_type>::max());

@@ -97,6 +97,35 @@ public:
         did_create_tasks_ = std::move(arg);
     }
 
+    /**
+     * @brief sets callback just after starting task
+     * @param arg the callback
+     */
+    void did_start_task(std::shared_ptr<callback_type> arg) {
+        did_start_task_ = std::move(arg);
+    }
+
+    /**
+     * @brief accessor to callback
+     */
+    std::shared_ptr<callback_type> const& did_start_task() {
+        return did_start_task_;
+    }
+
+    /**
+     * @brief sets callback just before ending task
+     * @param arg the callback
+     */
+    void will_end_task(std::shared_ptr<callback_type> arg) {
+        will_end_task_ = std::move(arg);
+    }
+
+    /**
+     * @brief accessor to callback
+     */
+    std::shared_ptr<callback_type> const& will_end_task() {
+        return will_end_task_;
+    }
 protected:
     void data_flow_object(std::unique_ptr<flow> p) noexcept;
     [[nodiscard]] class request_context* context() const noexcept;
@@ -110,6 +139,8 @@ private:
     std::unique_ptr<flow> data_flow_object_{};
     std::shared_ptr<callback_type> will_create_tasks_{};
     std::shared_ptr<callback_type> did_create_tasks_{};
+    std::shared_ptr<callback_type> did_start_task_{};
+    std::shared_ptr<callback_type> will_end_task_{};
 };
 
 step& operator<<(step& downstream, step& upstream);

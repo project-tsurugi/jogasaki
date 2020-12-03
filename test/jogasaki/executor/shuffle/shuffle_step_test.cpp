@@ -39,7 +39,7 @@ TEST_F(shuffle_step_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::float8>),
     },boost::dynamic_bitset<std::uint64_t>("00"s));
-    step s{rec_meta, std::vector<std::size_t>{0}};
+    step s{rec_meta, std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{}};
     s.activate();
     EXPECT_EQ(0, s.input_ports().size());
     EXPECT_EQ(0, s.output_ports().size());

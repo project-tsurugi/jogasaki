@@ -97,7 +97,8 @@ public:
         variable_ordering_enum_tag_t<variable_ordering_kind::group_from_keys>,
         takatori::util::sequence_view<variable const> columns,
         takatori::util::sequence_view<variable const> group_keys
-    ) : for_group_{true}
+    ) :
+        for_group_(true)
     {
         entity_type keys_order{};
         fill_flat_record(keys_order, group_keys);

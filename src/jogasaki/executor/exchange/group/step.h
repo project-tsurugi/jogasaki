@@ -51,8 +51,8 @@ public:
      */
     explicit step(
         std::shared_ptr<shuffle_info> info,
-        meta::variable_order input_column_order = {},
-        meta::variable_order output_column_order = {}
+        meta::variable_order input_column_order,
+        meta::variable_order output_column_order
     );
 
     /**
@@ -65,8 +65,8 @@ public:
     step(
         maybe_shared_ptr<meta::record_meta> input_meta,
         std::vector<field_index_type> key_indices,
-        meta::variable_order input_column_order = {},
-        meta::variable_order output_column_order = {}
+        meta::variable_order input_column_order,
+        meta::variable_order output_column_order
     );
 
     [[nodiscard]] executor::common::step_kind kind() const noexcept override;

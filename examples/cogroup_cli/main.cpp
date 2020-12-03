@@ -85,8 +85,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.key_modulo_ };
     auto& scan1 = g.emplace<producer_process>(meta, l_params);
     auto& scan2 = g.emplace<producer_process>(meta, r_params);
-    auto& xch1 = g.emplace<group::step>(info);
-    auto& xch2 = g.emplace<group::step>(info);
+    auto& xch1 = g.emplace<group::step>(info, meta::variable_order{}, meta::variable_order{});
+    auto& xch2 = g.emplace<group::step>(info, meta::variable_order{}, meta::variable_order{});
     auto& cgrp = g.emplace<consumer_process>(info->group_meta(), s);
     auto& dvr = g.emplace<deliver::step>();
     scan1 >> xch1;

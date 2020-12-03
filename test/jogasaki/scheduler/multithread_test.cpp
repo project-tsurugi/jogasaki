@@ -66,7 +66,7 @@ TEST_F(multithread_test, simple_shuffle) {
     auto g = std::make_unique<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
-    auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
+    auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto dvr = std::make_unique<deliver::step>();
     *scan >> *xch;
     *xch >> *emit;
@@ -88,8 +88,8 @@ TEST_F(multithread_test, cogroup) {
     auto g = std::make_unique<common::graph>(*ctx);
     auto scan1 = std::make_unique<simple_scan_process>();
     auto scan2 = std::make_unique<simple_scan_process>();
-    auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
-    auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
+    auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
+    auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto cgrp = std::make_unique<simple_cogroup_process>();
     auto dvr = std::make_unique<deliver::step>();
     *scan1 >> *xch1;

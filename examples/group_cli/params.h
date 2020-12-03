@@ -28,6 +28,8 @@ public:
     std::size_t key_modulo_ = -1;
 
     bool aggregate_group_ = false;
+
+    bool sequential_data_ = false;
 };
 
 }

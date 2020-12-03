@@ -19,6 +19,7 @@
 
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
+#include <jogasaki/callback.h>
 
 namespace jogasaki::executor::process {
 
@@ -35,6 +36,11 @@ task::task(
 
 model::task_result task::operator()() {
     VLOG(1) << *this << " process::task executed.";
+    if(auto&& cb = step()->did_start_task(); cb) {
+        callback_arg arg{ id() };
+        (*cb)(&arg);
+    }
+
     auto status = executor_->run();
     switch (status) {
         case abstract::status::completed:
@@ -50,6 +56,10 @@ model::task_result task::operator()() {
     }
     // raise appropriate event if needed
     context()->channel()->emplace(event_enum_tag<event_kind::task_completed>, step()->id(), id());
+    if(auto&& cb = step()->will_end_task(); cb) {
+        callback_arg arg{ id() };
+        (*cb)(&arg);
+    }
     return jogasaki::model::task_result::complete;
 }
 

@@ -103,8 +103,8 @@ TEST_F(step_test, cogroup) {
     common::graph g{};
     auto& scan1 = g.emplace<simple_scan_process>();
     auto& scan2 = g.emplace<simple_scan_process>();
-    auto& xch1 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
-    auto& xch2 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0});
+    auto& xch1 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
+    auto& xch2 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto& cgrp = g.emplace<simple_cogroup_process>();
     auto& dvr = g.emplace<deliver::step>();
     scan1 >> xch1;

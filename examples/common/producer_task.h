@@ -42,13 +42,14 @@ public:
             maybe_shared_ptr<meta::record_meta> meta,
             Params& c,
             memory::monotonic_paged_memory_resource& resource
-            ) :
+    ) :
             task_base(std::move(context),  src),
             sink_(sink),
             meta_(std::move(meta)),
             params_(&c),
             resource_(&resource)
-            {}
+    {}
+
     void execute() override {
         VLOG(1) << *this << " producer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_prepare, id());
@@ -76,16 +77,14 @@ private:
     }
 
     void prepare_data(std::vector<std::pair<void*, void*>>& continuous_ranges) {
-        auto offset_c1 = meta_->value_offset(0);
-        auto offset_c2 = meta_->value_offset(1);
         utils::xorshift_random64 rnd{static_cast<std::uint64_t>(id()+1)};
         auto sz = meta_->record_size();
         auto recs_per_page = memory::page_size / sizeof(void*);
-        auto partitions = params_->records_per_upstream_partition_;
-        continuous_ranges.reserve( ( partitions + recs_per_page - 1)/recs_per_page);
+        auto records = params_->records_per_upstream_partition_;
+        continuous_ranges.reserve( ( records + recs_per_page - 1)/recs_per_page);
         void* prev = nullptr;
         void* begin_range = nullptr;
-        for(std::size_t i = 0; i < partitions; ++i) {
+        for(std::size_t i = 0; i < records; ++i) {
             auto ptr = resource_->allocate(sz, meta_->record_alignment());
             if (prev == nullptr) {
                 begin_range = ptr;
@@ -95,12 +94,41 @@ private:
             }
             prev = ptr;
             auto ref = accessor::record_ref(ptr, sz);
-            std::int64_t c1 = (params_->key_modulo_ == static_cast<std::size_t>(-1)) ? rnd() : rnd() % params_->key_modulo_;
-            c1 = (c1 > 0) ? c1 : -c1;
-            ref.set_value<std::int64_t>(offset_c1, c1);
-            double c2 = rnd();
-            ref.set_value<double>(offset_c2, c2);
-            DVLOG(2) << "c1: " << c1 << " c2: " << c2;
+
+            for(std::size_t j=0, n=meta_->field_count(); j < n; ++j) {
+                auto offset = meta_->value_offset(j);
+                auto&& f = meta_->at(j);
+                using kind = meta::field_type_kind;
+                switch(f.kind()) {
+                    case kind::int8: {
+                        auto val = params_->sequential_data_ ? i : rnd();
+                        std::int64_t c1 = (params_->key_modulo_ == static_cast<std::size_t>(-1)) ? val : (val % params_->key_modulo_);
+                        c1 = (c1 > 0) ? c1 : -c1;
+                        ref.set_value<std::int64_t>(offset, c1);
+                        break;
+                    }
+                    case kind::float8: {
+                        double c2 = rnd();
+                        ref.set_value<double>(offset, c2);
+                        break;
+                    }
+                    case kind::character: {
+                        bool sequential = params_->sequential_data_;
+                        char c = 'A' + (sequential ? i : rnd()) % 26;
+                        std::size_t len = 1 + (sequential ? i : rnd()) % 70;
+                        len = i % 2 == 1 ? len + 20 : len;
+                        std::string d(len, c);
+                        ref.set_value<accessor::text>(offset, accessor::text{resource_, d.data(), d.size()});
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                if (meta_->nullable(j)) {
+                    auto nullity_offset = meta_->nullity_offset(j);
+                    ref.set_null(nullity_offset, false);
+                }
+            }
         }
         if(begin_range) {
             continuous_ranges.emplace_back(begin_range, prev);

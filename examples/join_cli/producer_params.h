@@ -15,17 +15,14 @@
  */
 #pragma once
 
-namespace jogasaki::cogroup_cli {
+namespace jogasaki::join_cli {
 
 class producer_params {
 public:
     std::size_t records_per_upstream_partition_ = 1000;
-
     std::size_t upstream_partitions_ = 5;
-
-    std::size_t key_modulo_ = -1;
-    
     bool sequential_data_ = false;
+    std::size_t key_modulo_ = -1;
 };
 
 }

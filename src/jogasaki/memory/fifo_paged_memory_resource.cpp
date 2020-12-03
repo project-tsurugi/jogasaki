@@ -32,7 +32,7 @@ fifo_paged_memory_resource::checkpoint fifo_paged_memory_resource::get_checkpoin
         return { nullptr, 0 };
     }
     auto& current = pages_.back();
-    return { current.head(), current.upper_bound_offset() };
+    return { current.head().address(), current.upper_bound_offset() };
 }
 
 void fifo_paged_memory_resource::deallocate_before(const fifo_paged_memory_resource::checkpoint &point) {
@@ -41,7 +41,7 @@ void fifo_paged_memory_resource::deallocate_before(const fifo_paged_memory_resou
     }
     while (!pages_.empty()) {
         auto&& page = pages_.front();
-        if (page.head() == point.head_) {
+        if (page.head().address() == point.head_) {
             // LB <= offset <= UB
             if (point.offset_ < page.lower_bound_offset()
                 || point.offset_ > page.upper_bound_offset()) {
@@ -116,8 +116,8 @@ std::size_t fifo_paged_memory_resource::do_page_remaining(std::size_t alignment)
 }
 
 details::page_allocation_info &fifo_paged_memory_resource::acquire_new_page() {
-    void* new_page = page_pool_->acquire_page();
-    if (new_page == nullptr) {
+    page_pool::page_info new_page = page_pool_->acquire_page();
+    if (new_page.address() == nullptr) {
         throw std::bad_alloc();
     }
     return pages_.emplace_back(new_page);

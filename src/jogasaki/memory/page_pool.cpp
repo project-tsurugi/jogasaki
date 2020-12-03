@@ -31,15 +31,16 @@ memory::page_pool::~page_pool() {
     }
 }
 
-void *memory::page_pool::acquire_page(bool brandnew) {
+page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
     void* page;
-    auto& free_pages_ = get_free_pages();
+    std::size_t node = node_num();
     if (!brandnew) {
+        auto& free_pages_ = get_free_pages(node);
         std::lock_guard<std::mutex> lock(page_mtx_);
         if (!free_pages_.empty()) {
             page = free_pages_.back();
             free_pages_.pop_back();
-            return page;
+            return page_info(page, node);
         }
     }
     page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
@@ -48,19 +49,18 @@ void *memory::page_pool::acquire_page(bool brandnew) {
         page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
             (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0); //NOLINT
         if (page == MAP_FAILED) { //NOLINT
-            return nullptr;
+            return page_info(nullptr, node);
         }
     }
-    return page;
+    return page_info(page, node);
 }
 
-void page_pool::release_page(void *page) noexcept {
-    auto& free_pages_ = get_free_pages();
+void page_pool::release_page(page_info page) noexcept {
+    auto& free_pages_ = get_free_pages(page.birth_place());
     {
         std::lock_guard<std::mutex> lock(page_mtx_);
-        free_pages_.emplace_back(page);
+        free_pages_.emplace_back(page.address());
     }
 }
-
 
 }

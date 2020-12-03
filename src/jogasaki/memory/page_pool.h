@@ -42,6 +42,22 @@ constexpr static std::size_t page_size = 2*1024*1024;
 class cache_align page_pool {
 public:
     /**
+     * @brief page information
+     */
+    class page_info {
+      public:
+        page_info(void *address, std::size_t birth_place) : address_(address), birth_place_(birth_place) {}
+        page_info() : address_(nullptr), birth_place_(-1) {}
+        friend bool operator<(const page_info one, const page_info other) { return one.address_ < other.address_; }
+        void address(void *address) { address_ = address; }
+        void* address() const { return address_; }
+        std::size_t birth_place() const { return birth_place_; }
+      private:
+        void *address_{};
+        std::size_t birth_place_{};
+    };
+
+    /**
      * @brief minimum alignment of a page
      */
     constexpr static std::size_t min_alignment = 4*1024;
@@ -74,28 +90,34 @@ public:
     /**
      * @brief acquire page from the pool
      * @param brandnew if true, page will always be newly created
-     * @return pointer to the acquired pool
-     * @return nullptr if page allocation failed
+     * @return page info to the acquired pool
+     * @return rv.page_ is nullptr if page allocation failed
      */
-    [[nodiscard]] void* acquire_page(bool brandnew = false);
+    [[nodiscard]] page_info acquire_page(bool brandnew = false);
 
     /**
      * @brief release page to the pool
-     * @param page pointer retrieved from the pool by calling acquire()
+     * @param page page info retrieved from the pool by calling acquire()
      */
-    void release_page(void* page) noexcept;
+    void release_page(page_info page) noexcept;
 
 private:
     std::vector<std::vector<void *>> free_pages_vector_{};
     std::mutex page_mtx_{};
 
-    std::vector<void *>& get_free_pages() {
+    std::size_t node_num() {
         if(int cpu = sched_getcpu(); cpu >= 0) {
             if (int node = numa_node_of_cpu(cpu); node >= 0) {
-                return free_pages_vector_.at(node);
+                return node;
             }
         }
         std::abort();
+    }
+    std::vector<void *>& get_free_pages() {
+        return free_pages_vector_.at(node_num());
+    }
+    std::vector<void *>& get_free_pages(std::size_t node) {
+        return free_pages_vector_.at(node);
     }
 
 };

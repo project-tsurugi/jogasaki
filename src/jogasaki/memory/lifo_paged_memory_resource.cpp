@@ -22,9 +22,9 @@ lifo_paged_memory_resource::~lifo_paged_memory_resource() {
     for (const auto& p : pages_) {
         release_deallocated_page(p.head());
     }
-    if (reserved_page_ != nullptr) {
+    if (reserved_page_.address() != nullptr) {
         page_pool_->release_page(reserved_page_);
-        reserved_page_ = nullptr;
+        reserved_page_.address(nullptr);
     }
 }
 
@@ -37,17 +37,17 @@ lifo_paged_memory_resource::checkpoint lifo_paged_memory_resource::get_checkpoin
         return { nullptr, 0 };
     }
     auto& current = pages_.back();
-    return { current.head(), current.upper_bound_offset() };
+    return { current.head().address(), current.upper_bound_offset() };
 }
 
 void lifo_paged_memory_resource::deallocate_after(const lifo_paged_memory_resource::checkpoint &point) {
     auto point_head = point.head_;
     if (point.head_ == nullptr && !pages_.empty()) {
-        point_head = pages_.front().head(); // point.head_ is nullptr indicating that the checkpoint was taken when the pages_ was empty
+        point_head = pages_.front().head().address(); // point.head_ is nullptr indicating that the checkpoint was taken when the pages_ was empty
     }
     while (!pages_.empty()) {
         auto&& page = pages_.back();
-        if (page.head() == point_head) {
+        if (page.head().address() == point_head) {
             // LB <= offset <= UB
             if (point.offset_ < page.lower_bound_offset()
                 || point.offset_ > page.upper_bound_offset()) {
@@ -125,21 +125,21 @@ std::size_t lifo_paged_memory_resource::do_page_remaining(std::size_t alignment)
 }
 
 details::page_allocation_info &lifo_paged_memory_resource::acquire_new_page() {
-    void* new_page;
-    if (reserved_page_ != nullptr) {
+    page_pool::page_info new_page;
+    if (reserved_page_.address() != nullptr) {
         new_page = reserved_page_;
-        reserved_page_ = nullptr;
+        reserved_page_.address(nullptr);
     } else {
         new_page = page_pool_->acquire_page();
-        if (new_page == nullptr) {
+        if (new_page.address() == nullptr) {
             throw std::bad_alloc();
         }
     }
     return pages_.emplace_back(new_page);
 }
 
-void lifo_paged_memory_resource::release_deallocated_page(void *deallocated_page) {
-    if (reserved_page_ != nullptr) {
+void lifo_paged_memory_resource::release_deallocated_page(page_pool::page_info deallocated_page) {
+    if (reserved_page_.address() != nullptr) {
         page_pool_->release_page(reserved_page_);
     }
     reserved_page_ = deallocated_page;

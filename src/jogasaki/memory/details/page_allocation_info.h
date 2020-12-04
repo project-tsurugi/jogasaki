@@ -33,13 +33,13 @@ public:
      * @brief creates a new instance.
      * @param ptr the page pointer
      */
-    explicit page_allocation_info(page_pool::page_info ptr) noexcept : head_(ptr) {}
+    explicit constexpr page_allocation_info(page_pool::page_info ptr) noexcept : head_(ptr) {}
 
     /**
      * @brief returns pointer to the allocated page.
      * @return the page pointer
      */
-    [[nodiscard]] page_pool::page_info head() const noexcept { return head_; }
+    [[nodiscard]] constexpr page_pool::page_info head() const noexcept { return head_; }
 
     /**
      * @brief returns whether or not this page is empty.

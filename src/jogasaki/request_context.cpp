@@ -41,7 +41,7 @@ request_context::request_context(
     request_resource_(std::move(request_resource)),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
-    result_(std::move(result))
+    result_(result)
 {}
 
 std::shared_ptr<class channel> const& request_context::channel() const {

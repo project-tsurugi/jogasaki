@@ -24,7 +24,7 @@ namespace jogasaki::api {
 
 class result_set::impl {
 public:
-    impl(
+    explicit impl(
         std::unique_ptr<data::result_store> store
     ) noexcept :
         store_(std::move(store))

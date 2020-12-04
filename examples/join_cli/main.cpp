@@ -65,7 +65,7 @@
 #include "params.h"
 #include "producer_process.h"
 
-DEFINE_int32(thread_pool_size, 10, "Thread pool size");  //NOLINT
+DEFINE_int32(thread_pool_size, 100, "Thread pool size");  //NOLINT
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(left_upstream_partitions, 5, "Number of left upstream partitions");  //NOLINT
@@ -155,6 +155,7 @@ bool fill_from_flags(
     cfg.core_affinity(FLAGS_core_affinity);
     cfg.initial_core(FLAGS_initial_core);
     cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+    cfg.thread_pool_size(FLAGS_thread_pool_size);
 
     if (FLAGS_minimum) {
         cfg.single_thread(true);

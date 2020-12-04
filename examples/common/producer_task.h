@@ -53,14 +53,17 @@ public:
     void execute() override {
         VLOG(1) << *this << " producer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_prepare, id());
+        LOG(INFO) << id() << " start prepare";
         initialize_writer();
         std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions
         prepare_data(continuous_ranges);
         utils::get_watch().set_point(time_point_produce, id());
+        LOG(INFO) << id() << " start produce";
         produce_data(continuous_ranges);
         writer_->flush();
         writer_->release();
         utils::get_watch().set_point(time_point_produced, id());
+        LOG(INFO) << id() << " end produce";
     }
 
 private:

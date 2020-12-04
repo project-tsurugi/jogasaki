@@ -185,7 +185,6 @@ bool fill_from_flags(
 
 void dump_perf_info(bool prepare = true, bool run = true, bool completion = false) {
     auto& watch = utils::get_watch();
-    (void)watch;
     if (prepare) {
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_produce, "prepare");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_produce, time_point_produced, "produce");
@@ -405,9 +404,11 @@ public:
 
         consumer.did_start_task(std::make_shared<callback_type>([](callback_arg* arg){
             jogasaki::utils::get_watch().set_point(jogasaki::join_cli::time_point_consume, arg->identity_);
+            LOG(INFO) << arg->identity_ << " start consume";
         }));
         consumer.will_end_task(std::make_shared<callback_type>([](callback_arg* arg){
             jogasaki::utils::get_watch().set_point(jogasaki::join_cli::time_point_consumed, arg->identity_);
+            LOG(INFO) << arg->identity_ << " end consume";
         }));
         consumer.partitions(s.downstream_partitions_);
         dag_controller dc{std::move(cfg)};

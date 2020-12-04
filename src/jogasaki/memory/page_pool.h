@@ -49,7 +49,7 @@ public:
         constexpr page_info(void *address, std::size_t birth_place) : address_(address), birth_place_(birth_place) {}
         constexpr page_info() : address_(nullptr), birth_place_(-1) {}
         friend bool operator<(const page_info one, const page_info other) { return one.address_ < other.address_; }
-        void address(void *address) { address_ = address; }
+//        void address(void *address) { address_ = address; }
         void* address() const { return address_; }
         std::size_t birth_place() const { return birth_place_; }
       private:

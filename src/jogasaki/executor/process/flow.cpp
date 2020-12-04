@@ -17,11 +17,16 @@
 
 #include <memory>
 
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/ops/emit.h>
 
 namespace jogasaki::executor::process {
+
+using takatori::util::unsafe_downcast;
 
 flow::flow(
     request_context *context,
@@ -57,9 +62,18 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
 
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
     auto partitions = step_->partitions();
+    auto& operators = proc->operators();
+    auto external_output = operators.io_exchange_map().external_output_count();
+    // for now only one task within a request emits, fix when multiple emits happen
+    BOOST_ASSERT(external_output <= 1);  //NOLINT
+    auto* result = context_->result();
+    if (result && external_output > 0) {
+        auto& emit = unsafe_downcast<impl::ops::emit>(operators.io_exchange_map().external_output_at(0));
+        result->capacity(partitions, emit.meta());
+    }
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(i, proc->operators()));
+        contexts.emplace_back(create_task_context(i, operators));
     }
     auto& exchange_map = step_->io_exchange_map();
     for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
@@ -85,17 +99,11 @@ common::step_kind flow::kind() const noexcept {
 
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {
     auto external_output = operators.io_exchange_map().external_output_count();
-    auto* stores = context_->stores();
-    if (stores) {
-        stores->resize(stores->size() + external_output);
-    }
     auto ctx = std::make_shared<impl::task_context>(
         partition,
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
-        stores,
-        context_->record_resource(), // TODO for now only one task within a request emits, fix when multiple emits happen
-        context_->varlen_resource()  // TODO for now only one task within a request emits, fix when multiple emits happen
+        (context_->result() && external_output > 0) ? &context_->result()->store(partition) : nullptr
     );
 
     ctx->work_context(std::make_unique<impl::work_context>(

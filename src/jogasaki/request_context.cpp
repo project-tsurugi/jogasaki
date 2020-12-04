@@ -33,19 +33,15 @@ request_context::request_context(
     std::unique_ptr<memory::lifo_paged_memory_resource> request_resource,
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<kvs::transaction> transaction,
-    result_stores* stores,
-    memory::paged_memory_resource* record_resource,
-    memory::paged_memory_resource* varlen_resource
+    data::result_store* result
 ) :
     channel_(std::move(ch)),
     config_(std::move(config)),
     compiler_context_(std::move(compiler_context)),
     request_resource_(std::move(request_resource)),
-    stores_(stores),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
-    result_record_resource_(record_resource),
-    result_varlen_resource_(varlen_resource)
+    result_(std::move(result))
 {}
 
 std::shared_ptr<class channel> const& request_context::channel() const {
@@ -56,8 +52,8 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
     return config_;
 }
 
-request_context::result_stores* request_context::stores() {
-    return stores_;
+[[nodiscard]] data::result_store* request_context::result() {
+    return result_;
 }
 
 std::shared_ptr<plan::compiler_context> const& request_context::compiler_context() const {

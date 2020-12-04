@@ -42,7 +42,6 @@ class task_context : public abstract::task_context {
 public:
     using partition_index = std::size_t;
 
-    using result_stores = request_context::result_stores;
     /**
      * @brief create new empty instance
      */
@@ -57,24 +56,19 @@ public:
      * @param partition the index of partition assigned to this object
      * @param io_exchange_map mapping from input/output indices to exchanges
      * @param scan_info the scan information, nullptr if the task doesn't contain scan
-     * @param stores the stores to keep the result data
-     * @param external_output_record_resource the memory resource backing the result store
-     * @param external_output_varlen_resource the memory resource backing the result store
+     * @param result the store to keep the result data
      */
-    task_context(partition_index partition,
+    task_context(
+        partition_index partition,
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
-        result_stores* stores,
-        memory::paged_memory_resource* external_output_record_resource = {},
-        memory::paged_memory_resource* external_output_varlen_resource = {}
+        data::iterable_record_store* result
     ) :
         partition_(partition),
         io_exchange_map_(std::addressof(io_exchange_map)),
         scan_info_(std::move(scan_info)),
-        stores_(stores),
-        external_writers_(io_exchange_map_->external_output_count()),
-        external_output_record_resource_(external_output_record_resource),
-        external_output_varlen_resource_(external_output_varlen_resource)
+        result_(result),
+        external_writers_(io_exchange_map_->external_output_count())
     {}
 
     reader_container reader(reader_index idx) override {
@@ -113,16 +107,11 @@ public:
 
     record_writer* external_writer(writer_index idx) override {
         BOOST_ASSERT(idx < external_writers_.size());  //NOLINT
-        BOOST_ASSERT(stores_ != nullptr);  //NOLINT
+        BOOST_ASSERT(result_ != nullptr);  //NOLINT
         auto& op = unsafe_downcast<ops::emit>(io_exchange_map_->external_output_at(idx));
         auto& slot = external_writers_.operator[](idx);
         if (! slot) {
-            auto& st = stores_->operator[](idx) = std::make_shared<data::iterable_record_store>(
-                external_output_record_resource_,
-                external_output_varlen_resource_,
-                op.meta()
-            );
-            slot = std::make_shared<class external_writer>(*st, op.meta());
+            slot = std::make_shared<class external_writer>(*result_, op.meta());
         }
         return slot.get();
     }
@@ -139,10 +128,8 @@ private:
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
-    result_stores* stores_{};
+    data::iterable_record_store* result_{};
     std::vector<std::shared_ptr<class external_writer>> external_writers_{};
-    memory::paged_memory_resource* external_output_record_resource_{};
-    memory::paged_memory_resource* external_output_varlen_resource_{};
 };
 
 }

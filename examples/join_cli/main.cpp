@@ -124,7 +124,7 @@ using namespace ::yugawara;
 using namespace ::yugawara::variable;
 
 using kind = meta::field_type_kind;
-constexpr std::size_t max_char_len = 100;
+constexpr std::size_t max_char_len = 32;
 
 constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
@@ -312,16 +312,16 @@ public:
         auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
         vmap->bind(g0c0, t::int8{});
         vmap->bind(g0c1, t::int8{});
-        vmap->bind(g0c2, t::character{t::varying, 64});
+        vmap->bind(g0c2, t::character{t::varying, max_char_len});
         vmap->bind(g1c0, t::int8{});
         vmap->bind(g1c1, t::int8{});
-        vmap->bind(g1c2, t::character{t::varying, 64});
+        vmap->bind(g1c2, t::character{t::varying, max_char_len});
         vmap->bind(g0v0, t::int8{});
         vmap->bind(g0v1, t::int8{});
-        vmap->bind(g0v2, t::character{t::varying, 64});
+        vmap->bind(g0v2, t::character{t::varying, max_char_len});
         vmap->bind(g1v0, t::int8{});
         vmap->bind(g1v1, t::int8{});
-        vmap->bind(g1v2, t::character{t::varying, 64});
+        vmap->bind(g1v2, t::character{t::varying, max_char_len});
 
         yugawara::compiled_info c_info{{}, vmap};
 
@@ -352,9 +352,7 @@ public:
         auto compiler_context = std::make_shared<plan::compiler_context>();
         create_compiled_info(compiler_context, s);
 
-        memory::monotonic_paged_memory_resource record_resource{&global::page_pool()};
-        memory::monotonic_paged_memory_resource varlen_resource{&global::page_pool()};
-        request_context::result_stores stores{};
+        data::result_store result{};
         auto context = std::make_shared<request_context>(
             channel,
             cfg,
@@ -362,9 +360,7 @@ public:
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::shared_ptr<kvs::database>{},
             std::shared_ptr<kvs::transaction>{},
-            &stores,
-            &record_resource,
-            &varlen_resource
+            &result
         );
 
         auto& g0 = unsafe_downcast<takatori::plan::group>(*input_exchanges_[0]);
@@ -412,36 +408,39 @@ public:
         consumer.will_end_task(std::make_shared<callback_type>([](callback_arg* arg){
             jogasaki::utils::get_watch().set_point(jogasaki::join_cli::time_point_consumed, arg->identity_);
         }));
+        consumer.partitions(s.downstream_partitions_);
         dag_controller dc{std::move(cfg)};
         dc.schedule(g);
-        dump_result_data(stores, s);
+        dump_result_data(result, s);
         return 0;
     }
 
-    void dump_result_data(request_context::result_stores stores, params const& param) {
-        auto store = stores[0];
-        if (! store) return;
-        auto record_meta = store->meta();
-        auto it = store->begin();
-        std::size_t count = 0;
-        std::size_t hash = 0;
-        while(it != store->end()) {
-            auto record = it.ref();
-            if(param.debug_ && count < 100) {
-                std::stringstream ss{};
-                ss << record << *record_meta;
-                LOG(INFO) << ss.str();
+    void dump_result_data(data::result_store const& result, params const& param) {
+        for(std::size_t i=0, n=result.size(); i < n; ++i) {
+            LOG(INFO) << "dumping result for partition " << i;
+            auto& store = result.store(i);
+            auto record_meta = store.meta();
+            auto it = store.begin();
+            std::size_t count = 0;
+            std::size_t hash = 0;
+            while(it != store.end()) {
+                auto record = it.ref();
+                if(param.debug_ && count < 100) {
+                    std::stringstream ss{};
+                    ss << record << *record_meta;
+                    LOG(INFO) << ss.str();
+                }
+                if (count % 1000 == 0) {
+                    std::stringstream ss{};
+                    ss << record << *record_meta;
+                    // check only 1/1000 records to save time
+                    hash ^= std::hash<std::string>{}(ss.str());
+                }
+                ++it;
+                ++count;
             }
-            if (count % 1000 == 0) {
-                std::stringstream ss{};
-                ss << record << *record_meta;
-                // check only 1/1000 records to save time
-                hash ^= std::hash<std::string>{}(ss.str());
-            }
-            ++it;
-            ++count;
+            LOG(INFO) << "record count: " << count << " hash: " << std::hex << hash;
         }
-        LOG(INFO) << "record count: " << count << " hash: " << std::hex << hash;
     }
     takatori::plan::process& find_process(takatori::plan::graph_type& p) {
         takatori::plan::process* p0{};

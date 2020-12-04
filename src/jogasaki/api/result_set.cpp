@@ -20,11 +20,11 @@
 namespace jogasaki::api {
 
 result_set::iterator result_set::impl::begin() {
-    return store_->begin();
+    return store_->store(0).begin(); //FIXME
 }
 
 result_set::iterator result_set::impl::end() {
-    return store_->end();
+    return store_->store(0).end(); //FIXME
 }
 
 maybe_shared_ptr<meta::record_meta> result_set::impl::meta() const noexcept {
@@ -33,8 +33,6 @@ maybe_shared_ptr<meta::record_meta> result_set::impl::meta() const noexcept {
 
 void result_set::impl::close() {
     store_.reset();
-    record_resource_.reset();
-    varlen_resource_.reset();
 };
 
 result_set::result_set(std::unique_ptr<result_set::impl> i) : impl_(std::move(i)) {}

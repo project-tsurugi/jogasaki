@@ -482,9 +482,7 @@ public:
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<class channel>();
-        memory::monotonic_paged_memory_resource record_resource{&global::page_pool()};
-        memory::monotonic_paged_memory_resource varlen_resource{&global::page_pool()};
-        request_context::result_stores stores{};
+        data::result_store result{};
         auto tx = db->create_transaction(true);
         auto context = std::make_shared<request_context>(
             channel,
@@ -493,9 +491,7 @@ public:
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::move(db),
             std::move(tx),
-            &stores,
-            &record_resource,
-            &varlen_resource
+            &result
         );
         common::graph g{*context};
         g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
@@ -517,33 +513,36 @@ public:
         dc.schedule(g);
         utils::get_watch().set_point(time_point_schedule_completed, thread_id);
         LOG(INFO) << "thread " << thread_id << " schedule request end";
-        dump_result_data(stores, param);
+        dump_result_data(result, param);
         utils::get_watch().set_point(time_point_result_dumped, thread_id);
     }
 
-    void dump_result_data(request_context::result_stores stores, params const& param) {
-        auto store = stores[0];
-        auto record_meta = store->meta();
-        auto it = store->begin();
-        std::size_t count = 0;
-        std::size_t hash = 0;
-        while(it != store->end()) {
-            auto record = it.ref();
-            if(param.debug_ && count < 100) {
-                std::stringstream ss{};
-                ss << record << *record_meta;
-                LOG(INFO) << ss.str();
+    void dump_result_data(data::result_store const& result, params const& param) {
+        for(std::size_t i=0, n=result.size(); i < n; ++i) {
+            LOG(INFO) << "dumping result for partition " << i;
+            auto& store = result.store(i);
+            auto record_meta = store.meta();
+            auto it = store.begin();
+            std::size_t count = 0;
+            std::size_t hash = 0;
+            while(it != store.end()) {
+                auto record = it.ref();
+                if(param.debug_ && count < 100) {
+                    std::stringstream ss{};
+                    ss << record << *record_meta;
+                    LOG(INFO) << ss.str();
+                }
+                if (count % 1000 == 0) {
+                    std::stringstream ss{};
+                    ss << record << *record_meta;
+                    // check only 1/1000 records to save time
+                    hash ^= std::hash<std::string>{}(ss.str());
+                }
+                ++it;
+                ++count;
             }
-            if (count % 1000 == 0) {
-                std::stringstream ss{};
-                ss << record << *record_meta;
-                // check only 1/1000 records to save time
-                hash ^= std::hash<std::string>{}(ss.str());
-            }
-            ++it;
-            ++count;
+            LOG(INFO) << "record count: " << count << " hash: " << std::hex << hash;
         }
-        LOG(INFO) << "record count: " << count << " hash: " << std::hex << hash;
     }
 
     std::vector<std::size_t> init_map(params& param) {

@@ -17,7 +17,7 @@
 
 #include <jogasaki/executor/global.h>
 #include <jogasaki/api/result_set.h>
-#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/data/result_store.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::api {
@@ -25,23 +25,9 @@ namespace jogasaki::api {
 class result_set::impl {
 public:
     impl(
-        std::shared_ptr<data::iterable_record_store> store,
-        std::unique_ptr<memory::monotonic_paged_memory_resource> record_resource,
-        std::unique_ptr<memory::monotonic_paged_memory_resource> varlen_resource
+        std::unique_ptr<data::result_store> store
     ) noexcept :
-        store_(std::move(store)),
-        record_resource_(std::move(record_resource)),
-        varlen_resource_(std::move(varlen_resource))
-    {}
-
-    explicit impl(
-        std::shared_ptr<data::iterable_record_store> store
-    ) noexcept :
-        impl(
-            std::move(store),
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
-        )
+        store_(std::move(store))
     {}
 
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept;
@@ -51,9 +37,7 @@ public:
     void close();
 
 private:
-    std::shared_ptr<data::iterable_record_store> store_{};
-    std::unique_ptr<memory::monotonic_paged_memory_resource> record_resource_{};
-    std::unique_ptr<memory::monotonic_paged_memory_resource> varlen_resource_{};
+    std::unique_ptr<data::result_store> store_{};
 };
 
 }

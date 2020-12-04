@@ -45,9 +45,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         LOG(ERROR) << "database not started";
         fail();
     }
-    auto record_resource = std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool());
-    auto varlen_resource = std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool());
-    request_context::result_stores stores{};
+    auto result = std::make_unique<data::result_store>();
     // TODO redesign how request context is passed
     auto* g = ctx->step_graph();
     auto request_ctx = std::make_shared<request_context>(
@@ -57,20 +55,15 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
         kvs_db_,
         kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
-        &stores,
-        record_resource.get(),
-        varlen_resource.get()
+        result.get()
     );
 
     dynamic_cast<executor::common::graph*>(g)->context(*request_ctx);
     scheduler_.schedule(*g);
 
     // for now, assume only one result is returned
-    auto result = (!stores.empty() && stores[0] != nullptr ) ? stores[0] : std::make_shared<data::iterable_record_store>();
     return std::make_unique<result_set>(std::make_unique<result_set::impl>(
-        std::move(result),
-        std::move(record_resource),
-        std::move(varlen_resource)
+        std::move(result)
     ));
 }
 

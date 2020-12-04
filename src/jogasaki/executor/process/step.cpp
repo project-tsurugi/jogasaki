@@ -95,9 +95,7 @@ common::step_kind step::kind() const noexcept {
 }
 
 std::size_t step::partitions() const noexcept {
-    if (info_->details().has_scan_operator() ||
-        info_->details().has_emit_operator()) {
-        // TODO allow multiple partitions with emit
+    if (info_->details().has_scan_operator()) {
         return 1;
     }
     return partitions_;

@@ -20,6 +20,7 @@
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/data/result_store.h>
 
 namespace jogasaki {
 
@@ -31,7 +32,6 @@ class channel;
  */
 class request_context {
 public:
-    using result_stores = std::vector<std::shared_ptr<data::iterable_record_store>>;
     /**
      * @brief create default context object
      */
@@ -44,9 +44,7 @@ public:
      * @param compiler_context the compiler context for this request
      * @param request_resource the memory resource used to construct request wide objects such as processors and operators
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
-     * @param result_store store to hold the result records, nullptr is allowed if the request doesn't create result set
-     * @param result_record_resource memory resource backing the result record buffer, whose life time should long until the result is released
-     * @param result_varlen_resource memory resource backing the varlen data in the result records, whose life time should long until the result is released
+     * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
     request_context(std::shared_ptr<class channel> ch,
         std::shared_ptr<class configuration> config,
@@ -54,9 +52,7 @@ public:
         std::unique_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<kvs::transaction> transaction = {},
-        result_stores* stores = {},
-        memory::paged_memory_resource* result_record_resource = {},
-        memory::paged_memory_resource* result_varlen_resource = {}
+        data::result_store* result = {}
     );
 
     /**
@@ -75,7 +71,7 @@ public:
      * @brief accessor for the result store
      * @return result store
      */
-    [[nodiscard]] result_stores* stores();
+    [[nodiscard]] data::result_store* result();
 
     /**
      * @brief accessor for the compiler context
@@ -103,31 +99,14 @@ public:
      */
     [[nodiscard]] std::shared_ptr<kvs::transaction> const& transaction() const;
 
-    /**
-     * @brief accessor for the record resource
-     * @return record resource
-     */
-    [[nodiscard]] memory::paged_memory_resource* record_resource() const noexcept {
-        return result_record_resource_;
-    }
-
-    /**
-     * @brief accessor for the varlen resource
-     * @return varlen resource
-     */
-    [[nodiscard]] memory::paged_memory_resource* varlen_resource() const noexcept {
-        return result_varlen_resource_;
-    }
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<plan::compiler_context> compiler_context_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> request_resource_{};
-    result_stores* stores_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
-    memory::paged_memory_resource* result_record_resource_{};
-    memory::paged_memory_resource* result_varlen_resource_{};
+    data::result_store* result_{};
 };
 
 }

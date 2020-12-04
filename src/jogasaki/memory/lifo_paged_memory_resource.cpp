@@ -24,7 +24,7 @@ lifo_paged_memory_resource::~lifo_paged_memory_resource() {
     }
     if (reserved_page_.address() != nullptr) {
         page_pool_->release_page(reserved_page_);
-        reserved_page_.address(nullptr);
+        reserved_page_ = page_pool::page_info();
     }
 }
 
@@ -128,7 +128,7 @@ details::page_allocation_info &lifo_paged_memory_resource::acquire_new_page() {
     page_pool::page_info new_page;
     if (reserved_page_.address() != nullptr) {
         new_page = reserved_page_;
-        reserved_page_.address(nullptr);
+        reserved_page_ = page_pool::page_info();
     } else {
         new_page = page_pool_->acquire_page();
         if (new_page.address() == nullptr) {

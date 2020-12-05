@@ -50,9 +50,9 @@ public:
 
     /**
      * @brief construct new object
-     * @param record
-     * @param key_indices
-     * @param partitions
+     * @param record the metadata of the input record for shuffle operation
+     * @param key_indices the ordered indices to choose the keys from the record fields
+     * @param aggregator the aggregation function
      */
     shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices, std::shared_ptr<aggregator_type> aggregator = {}) :
         record_(std::move(record)),
@@ -136,12 +136,12 @@ private:
             }
         }
         return std::make_shared<meta::record_meta>(
-                std::move(fields),
-                std::move(nullables),
-                std::move(value_offset_table),
-                std::move(nullity_offset_table),
-                record_->record_alignment(),
-                record_->record_size()
+            std::move(fields),
+            std::move(nullables),
+            std::move(value_offset_table),
+            std::move(nullity_offset_table),
+            record_->record_alignment(),
+            record_->record_size()
         );
 
     }

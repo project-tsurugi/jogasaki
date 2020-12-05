@@ -69,17 +69,15 @@ public:
         meta::variable_order output_column_order
     );
 
-    [[nodiscard]] executor::common::step_kind kind() const noexcept override;
+    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
+        return executor::common::step_kind::group;
+    }
 
     void activate() override;
 
-    [[nodiscard]] meta::variable_order const& output_order() const noexcept override {
-        return output_column_order_;
-    }
+    [[nodiscard]] meta::variable_order const& output_order() const noexcept override;
 
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& output_meta() const noexcept override {
-        return info_->group_meta();
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& output_meta() const noexcept override;
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;
 

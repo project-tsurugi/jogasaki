@@ -92,7 +92,7 @@ public:
      * @copydoc
      */
     [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::group;
+        return common::step_kind::aggregate;
     }
 
     [[nodiscard]] class request_context* context() const noexcept {

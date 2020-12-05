@@ -134,7 +134,6 @@ public:
      * @details the current internal hash table is finalized and next write() will create new one.
      */
     void flush() noexcept {
-        if(!current_table_active_) return;
         current_table_active_ = false;
     }
 
@@ -294,19 +293,19 @@ private:
     std::size_t initial_hash_table_size_{};
 
     void initialize_lazy() {
-        if (!keys_) {
+        if (! keys_) {
             keys_ = std::make_unique<data::record_store>(
                     resource_for_keys_.get(),
                     resource_for_varlen_data_.get(),
                     info_->key_meta());
         }
-        if (!values_) {
+        if (! values_) {
             values_ = std::make_unique<data::record_store>(
                 resource_for_values_.get(),
                 resource_for_varlen_data_.get(),
                 info_->value_meta());
         }
-        if(!current_table_active_) {
+        if(! current_table_active_) {
             tables_.emplace_back(initial_hash_table_size_,
                 hash{info_->key_meta().get()},
                 impl::key_eq{comparator_, info_->key_meta()->record_size()},

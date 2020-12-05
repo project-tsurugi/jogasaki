@@ -65,7 +65,7 @@ flow::flow(maybe_shared_ptr<meta::record_meta> input_meta,
         step* owner,
         std::size_t downstream_partitions
 ) :
-        flow(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)), context, owner, downstream_partitions) {} //TODO add aggregator
+        flow(std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)), context, owner, downstream_partitions) {}
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     tasks_.emplace_back(std::make_shared<exchange::task>(context_, owner_));
@@ -98,7 +98,7 @@ flow::source_list_view flow::sources() {
 void flow::transfer() {
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        assert(partitions.size() == sources_.size()); //NOLINT
+        BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT
         for(std::size_t i=0; i < partitions.size(); ++i) {
             sources_[i]->receive(std::move(partitions[i]));
         }

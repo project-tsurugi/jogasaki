@@ -472,4 +472,192 @@ TEST_F(coder_test, streams) {
     ASSERT_EQ(100, s.capacity());
 }
 
+class bin {
+public:
+    bin(void* data, std::size_t len) : data_(data), len_(len) {}
+
+    bool operator<(bin const& other) const noexcept {
+        std::vector<unsigned char> a{static_cast<unsigned char*>(data_), static_cast<unsigned char*>(data_)+len_};
+        std::vector<unsigned char> b{static_cast<unsigned char*>(other.data_), static_cast<unsigned char*>(other.data_)+other.len_};
+        return a < b;
+    }
+
+    bool operator>(bin const& other) const noexcept {
+        return other < *this;
+    }
+
+    void* data_{};
+    std::size_t len_{};
+
+    friend std::ostream& operator<<(std::ostream& out, bin const& b) {
+        out << "length " << b.len_ << " data: ";
+        for(std::size_t i=0; i < b.len_; ++i) {
+            out << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(*(static_cast<unsigned char*>(b.data_)+i)) << " ";
+        }
+        return out;
+    }
+};
+
+using kind = meta::field_type_kind;
+
+template <kind Kind>
+void test_ordering() {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    kvs::stream s0{src0};
+    kvs::stream s1{src1};
+    kvs::stream s2{src2};
+    kvs::stream s3{src3};
+    executor::process::impl::expression::any n1{std::in_place_type<typename meta::field_type_traits<Kind>::runtime_type>, -1};
+    executor::process::impl::expression::any z0{std::in_place_type<typename meta::field_type_traits<Kind>::runtime_type>, 0};
+    executor::process::impl::expression::any p1{std::in_place_type<typename meta::field_type_traits<Kind>::runtime_type>, 1};
+    {
+        // ascending non nullable
+        encode(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);
+        encode(z0, meta::field_type{enum_tag<Kind>}, spec_asc, s2);
+        encode(p1, meta::field_type{enum_tag<Kind>}, spec_asc, s3);
+        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    {
+        // descending non nullable
+        encode(n1, meta::field_type{enum_tag<Kind>}, spec_desc, s1);
+        encode(z0, meta::field_type{enum_tag<Kind>}, spec_desc, s2);
+        encode(p1, meta::field_type{enum_tag<Kind>}, spec_desc, s3);
+        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    {
+        // ascending nullable
+        encode_nullable({}, meta::field_type{enum_tag<Kind>}, spec_asc, s0);
+        encode_nullable(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);
+        encode_nullable(z0, meta::field_type{enum_tag<Kind>}, spec_asc, s2);
+        encode_nullable(p1, meta::field_type{enum_tag<Kind>}, spec_asc, s3);
+        EXPECT_LT(bin(src0.data(), s0.length()), bin(src1.data(), s1.length()));
+        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    {
+        // descending nullable
+        encode_nullable({}, meta::field_type{enum_tag<Kind>}, spec_desc, s0);
+        encode_nullable(n1, meta::field_type{enum_tag<Kind>}, spec_desc, s1);
+        encode_nullable(z0, meta::field_type{enum_tag<Kind>}, spec_desc, s2);
+        encode_nullable(p1, meta::field_type{enum_tag<Kind>}, spec_desc, s3);
+        EXPECT_GT(bin(src0.data(), s0.length()), bin(src1.data(), s1.length()));
+        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+    }
+}
+
+TEST_F(coder_test, i1_ordering) {
+    test_ordering<kind::int1>();
+}
+
+TEST_F(coder_test, i2_ordering) {
+    test_ordering<kind::int2>();
+}
+
+TEST_F(coder_test, i4_ordering) {
+    test_ordering<kind::int4>();
+}
+
+TEST_F(coder_test, i8_ordering) {
+    test_ordering<kind::int8>();
+}
+
+TEST_F(coder_test, f4_ordering) {
+    test_ordering<kind::float4>();
+}
+
+TEST_F(coder_test, f8_ordering) {
+    test_ordering<kind::float8>();
+}
+
+TEST_F(coder_test, text_ordering) {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    std::string src4(100, 0);
+    kvs::stream s0{src0};
+    kvs::stream s1{src1};
+    kvs::stream s2{src2};
+    kvs::stream s3{src3};
+    kvs::stream s4{src4};
+    executor::process::impl::expression::any c0{std::in_place_type<accessor::text>, text{""}};
+    executor::process::impl::expression::any c2{std::in_place_type<accessor::text>, text{"AA"}};
+    executor::process::impl::expression::any c3a{std::in_place_type<accessor::text>, text{"AAA"}};
+    executor::process::impl::expression::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
+    {
+        // ascending non nullable
+        encode(c0, meta::field_type{enum_tag<kind::character>}, spec_asc, s1);
+        encode(c2, meta::field_type{enum_tag<kind::character>}, spec_asc, s2);
+        encode(c3a, meta::field_type{enum_tag<kind::character>}, spec_asc, s3);
+        encode(c3b, meta::field_type{enum_tag<kind::character>}, spec_asc, s4);
+        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_LT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending non nullable
+        encode(c0, meta::field_type{enum_tag<kind::character>}, spec_desc, s1);
+        encode(c2, meta::field_type{enum_tag<kind::character>}, spec_desc, s2);
+        encode(c3a, meta::field_type{enum_tag<kind::character>}, spec_desc, s3);
+        encode(c3b, meta::field_type{enum_tag<kind::character>}, spec_desc, s4);
+        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_GT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // ascending nullable
+        encode_nullable(c0, meta::field_type{enum_tag<kind::character>}, spec_asc, s1);
+        encode_nullable(c2, meta::field_type{enum_tag<kind::character>}, spec_asc, s2);
+        encode_nullable(c3a, meta::field_type{enum_tag<kind::character>}, spec_asc, s3);
+        encode_nullable(c3b, meta::field_type{enum_tag<kind::character>}, spec_asc, s4);
+        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_LT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending nullable
+        encode_nullable({}, meta::field_type{enum_tag<kind::character>}, spec_desc, s0);
+        encode_nullable(c0, meta::field_type{enum_tag<kind::character>}, spec_desc, s1);
+        encode_nullable(c2, meta::field_type{enum_tag<kind::character>}, spec_desc, s2);
+        encode_nullable(c3a, meta::field_type{enum_tag<kind::character>}, spec_desc, s3);
+        encode_nullable(c3b, meta::field_type{enum_tag<kind::character>}, spec_desc, s4);
+        EXPECT_GT(bin(src0.data(), s0.length()), bin(src1.data(), s1.length()));
+        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
+        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_GT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+    }
+}
 }

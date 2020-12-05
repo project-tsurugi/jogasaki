@@ -56,6 +56,7 @@ public:
         for(std::size_t i=0, n = l_meta_->field_count(); i < n; ++i) {
             (void)i;
             BOOST_ASSERT(l_meta_->at(i) == r_meta_->at(i));  //NOLINT
+            BOOST_ASSERT(l_meta_->nullable(i) == r_meta_->nullable(i));  //NOLINT
         }
     }
 
@@ -98,6 +99,16 @@ private:
     };
 
     [[nodiscard]] int compare_field(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t field_index) const {
+        if(l_meta_->nullable(field_index)) {
+            bool a_null = a.is_null(l_meta_->nullity_offset(field_index));
+            bool b_null = b.is_null(r_meta_->nullity_offset(field_index));
+            if (a_null != b_null) {
+                return a_null ? -1 : 1;
+            }
+            if (a_null) {
+                return 0;
+            }
+        }
         auto& type = l_meta_->at(field_index);
         auto l_offset = l_meta_->value_offset(field_index);
         auto r_offset = r_meta_->value_offset(field_index);

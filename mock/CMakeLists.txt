@@ -1,4 +1,5 @@
 file(GLOB SOURCES
+        "jogasaki/executor/exchange/mock/aggregate/*.cpp"
         "jogasaki/executor/process/mock/*.cpp"
         "jogasaki/mock/*.cpp"
 )

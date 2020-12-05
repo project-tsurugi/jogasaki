@@ -22,8 +22,8 @@
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
-#include <jogasaki/executor/exchange/aggregate/step.h>
-#include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
+#include <jogasaki/executor/exchange/mock/aggregate/step.h>
+#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/utils/performance_tools.h>
 
@@ -56,7 +56,7 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::executor::exchange;
-using namespace jogasaki::executor::exchange::aggregate;
+using namespace jogasaki::executor::exchange::mock::aggregate;
 using namespace jogasaki::scheduler;
 
 std::shared_ptr<meta::record_meta> test_record_meta() {
@@ -82,7 +82,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
 
     common::graph g{*context};
     auto& scan = g.emplace<producer_process>(meta, s);
-    auto& xch = g.emplace<aggregate::step>(info, meta::variable_order{}, meta::variable_order{});
+    auto& xch = g.emplace<mock::aggregate::step>(info, meta::variable_order{}, meta::variable_order{});
     auto& emit = g.emplace<consumer_process>(info->group_meta(), s);
     auto& dvr = g.emplace<deliver::step>();
     scan >> xch;

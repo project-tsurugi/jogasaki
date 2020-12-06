@@ -144,8 +144,9 @@ public:
                     resource
                 );
             }
-            bool first_record = true;
-            while(ctx.reader_->next_member()) {
+            if(! ctx.reader_->next_member()) continue;
+            bool has_next = true;
+            while(has_next) {
                 utils::checkpoint_holder member_cp{resource};
                 auto value = ctx.reader_->get_member();
                 for(auto &f : fields_) {
@@ -161,10 +162,10 @@ public:
                         resource
                     );
                 }
+                has_next = ctx.reader_->next_member();
                 if (downstream_) {
-                    unsafe_downcast<group_operator>(downstream_.get())->process_group(context, first_record);
+                    unsafe_downcast<group_operator>(downstream_.get())->process_group(context, !has_next);
                 }
-                first_record = false;
             }
         }
     }

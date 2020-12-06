@@ -60,10 +60,11 @@ public:
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
+     * @param last_member specify whether the current member is the last within the group
      */
-    void process_group(abstract::task_context* context, bool first) override {
+    void process_group(abstract::task_context* context, bool last_member) override {
         BOOST_ASSERT(context != nullptr);  //NOLINT
-        (void)first;
+        (void)last_member;
         context_helper ctx{*context};
         auto* p = find_context<flatten_context>(index(), ctx.contexts());
         if (! p) {

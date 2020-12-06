@@ -38,16 +38,16 @@ public:
 class group_verifier : public group_operator {
 public:
     group_verifier() = default;
-    void body(std::function<void(bool first)> f) {
+    void body(std::function<void(bool)> f) {
         f_ = std::move(f);
     }
-    void process_group(abstract::task_context* context, bool first) override {
-        f_(first);
+    void process_group(abstract::task_context* context, bool last_member) override {
+        f_(last_member);
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
     }
-    std::function<void(bool first)> f_{}; //NOLINT
+    std::function<void(bool)> f_{}; //NOLINT
 };
 
 template<class Iterator>

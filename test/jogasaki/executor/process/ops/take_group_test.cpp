@@ -225,31 +225,31 @@ TEST_F(take_group_test, simple) {
     auto c2_offset = map.at(c2).value_offset();
 
     std::size_t count = 0;
-    downstream->body([&](bool first) {
+    downstream->body([&](bool last_member) {
         switch(count) {
             case 0: {
-                EXPECT_TRUE(first);
+                EXPECT_FALSE(last_member);
                 EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
                 EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
                 EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(c2_offset));
                 break;
             }
             case 1: {
-                EXPECT_FALSE(first);
+                EXPECT_TRUE(last_member);
                 EXPECT_EQ(10, vars_ref.get_value<std::int32_t>(c0_offset));
                 EXPECT_DOUBLE_EQ(1.0, vars_ref.get_value<double>(c1_offset));
                 EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
                 break;
             }
             case 2: {
-                EXPECT_TRUE(first);
+                EXPECT_FALSE(last_member);
                 EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
                 EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
                 EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(c2_offset));
                 break;
             }
             case 3: {
-                EXPECT_FALSE(first);
+                EXPECT_TRUE(last_member);
                 EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
                 EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
                 EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));

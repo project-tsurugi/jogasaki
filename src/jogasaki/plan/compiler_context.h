@@ -21,6 +21,9 @@
 #include <takatori/util/object_creator.h>
 #include <yugawara/compiler_result.h>
 #include <yugawara/storage/configurable_provider.h>
+#include <yugawara/variable/configurable_provider.h>
+#include <yugawara/function/configurable_provider.h>
+#include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/graph.h>
@@ -72,11 +75,37 @@ public:
         return storage_provider_;
     }
 
+    void variable_provider(std::shared_ptr<::yugawara::variable::configurable_provider> variable_provider) noexcept {
+        variable_provider_ = std::move(variable_provider);
+    }
+
+    [[nodiscard]] std::shared_ptr<::yugawara::variable::configurable_provider> const& variable_provider() const {
+        return variable_provider_;
+    }
+
+    void function_provider(std::shared_ptr<::yugawara::function::configurable_provider> function_provider) noexcept {
+        function_provider_ = std::move(function_provider);
+    }
+
+    [[nodiscard]] std::shared_ptr<::yugawara::function::configurable_provider> const& function_provider() const {
+        return function_provider_;
+    }
+
+    void aggregate_provider(std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider) noexcept {
+        aggregate_provider_ = std::move(aggregate_provider);
+    }
+
+    [[nodiscard]] std::shared_ptr<::yugawara::aggregate::configurable_provider> const& aggregate_provider() const {
+        return aggregate_provider_;
+    }
 private:
     takatori::util::unique_object_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
     std::shared_ptr<model::graph> step_graph_{};
     std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider_{};
+    std::shared_ptr<::yugawara::variable::configurable_provider> variable_provider_{};
+    std::shared_ptr<::yugawara::function::configurable_provider> function_provider_{};
+    std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider_{};
 };
 
 }

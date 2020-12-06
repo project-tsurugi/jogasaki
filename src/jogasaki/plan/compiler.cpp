@@ -46,6 +46,7 @@
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
 #include <takatori/plan/group.h>
+#include <takatori/plan/aggregate.h>
 #include <takatori/serializer/json_printer.h>
 #include <takatori/statement/statement_kind.h>
 #include <takatori/plan/graph.h>
@@ -56,6 +57,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
@@ -100,15 +102,15 @@ bool create_step_graph(std::string_view sql, compiler_context& ctx) {
     shakujo_translator translator;
     shakujo_translator_options options {
         ctx.storage_provider(),
-        {},
-        {},
-        {},
+        ctx.variable_provider(),
+        ctx.function_provider(),
+        ctx.aggregate_provider()
     };
 
     yugawara::runtime_feature_set runtime_features {
         //TODO enable features
 //        yugawara::runtime_feature::broadcast_exchange,
-//        yugawara::runtime_feature::aggregate_exchange,
+        yugawara::runtime_feature::aggregate_exchange,
 //        yugawara::runtime_feature::index_join,
 //        yugawara::runtime_feature::broadcast_join_scan,
     };
@@ -127,6 +129,13 @@ bool create_step_graph(std::string_view sql, compiler_context& ctx) {
         return false;
     }
     auto r = translator(options, *p->main(), documents, placeholders);
+    if (! r) {
+        auto errors = r.release<result_kind::diagnostics>();
+        for(auto&& e : errors) {
+            LOG(ERROR) << e.code() << " " << e.message();
+        }
+        return false;
+    }
     ::yugawara::compiler_result result{};
     if (r.kind() == result_kind::execution_plan) {
         auto ptr = r.release<result_kind::execution_plan>();
@@ -219,6 +228,40 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
         std::move(output_order));
 }
 
+executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiler_context& ctx) {
+    //FIXME
+    meta::variable_order input_order{
+        meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
+        agg.source_columns(),
+    };
+    meta::variable_order output_order{
+        meta::variable_ordering_enum_tag<meta::variable_ordering_kind::group_from_keys>,
+        agg.destination_columns(),
+        agg.group_keys()
+    };
+
+    std::vector<meta::field_type> fields{};
+    for(auto&& c: agg.source_columns()) {
+        fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
+    }
+    auto cnt = fields.size();
+    auto meta = std::make_shared<meta::record_meta>(
+        std::move(fields),
+        boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
+    );
+    std::vector<std::size_t> key_indices{};
+    key_indices.resize(agg.group_keys().size());
+    for(auto&& k : agg.group_keys()) {
+        key_indices[output_order.index(k)] = input_order.index(k);
+    }
+
+    auto info = std::make_shared<executor::exchange::aggregate::shuffle_info>(std::move(meta), std::move(key_indices));
+    return executor::exchange::aggregate::step(
+        std::move(info),
+        std::move(input_order),
+        std::move(output_order));
+}
+
 void create_mirror_for_execute(compiler_context& ctx) {
     std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
     yugawara::binding::factory bindings{};
@@ -240,9 +283,13 @@ void create_mirror_for_execute(compiler_context& ctx) {
                 steps[&group] = step;
                 break;
             }
-            case takatori::plan::step_kind::aggregate:
-                // TODO implement
+            case takatori::plan::step_kind::aggregate: {
+                auto& agg = unsafe_downcast<takatori::plan::aggregate const>(s);  //NOLINT
+                auto* step = &mirror->emplace<executor::exchange::aggregate::step>(create(agg, ctx));
+                auto relation_desc = bindings(agg);
+                steps[&agg] = step;
                 break;
+            }
             case takatori::plan::step_kind::broadcast:
                 // TODO implement
                 break;

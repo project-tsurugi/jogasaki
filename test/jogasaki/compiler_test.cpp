@@ -27,6 +27,8 @@
 #include <shakujo/model/IRFactory.h>
 
 #include <yugawara/storage/configurable_provider.h>
+#include <yugawara/aggregate/configurable_provider.h>
+#include <yugawara/aggregate/declaration.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/binding/variable_info.h>
 #include <yugawara/runtime_feature.h>
@@ -59,6 +61,8 @@
 #include <yugawara/binding/extract.h>
 #include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/join.h>
+#include <takatori/relation/step/flatten.h>
+#include <takatori/relation/step/take_group.h>
 #include "test_utils.h"
 
 namespace jogasaki::plan {
@@ -85,6 +89,7 @@ namespace tinfo = ::shakujo::common::core::type;
 using namespace testing;
 
 using namespace ::yugawara::variable;
+using namespace ::yugawara;
 
 /**
  * @brief test to confirm the compiler behavior
@@ -96,7 +101,7 @@ public:
     ::takatori::util::object_creator creator;
     ::yugawara::binding::factory bindings { creator };
 
-    std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() {
+    std::shared_ptr<::yugawara::storage::configurable_provider> tables() {
 
         std::shared_ptr<::yugawara::storage::configurable_provider> storages
             = std::make_shared<::yugawara::storage::configurable_provider>();
@@ -150,12 +155,53 @@ public:
         return storages;
     }
 
+    std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_functions() {
+
+        auto functions = std::make_shared<aggregate::configurable_provider>();
+        functions->add({
+            aggregate::declaration::minimum_system_function_id + 1,
+            "sum",
+            t::int8(),
+            {
+                t::int8(),
+            },
+            true,
+        });
+        functions->add({
+            aggregate::declaration::minimum_system_function_id + 2,
+            "sum",
+            t::float8(),
+            {
+                t::float8(),
+            },
+            true,
+        });
+        functions->add({
+            aggregate::declaration::minimum_system_function_id + 3,
+            "count",
+            t::int8(),
+            {
+                t::int8(),
+            },
+            true,
+        });
+        functions->add({
+            aggregate::declaration::minimum_system_function_id + 4,
+            "count",
+            t::float8(),
+            {
+                t::int8(),
+            },
+            true,
+        });
+        return functions;
+    }
 };
 
 TEST_F(compiler_test, DISABLED_insert) {
     std::string sql = "insert into T0(C0, C1) values (1,1.0)";
     compiler_context ctx{};
-    ctx.storage_provider(yugawara_provider());
+    ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
     auto&& write = downcast<statement::write>(ctx.statement());
 
@@ -179,7 +225,7 @@ TEST_F(compiler_test, simple_query) {
     std::string sql = "select * from T0";
 
     compiler_context ctx{};
-    ctx.storage_provider(yugawara_provider());
+    ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
     auto&& c = downcast<statement::execute>(ctx.statement());
 
@@ -226,7 +272,7 @@ TEST_F(compiler_test, simple_query) {
 TEST_F(compiler_test, filter) {
     std::string sql = "select C0 from T0 where C1=1.0";
     compiler_context ctx{};
-    ctx.storage_provider(yugawara_provider());
+    ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
 
     auto&& c = downcast<statement::execute>(ctx.statement());
@@ -264,7 +310,7 @@ TEST_F(compiler_test, filter) {
 TEST_F(compiler_test, project_filter) {
     std::string sql = "select C1+C0, C0, C1 from T0 where C1=1.0";
     compiler_context ctx{};
-    ctx.storage_provider(yugawara_provider());
+    ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
     auto&& c = downcast<statement::execute>(ctx.statement());
     dump(ctx.compiled_info(), ctx.statement());
@@ -306,7 +352,7 @@ TEST_F(compiler_test, project_filter) {
 TEST_F(compiler_test, join) {
     std::string sql = "select T0.C0, T1.C1 from T0, T0 T1";
     compiler_context ctx{};
-    ctx.storage_provider(yugawara_provider());
+    ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
     auto&& c = downcast<statement::execute>(ctx.statement());
     dump(ctx.compiled_info(), ctx.statement());
@@ -344,7 +390,7 @@ TEST_F(compiler_test, join) {
 TEST_F(compiler_test, left_outer_join) {
     std::string sql = "select T0.C0, T1.C1 from T0 LEFT OUTER JOIN T1 ON T0.C1 = T1.C1";
     compiler_context ctx{};
-    ctx.storage_provider(yugawara_provider());
+    ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
     auto&& c = downcast<statement::execute>(ctx.statement());
     dump(ctx.compiled_info(), ctx.statement());
@@ -397,6 +443,48 @@ TEST_F(compiler_test, left_outer_join) {
             auto dest_c0 = g0.columns()[0].destination();
             auto& resolved = cinfo.type_of(dest_c0);
         }
+    }
+}
+
+TEST_F(compiler_test, aggregate) {
+    std::string sql = "select sum(T0.C1), T0.C0 from T0 group by C0";
+    compiler_context ctx{};
+    ctx.storage_provider(tables());
+    ctx.aggregate_provider(aggregate_functions());
+    ASSERT_TRUE(compile(sql, ctx));
+    auto&& c = downcast<statement::execute>(ctx.statement());
+    dump(ctx.compiled_info(), ctx.statement());
+    auto& cinfo = ctx.compiled_info();
+
+    ASSERT_EQ(c.execution_plan().size(), 3);
+
+    auto& b = top(c.execution_plan());
+    auto&& graph = takatori::util::downcast<takatori::plan::process>(b).operators();
+    auto&& offer = last<relation::step::offer>(graph);
+    auto&& scan = next<relation::scan>(offer.input());
+    {
+        auto&& p0 = find(c.execution_plan(), scan);
+        auto&& p1 = find(c.execution_plan(), offer);
+        ASSERT_EQ(p0, p1);
+    }
+
+    auto& agg = b.downstreams()[0];
+
+    auto s = jogasaki::plan::impl::create(b, ctx);
+    auto io_map = s.relation_io_map();
+    ASSERT_EQ(0, io_map->output_index(bindings(agg)));
+
+    auto& b3 = agg.downstreams()[0];
+    auto&& graph3 = takatori::util::downcast<takatori::plan::process>(b3).operators();
+    auto&& emit = last<relation::emit>(graph3);
+    auto&& flatten = next<relation::step::flatten>(emit.input());
+    auto&& take = next<relation::step::take_group>(flatten.input());
+    {
+        auto&& p0 = find(c.execution_plan(), take);
+        auto&& p1 = find(c.execution_plan(), flatten);
+        auto&& p2 = find(c.execution_plan(), emit);
+        ASSERT_EQ(p0, p1);
+        ASSERT_EQ(p1, p2);
     }
 }
 

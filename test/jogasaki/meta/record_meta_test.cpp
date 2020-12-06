@@ -187,5 +187,16 @@ TEST_F(record_meta_test, iterate_fields) {
     EXPECT_EQ(meta.end(), it);
 }
 
+TEST_F(record_meta_test, internal_pointer_field) {
+    record_meta meta{
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::pointer>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{3}};
+    EXPECT_EQ(3, meta.field_count());
+}
+
 }
 

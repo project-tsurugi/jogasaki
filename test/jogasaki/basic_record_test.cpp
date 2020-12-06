@@ -140,5 +140,15 @@ TEST_F(basic_record_test, nullity) {
     }
 }
 
+TEST_F(basic_record_test, pointer_field) {
+    // internal fields should be ignored on comparison
+    auto r1 = create_record<kind::float4, kind::int8, kind::pointer>(1.0, 100, nullptr);
+    auto r2 = create_record<kind::float4, kind::int8, kind::pointer>(1.0, 100, (void*)1);
+    EXPECT_EQ(r1, r2);
+
+    EXPECT_FALSE(r1 < r2);
+    EXPECT_FALSE(r1 > r2);
+}
+
 
 }

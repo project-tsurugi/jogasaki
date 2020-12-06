@@ -19,13 +19,15 @@
 
 #include <jogasaki/executor/partitioner.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/mock/basic_record.h>
 
-namespace jogasaki::testing {
+namespace jogasaki::executor {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace meta;
 using namespace takatori::util;
+using namespace jogasaki::mock;
 
 class comparator_test : public ::testing::Test {};
 
@@ -54,7 +56,7 @@ TEST_F(comparator_test, simple) {
         sizeof(S)
     );
 
-    executor::comparator comp{meta.get()};
+    comparator comp{meta.get()};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -104,7 +106,7 @@ TEST_F(comparator_test, types) {
         alignof(S),
         sizeof(S)
     );
-    executor::comparator comp{meta.get()};
+    comparator comp{meta.get()};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -177,7 +179,7 @@ TEST_F(comparator_test, text) {
         sizeof(S)
     );
 
-    executor::comparator comp{meta.get()};
+    comparator comp{meta.get()};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -220,7 +222,7 @@ TEST_F(comparator_test, nullable) {
         sizeof(S)
     );
 
-    executor::comparator comp{meta.get()};
+    comparator comp{meta.get()};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -240,6 +242,52 @@ TEST_F(comparator_test, nullable) {
     EXPECT_LT(comp(r0, r1), 0);
     EXPECT_LT(comp(r1, r2), 0);
     EXPECT_LT(comp(r0, r2), 0);
+}
+
+TEST_F(comparator_test, different_meta_between_l_and_r) {
+    auto l = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
+    auto l_meta = l.record_meta();
+    alignas(8) struct S {
+        float x_;
+        std::int64_t y_;
+        char n_[1];
+    } a;
+    auto r_meta = std::make_shared<record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::float4>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{2}.flip(),
+        std::vector<std::size_t>{
+            offsetof(S, x_),
+            offsetof(S, y_),
+        },
+        std::vector<std::size_t>{
+            offsetof(S, n_)*bits_per_byte,
+            offsetof(S, n_)*bits_per_byte+1,
+        },
+        alignof(S),
+        sizeof(S)
+    );
+    a.x_ = 1.0;
+    a.y_ = 200;
+    a.n_[0] = 2; // a.y_ is null
+    auto r = accessor::record_ref(&a, sizeof(S));
+
+    comparator comp{l_meta.get(), r_meta.get()};
+    EXPECT_EQ(comp(l.ref(), r), 0);
+}
+
+TEST_F(comparator_test, nullable_vs_non_nullable) {
+    auto l = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, false});
+    auto l_meta = l.record_meta();
+    auto r = create_record<kind::float4, kind::int8>(1.0, 100);
+    auto r_meta = r.record_meta();
+    auto n = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
+
+    comparator comp{l_meta.get(), r_meta.get()};
+    EXPECT_EQ(comp(l.ref(), r.ref()), 0);
+    EXPECT_NE(comp(n.ref(), r.ref()), 0);
 }
 
 }

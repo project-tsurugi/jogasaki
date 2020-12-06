@@ -54,6 +54,7 @@
 #include "offer.h"
 #include "take_flat.h"
 #include "join.h"
+#include "flatten.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -194,8 +195,9 @@ public:
         return {};
     }
     std::unique_ptr<operator_base> operator()(relation::step::flatten const& node) {
-        (void)node;
-        return {};
+        auto block_index = info_->scope_indices().at(&node);
+        auto downstream = dispatch(*this, node.output().opposite()->owner());
+        return std::make_unique<flatten>(index_++, *info_, block_index, std::move(downstream));
     }
 
     std::unique_ptr<operator_base> operator()(relation::step::take_flat const& node) {

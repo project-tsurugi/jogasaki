@@ -43,28 +43,30 @@ public:
      * @brief entity type for the field information
      */
     using entity_type = std::variant<
-            std::monostate, // undefined
-            std::monostate, // boolean
-            std::monostate, // int1
-            std::monostate, // int2
-            std::monostate, // int4
-            std::monostate, // int8
-            std::monostate, // float4
-            std::monostate, // float8
-            std::monostate, // decimal
-            std::monostate, // character
-            std::monostate, // bit
-            std::shared_ptr<date_field_option>,
-            std::monostate, // time_of_day
-            std::shared_ptr<time_point_field_option>,
-            std::monostate, // time_interval
-            std::shared_ptr<array_field_option>,
-            std::shared_ptr<record_field_option>,
-            std::shared_ptr<unknown_field_option>,
-            std::shared_ptr<row_reference_field_option>,
-            std::shared_ptr<row_id_field_option>,
-            std::shared_ptr<declared_field_option>,
-            std::shared_ptr<extension_field_option>>;
+        std::monostate, // undefined
+        std::monostate, // boolean
+        std::monostate, // int1
+        std::monostate, // int2
+        std::monostate, // int4
+        std::monostate, // int8
+        std::monostate, // float4
+        std::monostate, // float8
+        std::monostate, // decimal
+        std::monostate, // character
+        std::monostate, // bit
+        std::shared_ptr<date_field_option>,
+        std::monostate, // time_of_day
+        std::shared_ptr<time_point_field_option>,
+        std::monostate, // time_interval
+        std::shared_ptr<array_field_option>,
+        std::shared_ptr<record_field_option>,
+        std::shared_ptr<unknown_field_option>,
+        std::shared_ptr<row_reference_field_option>,
+        std::shared_ptr<row_id_field_option>,
+        std::shared_ptr<declared_field_option>,
+        std::shared_ptr<extension_field_option>,
+        std::monostate // pointer (internal use)
+    >;
 
     /**
      * @brief the option type for each kind.
@@ -156,6 +158,7 @@ public:
             case k::date: return field_type_traits<k::date>::size;
             case k::time_of_day: return field_type_traits<k::time_of_day>::size;
             case k::time_point: return field_type_traits<k::time_point>::size;
+            case k::pointer: return field_type_traits<k::pointer>::size;
             default:
                 // TODO implement cases for complex types
                 std::abort();
@@ -181,6 +184,7 @@ public:
             case k::date: return field_type_traits<k::date>::alignment;
             case k::time_of_day: return field_type_traits<k::time_of_day>::alignment;
             case k::time_point: return field_type_traits<k::time_point>::alignment;
+            case k::pointer: return field_type_traits<k::pointer>::alignment;
             default:
                 // TODO implement cases for complex types
                 std::abort();
@@ -260,6 +264,7 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
         case kind::row_id: return impl::eq<kind::row_id>()(a, b);
         case kind::declared: return impl::eq<kind::declared>()(a, b);
         case kind::extension: return impl::eq<kind::extension>()(a, b);
+        case kind::pointer: return true; // internal fields are ignored on comparison
         default:
             return true;
     }

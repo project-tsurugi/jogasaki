@@ -51,5 +51,12 @@ TEST_F(field_type_test, equality_complex_types) {
     EXPECT_NE(t1, t2);
 }
 
+TEST_F(field_type_test, pointer_type) {
+    field_type t{takatori::util::enum_tag<field_type_kind::pointer>};
+    EXPECT_EQ(8, t.runtime_type_size());
+    EXPECT_EQ(8, t.runtime_type_alignment());
+    EXPECT_TRUE(t);
+}
+
 }
 

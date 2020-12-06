@@ -82,6 +82,9 @@ struct field_type_traits<field_type_kind::time_of_day> : simple_field_type_trait
 template <>
 struct field_type_traits<field_type_kind::time_point> : simple_field_type_traits<takatori::datetime::time_point, time_point_field_option> {};
 
+template <>
+struct field_type_traits<field_type_kind::pointer> : simple_field_type_traits<void*> {};
+
 //TODO add specialization for other types
 
 } // namespace

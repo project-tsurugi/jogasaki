@@ -46,6 +46,7 @@ enum class field_type_kind : std::size_t {
     row_id,
     declared,
     extension,
+    pointer, // for internal use
 };
 
 /**
@@ -79,6 +80,7 @@ enum class field_type_kind : std::size_t {
         case kind::row_id: return "row_id"sv;
         case kind::declared: return "declared"sv;
         case kind::extension: return "extension"sv;
+        case kind::pointer: return "pointer"sv;
     }
     std::abort();
 }
@@ -97,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& out, field_type_kind value) {
 using field_type_kind_set = takatori::util::enum_set<
         field_type_kind,
         field_type_kind::undefined,
-        field_type_kind::extension>;
+        field_type_kind::pointer>;
 
 } // namespace
 

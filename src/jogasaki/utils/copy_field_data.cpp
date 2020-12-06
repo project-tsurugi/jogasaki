@@ -78,6 +78,7 @@ void copy_field(
             break;
         case k::extension:
             break;
+        case k::pointer: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::pointer>::runtime_type>(source_offset)); return;
     }
     fail();
 }

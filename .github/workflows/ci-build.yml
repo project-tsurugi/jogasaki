@@ -164,8 +164,6 @@ jobs:
         name: Generate_Annotations
         uses: ./.github/actions/tsurugi-annotations-action
         if: always()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           ctest_input: 'build*/**/*_gtest_result.xml'
 
@@ -174,7 +172,6 @@ jobs:
         uses: ./.github/actions/tsurugi-slack-action
         if: always() && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
           kind: 'job-result'

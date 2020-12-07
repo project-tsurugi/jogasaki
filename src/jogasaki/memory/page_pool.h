@@ -51,13 +51,13 @@ public:
          */
         constexpr static std::size_t undefined_numa_node = -1;
         /**
+         * @brief construct with no param
+         */
+        page_info() = default;
+        /**
          * @brief construct with address and node number where the page is created
          */
         constexpr page_info(void *address, std::size_t birth_place) noexcept : address_(address), birth_place_(birth_place) {}
-        /**
-         * @brief construct with no param
-         */
-        constexpr page_info() noexcept : address_(nullptr), birth_place_(undefined_numa_node) {}
         /**
          * @brief return true if this contains valid page
          */
@@ -76,7 +76,7 @@ public:
         [[nodiscard]] std::size_t birth_place() const noexcept { return birth_place_; }
       private:
         void *address_{};
-        std::size_t birth_place_{};
+        std::size_t birth_place_{undefined_numa_node};
     };
 
     /**

@@ -46,11 +46,33 @@ public:
      */
     class page_info {
       public:
+        /*
+         * @brief Value indicating that the node number is not defined
+         */
+        constexpr static std::size_t undefined_numa_node = -1;
+        /**
+         * @brief construct with address and node number where the page is created
+         */
         constexpr page_info(void *address, std::size_t birth_place) : address_(address), birth_place_(birth_place) {}
-        constexpr page_info() : address_(nullptr), birth_place_(-1) {}
+        /**
+         * @brief construct with no param
+         */
+        constexpr page_info() : address_(nullptr), birth_place_(undefined_numa_node) {}
+        /**
+         * @brief return true if this contains valid page
+         */
+        explicit operator bool() { return address_ != nullptr; }
+        /**
+         * @brief operator for sorting the pages in address order
+         */
         friend bool operator<(const page_info one, const page_info other) { return one.address_ < other.address_; }
-//        void address(void *address) { address_ = address; }
-        void* address() const { return address_; }
+        /**
+         * @brief return the page address
+         */
+        [[nodiscard]] void* address() const noexcept { return address_; }
+        /**
+         * @brief return the node number where the page is created
+         */
         std::size_t birth_place() const { return birth_place_; }
       private:
         void *address_{};

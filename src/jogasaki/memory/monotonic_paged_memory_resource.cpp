@@ -75,7 +75,7 @@ std::size_t monotonic_paged_memory_resource::do_page_remaining(std::size_t align
 
 details::page_allocation_info &monotonic_paged_memory_resource::acquire_new_page() {
     page_pool::page_info new_page = page_pool_->acquire_page();
-    if (new_page.address() == nullptr) {
+    if (!new_page) {
         throw std::bad_alloc();
     }
     return pages_.emplace_back(new_page);

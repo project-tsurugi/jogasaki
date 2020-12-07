@@ -22,7 +22,7 @@ lifo_paged_memory_resource::~lifo_paged_memory_resource() {
     for (const auto& p : pages_) {
         release_deallocated_page(p.head());
     }
-    if (reserved_page_.address() != nullptr) {
+    if (reserved_page_) {
         page_pool_->release_page(reserved_page_);
         reserved_page_ = page_pool::page_info();
     }
@@ -126,12 +126,12 @@ std::size_t lifo_paged_memory_resource::do_page_remaining(std::size_t alignment)
 
 details::page_allocation_info &lifo_paged_memory_resource::acquire_new_page() {
     page_pool::page_info new_page;
-    if (reserved_page_.address() != nullptr) {
+    if (reserved_page_) {
         new_page = reserved_page_;
         reserved_page_ = page_pool::page_info();
     } else {
         new_page = page_pool_->acquire_page();
-        if (new_page.address() == nullptr) {
+        if (!new_page) {
             throw std::bad_alloc();
         }
     }
@@ -139,7 +139,7 @@ details::page_allocation_info &lifo_paged_memory_resource::acquire_new_page() {
 }
 
 void lifo_paged_memory_resource::release_deallocated_page(page_pool::page_info deallocated_page) {
-    if (reserved_page_.address() != nullptr) {
+    if (reserved_page_) {
         page_pool_->release_page(reserved_page_);
     }
     reserved_page_ = deallocated_page;

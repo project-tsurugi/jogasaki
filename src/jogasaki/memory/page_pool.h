@@ -61,7 +61,7 @@ public:
         /**
          * @brief return true if this contains valid page
          */
-        explicit operator bool() const noexcept { return address_ != nullptr; }
+        [[nodiscard]] explicit operator bool() const noexcept { return address_ != nullptr; }
         /**
          * @brief operator for sorting the pages in address order
          */

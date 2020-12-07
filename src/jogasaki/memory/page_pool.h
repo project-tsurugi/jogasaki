@@ -53,19 +53,19 @@ public:
         /**
          * @brief construct with address and node number where the page is created
          */
-        constexpr page_info(void *address, std::size_t birth_place) : address_(address), birth_place_(birth_place) {}
+        constexpr page_info(void *address, std::size_t birth_place) noexcept : address_(address), birth_place_(birth_place) {}
         /**
          * @brief construct with no param
          */
-        constexpr page_info() : address_(nullptr), birth_place_(undefined_numa_node) {}
+        constexpr page_info() noexcept : address_(nullptr), birth_place_(undefined_numa_node) {}
         /**
          * @brief return true if this contains valid page
          */
-        explicit operator bool() { return address_ != nullptr; }
+        explicit operator bool() const noexcept { return address_ != nullptr; }
         /**
          * @brief operator for sorting the pages in address order
          */
-        friend bool operator<(const page_info one, const page_info other) { return one.address_ < other.address_; }
+        friend bool operator<(const page_info one, const page_info other) noexcept { return one.address_ < other.address_; }
         /**
          * @brief return the page address
          */
@@ -73,7 +73,7 @@ public:
         /**
          * @brief return the node number where the page is created
          */
-        std::size_t birth_place() const { return birth_place_; }
+        [[nodiscard]] std::size_t birth_place() const noexcept { return birth_place_; }
       private:
         void *address_{};
         std::size_t birth_place_{};

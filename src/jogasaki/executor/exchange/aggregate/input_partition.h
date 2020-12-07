@@ -24,7 +24,7 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/hash.h>
 #include <jogasaki/executor/comparator.h>
@@ -89,7 +89,7 @@ public:
         std::unique_ptr<memory::paged_memory_resource> resource_for_values,
         std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
         std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables,
-        std::shared_ptr<shuffle_info> info,
+        std::shared_ptr<aggregate_info> info,
         request_context* context,
         [[maybe_unused]] std::size_t initial_hash_table_size = default_initial_hash_table_size
     ) noexcept :
@@ -283,7 +283,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_values_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables_{};
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<aggregate_info> info_{};
     request_context* context_{};
     std::unique_ptr<data::record_store> keys_{};
     std::unique_ptr<data::record_store> values_{};

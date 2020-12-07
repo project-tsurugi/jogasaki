@@ -23,7 +23,7 @@ namespace jogasaki::executor::exchange::aggregate {
 source::source() = default;
 source::~source() = default;
 
-source::source(std::shared_ptr<shuffle_info> info,
+source::source(std::shared_ptr<aggregate_info> info,
         request_context* context
 ) : info_(std::move(info)), context_(context) {
     (void)context_;

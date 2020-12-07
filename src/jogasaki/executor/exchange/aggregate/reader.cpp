@@ -19,7 +19,7 @@
 
 namespace jogasaki::executor::exchange::aggregate {
 
-reader::reader(std::shared_ptr<shuffle_info> info,
+reader::reader(std::shared_ptr<aggregate_info> info,
     std::vector<std::unique_ptr<input_partition>>& partitions,
     aggregator_type const& aggregator
 ) :

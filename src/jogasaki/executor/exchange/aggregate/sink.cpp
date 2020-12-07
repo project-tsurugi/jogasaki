@@ -18,13 +18,13 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/record_writer.h>
 #include "input_partition.h"
-#include "shuffle_info.h"
+#include "aggregate_info.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::aggregate {
 
 sink::sink(std::size_t downstream_partitions,
-        std::shared_ptr<shuffle_info> info,
+        std::shared_ptr<aggregate_info> info,
         request_context* context
 ) :
         downstream_partitions_(downstream_partitions),

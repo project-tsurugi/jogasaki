@@ -27,14 +27,14 @@ namespace jogasaki::executor::exchange::aggregate {
 class cache_align reader : public group_reader {
 public:
     using iterable_tables = std::vector<input_partition::iterable_hash_table>;
-    using aggregator_type = shuffle_info::aggregator_type;
+    using aggregator_type = aggregate_info::aggregator_type;
     ~reader() override = default;
     reader(reader const& other) = delete;
     reader& operator=(reader const& other) = delete;
     reader(reader&& other) noexcept = delete;
     reader& operator=(reader&& other) noexcept = delete;
 
-    reader(std::shared_ptr<shuffle_info> info,
+    reader(std::shared_ptr<aggregate_info> info,
         std::vector<std::unique_ptr<input_partition>>& partitions,
         aggregator_type const& aggregator
         );
@@ -51,7 +51,7 @@ public:
 
 private:
     std::vector<std::unique_ptr<input_partition>>& partitions_;
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<aggregate_info> info_{};
     aggregator_type const& aggregator_;
     std::size_t key_size_{};
     std::size_t value_size_{};

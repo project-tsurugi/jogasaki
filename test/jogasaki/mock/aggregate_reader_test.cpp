@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include <jogasaki/executor/exchange/aggregate/reader.h>
+#include <jogasaki/executor/exchange/mock/aggregate/reader.h>
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/exchange/aggregate/shuffle_info.h>
+#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
 #include <jogasaki/accessor/record_ref.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 
-namespace jogasaki::executor::exchange::aggregate {
+namespace jogasaki::executor::exchange::mock::aggregate {
 
 using namespace testing;
 using namespace data;

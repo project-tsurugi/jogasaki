@@ -25,7 +25,7 @@
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/executor/process/step.h>
-#include "shuffle_info.h"
+#include "aggregate_info.h"
 #include "flow.h"
 
 namespace jogasaki::executor::exchange::aggregate {
@@ -50,7 +50,7 @@ public:
      * @param output_column_order column ordering information for exchange output
      */
     explicit step(
-        std::shared_ptr<shuffle_info> info,
+        std::shared_ptr<aggregate_info> info,
         meta::variable_order input_column_order,
         meta::variable_order output_column_order
     );
@@ -84,7 +84,7 @@ protected:
     [[nodiscard]] process::step* upstream(std::size_t index) const noexcept;
 
 private:
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<aggregate_info> info_{};
     meta::variable_order output_column_order_{};
 };
 

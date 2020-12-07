@@ -34,7 +34,7 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief information to execute shuffle, used to extract schema and record layout information for key/value parts
  */
-class shuffle_info {
+class aggregate_info {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
@@ -42,7 +42,7 @@ public:
     /**
      * @brief construct empty object
      */
-    shuffle_info() :
+    aggregate_info() :
         record_(std::make_shared<meta::record_meta>()),
         group_(std::make_shared<meta::group_meta>()),
         aggregator_(std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
@@ -54,7 +54,7 @@ public:
      * @param key_indices the ordered indices to choose the keys from the record fields
      * @param aggregator the aggregation function
      */
-    shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices, std::shared_ptr<aggregator_type> aggregator = {}) :
+    aggregate_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices, std::shared_ptr<aggregator_type> aggregator = {}) :
         record_(std::move(record)),
         key_indices_(std::move(key_indices)),
         group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),

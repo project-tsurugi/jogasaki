@@ -255,7 +255,7 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         key_indices[output_order.index(k)] = input_order.index(k);
     }
 
-    auto info = std::make_shared<executor::exchange::aggregate::shuffle_info>(std::move(meta), std::move(key_indices));
+    auto info = std::make_shared<executor::exchange::aggregate::aggregate_info>(std::move(meta), std::move(key_indices));
     return executor::exchange::aggregate::step(
         std::move(info),
         std::move(input_order),

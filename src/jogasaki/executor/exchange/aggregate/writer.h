@@ -21,7 +21,7 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/utils/interference_size.h>
 #include "input_partition.h"
-#include "shuffle_info.h"
+#include "aggregate_info.h"
 #include "source.h"
 #include "sink.h"
 
@@ -34,7 +34,7 @@ public:
     writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
-    writer(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions, aggregate::sink& owner) :
+    writer(std::size_t downstream_partitions, std::shared_ptr<aggregate_info> info, std::vector<std::unique_ptr<input_partition>>& partitions, aggregate::sink& owner) :
             downstream_partitions_(downstream_partitions),
             partitions_(partitions),
             info_(std::move(info)),
@@ -64,7 +64,7 @@ public:
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>>& partitions_;
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<aggregate_info> info_{};
     partitioner partitioner_{};
     sink* owner_{};
 

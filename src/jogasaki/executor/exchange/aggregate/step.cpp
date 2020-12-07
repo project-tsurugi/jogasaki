@@ -17,9 +17,9 @@
 
 namespace jogasaki::executor::exchange::aggregate {
 
-step::step() : info_(std::make_shared<shuffle_info>()) {}
+step::step() : info_(std::make_shared<aggregate_info>()) {}
 
-step::step(std::shared_ptr<shuffle_info> info, meta::variable_order input_column_order,
+step::step(std::shared_ptr<aggregate_info> info, meta::variable_order input_column_order,
     meta::variable_order output_column_order) : shuffle::step(info->record_meta(), std::move(input_column_order)),
     info_(std::move(info)),
     output_column_order_(std::move(output_column_order))
@@ -28,7 +28,7 @@ step::step(std::shared_ptr<shuffle_info> info, meta::variable_order input_column
 step::step(maybe_shared_ptr<meta::record_meta> input_meta, std::vector<field_index_type> key_indices,
     meta::variable_order input_column_order, meta::variable_order output_column_order) :
     step(
-        std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)),
+        std::make_shared<aggregate_info>(std::move(input_meta), std::move(key_indices)),
         std::move(input_column_order),
         std::move(output_column_order)
     )

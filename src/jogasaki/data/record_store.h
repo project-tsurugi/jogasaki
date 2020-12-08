@@ -57,10 +57,11 @@ public:
             memory::paged_memory_resource* varlen_resource,
             maybe_shared_ptr<meta::record_meta> meta
     ) :
-            resource_(record_resource),
-            meta_(std::move(meta)),
-            copier_(meta_, varlen_resource),
-            record_size_(meta_->record_size())
+        resource_(record_resource),
+        varlen_resource_(varlen_resource),
+        meta_(std::move(meta)),
+        copier_(meta_, varlen_resource),
+        record_size_(meta_->record_size())
     {}
 
     /**
@@ -71,6 +72,12 @@ public:
      * @return pointer to the stored record
      */
     record_pointer append(accessor::record_ref record);
+
+    /**
+     * @brief prepare record region at the end of the store and provider the pointer so that the record is filled by caller
+     * @return pointer to the stored record
+     */
+    [[nodiscard]] record_pointer allocate_record();
 
     /**
      * @brief getter for the number of data count added to this store
@@ -97,8 +104,16 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
         return meta_;
     }
+
+    /**
+     * @return variable length resources
+     */
+    [[nodiscard]] memory::paged_memory_resource* varlen_resource() const noexcept {
+        return varlen_resource_;
+    }
 private:
     memory::paged_memory_resource* resource_{};
+    memory::paged_memory_resource* varlen_resource_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
     accessor::record_copier copier_{};
     std::size_t count_{};

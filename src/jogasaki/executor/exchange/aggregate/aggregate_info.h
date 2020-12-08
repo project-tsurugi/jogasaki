@@ -20,46 +20,166 @@
 #include <memory>
 
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/enum_tag.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/partitioner.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::sequence_view;
+using takatori::util::fail;
+using takatori::util::enum_tag;
+
+class aggregator_arg {
+public:
+    aggregator_arg() = default;
+
+    aggregator_arg(
+        meta::field_type const& type,
+        std::size_t value_offset,
+        std::size_t nullity_offset
+    ) :
+        type_(std::addressof(type)),
+        value_offset_(value_offset),
+        nullity_offset_(nullity_offset)
+    {}
+
+    [[nodiscard]] meta::field_type const& type() const noexcept {
+        return *type_;
+    }
+    [[nodiscard]] std::size_t value_offset() const noexcept {
+        return value_offset_;
+    }
+
+    [[nodiscard]] std::size_t nullity_offset() const noexcept {
+        return nullity_offset_;
+    }
+private:
+    meta::field_type const* type_{};
+    std::size_t value_offset_{};
+    std::size_t nullity_offset_{};
+};
+
+using aggregator_type = std::function<void (accessor::record_ref, std::size_t, accessor::record_ref, sequence_view<aggregator_arg const>)>;
+
+using kind = meta::field_type_kind;
+template <kind Kind>
+using rtype = typename meta::field_type_traits<Kind>::runtime_type;
+
+namespace builtin {
+
+void sum(
+    accessor::record_ref target,
+    std::size_t target_offset,
+    accessor::record_ref source,
+    sequence_view<aggregator_arg> args
+) {
+    BOOST_ASSERT(args.size() == 1);
+    auto& arg_type = args[0].type();
+    auto arg_offset = args[0].value_offset();
+    switch(arg_type.kind()) {
+        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, target.get_value<rtype<kind::int4>>(target_offset) + source.get_value<rtype<kind::int4>>(arg_offset)); break;
+        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset)); break;
+        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, target.get_value<rtype<kind::float4>>(target_offset) + source.get_value<rtype<kind::float4>>(arg_offset)); break;
+        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, target.get_value<rtype<kind::float8>>(target_offset) + source.get_value<rtype<kind::float8>>(arg_offset)); break;
+        default: fail();
+    }
+}
+
+void count(
+    accessor::record_ref target,
+    std::size_t target_offset,
+    accessor::record_ref source,
+    sequence_view<aggregator_arg> args
+) {
+    BOOST_ASSERT(args.size() == 1);
+    (void)args;
+    (void)source;
+    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + 1);
+}
+
+} // namespace builtin
 
 /**
- * @brief information to execute shuffle, used to extract schema and record layout information for key/value parts
+ * @brief information to execute aggregate exchange, used to extract schema and record layout information for key/value parts
  */
 class aggregate_info {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
-    using aggregator_type = std::function<void (meta::record_meta const*, accessor::record_ref, accessor::record_ref)>;
+    class value_spec {
+    public:
+        value_spec() = default;
+
+        value_spec(
+            aggregator_type aggregator,
+            std::vector<std::size_t>argument_indices,
+            std::shared_ptr<meta::field_type> type
+        ) noexcept :
+            aggregator_(std::move(aggregator)),
+            argument_indices_(std::move(argument_indices)),
+            type_(std::move(type))
+        {}
+
+        [[nodiscard]] aggregator_type const& aggregator() const noexcept {
+            return aggregator_;
+        }
+
+        [[nodiscard]] sequence_view<std::size_t const> argument_indices() const noexcept {
+            return argument_indices_;
+        }
+
+        [[nodiscard]] meta::field_type const& type() const noexcept {
+            return *type_;
+        }
+    private:
+        aggregator_type aggregator_{};
+        std::vector<std::size_t> argument_indices_{};
+        std::shared_ptr<meta::field_type> type_{};
+    };
     /**
      * @brief construct empty object
      */
-    aggregate_info() :
-        record_(std::make_shared<meta::record_meta>()),
-        group_(std::make_shared<meta::group_meta>()),
-        aggregator_(std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
-    {};
+    aggregate_info() = default;
 
     /**
      * @brief construct new object
-     * @param record the metadata of the input record for shuffle operation
+     * @param record the metadata of the input record for aggregate operation
      * @param key_indices the ordered indices to choose the keys from the record fields
      * @param aggregator the aggregation function
      */
-    aggregate_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices, std::shared_ptr<aggregator_type> aggregator = {}) :
+    aggregate_info(
+        maybe_shared_ptr<meta::record_meta> record,
+        std::vector<field_index_type> key_indices,
+        std::vector<value_spec> value_specs
+    ) :
         record_(std::move(record)),
         key_indices_(std::move(key_indices)),
-        group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),
-        aggregator_(aggregator != nullptr ? std::move(aggregator) : std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
-    {}
+        value_specs_(std::move(value_specs)),
+        group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta()))
+    {
+        args_.reserve(value_specs_.size());
+        for(auto&& vs : value_specs_) {
+            std::vector<aggregator_arg> arg{};
+            arg.reserve(vs.argument_indices().size());
+            for(auto i : vs.argument_indices()) {
+                arg.emplace_back(
+                    record_->at(i),
+                    record_->value_offset(i),
+                    record_->nullity_offset(i)
+                );
+            }
+            args_.emplace_back(std::move(arg));
+        }
+    }
 
 
     /**
@@ -70,14 +190,7 @@ public:
     }
 
     /**
-     * @brief extract value part from the input record
-     */
-    [[nodiscard]] accessor::record_ref extract_value(accessor::record_ref record) const noexcept {
-        return accessor::record_ref(record.data(), record_->record_size());
-    }
-
-    /**
-     * @brief returns metadata for whole record
+     * @brief returns metadata for input record
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept {
         return record_;
@@ -105,62 +218,66 @@ public:
     }
 
     /**
-     * @brief returns aggregator function
+     * @brief returns aggregator specs
      */
-    [[nodiscard]] maybe_shared_ptr<aggregator_type> const& aggregator() const noexcept {
-        return aggregator_;
+    [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept {
+        return value_specs_;
     }
 
-private:
-    maybe_shared_ptr<meta::record_meta> record_{};
-    std::vector<field_index_type> key_indices_{};
-    maybe_shared_ptr<meta::group_meta> group_{};
-    maybe_shared_ptr<aggregator_type> aggregator_{};
+    /**
+     * @brief returns key indices
+     */
+    [[nodiscard]] sequence_view<field_index_type const> key_indices() const noexcept {
+        return key_indices_;
+    }
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(std::vector<std::size_t> const& indices) {
-        auto num = indices.size();
+    /**
+     * @brief returns aggregator args
+     */
+    [[nodiscard]] sequence_view<aggregator_arg const> aggregators_args(std::size_t idx) const noexcept {
+        return args_[idx];
+    }
+private:
+    maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
+    std::vector<field_index_type> key_indices_{};
+    std::vector<value_spec> value_specs_{};
+    maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
+    std::vector<std::vector<aggregator_arg>> args_{};
+
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta() {
+        auto num = key_indices_.size();
         meta::record_meta::fields_type fields{};
-        meta::record_meta::nullability_type  nullables(num);
-        meta::record_meta::value_offset_table_type value_offset_table{};
-        meta::record_meta::nullity_offset_table_type nullity_offset_table{};
-        fields.reserve(num);
-        value_offset_table.reserve(num);
-        nullity_offset_table.reserve(num);
+        meta::record_meta::nullability_type  nullables(num+1);
+        fields.reserve(num+1);
         for(std::size_t i=0; i < num; ++i) {
-            auto ind = indices[i];
+            auto ind = key_indices_[i];
             fields.emplace_back(record_->at(ind));
-            value_offset_table.emplace_back(record_->value_offset(ind));
-            nullity_offset_table.emplace_back(record_->nullity_offset(ind));
             if (record_->nullable(ind)) {
                 nullables.set(i);
             }
         }
+        fields.emplace_back(meta::field_type{enum_tag<kind::pointer>});
+        nullables.set(num);
         return std::make_shared<meta::record_meta>(
             std::move(fields),
-            std::move(nullables),
-            std::move(value_offset_table),
-            std::move(nullity_offset_table),
-            record_->record_alignment(),
-            record_->record_size()
+            std::move(nullables)
         );
-
-    }
-
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta() {
-        return create_meta(key_indices_);
     }
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta() {
-        std::size_t num = record_->field_count() - key_indices_.size();
-        std::set<std::size_t> indices{key_indices_.begin(), key_indices_.end()};
-        std::vector<field_index_type> vec{};
-        vec.reserve(num);
-        for(std::size_t i=0; i < record_->field_count(); ++i) {
-            if (indices.count(i) == 0) {
-                vec.emplace_back(i);
-            }
+        auto num = value_specs_.size();
+        meta::record_meta::fields_type fields{};
+        meta::record_meta::nullability_type  nullables(num);
+        nullables.flip(); // assuming all values can be null
+        fields.reserve(num);
+        for(std::size_t i=0; i < num; ++i) {
+            auto&& v = value_specs_[i];
+            fields.emplace_back(v.type());
         }
-        return create_meta(vec);
+        return std::make_shared<meta::record_meta>(
+            std::move(fields),
+            std::move(nullables)
+        );
     }
 };
 

@@ -62,12 +62,12 @@ public:
      * @param input_column_order column ordering information for exchange input
      * @param output_column_order column ordering information for exchange output
      */
-    step(
-        maybe_shared_ptr<meta::record_meta> input_meta,
-        std::vector<field_index_type> key_indices,
-        meta::variable_order input_column_order,
-        meta::variable_order output_column_order
-    );
+//    step(
+//        maybe_shared_ptr<meta::record_meta> input_meta,
+//        std::vector<field_index_type> key_indices,
+//        meta::variable_order input_column_order,
+//        meta::variable_order output_column_order
+//    );
 
     [[nodiscard]] executor::common::step_kind kind() const noexcept override {
         return executor::common::step_kind::aggregate;

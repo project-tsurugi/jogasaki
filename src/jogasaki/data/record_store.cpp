@@ -25,6 +25,12 @@ record_store::record_pointer record_store::append(accessor::record_ref record) {
     return p;
 }
 
+record_store::record_pointer record_store::allocate_record() {
+    auto* p = resource_->allocate(record_size_, meta_->record_alignment());
+    if (!p) std::abort();
+    ++count_;
+    return p;
+}
 std::size_t record_store::count() const noexcept {
     return count_;
 }

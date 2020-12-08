@@ -19,81 +19,108 @@
 
 namespace jogasaki::executor::exchange::aggregate {
 
-reader::reader(std::shared_ptr<aggregate_info> info,
-    std::vector<std::unique_ptr<input_partition>>& partitions,
-    aggregator_type const& aggregator
+reader::reader(
+    std::shared_ptr<aggregate_info> info,
+    std::vector<std::unique_ptr<input_partition>>& partitions
 ) :
     partitions_(partitions),
     info_(std::move(info)),
-    aggregator_(aggregator),
+    queue_(impl::iterator_pair_comparator(info_.get())),
     key_size_(info_->key_meta()->record_size()),
-    value_size_(info_->value_meta()->record_size())
-{
-    std::size_t count = 0;
+    value_size_(info_->value_meta()->record_size()),
+    key_buf_(info_->key_meta()), //NOLINT
+    value_buf_(info_->value_meta()), //NOLINT
+    key_comparator_(info_->key_meta().get()),
+    pointer_field_offset_(info_->key_meta()->value_offset(info_->key_meta()->field_count()-1)) {
     for(auto& p : partitions_) {
         if (!p) continue;
-        for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
-            if(!p->empty(idx)) {
-                ++count;
+        for(auto& t : *p) {
+            if (t.begin() != t.end()) {
+                queue_.emplace(t.begin(), t.end());
             }
         }
     }
-    tables_.reserve(count);
-    for(auto& p : partitions_) {
-        if (!p) continue;
-        for(std::size_t idx = 0, n = p->tables_count(); idx < n; ++idx) {
-            if(!p->empty(idx)) {
-                tables_.emplace_back(p->table_at(idx));
-            }
-        }
+    VLOG(1) << "reader initialized to merge " << queue_.size() << " pointer tables";
+}
+
+void reader::read_and_pop(impl::iterator it, impl::iterator end) { //NOLINT
+    queue_.pop();
+    key_buf_.set(accessor::record_ref(*it, key_size_));
+    if (++it != end) {
+        queue_.emplace(it, end);
     }
-    iterated_table_ = tables_.begin();
-    while(iterated_table_ != tables_.end() && iterated_table_->empty()) {
-        ++iterated_table_;
-    }
-    VLOG(1) << "reader initialized to merge " << count << " hash tables";
 }
 
 bool reader::next_group() {
-    if (iterated_table_ == tables_.end()) {
-        return false;
-    }
-    if (!iterated_table_->next()) {
-        do {
-            ++iterated_table_;
-        } while(iterated_table_ != tables_.end() && iterated_table_->empty());
-        if (iterated_table_ == tables_.end()) {
+    if (state_ == reader_state::init || state_ == reader_state::after_group) {
+        if (queue_.empty()) {
+            state_ = reader_state::eof;
             return false;
         }
-        (void)iterated_table_->next(); // must be successful
-    }
-    auto key = iterated_table_->key();
-    auto value = iterated_table_->value();
-    std::size_t precalculated_hash = iterated_table_->calculate_hash(key);
-    for(auto table = iterated_table_+1; table != tables_.end(); ++table) {
-        if(auto it = table->find(key, precalculated_hash); it != table->end()) {
-            aggregator_(info_->value_meta().get(), value, accessor::record_ref(it->second, value_size_));
-            table->erase(it);
+        auto it = queue_.top().first;
+        auto end = queue_.top().second;
+        read_and_pop(it, end);
+        while(internal_next_member()) {
+            auto src = internal_get_member();
+            auto tgt = value_buf_.ref();
+            for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
+                auto& vspec = info_->value_specs()[i];
+                auto& aggregator = vspec.aggregator();
+                aggregator(tgt, info_->value_meta()->value_offset(i), src, info_->aggregators_args(i));
+            }
         }
+        state_ = reader_state::before_member;
+        return true;
     }
-    on_member_ = false;
-    return true;
+    std::abort();
 }
 
 accessor::record_ref reader::get_group() const {
-    return iterated_table_->key();
+    if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
+        return key_buf_.ref();
+    }
+    std::abort();
 }
 
-bool reader::next_member() {
-    if (on_member_) {
+bool reader::internal_next_member() {
+    if (state_ == reader_state::before_member) {
+        state_ = reader_state::on_member;
+        return true;
+    }
+    if(state_ == reader_state::on_member) {
+        if (queue_.empty()) {
+            state_ = reader_state::after_group;
+            return false;
+        }
+        auto it = queue_.top().first;
+        auto end = queue_.top().second;
+        if (key_comparator_(
+            key_buf_.ref(),
+            accessor::record_ref(*it, key_size_)) == 0) {
+            read_and_pop(it, end);
+            return true;
+        }
+        state_ = reader_state::after_group;
         return false;
     }
-    on_member_ = true;
-    return true;
+    std::abort();
+}
+
+void* reader::value_pointer(accessor::record_ref ref) const {
+    return ref.get_value<void*>(pointer_field_offset_);
 }
 
 accessor::record_ref reader::get_member() const {
-    return iterated_table_->value();
+    if (state_ == reader_state::on_member) {
+        return value_buf_.ref();
+    }
+    fail();
+}
+
+accessor::record_ref reader::internal_get_member() const {
+    auto p = value_pointer(key_buf_.ref());
+    if(! p) fail();
+    return accessor::record_ref{p, value_size_};
 }
 
 void reader::release() {

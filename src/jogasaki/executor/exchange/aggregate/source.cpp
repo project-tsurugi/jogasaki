@@ -34,7 +34,7 @@ void source::receive(std::unique_ptr<input_partition> in) {
 }
 
 reader_container source::acquire_reader() {
-    return reader_container(readers_.emplace_back(std::make_unique<reader>(info_, partitions_, *info_->aggregator())).get());
+    return reader_container(readers_.emplace_back(std::make_unique<reader>(info_, partitions_)).get());
 }
 
 }

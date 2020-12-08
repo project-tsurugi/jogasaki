@@ -68,12 +68,12 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    flow(maybe_shared_ptr<meta::record_meta> input_meta,
-            std::vector<field_index_type> key_indices,
-            request_context* context,
-            step* owner,
-            std::size_t downstream_partitions
-            );
+//    flow(maybe_shared_ptr<meta::record_meta> input_meta,
+//            std::vector<field_index_type> key_indices,
+//            request_context* context,
+//            step* owner,
+//            std::size_t downstream_partitions
+//            );
 
     [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 

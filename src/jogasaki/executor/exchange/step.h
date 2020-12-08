@@ -21,6 +21,7 @@
 #include <jogasaki/model/graph.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange {
 

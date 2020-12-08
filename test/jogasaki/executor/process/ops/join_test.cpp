@@ -23,6 +23,7 @@
 #include <takatori/value/character.h>
 #include <takatori/util/object_creator.h>
 #include <takatori/relation/step/take_cogroup.h>
+#include <takatori/relation/step/offer.h>
 #include <takatori/relation/step/join.h>
 #include <takatori/plan/group.h>
 #include <yugawara/binding/factory.h>

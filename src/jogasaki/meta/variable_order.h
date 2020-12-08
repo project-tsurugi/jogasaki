@@ -17,22 +17,11 @@
 
 #include <cassert>
 
-#include <takatori/relation/expression.h>
 #include <takatori/descriptor/variable.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/step/offer.h>
 #include <takatori/util/fail.h>
-#include <yugawara/analyzer/block_builder.h>
-#include <yugawara/analyzer/block_algorithm.h>
-#include <yugawara/analyzer/variable_liveness_analyzer.h>
-#include <yugawara/compiled_info.h>
-#include <yugawara/compiler_result.h>
 
-#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/field_types.h>
-#include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::meta {
 
@@ -76,75 +65,36 @@ public:
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record>,
         takatori::util::sequence_view<variable const> columns
-    ) {
-        fill_flat_record(entity_, columns);
-    }
+    );
 
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::flat_record_from_keys_values>,
         takatori::util::sequence_view<variable const> keys,
         takatori::util::sequence_view<variable const> values
-    ) {
-        entity_type keys_order{};
-        entity_type values_order{};
-        fill_flat_record(keys_order, keys);
-        fill_flat_record(values_order, values, keys.size());
-        entity_.merge(keys_order);
-        entity_.merge(values_order);
-    }
+    );
 
+    /**
+     * @brief create variable order specifying grouping keys
+     * @details this defines order of keys and values columns. with key columns first, and non-key columns follow.
+     * @param columns the columns where order is defined. This may be part of the columns in the relation (e.g. exchange
+     * can expose only a part of its columns.)
+     * @param group_keys the key columns to define groups. The group key column may or may not appear in columns.
+     */
     variable_order(
         variable_ordering_enum_tag_t<variable_ordering_kind::group_from_keys>,
         takatori::util::sequence_view<variable const> columns,
         takatori::util::sequence_view<variable const> group_keys
-    ) :
-        for_group_(true)
-    {
-        entity_type keys_order{};
-        fill_flat_record(keys_order, group_keys);
+    );
 
-        std::vector<variable> values{};
-        values.reserve(columns.size() - group_keys.size());
-        for(auto&& column : columns) {
-            if (keys_order.count(column) == 0) {
-                values.emplace_back(column);
-            }
-        }
-        entity_type values_order{};
-        fill_flat_record(values_order, values);
+    [[nodiscard]] variable_index_type index(variable const& var) const;
 
-        entity_.reserve(columns.size());
-        for(auto&& k : group_keys) {
-            entity_.emplace(k, keys_order[k]);
-            key_bool_.emplace(k, true);
-        }
-        for(auto&& v : values) {
-            entity_.emplace(v, values_order[v]);
-            key_bool_.emplace(v, false);
-        }
-    }
+    [[nodiscard]] std::pair<variable_index_type, bool> key_value_index(variable const& var) const;
 
-    [[nodiscard]] variable_index_type index(variable const& var) const {
-        return entity_.at(var);
-    }
+    [[nodiscard]] bool for_group() const noexcept;
 
-    [[nodiscard]] std::pair<variable_index_type, bool> key_value_index(variable const& var) const {
-        assert(for_group_);  //NOLINT
-        return { entity_.at(var), key_bool_.at(var) };
-    }
+    [[nodiscard]] bool is_key(variable const& var) const;
 
-    [[nodiscard]] bool for_group() const noexcept {
-        return for_group_;
-    }
-
-    [[nodiscard]] bool is_key(variable const& var) const {
-        assert(for_group_);  //NOLINT
-        return key_bool_.at(var);
-    }
-
-    [[nodiscard]] std::size_t size() const noexcept {
-        return entity_.size();
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
 private:
     entity_type entity_;
@@ -155,15 +105,7 @@ private:
         entity_type& entity,
         takatori::util::sequence_view<variable const> columns,
         std::size_t begin_offset = 0
-    ) {
-        // oredering arbitrarily for now
-        //TODO order shorter types first, alphabetically
-        auto sz = columns.size();
-        entity.reserve(sz);
-        for(std::size_t i=0; i < sz; ++i) {
-            entity.emplace(columns[i], i+begin_offset);
-        }
-    }
+    );
 };
 
 }

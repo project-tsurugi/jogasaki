@@ -19,6 +19,7 @@
 
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/downcast.h>
+#include <takatori/relation/scan.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/executor/process/step.h>

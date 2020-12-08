@@ -21,6 +21,7 @@
 
 #include <takatori/plan/group.h>
 #include <takatori/plan/forward.h>
+#include <takatori/relation/step/offer.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/test_root.h>

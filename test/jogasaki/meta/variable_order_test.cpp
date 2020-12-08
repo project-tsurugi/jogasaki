@@ -165,5 +165,25 @@ TEST_F(variable_order_test, group_from_keys) {
     EXPECT_EQ(pair(1, false), ord.key_value_index(c3));
 }
 
+TEST_F(variable_order_test, group_from_keys_not_all_keys_in_columns) {
+    factory f;
+    auto&& c0 = f.stream_variable("c0");
+    auto&& c1 = f.stream_variable("c1");
+    auto&& c2 = f.stream_variable("c2");
+    auto&& c3 = f.stream_variable("c3");
+
+    std::vector<variable> cols{ c0, c1, c3 };
+    std::vector<variable> keys{ c2, c1 };
+
+    variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>, cols, keys};
+
+    EXPECT_TRUE(ord.for_group());
+    // currently ordering as is TODO fix when ordering is corrected
+    using pair = std::pair<std::size_t, bool>;
+    EXPECT_EQ(pair(0, false), ord.key_value_index(c0));
+    EXPECT_EQ(pair(0, true), ord.key_value_index(c1));
+    EXPECT_EQ(pair(1, false), ord.key_value_index(c3));
+}
+
 }
 

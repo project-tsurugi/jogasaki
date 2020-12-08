@@ -21,6 +21,7 @@
 
 #include <takatori/plan/forward.h>
 #include <yugawara/binding/factory.h>
+#include <takatori/relation/step/offer.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
 #include <jogasaki/test_root.h>

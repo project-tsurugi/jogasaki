@@ -25,7 +25,7 @@
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/utils/interference_size.h>
 
-namespace jogasaki::executor::exchange::group {
+namespace jogasaki::executor::exchange::shuffle {
 
 /**
  * @brief auto-expanding container to store any number of record

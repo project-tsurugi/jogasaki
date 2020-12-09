@@ -21,7 +21,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
-#include <jogasaki/executor/exchange/group/pointer_table.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -38,7 +38,7 @@ namespace jogasaki::executor::exchange::group {
  */
 class cache_align input_partition {
 public:
-    using pointer_table_type = pointer_table;
+    using pointer_table_type = shuffle::pointer_table;
     using pointer_tables_type = std::vector<pointer_table_type>;
     using iterator = pointer_tables_type::iterator;
     using table_iterator = pointer_table_type::iterator;

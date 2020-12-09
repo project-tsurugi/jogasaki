@@ -45,7 +45,7 @@ public:
 
     using iterator = input_partition::table_iterator;
 
-    using pointer = pointer_table::pointer;
+    using pointer = shuffle::pointer_table::pointer;
 
     static_assert(std::is_trivially_copyable_v<iterator>);
 

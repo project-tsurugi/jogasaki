@@ -31,7 +31,7 @@
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/executor/exchange/group/pointer_table.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -62,7 +62,7 @@ namespace impl {
 class cache_align input_partition {
 public:
 
-    using pointer_table_type = group::pointer_table;  //FIXME move to common place
+    using pointer_table_type = shuffle::pointer_table;
     using pointer_tables_type = std::vector<pointer_table_type>;
     using iterator = pointer_tables_type::iterator;
     using table_iterator = pointer_table_type::iterator;

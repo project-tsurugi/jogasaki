@@ -67,7 +67,13 @@ bool reader::next_group() {
             for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
                 auto& vspec = info_->value_specs()[i];
                 auto& aggregator = vspec.aggregator();
-                aggregator(tgt, info_->value_meta()->value_offset(i), initial, src, info_->aggregators_args(i));
+                aggregator(
+                    tgt,
+                    info_->value_meta()->value_offset(i),
+                    info_->value_meta()->nullity_offset(i),
+                    initial,
+                    src,
+                    info_->aggregators_args(i));
             }
             initial = false;
         }
@@ -85,27 +91,22 @@ accessor::record_ref reader::get_group() const {
 }
 
 bool reader::internal_next_member() {
-    if (state_ == reader_state::before_member) {
-        state_ = reader_state::on_member;
+    if (! internal_on_member_) {
+        internal_on_member_ = true;
         return true;
     }
-    if(state_ == reader_state::on_member) {
-        if (queue_.empty()) {
-            state_ = reader_state::after_group;
-            return false;
-        }
-        auto it = queue_.top().first;
-        auto end = queue_.top().second;
-        if (key_comparator_(
-            key_buf_.ref(),
-            accessor::record_ref(*it, key_size_)) == 0) {
-            read_and_pop(it, end);
-            return true;
-        }
-        state_ = reader_state::after_group;
+    if (queue_.empty()) {
         return false;
     }
-    std::abort();
+    auto it = queue_.top().first;
+    auto end = queue_.top().second;
+    if (key_comparator_(
+        key_buf_.ref(),
+        accessor::record_ref(*it, key_size_)) == 0) {
+        read_and_pop(it, end);
+        return true;
+    }
+    return false;
 }
 
 void* reader::value_pointer(accessor::record_ref ref) const {

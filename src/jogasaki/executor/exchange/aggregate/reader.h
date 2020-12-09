@@ -111,6 +111,7 @@ private:
     comparator key_comparator_{};
     std::size_t pointer_field_offset_{};
     std::vector<std::vector<aggregator_arg>> args_{};
+    bool internal_on_member_{};
 
     bool internal_next_member();
     [[nodiscard]] accessor::record_ref internal_get_member() const;

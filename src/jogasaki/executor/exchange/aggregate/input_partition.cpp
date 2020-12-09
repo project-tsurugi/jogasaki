@@ -79,7 +79,7 @@ bool input_partition::write(accessor::record_ref record) {
     for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
         auto& vspec = info_->value_specs()[i];
         auto& aggregator = vspec.aggregator();
-        aggregator(value, value_meta->value_offset(i), initial, record, info_->aggregators_args(i));
+        aggregator(value, value_meta->value_offset(i), value_meta->nullity_offset(i), initial, record, info_->aggregators_args(i));
     }
     if (hash_table_->load_factor() > load_factor_bound) {
         flush();

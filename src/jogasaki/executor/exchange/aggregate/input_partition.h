@@ -104,6 +104,27 @@ public:
     ) noexcept;
 
     /**
+     * @brief create new instance
+     * @param info the aggregate infomation
+     */
+    explicit input_partition(
+        std::shared_ptr<aggregate_info> info,
+        [[maybe_unused]] std::size_t initial_hash_table_size = default_initial_hash_table_size,
+        [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
+    ) noexcept :
+        input_partition(
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+            std::move(info),
+            initial_hash_table_size,
+            pointer_table_size
+        )
+    {}
+
+    /**
      * @brief write record to the input partition
      * @param record
      * @return whether flushing happens or not

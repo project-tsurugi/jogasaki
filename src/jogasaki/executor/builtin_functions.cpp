@@ -38,6 +38,7 @@ using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 void sum(
     accessor::record_ref target,
     std::size_t target_offset,
+    std::size_t target_nullity_offset,
     bool initial,
     accessor::record_ref source,
     sequence_view<const aggregator_arg> args
@@ -45,16 +46,22 @@ void sum(
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
     auto arg_offset = args[0].value_offset();
+    auto src_nullity_offset = args[0].value_offset();
     if (initial) {
-        utils::copy_field(
+        utils::copy_nullable_field(
             arg_type,
             target,
             target_offset,
+            target_nullity_offset,
             source,
-            arg_offset
+            arg_offset,
+            src_nullity_offset
         );
         return;
     }
+    auto is_null = source.is_null(src_nullity_offset);
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
     switch(arg_type.kind()) {
         case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, target.get_value<rtype<kind::int4>>(target_offset) + source.get_value<rtype<kind::int4>>(arg_offset)); break;
         case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset)); break;
@@ -67,12 +74,14 @@ void sum(
 void count(
     accessor::record_ref target,
     std::size_t target_offset,
+    std::size_t target_nullity_offset,
     bool initial,
     accessor::record_ref source,
     sequence_view<const aggregator_arg> args) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     (void)args;
     (void)source;
+    target.set_null(target_nullity_offset, false);
     if (initial) {
         target.set_value<rtype<kind::int8>>(target_offset, 1);
         return;

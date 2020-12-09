@@ -65,6 +65,13 @@ private:
     std::size_t nullity_offset_{};
 };
 
-using aggregator_type = std::function<void (accessor::record_ref, std::size_t, bool, accessor::record_ref, sequence_view<aggregator_arg const>)>;
+using aggregator_type = std::function<void (
+    accessor::record_ref,
+    std::size_t,
+    std::size_t,
+    bool,
+    accessor::record_ref,
+    sequence_view<aggregator_arg const>
+)>;
 
 }

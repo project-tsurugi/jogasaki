@@ -17,8 +17,9 @@
 
 #include <cstddef>
 #include <cstring>
-#include <cassert>
 #include <optional>
+
+#include <takatori/util/assertion.h>
 
 #include <jogasaki/constants.h>
 
@@ -83,7 +84,7 @@ public:
      */
     template<typename T>
     void set_value(offset_type value_offset, T x) {
-        assert(value_offset < size_);  //NOLINT
+        BOOST_ASSERT(value_offset < size_);  //NOLINT
         static_assert(std::is_trivially_copy_constructible_v<T>);
         std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
     }
@@ -97,7 +98,7 @@ public:
      */
     template<typename T>
     [[nodiscard]] T get_value(offset_type value_offset) const {
-        assert(value_offset < size_);  //NOLINT
+        BOOST_ASSERT(value_offset < size_);  //NOLINT
         static_assert(std::is_trivially_copy_constructible_v<T>);
         T data{};
         std::memcpy(&data, static_cast<char*>(data_) + value_offset, sizeof(T)); //NOLINT
@@ -113,8 +114,8 @@ public:
      */
     template<typename T>
     [[nodiscard]] std::optional<T> get_if(offset_type nullity_offset, offset_type value_offset) const {
-        assert(nullity_offset / bits_per_byte < size_);  //NOLINT
-        assert(value_offset < size_);  //NOLINT
+        BOOST_ASSERT(nullity_offset / bits_per_byte < size_);  //NOLINT
+        BOOST_ASSERT(value_offset < size_);  //NOLINT
         if(is_null(nullity_offset)) {
             return {};
         }

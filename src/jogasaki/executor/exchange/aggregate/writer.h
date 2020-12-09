@@ -34,32 +34,19 @@ public:
     writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
-    writer(std::size_t downstream_partitions, std::shared_ptr<aggregate_info> info, std::vector<std::unique_ptr<input_partition>>& partitions, aggregate::sink& owner) :
-            downstream_partitions_(downstream_partitions),
-            partitions_(partitions),
-            info_(std::move(info)),
-            partitioner_(downstream_partitions_, info_->key_meta()),
-            owner_(std::addressof(owner))
-    {}
 
-    bool write(accessor::record_ref rec) override {
-        auto partition = partitioner_(info_->extract_key(rec));
-        initialize_lazy(partition);
-        partitions_[partition]->write(rec);
-        return false;
-    }
+    writer(
+        std::size_t downstream_partitions,
+        std::shared_ptr<aggregate_info> info,
+        std::vector<std::unique_ptr<input_partition>>& partitions,
+        aggregate::sink& owner
+    );
 
-    void flush() override {
-        for(std::size_t i=0; i < downstream_partitions_; ++i) {
-            if (partitions_[i]) {
-                partitions_[i]->flush();
-            }
-        }
-    }
+    bool write(accessor::record_ref rec) override;
 
-    void release() override {
-        owner_->release_writer(*this);
-    }
+    void flush() override;
+
+    void release() override;
 
 private:
     std::size_t downstream_partitions_{default_partitions};
@@ -68,20 +55,7 @@ private:
     partitioner partitioner_{};
     sink* owner_{};
 
-    void initialize_lazy(std::size_t partition) {
-        if (partitions_.empty()) {
-            partitions_.resize(downstream_partitions_);
-        }
-        if (partitions_[partition]) return;
-        partitions_[partition] = std::make_unique<input_partition>(
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-            info_
-        );
-    }
+    void initialize_lazy(std::size_t partition);
 };
 
 }

@@ -24,11 +24,8 @@
 #include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
 
-#include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/partitioner.h>
-#include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/functions.h>
 #include <jogasaki/meta/field_type_kind.h>
 
@@ -93,83 +90,48 @@ public:
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
         std::vector<value_spec> value_specs
-    ) :
-        record_(std::move(record)),
-        key_indices_(std::move(key_indices)),
-        value_specs_(std::move(value_specs)),
-        group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta()))
-    {
-        args_.reserve(value_specs_.size());
-        for(auto&& vs : value_specs_) {
-            std::vector<aggregator_arg> arg{};
-            arg.reserve(vs.argument_indices().size());
-            for(auto i : vs.argument_indices()) {
-                arg.emplace_back(
-                    record_->at(i),
-                    record_->value_offset(i),
-                    record_->nullity_offset(i)
-                );
-            }
-            args_.emplace_back(std::move(arg));
-        }
-    }
-
+    );
 
     /**
      * @brief extract key part from the input record
      */
-    [[nodiscard]] accessor::record_ref extract_key(accessor::record_ref record) const noexcept {
-        return accessor::record_ref(record.data(), record_->record_size());
-    }
+    [[nodiscard]] accessor::record_ref extract_key(accessor::record_ref record) const noexcept;
 
     /**
      * @brief returns metadata for input record
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept {
-        return record_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept;
 
     /**
      * @brief returns metadata for key part
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept {
-        return group_->key_shared();
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept;
 
     /**
      * @brief returns metadata for value part
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept {
-        return group_->value_shared();
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept;
 
     /**
      * @brief returns metadata for key/value parts at once
      */
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept {
-        return group_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept;
 
     /**
      * @brief returns aggregator specs
      */
-    [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept {
-        return value_specs_;
-    }
+    [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept;
 
     /**
      * @brief returns key indices
      */
-    [[nodiscard]] sequence_view<field_index_type const> key_indices() const noexcept {
-        return key_indices_;
-    }
+    [[nodiscard]] sequence_view<field_index_type const> key_indices() const noexcept;
 
     /**
      * @brief returns aggregator args
      */
-    [[nodiscard]] sequence_view<aggregator_arg const> aggregators_args(std::size_t idx) const noexcept {
-        return args_[idx];
-    }
+    [[nodiscard]] sequence_view<aggregator_arg const> aggregators_args(std::size_t idx) const noexcept;
+
 private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
@@ -177,41 +139,8 @@ private:
     maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
     std::vector<std::vector<aggregator_arg>> args_{};
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta() {
-        auto num = key_indices_.size();
-        meta::record_meta::fields_type fields{};
-        meta::record_meta::nullability_type  nullables(num+1);
-        fields.reserve(num+1);
-        for(std::size_t i=0; i < num; ++i) {
-            auto ind = key_indices_[i];
-            fields.emplace_back(record_->at(ind));
-            if (record_->nullable(ind)) {
-                nullables.set(i);
-            }
-        }
-        fields.emplace_back(meta::field_type{enum_tag<kind::pointer>});
-        nullables.set(num);
-        return std::make_shared<meta::record_meta>(
-            std::move(fields),
-            std::move(nullables)
-        );
-    }
-
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta() {
-        auto num = value_specs_.size();
-        meta::record_meta::fields_type fields{};
-        meta::record_meta::nullability_type  nullables(num);
-        nullables.flip(); // assuming all values can be null
-        fields.reserve(num);
-        for(std::size_t i=0; i < num; ++i) {
-            auto&& v = value_specs_[i];
-            fields.emplace_back(v.type());
-        }
-        return std::make_shared<meta::record_meta>(
-            std::move(fields),
-            std::move(nullables)
-        );
-    }
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta();
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta();
 };
 
 }

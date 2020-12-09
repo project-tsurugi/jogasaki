@@ -22,6 +22,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
@@ -96,6 +97,7 @@ public:
         std::unique_ptr<memory::paged_memory_resource> resource_for_values,
         std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
         std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables,
+        std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
         std::shared_ptr<aggregate_info> info,
         [[maybe_unused]] std::size_t initial_hash_table_size = default_initial_hash_table_size,
         [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
@@ -104,10 +106,12 @@ public:
         resource_for_values_(std::move(resource_for_values)),
         resource_for_varlen_data_(std::move(resource_for_varlen_data)),
         resource_for_hash_tables_(std::move(resource_for_hash_tables)),
+        resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
         info_(std::move(info)),
         comparator_(info_->key_meta().get()),
         initial_hash_table_size_(initial_hash_table_size),
-        max_pointers_(pointer_table_size)
+        max_pointers_(pointer_table_size),
+        key_buf_(info_->key_meta())
     {}
 
     /**
@@ -119,13 +123,13 @@ public:
         initialize_lazy();
         auto& key_meta = info_->key_meta();
         auto key_indices = info_->key_indices();
-        auto key = accessor::record_ref{keys_->allocate_record(), key_meta->record_size()};
+        auto key_buf = key_buf_.ref();
         auto& record_meta = info_->record_meta();
         for(std::size_t i=0, n = key_indices.size(); i < n; ++i) {
             auto input_record_field = key_indices[i];
             utils::copy_nullable_field(
                 record_meta->at(input_record_field),
-                key,
+                key_buf,
                 key_meta->value_offset(i),
                 key_meta->nullity_offset(i),
                 record,
@@ -136,18 +140,28 @@ public:
         }
         auto& value_meta = info_->value_meta();
         accessor::record_ref value{};
-        if (auto it = hash_table_->find(key.data()); it != hash_table_->end()) {
+        bool initial = false;
+        if (auto it = hash_table_->find(key_buf.data()); it != hash_table_->end()) {
             value = accessor::record_ref(it->second, info_->value_meta()->record_size());
         } else {
+            initial = true;
             value = accessor::record_ref{values_->allocate_record(), value_meta->record_size()};
-            // FIXME initialize record with initial values
+            accessor::record_ref key{keys_->allocate_record(), key_meta->record_size()};
+            keys_->copier()(key, key_buf);
+            key.set_value<void*>(info_->key_meta()->value_offset(info_->key_meta()->field_count()-1), value.data());
+            hash_table_->emplace(keys_->append(key), values_->append(value));
+            if(! current_table_active_) {
+                pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);
+                current_table_active_ = true;
+            }
+            auto& table = pointer_tables_.back();
+            table.emplace_back(key.data());
         }
         for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
             auto& vspec = info_->value_specs()[i];
             auto& aggregator = vspec.aggregator();
-            aggregator(value, value_meta->value_offset(i), record, info_->aggregators_args(i));
+            aggregator(value, value_meta->value_offset(i), initial, record, info_->aggregators_args(i));
         }
-        hash_table_->emplace(keys_->append(key), values_->append(value));
         if (hash_table_->load_factor() > load_factor_bound) {
             flush();
             return true;
@@ -221,9 +235,9 @@ public:
 private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_keys_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_values_{};
-    std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_hash_tables_{};
+    std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::shared_ptr<aggregate_info> info_{};
     std::unique_ptr<data::record_store> keys_{};
     std::unique_ptr<data::record_store> values_{};
@@ -233,6 +247,7 @@ private:
     bool current_table_active_{false};
     std::size_t initial_hash_table_size_{};
     std::size_t max_pointers_{};
+    data::small_record_store key_buf_;
 
     void initialize_lazy() {
         if (! keys_) {
@@ -253,10 +268,6 @@ private:
                 impl::key_eq{comparator_, info_->key_meta()->record_size()},
                 hash_table_allocator{resource_for_hash_tables_.get()}
             );
-        }
-        if(! current_table_active_) {
-            pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);
-            current_table_active_ = true;
         }
     }
 };

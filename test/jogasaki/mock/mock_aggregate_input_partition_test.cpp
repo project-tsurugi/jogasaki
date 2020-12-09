@@ -39,7 +39,7 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class aggregate_input_partition_test : public test_root {
+class mock_aggregate_input_partition_test : public test_root {
 public:
 
     using key_type = std::int64_t;
@@ -64,7 +64,7 @@ public:
 
 using kind = meta::field_type_kind;
 
-TEST_F(aggregate_input_partition_test, basic) {
+TEST_F(mock_aggregate_input_partition_test, basic) {
     auto context = std::make_shared<request_context>();
     input_partition partition{
         std::make_unique<mock_memory_resource>(),
@@ -103,7 +103,7 @@ TEST_F(aggregate_input_partition_test, basic) {
     ASSERT_EQ(values_exp, values);
 }
 
-TEST_F(aggregate_input_partition_test, multiple_hash_tables) {
+TEST_F(mock_aggregate_input_partition_test, multiple_hash_tables) {
     auto context = std::make_shared<request_context>();
     input_partition partition{
         std::make_unique<mock_memory_resource>(),

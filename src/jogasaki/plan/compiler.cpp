@@ -55,9 +55,12 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/builtin_functions.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
@@ -229,6 +232,7 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
 }
 
 executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiler_context& ctx) {
+    using executor::exchange::aggregate::aggregate_info;
     //FIXME
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
@@ -255,7 +259,25 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         key_indices[output_order.index(k)] = input_order.index(k);
     }
 
-    auto info = std::make_shared<executor::exchange::aggregate::aggregate_info>(std::move(meta), std::move(key_indices));
+    std::vector<aggregate_info::value_spec> specs{};
+    for(auto&& v : agg.aggregations()) {
+//        auto& provider = ctx.aggregate_provider();
+        std::vector<std::size_t> argument_indices{};
+        for(auto& a : v.arguments()) {
+            auto idx = input_order.index(a);
+            argument_indices.emplace_back(idx);
+        }
+        specs.emplace_back(
+            executor::builtin::sum, //FIXME search provider
+            std::move(argument_indices),
+            utils::type_for(ctx.compiled_info(), v.destination())
+        );
+    }
+    auto info = std::make_shared<aggregate_info>(
+        std::move(meta),
+        std::move(key_indices),
+        std::move(specs)
+    );
     return executor::exchange::aggregate::step(
         std::move(info),
         std::move(input_order),

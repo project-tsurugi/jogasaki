@@ -24,6 +24,7 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
 using jogasaki::mock::basic_record;
 using jogasaki::mock::create_record;
+using jogasaki::mock::create_nullable_record;
 
 class record : public basic_record {
 public:
@@ -32,7 +33,7 @@ public:
 
     record() noexcept : basic_record(create_record<kind::int8, kind::float8>(0, 0.0)) {}
 
-    record(key_type key, value_type value) : basic_record(basic_record(create_record<kind::int8, kind::float8>(key, value))) {}
+    record(key_type key, value_type value) : basic_record(create_record<kind::int8, kind::float8>(key, value)) {}
 
     [[nodiscard]] key_type key() const noexcept {
         return ref().get_value<key_type>(meta()->value_offset(0));
@@ -77,6 +78,32 @@ public:
 
     [[nodiscard]] ch_value_type ch_value() const noexcept {
         return ref().get_value<ch_value_type>(meta()->value_offset(2));
+    }
+};
+
+class nullable_record : public basic_record {
+public:
+    using key_type = std::int64_t;
+    using value_type = double;
+
+    nullable_record() noexcept : basic_record(create_nullable_record<kind::int8, kind::float8>(0, 0.0)) {}
+
+    nullable_record(key_type key, value_type value) : basic_record(create_nullable_record<kind::int8, kind::float8>(key, value)) {}
+
+    [[nodiscard]] key_type key() const noexcept {
+        return ref().get_value<key_type>(meta()->value_offset(0));
+    }
+
+    void key(key_type arg) noexcept {
+        ref().set_value<key_type>(meta()->value_offset(0), arg);
+    }
+
+    [[nodiscard]] value_type value() const noexcept {
+        return ref().get_value<value_type>(meta()->value_offset(1));
+    }
+
+    void value(value_type arg) noexcept {
+        ref().set_value<value_type>(meta()->value_offset(1), arg);
     }
 };
 

@@ -29,6 +29,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/partitioner.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/functions.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {
@@ -38,75 +39,7 @@ using takatori::util::sequence_view;
 using takatori::util::fail;
 using takatori::util::enum_tag;
 
-class aggregator_arg {
-public:
-    aggregator_arg() = default;
-
-    aggregator_arg(
-        meta::field_type const& type,
-        std::size_t value_offset,
-        std::size_t nullity_offset
-    ) :
-        type_(std::addressof(type)),
-        value_offset_(value_offset),
-        nullity_offset_(nullity_offset)
-    {}
-
-    [[nodiscard]] meta::field_type const& type() const noexcept {
-        return *type_;
-    }
-    [[nodiscard]] std::size_t value_offset() const noexcept {
-        return value_offset_;
-    }
-
-    [[nodiscard]] std::size_t nullity_offset() const noexcept {
-        return nullity_offset_;
-    }
-private:
-    meta::field_type const* type_{};
-    std::size_t value_offset_{};
-    std::size_t nullity_offset_{};
-};
-
-using aggregator_type = std::function<void (accessor::record_ref, std::size_t, accessor::record_ref, sequence_view<aggregator_arg const>)>;
-
 using kind = meta::field_type_kind;
-template <kind Kind>
-using rtype = typename meta::field_type_traits<Kind>::runtime_type;
-
-namespace builtin {
-
-void sum(
-    accessor::record_ref target,
-    std::size_t target_offset,
-    accessor::record_ref source,
-    sequence_view<aggregator_arg> args
-) {
-    BOOST_ASSERT(args.size() == 1);
-    auto& arg_type = args[0].type();
-    auto arg_offset = args[0].value_offset();
-    switch(arg_type.kind()) {
-        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, target.get_value<rtype<kind::int4>>(target_offset) + source.get_value<rtype<kind::int4>>(arg_offset)); break;
-        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset)); break;
-        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, target.get_value<rtype<kind::float4>>(target_offset) + source.get_value<rtype<kind::float4>>(arg_offset)); break;
-        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, target.get_value<rtype<kind::float8>>(target_offset) + source.get_value<rtype<kind::float8>>(arg_offset)); break;
-        default: fail();
-    }
-}
-
-void count(
-    accessor::record_ref target,
-    std::size_t target_offset,
-    accessor::record_ref source,
-    sequence_view<aggregator_arg> args
-) {
-    BOOST_ASSERT(args.size() == 1);
-    (void)args;
-    (void)source;
-    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + 1);
-}
-
-} // namespace builtin
 
 /**
  * @brief information to execute aggregate exchange, used to extract schema and record layout information for key/value parts
@@ -121,8 +54,8 @@ public:
 
         value_spec(
             aggregator_type aggregator,
-            std::vector<std::size_t>argument_indices,
-            std::shared_ptr<meta::field_type> type
+            std::vector<std::size_t> argument_indices,
+            meta::field_type type
         ) noexcept :
             aggregator_(std::move(aggregator)),
             argument_indices_(std::move(argument_indices)),
@@ -138,12 +71,12 @@ public:
         }
 
         [[nodiscard]] meta::field_type const& type() const noexcept {
-            return *type_;
+            return type_;
         }
     private:
         aggregator_type aggregator_{};
         std::vector<std::size_t> argument_indices_{};
-        std::shared_ptr<meta::field_type> type_{};
+        meta::field_type type_{};
     };
     /**
      * @brief construct empty object

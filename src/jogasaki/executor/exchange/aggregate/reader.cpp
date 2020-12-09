@@ -60,14 +60,16 @@ bool reader::next_group() {
         auto it = queue_.top().first;
         auto end = queue_.top().second;
         read_and_pop(it, end);
+        bool initial = true;
         while(internal_next_member()) {
             auto src = internal_get_member();
             auto tgt = value_buf_.ref();
             for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
                 auto& vspec = info_->value_specs()[i];
                 auto& aggregator = vspec.aggregator();
-                aggregator(tgt, info_->value_meta()->value_offset(i), src, info_->aggregators_args(i));
+                aggregator(tgt, info_->value_meta()->value_offset(i), initial, src, info_->aggregators_args(i));
             }
+            initial = false;
         }
         state_ = reader_state::before_member;
         return true;
@@ -115,6 +117,18 @@ accessor::record_ref reader::get_member() const {
         return value_buf_.ref();
     }
     fail();
+}
+
+bool reader::next_member() {
+    if (state_ == reader_state::before_member) {
+        state_ = reader_state::on_member;
+        return true;
+    }
+    if(state_ == reader_state::on_member) {
+        state_ = reader_state::after_group;
+        return false;
+    }
+    std::abort();
 }
 
 accessor::record_ref reader::internal_get_member() const {

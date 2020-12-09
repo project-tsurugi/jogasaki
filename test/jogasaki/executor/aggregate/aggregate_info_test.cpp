@@ -18,6 +18,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <jogasaki/executor/builtin_functions.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -35,7 +36,7 @@ TEST_F(aggregate_info_test, simple) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
-    },boost::dynamic_bitset<std::uint64_t>("00"s));
+    },boost::dynamic_bitset<std::uint64_t>(2));
     aggregate_info info{
         rec_meta,
         {1},
@@ -45,13 +46,13 @@ TEST_F(aggregate_info_test, simple) {
                 {
                     0
                 },
-                std::make_shared<meta::field_type>(enum_tag<kind::int4>)
+                meta::field_type(enum_tag<kind::int4>)
             }
         }
     };
     auto key_meta = info.key_meta();
-    EXPECT_EQ(1, key_meta->field_count());
-    EXPECT_EQ(3, info.value_meta()->field_count());
+    EXPECT_EQ(2, key_meta->field_count()); // internal pointer field is added
+    EXPECT_EQ(1, info.value_meta()->field_count());
 }
 
 }

@@ -111,6 +111,14 @@ public:
     [[nodiscard]] memory::paged_memory_resource* varlen_resource() const noexcept {
         return varlen_resource_;
     }
+
+    /**
+     * @return copier to copy data into this store
+     */
+    [[nodiscard]] accessor::record_copier & copier() noexcept {
+        return copier_;
+    }
+
 private:
     memory::paged_memory_resource* resource_{};
     memory::paged_memory_resource* varlen_resource_{};

@@ -39,7 +39,7 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class aggregate_reader_test : public test_root {
+class mock_aggregate_reader_test : public test_root {
 public:
 
     using key_type = std::int64_t;
@@ -92,7 +92,7 @@ public:
 
 using kind = meta::field_type_kind;
 
-TEST_F(aggregate_reader_test, basic) {
+TEST_F(mock_aggregate_reader_test, basic) {
     auto context = std::make_shared<request_context>();
 
     std::set<key_type> keys{};

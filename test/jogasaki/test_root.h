@@ -37,7 +37,7 @@ public:
      * @brief providing typical record metadata
      */
     static inline maybe_shared_ptr<meta::record_meta> test_record_meta1() {
-        test::record r1{};
+        test::nullable_record r1{};
         return r1.record_meta();
     }
 

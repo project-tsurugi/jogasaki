@@ -54,7 +54,7 @@ public:
     explicit iterator_pair_comparator(aggregate_info const* info) :
         info_(info),
         record_size_(info_->record_meta()->record_size()),
-        key_comparator_(info_->mid_group_meta()->key_shared().get()) {}
+        key_comparator_(info_->mid().group_meta()->key_shared().get()) {}
 
     [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y) {
         auto& it_x = x.first;

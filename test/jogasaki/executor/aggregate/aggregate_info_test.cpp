@@ -48,12 +48,21 @@ TEST_F(aggregate_info_test, simple) {
                 },
                 meta::field_type(enum_tag<kind::int4>)
             }
+        },
+        {
+            {
+                builtin::sum,
+                    {
+                        0
+                    },
+                    meta::field_type(enum_tag<kind::int4>)
+            }
         }
     };
-    EXPECT_EQ(2, info.mid_group_meta()->key_shared()->field_count()); // internal pointer field is added
-    EXPECT_EQ(1, info.mid_group_meta()->value_shared()->field_count());
-    EXPECT_EQ(1, info.post_group_meta()->key_shared()->field_count());
-    EXPECT_EQ(1, info.post_group_meta()->value_shared()->field_count());
+    EXPECT_EQ(2, info.mid().group_meta()->key_shared()->field_count()); // internal pointer field is added
+    EXPECT_EQ(1, info.mid().group_meta()->value_shared()->field_count());
+    EXPECT_EQ(1, info.post().group_meta()->key_shared()->field_count());
+    EXPECT_EQ(1, info.post().group_meta()->value_shared()->field_count());
 }
 
 }

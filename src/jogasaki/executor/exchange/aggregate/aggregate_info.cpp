@@ -38,16 +38,17 @@ using takatori::util::enum_tag;
 
 using kind = meta::field_type_kind;
 
-aggregate_info::aggregate_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices,
-    std::vector<value_spec> value_specs) :
+aggregate_info::aggregate_info(
+    maybe_shared_ptr<meta::record_meta> record,
+    std::vector<field_index_type> key_indices,
+    std::vector<value_spec> mid_value_specs,
+    std::vector<value_spec> post_value_specs
+) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
-    value_specs_(std::move(value_specs)),
     extracted_key_meta_(create_extracted_meta(key_indices_)),
-    mid_group_(std::make_shared<meta::group_meta>(create_key_meta(false), create_value_meta(false))),
-    post_group_(std::make_shared<meta::group_meta>(create_key_meta(true), create_value_meta(true))),
-    args_(create_source_field_locs()),
-    target_field_locs_(create_target_field_locs())
+    mid_(std::move(mid_value_specs), false, record_, key_indices_),
+    post_(std::move(post_value_specs), true, record_, key_indices_)
 {}
 
 accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) const noexcept {
@@ -58,16 +59,9 @@ const maybe_shared_ptr<meta::record_meta> &aggregate_info::record_meta() const n
     return record_;
 }
 
-sequence_view<const aggregate_info::value_spec> aggregate_info::value_specs() const noexcept {
-    return value_specs_;
-}
 
 sequence_view<const aggregate_info::field_index_type> aggregate_info::key_indices() const noexcept {
     return key_indices_;
-}
-
-sequence_view<const field_locator> aggregate_info::aggregator_args(std::size_t idx) const noexcept {
-    return args_[idx];
 }
 
 std::shared_ptr<meta::record_meta> aggregate_info::create_extracted_meta(std::vector<std::size_t> const& indices) {
@@ -98,13 +92,15 @@ std::shared_ptr<meta::record_meta> aggregate_info::create_extracted_meta(std::ve
     );
 }
 
-std::shared_ptr<meta::record_meta> aggregate_info::create_key_meta(bool post) {
-    auto num = key_indices_.size();
+std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
+    bool post
+) {
+    auto num = key_indices_->size();
     meta::record_meta::fields_type fields{};
     meta::record_meta::nullability_type nullables(0);
     fields.reserve(num+1); // +1 for safety
     for(std::size_t i=0; i < num; ++i) {
-        auto ind = key_indices_[i];
+        auto ind = key_indices_->at(i);
         fields.emplace_back(record_->at(ind));
         nullables.push_back(record_->nullable(ind));
     }
@@ -123,13 +119,11 @@ std::shared_ptr<meta::record_meta> aggregate_info::create_key_meta(bool post) {
     );
 }
 
-std::shared_ptr<meta::record_meta> aggregate_info::create_value_meta(bool post) {
-    if (post) {
-        // FIXME introduce intermediate columns
-    }
+std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_value_meta(bool post) {
+    (void)post;
     auto num = value_specs_.size();
     meta::record_meta::fields_type fields{};
-    meta::record_meta::nullability_type  nullables(num);
+    meta::record_meta::nullability_type nullables(num);
     nullables.flip(); // assuming all values can be null
     fields.reserve(num);
     for(std::size_t i=0; i < num; ++i) {
@@ -142,11 +136,8 @@ std::shared_ptr<meta::record_meta> aggregate_info::create_value_meta(bool post) 
     );
 }
 
-std::size_t aggregate_info::value_count() const noexcept {
-    return value_specs_.size();
-}
-
-std::vector<std::vector<field_locator>> aggregate_info::create_source_field_locs() {
+std::vector<std::vector<field_locator>> aggregate_info::output_info::create_source_field_locs(bool post) {
+    (void)post;
     std::vector<std::vector<field_locator>> ret{};
     ret.reserve(value_specs_.size());
     for(auto&& vs : value_specs_) {
@@ -160,15 +151,16 @@ std::vector<std::vector<field_locator>> aggregate_info::create_source_field_locs
                 record_->nullity_offset(i)
             );
         }
-        args_.emplace_back(std::move(arg));
+        ret.emplace_back(std::move(arg));
     }
     return ret;
 }
 
-std::vector<field_locator> aggregate_info::create_target_field_locs() {
+std::vector<field_locator> aggregate_info::output_info::create_target_field_locs(bool post) {
+    (void)post;
     std::vector<field_locator> ret{};
     ret.reserve(value_count());
-    auto& value_meta = mid_group_->value();
+    auto& value_meta = group_->value();
     for(std::size_t i=0, n=value_specs_.size(); i < n; ++i) {
         auto& s = value_specs_[i];  // intermediate value specs
         ret.emplace_back(
@@ -181,7 +173,7 @@ std::vector<field_locator> aggregate_info::create_target_field_locs() {
     return ret;
 }
 
-field_locator const &aggregate_info::target_field_locator(std::size_t idx) const noexcept {
+field_locator const &aggregate_info::output_info::target_field_locator(std::size_t idx) const noexcept {
     return target_field_locs_[idx];
 }
 
@@ -189,20 +181,12 @@ const maybe_shared_ptr<meta::record_meta> &aggregate_info::extracted_key_meta() 
     return extracted_key_meta_;
 }
 
-const maybe_shared_ptr<meta::group_meta> &aggregate_info::mid_group_meta() const noexcept {
-    return mid_group_;
-}
-
-const maybe_shared_ptr<meta::group_meta> &aggregate_info::post_group_meta() const noexcept {
-    return post_group_;
-}
-
 accessor::record_ref aggregate_info::output_key(accessor::record_ref mid) const noexcept {
-    return accessor::record_ref(mid.data(), post_group_->key().record_size());
+    return accessor::record_ref(mid.data(), post_.group_meta()->key().record_size());
 }
 
 accessor::record_ref aggregate_info::output_value(accessor::record_ref mid) const noexcept {
-    return accessor::record_ref(mid.data(), post_group_->value().record_size());
+    return accessor::record_ref(mid.data(), post_.group_meta()->value().record_size());
 }
 
 }

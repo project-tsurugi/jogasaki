@@ -259,7 +259,8 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         key_indices[output_order.index(k)] = input_order.index(k);
     }
 
-    std::vector<aggregate_info::value_spec> specs{};
+    std::vector<aggregate_info::value_spec> mid_specs{};
+    std::vector<aggregate_info::value_spec> post_specs{};
     for(auto&& e : agg.aggregations()) {
         std::vector<std::size_t> argument_indices{};
         for(auto& f : e.arguments()) {
@@ -271,16 +272,22 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(e.function());
         (void)decl;
         (void)provider;
-        specs.emplace_back(
+        mid_specs.emplace_back(
             executor::builtin::sum, //FIXME search provider
-            std::move(argument_indices),
+            (argument_indices),
+            utils::type_for(ctx.compiled_info(), e.destination())
+        );
+        post_specs.emplace_back(
+            executor::builtin::sum, //FIXME search provider
+            (argument_indices),
             utils::type_for(ctx.compiled_info(), e.destination())
         );
     }
     auto info = std::make_shared<aggregate_info>(
         std::move(meta),
         std::move(key_indices),
-        std::move(specs)
+        std::move(mid_specs),
+        std::move(post_specs)
     );
     return executor::exchange::aggregate::step(
         std::move(info),

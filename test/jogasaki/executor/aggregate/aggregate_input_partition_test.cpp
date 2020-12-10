@@ -77,6 +77,15 @@ TEST_F(aggregate_input_partition_test, basic) {
                 },
                 meta::field_type(enum_tag<kind::float8>)
             }
+        },
+        std::vector<aggregate_info::value_spec>{
+            {
+                builtin::sum,
+                {
+                    1
+                },
+                meta::field_type(enum_tag<kind::float8>)
+            }
         }
     );
     input_partition partition{ info };
@@ -93,7 +102,7 @@ TEST_F(aggregate_input_partition_test, basic) {
     ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
     auto& t = *partition.begin();
     EXPECT_EQ(3, std::distance(t.begin(), t.end()));
-    group_meta_ = info->mid_group_meta();
+    group_meta_ = info->mid().group_meta();
     auto it = t.begin();
     EXPECT_EQ(1, get_key(it));
     EXPECT_DOUBLE_EQ(1.0, get_val(it));

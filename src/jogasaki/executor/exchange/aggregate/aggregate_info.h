@@ -78,6 +78,72 @@ public:
         std::vector<std::size_t> argument_indices_{};
         meta::field_type type_{};
     };
+
+    class output_info {
+    public:
+        output_info() = default;
+
+        output_info(
+            std::vector<value_spec> value_specs,
+            bool post,
+            maybe_shared_ptr<meta::record_meta> const& record,
+            std::vector<field_index_type> const&  key_indices
+        ) :
+            value_specs_(std::move(value_specs)),
+            post_(post),
+            record_(std::move(record)),
+            key_indices_(std::addressof(key_indices)),
+            group_(std::make_shared<meta::group_meta>(create_key_meta(post_), create_value_meta(post_))),
+            args_(create_source_field_locs(post_)),
+            target_field_locs_(create_target_field_locs(post_))
+        {}
+        /**
+         * @brief returns metadata for key/value parts at once
+         */
+        [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept {
+            return group_;
+        }
+
+        /**
+         * @brief returns aggregator specs
+         */
+        [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept {
+            return value_specs_;
+        }
+
+        /**
+         * @brief returns the number of value fields
+         */
+        [[nodiscard]] std::size_t value_count() const noexcept {
+            return value_specs_.size();
+        }
+
+        /**
+         * @brief returns aggregator args
+         */
+        [[nodiscard]] sequence_view<field_locator const> aggregator_args(std::size_t idx) const noexcept {
+            return args_[idx];
+        }
+
+        /**
+         * @brief returns target field locator
+         */
+        [[nodiscard]] field_locator const& target_field_locator(std::size_t idx) const noexcept;
+
+    private:
+        std::vector<value_spec> value_specs_{};
+        bool post_{};
+        maybe_shared_ptr<meta::record_meta> record_{};
+        std::vector<field_index_type> const* key_indices_{};
+        maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
+        std::vector<std::vector<field_locator>> args_{};
+        std::vector<field_locator> target_field_locs_{};
+
+        std::shared_ptr<meta::record_meta> create_key_meta(bool post);
+        std::shared_ptr<meta::record_meta> create_value_meta(bool post);
+        std::vector<std::vector<field_locator>> create_source_field_locs(bool post);
+        std::vector<field_locator> create_target_field_locs(bool post);
+    };
     /**
      * @brief construct empty object
      */
@@ -92,7 +158,8 @@ public:
     aggregate_info(
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
-        std::vector<value_spec> value_specs
+        std::vector<value_spec> mid_value_specs,
+        std::vector<value_spec> post_value_specs
     );
 
     /**
@@ -124,54 +191,27 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& extracted_key_meta() const noexcept;
 
     /**
-     * @brief returns metadata for key/value parts at once
-     */
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& mid_group_meta() const noexcept;
-
-    /**
-     * @brief returns metadata for key/value parts at once
-     */
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& post_group_meta() const noexcept;
-
-    /**
-     * @brief returns aggregator specs
-     */
-    [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept;
-
-    /**
-     * @brief returns the number of value fields
-     */
-    [[nodiscard]] std::size_t value_count() const noexcept;
-
-    /**
      * @brief returns key indices
      */
     [[nodiscard]] sequence_view<field_index_type const> key_indices() const noexcept;
 
     /**
-     * @brief returns aggregator args
+     * @brief
      */
-    [[nodiscard]] sequence_view<field_locator const> aggregator_args(std::size_t idx) const noexcept;
+    [[nodiscard]] output_info const& mid() const noexcept {
+        return mid_;
+    }
 
-    /**
-     * @brief returns target field locator
-     */
-    [[nodiscard]] field_locator const& target_field_locator(std::size_t idx) const noexcept;
+    [[nodiscard]] output_info const& post() const noexcept {
+        return post_;
+    }
 private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
-    std::vector<value_spec> value_specs_{};
     maybe_shared_ptr<meta::record_meta> extracted_key_meta_{};
-    maybe_shared_ptr<meta::group_meta> mid_group_{std::make_shared<meta::group_meta>()};
-    maybe_shared_ptr<meta::group_meta> post_group_{std::make_shared<meta::group_meta>()};
-    std::vector<std::vector<field_locator>> args_{};
-    std::vector<field_locator> target_field_locs_{};
-
+    output_info mid_{};
+    output_info post_{};
     std::shared_ptr<meta::record_meta> create_extracted_meta(std::vector<std::size_t> const& indices);
-    std::shared_ptr<meta::record_meta> create_key_meta(bool post);
-    std::shared_ptr<meta::record_meta> create_value_meta(bool post);
-    std::vector<std::vector<field_locator>> create_source_field_locs();
-    std::vector<field_locator> create_target_field_locs();
 };
 
 }

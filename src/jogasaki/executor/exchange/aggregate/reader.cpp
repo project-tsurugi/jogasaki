@@ -26,12 +26,12 @@ reader::reader(
     partitions_(partitions),
     info_(std::move(info)),
     queue_(impl::iterator_pair_comparator(info_.get())),
-    key_size_(info_->mid_group_meta()->key().record_size()),
-    mid_value_size_(info_->mid_group_meta()->value().record_size()),
-    key_buf_(info_->mid_group_meta()->key_shared()), //NOLINT
-    mid_value_buf_(info_->mid_group_meta()->value_shared()), //NOLINT
-    key_comparator_(info_->mid_group_meta()->key_shared().get()),
-    pointer_field_offset_(info_->mid_group_meta()->key().value_offset(info_->mid_group_meta()->key().field_count()-1)) {
+    key_size_(info_->mid().group_meta()->key().record_size()),
+    mid_value_size_(info_->mid().group_meta()->value().record_size()),
+    key_buf_(info_->mid().group_meta()->key_shared()), //NOLINT
+    mid_value_buf_(info_->mid().group_meta()->value_shared()), //NOLINT
+    key_comparator_(info_->mid().group_meta()->key_shared().get()),
+    pointer_field_offset_(info_->mid().group_meta()->key().value_offset(info_->mid().group_meta()->key().field_count()-1)) {
     for(auto& p : partitions_) {
         if (!p) continue;
         for(auto& t : *p) {
@@ -62,19 +62,20 @@ bool reader::next_group() {
         read_and_pop(it, end);
         bool initial = true;
         internal_on_member_ = false;
+        auto info = info_->mid();
         while(internal_next_member()) {
             auto src = internal_get_member();
             auto tgt = mid_value_buf_.ref();
-            for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
-                auto& vspec = info_->value_specs()[i];
+            for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
+                auto& vspec = info.value_specs()[i];
                 // FIXME use intermediate aggregator
                 auto& aggregator = vspec.aggregator();
                 aggregator(
                     tgt,
-                    info_->target_field_locator(i),
+                    info.target_field_locator(i),
                     initial,
                     src,
-                    sequence_view{&info_->target_field_locator(i)}
+                    sequence_view{&info.target_field_locator(i)}
                 );
             }
             initial = false;

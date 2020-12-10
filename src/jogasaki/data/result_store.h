@@ -42,7 +42,7 @@ public:
     result_store& operator=(result_store&& other) noexcept = default;
 
     /**
-     * @brief accessor for size (number of partitions)
+     * @brief accessor for n-th internal store
      */
     [[nodiscard]] store_type& store(std::size_t index) const noexcept {
         return *stores_[index];
@@ -74,6 +74,9 @@ public:
         return meta_;
     }
 
+    /**
+     * @brief accessor for size (number of partitions)
+     */
     [[nodiscard]] std::size_t size() const noexcept {
         return stores_.size();
     }

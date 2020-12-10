@@ -20,11 +20,11 @@
 namespace jogasaki::api {
 
 result_set::iterator result_set::impl::begin() {
-    return store_->store(0).begin(); //FIXME
+    return {store_->store(0).begin(), *store_, 0};
 }
 
 result_set::iterator result_set::impl::end() {
-    return store_->store(0).end(); //FIXME
+    return {store_->store(store_->size()-1).end(), *store_, store_->size()-1};
 }
 
 maybe_shared_ptr<meta::record_meta> result_set::impl::meta() const noexcept {

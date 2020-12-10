@@ -35,7 +35,7 @@ using takatori::util::maybe_shared_ptr;
 class result_set {
 public:
     class impl;
-    using iterator = data::iterable_record_store::iterator;
+    class iterator;
 
     explicit result_set(std::unique_ptr<impl> i);
     ~result_set();

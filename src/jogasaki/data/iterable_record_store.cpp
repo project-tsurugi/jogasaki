@@ -46,6 +46,10 @@ iterable_record_store::iterator::iterator(const iterable_record_store &container
     container_(&container), pos_(range != container_->ranges_.end() ? range->b_ : nullptr), range_(range)
 {}
 
+iterable_record_store::value_type iterable_record_store::iterator::operator*() {
+    return ref();
+}
+
 iterable_record_store::iterable_record_store(memory::paged_memory_resource *record_resource,
     memory::paged_memory_resource *varlen_resource, maybe_shared_ptr<meta::record_meta> meta) :
     record_size_(meta->record_size()),

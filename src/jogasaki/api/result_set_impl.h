@@ -22,6 +22,109 @@
 
 namespace jogasaki::api {
 
+/**
+ * @brief iterator for result set
+ */
+class result_set::iterator {
+public:
+
+    /// @brief iterator category
+    using iterator_category = std::input_iterator_tag;
+
+    /// @brief type of value
+    using value_type = data::iterable_record_store::value_type;
+
+    /// @brief type of difference
+    using difference_type = std::ptrdiff_t;
+
+    /// @brief type of pointer
+    using pointer = value_type*;
+
+    /// @brief type of reference
+    using reference = value_type&;
+
+    using original_iterator = data::iterable_record_store::iterator;
+
+    /**
+     * @brief construct new iterator
+     * @param container the target record store that the constructed object iterates
+     * @param range indicates the range entry that the constructed iterator start iterating with
+     */
+    iterator(
+        original_iterator it,
+        data::result_store& store,
+        std::size_t partition
+    ) :
+        it_(it),
+        store_(std::addressof(store)),
+        partition_(partition)
+    {}
+
+    /**
+     * @brief increment iterator
+     * @return reference after the increment
+     */
+    iterator& operator++() {
+        ++it_;
+        while (it_ == store_->store(partition_).end() && partition_ != store_->size()-1) {
+            ++partition_;
+            it_ = store_->store(partition_).begin();
+        }
+        return *this;
+    }
+
+    /**
+     * @brief increment iterator
+     * @return copy of the iterator before the increment
+     */
+    iterator const operator++(int) {
+        iterator cur{*this};
+        ++it_;
+        return cur;
+    }
+
+    /**
+     * @brief dereference the iterator
+     * @return record ref to the record that the iterator is on
+     */
+    [[nodiscard]] value_type operator*() {
+        return ref();
+    }
+
+    /**
+     * @brief dereference the iterator and return record ref
+     * @return record ref to the record that the iterator is on
+     */
+    [[nodiscard]] accessor::record_ref ref() const noexcept {
+        return it_.ref();
+    }
+
+    /// @brief equivalent comparison
+    constexpr bool operator==(iterator const& r) const noexcept {
+        return it_ == r.it_;
+    }
+
+    /// @brief inequivalent comparison
+    constexpr bool operator!=(const iterator& r) const noexcept {
+        return !(*this == r);
+    }
+
+    /**
+     * @brief appends string representation of the given value.
+     * @param out the target output
+     * @param value the target value
+     * @return the output
+     */
+    friend inline std::ostream& operator<<(std::ostream& out, iterator value) {
+        return out << value.it_;
+    }
+
+private:
+    original_iterator it_;
+    data::result_store* store_{};
+    std::size_t partition_{};
+};
+
 class result_set::impl {
 public:
     explicit impl(

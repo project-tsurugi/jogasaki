@@ -98,9 +98,7 @@ public:
          * @brief dereference the iterator
          * @return record ref to the record that the iterator is on
          */
-        [[nodiscard]] value_type operator*() {
-            return ref();
-        }
+        [[nodiscard]] value_type operator*();
 
         /**
          * @brief dereference the iterator and return record ref

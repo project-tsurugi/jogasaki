@@ -22,6 +22,10 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 #include <takatori/util/fail.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/variable/configurable_provider.h>
+#include <yugawara/function/configurable_provider.h>
+#include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_impl.h>
@@ -31,17 +35,23 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/functions.h>
 
 namespace jogasaki::api {
 
-using configurable_provider = ::yugawara::storage::configurable_provider;
 using takatori::util::fail;
+namespace storage = yugawara::storage;
+namespace variable = yugawara::variable;
+namespace aggregate = yugawara::aggregate;
+namespace function = yugawara::function;
 
 class database::impl {
 public:
     impl() : impl(std::make_shared<configuration>()) {}
     explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)), scheduler_{cfg_} {
-        add_default_table_defs(storage_provider_.get());
+        executor::add_builtin_tables(*tables_);
+        executor::add_builtin_aggregate_functions(*aggregate_functions_);
     }
     std::unique_ptr<result_set> execute(std::string_view sql);
     bool start();
@@ -55,107 +65,19 @@ public:
         return kvs_db_;
     }
 
-    [[nodiscard]] std::shared_ptr<configurable_provider> const& provider() const noexcept {
-        return storage_provider_;
+    [[nodiscard]] std::shared_ptr<yugawara::storage::configurable_provider> const& tables() const noexcept {
+        return tables_;
+    }
+
+    [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const& aggregate_functions() const noexcept {
+        return aggregate_functions_;
     }
 private:
     std::shared_ptr<configuration> cfg_{};
     scheduler::dag_controller scheduler_{};
-    std::shared_ptr<configurable_provider> storage_provider_{std::make_shared<configurable_provider>()};
+    std::shared_ptr<yugawara::storage::configurable_provider> tables_{std::make_shared<yugawara::storage::configurable_provider>()};
+    std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{std::make_shared<yugawara::aggregate::configurable_provider>()};
     std::shared_ptr<kvs::database> kvs_db_{};
-
-    // predefined table definitions
-    void add_default_table_defs(configurable_provider* provider) {
-        namespace type = ::takatori::type;
-        using ::yugawara::variable::nullity;
-        {
-            std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T0", {
-                "T0",
-                {
-                    { "C0", type::int8(), nullity{false} },
-                    { "C1", type::float8 (), nullity{true} },
-                },
-            });
-            std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I0", {
-                t,
-                "I0",
-                {
-                    t->columns()[0],
-                },
-                {
-                    t->columns()[1],
-                },
-                {
-                    ::yugawara::storage::index_feature::find,
-                    ::yugawara::storage::index_feature::scan,
-                    ::yugawara::storage::index_feature::unique,
-                    ::yugawara::storage::index_feature::primary,
-                },
-            });
-        }
-        {
-            std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T1", {
-                "T1",
-                {
-                    { "C0", type::int4(), nullity{false} },
-                    { "C1", type::int8(), nullity{true}  },
-                    { "C2", type::float8() , nullity{true} },
-                    { "C3", type::float4() , nullity{true} },
-                    { "C4", type::character(type::varying, 100) , nullity{true} },
-                },
-            });
-            std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I1", {
-                t,
-                "I1",
-                {
-                    t->columns()[0],
-                    t->columns()[1],
-                },
-                {
-                    t->columns()[2],
-                    t->columns()[3],
-                    t->columns()[4],
-                },
-                {
-                    ::yugawara::storage::index_feature::find,
-                    ::yugawara::storage::index_feature::scan,
-                    ::yugawara::storage::index_feature::unique,
-                    ::yugawara::storage::index_feature::primary,
-                },
-            });
-        }
-        {
-            std::shared_ptr<::yugawara::storage::table> t = provider->add_table("T2", {
-                "T2",
-                {
-                    { "C0", type::int4(), nullity{false} },
-                    { "C1", type::int8(), nullity{true}  },
-                    { "C2", type::float8() , nullity{true} },
-                    { "C3", type::float4() , nullity{true} },
-                    { "C4", type::character(type::varying, 100) , nullity{true} },
-                },
-            });
-            std::shared_ptr<::yugawara::storage::index> i = provider->add_index("I2", {
-                t,
-                "I2",
-                {
-                    t->columns()[0],
-                    t->columns()[1],
-                },
-                {
-                    t->columns()[2],
-                    t->columns()[3],
-                    t->columns()[4],
-                },
-                {
-                    ::yugawara::storage::index_feature::find,
-                    ::yugawara::storage::index_feature::scan,
-                    ::yugawara::storage::index_feature::unique,
-                    ::yugawara::storage::index_feature::primary,
-                },
-            });
-        }
-    }
 };
 
 }

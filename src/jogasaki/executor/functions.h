@@ -23,6 +23,10 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/function/configurable_provider.h>
+#include <yugawara/variable/configurable_provider.h>
+#include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
@@ -80,5 +84,7 @@ using aggregator_type = std::function<void (
     accessor::record_ref,
     sequence_view<field_locator const>
 )>;
+
+void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provider& provider);
 
 }

@@ -42,23 +42,14 @@ public:
      * @param partitions number of total partitions
      * @param meta schema information of the record whose target is calculated by this partitioner
      */
-    partitioner(std::size_t partitions, maybe_shared_ptr<meta::record_meta> meta) noexcept :
-            partitions_(partitions), meta_(std::move(meta)) {}
+    partitioner(std::size_t partitions, maybe_shared_ptr<meta::record_meta> meta) noexcept;
 
     /**
      * @brief retrieve the partition for the given record
      * @param key the record to be evaluated
      * @return the target partition number
      */
-    [[nodiscard]] std::size_t operator()(accessor::record_ref key) const noexcept {
-        static const std::size_t p = 18446744073709551557ULL; // arbitrary prime in int64_t
-        std::size_t h = 0;
-        for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
-            h += field_hash(key, i);
-            h *= i == 0 ? 1 : p;
-        }
-        return h % partitions_;
-    }
+    [[nodiscard]] std::size_t operator()(accessor::record_ref key) const noexcept;
 
 private:
     std::size_t partitions_{};
@@ -69,23 +60,7 @@ private:
 
     using kind = meta::field_type_kind;
 
-    [[nodiscard]] std::size_t field_hash(accessor::record_ref key, std::size_t field_index) const {
-        auto type = meta_->at(field_index);
-        auto offset = meta_->value_offset(field_index);
-        switch(type.kind()) {
-            case meta::field_type_kind::boolean: return std::hash<runtime_type<kind::boolean>>()(key.get_value<runtime_type<kind::boolean>>(offset));
-            case meta::field_type_kind::int1: return std::hash<runtime_type<kind::int1>>()(key.get_value<runtime_type<kind::int1>>(offset));
-            case meta::field_type_kind::int2: return std::hash<runtime_type<kind::int2>>()(key.get_value<runtime_type<kind::int2>>(offset));
-            case meta::field_type_kind::int4: return std::hash<runtime_type<kind::int4>>()(key.get_value<runtime_type<kind::int4>>(offset));
-            case meta::field_type_kind::int8: return std::hash<runtime_type<kind::int8>>()(key.get_value<runtime_type<kind::int8>>(offset));
-            case meta::field_type_kind::float4: return std::hash<runtime_type<kind::float4>>()(key.get_value<runtime_type<kind::float4>>(offset));
-            case meta::field_type_kind::float8: return std::hash<runtime_type<kind::float8>>()(key.get_value<runtime_type<kind::float8>>(offset));
-            case meta::field_type_kind::character: return std::hash<runtime_type<kind::character>>()(key.get_value<runtime_type<kind::character>>(offset));
-            default:
-                // TODO implement other types
-                std::abort();
-        }
-    }
+    [[nodiscard]] std::size_t field_hash(accessor::record_ref key, std::size_t field_index) const;
 };
 
 }

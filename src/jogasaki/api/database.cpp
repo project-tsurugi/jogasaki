@@ -36,7 +36,8 @@ using takatori::util::fail;
 
 std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto ctx = std::make_shared<plan::compiler_context>();
-    ctx->storage_provider(storage_provider_);
+    ctx->storage_provider(tables_);
+    ctx->aggregate_provider(aggregate_functions_);
     if(!plan::compile(sql, *ctx)) {
         LOG(ERROR) << "compilation failed.";
         return {};
@@ -76,7 +77,7 @@ bool database::impl::start() {
         return false;
     }
     bool success = true;
-    storage_provider_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+    tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
         success = success && kvs_db_->create_storage(id);
     });
     if (! success) {

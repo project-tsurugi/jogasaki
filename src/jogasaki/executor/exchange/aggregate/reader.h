@@ -110,7 +110,7 @@ private:
     impl::reader_state state_{impl::reader_state::init};
     comparator key_comparator_{};
     std::size_t pointer_field_offset_{};
-    std::vector<std::vector<aggregator_arg>> args_{};
+    std::vector<std::vector<field_locator>> args_{};
     bool internal_on_member_{};
 
     bool internal_next_member();

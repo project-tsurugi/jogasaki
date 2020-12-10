@@ -39,7 +39,7 @@ void sum(
     std::size_t target_nullity_offset,
     bool initial,
     accessor::record_ref source,
-    sequence_view<aggregator_arg const> args
+    sequence_view<field_locator const> args
 );
 
 void count(
@@ -48,7 +48,7 @@ void count(
     std::size_t target_nullity_offset,
     bool initial,
     accessor::record_ref source,
-    sequence_view<aggregator_arg const> args
+    sequence_view<field_locator const> args
 );
 
 } // namespace builtin

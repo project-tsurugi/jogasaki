@@ -130,14 +130,14 @@ public:
     /**
      * @brief returns aggregator args
      */
-    [[nodiscard]] sequence_view<aggregator_arg const> aggregators_args(std::size_t idx) const noexcept;
+    [[nodiscard]] sequence_view<field_locator const> aggregators_args(std::size_t idx) const noexcept;
 
 private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
     std::vector<value_spec> value_specs_{};
     maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
-    std::vector<std::vector<aggregator_arg>> args_{};
+    std::vector<std::vector<field_locator>> args_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta();
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta();

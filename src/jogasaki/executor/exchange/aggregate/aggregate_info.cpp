@@ -47,7 +47,7 @@ aggregate_info::aggregate_info(maybe_shared_ptr<meta::record_meta> record, std::
 {
     args_.reserve(value_specs_.size());
     for(auto&& vs : value_specs_) {
-        std::vector<aggregator_arg> arg{};
+        std::vector<field_locator> arg{};
         arg.reserve(vs.argument_indices().size());
         for(auto i : vs.argument_indices()) {
             arg.emplace_back(
@@ -88,7 +88,7 @@ sequence_view<const aggregate_info::field_index_type> aggregate_info::key_indice
     return key_indices_;
 }
 
-sequence_view<const aggregator_arg> aggregate_info::aggregators_args(std::size_t idx) const noexcept {
+sequence_view<const field_locator> aggregate_info::aggregators_args(std::size_t idx) const noexcept {
     return args_[idx];
 }
 

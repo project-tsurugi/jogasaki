@@ -41,7 +41,7 @@ void sum(
     std::size_t target_nullity_offset,
     bool initial,
     accessor::record_ref source,
-    sequence_view<const aggregator_arg> args
+    sequence_view<const field_locator> args
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
@@ -77,7 +77,7 @@ void count(
     std::size_t target_nullity_offset,
     bool initial,
     accessor::record_ref source,
-    sequence_view<const aggregator_arg> args) {
+    sequence_view<const field_locator> args) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     (void)args;
     (void)source;

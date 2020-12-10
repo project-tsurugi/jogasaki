@@ -35,11 +35,11 @@ using takatori::util::sequence_view;
 using takatori::util::fail;
 using takatori::util::enum_tag;
 
-class aggregator_arg {
+class field_locator {
 public:
-    aggregator_arg() = default;
+    field_locator() = default;
 
-    aggregator_arg(
+    field_locator(
         meta::field_type const& type,
         std::size_t value_offset,
         std::size_t nullity_offset
@@ -52,6 +52,7 @@ public:
     [[nodiscard]] meta::field_type const& type() const noexcept {
         return *type_;
     }
+    
     [[nodiscard]] std::size_t value_offset() const noexcept {
         return value_offset_;
     }
@@ -67,11 +68,10 @@ private:
 
 using aggregator_type = std::function<void (
     accessor::record_ref,
-    std::size_t,
-    std::size_t,
+    field_locator const&,
     bool,
     accessor::record_ref,
-    sequence_view<aggregator_arg const>
+    sequence_view<field_locator const>
 )>;
 
 }

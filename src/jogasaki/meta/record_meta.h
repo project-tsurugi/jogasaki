@@ -97,6 +97,8 @@ public:
      * @param nullability ordered list of nullability bits, whose size must be equal to number of fields in the record
      * @param value_offset_table ordered list of value offset, whose size must be equal to number of fields in the record
      * @param nullity_offset_table ordered list of nullity offset, whose size must be equal to number of fields in the record
+     * @param record_alignment the alignment of the record
+     * @param record_size the size of the record in byte
      */
     record_meta(fields_type fields,
             nullability_type nullability,
@@ -109,8 +111,15 @@ public:
      * @brief construct new object with default layout defined by field types and nullability
      * @param fields ordered list of field types
      * @param nullability ordered list of nullability bits, whose size must be equal to number of fields in the record
+     * @param record_size the size of the record in byte. This can be used to customize the record size. If npos is
+     * specified, the record size is calculated from the fields and nullability. The record_size must be equal to
+     * or greater than the calculated length.
      */
-    record_meta(fields_type fields, nullability_type nullability);
+    record_meta(
+        fields_type fields,
+        nullability_type nullability,
+        std::size_t record_size = npos
+    );
 
     /**
      * @brief getter for field type

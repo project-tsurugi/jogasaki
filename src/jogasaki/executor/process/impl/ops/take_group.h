@@ -192,9 +192,16 @@ private:
         std::vector<details::take_group_field> fields{};
         auto& key_meta = meta->key();
         auto& value_meta = meta->value();
-        auto num_keys = key_meta.field_count();
-        BOOST_ASSERT(columns.size() <= num_keys+value_meta.field_count());  //NOLINT // it's possible requested columns are only part of exchange fields
+        BOOST_ASSERT(order.size() == key_meta.field_count()+value_meta.field_count());  //NOLINT
+        BOOST_ASSERT(order.key_count() == key_meta.field_count());  //NOLINT
+        BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT // it's possible requested columns are only part of exchange fields
         fields.resize(columns.size());
+        auto num_keys = 0;
+        for(auto&& c : columns) {
+            if(order.is_key(c.source())) {
+                ++num_keys;
+            }
+        }
         auto& vmap = block_info().value_map();
         for(auto&& c : columns) {
             auto [src_idx, is_key] = order.key_value_index(c.source());

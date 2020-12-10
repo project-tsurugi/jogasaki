@@ -100,13 +100,19 @@ record_meta::record_meta(record_meta::fields_type fields, record_meta::nullabili
     BOOST_ASSERT(field_count_ == nullity_offset_table_.size()); // NOLINT
 }
 
-record_meta::record_meta(record_meta::fields_type fields, record_meta::nullability_type nullability) :
-    fields_(std::move(fields)), nullability_(std::move(nullability)), field_count_(fields_.size()) {
+record_meta::record_meta(
+    record_meta::fields_type fields,
+    record_meta::nullability_type nullability,
+    std::size_t record_size
+) :
+    fields_(std::move(fields)), nullability_(std::move(nullability)), field_count_(fields_.size())
+{
     simple_layout_creator c{fields_, nullability_};
     value_offset_table_ = std::move(c.value_offset_table());
     nullity_offset_table_ = std::move(c.nullity_offset_table());
     record_alignment_ = c.record_alignment();
-    record_size_ = c.record_size();
+    BOOST_ASSERT(record_size == npos || c.record_size() <= record_size);  //NOLINT
+    record_size_ = record_size != npos ? record_size : c.record_size();
 }
 
 field_type const &record_meta::operator[](record_meta::field_index_type index) const noexcept {

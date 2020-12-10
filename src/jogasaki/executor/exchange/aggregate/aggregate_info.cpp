@@ -43,7 +43,9 @@ aggregate_info::aggregate_info(maybe_shared_ptr<meta::record_meta> record, std::
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
     value_specs_(std::move(value_specs)),
-    group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),
+    extracted_key_meta_(create_extracted_meta(key_indices_)),
+    mid_group_(std::make_shared<meta::group_meta>(create_key_meta(false), create_value_meta(false))),
+    post_group_(std::make_shared<meta::group_meta>(create_key_meta(true), create_value_meta(true))),
     args_(create_source_field_locs()),
     target_field_locs_(create_target_field_locs())
 {}
@@ -54,18 +56,6 @@ accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) co
 
 const maybe_shared_ptr<meta::record_meta> &aggregate_info::record_meta() const noexcept {
     return record_;
-}
-
-const maybe_shared_ptr<meta::record_meta> &aggregate_info::key_meta() const noexcept {
-    return group_->key_shared();
-}
-
-const maybe_shared_ptr<meta::record_meta> &aggregate_info::value_meta() const noexcept {
-    return group_->value_shared();
-}
-
-const maybe_shared_ptr<meta::group_meta> &aggregate_info::group_meta() const noexcept {
-    return group_;
 }
 
 sequence_view<const aggregate_info::value_spec> aggregate_info::value_specs() const noexcept {
@@ -80,27 +70,63 @@ sequence_view<const field_locator> aggregate_info::aggregator_args(std::size_t i
     return args_[idx];
 }
 
-std::shared_ptr<meta::record_meta> aggregate_info::create_key_meta() {
-    auto num = key_indices_.size();
+[[nodiscard]] std::shared_ptr<meta::record_meta> aggregate_info::create_extracted_meta(std::vector<std::size_t> const& indices) {
+    auto num = indices.size();
     meta::record_meta::fields_type fields{};
-    meta::record_meta::nullability_type  nullables(num+1);
-    fields.reserve(num+1);
+    meta::record_meta::nullability_type  nullables(num);
+    meta::record_meta::value_offset_table_type value_offset_table{};
+    meta::record_meta::nullity_offset_table_type nullity_offset_table{};
+    fields.reserve(num);
+    value_offset_table.reserve(num);
+    nullity_offset_table.reserve(num);
     for(std::size_t i=0; i < num; ++i) {
-        auto ind = key_indices_[i];
+        auto ind = indices[i];
         fields.emplace_back(record_->at(ind));
+        value_offset_table.emplace_back(record_->value_offset(ind));
+        nullity_offset_table.emplace_back(record_->nullity_offset(ind));
         if (record_->nullable(ind)) {
             nullables.set(i);
         }
     }
-    fields.emplace_back(meta::field_type{enum_tag<kind::pointer>});
-    nullables.set(num);
     return std::make_shared<meta::record_meta>(
         std::move(fields),
-        std::move(nullables)
+        std::move(nullables),
+        std::move(value_offset_table),
+        std::move(nullity_offset_table),
+        record_->record_alignment(),
+        record_->record_size()
     );
 }
 
-std::shared_ptr<meta::record_meta> aggregate_info::create_value_meta() {
+std::shared_ptr<meta::record_meta> aggregate_info::create_key_meta(bool post) {
+    auto num = key_indices_.size();
+    meta::record_meta::fields_type fields{};
+    meta::record_meta::nullability_type nullables(0);
+    fields.reserve(num+1); // +1 for safety
+    for(std::size_t i=0; i < num; ++i) {
+        auto ind = key_indices_[i];
+        fields.emplace_back(record_->at(ind));
+        nullables.push_back(record_->nullable(ind));
+    }
+    std::size_t record_size = meta::record_meta::npos;
+    if (! post) {
+        fields.emplace_back(meta::field_type{enum_tag<kind::pointer>});
+        nullables.push_back(true);
+    } else {
+        // post key doesn't have internal pointer field, but the record length is same as mid
+        record_size = create_key_meta(false)->record_size();
+    }
+    return std::make_shared<meta::record_meta>(
+        std::move(fields),
+        std::move(nullables),
+        record_size
+    );
+}
+
+std::shared_ptr<meta::record_meta> aggregate_info::create_value_meta(bool post) {
+    if (post) {
+        // FIXME introduce intermediate columns
+    }
     auto num = value_specs_.size();
     meta::record_meta::fields_type fields{};
     meta::record_meta::nullability_type  nullables(num);
@@ -142,13 +168,14 @@ std::vector<std::vector<field_locator>> aggregate_info::create_source_field_locs
 std::vector<field_locator> aggregate_info::create_target_field_locs() {
     std::vector<field_locator> ret{};
     ret.reserve(value_count());
+    auto& value_meta = mid_group_->value();
     for(std::size_t i=0, n=value_specs_.size(); i < n; ++i) {
         auto& s = value_specs_[i];  // intermediate value specs
         ret.emplace_back(
             s.type(),
-            value_meta()->nullable(i),
-            value_meta()->value_offset(i),
-            value_meta()->nullity_offset(i)
+            value_meta.nullable(i),
+            value_meta.value_offset(i),
+            value_meta.nullity_offset(i)
         );
     }
     return ret;
@@ -156,6 +183,26 @@ std::vector<field_locator> aggregate_info::create_target_field_locs() {
 
 field_locator const &aggregate_info::target_field_locator(std::size_t idx) const noexcept {
     return target_field_locs_[idx];
+}
+
+const maybe_shared_ptr<meta::record_meta> &aggregate_info::extracted_key_meta() const noexcept {
+    return extracted_key_meta_;
+}
+
+const maybe_shared_ptr<meta::group_meta> &aggregate_info::mid_group_meta() const noexcept {
+    return mid_group_;
+}
+
+const maybe_shared_ptr<meta::group_meta> &aggregate_info::post_group_meta() const noexcept {
+    return post_group_;
+}
+
+accessor::record_ref aggregate_info::output_key(accessor::record_ref mid) const noexcept {
+    return accessor::record_ref(mid.data(), post_group_->key().record_size());
+}
+
+accessor::record_ref aggregate_info::output_value(accessor::record_ref mid) const noexcept {
+    return accessor::record_ref(mid.data(), post_group_->value().record_size());
 }
 
 }

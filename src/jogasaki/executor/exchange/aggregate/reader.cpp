@@ -26,12 +26,12 @@ reader::reader(
     partitions_(partitions),
     info_(std::move(info)),
     queue_(impl::iterator_pair_comparator(info_.get())),
-    key_size_(info_->key_meta()->record_size()),
-    value_size_(info_->value_meta()->record_size()),
-    key_buf_(info_->key_meta()), //NOLINT
-    value_buf_(info_->value_meta()), //NOLINT
-    key_comparator_(info_->key_meta().get()),
-    pointer_field_offset_(info_->key_meta()->value_offset(info_->key_meta()->field_count()-1)) {
+    key_size_(info_->mid_group_meta()->key().record_size()),
+    mid_value_size_(info_->mid_group_meta()->value().record_size()),
+    key_buf_(info_->mid_group_meta()->key_shared()), //NOLINT
+    mid_value_buf_(info_->mid_group_meta()->value_shared()), //NOLINT
+    key_comparator_(info_->mid_group_meta()->key_shared().get()),
+    pointer_field_offset_(info_->mid_group_meta()->key().value_offset(info_->mid_group_meta()->key().field_count()-1)) {
     for(auto& p : partitions_) {
         if (!p) continue;
         for(auto& t : *p) {
@@ -64,7 +64,7 @@ bool reader::next_group() {
         internal_on_member_ = false;
         while(internal_next_member()) {
             auto src = internal_get_member();
-            auto tgt = value_buf_.ref();
+            auto tgt = mid_value_buf_.ref();
             for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
                 auto& vspec = info_->value_specs()[i];
                 // FIXME use intermediate aggregator
@@ -87,7 +87,7 @@ bool reader::next_group() {
 
 accessor::record_ref reader::get_group() const {
     if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
-        return key_buf_.ref();
+        return info_->output_key(key_buf_.ref());
     }
     std::abort();
 }
@@ -117,7 +117,7 @@ void* reader::value_pointer(accessor::record_ref ref) const {
 
 accessor::record_ref reader::get_member() const {
     if (state_ == reader_state::on_member) {
-        return value_buf_.ref();
+        return info_->output_value(mid_value_buf_.ref());
     }
     fail();
 }
@@ -137,7 +137,7 @@ bool reader::next_member() {
 accessor::record_ref reader::internal_get_member() const {
     auto p = value_pointer(key_buf_.ref());
     if(! p) fail();
-    return accessor::record_ref{p, value_size_};
+    return accessor::record_ref{p, mid_value_size_};
 }
 
 void reader::release() {

@@ -40,6 +40,9 @@ using kind = meta::field_type_kind;
 
 /**
  * @brief information to execute aggregate exchange, used to extract schema and record layout information for key/value parts
+ * @details there are two group meta involved in aggregate output. Intermediate group meta (prefixed with mid-) is the
+ * intermediate output, where key has internal pointer field and value has calculation fields. Post group meta (prefixed with post-)
+ * is the final output metadata of the aggregate exchange.
  */
 class aggregate_info {
 public:
@@ -94,8 +97,21 @@ public:
 
     /**
      * @brief extract key part from the input record
+     * @details the key part is based on the input record and has the meta returned by extracted_key_meta()
      */
     [[nodiscard]] accessor::record_ref extract_key(accessor::record_ref record) const noexcept;
+
+    /**
+     * @brief extract output key from the intermediate key
+     * @details the returned record is the output key record and has the meta returned by post_group_meta()->key()
+     */
+    [[nodiscard]] accessor::record_ref output_key(accessor::record_ref mid) const noexcept;
+
+    /**
+     * @brief extract output value from the intermediate value
+     * @details the returned record is the output value record and has the meta returned by post_group_meta()->value()
+     */
+    [[nodiscard]] accessor::record_ref output_value(accessor::record_ref mid) const noexcept;
 
     /**
      * @brief returns metadata for input record
@@ -103,19 +119,19 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept;
 
     /**
-     * @brief returns metadata for key part
+     * @brief returns metadata for the key extracted by extract_key()
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept;
-
-    /**
-     * @brief returns metadata for value part
-     */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& extracted_key_meta() const noexcept;
 
     /**
      * @brief returns metadata for key/value parts at once
      */
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& mid_group_meta() const noexcept;
+
+    /**
+     * @brief returns metadata for key/value parts at once
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& post_group_meta() const noexcept;
 
     /**
      * @brief returns aggregator specs
@@ -145,12 +161,15 @@ private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
     std::vector<value_spec> value_specs_{};
-    maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
+    maybe_shared_ptr<meta::record_meta> extracted_key_meta_{};
+    maybe_shared_ptr<meta::group_meta> mid_group_{std::make_shared<meta::group_meta>()};
+    maybe_shared_ptr<meta::group_meta> post_group_{std::make_shared<meta::group_meta>()};
     std::vector<std::vector<field_locator>> args_{};
     std::vector<field_locator> target_field_locs_{};
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta();
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta();
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_extracted_meta(std::vector<std::size_t> const& indices);
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta(bool post);
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta(bool post);
     std::vector<std::vector<field_locator>> create_source_field_locs();
     std::vector<field_locator> create_target_field_locs();
 };

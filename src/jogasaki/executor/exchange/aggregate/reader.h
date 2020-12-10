@@ -54,7 +54,7 @@ public:
     explicit iterator_pair_comparator(aggregate_info const* info) :
         info_(info),
         record_size_(info_->record_meta()->record_size()),
-        key_comparator_(info_->key_meta().get()) {}
+        key_comparator_(info_->mid_group_meta()->key_shared().get()) {}
 
     [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y) {
         auto& it_x = x.first;
@@ -104,9 +104,9 @@ private:
     std::shared_ptr<aggregate_info> info_{};
     std::priority_queue<impl::iterator_pair, std::vector<impl::iterator_pair>, impl::iterator_pair_comparator> queue_;
     std::size_t key_size_{};
-    std::size_t value_size_{};
+    std::size_t mid_value_size_{};
     data::small_record_store key_buf_;
-    data::small_record_store value_buf_;
+    data::small_record_store mid_value_buf_;
     impl::reader_state state_{impl::reader_state::init};
     comparator key_comparator_{};
     std::size_t pointer_field_offset_{};

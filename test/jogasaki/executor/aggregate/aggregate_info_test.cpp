@@ -50,9 +50,10 @@ TEST_F(aggregate_info_test, simple) {
             }
         }
     };
-    auto key_meta = info.key_meta();
-    EXPECT_EQ(2, key_meta->field_count()); // internal pointer field is added
-    EXPECT_EQ(1, info.value_meta()->field_count());
+    EXPECT_EQ(2, info.mid_group_meta()->key_shared()->field_count()); // internal pointer field is added
+    EXPECT_EQ(1, info.mid_group_meta()->value_shared()->field_count());
+    EXPECT_EQ(1, info.post_group_meta()->key_shared()->field_count());
+    EXPECT_EQ(1, info.post_group_meta()->value_shared()->field_count());
 }
 
 }

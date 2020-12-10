@@ -61,11 +61,11 @@ auto const info = std::make_shared<aggregate_info>(
 );
 
 auto get_key = [](group_reader& r) {
-    return r.get_group().get_value<std::int64_t>(info->key_meta()->value_offset(0));
+    return r.get_group().get_value<std::int64_t>(info->post_group_meta()->key().value_offset(0));
 };
 
 auto get_value = [](group_reader& r) {
-    return r.get_member().get_value<double>(info->value_meta()->value_offset(0));
+    return r.get_member().get_value<double>(info->post_group_meta()->value().value_offset(0));
 };
 
 mock::basic_record create_rec(std::int64_t x, double y) {

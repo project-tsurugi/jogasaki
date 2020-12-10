@@ -32,15 +32,15 @@ input_partition::input_partition(
     resource_for_hash_tables_(std::move(resource_for_hash_tables)),
     resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
     info_(std::move(info)),
-    comparator_(info_->key_meta().get()),
+    comparator_(info_->mid_group_meta()->key_shared().get()),
     initial_hash_table_size_(initial_hash_table_size),
     max_pointers_(pointer_table_size),
-    key_buf_(info_->key_meta())
+    key_buf_(info_->mid_group_meta()->key_shared())
 {}
 
 bool input_partition::write(accessor::record_ref record) {
     initialize_lazy();
-    auto& key_meta = info_->key_meta();
+    auto& key_meta = info_->mid_group_meta()->key_shared();
     auto key_indices = info_->key_indices();
     auto key_buf = key_buf_.ref();
     auto& record_meta = info_->record_meta();
@@ -57,17 +57,17 @@ bool input_partition::write(accessor::record_ref record) {
             keys_->varlen_resource()
         );
     }
-    auto& value_meta = info_->value_meta();
+    auto& value_meta = info_->mid_group_meta()->value_shared();
     accessor::record_ref value{};
     bool initial = false;
     if (auto it = hash_table_->find(key_buf.data()); it != hash_table_->end()) {
-        value = accessor::record_ref(it->second, info_->value_meta()->record_size());
+        value = accessor::record_ref(it->second, value_meta->record_size());
     } else {
         initial = true;
         value = accessor::record_ref{values_->allocate_record(), value_meta->record_size()};
         accessor::record_ref key{keys_->allocate_record(), key_meta->record_size()};
         keys_->copier()(key, key_buf);
-        key.set_value<void*>(info_->key_meta()->value_offset(info_->key_meta()->field_count()-1), value.data());
+        key.set_value<void*>(key_meta->value_offset(key_meta->field_count()-1), value.data());
         hash_table_->emplace(key.data(), value.data());
         if(! current_table_active_) {
             pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);
@@ -77,8 +77,8 @@ bool input_partition::write(accessor::record_ref record) {
         table.emplace_back(key.data());
     }
     for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
-        auto& vspec = info_->value_specs()[i];
-        auto& aggregator = vspec.aggregator();
+        auto& vs = info_->value_specs()[i];
+        auto& aggregator = vs.aggregator();
         aggregator(value, info_->target_field_locator(i), initial, record, info_->aggregator_args(i));
     }
     if (hash_table_->load_factor() > load_factor_bound) {
@@ -102,22 +102,24 @@ void input_partition::flush() {
 }
 
 void input_partition::initialize_lazy() {
+    auto& key_meta = info_->mid_group_meta()->key_shared();
+    auto& value_meta = info_->mid_group_meta()->value_shared();
     if (! keys_) {
         keys_ = std::make_unique<data::record_store>(
             resource_for_keys_.get(),
             resource_for_varlen_data_.get(),
-            info_->key_meta());
+            key_meta);
     }
     if (! values_) {
         values_ = std::make_unique<data::record_store>(
             resource_for_values_.get(),
             resource_for_varlen_data_.get(),
-            info_->value_meta());
+            value_meta);
     }
     if(! hash_table_) {
         hash_table_ = std::make_unique<hash_table>(initial_hash_table_size_,
-            hash{info_->key_meta().get()},
-            impl::key_eq{comparator_, info_->key_meta()->record_size()},
+            hash{key_meta.get()},
+            impl::key_eq{comparator_, key_meta->record_size()},
             hash_table_allocator{resource_for_hash_tables_.get()}
         );
     }

@@ -54,7 +54,6 @@ private:
     std::vector<std::unique_ptr<input_partition>> partitions_{};
     std::shared_ptr<shuffle_info> info_{};
     request_context* context_{};
-    partitioner partitioner_{};
     std::unique_ptr<group::writer> writer_;
 };
 

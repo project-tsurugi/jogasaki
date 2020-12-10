@@ -87,12 +87,23 @@ bool variable_order::for_group() const noexcept {
 }
 
 bool variable_order::is_key(const variable &var) const {
-    assert(for_group_);  //NOLINT
+    BOOST_ASSERT(for_group_);  //NOLINT
     return key_bool_.at(var);
 }
 
 std::size_t variable_order::size() const noexcept {
     return entity_.size();
+}
+
+std::size_t variable_order::key_count() const noexcept {
+    BOOST_ASSERT(for_group_);  //NOLINT
+    std::size_t ret = 0;
+    for(auto&& k : key_bool_) {
+        if (k.second) {
+            ++ret;
+        }
+    }
+    return ret;
 }
 
 void variable_order::fill_flat_record(variable_order::entity_type &entity,

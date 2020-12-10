@@ -36,7 +36,7 @@ writer::writer(
     downstream_partitions_(downstream_partitions),
     partitions_(partitions),
     info_(std::move(info)),
-    partitioner_(downstream_partitions_, info_->key_meta()),
+    partitioner_(downstream_partitions_, info_->extracted_key_meta()),
     owner_(std::addressof(owner))
 {}
 
@@ -64,13 +64,7 @@ void writer::initialize_lazy(std::size_t partition) {
         partitions_.resize(downstream_partitions_);
     }
     if (partitions_[partition]) return;
-    partitions_[partition] = std::make_unique<input_partition>(
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        info_
-    );
+    partitions_[partition] = std::make_unique<input_partition>(info_);
 }
+
 }

@@ -45,7 +45,7 @@ meta::variable_order const &step::output_order() const noexcept {
 }
 
 const maybe_shared_ptr<meta::group_meta> &step::output_meta() const noexcept {
-    return info_->group_meta();
+    return info_->post_group_meta();
 }
 
 process::step *step::downstream(std::size_t index) const noexcept {

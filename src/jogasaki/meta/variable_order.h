@@ -96,6 +96,7 @@ public:
 
     [[nodiscard]] std::size_t size() const noexcept;
 
+    [[nodiscard]] std::size_t key_count() const noexcept;
 private:
     entity_type entity_;
     key_bool_type key_bool_{};

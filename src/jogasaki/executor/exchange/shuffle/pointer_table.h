@@ -52,9 +52,7 @@ public:
      * @param varlen_resource memory resource used to store varlen data referenced from records
      * @param meta record metadata
      */
-    pointer_table(memory::paged_memory_resource* resource, std::size_t capacity) : resource_(resource), capacity_(capacity) {
-        head_ = static_cast<iterator>(resource_->allocate(sizeof(pointer)*capacity_, alignof(pointer)));
-    }
+    pointer_table(memory::paged_memory_resource* resource, std::size_t capacity);
 
     /**
      * @brief copy and store the record
@@ -63,39 +61,24 @@ public:
      * @param record source of the record added to this container
      * @return pointer to the stored record
      */
-    pointer emplace_back(pointer p) {
-        if (size_ < capacity_) {
-            head_[size_] = p;
-            ++size_;
-        }
-        return p;
-    }
+    pointer emplace_back(pointer p);
 
     /**
      * @brief getter for the number of data count added to this store
      * @return the number of records
      */
-    [[nodiscard]] std::size_t size() const noexcept {
-        return size_;
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
-    [[nodiscard]] std::size_t capacity() const noexcept {
-        return capacity_;
-    }
+    [[nodiscard]] std::size_t capacity() const noexcept;
+
     /**
      * @return whether the region is empty or not
      */
-    [[nodiscard]] bool empty() const noexcept {
-        return size_ == 0;
-    }
+    [[nodiscard]] bool empty() const noexcept;
 
-    [[nodiscard]] iterator begin() const noexcept {
-        return head_;
-    }
+    [[nodiscard]] iterator begin() const noexcept;
 
-    [[nodiscard]] iterator end() const noexcept {
-        return head_+size_;
-    }
+    [[nodiscard]] iterator end() const noexcept;
 
 private:
     memory::paged_memory_resource* resource_{};

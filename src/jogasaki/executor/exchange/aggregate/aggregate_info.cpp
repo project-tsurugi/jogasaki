@@ -70,7 +70,7 @@ sequence_view<const field_locator> aggregate_info::aggregator_args(std::size_t i
     return args_[idx];
 }
 
-[[nodiscard]] std::shared_ptr<meta::record_meta> aggregate_info::create_extracted_meta(std::vector<std::size_t> const& indices) {
+std::shared_ptr<meta::record_meta> aggregate_info::create_extracted_meta(std::vector<std::size_t> const& indices) {
     auto num = indices.size();
     meta::record_meta::fields_type fields{};
     meta::record_meta::nullability_type  nullables(num);

@@ -167,9 +167,9 @@ private:
     std::vector<std::vector<field_locator>> args_{};
     std::vector<field_locator> target_field_locs_{};
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_extracted_meta(std::vector<std::size_t> const& indices);
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta(bool post);
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta(bool post);
+    std::shared_ptr<meta::record_meta> create_extracted_meta(std::vector<std::size_t> const& indices);
+    std::shared_ptr<meta::record_meta> create_key_meta(bool post);
+    std::shared_ptr<meta::record_meta> create_value_meta(bool post);
     std::vector<std::vector<field_locator>> create_source_field_locs();
     std::vector<field_locator> create_target_field_locs();
 };

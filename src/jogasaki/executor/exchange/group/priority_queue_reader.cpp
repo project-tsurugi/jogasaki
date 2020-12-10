@@ -104,4 +104,16 @@ void priority_queue_reader::release() {
     partitions_.clear();
 }
 
+iterator_pair_comparator::iterator_pair_comparator(const shuffle_info *info) :
+    info_(info),
+    record_size_(info_->record_meta()->record_size()),
+    key_comparator_(info_->key_meta().get()) {}
+
+bool iterator_pair_comparator::operator()(const iterator_pair &x, const iterator_pair &y) {
+    auto& it_x = x.first;
+    auto& it_y = y.first;
+    auto key_x = info_->extract_key(accessor::record_ref(*it_x, record_size_));
+    auto key_y = info_->extract_key(accessor::record_ref(*it_y, record_size_));
+    return key_comparator_(key_x, key_y) > 0;
+}
 } // namespace

@@ -58,68 +58,35 @@ public:
         std::shared_ptr<shuffle_info> info,
         request_context* context,
         [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
-    ) :
-        resource_for_records_(std::move(resource_for_records)),
-        resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
-        resource_for_varlen_data_(std::move(resource_for_varlen_data)),
-        info_(std::move(info)),
-        context_(context),
-        comparator_(info_->key_meta().get()),
-        max_pointers_(pointer_table_size)
-    {}
+    );
 
     /**
      * @brief write record to the input partition
      * @param record
      * @return whether flushing pointer table happens or not
      */
-    bool write(accessor::record_ref record) {
-        initialize_lazy();
-        auto& table = pointer_tables_.back();
-        table.emplace_back(records_->append(record));
-        if (table.capacity() == table.size()) {
-            flush();
-            return true;
-        }
-        return false;
-    }
+    bool write(accessor::record_ref record);
 
     /**
      * @brief finish current pointer table
      * @details the current internal pointer table is finalized and next write() will create one.
      */
-    void flush() {
-        if(!current_pointer_table_active_) return;
-        current_pointer_table_active_ = false;
-        if(context_->configuration()->noop_pregroup()) return;
-        auto sz = info_->record_meta()->record_size();
-        auto& table = pointer_tables_.back();
-        std::sort(table.begin(), table.end(), [&](auto const&x, auto const& y){
-            return comparator_(info_->extract_key(accessor::record_ref(x, sz)),
-                    info_->extract_key(accessor::record_ref(y, sz))) < 0;
-        });
-    }
+    void flush();
 
     /**
      * @brief beginning iterator for pointer tables
      */
-    [[nodiscard]] iterator begin() {
-        return pointer_tables_.begin();
-    }
+    [[nodiscard]] iterator begin();
 
     /**
      * @brief ending iterator for pointer tables
      */
-    [[nodiscard]] iterator end() {
-        return pointer_tables_.end();
-    }
+    [[nodiscard]] iterator end();
 
     /**
      * @brief returns the number of pointer tables
      */
-    [[nodiscard]] std::size_t tables_count() const noexcept {
-        return pointer_tables_.size();
-    }
+    [[nodiscard]] std::size_t tables_count() const noexcept;
 
 private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
@@ -133,18 +100,7 @@ private:
     bool current_pointer_table_active_{false};
     std::size_t max_pointers_{};
 
-    void initialize_lazy() {
-        if (!records_) {
-            records_ = std::make_unique<data::record_store>(
-                resource_for_records_.get(),
-                resource_for_varlen_data_.get(),
-                info_->record_meta());
-        }
-        if(!current_pointer_table_active_) {
-            pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);
-            current_pointer_table_active_ = true;
-        }
-    }
+    void initialize_lazy();
 };
 
 }

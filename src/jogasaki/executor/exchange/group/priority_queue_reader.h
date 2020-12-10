@@ -53,18 +53,9 @@ public:
      * @param info shuffle information
      * @attention info is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    explicit iterator_pair_comparator(shuffle_info const* info) :
-            info_(info),
-            record_size_(info_->record_meta()->record_size()),
-            key_comparator_(info_->key_meta().get()) {}
+    explicit iterator_pair_comparator(shuffle_info const* info);
 
-    [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y) {
-        auto& it_x = x.first;
-        auto& it_y = y.first;
-        auto key_x = info_->extract_key(accessor::record_ref(*it_x, record_size_));
-        auto key_y = info_->extract_key(accessor::record_ref(*it_y, record_size_));
-        return key_comparator_(key_x, key_y) > 0;
-    }
+    [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y);
 
 private:
     shuffle_info const* info_{};

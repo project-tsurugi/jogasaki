@@ -35,8 +35,7 @@ using takatori::util::enum_tag;
 
 void sum(
     accessor::record_ref target,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
+    field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
     sequence_view<field_locator const> args
@@ -44,8 +43,7 @@ void sum(
 
 void count(
     accessor::record_ref target,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
+    field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
     sequence_view<field_locator const> args

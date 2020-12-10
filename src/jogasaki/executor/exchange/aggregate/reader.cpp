@@ -61,19 +61,21 @@ bool reader::next_group() {
         auto end = queue_.top().second;
         read_and_pop(it, end);
         bool initial = true;
+        internal_on_member_ = false;
         while(internal_next_member()) {
             auto src = internal_get_member();
             auto tgt = value_buf_.ref();
             for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
                 auto& vspec = info_->value_specs()[i];
+                // FIXME use intermediate aggregator
                 auto& aggregator = vspec.aggregator();
                 aggregator(
                     tgt,
-                    info_->value_meta()->value_offset(i),
-                    info_->value_meta()->nullity_offset(i),
+                    info_->target_field_locator(i),
                     initial,
                     src,
-                    info_->aggregators_args(i));
+                    sequence_view{&info_->target_field_locator(i)}
+                );
             }
             initial = false;
         }

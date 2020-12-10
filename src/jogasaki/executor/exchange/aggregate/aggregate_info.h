@@ -123,6 +123,11 @@ public:
     [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept;
 
     /**
+     * @brief returns the number of value fields
+     */
+    [[nodiscard]] std::size_t value_count() const noexcept;
+
+    /**
      * @brief returns key indices
      */
     [[nodiscard]] sequence_view<field_index_type const> key_indices() const noexcept;
@@ -130,17 +135,24 @@ public:
     /**
      * @brief returns aggregator args
      */
-    [[nodiscard]] sequence_view<field_locator const> aggregators_args(std::size_t idx) const noexcept;
+    [[nodiscard]] sequence_view<field_locator const> aggregator_args(std::size_t idx) const noexcept;
 
+    /**
+     * @brief returns target field locator
+     */
+    [[nodiscard]] field_locator const& target_field_locator(std::size_t idx) const noexcept;
 private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
     std::vector<value_spec> value_specs_{};
     maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
     std::vector<std::vector<field_locator>> args_{};
+    std::vector<field_locator> target_field_locs_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta();
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta();
+    std::vector<std::vector<field_locator>> create_source_field_locs();
+    std::vector<field_locator> create_target_field_locs();
 };
 
 }

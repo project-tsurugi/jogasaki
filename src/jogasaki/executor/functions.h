@@ -41,10 +41,12 @@ public:
 
     field_locator(
         meta::field_type const& type,
+        bool nullable,
         std::size_t value_offset,
         std::size_t nullity_offset
     ) :
         type_(std::addressof(type)),
+        nullable_(nullable),
         value_offset_(value_offset),
         nullity_offset_(nullity_offset)
     {}
@@ -52,7 +54,11 @@ public:
     [[nodiscard]] meta::field_type const& type() const noexcept {
         return *type_;
     }
-    
+
+    [[nodiscard]] bool nullable() const noexcept {
+        return nullable_;
+    }
+
     [[nodiscard]] std::size_t value_offset() const noexcept {
         return value_offset_;
     }
@@ -62,6 +68,7 @@ public:
     }
 private:
     meta::field_type const* type_{};
+    bool nullable_{};
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
 };

@@ -43,22 +43,10 @@ aggregate_info::aggregate_info(maybe_shared_ptr<meta::record_meta> record, std::
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
     value_specs_(std::move(value_specs)),
-    group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta()))
-{
-    args_.reserve(value_specs_.size());
-    for(auto&& vs : value_specs_) {
-        std::vector<field_locator> arg{};
-        arg.reserve(vs.argument_indices().size());
-        for(auto i : vs.argument_indices()) {
-            arg.emplace_back(
-                record_->at(i),
-                record_->value_offset(i),
-                record_->nullity_offset(i)
-            );
-        }
-        args_.emplace_back(std::move(arg));
-    }
-}
+    group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),
+    args_(create_source_field_locs()),
+    target_field_locs_(create_target_field_locs())
+{}
 
 accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
@@ -88,7 +76,7 @@ sequence_view<const aggregate_info::field_index_type> aggregate_info::key_indice
     return key_indices_;
 }
 
-sequence_view<const field_locator> aggregate_info::aggregators_args(std::size_t idx) const noexcept {
+sequence_view<const field_locator> aggregate_info::aggregator_args(std::size_t idx) const noexcept {
     return args_[idx];
 }
 
@@ -127,4 +115,47 @@ std::shared_ptr<meta::record_meta> aggregate_info::create_value_meta() {
         std::move(nullables)
     );
 }
+
+std::size_t aggregate_info::value_count() const noexcept {
+    return value_specs_.size();
+}
+
+std::vector<std::vector<field_locator>> aggregate_info::create_source_field_locs() {
+    std::vector<std::vector<field_locator>> ret{};
+    ret.reserve(value_specs_.size());
+    for(auto&& vs : value_specs_) {
+        std::vector<field_locator> arg{};
+        arg.reserve(vs.argument_indices().size());
+        for(auto i : vs.argument_indices()) {
+            arg.emplace_back(
+                record_->at(i),
+                record_->nullable(i),
+                record_->value_offset(i),
+                record_->nullity_offset(i)
+            );
+        }
+        args_.emplace_back(std::move(arg));
+    }
+    return ret;
+}
+
+std::vector<field_locator> aggregate_info::create_target_field_locs() {
+    std::vector<field_locator> ret{};
+    ret.reserve(value_count());
+    for(std::size_t i=0, n=value_specs_.size(); i < n; ++i) {
+        auto& s = value_specs_[i];  // intermediate value specs
+        ret.emplace_back(
+            s.type(),
+            value_meta()->nullable(i),
+            value_meta()->value_offset(i),
+            value_meta()->nullity_offset(i)
+        );
+    }
+    return ret;
+}
+
+field_locator const &aggregate_info::target_field_locator(std::size_t idx) const noexcept {
+    return target_field_locs_[idx];
+}
+
 }

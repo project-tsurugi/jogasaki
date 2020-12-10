@@ -80,15 +80,19 @@ TEST_F(aggregate_reader_test, basic) {
 
     mock::basic_record arr[] = {
         create_rec(1, 1.0),
-        create_rec(1, 2.0),
-        create_rec(3, 3.0),
+        create_rec(1, 1.0),
+        create_rec(3, 2.0),
+        create_rec(3, 1.0),
+        create_rec(1, 1.0),
     };
     auto sz = sizeof(arr[0]);
 
     p1->write(arr[2].ref());
     p1->write(arr[1].ref());
+    p1->write(arr[4].ref());
     p1->flush();
     p2->write(arr[0].ref());
+    p2->write(arr[3].ref());
     p2->flush();
 
     reader r{info, partitions};
@@ -96,16 +100,12 @@ TEST_F(aggregate_reader_test, basic) {
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
     ASSERT_TRUE(r.next_member());
-    res.emplace(get_value(r));
-    ASSERT_TRUE(r.next_member());
-    res.emplace(get_value(r));
-    std::multiset<double> exp{1.0, 2.0};
-    EXPECT_EQ(exp, res);
+    EXPECT_DOUBLE_EQ(3.0, get_value(r));
     ASSERT_FALSE(r.next_member());
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
     ASSERT_TRUE(r.next_member());
-    EXPECT_EQ(3.0, get_value(r));
+    EXPECT_DOUBLE_EQ(3.0, get_value(r));
     ASSERT_FALSE(r.next_member());
     ASSERT_FALSE(r.next_group());
 }
@@ -146,15 +146,8 @@ TEST_F(aggregate_reader_test, multiple_partitions) {
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
     ASSERT_TRUE(r.next_member());
-    std::multiset<double> res{};
-    res.emplace(get_value(r));
-    ASSERT_TRUE(r.next_member());
-    res.emplace(get_value(r));
-    ASSERT_TRUE(r.next_member());
-    res.emplace(get_value(r));
+    EXPECT_DOUBLE_EQ(6.0, get_value(r));
     ASSERT_FALSE(r.next_member());
-    std::multiset<double> exp{1.0, 2.0, 3.0};
-    EXPECT_EQ(exp, res);
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
     ASSERT_TRUE(r.next_member());
@@ -187,16 +180,14 @@ TEST_F(aggregate_reader_test, empty_partition) {
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
     ASSERT_TRUE(r.next_member());
-    res.emplace(get_value(r));
-    ASSERT_TRUE(r.next_member());
-    res.emplace(get_value(r));
-    std::multiset<double> exp{1.0, 2.0};
-    EXPECT_EQ(exp, res);
+    EXPECT_DOUBLE_EQ(3.0, get_value(r));
     ASSERT_FALSE(r.next_member());
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
     ASSERT_TRUE(r.next_member());
     EXPECT_EQ(3.0, get_value(r));
+    ASSERT_FALSE(r.next_member());
+    ASSERT_FALSE(r.next_group());
 }
 
 }

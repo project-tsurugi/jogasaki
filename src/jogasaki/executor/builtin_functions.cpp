@@ -37,16 +37,17 @@ using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 
 void sum(
     accessor::record_ref target,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
+    field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<const field_locator> args
+    sequence_view<field_locator const> args
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
     auto arg_offset = args[0].value_offset();
     auto src_nullity_offset = args[0].value_offset();
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
     if (initial) {
         utils::copy_nullable_field(
             arg_type,
@@ -73,14 +74,16 @@ void sum(
 
 void count(
     accessor::record_ref target,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
+    field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<const field_locator> args) {
+    sequence_view<field_locator const> args
+) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     (void)args;
     (void)source;
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);
     if (initial) {
         target.set_value<rtype<kind::int8>>(target_offset, 1);

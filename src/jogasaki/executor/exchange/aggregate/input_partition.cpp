@@ -68,7 +68,7 @@ bool input_partition::write(accessor::record_ref record) {
         accessor::record_ref key{keys_->allocate_record(), key_meta->record_size()};
         keys_->copier()(key, key_buf);
         key.set_value<void*>(info_->key_meta()->value_offset(info_->key_meta()->field_count()-1), value.data());
-        hash_table_->emplace(keys_->append(key), values_->append(value));
+        hash_table_->emplace(key.data(), value.data());
         if(! current_table_active_) {
             pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), max_pointers_);
             current_table_active_ = true;
@@ -79,7 +79,7 @@ bool input_partition::write(accessor::record_ref record) {
     for(std::size_t i=0, n = info_->value_specs().size(); i < n; ++i) {
         auto& vspec = info_->value_specs()[i];
         auto& aggregator = vspec.aggregator();
-        aggregator(value, value_meta->value_offset(i), value_meta->nullity_offset(i), initial, record, info_->aggregators_args(i));
+        aggregator(value, info_->target_field_locator(i), initial, record, info_->aggregator_args(i));
     }
     if (hash_table_->load_factor() > load_factor_bound) {
         flush();
@@ -143,4 +143,5 @@ void input_partition::release_hashtable() noexcept {
     hash_table_.reset();
     resource_for_hash_tables_.reset();
 }
+
 }

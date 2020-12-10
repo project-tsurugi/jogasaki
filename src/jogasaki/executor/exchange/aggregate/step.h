@@ -49,25 +49,11 @@ public:
      * @param input_column_order column ordering information for exchange input
      * @param output_column_order column ordering information for exchange output
      */
-    explicit step(
+    step(
         std::shared_ptr<aggregate_info> info,
         meta::variable_order input_column_order,
         meta::variable_order output_column_order
     );
-
-    /**
-     * @brief create new instance
-     * @param input_meta input record metadata
-     * @param key_indices indices for key fields
-     * @param input_column_order column ordering information for exchange input
-     * @param output_column_order column ordering information for exchange output
-     */
-//    step(
-//        maybe_shared_ptr<meta::record_meta> input_meta,
-//        std::vector<field_index_type> key_indices,
-//        meta::variable_order input_column_order,
-//        meta::variable_order output_column_order
-//    );
 
     [[nodiscard]] executor::common::step_kind kind() const noexcept override {
         return executor::common::step_kind::aggregate;
@@ -78,9 +64,9 @@ public:
     [[nodiscard]] meta::variable_order const& output_order() const noexcept override;
 
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& output_meta() const noexcept override;
+
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;
-
     [[nodiscard]] process::step* upstream(std::size_t index) const noexcept;
 
 private:

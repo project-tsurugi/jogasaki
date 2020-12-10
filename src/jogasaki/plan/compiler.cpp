@@ -25,6 +25,7 @@
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/binding/extract.h>
 #include <yugawara/runtime_feature.h>
 #include <yugawara/compiler.h>
 #include <yugawara/compiler_options.h>
@@ -233,7 +234,6 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
 
 executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiler_context& ctx) {
     using executor::exchange::aggregate::aggregate_info;
-    //FIXME
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         agg.source_columns(),
@@ -248,10 +248,10 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
     for(auto&& c: agg.source_columns()) {
         fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
     }
-    auto cnt = fields.size();
+    auto sz = fields.size();
     auto meta = std::make_shared<meta::record_meta>(
         std::move(fields),
-        boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
+        boost::dynamic_bitset{sz}.flip() // currently assuming all fields are nullable
     );
     std::vector<std::size_t> key_indices{};
     key_indices.resize(agg.group_keys().size());
@@ -260,17 +260,21 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
     }
 
     std::vector<aggregate_info::value_spec> specs{};
-    for(auto&& v : agg.aggregations()) {
-//        auto& provider = ctx.aggregate_provider();
+    for(auto&& e : agg.aggregations()) {
         std::vector<std::size_t> argument_indices{};
-        for(auto& a : v.arguments()) {
-            auto idx = input_order.index(a);
+        for(auto& f : e.arguments()) {
+            auto idx = input_order.index(f);
             argument_indices.emplace_back(idx);
         }
+
+        auto& provider = ctx.aggregate_provider();
+        auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(e.function());
+        (void)decl;
+        (void)provider;
         specs.emplace_back(
             executor::builtin::sum, //FIXME search provider
             std::move(argument_indices),
-            utils::type_for(ctx.compiled_info(), v.destination())
+            utils::type_for(ctx.compiled_info(), e.destination())
         );
     }
     auto info = std::make_shared<aggregate_info>(

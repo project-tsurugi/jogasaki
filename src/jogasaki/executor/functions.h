@@ -34,10 +34,7 @@
 
 namespace jogasaki::executor {
 
-using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
-using takatori::util::fail;
-using takatori::util::enum_tag;
 
 class field_locator {
 public:
@@ -48,28 +45,15 @@ public:
         bool nullable,
         std::size_t value_offset,
         std::size_t nullity_offset
-    ) :
-        type_(std::addressof(type)),
-        nullable_(nullable),
-        value_offset_(value_offset),
-        nullity_offset_(nullity_offset)
-    {}
+    );
 
-    [[nodiscard]] meta::field_type const& type() const noexcept {
-        return *type_;
-    }
+    [[nodiscard]] meta::field_type const& type() const noexcept;
 
-    [[nodiscard]] bool nullable() const noexcept {
-        return nullable_;
-    }
+    [[nodiscard]] bool nullable() const noexcept;
 
-    [[nodiscard]] std::size_t value_offset() const noexcept {
-        return value_offset_;
-    }
+    [[nodiscard]] std::size_t value_offset() const noexcept;
 
-    [[nodiscard]] std::size_t nullity_offset() const noexcept {
-        return nullity_offset_;
-    }
+    [[nodiscard]] std::size_t nullity_offset() const noexcept;
 private:
     meta::field_type const* type_{};
     bool nullable_{};

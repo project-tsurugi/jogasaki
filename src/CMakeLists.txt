@@ -21,6 +21,7 @@ file(GLOB SOURCES
         "jogasaki/executor/exchange/forward/*.cpp"
         "jogasaki/executor/exchange/group/*.cpp"
         "jogasaki/executor/exchange/shuffle/*.cpp"
+        "jogasaki/executor/function/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"

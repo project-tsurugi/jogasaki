@@ -26,7 +26,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/functions.h>
+#include <jogasaki/executor/function/functions.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {
@@ -186,6 +186,7 @@ accessor::record_ref aggregate_info::output_key(accessor::record_ref mid) const 
 }
 
 accessor::record_ref aggregate_info::output_value(accessor::record_ref mid) const noexcept {
+
     return accessor::record_ref(mid.data(), post_.group_meta()->value().record_size());
 }
 

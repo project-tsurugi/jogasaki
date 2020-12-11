@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/builtin_functions.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
@@ -71,7 +71,7 @@ TEST_F(aggregate_input_partition_test, basic) {
     auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},
         std::vector<aggregate_info::value_spec>{
             {
-                builtin::sum,
+                function::builtin::sum,
                 {
                     1
                 },
@@ -80,7 +80,7 @@ TEST_F(aggregate_input_partition_test, basic) {
         },
         std::vector<aggregate_info::value_spec>{
             {
-                builtin::sum,
+                function::builtin::sum,
                 {
                     1
                 },

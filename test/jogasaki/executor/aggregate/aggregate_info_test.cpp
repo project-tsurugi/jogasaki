@@ -18,7 +18,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/builtin_functions.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -42,7 +42,7 @@ TEST_F(aggregate_info_test, simple) {
         {1},
         {
             {
-                builtin::sum,
+                function::builtin::sum,
                 {
                     0
                 },
@@ -51,7 +51,7 @@ TEST_F(aggregate_info_test, simple) {
         },
         {
             {
-                builtin::sum,
+                function::builtin::sum,
                     {
                         0
                     },

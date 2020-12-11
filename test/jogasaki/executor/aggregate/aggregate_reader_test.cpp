@@ -20,7 +20,7 @@
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
-#include <jogasaki/executor/builtin_functions.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/accessor/record_ref.h>
 
 #include <jogasaki/mock_memory_resource.h>
@@ -51,7 +51,7 @@ auto const info = std::make_shared<aggregate_info>(
     std::vector<size_t>{0},
     std::vector<aggregate_info::value_spec>{
         {
-            executor::builtin::sum,
+            executor::function::builtin::sum,
             {
                 1
             },
@@ -60,7 +60,7 @@ auto const info = std::make_shared<aggregate_info>(
     },
     std::vector<aggregate_info::value_spec>{
         {
-            executor::builtin::sum,
+            executor::function::builtin::sum,
             {
                 1
             },

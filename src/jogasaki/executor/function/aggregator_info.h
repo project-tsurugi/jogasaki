@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
 #include <memory>
 
 #include <takatori/util/maybe_shared_ptr.h>
@@ -24,29 +22,33 @@
 #include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
 
-#include <jogasaki/executor/functions.h>
+#include "functions.h"
 
-namespace jogasaki::executor::builtin {
+namespace jogasaki::executor::function {
 
-using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
-using takatori::util::fail;
-using takatori::util::enum_tag;
+using takatori::util::enum_tag_t;
 
-void sum(
-    accessor::record_ref target,
-    field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
-);
+class aggregator_info {
+public:
+    aggregator_info() = default;
+    ~aggregator_info() = default;
+    aggregator_info(aggregator_info const& other) = default;
+    aggregator_info& operator=(aggregator_info const& other) = default;
+    aggregator_info(aggregator_info&& other) noexcept = default;
+    aggregator_info& operator=(aggregator_info&& other) noexcept = default;
 
-void count(
-    accessor::record_ref target,
-    field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
-);
+    explicit aggregator_info(
+        aggregator_type aggregator
+    ) :
+        aggregator_(std::move(aggregator))
+    {}
 
-} // namespace builtin
+    [[nodiscard]] aggregator_type const& aggregator() const noexcept {
+        return aggregator_;
+    }
+private:
+    aggregator_type aggregator_{};
+};
+
+}

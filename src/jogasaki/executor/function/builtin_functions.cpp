@@ -24,7 +24,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/utils/copy_field_data.h>
 
-namespace jogasaki::executor::builtin {
+namespace jogasaki::executor::function {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
@@ -34,6 +34,8 @@ using takatori::util::enum_tag;
 using kind = meta::field_type_kind;
 template <kind Kind>
 using rtype = typename meta::field_type_traits<Kind>::runtime_type;
+
+namespace builtin {
 
 void sum(
     accessor::record_ref target,
@@ -90,6 +92,8 @@ void count(
         return;
     }
     target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + 1);
+}
+
 }
 
 }

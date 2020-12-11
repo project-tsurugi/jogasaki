@@ -56,7 +56,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
-#include <jogasaki/executor/builtin_functions.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
@@ -273,12 +273,12 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         (void)decl;
         (void)provider;
         mid_specs.emplace_back(
-            executor::builtin::sum, //FIXME search provider
+            executor::function::builtin::sum, //FIXME search provider
             (argument_indices),
             utils::type_for(ctx.compiled_info(), e.destination())
         );
         post_specs.emplace_back(
-            executor::builtin::sum, //FIXME search provider
+            executor::function::builtin::sum, //FIXME search provider
             (argument_indices),
             utils::type_for(ctx.compiled_info(), e.destination())
         );

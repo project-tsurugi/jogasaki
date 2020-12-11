@@ -31,10 +31,12 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/executor/function/aggregate_function_kind.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
+using takatori::util::enum_tag_t;
 
 class field_locator {
 public:

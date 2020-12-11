@@ -20,7 +20,7 @@
 #include <takatori/type/character.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::function {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;

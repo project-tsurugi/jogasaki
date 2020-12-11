@@ -39,4 +39,8 @@ void aggregate_function_info<aggregate_function_kind::sum>::register_aggregators
     mid(aggregator_info{ builtin::sum });
 }
 
+void aggregate_function_info<aggregate_function_kind::count>::register_aggregators() noexcept {
+    pre(aggregator_info{ builtin::count_pre });
+    mid(aggregator_info{ builtin::count_mid });
+}
 }

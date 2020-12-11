@@ -34,11 +34,17 @@ using takatori::util::enum_tag_t;
 
 class aggregate_function_info_base {
 public:
-    constexpr aggregate_function_kind kind() const noexcept {
+    aggregate_function_info_base() = default;
+    virtual ~aggregate_function_info_base() = default;
+    aggregate_function_info_base(aggregate_function_info_base const& other) = default;
+    aggregate_function_info_base& operator=(aggregate_function_info_base const& other) = default;
+    aggregate_function_info_base(aggregate_function_info_base&& other) noexcept = default;
+    aggregate_function_info_base& operator=(aggregate_function_info_base&& other) noexcept = default;
+    explicit aggregate_function_info_base(aggregate_function_kind kind) : kind_(kind) {}
+
+    [[nodiscard]] constexpr aggregate_function_kind kind() const noexcept {
         return kind_;
     }
-    aggregate_function_info_base(aggregate_function_kind kind) : kind_(kind) {}
-    virtual ~aggregate_function_info_base() = default;
 
     [[nodiscard]] aggregator_info const& pre() const noexcept { return pre_; };
     [[nodiscard]] aggregator_info const& mid() const noexcept { return mid_; };
@@ -66,11 +72,16 @@ class aggregate_function_info<aggregate_function_kind::sum> : public aggregate_f
 public:
     explicit aggregate_function_info(enum_tag_t<aggregate_function_kind::sum>) : aggregate_function_info_base(aggregate_function_kind::sum) {}
     void register_aggregators() noexcept override;
-private:
+};
+
+template <>
+class aggregate_function_info<aggregate_function_kind::count> : public aggregate_function_info_base {
+public:
+    explicit aggregate_function_info(enum_tag_t<aggregate_function_kind::count>) : aggregate_function_info_base(aggregate_function_kind::count) {}
+    void register_aggregators() noexcept override;
 };
 
 template <aggregate_function_kind Kind>
 aggregate_function_info(enum_tag_t<Kind>) -> aggregate_function_info<Kind>;
-
 
 }

@@ -43,7 +43,15 @@ void sum(
     sequence_view<field_locator const> args
 );
 
-void count(
+void count_pre(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+);
+
+void count_mid(
     accessor::record_ref target,
     field_locator const& target_loc,
     bool initial,

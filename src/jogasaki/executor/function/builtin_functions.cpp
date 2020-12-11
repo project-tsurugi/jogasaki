@@ -74,7 +74,7 @@ void sum(
     }
 }
 
-void count(
+void count_pre(
     accessor::record_ref target,
     field_locator const& target_loc,
     bool initial,
@@ -92,6 +92,27 @@ void count(
         return;
     }
     target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + 1);
+}
+
+void count_mid(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+) {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    (void)args;
+    (void)source;
+    auto arg_offset = args[0].value_offset();
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    target.set_null(target_nullity_offset, false);
+    if (initial) {
+        target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(arg_offset));
+        return;
+    }
+    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset));
 }
 
 }

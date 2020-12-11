@@ -34,6 +34,13 @@ using kind = aggregate_function_kind;
 
 TEST_F(aggregate_function_info_test, simple) {
     aggregate_function_info info{enum_tag<kind::sum>};
+    info.register_aggregators();
+    auto&& pre = info.pre();
+    auto&& mid = info.mid();
+    auto&& post = info.post();
+    EXPECT_TRUE(pre);
+    EXPECT_TRUE(mid);
+    EXPECT_FALSE(post);
 }
 
 }

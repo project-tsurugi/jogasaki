@@ -44,15 +44,15 @@ public:
     [[nodiscard]] aggregator_info const& mid() const noexcept { return mid_; };
     [[nodiscard]] aggregator_info const& post() const noexcept { return post_; };
 
+    virtual void register_aggregators() noexcept = 0;
+protected:
     void pre(aggregator_info&& arg) noexcept { pre_ = std::move(arg); };
     void mid(aggregator_info&& arg) noexcept { mid_ = std::move(arg); };
     void post(aggregator_info&& arg) noexcept { post_ = std::move(arg); };
 
-    virtual void register_aggregators() noexcept = 0;
-protected:
+private:
     aggregate_function_kind kind_;
 
-private:
     aggregator_info pre_{};
     aggregator_info mid_{};
     aggregator_info post_{};

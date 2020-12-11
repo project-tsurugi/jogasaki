@@ -37,7 +37,6 @@ using takatori::util::enum_tag_t;
 void aggregate_function_info<aggregate_function_kind::sum>::register_aggregators() noexcept {
     pre(aggregator_info{ builtin::sum });
     mid(aggregator_info{ builtin::sum });
-    post(aggregator_info{ builtin::sum });
 }
 
 }

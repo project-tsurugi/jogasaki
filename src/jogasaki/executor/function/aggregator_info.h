@@ -41,13 +41,19 @@ public:
     explicit aggregator_info(
         aggregator_type aggregator
     ) :
+        valid_(true),
         aggregator_(std::move(aggregator))
     {}
 
     [[nodiscard]] aggregator_type const& aggregator() const noexcept {
         return aggregator_;
     }
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return valid_;
+    }
 private:
+    bool valid_{false};
     aggregator_type aggregator_{};
 };
 

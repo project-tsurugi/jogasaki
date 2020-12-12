@@ -32,6 +32,8 @@ using takatori::util::sequence_view;
 
 class aggregate_function_info {
 public:
+    using aggregators_info = std::vector<aggregator_info>;
+
     aggregate_function_info() = default;
     virtual ~aggregate_function_info() = default;
     aggregate_function_info(aggregate_function_info const& other) = default;
@@ -41,9 +43,9 @@ public:
 
     explicit aggregate_function_info(
         aggregate_function_kind kind,
-        aggregator_info&& pre,
-        aggregator_info&& mid,
-        aggregator_info&& post
+        aggregators_info&& pre,
+        aggregators_info&& mid,
+        aggregators_info&& post
     ) :
         kind_(kind),
         pre_(std::move(pre)),
@@ -55,15 +57,15 @@ public:
         return kind_;
     }
 
-    [[nodiscard]] aggregator_info const& pre() const noexcept { return pre_; };
-    [[nodiscard]] aggregator_info const& mid() const noexcept { return mid_; };
-    [[nodiscard]] aggregator_info const& post() const noexcept { return post_; };
+    [[nodiscard]] sequence_view<aggregator_info const> pre() const noexcept { return pre_; };
+    [[nodiscard]] sequence_view<aggregator_info const> mid() const noexcept { return mid_; };
+    [[nodiscard]] sequence_view<aggregator_info const> post() const noexcept { return post_; };
 
 private:
     aggregate_function_kind kind_;
-    aggregator_info pre_{};
-    aggregator_info mid_{};
-    aggregator_info post_{};
+    aggregators_info pre_{};
+    aggregators_info mid_{};
+    aggregators_info post_{};
 };
 
 template <aggregate_function_kind Kind>
@@ -83,4 +85,10 @@ public:
     aggregate_function_info_impl();
 };
 
+template <>
+class aggregate_function_info_impl<aggregate_function_kind::avg> : public aggregate_function_info {
+public:
+    constexpr static aggregate_function_kind kind = aggregate_function_kind::avg;
+    aggregate_function_info_impl();
+};
 }

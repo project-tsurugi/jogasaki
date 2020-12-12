@@ -63,6 +63,13 @@ void count_mid(
     sequence_view<field_locator const> args
 );
 
+void avg_post(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+);
 } // namespace builtin
 
 }

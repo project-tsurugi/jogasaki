@@ -48,6 +48,10 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
     std::size_t id = aggregate::declaration::minimum_builtin_function_id;
     auto& repo = global::function_repository();
     repo.add(id, std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>());
+
+    /////////
+    // sum
+    /////////
     functions.add({
         id++,
         "sum",
@@ -85,6 +89,9 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         true,
     });
 
+    /////////
+    // count
+    /////////
     functions.add({
         id++,
         "count",
@@ -120,6 +127,47 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+
+    /////////
+    // avg
+    /////////
+    functions.add({
+        id++,
+        "avg",
+        t::int4(),
+        {
+            t::int4(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "avg",
+        t::int8(),
+        {
+            t::int8(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "avg",
+        t::float4(),
+        {
+            t::float4(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "avg",
+        t::float8(),
+        {
+            t::float8(),
+        },
+        true,
+    });
+
 }
 
 namespace builtin {
@@ -134,7 +182,8 @@ void sum(
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
     auto arg_offset = args[0].value_offset();
-    auto src_nullity_offset = args[0].value_offset();
+    BOOST_ASSERT(target_loc.type().kind() == arg_type.kind());  //NOLINT
+    auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
     if (initial) {
@@ -169,6 +218,7 @@ void count_pre(
     sequence_view<field_locator const> args
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
+    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
     (void)args;
     (void)source;
     auto target_offset = target_loc.value_offset();
@@ -189,6 +239,8 @@ void count_mid(
     sequence_view<field_locator const> args
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
+    BOOST_ASSERT(args[0].type().kind() == kind::int8);  //NOLINT
+    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
     (void)args;
     (void)source;
     auto arg_offset = args[0].value_offset();
@@ -200,6 +252,39 @@ void count_mid(
         return;
     }
     target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset));
+}
+
+void avg_post(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+) {
+    BOOST_ASSERT(args.size() == 2);  //NOLINT
+    (void)initial;
+    auto& sum_type = args[0].type();
+    auto sum_offset = args[0].value_offset();
+    auto sum_nullity_offset = args[0].nullity_offset();
+    auto& count_type = args[1].type();
+    (void)count_type;
+    BOOST_ASSERT(count_type.kind() == kind::int8);  //NOLINT
+    BOOST_ASSERT(sum_type.kind() == target_loc.type().kind());  //NOLINT
+    auto count_offset = args[1].value_offset();
+    auto count_nullity_offset = args[1].nullity_offset();
+    (void)count_nullity_offset;
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    auto is_null = source.is_null(sum_nullity_offset);
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
+    switch(sum_type.kind()) {
+        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, source.get_value<rtype<kind::int4>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
+        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
+        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, source.get_value<rtype<kind::float4>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
+        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, source.get_value<rtype<kind::float8>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
+        default: fail();
+    }
 }
 
 }

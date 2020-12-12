@@ -39,9 +39,9 @@ TEST_F(aggregate_function_info_test, simple) {
     auto&& pre = info.pre();
     auto&& mid = info.mid();
     auto&& post = info.post();
-    EXPECT_TRUE(pre);
-    EXPECT_TRUE(mid);
-    EXPECT_FALSE(post);
+    EXPECT_EQ(1, pre.size());
+    EXPECT_EQ(1, mid.size());
+    EXPECT_TRUE(post.empty());
 }
 
 TEST_F(aggregate_function_info_test, repo) {
@@ -51,9 +51,9 @@ TEST_F(aggregate_function_info_test, repo) {
     auto&& pre = info.pre();
     auto&& mid = info.mid();
     auto&& post = info.post();
-    EXPECT_TRUE(pre);
-    EXPECT_TRUE(mid);
-    EXPECT_FALSE(post);
+    EXPECT_EQ(1, pre.size());
+    EXPECT_EQ(1, mid.size());
+    EXPECT_TRUE(post.empty());
 }
 }
 

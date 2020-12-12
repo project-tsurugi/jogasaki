@@ -19,6 +19,13 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
+#include <takatori/type/int.h>
+#include <takatori/type/float.h>
+#include <takatori/type/character.h>
+#include <yugawara/aggregate/configurable_provider.h>
+#include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/global.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -34,6 +41,86 @@ using takatori::util::enum_tag;
 using kind = meta::field_type_kind;
 template <kind Kind>
 using rtype = typename meta::field_type_traits<Kind>::runtime_type;
+
+void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provider& functions) {
+    namespace t = takatori::type;
+    using namespace ::yugawara;
+    std::size_t id = aggregate::declaration::minimum_builtin_function_id;
+    auto& repo = global::function_repository();
+    repo.add(id, std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>());
+    functions.add({
+        id++,
+        "sum",
+        t::int4(),
+        {
+            t::int4(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "sum",
+        t::int8(),
+        {
+            t::int8(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "sum",
+        t::float4(),
+        {
+            t::float4(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "sum",
+        t::float8(),
+        {
+            t::float8(),
+        },
+        true,
+    });
+
+    functions.add({
+        id++,
+        "count",
+        t::int8(),
+        {
+            t::int4(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "count",
+        t::int8(),
+        {
+            t::int8(),
+        },
+        true,
+    });
+    functions.add({
+        id++,
+        "count",
+        t::int8(),
+        {
+            t::float4(),
+        },
+    });
+    functions.add({
+        id++,
+        "count",
+        t::int8(),
+        {
+            t::float8(),
+        },
+        true,
+    });
+}
 
 namespace builtin {
 

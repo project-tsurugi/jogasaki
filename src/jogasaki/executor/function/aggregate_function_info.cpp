@@ -34,13 +34,22 @@ namespace jogasaki::executor::function {
 using takatori::util::sequence_view;
 using takatori::util::enum_tag_t;
 
-void aggregate_function_info<aggregate_function_kind::sum>::register_aggregators() noexcept {
-    pre(aggregator_info{ builtin::sum });
-    mid(aggregator_info{ builtin::sum });
-}
+aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_info_impl() :
+    aggregate_function_info(
+        kind,
+        aggregator_info{ builtin::sum },
+        aggregator_info{ builtin::sum },
+        {}
+    )
+{}
 
-void aggregate_function_info<aggregate_function_kind::count>::register_aggregators() noexcept {
-    pre(aggregator_info{ builtin::count_pre });
-    mid(aggregator_info{ builtin::count_mid });
-}
+aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function_info_impl() :
+    aggregate_function_info(
+        kind,
+        aggregator_info{ builtin::count_pre },
+        aggregator_info{ builtin::count_mid },
+        {}
+    )
+{}
+
 }

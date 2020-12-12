@@ -16,7 +16,15 @@
 #pragma once
 
 #include <memory>
-#include <jogasaki/memory/page_pool.h>
+
+// attention: making globals depend on lower domain slows down compile time
+namespace jogasaki::executor::function {
+class aggregate_function_repository;
+}
+
+namespace jogasaki::memory {
+class page_pool;
+}
 
 namespace jogasaki::global {
 
@@ -41,17 +49,9 @@ enum class pool_operation : std::int32_t {
  * @param op operation on the page pool
  * @return reference to the pool
  */
-[[nodiscard]] inline memory::page_pool& page_pool(pool_operation op = pool_operation::get) {
-    static std::unique_ptr<memory::page_pool> pool = std::make_unique<memory::page_pool>();
-    switch(op) {
-        case pool_operation::get:
-            break;
-        case pool_operation::reset:
-            pool = std::make_unique<memory::page_pool>();
-            break;
-    }
-    return *pool;
-}
+[[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
+
+[[nodiscard]] executor::function::aggregate_function_repository& function_repository();
 
 }
 

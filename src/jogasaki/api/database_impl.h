@@ -36,7 +36,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/function/functions.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 
 namespace jogasaki::api {
 

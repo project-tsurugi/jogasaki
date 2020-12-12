@@ -20,14 +20,24 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 
-#include "functions.h"
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using takatori::util::enum_tag_t;
+
+/**
+ * @brief definition of aggregator function type
+ */
+using aggregator_type = std::function<void (
+    accessor::record_ref,
+    field_locator const&,
+    bool,
+    accessor::record_ref,
+    sequence_view<field_locator const>
+)>;
 
 class aggregator_info {
 public:
@@ -40,18 +50,11 @@ public:
 
     explicit aggregator_info(
         aggregator_type aggregator
-    ) :
-        valid_(true),
-        aggregator_(std::move(aggregator))
-    {}
+    );
 
-    [[nodiscard]] aggregator_type const& aggregator() const noexcept {
-        return aggregator_;
-    }
+    [[nodiscard]] aggregator_type const& aggregator() const noexcept;
 
-    [[nodiscard]] explicit operator bool() const noexcept {
-        return valid_;
-    }
+    [[nodiscard]] explicit operator bool() const noexcept;
 private:
     bool valid_{false};
     aggregator_type aggregator_{};

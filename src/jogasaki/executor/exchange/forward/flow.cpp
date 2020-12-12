@@ -16,7 +16,7 @@
 #include "flow.h"
 
 #include <takatori/util/downcast.h>
-#include <jogasaki/executor/exchange/group/writer.h>
+#include <jogasaki/executor/exchange/forward/writer.h>
 
 #include <vector>
 

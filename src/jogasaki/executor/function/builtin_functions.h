@@ -23,10 +23,14 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
+#include <yugawara/aggregate/configurable_provider.h>
 
-#include <jogasaki/executor/function/functions.h>
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor::function {
+
+void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provider& provider);
 
 namespace builtin {
 

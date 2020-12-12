@@ -42,7 +42,6 @@ using takatori::util::fail;
 namespace storage = yugawara::storage;
 namespace variable = yugawara::variable;
 namespace aggregate = yugawara::aggregate;
-namespace function = yugawara::function;
 
 void add_builtin_tables(storage::configurable_provider& provider) {
     namespace type = ::takatori::type;

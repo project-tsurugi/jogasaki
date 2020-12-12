@@ -15,23 +15,12 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
-#include <memory>
-
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/function/configurable_provider.h>
-#include <yugawara/variable/configurable_provider.h>
-#include <yugawara/aggregate/configurable_provider.h>
 
-#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/executor/function/aggregate_function_kind.h>
 
 namespace jogasaki::executor::function {
 
@@ -62,15 +51,5 @@ private:
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
 };
-
-using aggregator_type = std::function<void (
-    accessor::record_ref,
-    field_locator const&,
-    bool,
-    accessor::record_ref,
-    sequence_view<field_locator const>
-)>;
-
-void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provider& provider);
 
 }

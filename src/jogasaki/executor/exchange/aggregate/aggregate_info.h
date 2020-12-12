@@ -26,7 +26,8 @@
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/function/functions.h>
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/function/aggregator_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {
@@ -49,7 +50,6 @@ using function::field_locator;
 class aggregate_info {
 public:
     using field_index_type = meta::record_meta::field_index_type;
-
 
     class value_spec {
     public:

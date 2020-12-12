@@ -18,7 +18,9 @@
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
 
 namespace jogasaki::executor::function {
 
@@ -33,8 +35,7 @@ class aggregate_function_info_test : public ::testing::Test {};
 using kind = aggregate_function_kind;
 
 TEST_F(aggregate_function_info_test, simple) {
-    aggregate_function_info info{enum_tag<kind::sum>};
-    info.register_aggregators();
+    aggregate_function_info_impl<kind::sum> info{};
     auto&& pre = info.pre();
     auto&& mid = info.mid();
     auto&& post = info.post();
@@ -43,5 +44,16 @@ TEST_F(aggregate_function_info_test, simple) {
     EXPECT_FALSE(post);
 }
 
+TEST_F(aggregate_function_info_test, repo) {
+    auto& repo = global::function_repository();
+    repo.add(0, std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>());
+    auto& info = *repo.find(0);
+    auto&& pre = info.pre();
+    auto&& mid = info.mid();
+    auto&& post = info.post();
+    EXPECT_TRUE(pre);
+    EXPECT_TRUE(mid);
+    EXPECT_FALSE(post);
+}
 }
 

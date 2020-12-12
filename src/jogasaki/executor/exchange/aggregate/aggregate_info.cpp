@@ -26,7 +26,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/function/functions.h>
+#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {

@@ -22,7 +22,6 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/aggregator_info.h>
@@ -30,17 +29,27 @@
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using takatori::util::enum_tag_t;
 
-class aggregate_function_info_base {
+class aggregate_function_info {
 public:
-    aggregate_function_info_base() = default;
-    virtual ~aggregate_function_info_base() = default;
-    aggregate_function_info_base(aggregate_function_info_base const& other) = default;
-    aggregate_function_info_base& operator=(aggregate_function_info_base const& other) = default;
-    aggregate_function_info_base(aggregate_function_info_base&& other) noexcept = default;
-    aggregate_function_info_base& operator=(aggregate_function_info_base&& other) noexcept = default;
-    explicit aggregate_function_info_base(aggregate_function_kind kind) : kind_(kind) {}
+    aggregate_function_info() = default;
+    virtual ~aggregate_function_info() = default;
+    aggregate_function_info(aggregate_function_info const& other) = default;
+    aggregate_function_info& operator=(aggregate_function_info const& other) = default;
+    aggregate_function_info(aggregate_function_info&& other) noexcept = default;
+    aggregate_function_info& operator=(aggregate_function_info&& other) noexcept = default;
+
+    explicit aggregate_function_info(
+        aggregate_function_kind kind,
+        aggregator_info&& pre,
+        aggregator_info&& mid,
+        aggregator_info&& post
+    ) :
+        kind_(kind),
+        pre_(std::move(pre)),
+        mid_(std::move(mid)),
+        post_(std::move(post))
+    {}
 
     [[nodiscard]] constexpr aggregate_function_kind kind() const noexcept {
         return kind_;
@@ -50,38 +59,28 @@ public:
     [[nodiscard]] aggregator_info const& mid() const noexcept { return mid_; };
     [[nodiscard]] aggregator_info const& post() const noexcept { return post_; };
 
-    virtual void register_aggregators() noexcept = 0;
-protected:
-    void pre(aggregator_info&& arg) noexcept { pre_ = std::move(arg); };
-    void mid(aggregator_info&& arg) noexcept { mid_ = std::move(arg); };
-    void post(aggregator_info&& arg) noexcept { post_ = std::move(arg); };
-
 private:
     aggregate_function_kind kind_;
-
     aggregator_info pre_{};
     aggregator_info mid_{};
     aggregator_info post_{};
 };
 
 template <aggregate_function_kind Kind>
-class aggregate_function_info;
+class aggregate_function_info_impl;
 
 template <>
-class aggregate_function_info<aggregate_function_kind::sum> : public aggregate_function_info_base {
+class aggregate_function_info_impl<aggregate_function_kind::sum> : public aggregate_function_info {
 public:
-    explicit aggregate_function_info(enum_tag_t<aggregate_function_kind::sum>) : aggregate_function_info_base(aggregate_function_kind::sum) {}
-    void register_aggregators() noexcept override;
+    constexpr static aggregate_function_kind kind = aggregate_function_kind::sum;
+    aggregate_function_info_impl();
 };
 
 template <>
-class aggregate_function_info<aggregate_function_kind::count> : public aggregate_function_info_base {
+class aggregate_function_info_impl<aggregate_function_kind::count> : public aggregate_function_info {
 public:
-    explicit aggregate_function_info(enum_tag_t<aggregate_function_kind::count>) : aggregate_function_info_base(aggregate_function_kind::count) {}
-    void register_aggregators() noexcept override;
+    constexpr static aggregate_function_kind kind = aggregate_function_kind::count;
+    aggregate_function_info_impl();
 };
-
-template <aggregate_function_kind Kind>
-aggregate_function_info(enum_tag_t<Kind>) -> aggregate_function_info<Kind>;
 
 }

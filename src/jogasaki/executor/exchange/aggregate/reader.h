@@ -107,6 +107,7 @@ private:
     std::size_t mid_value_size_{};
     data::small_record_store key_buf_;
     data::small_record_store mid_value_buf_;
+    data::small_record_store post_value_buf_;
     impl::reader_state state_{impl::reader_state::init};
     comparator key_comparator_{};
     std::size_t pointer_field_offset_{};

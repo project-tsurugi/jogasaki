@@ -23,9 +23,13 @@ using takatori::util::sequence_view;
 using takatori::util::enum_tag_t;
 
 
-aggregator_info::aggregator_info(aggregator_type aggregator) :
+aggregator_info::aggregator_info(
+    aggregator_type aggregator,
+    std::size_t arg_count
+) :
     valid_(true),
-    aggregator_(std::move(aggregator))
+    aggregator_(std::move(aggregator)),
+    arg_count_(arg_count)
 {}
 
 aggregator_type const &aggregator_info::aggregator() const noexcept {
@@ -35,4 +39,9 @@ aggregator_type const &aggregator_info::aggregator() const noexcept {
 aggregator_info::operator bool() const noexcept {
     return valid_;
 }
+
+std::size_t aggregator_info::arg_count() const noexcept {
+    return arg_count_;
+}
+
 }

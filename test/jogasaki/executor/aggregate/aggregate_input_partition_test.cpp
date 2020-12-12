@@ -61,6 +61,16 @@ public:
         auto p = value_pointer(key);
         return accessor::record_ref(p, group_meta_->value_shared()->record_size()).get_value<double>(group_meta_->value_shared()->value_offset(0));
     };
+
+    std::function<accessor::record_ref(iterator)> get_key_record = [&](iterator it) {
+        auto key = accessor::record_ref(*it, group_meta_->key_shared()->record_size());
+        return key;
+    };
+    std::function<accessor::record_ref(iterator)> get_val_record = [&](iterator it) {
+        auto key = accessor::record_ref(*it, group_meta_->key_shared()->record_size());
+        auto p = value_pointer(key);
+        return accessor::record_ref(p, group_meta_->value_shared()->record_size());
+    };
 };
 
 
@@ -68,19 +78,11 @@ using kind = meta::field_type_kind;
 
 TEST_F(aggregate_input_partition_test, basic) {
     auto context = std::make_shared<request_context>();
+    auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::sum>>();
     auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},
         std::vector<aggregate_info::value_spec>{
             {
-                function::builtin::sum,
-                {
-                    1
-                },
-                meta::field_type(enum_tag<kind::float8>)
-            }
-        },
-        std::vector<aggregate_info::value_spec>{
-            {
-                function::builtin::sum,
+                *func_sum,
                 {
                     1
                 },
@@ -112,6 +114,68 @@ TEST_F(aggregate_input_partition_test, basic) {
     ++it;
     EXPECT_EQ(3, get_key(it));
     EXPECT_DOUBLE_EQ(3.0, get_val(it));
+    ++it;
+    EXPECT_EQ(t.end(), it);
+}
+
+TEST_F(aggregate_input_partition_test, avg) {
+    auto context = std::make_shared<request_context>();
+    auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
+    auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},
+        std::vector<aggregate_info::value_spec>{
+            {
+                *func_sum,
+                {
+                    1
+                },
+                meta::field_type(enum_tag<kind::float8>)
+            }
+        }
+    );
+    input_partition partition{ info };
+    test::nullable_record r1 {1, 1.0};
+    test::nullable_record r21 {2, 2.0};
+    test::nullable_record r22 {2, 4.0};
+    test::nullable_record r3 {3, 3.0};
+
+    partition.write(r3.ref());
+    partition.write(r21.ref());
+    partition.write(r1.ref());
+    partition.write(r22.ref());
+    partition.flush();
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    EXPECT_EQ(3, std::distance(t.begin(), t.end()));
+    group_meta_ = info->pre().group_meta();
+    auto key_meta = group_meta_->key_shared();
+    auto val_meta = group_meta_->value_shared();
+    auto it = t.begin();
+    {
+        auto exp = mock::create_nullable_record<kind::int8, kind::pointer>(1, nullptr);
+        EXPECT_EQ(exp, mock::basic_record(get_key_record(it), key_meta));
+    }
+    {
+        auto exp = mock::create_nullable_record<kind::float8, kind::int8>(1.0, 1);
+        EXPECT_EQ(exp, mock::basic_record(get_val_record(it), val_meta));
+    }
+    ++it;
+    {
+        auto exp = mock::create_nullable_record<kind::int8, kind::pointer>(2, nullptr);
+        EXPECT_EQ(exp, mock::basic_record(get_key_record(it), key_meta));
+    }
+    {
+        auto exp = mock::create_nullable_record<kind::float8, kind::int8>(6.0, 2);
+        EXPECT_EQ(exp, mock::basic_record(get_val_record(it), val_meta));
+    }
+    ++it;
+    {
+        auto exp = mock::create_nullable_record<kind::int8, kind::pointer>(3, nullptr);
+        EXPECT_EQ(exp, mock::basic_record(get_key_record(it), key_meta));
+    }
+    {
+        auto exp = mock::create_nullable_record<kind::float8, kind::int8>(3.0, 1);
+        EXPECT_EQ(exp, mock::basic_record(get_val_record(it), val_meta));
+    }
     ++it;
     EXPECT_EQ(t.end(), it);
 }

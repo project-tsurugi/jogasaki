@@ -41,7 +41,7 @@ TEST_F(aggregate_function_info_test, simple) {
     auto&& post = info.post();
     EXPECT_EQ(1, pre.size());
     EXPECT_EQ(1, mid.size());
-    EXPECT_TRUE(post.empty());
+    EXPECT_EQ(1, post.size());
 }
 
 TEST_F(aggregate_function_info_test, repo) {
@@ -53,7 +53,7 @@ TEST_F(aggregate_function_info_test, repo) {
     auto&& post = info.post();
     EXPECT_EQ(1, pre.size());
     EXPECT_EQ(1, mid.size());
-    EXPECT_TRUE(post.empty());
+    EXPECT_EQ(1, post.size());
 }
 }
 

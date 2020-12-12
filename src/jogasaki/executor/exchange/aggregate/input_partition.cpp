@@ -32,15 +32,15 @@ input_partition::input_partition(
     resource_for_hash_tables_(std::move(resource_for_hash_tables)),
     resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
     info_(std::move(info)),
-    comparator_(info_->mid().group_meta()->key_shared().get()),
+    comparator_(info_->pre().group_meta()->key_shared().get()),
     initial_hash_table_size_(initial_hash_table_size),
     max_pointers_(pointer_table_size),
-    key_buf_(info_->mid().group_meta()->key_shared())
+    key_buf_(info_->pre().group_meta()->key_shared())
 {}
 
 bool input_partition::write(accessor::record_ref record) {
     initialize_lazy();
-    auto& key_meta = info_->mid().group_meta()->key_shared();
+    auto& key_meta = info_->pre().group_meta()->key_shared();
     auto key_indices = info_->key_indices();
     auto key_buf = key_buf_.ref();
     auto& record_meta = info_->record_meta();
@@ -57,7 +57,7 @@ bool input_partition::write(accessor::record_ref record) {
             keys_->varlen_resource()
         );
     }
-    auto& value_meta = info_->mid().group_meta()->value_shared();
+    auto& value_meta = info_->pre().group_meta()->value_shared();
     accessor::record_ref value{};
     bool initial = false;
     if (auto it = hash_table_->find(key_buf.data()); it != hash_table_->end()) {
@@ -76,10 +76,10 @@ bool input_partition::write(accessor::record_ref record) {
         auto& table = pointer_tables_.back();
         table.emplace_back(key.data());
     }
-    auto& info = info_->mid();
+    auto& info = info_->pre();
     for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
         auto& vs = info.value_specs()[i];
-        auto& aggregator = vs.aggregator();
+        auto& aggregator = vs.aggregator_info().aggregator();
         aggregator(value, info.target_field_locator(i), initial, record, info.aggregator_args(i));
     }
     if (hash_table_->load_factor() > load_factor_bound) {
@@ -103,8 +103,8 @@ void input_partition::flush() {
 }
 
 void input_partition::initialize_lazy() {
-    auto& key_meta = info_->mid().group_meta()->key_shared();
-    auto& value_meta = info_->mid().group_meta()->value_shared();
+    auto& key_meta = info_->pre().group_meta()->key_shared();
+    auto& value_meta = info_->pre().group_meta()->value_shared();
     if (! keys_) {
         keys_ = std::make_unique<data::record_store>(
             resource_for_keys_.get(),

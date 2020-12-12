@@ -30,6 +30,7 @@ reader::reader(
     mid_value_size_(info_->mid().group_meta()->value().record_size()),
     key_buf_(info_->mid().group_meta()->key_shared()), //NOLINT
     mid_value_buf_(info_->mid().group_meta()->value_shared()), //NOLINT
+    post_value_buf_(info_->post().group_meta()->value_shared()), //NOLINT
     key_comparator_(info_->mid().group_meta()->key_shared().get()),
     pointer_field_offset_(info_->mid().group_meta()->key().value_offset(info_->mid().group_meta()->key().field_count()-1)) {
     for(auto& p : partitions_) {
@@ -68,8 +69,7 @@ bool reader::next_group() {
             auto tgt = mid_value_buf_.ref();
             for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
                 auto& vspec = info.value_specs()[i];
-                // FIXME use intermediate aggregator
-                auto& aggregator = vspec.aggregator();
+                auto& aggregator = vspec.aggregator_info().aggregator();
                 aggregator(
                     tgt,
                     info.target_field_locator(i),
@@ -118,7 +118,16 @@ void* reader::value_pointer(accessor::record_ref ref) const {
 
 accessor::record_ref reader::get_member() const {
     if (state_ == reader_state::on_member) {
-        return info_->output_value(mid_value_buf_.ref());
+        auto ref = mid_value_buf_.ref();
+
+        auto info = info_->post();
+        auto target = post_value_buf_.ref();
+        for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
+            auto& vs = info.value_specs()[i];
+            auto& aggregator = vs.aggregator_info().aggregator();
+            aggregator(target, info.target_field_locator(i), false, ref, info.aggregator_args(i));
+        }
+        return target;
     }
     fail();
 }

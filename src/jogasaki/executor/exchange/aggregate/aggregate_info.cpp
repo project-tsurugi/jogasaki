@@ -41,14 +41,14 @@ using kind = meta::field_type_kind;
 aggregate_info::aggregate_info(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<field_index_type> key_indices,
-    std::vector<value_spec> mid_value_specs,
-    std::vector<value_spec> post_value_specs
+    std::vector<value_spec> value_specs
 ) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
     extracted_key_meta_(create_extracted_meta(key_indices_)),
-    mid_(std::move(mid_value_specs), false, record_, key_indices_),
-    post_(std::move(post_value_specs), true, record_, key_indices_)
+    pre_(create_output(value_specs, output_kind::pre, record_, record_, key_indices_)),
+    mid_(create_output(value_specs, output_kind::mid, pre_.group_meta()->value_shared(), record_, key_indices_)),
+    post_(create_output(value_specs, output_kind::post, mid_.group_meta()->value_shared(), record_, key_indices_))
 {}
 
 accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) const noexcept {
@@ -93,16 +93,18 @@ std::shared_ptr<meta::record_meta> aggregate_info::create_extracted_meta(std::ve
 }
 
 std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
-    bool post
+    output_kind kind
 ) {
+    // only post output differs in that it doesn't have internal pointer field
+    auto post = kind == output_kind::post;
     auto num = key_indices_->size();
     meta::record_meta::fields_type fields{};
     meta::record_meta::nullability_type nullables(0);
     fields.reserve(num+1); // +1 for safety
     for(std::size_t i=0; i < num; ++i) {
         auto ind = key_indices_->at(i);
-        fields.emplace_back(record_->at(ind));
-        nullables.push_back(record_->nullable(ind));
+        fields.emplace_back(pre_input_meta_->at(ind));
+        nullables.push_back(pre_input_meta_->nullable(ind));
     }
     std::size_t record_size = meta::record_meta::npos;
     if (! post) {
@@ -110,7 +112,7 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
         nullables.push_back(true);
     } else {
         // post key doesn't have internal pointer field, but the record length is same as mid
-        record_size = create_key_meta(false)->record_size();
+        record_size = create_key_meta(output_kind::mid)->record_size();
     }
     return std::make_shared<meta::record_meta>(
         std::move(fields),
@@ -119,25 +121,33 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
     );
 }
 
-std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_value_meta(bool post) {
-    (void)post;
-    auto num = value_specs_.size();
-    meta::record_meta::fields_type fields{};
-    meta::record_meta::nullability_type nullables(num);
-    nullables.flip(); // assuming all values can be null
-    fields.reserve(num);
-    for(std::size_t i=0; i < num; ++i) {
-        auto&& v = value_specs_[i];
-        fields.emplace_back(v.type());
-    }
-    return std::make_shared<meta::record_meta>(
-        std::move(fields),
-        std::move(nullables)
-    );
+std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_value_meta(
+    output_kind kind
+) {
+    (void)kind;
+    // only post output differs in that it has the consolidated field
+//    auto post = kind == output_kind::post;
+//    if(post) {
+        auto num = value_specs_.size();
+        meta::record_meta::fields_type fields{};
+        meta::record_meta::nullability_type nullables(num);
+        nullables.flip(); // assuming all values can be null
+        fields.reserve(num);
+        for(std::size_t i=0; i < num; ++i) {
+            auto&& v = value_specs_[i];
+            fields.emplace_back(v.type());
+        }
+        return std::make_shared<meta::record_meta>(
+            std::move(fields),
+            std::move(nullables)
+        );
+//    }
 }
 
-std::vector<std::vector<field_locator>> aggregate_info::output_info::create_source_field_locs(bool post) {
-    (void)post;
+std::vector<std::vector<field_locator>> aggregate_info::output_info::create_source_field_locs(
+    output_kind kind
+) {
+    (void)kind;
     std::vector<std::vector<field_locator>> ret{};
     ret.reserve(value_specs_.size());
     for(auto&& vs : value_specs_) {
@@ -156,8 +166,10 @@ std::vector<std::vector<field_locator>> aggregate_info::output_info::create_sour
     return ret;
 }
 
-std::vector<field_locator> aggregate_info::output_info::create_target_field_locs(bool post) {
-    (void)post;
+std::vector<field_locator> aggregate_info::output_info::create_target_field_locs(
+    output_kind kind
+) {
+    (void)kind;
     std::vector<field_locator> ret{};
     ret.reserve(value_count());
     auto& value_meta = group_->value();
@@ -173,8 +185,8 @@ std::vector<field_locator> aggregate_info::output_info::create_target_field_locs
     return ret;
 }
 
-field_locator const &aggregate_info::output_info::target_field_locator(std::size_t idx) const noexcept {
-    return target_field_locs_[idx];
+field_locator const &aggregate_info::output_info::target_field_locator(std::size_t aggregator_index) const noexcept {
+    return target_field_locs_[aggregator_index];
 }
 
 const maybe_shared_ptr<meta::record_meta> &aggregate_info::extracted_key_meta() const noexcept {
@@ -186,8 +198,102 @@ accessor::record_ref aggregate_info::output_key(accessor::record_ref mid) const 
 }
 
 accessor::record_ref aggregate_info::output_value(accessor::record_ref mid) const noexcept {
-
+    // TODO is this needed?
     return accessor::record_ref(mid.data(), post_.group_meta()->value().record_size());
+}
+
+std::vector<meta::field_type> types(meta::record_meta const& meta, std::vector<std::size_t> indices) {
+    std::vector<meta::field_type> ret{};
+    ret.reserve(indices.size());
+    for(auto i : indices) {
+        ret.emplace_back(meta.at(i));
+    }
+    return ret;
+}
+
+aggregate_info::output_info aggregate_info::create_output(
+    std::vector<value_spec> const& value_specs,
+    output_kind kind,
+    maybe_shared_ptr<meta::record_meta> record,
+    maybe_shared_ptr<meta::record_meta> pre_input_meta,
+    std::vector<field_index_type> const& key_indices
+) {
+    std::vector<value_spec> aggregator_specs{};
+    std::size_t value_index = 0;
+    for(auto&& vs : value_specs) {
+        auto& info = vs.function_info();
+        switch(kind) {
+            case output_kind::pre: {
+                auto aggs = info.pre();
+                std::vector<size_t> indices{vs.argument_indices().begin(), vs.argument_indices().end()};
+                std::size_t count_sub_values = 0;
+                std::vector<meta::field_type> fields{};
+                auto ts = types(*record, indices);
+                auto seq = info.internal_field_types(ts);
+                for(auto&& agg : aggs) {
+                    aggregator_specs.emplace_back(
+                        agg,
+                        indices,
+                        seq[count_sub_values]
+                    );
+                    ++count_sub_values;
+                }
+                break;
+            }
+            case output_kind::mid: {
+                auto aggs = info.mid();
+                std::vector<size_t> indices{value_index};
+                std::size_t count_sub_values = 0;
+                std::vector<meta::field_type> fields{};
+                auto ts = types(*record, indices);
+                auto seq = info.internal_field_types(ts);
+                for(auto&& agg : aggs) {
+                    aggregator_specs.emplace_back(
+                        agg,
+                        indices,
+                        seq[count_sub_values]
+                    );
+                    ++count_sub_values;
+                }
+                ++value_index;
+                break;
+            }
+            case output_kind::post: {
+                auto aggs = info.post();
+                BOOST_ASSERT(aggs.size() == 1);
+                std::vector<size_t> indices{};
+                for(std::size_t i=0, n=aggs[0].arg_count(); i < n; ++i) {
+                    indices.emplace_back(value_index++);
+                }
+                aggregator_specs.emplace_back(
+                    aggs[0],
+                    indices,
+                    vs.type()
+                );
+                break;
+            }
+
+//        auto aggs = kind == output_kind::pre ? vs.function_info().pre() :
+//            (kind == output_kind::mid ? vs.function_info().mid() : vs.function_info().post());
+//
+//        std::vector<size_t> indices{vs.argument_indices().begin(), vs.argument_indices().end()};
+//        for(auto&& agg : aggs) {
+//            aggregator_specs.emplace_back(
+//                agg,
+//                indices,
+//                meta::field_type type
+//            );
+//        }
+        }
+    }
+
+    return output_info{
+        std::move(aggregator_specs),
+        kind,
+        std::move(pre_input_meta),
+        std::move(record),
+        key_indices,
+    };
 }
 
 }

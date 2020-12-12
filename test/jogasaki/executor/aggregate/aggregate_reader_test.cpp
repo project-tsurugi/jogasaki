@@ -46,21 +46,15 @@ public:
 
 using kind = meta::field_type_kind;
 
-auto const info = std::make_shared<aggregate_info>(
+auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::sum>>();
+auto func_avg = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
+
+auto const sum_info = std::make_shared<aggregate_info>(
     test_root::test_record_meta1(),
     std::vector<size_t>{0},
     std::vector<aggregate_info::value_spec>{
         {
-            executor::function::builtin::sum,
-            {
-                1
-            },
-            meta::field_type(enum_tag<kind::float8>)
-        }
-    },
-    std::vector<aggregate_info::value_spec>{
-        {
-            executor::function::builtin::sum,
+            *func_sum,
             {
                 1
             },
@@ -69,12 +63,25 @@ auto const info = std::make_shared<aggregate_info>(
     }
 );
 
+auto const avg_info = std::make_shared<aggregate_info>(
+    test_root::test_record_meta1(),
+    std::vector<size_t>{0},
+    std::vector<aggregate_info::value_spec>{
+        {
+            *func_avg,
+            {
+                1
+            },
+            meta::field_type(enum_tag<kind::float8>)
+        }
+    }
+);
 auto get_key = [](group_reader& r) {
-    return r.get_group().get_value<std::int64_t>(info->post().group_meta()->key().value_offset(0));
+    return r.get_group().get_value<std::int64_t>(sum_info->post().group_meta()->key().value_offset(0));
 };
 
 auto get_value = [](group_reader& r) {
-    return r.get_member().get_value<double>(info->post().group_meta()->value().value_offset(0));
+    return r.get_member().get_value<double>(sum_info->post().group_meta()->value().value_offset(0));
 };
 
 mock::basic_record create_rec(std::int64_t x, double y) {
@@ -84,8 +91,8 @@ mock::basic_record create_rec(std::int64_t x, double y) {
 TEST_F(aggregate_reader_test, basic) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
-    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(info));
-    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(info));
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(sum_info));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(sum_info));
 
     mock::basic_record arr[] = {
         create_rec(1, 1.0),
@@ -104,7 +111,7 @@ TEST_F(aggregate_reader_test, basic) {
     p2->write(arr[3].ref());
     p2->flush();
 
-    reader r{info, partitions};
+    reader r{sum_info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
@@ -123,9 +130,9 @@ TEST_F(aggregate_reader_test, multiple_partitions) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto context = std::make_shared<request_context>();
-    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>( info ));
-    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>( info ));
-    auto& p3 = partitions.emplace_back(std::make_unique<input_partition>( info ));
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>( sum_info ));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>( sum_info ));
+    auto& p3 = partitions.emplace_back(std::make_unique<input_partition>( sum_info ));
 
     test::record arr[] = {
             {0, 5.0},
@@ -145,7 +152,7 @@ TEST_F(aggregate_reader_test, multiple_partitions) {
     p2->flush();
     p3->flush();
 
-    reader r{info, partitions};
+    reader r{sum_info, partitions};
 
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(0, get_key(r));
@@ -168,8 +175,8 @@ TEST_F(aggregate_reader_test, multiple_partitions) {
 TEST_F(aggregate_reader_test, empty_partition) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
-    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>( info ));
-    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>( info ));
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>( sum_info ));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>( sum_info ));
 
     test::record arr[] = {
         {1, 1.0},
@@ -184,7 +191,7 @@ TEST_F(aggregate_reader_test, empty_partition) {
     p1->flush();
     p2->flush();
 
-    reader r{info, partitions};
+    reader r{sum_info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
@@ -199,5 +206,41 @@ TEST_F(aggregate_reader_test, empty_partition) {
     ASSERT_FALSE(r.next_group());
 }
 
+TEST_F(aggregate_reader_test, avg) {
+    std::vector<std::unique_ptr<input_partition>> partitions{};
+    partitions.reserve(10); // avoid relocation when using references into vector
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(avg_info));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(avg_info));
+
+    mock::basic_record arr[] = {
+        create_rec(1, 1.0),
+        create_rec(1, 1.0),
+        create_rec(3, 2.0),
+        create_rec(3, 2.0),
+        create_rec(1, 1.0),
+    };
+    auto sz = sizeof(arr[0]);
+
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
+    p1->write(arr[4].ref());
+    p1->flush();
+    p2->write(arr[0].ref());
+    p2->write(arr[3].ref());
+    p2->flush();
+
+    reader r{avg_info, partitions};
+    ASSERT_TRUE(r.next_group());
+    EXPECT_EQ(1, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    EXPECT_DOUBLE_EQ(1.0, get_value(r));
+    ASSERT_FALSE(r.next_member());
+    ASSERT_TRUE(r.next_group());
+    EXPECT_EQ(3, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    EXPECT_DOUBLE_EQ(2.0, get_value(r));
+    ASSERT_FALSE(r.next_member());
+    ASSERT_FALSE(r.next_group());
+}
 }
 

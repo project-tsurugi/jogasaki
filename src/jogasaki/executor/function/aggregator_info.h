@@ -49,15 +49,19 @@ public:
     aggregator_info& operator=(aggregator_info&& other) noexcept = default;
 
     explicit aggregator_info(
-        aggregator_type aggregator
+        aggregator_type aggregator,
+        std::size_t arg_count
     );
 
     [[nodiscard]] aggregator_type const& aggregator() const noexcept;
 
     [[nodiscard]] explicit operator bool() const noexcept;
+
+    [[nodiscard]] std::size_t arg_count() const noexcept;
 private:
     bool valid_{false};
     aggregator_type aggregator_{};
+    std::size_t arg_count_{};
 };
 
 }

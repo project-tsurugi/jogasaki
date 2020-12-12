@@ -62,6 +62,7 @@
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
@@ -259,35 +260,30 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         key_indices[output_order.index(k)] = input_order.index(k);
     }
 
-    std::vector<aggregate_info::value_spec> mid_specs{};
-    std::vector<aggregate_info::value_spec> post_specs{};
+    std::vector<aggregate_info::value_spec> specs{};
+    auto& repo = global::function_repository();
     for(auto&& e : agg.aggregations()) {
         std::vector<std::size_t> argument_indices{};
         for(auto& f : e.arguments()) {
             auto idx = input_order.index(f);
             argument_indices.emplace_back(idx);
         }
-
         auto& provider = ctx.aggregate_provider();
         auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(e.function());
         (void)decl;
         (void)provider;
-        mid_specs.emplace_back(
-            executor::function::builtin::sum, //FIXME search provider
-            (argument_indices),
-            utils::type_for(ctx.compiled_info(), e.destination())
-        );
-        post_specs.emplace_back(
-            executor::function::builtin::sum, //FIXME search provider
-            (argument_indices),
+        auto f = repo.find(decl.definition_id());
+        BOOST_ASSERT(f != nullptr);
+        specs.emplace_back(
+            *f,
+            argument_indices,
             utils::type_for(ctx.compiled_info(), e.destination())
         );
     }
     auto info = std::make_shared<aggregate_info>(
         std::move(meta),
         std::move(key_indices),
-        std::move(mid_specs),
-        std::move(post_specs)
+        std::move(specs)
     );
     return executor::exchange::aggregate::step(
         std::move(info),

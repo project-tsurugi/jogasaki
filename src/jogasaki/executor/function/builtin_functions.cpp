@@ -47,11 +47,12 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
     using namespace ::yugawara;
     std::size_t id = aggregate::declaration::minimum_builtin_function_id;
     auto& repo = global::function_repository();
-    repo.add(id, std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>());
 
     /////////
     // sum
     /////////
+    auto sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
+    repo.add(id, sum);
     functions.add({
         id++,
         "sum",
@@ -61,6 +62,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, sum);
     functions.add({
         id++,
         "sum",
@@ -70,6 +72,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, sum);
     functions.add({
         id++,
         "sum",
@@ -79,6 +82,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, sum);
     functions.add({
         id++,
         "sum",
@@ -92,6 +96,8 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
     /////////
     // count
     /////////
+    auto count = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count>>();
+    repo.add(id, count);
     functions.add({
         id++,
         "count",
@@ -101,6 +107,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, count);
     functions.add({
         id++,
         "count",
@@ -110,6 +117,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, count);
     functions.add({
         id++,
         "count",
@@ -118,6 +126,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
             t::float4(),
         },
     });
+    repo.add(id, count);
     functions.add({
         id++,
         "count",
@@ -131,6 +140,8 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
     /////////
     // avg
     /////////
+    auto avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
+    repo.add(id, avg);
     functions.add({
         id++,
         "avg",
@@ -140,6 +151,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, avg);
     functions.add({
         id++,
         "avg",
@@ -149,6 +161,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, avg);
     functions.add({
         id++,
         "avg",
@@ -158,6 +171,7 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
+    repo.add(id, avg);
     functions.add({
         id++,
         "avg",
@@ -167,7 +181,6 @@ void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provide
         },
         true,
     });
-
 }
 
 namespace builtin {
@@ -287,6 +300,31 @@ void avg_post(
     }
 }
 
+void identity_post(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+) {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    (void)initial;
+    auto& sum_type = args[0].type();
+    auto sum_offset = args[0].value_offset();
+    auto sum_nullity_offset = args[0].nullity_offset();
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    auto is_null = source.is_null(sum_nullity_offset);
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
+    switch(sum_type.kind()) {
+        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, source.get_value<rtype<kind::int4>>(sum_offset)); break;
+        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(sum_offset)); break;
+        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, source.get_value<rtype<kind::float4>>(sum_offset)); break;
+        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, source.get_value<rtype<kind::float8>>(sum_offset)); break;
+        default: fail();
+    }
+}
 }
 
 }

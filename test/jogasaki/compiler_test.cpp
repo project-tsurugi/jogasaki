@@ -58,6 +58,8 @@
 #include <takatori/relation/step/offer.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 #include <yugawara/binding/extract.h>
 #include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/join.h>
@@ -156,45 +158,9 @@ public:
     }
 
     std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_functions() {
-
-        auto functions = std::make_shared<aggregate::configurable_provider>();
-        functions->add({
-            aggregate::declaration::minimum_system_function_id + 1,
-            "sum",
-            t::int8(),
-            {
-                t::int8(),
-            },
-            true,
-        });
-        functions->add({
-            aggregate::declaration::minimum_system_function_id + 2,
-            "sum",
-            t::float8(),
-            {
-                t::float8(),
-            },
-            true,
-        });
-        functions->add({
-            aggregate::declaration::minimum_system_function_id + 3,
-            "count",
-            t::int8(),
-            {
-                t::int8(),
-            },
-            true,
-        });
-        functions->add({
-            aggregate::declaration::minimum_system_function_id + 4,
-            "count",
-            t::float8(),
-            {
-                t::int8(),
-            },
-            true,
-        });
-        return functions;
+        auto provider = std::make_shared<::yugawara::aggregate::configurable_provider>();
+        executor::function::add_builtin_aggregate_functions(*provider);
+        return provider;
     }
 };
 

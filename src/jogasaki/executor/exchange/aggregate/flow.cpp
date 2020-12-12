@@ -92,6 +92,7 @@ void flow::transfer() {
         auto& partitions = sink->input_partitions();
         BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT
         for(std::size_t i=0; i < partitions.size(); ++i) {
+            if (! partitions[i]) continue;
             partitions[i]->release_hashtable();
             sources_[i]->receive(std::move(partitions[i]));
         }

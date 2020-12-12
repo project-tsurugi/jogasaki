@@ -80,6 +80,10 @@ public:
      * @return the stream originally passed to operator<<(std::ostream& os, record_ref rec)
      */
     std::ostream& operator<<(meta::record_meta const& meta) {
+        if (! record_) {
+            stream_ << "<null record>";
+            return stream_;
+        }
         for(std::size_t idx = 0, n = meta.field_count(); idx < n; ++idx) {
             auto nullable = meta.nullable(idx);
             auto is_null = nullable && record_.is_null(meta.nullity_offset(idx));

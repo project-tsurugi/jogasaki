@@ -58,7 +58,9 @@ public:
         it_(it),
         store_(std::addressof(store)),
         partition_(partition)
-    {}
+    {
+        proceed_if_absent();
+    }
 
     /**
      * @brief increment iterator
@@ -66,10 +68,7 @@ public:
      */
     iterator& operator++() {
         ++it_;
-        while (it_ == store_->store(partition_).end() && partition_ != store_->size()-1) {
-            ++partition_;
-            it_ = store_->store(partition_).begin();
-        }
+        proceed_if_absent();
         return *this;
     }
 
@@ -123,6 +122,13 @@ private:
     original_iterator it_;
     data::result_store* store_{};
     std::size_t partition_{};
+
+    void proceed_if_absent() {
+        while (it_ == store_->store(partition_).end() && partition_ != store_->size()-1) {
+            ++partition_;
+            it_ = store_->store(partition_).begin();
+        }
+    }
 };
 
 class result_set::impl {

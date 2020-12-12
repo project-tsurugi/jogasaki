@@ -236,13 +236,13 @@ TEST_F(record_printer_test, empty_object) {
 
     std::stringstream ss{};
     ss << r << meta;
-    ASSERT_EQ("", ss.str());
+    ASSERT_EQ("<null record>", ss.str());
 
     std::stringstream ss2{};
     auto printer = ss2 << r;
     ASSERT_EQ("", ss2.str());
     printer << meta;
-    ASSERT_EQ("", ss2.str());
+    ASSERT_EQ("<null record>", ss2.str());
 }
 
 }

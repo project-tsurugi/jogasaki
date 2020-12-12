@@ -77,6 +77,7 @@ static void fill_fields(
     bool key,
     std::size_t record_count,
     bool sequential,
+    std::size_t modulo,
     utils::xorshift_random64& rnd,
     std::vector<bool> const& key_order_asc = {}
 ) {
@@ -86,29 +87,30 @@ static void fill_fields(
             (key_order_asc[field_index] ? kvs::spec_key_ascending : kvs::spec_key_descending) :
             kvs::spec_value;
         bool nullable = meta.nullable(field_index);
+        std::size_t val = (sequential ? record_count : rnd()) % modulo;
         switch(f.kind()) {
             case kind::int4: {
-                expression::any a{create_value<std::int32_t>(sequential ? record_count : rnd(), record_count, nullable)};
+                expression::any a{create_value<std::int32_t>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::int4>), spec, nullable, target);
                 break;
             }
             case kind::int8: {
-                expression::any a{create_value<std::int64_t>(sequential ? record_count : rnd(), record_count, nullable)};
+                expression::any a{create_value<std::int64_t>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::int8>), spec, nullable, target);
                 break;
             }
             case kind::float4: {
-                expression::any a{create_value<float>(sequential ? record_count : rnd(), record_count, nullable)};
+                expression::any a{create_value<float>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::float4>), spec, nullable, target);
                 break;
             }
             case kind::float8: {
-                expression::any a{create_value<double>(sequential ? record_count : rnd(), record_count, nullable)};
+                expression::any a{create_value<double>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
             case kind::character: {
-                char c = 'A' + (sequential ? record_count : rnd()) % 26;
+                char c = 'A' + val % 26;
                 std::size_t len = 1 + (sequential ? record_count : rnd()) % 70;
                 len = record_count % 2 == 1 ? len + 20 : len;
                 std::string d(len, c);
@@ -129,7 +131,8 @@ void populate_storage_data(
     std::shared_ptr<configurable_provider> const& provider,
     std::string_view storage_name,
     std::size_t records_per_partition,
-    bool sequential_data
+    bool sequential_data,
+    std::size_t modulo = -1
 ) {
     auto stg = db->get_storage(storage_name);
     if (! stg) {
@@ -169,8 +172,8 @@ void populate_storage_data(
         if (! tx) {
             tx = db->create_transaction();
         }
-        fill_fields(key_meta, key_stream, true, i, sequential_data, rnd, key_order_asc);
-        fill_fields(val_meta, val_stream, false, i, sequential_data, rnd);
+        fill_fields(key_meta, key_stream, true, i, sequential_data, -1, rnd, key_order_asc);
+        fill_fields(val_meta, val_stream, false, i, sequential_data, modulo, rnd);
         if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}

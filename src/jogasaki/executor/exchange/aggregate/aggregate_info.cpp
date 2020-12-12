@@ -27,6 +27,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/function/aggregator_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {
@@ -37,6 +38,10 @@ using takatori::util::fail;
 using takatori::util::enum_tag;
 
 using kind = meta::field_type_kind;
+
+using function::aggregate_function_info;
+using function::aggregator_info;
+using function::field_locator;
 
 aggregate_info::aggregate_info(
     maybe_shared_ptr<meta::record_meta> record,
@@ -125,23 +130,19 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_value_met
     output_kind kind
 ) {
     (void)kind;
-    // only post output differs in that it has the consolidated field
-//    auto post = kind == output_kind::post;
-//    if(post) {
-        auto num = value_specs_.size();
-        meta::record_meta::fields_type fields{};
-        meta::record_meta::nullability_type nullables(num);
-        nullables.flip(); // assuming all values can be null
-        fields.reserve(num);
-        for(std::size_t i=0; i < num; ++i) {
-            auto&& v = value_specs_[i];
-            fields.emplace_back(v.type());
-        }
-        return std::make_shared<meta::record_meta>(
-            std::move(fields),
-            std::move(nullables)
-        );
-//    }
+    auto num = value_specs_.size();
+    meta::record_meta::fields_type fields{};
+    meta::record_meta::nullability_type nullables(num);
+    nullables.flip(); // assuming all values can be null
+    fields.reserve(num);
+    for(std::size_t i=0; i < num; ++i) {
+        auto&& v = value_specs_[i];
+        fields.emplace_back(v.type());
+    }
+    return std::make_shared<meta::record_meta>(
+        std::move(fields),
+        std::move(nullables)
+    );
 }
 
 std::vector<std::vector<field_locator>> aggregate_info::output_info::create_source_field_locs(
@@ -189,6 +190,36 @@ field_locator const &aggregate_info::output_info::target_field_locator(std::size
     return target_field_locs_[aggregator_index];
 }
 
+aggregate_info::output_info::output_info(std::vector<value_spec> value_specs, aggregate_info::output_kind kind,
+    const maybe_shared_ptr<meta::record_meta> &pre_input_meta, const maybe_shared_ptr<meta::record_meta> &record,
+    const std::vector<field_index_type> &key_indices) :
+    value_specs_(std::move(value_specs)),
+    kind_(kind),
+    pre_input_meta_(std::move(pre_input_meta)),
+    record_(std::move(record)),
+    key_indices_(std::addressof(key_indices)),
+    group_(std::make_shared<meta::group_meta>(create_key_meta(kind_), create_value_meta(kind_))),
+    args_(create_source_field_locs(kind_)),
+    target_field_locs_(create_target_field_locs(kind_))
+{}
+
+const maybe_shared_ptr<meta::group_meta> &aggregate_info::output_info::group_meta() const noexcept {
+    return group_;
+}
+
+sequence_view<const aggregate_info::value_spec> aggregate_info::output_info::value_specs() const noexcept {
+    return value_specs_;
+}
+
+std::size_t aggregate_info::output_info::value_count() const noexcept {
+    return value_specs_.size();
+}
+
+sequence_view<const field_locator>
+aggregate_info::output_info::aggregator_args(std::size_t aggregator_index) const noexcept {
+    return args_[aggregator_index];
+}
+
 const maybe_shared_ptr<meta::record_meta> &aggregate_info::extracted_key_meta() const noexcept {
     return extracted_key_meta_;
 }
@@ -219,43 +250,37 @@ aggregate_info::output_info aggregate_info::create_output(
     std::vector<field_index_type> const& key_indices
 ) {
     std::vector<value_spec> aggregator_specs{};
-    std::size_t value_index = 0;
-    for(auto&& vs : value_specs) {
+    for(std::size_t value_index = 0; value_index < value_specs.size(); ++value_index) {
+        auto& vs = value_specs[value_index];
         auto& info = vs.function_info();
+        std::size_t agg_index = 0;
         switch(kind) {
             case output_kind::pre: {
                 auto aggs = info.pre();
-                std::vector<size_t> indices{vs.argument_indices().begin(), vs.argument_indices().end()};
-                std::size_t count_sub_values = 0;
-                std::vector<meta::field_type> fields{};
-                auto ts = types(*record, indices);
+                std::vector<size_t> arg_indices{vs.argument_indices().begin(), vs.argument_indices().end()};
+                auto ts = types(*record, arg_indices);
                 auto seq = info.internal_field_types(ts);
-                for(auto&& agg : aggs) {
+                BOOST_ASSERT(seq.size() == aggs.size());  //NOLINT
+                for(std::size_t i=0, n=aggs.size(); i < n; ++i) {
                     aggregator_specs.emplace_back(
-                        agg,
-                        indices,
-                        seq[count_sub_values]
+                        aggs[i],
+                        arg_indices,
+                        seq[i]
                     );
-                    ++count_sub_values;
                 }
                 break;
             }
             case output_kind::mid: {
                 auto aggs = info.mid();
-                std::vector<size_t> indices{value_index};
-                std::size_t count_sub_values = 0;
-                std::vector<meta::field_type> fields{};
-                auto ts = types(*record, indices);
-                auto seq = info.internal_field_types(ts);
-                for(auto&& agg : aggs) {
+                std::vector<size_t> indices{agg_index};
+                for(std::size_t i=0, n=aggs.size(); i < n; ++i) {
                     aggregator_specs.emplace_back(
-                        agg,
+                        aggs[i],
                         indices,
-                        seq[count_sub_values]
+                        record->at(agg_index)
                     );
-                    ++count_sub_values;
+                    ++agg_index;
                 }
-                ++value_index;
                 break;
             }
             case output_kind::post: {
@@ -263,7 +288,8 @@ aggregate_info::output_info aggregate_info::create_output(
                 BOOST_ASSERT(aggs.size() == 1);
                 std::vector<size_t> indices{};
                 for(std::size_t i=0, n=aggs[0].arg_count(); i < n; ++i) {
-                    indices.emplace_back(value_index++);
+                    indices.emplace_back(agg_index);
+                    ++agg_index;
                 }
                 aggregator_specs.emplace_back(
                     aggs[0],
@@ -272,28 +298,44 @@ aggregate_info::output_info aggregate_info::create_output(
                 );
                 break;
             }
-
-//        auto aggs = kind == output_kind::pre ? vs.function_info().pre() :
-//            (kind == output_kind::mid ? vs.function_info().mid() : vs.function_info().post());
-//
-//        std::vector<size_t> indices{vs.argument_indices().begin(), vs.argument_indices().end()};
-//        for(auto&& agg : aggs) {
-//            aggregator_specs.emplace_back(
-//                agg,
-//                indices,
-//                meta::field_type type
-//            );
-//        }
         }
     }
-
     return output_info{
         std::move(aggregator_specs),
         kind,
-        std::move(pre_input_meta),
-        std::move(record),
+        pre_input_meta,
+        record,
         key_indices,
     };
 }
 
+aggregate_info::value_spec::value_spec(const aggregate_function_info &function_info,
+    std::vector<std::size_t> argument_indices, meta::field_type type) noexcept:
+    function_info_(std::addressof(function_info)),
+    argument_indices_(std::move(argument_indices)),
+    type_(std::move(type))
+{}
+
+aggregate_info::value_spec::value_spec(class aggregator_info const& aggregator_info,
+    std::vector<std::size_t> argument_indices, meta::field_type type) noexcept:
+    aggregator_info_(std::addressof(aggregator_info)),
+    argument_indices_(std::move(argument_indices)),
+    type_(std::move(type))
+{}
+
+aggregate_function_info const &aggregate_info::value_spec::function_info() const noexcept {
+    return *function_info_;
+}
+
+class aggregator_info const &aggregate_info::value_spec::aggregator_info() const noexcept {
+    return *aggregator_info_;
+}
+
+sequence_view<const std::size_t> aggregate_info::value_spec::argument_indices() const noexcept {
+    return argument_indices_;
+}
+
+meta::field_type const &aggregate_info::value_spec::type() const noexcept {
+    return type_;
+}
 }

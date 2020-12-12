@@ -36,7 +36,7 @@ using takatori::util::enum_tag_t;
 
 aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_info_impl() :
     aggregate_function_info(
-        kind,
+        function_kind,
         { aggregator_info{ builtin::sum, 1 } },
         { aggregator_info{ builtin::sum, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
@@ -45,7 +45,7 @@ aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_i
 
 aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function_info_impl() :
     aggregate_function_info(
-        kind,
+        function_kind,
         { aggregator_info{ builtin::count_pre, 1 } },
         { aggregator_info{ builtin::count_mid, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
@@ -54,7 +54,7 @@ aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function
 
 aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_info_impl() :
     aggregate_function_info(
-        kind,
+        function_kind,
         {
             aggregator_info{ builtin::sum, 1 },
             aggregator_info{ builtin::count_pre, 1 },

@@ -61,37 +61,21 @@ public:
             aggregate_function_info const& function_info,
             std::vector<std::size_t> argument_indices,
             meta::field_type type
-        ) noexcept :
-            function_info_(std::addressof(function_info)),
-            argument_indices_(std::move(argument_indices)),
-            type_(std::move(type))
-        {}
+        ) noexcept;
 
         value_spec(
             class aggregator_info const& aggregator_info,
             std::vector<std::size_t> argument_indices,
             meta::field_type type
-        ) noexcept :
-            aggregator_info_(std::addressof(aggregator_info)),
-            argument_indices_(std::move(argument_indices)),
-            type_(std::move(type))
-        {}
+        ) noexcept;
 
-        [[nodiscard]] aggregate_function_info const& function_info() const noexcept {
-            return *function_info_;
-        }
+        [[nodiscard]] aggregate_function_info const& function_info() const noexcept;
 
-        [[nodiscard]] class aggregator_info const& aggregator_info() const noexcept {
-            return *aggregator_info_;
-        }
+        [[nodiscard]] class aggregator_info const& aggregator_info() const noexcept;
 
-        [[nodiscard]] sequence_view<std::size_t const> argument_indices() const noexcept {
-            return argument_indices_;
-        }
+        [[nodiscard]] sequence_view<std::size_t const> argument_indices() const noexcept;
 
-        [[nodiscard]] meta::field_type const& type() const noexcept {
-            return type_;
-        }
+        [[nodiscard]] meta::field_type const& type() const noexcept;
     private:
         aggregate_function_info const* function_info_{};
         class aggregator_info const* aggregator_info_{};
@@ -115,44 +99,27 @@ public:
             maybe_shared_ptr<meta::record_meta> const& pre_input_meta,
             maybe_shared_ptr<meta::record_meta> const& record,
             std::vector<field_index_type> const& key_indices
-        ) :
-            value_specs_(std::move(value_specs)),
-            kind_(kind),
-            pre_input_meta_(std::move(pre_input_meta)),
-            record_(std::move(record)),
-            key_indices_(std::addressof(key_indices)),
-            group_(std::make_shared<meta::group_meta>(create_key_meta(kind_), create_value_meta(kind_))),
-            args_(create_source_field_locs(kind_)),
-            target_field_locs_(create_target_field_locs(kind_))
-        {}
+        );
 
         /**
          * @brief returns metadata for key/value parts at once
          */
-        [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept {
-            return group_;
-        }
+        [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept;
 
         /**
          * @brief returns aggregator specs
          */
-        [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept {
-            return value_specs_;
-        }
+        [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept;
 
         /**
          * @brief returns the number of value fields
          */
-        [[nodiscard]] std::size_t value_count() const noexcept {
-            return value_specs_.size();
-        }
+        [[nodiscard]] std::size_t value_count() const noexcept;
 
         /**
          * @brief returns aggregator args
          */
-        [[nodiscard]] sequence_view<field_locator const> aggregator_args(std::size_t aggregator_index) const noexcept {
-            return args_[aggregator_index];
-        }
+        [[nodiscard]] sequence_view<field_locator const> aggregator_args(std::size_t aggregator_index) const noexcept;
 
         /**
          * @brief returns target field locator

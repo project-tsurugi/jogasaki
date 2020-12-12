@@ -64,7 +64,7 @@ public:
     [[nodiscard]] sequence_view<aggregator_info const> mid() const noexcept { return mid_; };
     [[nodiscard]] sequence_view<aggregator_info const> post() const noexcept { return post_; };
 
-    virtual sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const = 0;
+    [[nodiscard]] virtual sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const = 0;
 
 private:
     aggregate_function_kind kind_;
@@ -79,7 +79,7 @@ class aggregate_function_info_impl;
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::sum> : public aggregate_function_info {
 public:
-    constexpr static aggregate_function_kind kind = aggregate_function_kind::sum;
+    constexpr static aggregate_function_kind function_kind = aggregate_function_kind::sum;
     aggregate_function_info_impl();
     sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override {
         return arg_types;
@@ -89,7 +89,7 @@ public:
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::count> : public aggregate_function_info {
 public:
-    constexpr static aggregate_function_kind kind = aggregate_function_kind::count;
+    constexpr static aggregate_function_kind function_kind = aggregate_function_kind::count;
     aggregate_function_info_impl();
     sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const>) const override {
         return field_types_;
@@ -101,7 +101,7 @@ private:
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::avg> : public aggregate_function_info {
 public:
-    constexpr static aggregate_function_kind kind = aggregate_function_kind::avg;
+    constexpr static aggregate_function_kind function_kind = aggregate_function_kind::avg;
     aggregate_function_info_impl();
     [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override {
         using kind = meta::field_type_kind;

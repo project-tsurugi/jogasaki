@@ -42,6 +42,8 @@ TEST_F(aggregate_function_info_test, simple) {
     EXPECT_EQ(1, pre.size());
     EXPECT_EQ(1, mid.size());
     EXPECT_EQ(1, post.size());
+    EXPECT_EQ(kind::sum, info.kind());
+
 }
 
 TEST_F(aggregate_function_info_test, repo) {
@@ -54,6 +56,7 @@ TEST_F(aggregate_function_info_test, repo) {
     EXPECT_EQ(1, pre.size());
     EXPECT_EQ(1, mid.size());
     EXPECT_EQ(1, post.size());
+    EXPECT_EQ(kind::sum, info.kind());
 }
 }
 

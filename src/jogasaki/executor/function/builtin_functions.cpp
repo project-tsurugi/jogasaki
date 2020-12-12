@@ -309,19 +309,19 @@ void identity_post(
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     (void)initial;
-    auto& sum_type = args[0].type();
-    auto sum_offset = args[0].value_offset();
-    auto sum_nullity_offset = args[0].nullity_offset();
+    auto& type = args[0].type();
+    auto offset = args[0].value_offset();
+    auto nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
-    auto is_null = source.is_null(sum_nullity_offset);
+    auto is_null = source.is_null(nullity_offset);
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
-    switch(sum_type.kind()) {
-        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, source.get_value<rtype<kind::int4>>(sum_offset)); break;
-        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(sum_offset)); break;
-        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, source.get_value<rtype<kind::float4>>(sum_offset)); break;
-        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, source.get_value<rtype<kind::float8>>(sum_offset)); break;
+    switch(type.kind()) {
+        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, source.get_value<rtype<kind::int4>>(offset)); break;
+        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(offset)); break;
+        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, source.get_value<rtype<kind::float4>>(offset)); break;
+        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, source.get_value<rtype<kind::float8>>(offset)); break;
         default: fail();
     }
 }

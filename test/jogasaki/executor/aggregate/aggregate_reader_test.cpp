@@ -42,6 +42,7 @@ using namespace boost::container::pmr;
 
 class aggregate_reader_test : public test_root {
 public:
+
 };
 
 using kind = meta::field_type_kind;
@@ -76,12 +77,41 @@ auto const avg_info = std::make_shared<aggregate_info>(
         }
     }
 );
+
+auto const avg_avg_info = std::make_shared<aggregate_info>(
+    test_root::test_record_meta1(),
+    std::vector<size_t>{0},
+    std::vector<aggregate_info::value_spec>{
+        {
+            *func_avg,
+            {
+                1
+            },
+            meta::field_type(enum_tag<kind::float8>)
+        },
+        {
+            *func_avg,
+            {
+                1
+            },
+            meta::field_type(enum_tag<kind::float8>)
+        }
+    }
+);
 auto get_key = [](group_reader& r) {
     return r.get_group().get_value<std::int64_t>(sum_info->post().group_meta()->key().value_offset(0));
 };
 
 auto get_value = [](group_reader& r) {
     return r.get_member().get_value<double>(sum_info->post().group_meta()->value().value_offset(0));
+};
+
+auto get_key_record = [](group_reader& r) {
+    return r.get_group();
+};
+
+auto get_value_record = [](group_reader& r) {
+    return r.get_member();
 };
 
 mock::basic_record create_rec(std::int64_t x, double y) {
@@ -239,6 +269,49 @@ TEST_F(aggregate_reader_test, avg) {
     EXPECT_EQ(3, get_key(r));
     ASSERT_TRUE(r.next_member());
     EXPECT_DOUBLE_EQ(2.0, get_value(r));
+    ASSERT_FALSE(r.next_member());
+    ASSERT_FALSE(r.next_group());
+}
+TEST_F(aggregate_reader_test, avg_avg) {
+    std::vector<std::unique_ptr<input_partition>> partitions{};
+    partitions.reserve(10); // avoid relocation when using references into vector
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(avg_avg_info));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(avg_avg_info));
+
+    mock::basic_record arr[] = {
+        create_rec(1, 1.0),
+        create_rec(1, 1.0),
+        create_rec(3, 2.0),
+        create_rec(3, 2.0),
+        create_rec(1, 1.0),
+    };
+    auto sz = sizeof(arr[0]);
+
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
+    p1->write(arr[4].ref());
+    p1->flush();
+    p2->write(arr[0].ref());
+    p2->write(arr[3].ref());
+    p2->flush();
+
+    reader r{avg_avg_info, partitions};
+    auto value_meta = avg_avg_info->post().group_meta()->value_shared();
+    ASSERT_TRUE(r.next_group());
+    EXPECT_EQ(1, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    {
+        auto exp = mock::create_nullable_record<kind::float8, kind::float8>(1.0, 1.0);
+        EXPECT_EQ(exp, mock::basic_record(get_value_record(r), value_meta));
+    }
+    ASSERT_FALSE(r.next_member());
+    ASSERT_TRUE(r.next_group());
+    EXPECT_EQ(3, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    {
+        auto exp = mock::create_nullable_record<kind::float8, kind::float8>(2.0, 2.0);
+        EXPECT_EQ(exp, mock::basic_record(get_value_record(r), value_meta));
+    }
     ASSERT_FALSE(r.next_member());
     ASSERT_FALSE(r.next_group());
 }

@@ -53,10 +53,61 @@ TEST_F(aggregate_info_test, simple) {
             }
         },
     };
+    EXPECT_EQ(2, info.pre().group_meta()->key_shared()->field_count()); // internal pointer field is added
+    EXPECT_EQ(1, info.pre().group_meta()->value_shared()->field_count());
     EXPECT_EQ(2, info.mid().group_meta()->key_shared()->field_count()); // internal pointer field is added
     EXPECT_EQ(1, info.mid().group_meta()->value_shared()->field_count());
     EXPECT_EQ(1, info.post().group_meta()->key_shared()->field_count());
     EXPECT_EQ(1, info.post().group_meta()->value_shared()->field_count());
+}
+
+TEST_F(aggregate_info_test, avg_avg) {
+    auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
+        field_type(enum_tag<kind::int4>),
+        field_type(enum_tag<kind::int8>),
+    },boost::dynamic_bitset<std::uint64_t>(2).flip());
+
+    auto func_avg = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
+    aggregate_info info{
+        rec_meta,
+        {1},
+        {
+            {
+                *func_avg,
+                {
+                    0
+                },
+                meta::field_type(enum_tag<kind::int4>)
+            },
+            {
+                *func_avg,
+                    {
+                        0
+                    },
+                    meta::field_type(enum_tag<kind::int4>)
+            }
+        },
+    };
+    EXPECT_EQ(2, info.pre().group_meta()->key_shared()->field_count()); // internal pointer field is added
+    EXPECT_EQ(4, info.pre().group_meta()->value_shared()->field_count());
+    EXPECT_EQ(2, info.mid().group_meta()->key_shared()->field_count()); // internal pointer field is added
+    EXPECT_EQ(4, info.mid().group_meta()->value_shared()->field_count());
+    EXPECT_EQ(1, info.post().group_meta()->key_shared()->field_count());
+    EXPECT_EQ(2, info.post().group_meta()->value_shared()->field_count());
+
+    meta::field_type i4{enum_tag<kind::int4>};
+    meta::field_type i8{enum_tag<kind::int8>};
+    EXPECT_EQ(i4, info.pre().group_meta()->value_shared()->at(0));
+    EXPECT_EQ(i8, info.pre().group_meta()->value_shared()->at(1));
+    EXPECT_EQ(i4, info.pre().group_meta()->value_shared()->at(2));
+    EXPECT_EQ(i8, info.pre().group_meta()->value_shared()->at(3));
+    EXPECT_EQ(i4, info.mid().group_meta()->value_shared()->at(0));
+    EXPECT_EQ(i8, info.mid().group_meta()->value_shared()->at(1));
+    EXPECT_EQ(i4, info.mid().group_meta()->value_shared()->at(2));
+    EXPECT_EQ(i8, info.mid().group_meta()->value_shared()->at(3));
+    EXPECT_EQ(i4, info.post().group_meta()->value_shared()->at(0));
+    EXPECT_EQ(i4, info.post().group_meta()->value_shared()->at(1));
+
 }
 
 }

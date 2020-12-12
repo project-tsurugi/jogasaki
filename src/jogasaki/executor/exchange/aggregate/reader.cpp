@@ -119,10 +119,9 @@ void* reader::value_pointer(accessor::record_ref ref) const {
 accessor::record_ref reader::get_member() const {
     if (state_ == reader_state::on_member) {
         auto ref = mid_value_buf_.ref();
-
-        auto info = info_->post();
+        auto& info = info_->post();
         auto target = post_value_buf_.ref();
-        for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
+        for(std::size_t i=0, n=info.value_specs().size(); i < n; ++i) {
             auto& vs = info.value_specs()[i];
             auto& aggregator = vs.aggregator_info().aggregator();
             aggregator(target, info.target_field_locator(i), false, ref, info.aggregator_args(i));

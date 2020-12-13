@@ -51,7 +51,7 @@ public:
     impl() : impl(std::make_shared<configuration>()) {}
     explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)), scheduler_{cfg_} {
         executor::add_builtin_tables(*tables_);
-        executor::function::add_builtin_aggregate_functions(*aggregate_functions_);
+        executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
     }
     std::unique_ptr<result_set> execute(std::string_view sql);
     bool start();

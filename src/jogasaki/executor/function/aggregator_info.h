@@ -39,25 +39,48 @@ using aggregator_type = std::function<void (
     sequence_view<field_locator const>
 )>;
 
+/**
+ * @brief aggregator information
+ * @details aggregators are the concrete functions composing a aggregate function.
+ */
 class aggregator_info {
 public:
+    /**
+     * @brief create empty object
+     */
     aggregator_info() = default;
+
     ~aggregator_info() = default;
     aggregator_info(aggregator_info const& other) = default;
     aggregator_info& operator=(aggregator_info const& other) = default;
     aggregator_info(aggregator_info&& other) noexcept = default;
     aggregator_info& operator=(aggregator_info&& other) noexcept = default;
 
-    explicit aggregator_info(
+    /**
+     * @brief create new object
+     * @param aggregator
+     * @param arg_count
+     */
+    aggregator_info(
         aggregator_type aggregator,
         std::size_t arg_count
     );
 
+    /**
+     * @brief accessor to aggregator
+     */
     [[nodiscard]] aggregator_type const& aggregator() const noexcept;
 
+    /**
+     * @brief return whether the info contains valid aggregator or not
+     */
     [[nodiscard]] explicit operator bool() const noexcept;
 
+    /**
+     * @brief return the number of args that the aggregator function accepts
+     */
     [[nodiscard]] std::size_t arg_count() const noexcept;
+
 private:
     bool valid_{false};
     aggregator_type aggregator_{};

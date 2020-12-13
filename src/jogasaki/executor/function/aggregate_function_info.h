@@ -34,16 +34,27 @@ using takatori::util::sequence_view;
 using takatori::util::enum_tag;
 using takatori::util::fail;
 
+/**
+ * @brief aggregate function information interface
+ */
 class aggregate_function_info {
 public:
     using aggregators_info = std::vector<aggregator_info>;
 
+    aggregate_function_info() = default;
     virtual ~aggregate_function_info() = default;
     aggregate_function_info(aggregate_function_info const& other) = default;
     aggregate_function_info& operator=(aggregate_function_info const& other) = default;
     aggregate_function_info(aggregate_function_info&& other) noexcept = default;
     aggregate_function_info& operator=(aggregate_function_info&& other) noexcept = default;
 
+    /**
+     * @brief create new object
+     * @param kind kind of the aggregate function
+     * @param pre aggregators used for pre aggregation (input record to values)
+     * @param mid aggregators used for intermediate aggregation (merge values)
+     * @param post aggregators used for post aggregation (calculate final results from intermediate values)
+     */
     aggregate_function_info(
         aggregate_function_kind kind,
         aggregators_info&& pre,
@@ -56,67 +67,79 @@ public:
         post_(std::move(post))
     {}
 
+    /**
+     * @brief accessor to aggregate function kind
+     * @return the kind of the aggregate function
+     */
     [[nodiscard]] constexpr aggregate_function_kind kind() const noexcept {
         return kind_;
     }
 
-    [[nodiscard]] sequence_view<aggregator_info const> pre() const noexcept { return pre_; };
-    [[nodiscard]] sequence_view<aggregator_info const> mid() const noexcept { return mid_; };
-    [[nodiscard]] sequence_view<aggregator_info const> post() const noexcept { return post_; };
+    /**
+     * @brief accessor to pre aggregators
+     */
+    [[nodiscard]] sequence_view<aggregator_info const> pre() const noexcept {
+        return pre_;
+    };
 
-    [[nodiscard]] virtual sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const = 0;
+    /**
+     * @brief accessor to mid aggregators
+     */
+    [[nodiscard]] sequence_view<aggregator_info const> mid() const noexcept {
+        return mid_;
+    };
+
+    /**
+     * @brief accessor to post aggregators
+     */
+    [[nodiscard]] sequence_view<aggregator_info const> post() const noexcept {
+        return post_;
+    };
+
+    /**
+     * @brief fetch field type list used for aggregation calculation
+     * @details some aggregate function requires separating fields, calculates incrementally, and gather them (e.g.
+     * avg is calcuated by sum and count.) This function returns types for those fields given the input argument types.
+     * @param args the types used for the input arguments of this aggregate function
+     * @return the list of calculation field types corresponding to the input args
+     */
+    [[nodiscard]] virtual std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const = 0;
 
 private:
-    aggregate_function_kind kind_;
+    aggregate_function_kind kind_{};
     aggregators_info pre_{};
     aggregators_info mid_{};
     aggregators_info post_{};
 };
 
+/**
+ * @brief primary template for aggregate function info implementation
+ * @tparam Kind
+ */
 template <aggregate_function_kind Kind>
 class aggregate_function_info_impl;
 
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::sum> : public aggregate_function_info {
 public:
-    constexpr static aggregate_function_kind function_kind = aggregate_function_kind::sum;
     aggregate_function_info_impl();
-    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override;
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const override;
 };
 
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::count> : public aggregate_function_info {
 public:
-    constexpr static aggregate_function_kind function_kind = aggregate_function_kind::count;
     aggregate_function_info_impl();
-    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const>) const override;
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const override;
 private:
-    std::vector<meta::field_type> field_types_{meta::field_type{enum_tag<meta::field_type_kind::int8>}};
 };
 
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::avg> : public aggregate_function_info {
 public:
-    constexpr static aggregate_function_kind function_kind = aggregate_function_kind::avg;
     aggregate_function_info_impl();
-    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override;
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const override;
 private:
-    std::vector<meta::field_type> field_types_int4_{
-        meta::field_type{enum_tag<meta::field_type_kind::int4>},
-        meta::field_type{enum_tag<meta::field_type_kind::int8>},
-    };
-    std::vector<meta::field_type> field_types_int8_{
-        meta::field_type{enum_tag<meta::field_type_kind::int8>},
-        meta::field_type{enum_tag<meta::field_type_kind::int8>},
-    };
-    std::vector<meta::field_type> field_types_float4_{
-        meta::field_type{enum_tag<meta::field_type_kind::float4>},
-        meta::field_type{enum_tag<meta::field_type_kind::int8>},
-    };
-    std::vector<meta::field_type> field_types_float8_{
-        meta::field_type{enum_tag<meta::field_type_kind::float8>},
-        meta::field_type{enum_tag<meta::field_type_kind::int8>},
-    };
 };
 
 }

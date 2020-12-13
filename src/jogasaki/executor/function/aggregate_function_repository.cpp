@@ -16,28 +16,24 @@
 #include "aggregate_function_repository.h"
 
 #include <vector>
-#include <set>
-#include <memory>
 
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/fail.h>
-
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/executor/function/aggregate_function_info.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::maybe_shared_ptr;
 
 void aggregate_function_repository::add(std::size_t id, maybe_shared_ptr<aggregate_function_info> info) {
-    map_.emplace(id, info);
+    map_.emplace(id, std::move(info));
 }
 
-aggregate_function_info const *aggregate_function_repository::find(std::size_t id) {
+aggregate_function_info const* aggregate_function_repository::find(std::size_t id) const noexcept {
     if (map_.count(id) == 0) return {};
-    return map_[id].get();
+    return map_.at(id).get();
+}
+
+void aggregate_function_repository::clear() noexcept {
+    map_.clear();
 }
 
 }

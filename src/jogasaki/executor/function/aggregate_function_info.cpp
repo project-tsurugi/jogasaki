@@ -16,12 +16,8 @@
 #include "aggregate_function_info.h"
 
 #include <vector>
-#include <set>
-#include <memory>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/enum_tag.h>
 
 #include <jogasaki/executor/function/aggregate_function_kind.h>
@@ -36,36 +32,37 @@ using takatori::util::enum_tag_t;
 
 aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_info_impl() :
     aggregate_function_info(
-        function_kind,
+        aggregate_function_kind::sum,
         { aggregator_info{ builtin::sum, 1 } },
         { aggregator_info{ builtin::sum, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
     )
 {}
 
-sequence_view<const meta::field_type> aggregate_function_info_impl<aggregate_function_kind::sum>::internal_field_types(
-    sequence_view<const meta::field_type> arg_types) const {
-    return arg_types;
-}
-
-sequence_view<const meta::field_type>
-aggregate_function_info_impl<aggregate_function_kind::count>::internal_field_types(
-    sequence_view<const meta::field_type>) const {
-    return field_types_;
+std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_kind::sum>::intermediate_types(
+    sequence_view<const meta::field_type> args) const {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    return {args.begin(), args.end()};
 }
 
 aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function_info_impl() :
     aggregate_function_info(
-        function_kind,
+        aggregate_function_kind::count,
         { aggregator_info{ builtin::count_pre, 1 } },
         { aggregator_info{ builtin::count_mid, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
     )
 {}
 
+std::vector<meta::field_type>
+aggregate_function_info_impl<aggregate_function_kind::count>::intermediate_types(
+    sequence_view<const meta::field_type>) const {
+    return {meta::field_type{enum_tag<meta::field_type_kind::int8>}};
+}
+
 aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_info_impl() :
     aggregate_function_info(
-        function_kind,
+        aggregate_function_kind::avg,
         {
             aggregator_info{ builtin::sum, 1 },
             aggregator_info{ builtin::count_pre, 1 },
@@ -78,18 +75,13 @@ aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_i
     )
 {}
 
-sequence_view<const meta::field_type> aggregate_function_info_impl<aggregate_function_kind::avg>::internal_field_types(
-    sequence_view<const meta::field_type> arg_types) const {
-    using kind = meta::field_type_kind;
-    switch(arg_types[0].kind()) {
-        case kind::int4: return field_types_int4_;
-        case kind::int8: return field_types_int8_;
-        case kind::float4: return field_types_float4_;
-        case kind::float8: return field_types_float8_;
-        default:
-            fail();
-    }
-    fail();
+std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_kind::avg>::intermediate_types(
+    sequence_view<const meta::field_type> args) const {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    return {
+        args[0],
+        meta::field_type{enum_tag<meta::field_type_kind::int8>}
+    };
 }
 
 }

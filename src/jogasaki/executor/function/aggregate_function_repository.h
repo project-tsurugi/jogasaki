@@ -15,31 +15,57 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
-#include <memory>
+#include <cstddef>
+#include <unordered_map>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
 
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/executor/function/aggregate_function_info.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::maybe_shared_ptr;
 
+/**
+ * @brief aggregate functions repository
+ * @details this is to hold ownership of pre-defined aggregate functions in one place
+ */
 class aggregate_function_repository {
 public:
     using map_type = std::unordered_map<std::size_t, maybe_shared_ptr<aggregate_function_info>>;
 
+    /**
+     * @brief create new object
+     */
     aggregate_function_repository() = default;
 
+    /**
+     * @brief register and store the aggregate function info
+     * @param id the identifier used to distinguish the aggregate function
+     * @param info the aggregate function info to store
+     */
     void add(std::size_t id, maybe_shared_ptr<aggregate_function_info> info);
 
-    aggregate_function_info const* find(std::size_t id);
+    /**
+     * @brief find the repository with given id
+     * @param id the identifier used to search
+     * @return the aggregate function info if found.
+     * @return nullptr if not found.
+     */
+    aggregate_function_info const* find(std::size_t id) const noexcept;
+
+    /**
+     * @brief clena up the repository
+     */
+    void clear() noexcept;
+
+    /**
+     * @brief return the number of function info registered
+     */
+    [[nodiscard]] std::size_t size() const noexcept {
+        return map_.size();
+    }
 private:
     map_type map_{};
 };

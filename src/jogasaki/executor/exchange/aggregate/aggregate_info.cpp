@@ -258,7 +258,7 @@ aggregate_info::output_info aggregate_info::create_output(
                 auto aggs = info.pre();
                 std::vector<size_t> arg_indices{vs.argument_indices().begin(), vs.argument_indices().end()};
                 auto ts = types(*record, arg_indices);
-                auto seq = info.internal_field_types(ts);
+                auto seq = info.intermediate_types(ts);
                 BOOST_ASSERT(seq.size() == aggs.size());  //NOLINT
                 for(std::size_t i=0, n=aggs.size(); i < n; ++i) {
                     aggregator_specs.emplace_back(

@@ -15,38 +15,35 @@
  */
 #include "builtin_functions.h"
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 #include <yugawara/aggregate/configurable_provider.h>
-#include <jogasaki/executor/function/aggregate_function_info.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
-#include <jogasaki/executor/global.h>
 
-#include <jogasaki/constants.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
 
 namespace jogasaki::executor::function {
 
-using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
 using takatori::util::fail;
-using takatori::util::enum_tag;
 
 using kind = meta::field_type_kind;
 template <kind Kind>
 using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 
-void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provider& functions) {
+void add_builtin_aggregate_functions(
+    ::yugawara::aggregate::configurable_provider& functions,
+    executor::function::aggregate_function_repository& repo
+) {
     namespace t = takatori::type;
     using namespace ::yugawara;
     std::size_t id = aggregate::declaration::minimum_builtin_function_id;
-    auto& repo = global::function_repository();
 
     /////////
     // sum

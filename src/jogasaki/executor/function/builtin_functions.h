@@ -15,29 +15,28 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
-#include <memory>
-
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor::function {
 
-void add_builtin_aggregate_functions(::yugawara::aggregate::configurable_provider& provider);
+/**
+ * @brief register built-in aggregate functions to the given provider and function repository
+ * @param functions the provider where the built-in functions are registered
+ * @param repo the function repository where the built-in functions are registered
+ */
+void add_builtin_aggregate_functions(
+    ::yugawara::aggregate::configurable_provider& functions,
+    executor::function::aggregate_function_repository& repo
+);
 
 namespace builtin {
 
-using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
-using takatori::util::fail;
-using takatori::util::enum_tag;
 
 void sum(
     accessor::record_ref target,

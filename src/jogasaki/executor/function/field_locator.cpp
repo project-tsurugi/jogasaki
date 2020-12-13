@@ -17,12 +17,6 @@
 
 namespace jogasaki::executor::function {
 
-using takatori::util::maybe_shared_ptr;
-using takatori::util::sequence_view;
-using takatori::util::fail;
-using takatori::util::enum_tag;
-
-
 field_locator::field_locator(const meta::field_type &type, bool nullable, std::size_t value_offset,
     std::size_t nullity_offset) :
     type_(std::addressof(type)),
@@ -45,5 +39,9 @@ std::size_t field_locator::value_offset() const noexcept {
 
 std::size_t field_locator::nullity_offset() const noexcept {
     return nullity_offset_;
+}
+
+field_locator::operator bool() const noexcept {
+    return type_ != nullptr;
 }
 }

@@ -250,10 +250,9 @@ aggregate_info::output_info aggregate_info::create_output(
     std::vector<field_index_type> const& key_indices
 ) {
     std::vector<value_spec> aggregator_specs{};
-    for(std::size_t value_index = 0; value_index < value_specs.size(); ++value_index) {
-        auto& vs = value_specs[value_index];
+    std::size_t agg_index = 0;
+    for(auto const& vs : value_specs) {
         auto& info = vs.function_info();
-        std::size_t agg_index = 0;
         switch(kind) {
             case output_kind::pre: {
                 auto aggs = info.pre();
@@ -272,24 +271,22 @@ aggregate_info::output_info aggregate_info::create_output(
             }
             case output_kind::mid: {
                 auto aggs = info.mid();
-                std::vector<size_t> indices{agg_index};
-                for(std::size_t i=0, n=aggs.size(); i < n; ++i) {
+                for(std::size_t i=0, n=aggs.size(); i < n; ++i, ++agg_index) {
+                    std::vector<size_t> indices{agg_index};
                     aggregator_specs.emplace_back(
                         aggs[i],
                         indices,
                         record->at(agg_index)
                     );
-                    ++agg_index;
                 }
                 break;
             }
             case output_kind::post: {
                 auto aggs = info.post();
-                BOOST_ASSERT(aggs.size() == 1);
+                BOOST_ASSERT(aggs.size() == 1);  //NOLINT
                 std::vector<size_t> indices{};
-                for(std::size_t i=0, n=aggs[0].arg_count(); i < n; ++i) {
+                for(std::size_t i=0, n=aggs[0].arg_count(); i < n; ++i, ++agg_index) {
                     indices.emplace_back(agg_index);
-                    ++agg_index;
                 }
                 aggregator_specs.emplace_back(
                     aggs[0],

@@ -81,9 +81,7 @@ class aggregate_function_info_impl<aggregate_function_kind::sum> : public aggreg
 public:
     constexpr static aggregate_function_kind function_kind = aggregate_function_kind::sum;
     aggregate_function_info_impl();
-    sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override {
-        return arg_types;
-    }
+    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override;
 };
 
 template <>
@@ -91,9 +89,7 @@ class aggregate_function_info_impl<aggregate_function_kind::count> : public aggr
 public:
     constexpr static aggregate_function_kind function_kind = aggregate_function_kind::count;
     aggregate_function_info_impl();
-    sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const>) const override {
-        return field_types_;
-    }
+    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const>) const override;
 private:
     std::vector<meta::field_type> field_types_{meta::field_type{enum_tag<meta::field_type_kind::int8>}};
 };
@@ -103,18 +99,7 @@ class aggregate_function_info_impl<aggregate_function_kind::avg> : public aggreg
 public:
     constexpr static aggregate_function_kind function_kind = aggregate_function_kind::avg;
     aggregate_function_info_impl();
-    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override {
-        using kind = meta::field_type_kind;
-        switch(arg_types[0].kind()) {
-            case kind::int4: return field_types_int4_;
-            case kind::int8: return field_types_int8_;
-            case kind::float4: return field_types_float4_;
-            case kind::float8: return field_types_float8_;
-            default:
-                fail();
-        }
-        fail();
-    }
+    [[nodiscard]] sequence_view<meta::field_type const> internal_field_types(sequence_view<meta::field_type const> arg_types) const override;
 private:
     std::vector<meta::field_type> field_types_int4_{
         meta::field_type{enum_tag<meta::field_type_kind::int4>},

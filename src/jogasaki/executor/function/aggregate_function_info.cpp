@@ -43,6 +43,17 @@ aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_i
     )
 {}
 
+sequence_view<const meta::field_type> aggregate_function_info_impl<aggregate_function_kind::sum>::internal_field_types(
+    sequence_view<const meta::field_type> arg_types) const {
+    return arg_types;
+}
+
+sequence_view<const meta::field_type>
+aggregate_function_info_impl<aggregate_function_kind::count>::internal_field_types(
+    sequence_view<const meta::field_type>) const {
+    return field_types_;
+}
+
 aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function_info_impl() :
     aggregate_function_info(
         function_kind,
@@ -66,4 +77,19 @@ aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_i
         { aggregator_info{ builtin::avg_post, 2 } }
     )
 {}
+
+sequence_view<const meta::field_type> aggregate_function_info_impl<aggregate_function_kind::avg>::internal_field_types(
+    sequence_view<const meta::field_type> arg_types) const {
+    using kind = meta::field_type_kind;
+    switch(arg_types[0].kind()) {
+        case kind::int4: return field_types_int4_;
+        case kind::int8: return field_types_int8_;
+        case kind::float4: return field_types_float4_;
+        case kind::float8: return field_types_float8_;
+        default:
+            fail();
+    }
+    fail();
+}
+
 }

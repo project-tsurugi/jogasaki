@@ -65,9 +65,9 @@ public:
 
         /**
          * @brief create new object
-         * @param function_info
-         * @param argument_indices
-         * @param type
+         * @param function_info the function to generate this value
+         * @param argument_indices the indices of the input record field used as args to the function
+         * @param type the result type of the aggregate
          */
         value_spec(
             aggregate_function_info const& function_info,
@@ -75,41 +75,114 @@ public:
             meta::field_type type
         ) noexcept;
 
-        value_spec(
+        /**
+         * @brief accessor to the function info
+         */
+        [[nodiscard]] aggregate_function_info const& function_info() const noexcept;
+
+        /**
+         * @brief accessor to the argument indices
+         */
+        [[nodiscard]] sequence_view<std::size_t const> argument_indices() const noexcept;
+
+        /**
+         * @brief accessor to the result type
+         */
+        [[nodiscard]] meta::field_type const& type() const noexcept;
+
+    private:
+        aggregate_function_info const* function_info_{};
+        std::vector<std::size_t> argument_indices_{};
+        meta::field_type type_{};
+    };
+
+    /**
+     * @brief the specification of the aggregator generating a value
+     * @details this corresponds to the concrete aggregator function, while value_spec corresponds to consolidated
+     * (i.e. pre/mid/post aggregators) aggregated function.
+     */
+    class aggregator_spec {
+    public:
+        /**
+         * @brief create empty object
+         */
+        aggregator_spec() = default;
+
+        /**
+         * @brief create new object
+         * @param aggregator_info the aggregator function to generate value
+         * @param argument_indices the indices of the record field used as args to the function
+         * @param type the result type of the aggregator
+         */
+        aggregator_spec(
             class aggregator_info const& aggregator_info,
             std::vector<std::size_t> argument_indices,
             meta::field_type type
         ) noexcept;
 
-        [[nodiscard]] aggregate_function_info const& function_info() const noexcept;
-
+        /**
+         * @brief accessor to the aggregator info
+         */
         [[nodiscard]] class aggregator_info const& aggregator_info() const noexcept;
 
+        /**
+         * @brief accessor to the argument indices
+         */
         [[nodiscard]] sequence_view<std::size_t const> argument_indices() const noexcept;
 
+        /**
+         * @brief accessor to the result type
+         */
         [[nodiscard]] meta::field_type const& type() const noexcept;
+
     private:
-        aggregate_function_info const* function_info_{};
         class aggregator_info const* aggregator_info_{};
         std::vector<std::size_t> argument_indices_{};
         meta::field_type type_{};
     };
 
+    /**
+     * @brief output kind
+     * @details specifies the phase/output of the aggregate
+     * @see output_info
+     */
     enum class output_kind {
         pre,
         mid,
         post,
     };
 
+    /**
+     * @brief output information from the aggregate operation
+     * @details this object tells the metadata of the output, and which fields should be used to generate the output.
+     * The aggregate operation are categorized to three groups depending on the operation phase, and each has its output info.
+     *   - pre the pre-aggregation. The output consists of the key (holding internal data) and values (extended fields for calculation)
+     *     The input flat record to the aggregate exchange are separated to key/values and pre-aggregation is conducted in this phase.
+     *   - mid the intermediate incremental aggregation. The output consists of the same fields as pre output.
+     *     The input for this phase is the values part from pre agg. and incremental aggregation is conducted (i.e. merging values.)
+     *   - post the post aggregation. The output consists of the final value fields of this aggregate operation.
+     *     The input for this phase is the output from mid agg. and calculation fields are consolidated to generate result field.
+     */
     class output_info {
     public:
+        /**
+         * @brief create empty object
+         */
         output_info() = default;
 
+        /**
+         * @brief create new object
+         * @param kind output kind
+         * @param aggregator_specs the aggregators spec executed for this phase
+         * @param aggregate_input the input flat record for the aggregate operation
+         * @param phase_input the input record for this phase (the total input record for pre, and value record for mid/post)
+         * @param key_indices the indices of fields (0-origin) indicating key columns in aggregate_input
+         */
         output_info(
-            std::vector<value_spec> value_specs,
             output_kind kind,
-            maybe_shared_ptr<meta::record_meta> const& pre_input_meta,
-            maybe_shared_ptr<meta::record_meta> const& record,
+            std::vector<aggregator_spec> aggregator_specs,
+            maybe_shared_ptr<meta::record_meta> const& aggregate_input,
+            maybe_shared_ptr<meta::record_meta> phase_input,
             std::vector<field_index_type> const& key_indices
         );
 
@@ -121,7 +194,7 @@ public:
         /**
          * @brief returns aggregator specs
          */
-        [[nodiscard]] sequence_view<value_spec const> value_specs() const noexcept;
+        [[nodiscard]] sequence_view<aggregator_spec const> aggregator_specs() const noexcept;
 
         /**
          * @brief returns the number of value fields
@@ -130,29 +203,42 @@ public:
 
         /**
          * @brief returns aggregator args
+         * @param aggregator_index specifies the aggregator index (0-origin)
          */
-        [[nodiscard]] sequence_view<field_locator const> aggregator_args(std::size_t aggregator_index) const noexcept;
+        [[nodiscard]] sequence_view<field_locator const> source_field_locators(std::size_t aggregator_index) const noexcept;
 
         /**
          * @brief returns target field locator
+         * @param aggregator_index specifies the aggregator index (0-origin)
          */
         [[nodiscard]] field_locator const& target_field_locator(std::size_t aggregator_index) const noexcept;
 
     private:
-        std::vector<value_spec> value_specs_{};
         output_kind kind_{};
-        maybe_shared_ptr<meta::record_meta> pre_input_meta_{};
-        maybe_shared_ptr<meta::record_meta> record_{};
-        std::vector<field_index_type> const* key_indices_{};
+        std::vector<aggregator_spec> aggregator_specs_{};
+        maybe_shared_ptr<meta::record_meta> phase_input_{};
         maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
-        std::vector<std::vector<field_locator>> args_{};
-        std::vector<field_locator> target_field_locs_{};
+        std::vector<std::vector<field_locator>> source_field_locators_{};
+        std::vector<field_locator> target_field_locators_{};
 
-        std::shared_ptr<meta::record_meta> create_key_meta(output_kind kind);
-        std::shared_ptr<meta::record_meta> create_value_meta(output_kind kind);
-        std::vector<std::vector<field_locator>> create_source_field_locs(output_kind kind);
-        std::vector<field_locator> create_target_field_locs(output_kind kind);
+        std::shared_ptr<meta::record_meta> create_key_meta(
+            output_kind kind,
+            std::vector<field_index_type> const& key_indices,
+            maybe_shared_ptr<meta::record_meta> const& aggregate_input
+        );
+        std::shared_ptr<meta::record_meta> create_value_meta(
+            std::vector<aggregator_spec> const& aggregator_specs
+        );
+        std::vector<std::vector<field_locator>> create_source_field_locators(
+            std::vector<aggregator_spec> const& aggregator_specs,
+            maybe_shared_ptr<meta::record_meta> const& phase_input
+        );
+        std::vector<field_locator> create_target_field_locators(
+            std::vector<aggregator_spec> const& aggregator_specs,
+            maybe_shared_ptr<meta::group_meta> const& group_meta
+        );
     };
+
     /**
      * @brief construct empty object
      */
@@ -167,7 +253,7 @@ public:
     aggregate_info(
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
-        std::vector<value_spec> value_specs
+        std::vector<value_spec> const& value_specs
     );
 
     /**
@@ -178,15 +264,9 @@ public:
 
     /**
      * @brief extract output key from the intermediate key
-     * @details the returned record is the output key record and has the meta returned by post_group_meta()->key()
+     * @details the returned record is the output key record and has the meta returned by post().group_meta()->key()
      */
     [[nodiscard]] accessor::record_ref output_key(accessor::record_ref mid) const noexcept;
-
-    /**
-     * @brief extract output value from the intermediate value
-     * @details the returned record is the output value record and has the meta returned by post_group_meta()->value()
-     */
-    [[nodiscard]] accessor::record_ref output_value(accessor::record_ref mid) const noexcept;
 
     /**
      * @brief returns metadata for input record
@@ -203,17 +283,21 @@ public:
      */
     [[nodiscard]] sequence_view<field_index_type const> key_indices() const noexcept;
 
-    [[nodiscard]] output_info const& pre() const noexcept {
-        return pre_;
-    }
+    /**
+     * @brief returns pre-output info
+     */
+    [[nodiscard]] output_info const& pre() const noexcept;
 
-    [[nodiscard]] output_info const& mid() const noexcept {
-        return mid_;
-    }
+    /**
+     * @brief returns mid-output info
+     */
+    [[nodiscard]] output_info const& mid() const noexcept;
 
-    [[nodiscard]] output_info const& post() const noexcept {
-        return post_;
-    }
+    /**
+     * @brief returns post-output info
+     */
+    [[nodiscard]] output_info const& post() const noexcept;
+
 private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
@@ -221,12 +305,16 @@ private:
     output_info pre_{};
     output_info mid_{};
     output_info post_{};
-    std::shared_ptr<meta::record_meta> create_extracted_meta(std::vector<std::size_t> const& indices);
+
+    std::shared_ptr<meta::record_meta> create_extracted_meta(
+        std::vector<std::size_t> const& indices,
+        maybe_shared_ptr<meta::record_meta> const& aggregate_input
+    );
     output_info create_output(
-        std::vector<value_spec> const& value_specs,
         output_kind kind,
-        maybe_shared_ptr<meta::record_meta> record,
-        maybe_shared_ptr<meta::record_meta> pre_input_meta,
+        std::vector<value_spec> const& value_specs,
+        maybe_shared_ptr<meta::record_meta> const& phase_input,
+        maybe_shared_ptr<meta::record_meta> const& aggregate_input,
         std::vector<field_index_type> const& key_indices
     );
 };

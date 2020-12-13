@@ -67,9 +67,9 @@ bool reader::next_group() {
         while(internal_next_member()) {
             auto src = internal_get_member();
             auto tgt = mid_value_buf_.ref();
-            for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
-                auto& vspec = info.value_specs()[i];
-                auto& aggregator = vspec.aggregator_info().aggregator();
+            for(std::size_t i=0, n = info.aggregator_specs().size(); i < n; ++i) {
+                auto& as = info.aggregator_specs()[i];
+                auto& aggregator = as.aggregator_info().aggregator();
                 aggregator(
                     tgt,
                     info.target_field_locator(i),
@@ -121,10 +121,10 @@ accessor::record_ref reader::get_member() const {
         auto ref = mid_value_buf_.ref();
         auto& info = info_->post();
         auto target = post_value_buf_.ref();
-        for(std::size_t i=0, n=info.value_specs().size(); i < n; ++i) {
-            auto& vs = info.value_specs()[i];
-            auto& aggregator = vs.aggregator_info().aggregator();
-            aggregator(target, info.target_field_locator(i), false, ref, info.aggregator_args(i));
+        for(std::size_t i=0, n=info.aggregator_specs().size(); i < n; ++i) {
+            auto& as = info.aggregator_specs()[i];
+            auto& aggregator = as.aggregator_info().aggregator();
+            aggregator(target, info.target_field_locator(i), false, ref, info.source_field_locators(i));
         }
         return target;
     }

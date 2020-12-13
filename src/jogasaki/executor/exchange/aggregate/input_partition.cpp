@@ -77,10 +77,10 @@ bool input_partition::write(accessor::record_ref record) {
         table.emplace_back(key.data());
     }
     auto& info = info_->pre();
-    for(std::size_t i=0, n = info.value_specs().size(); i < n; ++i) {
-        auto& vs = info.value_specs()[i];
-        auto& aggregator = vs.aggregator_info().aggregator();
-        aggregator(value, info.target_field_locator(i), initial, record, info.aggregator_args(i));
+    for(std::size_t i=0, n = info.aggregator_specs().size(); i < n; ++i) {
+        auto& as = info.aggregator_specs()[i];
+        auto& aggregator = as.aggregator_info().aggregator();
+        aggregator(value, info.target_field_locator(i), initial, record, info.source_field_locators(i));
     }
     if (hash_table_->load_factor() > load_factor_bound) {
         flush();

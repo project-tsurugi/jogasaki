@@ -15,33 +15,14 @@
  */
 #include "tables.h"
 
-#include <string_view>
-#include <glog/logging.h>
-
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
-#include <takatori/util/fail.h>
 #include <yugawara/storage/configurable_provider.h>
-#include <yugawara/variable/configurable_provider.h>
-#include <yugawara/function/configurable_provider.h>
-#include <yugawara/aggregate/configurable_provider.h>
-
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/result_set_impl.h>
-#include <jogasaki/request_context.h>
-#include <jogasaki/channel.h>
-#include <jogasaki/plan/compiler_context.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/common/graph.h>
 
 namespace jogasaki::executor {
 
-using takatori::util::fail;
 namespace storage = yugawara::storage;
-namespace variable = yugawara::variable;
-namespace aggregate = yugawara::aggregate;
 
 void add_builtin_tables(storage::configurable_provider& provider) {
     namespace type = ::takatori::type;

@@ -18,14 +18,12 @@
 #include <cassert>
 
 #include <takatori/descriptor/variable.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::meta {
 
-using takatori::util::fail;
 using takatori::descriptor::variable;
 
 enum class variable_ordering_kind {

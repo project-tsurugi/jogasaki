@@ -17,7 +17,6 @@
 
 namespace jogasaki::meta {
 
-using takatori::util::fail;
 using takatori::descriptor::variable;
 
 variable_order::variable_order(variable_ordering_enum_tag_t<variable_ordering_kind::flat_record>,

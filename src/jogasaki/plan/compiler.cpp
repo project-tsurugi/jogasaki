@@ -273,7 +273,7 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         (void)decl;
         (void)provider;
         auto f = repo.find(decl.definition_id());
-        BOOST_ASSERT(f != nullptr);
+        BOOST_ASSERT(f != nullptr);  //NOLINT
         specs.emplace_back(
             *f,
             argument_indices,

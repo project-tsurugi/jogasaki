@@ -116,10 +116,8 @@ private:
 
     bool internal_next_member();
     [[nodiscard]] accessor::record_ref internal_get_member() const;
-
     inline void read_and_pop(impl::iterator it, impl::iterator end);
-
-    inline void* value_pointer(accessor::record_ref ref) const;
+    [[nodiscard]] inline void* value_pointer(accessor::record_ref ref) const;
 };
 
 }

@@ -19,9 +19,6 @@
 
 namespace jogasaki::executor::function {
 
-using takatori::util::sequence_view;
-using takatori::util::enum_tag_t;
-
 aggregator_info::aggregator_info(
     aggregator_type aggregator,
     std::size_t arg_count

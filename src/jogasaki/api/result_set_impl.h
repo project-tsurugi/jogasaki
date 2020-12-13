@@ -76,7 +76,7 @@ public:
      * @brief increment iterator
      * @return copy of the iterator before the increment
      */
-    iterator const operator++(int) {
+    iterator operator++(int) { //NOLINT
         iterator cur{*this};
         ++it_;
         return cur;

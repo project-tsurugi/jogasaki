@@ -18,7 +18,6 @@
 #include <vector>
 
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/enum_tag.h>
 
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/aggregator_info.h>
@@ -28,7 +27,6 @@
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using takatori::util::enum_tag_t;
 
 aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_info_impl() :
     aggregate_function_info(

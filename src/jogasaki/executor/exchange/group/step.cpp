@@ -17,10 +17,7 @@
 
 #include <vector>
 
-#include <jogasaki/model/port.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/executor/exchange/step.h>
-#include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/executor/process/step.h>
 #include "shuffle_info.h"
 #include "flow.h"

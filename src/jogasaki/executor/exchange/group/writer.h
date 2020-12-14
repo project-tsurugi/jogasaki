@@ -16,13 +16,9 @@
 #pragma once
 
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/utils/interference_size.h>
 #include "input_partition.h"
 #include "shuffle_info.h"
-#include "source.h"
 #include "sink.h"
 
 namespace jogasaki::executor::exchange::group {
@@ -34,7 +30,13 @@ public:
     writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
-    writer(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions, group::sink& owner);
+
+    writer(
+        std::size_t downstream_partitions,
+        std::shared_ptr<shuffle_info> info,
+        std::vector<std::unique_ptr<input_partition>>& partitions,
+        group::sink& owner
+    );
 
     bool write(accessor::record_ref rec) override;
 

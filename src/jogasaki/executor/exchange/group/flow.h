@@ -95,9 +95,7 @@ public:
         return common::step_kind::group;
     }
 
-    [[nodiscard]] class request_context* context() const noexcept {
-        return context_;
-    }
+    [[nodiscard]] class request_context* context() const noexcept;
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<shuffle_info> info_{};

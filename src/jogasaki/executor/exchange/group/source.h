@@ -34,7 +34,7 @@ public:
     explicit source(
             std::shared_ptr<shuffle_info> info,
             request_context* context
-            );
+    );
     void receive(std::unique_ptr<input_partition> in);
 
     [[nodiscard]] reader_container acquire_reader() override;

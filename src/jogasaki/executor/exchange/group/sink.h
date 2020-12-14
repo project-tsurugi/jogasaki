@@ -17,13 +17,10 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/exchange/sink.h>
 #include "input_partition.h"
 #include "shuffle_info.h"
-#include "source.h"
 
 namespace jogasaki::executor::exchange::group {
 

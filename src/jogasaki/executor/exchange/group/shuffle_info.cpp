@@ -31,8 +31,6 @@ namespace jogasaki::executor::exchange::group {
 
 using takatori::util::maybe_shared_ptr;
 
-shuffle_info::shuffle_info() : record_(std::make_shared<meta::record_meta>()), group_(std::make_shared<meta::group_meta>()) {}
-
 shuffle_info::shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),

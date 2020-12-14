@@ -16,6 +16,8 @@
  */
 #include "sorted_vector_reader.h"
 
+#include <jogasaki/utils/watch.h>
+
 namespace jogasaki::executor::exchange::group {
 
 sorted_vector_reader::sorted_vector_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :

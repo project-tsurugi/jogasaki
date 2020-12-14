@@ -23,7 +23,6 @@
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/iterator_pair.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 

@@ -15,13 +15,16 @@
  */
 #include "sink.h"
 
-#include <jogasaki/executor/global.h>
+#include <takatori/util/fail.h>
+
 #include <jogasaki/executor/record_writer.h>
 #include "input_partition.h"
 #include "shuffle_info.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::group {
+
+using takatori::util::fail;
 
 sink::sink(std::size_t downstream_partitions,
     std::shared_ptr<shuffle_info> info,
@@ -41,7 +44,7 @@ record_writer& sink::acquire_writer() {
 
 void sink::release_writer(record_writer& writer) {
     if (*writer_ != writer) {
-        std::abort();
+        fail();
     }
     writer_.reset();
 }

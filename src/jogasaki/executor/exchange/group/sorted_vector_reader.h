@@ -20,11 +20,8 @@
 
 #include <glog/logging.h>
 
-#include <jogasaki/utils/watch.h>
-
 #include <jogasaki/executor/group_reader.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 

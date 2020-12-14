@@ -105,6 +105,10 @@ void flow::transfer() {
     }
 }
 
+class request_context* flow::context() const noexcept {
+    return context_;
+}
+
 } // namespace
 
 

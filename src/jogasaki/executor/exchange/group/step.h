@@ -19,7 +19,6 @@
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/exchange/step.h>
-#include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/meta/variable_order.h>
 #include "shuffle_info.h"

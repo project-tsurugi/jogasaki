@@ -18,12 +18,9 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/shuffle/pointer_table.h>
-#include <jogasaki/memory/page_pool.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 

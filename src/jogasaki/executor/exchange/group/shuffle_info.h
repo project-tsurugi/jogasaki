@@ -41,7 +41,7 @@ public:
     /**
      * @brief construct empty object
      */
-    shuffle_info();;
+    shuffle_info() = default;
 
     /**
      * @brief construct new object

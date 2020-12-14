@@ -26,7 +26,7 @@ priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info,
         queue_(iterator_pair_comparator(info_.get())),
         record_size_(info_->record_meta()->record_size()),
         buf_(info_->record_meta()), //NOLINT
-        key_comparator_(info_->key_meta().get()) {
+        key_comparator_(info_->sort_key_meta().get()) {
     for(auto& p : partitions_) {
         if (!p) continue;
         for(auto& t : *p) {
@@ -81,8 +81,8 @@ bool priority_queue_reader::next_member() {
         auto it = queue_.top().first;
         auto end = queue_.top().second;
         if (key_comparator_(
-                info_->extract_key(buf_.ref()),
-                info_->extract_key(accessor::record_ref(*it, record_size_))) == 0) {
+                info_->extract_sort_key(buf_.ref()),
+                info_->extract_sort_key(accessor::record_ref(*it, record_size_))) == 0) {
             read_and_pop(it, end);
             return true;
         }
@@ -107,13 +107,13 @@ void priority_queue_reader::release() {
 iterator_pair_comparator::iterator_pair_comparator(const shuffle_info *info) :
     info_(info),
     record_size_(info_->record_meta()->record_size()),
-    key_comparator_(info_->key_meta().get()) {}
+    key_comparator_(info_->sort_key_meta().get()) {}
 
 bool iterator_pair_comparator::operator()(const iterator_pair &x, const iterator_pair &y) {
     auto& it_x = x.first;
     auto& it_y = y.first;
-    auto key_x = info_->extract_key(accessor::record_ref(*it_x, record_size_));
-    auto key_y = info_->extract_key(accessor::record_ref(*it_y, record_size_));
+    auto key_x = info_->extract_sort_key(accessor::record_ref(*it_x, record_size_));
+    auto key_y = info_->extract_sort_key(accessor::record_ref(*it_y, record_size_));
     return key_comparator_(key_x, key_y) > 0;
 }
 } // namespace

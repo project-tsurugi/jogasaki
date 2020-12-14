@@ -33,7 +33,7 @@ input_partition::input_partition(
     resource_for_varlen_data_(std::move(resource_for_varlen_data)),
     info_(std::move(info)),
     context_(context),
-    comparator_(info_->key_meta().get()),
+    comparator_(info_->sort_key_meta().get()),
     max_pointers_(pointer_table_size)
 {}
 
@@ -55,8 +55,8 @@ void input_partition::flush() {
     auto sz = info_->record_meta()->record_size();
     auto& table = pointer_tables_.back();
     std::sort(table.begin(), table.end(), [&](auto const&x, auto const& y){
-        return comparator_(info_->extract_key(accessor::record_ref(x, sz)),
-            info_->extract_key(accessor::record_ref(y, sz))) < 0;
+        return comparator_(info_->extract_sort_key(accessor::record_ref(x, sz)),
+            info_->extract_sort_key(accessor::record_ref(y, sz))) < 0;
     });
 }
 

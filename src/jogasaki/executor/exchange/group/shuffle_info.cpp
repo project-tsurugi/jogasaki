@@ -31,16 +31,28 @@ namespace jogasaki::executor::exchange::group {
 
 using takatori::util::maybe_shared_ptr;
 
-shuffle_info::shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices) :
+shuffle_info::shuffle_info(
+    maybe_shared_ptr<meta::record_meta> record,
+    std::vector<field_index_type> key_indices,
+    std::vector<field_index_type> key_indices_for_sort
+) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
-    group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())) {}
+    group_(std::make_shared<meta::group_meta>(
+        from_keys(record_, key_indices_),
+        create_value_meta(record_, key_indices_))),
+    sort_key_(create_sort_key_meta(record_, key_indices_, std::move(key_indices_for_sort)))
+{}
 
 accessor::record_ref shuffle_info::extract_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
 }
 
 accessor::record_ref shuffle_info::extract_value(accessor::record_ref record) const noexcept {
+    return accessor::record_ref(record.data(), record_->record_size());
+}
+
+accessor::record_ref shuffle_info::extract_sort_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
 }
 
@@ -56,11 +68,18 @@ const maybe_shared_ptr<meta::record_meta> &shuffle_info::value_meta() const noex
     return group_->value_shared();
 }
 
+const maybe_shared_ptr<meta::record_meta> &shuffle_info::sort_key_meta() const noexcept {
+    return sort_key_;
+}
+
 const maybe_shared_ptr<meta::group_meta> &shuffle_info::group_meta() const noexcept {
     return group_;
 }
 
-std::shared_ptr<meta::record_meta> shuffle_info::create_meta(const std::vector<std::size_t> &indices) {
+std::shared_ptr<meta::record_meta> shuffle_info::from_keys(
+    maybe_shared_ptr<meta::record_meta> record,
+    std::vector<std::size_t> const& indices
+) {
     auto num = indices.size();
     meta::record_meta::fields_type fields{};
     meta::record_meta::nullability_type  nullables(num);
@@ -71,10 +90,10 @@ std::shared_ptr<meta::record_meta> shuffle_info::create_meta(const std::vector<s
     nullity_offset_table.reserve(num);
     for(std::size_t i=0; i < num; ++i) {
         auto ind = indices[i];
-        fields.emplace_back(record_->at(ind));
-        value_offset_table.emplace_back(record_->value_offset(ind));
-        nullity_offset_table.emplace_back(record_->nullity_offset(ind));
-        if (record_->nullable(ind)) {
+        fields.emplace_back(record->at(ind));
+        value_offset_table.emplace_back(record->value_offset(ind));
+        nullity_offset_table.emplace_back(record->nullity_offset(ind));
+        if (record->nullable(ind)) {
             nullables.set(i);
         }
     }
@@ -83,14 +102,17 @@ std::shared_ptr<meta::record_meta> shuffle_info::create_meta(const std::vector<s
         std::move(nullables),
         std::move(value_offset_table),
         std::move(nullity_offset_table),
-        record_->record_alignment(),
-        record_->record_size()
+        record->record_alignment(),
+        record->record_size()
     );
 }
 
-std::shared_ptr<meta::record_meta> shuffle_info::create_value_meta() {
-    std::size_t num = record_->field_count() - key_indices_.size();
-    std::set<std::size_t> indices{key_indices_.begin(), key_indices_.end()};
+std::shared_ptr<meta::record_meta> shuffle_info::create_value_meta(
+    maybe_shared_ptr<meta::record_meta> record,
+    std::vector<std::size_t> const& key_indices
+) {
+    std::size_t num = record_->field_count() - key_indices.size();
+    std::set<std::size_t> indices{key_indices.begin(), key_indices.end()};
     std::vector<field_index_type> vec{};
     vec.reserve(num);
     for(std::size_t i=0; i < record_->field_count(); ++i) {
@@ -98,6 +120,17 @@ std::shared_ptr<meta::record_meta> shuffle_info::create_value_meta() {
             vec.emplace_back(i);
         }
     }
-    return create_meta(vec);
+    return from_keys(std::move(record), vec);
 }
+
+std::shared_ptr<meta::record_meta> shuffle_info::create_sort_key_meta(
+    maybe_shared_ptr<meta::record_meta> record,
+    std::vector<std::size_t> const& indices,
+    std::vector<std::size_t> const& sort_key_indices
+) {
+    std::vector<std::size_t> merged{indices.begin(), indices.end()};
+    merged.insert(merged.end(), sort_key_indices.begin(), sort_key_indices.end());
+    return from_keys(std::move(record), merged);
+}
+
 }

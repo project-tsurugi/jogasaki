@@ -46,9 +46,15 @@ public:
     /**
      * @brief construct new object
      * @param record the metadata of the input record for shuffle operation
-     * @param key_indices the ordered indices to choose the keys from the record fields
+     * @param key_indices the ordered indices to choose the grouping key fields from the record
+     * @param key_indices_for_sort the ordered indices to specify additional key fields to sort group members
+     * within groups
      */
-    shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices);
+    shuffle_info(
+        maybe_shared_ptr<meta::record_meta> record,
+        std::vector<field_index_type> key_indices,
+        std::vector<field_index_type> key_indices_for_sort = {}
+    );
 
     /**
      * @brief extract key part from the input record
@@ -56,7 +62,12 @@ public:
     [[nodiscard]] accessor::record_ref extract_key(accessor::record_ref record) const noexcept;
 
     /**
-     * @brief extract value part from the input record
+     * @brief extract sort key (grouping key fields + fields for member sorting) part from the input record
+     */
+    [[nodiscard]] accessor::record_ref extract_sort_key(accessor::record_ref record) const noexcept;
+
+    /**
+     * @brief extract value part (fields outside grouping key) from the input record
      */
     [[nodiscard]] accessor::record_ref extract_value(accessor::record_ref record) const noexcept;
 
@@ -66,17 +77,22 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& record_meta() const noexcept;
 
     /**
-     * @brief returns metadata for key part
+     * @brief returns metadata for grouping key part
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept;
 
     /**
-     * @brief returns metadata for value part
+     * @brief returns metadata for sort key (grouping key fields + fields for member sorting) part
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& sort_key_meta() const noexcept;
+
+    /**
+     * @brief returns metadata for value part (fields outside grouping key)
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept;
 
     /**
-     * @brief returns metadata for key/value parts at once
+     * @brief returns metadata for grouping key/value parts at once
      */
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept;
 
@@ -84,12 +100,21 @@ private:
     maybe_shared_ptr<meta::record_meta> record_{};
     std::vector<field_index_type> key_indices_{};
     maybe_shared_ptr<meta::group_meta> group_{};
+    maybe_shared_ptr<meta::record_meta> sort_key_{};
 
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(std::vector<std::size_t> const& indices);
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_key_meta() {
-        return create_meta(key_indices_);
-    }
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta();
+    [[nodiscard]] std::shared_ptr<meta::record_meta> from_keys(
+        maybe_shared_ptr<meta::record_meta> record,
+        std::vector<std::size_t> const& indices
+    );
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta(
+        maybe_shared_ptr<meta::record_meta> record,
+        std::vector<std::size_t> const& key_indices
+    );
+    [[nodiscard]] std::shared_ptr<meta::record_meta> create_sort_key_meta(
+        maybe_shared_ptr<meta::record_meta> record,
+        std::vector<std::size_t> const& indices,
+        std::vector<std::size_t> const& sort_key_indices
+    );
 };
 
 }

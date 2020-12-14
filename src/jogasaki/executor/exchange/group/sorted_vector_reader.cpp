@@ -25,7 +25,7 @@ sorted_vector_reader::sorted_vector_reader(std::shared_ptr<shuffle_info> info, s
         info_(std::move(info)),
         record_size_(info_->record_meta()->record_size()),
         buf_(std::make_unique<char[]>(record_size_)), //NOLINT
-        key_comparator_(info_->key_meta().get()) {
+        key_comparator_(info_->sort_key_meta().get()) {
     std::size_t count = 0;
     for(auto& p : partitions_) {
         if (!p) continue;
@@ -72,8 +72,8 @@ bool sorted_vector_reader::next_member() {
             return false;
         }
         if (key_comparator_(
-                info_->extract_key(accessor::record_ref(buf_.get(), record_size_)),
-                info_->extract_key(accessor::record_ref(*current_, record_size_))) == 0) {
+                info_->extract_sort_key(accessor::record_ref(buf_.get(), record_size_)),
+                info_->extract_sort_key(accessor::record_ref(*current_, record_size_))) == 0) {
             read_and_pop();
             return true;
         }
@@ -121,8 +121,8 @@ void sorted_vector_reader::init_aggregated_table() {
         w.set_point(1);
         auto sz = info_->record_meta()->record_size();
         std::sort(aggregated_pointer_table_.begin(), aggregated_pointer_table_.end(), [&](auto const&x, auto const& y){
-            return key_comparator_(info_->extract_key(accessor::record_ref(x, sz)),
-                    info_->extract_key(accessor::record_ref(y, sz))) < 0;
+            return key_comparator_(info_->extract_sort_key(accessor::record_ref(x, sz)),
+                    info_->extract_sort_key(accessor::record_ref(y, sz))) < 0;
         });
         current_ = aggregated_pointer_table_.begin();
         aggregated_pointer_table_initialized = true;

@@ -21,6 +21,7 @@
 #include <shakujo/parser/Parser.h>
 #include <shakujo/common/core/Type.h>
 
+#include <yugawara/aggregate/configurable_provider.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/runtime_feature.h>
 #include <yugawara/compiler.h>
@@ -43,6 +44,10 @@
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
+
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 
 namespace jogasaki::compile_cli {
 
@@ -78,7 +83,7 @@ std::unique_ptr<shakujo::model::program::Program> shakujo_program(std::string_vi
     return program;
 };
 
-std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() {
+std::shared_ptr<::yugawara::storage::configurable_provider> tables() {
 
     std::shared_ptr<::yugawara::storage::configurable_provider> storages
         = std::make_shared<::yugawara::storage::configurable_provider>();
@@ -97,7 +102,9 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
         {
             t0->columns()[0],
         },
-        {},
+        {
+            t0->columns()[1],
+        },
         {
             ::yugawara::storage::index_feature::find,
             ::yugawara::storage::index_feature::scan,
@@ -118,7 +125,9 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
         {
             t1->columns()[0],
         },
-        {},
+        {
+            t1->columns()[1],
+        },
         {
             ::yugawara::storage::index_feature::find,
             ::yugawara::storage::index_feature::scan,
@@ -139,7 +148,9 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
         {
             t2->columns()[0],
         },
-        {},
+        {
+            t2->columns()[1],
+        },
         {
             ::yugawara::storage::index_feature::find,
             ::yugawara::storage::index_feature::scan,
@@ -148,6 +159,12 @@ std::shared_ptr<::yugawara::storage::configurable_provider> yugawara_provider() 
         },
     });
     return storages;
+}
+
+std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_functions() {
+    auto ret = std::make_shared<::yugawara::aggregate::configurable_provider>();
+    executor::function::add_builtin_aggregate_functions(*ret, global::function_repository());
+    return ret;
 }
 
 static void dump(yugawara::compiler_result const& r) {
@@ -160,14 +177,15 @@ static void dump(yugawara::compiler_result const& r) {
 static int run(std::string_view sql) {
     if (sql.empty()) return 0;
     auto p = shakujo_program(sql);
-    auto storages = yugawara_provider();
+    auto storages = tables();
+    auto agg_functions = aggregate_functions();
 
     shakujo_translator translator;
     shakujo_translator_options options {
         storages,
         {},
         {},
-        {},
+        agg_functions,
     };
 
     yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };

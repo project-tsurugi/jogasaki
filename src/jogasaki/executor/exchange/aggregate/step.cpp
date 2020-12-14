@@ -25,15 +25,6 @@ step::step(std::shared_ptr<aggregate_info> info, meta::variable_order input_colu
     output_column_order_(std::move(output_column_order))
 {}
 
-//step::step(maybe_shared_ptr<meta::record_meta> input_meta, std::vector<field_index_type> key_indices,
-//    meta::variable_order input_column_order, meta::variable_order output_column_order) :
-//    step(
-//        std::make_shared<aggregate_info>(std::move(input_meta), std::move(key_indices)),
-//        std::move(input_column_order),
-//        std::move(output_column_order)
-//    )
-//{}
-
 void step::activate() {
     auto* down = downstream(0);
     auto downstream_partitions = down ? down->partitions() : default_partitions;

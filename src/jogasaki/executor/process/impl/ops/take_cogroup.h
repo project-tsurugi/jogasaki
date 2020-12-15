@@ -123,7 +123,7 @@ public:
         groups_(std::move(groups)),
         key_meta_(groups_[0].meta_->key_shared()),
         key_size_(key_meta_->record_size()),
-        key_comparator_(key_meta_.get()),
+        compare_info_(*key_meta_),
         downstream_(std::move(downstream))
     {
         fields_.reserve(groups_.size());
@@ -210,9 +210,10 @@ public:
                     if(inputs[idx].read_next_key()) {
                         queue.emplace(idx);
                     }
+                    comparator key_comparator{compare_info_};
                     while(! queue.empty()) {
                         auto idx2 = queue.top();
-                        if (key_comparator_(inputs[idx2].next_key(), key) != 0) {
+                        if (key_comparator(inputs[idx2].next_key(), key) != 0) {
                             break;
                         }
                         queue.pop();
@@ -263,7 +264,7 @@ private:
     std::vector<group_element> groups_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     std::size_t key_size_{};
-    comparator key_comparator_{};
+    compare_info compare_info_{};
     std::unique_ptr<operator_base> downstream_{};
     std::vector<sequence_view<group_field>> fields_{};
 
@@ -273,7 +274,7 @@ private:
             auto* reader = ctx.task_context().reader(idx).reader<group_reader>();
             ctx.readers_.emplace_back(reader);
             ctx.queue_ = queue_type{
-                details::group_input_comparator(&ctx.inputs_, key_meta_.get())
+                details::group_input_comparator(&ctx.inputs_, compare_info_)
             };
             auto store = std::make_unique<data::iterable_record_store>(
                 ctx.resource(),

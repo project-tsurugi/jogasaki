@@ -20,6 +20,7 @@
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include "compare_info.h"
 
 namespace jogasaki::executor {
 
@@ -35,22 +36,10 @@ public:
 
     /**
      * @brief construct new object
-     * @param meta schema information for the records to be compared. This applies to both lhs/rhs records assuming their metadata are identical.
-     * @attention record_meta is kept and used by the comparator. The caller must ensure it outlives this object.
+     * @param info comparison information and metadata for the records to be compared.
+     * @attention info is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    explicit comparator(meta::record_meta const* meta) noexcept : l_meta_(meta), r_meta_(meta) {}
-
-    /**
-     * @brief construct new object with separate metadata for lhs/rhs
-     * @details metadata on lhs/rhs must be compatible, i.e. the field types and orders are identical, except the nullability and value/nullity offsets.
-     * @param l_meta schema information for the lhs records to be compared
-     * @param r_meta schema information for the rhs records to be compared
-     * @attention record_meta are kept and used by the comparator. The caller must ensure it outlives this object.
-     */
-    comparator(
-        meta::record_meta const* l_meta,
-        meta::record_meta const* r_meta
-    ) noexcept;
+    explicit comparator(compare_info const& info) noexcept;
 
     /**
      * @brief compare function
@@ -63,10 +52,14 @@ public:
     [[nodiscard]] int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept;
 
 private:
-    meta::record_meta const* l_meta_{};
-    meta::record_meta const* r_meta_{};
+    compare_info const* meta_{};
 
-    [[nodiscard]] int compare_field(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t field_index) const;
+    [[nodiscard]] int compare_field(
+        accessor::record_ref const& a,
+        accessor::record_ref const& b,
+        std::size_t field_index
+    ) const;
+    [[nodiscard]] int negate_if(int ret, std::size_t field_index) const noexcept;
 };
 
 }

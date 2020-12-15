@@ -110,7 +110,8 @@ public:
             meta_(std::move(meta)),
             key_size_(meta_->key().record_size()),
             key_(meta_->key_shared()),
-            key_comparator_(meta_->key_shared().get())
+            compare_info_(meta_->key()),
+            key_comparator_(compare_info_)
     {}
 
     [[nodiscard]] accessor::record_ref key_record() const noexcept {
@@ -174,6 +175,7 @@ private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::size_t key_size_ = 0;
     data::small_record_store key_; // shallow copy of key (varlen body is held by reader)
+    compare_info compare_info_{};
     comparator key_comparator_{};
     bool reader_eof_{false};
     bool values_filled_{false};
@@ -193,9 +195,13 @@ public:
      * @brief construct new object
      * @attention key_meta is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    explicit cogroup_input_comparator(std::vector<cogroup_input>* inputs, meta::record_meta const* key_meta) :
-            inputs_(inputs),
-            key_comparator_(key_meta) {}
+    explicit cogroup_input_comparator(
+        std::vector<cogroup_input>* inputs,
+        compare_info const& meta
+    ) :
+        inputs_(inputs),
+        key_comparator_(meta)
+    {}
 
     [[nodiscard]] bool operator()(input_index const& x, input_index const& y) {
         auto& l = inputs_->operator[](x);
@@ -224,13 +230,14 @@ public:
             std::vector<executor::group_reader*> readers,
             std::vector<maybe_shared_ptr<meta::group_meta>> groups_meta
     ) :
-            readers_(std::move(readers)),
-            groups_meta_(std::move(groups_meta)),
-            queue_(impl::cogroup_input_comparator(&inputs_, groups_meta_[0]->key_shared().get())),
-            key_size_(groups_meta_[0]->key().record_size()),
-            key_comparator_(&groups_meta_[0]->key()),
-            key_buf_(groups_meta_[0]->key_shared())
-            // assuming key meta are common to all inputs TODO add assert
+        readers_(std::move(readers)),
+        groups_meta_(std::move(groups_meta)),
+        compare_info_(groups_meta_[0]->key()),
+        queue_(impl::cogroup_input_comparator(&inputs_, compare_info_)),
+        key_size_(groups_meta_[0]->key().record_size()),
+        key_comparator_(compare_info_),
+        key_buf_(groups_meta_[0]->key_shared())
+        // assuming key meta are common to all inputs TODO add assert
     {
         BOOST_ASSERT(readers_.size() == groups_meta_.size());  //NOLINT
         for(std::size_t idx = 0, n = readers_.size(); idx < n; ++idx) {
@@ -318,6 +325,7 @@ public:
 private:
     std::vector<executor::group_reader*> readers_{};
     std::vector<maybe_shared_ptr<meta::group_meta>> groups_meta_{};
+    compare_info compare_info_{};
     std::vector<impl::cogroup_input> inputs_{};
     queue_type queue_;
     std::size_t key_size_{};

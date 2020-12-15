@@ -56,7 +56,8 @@ TEST_F(comparator_test, simple) {
         sizeof(S)
     );
 
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -106,7 +107,8 @@ TEST_F(comparator_test, types) {
         alignof(S),
         sizeof(S)
     );
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -179,7 +181,8 @@ TEST_F(comparator_test, text) {
         sizeof(S)
     );
 
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -222,7 +225,8 @@ TEST_F(comparator_test, nullable) {
         sizeof(S)
     );
 
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     accessor::record_ref r0{&a, sizeof(a)};
     accessor::record_ref r1{&b, sizeof(b)};
     accessor::record_ref r2{&c, sizeof(c)};
@@ -274,7 +278,8 @@ TEST_F(comparator_test, different_meta_between_l_and_r) {
     a.n_[0] = 2; // a.y_ is null
     auto r = accessor::record_ref(&a, sizeof(S));
 
-    comparator comp{l_meta.get(), r_meta.get()};
+    compare_info cm{*l_meta, *r_meta};
+    comparator comp{cm};
     EXPECT_EQ(comp(l.ref(), r), 0);
 }
 
@@ -285,7 +290,8 @@ TEST_F(comparator_test, nullable_vs_non_nullable) {
     auto r_meta = r.record_meta();
     auto n = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
 
-    comparator comp{l_meta.get(), r_meta.get()};
+    compare_info cm{*l_meta, *r_meta};
+    comparator comp{cm};
     EXPECT_EQ(comp(l.ref(), r.ref()), 0);
     EXPECT_NE(comp(n.ref(), r.ref()), 0);
 }

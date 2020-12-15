@@ -31,7 +31,7 @@ reader::reader(
     key_buf_(info_->mid().group_meta()->key_shared()), //NOLINT
     mid_value_buf_(info_->mid().group_meta()->value_shared()), //NOLINT
     post_value_buf_(info_->post().group_meta()->value_shared()), //NOLINT
-    key_comparator_(info_->mid().group_meta()->key_shared().get()),
+    key_comparator_(info_->mid().key_compare_info()),
     pointer_field_offset_(info_->mid().group_meta()->key().value_offset(info_->mid().group_meta()->key().field_count()-1)) {
     for(auto& p : partitions_) {
         if (!p) continue;

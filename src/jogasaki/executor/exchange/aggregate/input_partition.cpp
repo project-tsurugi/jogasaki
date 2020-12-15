@@ -32,7 +32,7 @@ input_partition::input_partition(
     resource_for_hash_tables_(std::move(resource_for_hash_tables)),
     resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
     info_(std::move(info)),
-    comparator_(info_->pre().group_meta()->key_shared().get()),
+    comparator_(info_->pre().key_compare_info()),
     initial_hash_table_size_(initial_hash_table_size),
     max_pointers_(pointer_table_size),
     key_buf_(info_->pre().group_meta()->key_shared())

@@ -178,7 +178,8 @@ TEST_F(input_partition_test, text) {
     accessor::record_ref res2{*it++, sizeof(S)};
     accessor::record_ref res3{*it++, sizeof(S)};
 
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     EXPECT_EQ(0, comp(ref1, res1));
     EXPECT_EQ(0, comp(ref2, res2));
     EXPECT_EQ(0, comp(ref3, res3));

@@ -74,7 +74,8 @@ TEST_F(iterable_record_store_test, basic) {
     ASSERT_EQ(r.begin(), it);
     ASSERT_NE(r.end(), it);
 
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     EXPECT_EQ(0, comp(res1, *it));
     EXPECT_NE(0, comp(res2, *it));
 
@@ -116,7 +117,8 @@ TEST_F(iterable_record_store_test, multiple_pointer_intervals) {
     EXPECT_EQ(at0, it);
     ASSERT_EQ(r.begin(), it);
     ASSERT_NE(r.end(), it);
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     EXPECT_EQ(0, comp(p2, *it));
     EXPECT_NE(0, comp(p1, *it));
 
@@ -148,7 +150,8 @@ TEST_F(iterable_record_store_test, record_ref) {
     auto meta = rec.record_meta();
     iterable_record_store r{&memory, &memory, meta};
     auto res1 = r.append(rec.ref());
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     auto it = r.begin();
     EXPECT_EQ(0, comp(res1, it.ref()));
 }

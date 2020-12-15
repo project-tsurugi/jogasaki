@@ -20,6 +20,7 @@
 #include <memory>
 
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
@@ -30,6 +31,7 @@
 namespace jogasaki::executor::exchange::group {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::sequence_view;
 
 /**
  * @brief information to execute shuffle, used to extract schema and record layout information for key/value parts
@@ -53,7 +55,8 @@ public:
     shuffle_info(
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
-        std::vector<field_index_type> key_indices_for_sort = {}
+        std::vector<field_index_type> const& key_indices_for_sort = {},
+        std::vector<ordering> const& key_ordering_for_sort = {}
     );
 
     /**
@@ -87,6 +90,18 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& sort_key_meta() const noexcept;
 
     /**
+     * @brief returns
+     */
+    [[nodiscard]] sequence_view<ordering const> sort_key_ordering() const noexcept;
+
+    /**
+     * @brief returns
+     */
+    [[nodiscard]] compare_info const& sort_compare_info() const noexcept {
+        return sort_compare_info_;
+    }
+
+    /**
      * @brief returns metadata for value part (fields outside grouping key)
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept;
@@ -101,6 +116,8 @@ private:
     std::vector<field_index_type> key_indices_{};
     maybe_shared_ptr<meta::group_meta> group_{};
     maybe_shared_ptr<meta::record_meta> sort_key_{};
+    std::vector<ordering> sort_key_ordering_{};
+    compare_info sort_compare_info_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> from_keys(
         maybe_shared_ptr<meta::record_meta> record,
@@ -114,6 +131,10 @@ private:
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<std::size_t> const& indices,
         std::vector<std::size_t> const& sort_key_indices
+    );
+    [[nodiscard]] std::vector<ordering>  create_sort_key_ordering(
+        std::size_t group_key_count,
+        std::vector<ordering> const& sort_key_ordering
     );
 };
 

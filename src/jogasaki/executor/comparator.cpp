@@ -17,19 +17,12 @@
 
 namespace jogasaki::executor {
 
-comparator::comparator(const meta::record_meta *l_meta, const meta::record_meta *r_meta) noexcept:
-    l_meta_(l_meta),
-    r_meta_(r_meta)
-{
-    BOOST_ASSERT(l_meta_->field_count() == r_meta_->field_count());  //NOLINT
-    for(std::size_t i=0, n = l_meta_->field_count(); i < n; ++i) {
-        (void)i;
-        BOOST_ASSERT(l_meta_->at(i) == r_meta_->at(i));  //NOLINT
-    }
-}
+comparator::comparator(const compare_info& info) noexcept:
+    meta_(std::addressof(info))
+{}
 
 int comparator::operator()(const accessor::record_ref &a, const accessor::record_ref &b) const noexcept {
-    for(std::size_t i = 0, n = l_meta_->field_count(); i < n; ++i) {
+    for(std::size_t i = 0, n = meta_->left().field_count(); i < n; ++i) {
         auto res = compare_field(a, b, i);
         if (res != 0) {
             return res;
@@ -54,37 +47,44 @@ struct field_comparator {
     }
 };
 
+int comparator::negate_if(int ret, std::size_t field_index) const noexcept {
+    return meta_->opposite(field_index) ? -ret : ret;
+}
+
 int
 comparator::compare_field(const accessor::record_ref &a, const accessor::record_ref &b, std::size_t field_index) const {
-    auto& type = l_meta_->at(field_index);
+    auto& l = meta_->left();
+    auto& r = meta_->right();
+    auto& type = l.at(field_index);
     if(type.kind() == kind::pointer) return 0; // ignore internal fields
-    auto l_nullable = l_meta_->nullable(field_index);
-    auto r_nullable = r_meta_->nullable(field_index);
+    auto l_nullable = l.nullable(field_index);
+    auto r_nullable = r.nullable(field_index);
     if(l_nullable || r_nullable) {
-        bool a_null = l_nullable && a.is_null(l_meta_->nullity_offset(field_index));
-        bool b_null = r_nullable && b.is_null(r_meta_->nullity_offset(field_index));
+        bool a_null = l_nullable && a.is_null(l.nullity_offset(field_index));
+        bool b_null = r_nullable && b.is_null(r.nullity_offset(field_index));
         if (a_null != b_null) {
-            return a_null ? -1 : 1;
+            return negate_if(a_null ? -1 : 1, field_index);
         }
         if (a_null) {
             return 0;
         }
     }
-    auto l_offset = l_meta_->value_offset(field_index);
-    auto r_offset = r_meta_->value_offset(field_index);
+    auto l_offset = l.value_offset(field_index);
+    auto r_offset = r.value_offset(field_index);
     switch(type.kind()) {
-        case meta::field_type_kind::boolean: return field_comparator<kind::boolean>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::int1: return field_comparator<kind::int1>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::int2: return field_comparator<kind::int2>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::int4: return field_comparator<kind::int4>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::int8: return field_comparator<kind::int8>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::float4: return field_comparator<kind::float4>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::float8: return field_comparator<kind::float8>{}(a, b, l_offset, r_offset);
-        case meta::field_type_kind::character: return field_comparator<kind::character>{}(a, b, l_offset, r_offset);
+        case meta::field_type_kind::boolean: return negate_if(field_comparator<kind::boolean>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::int1: return negate_if(field_comparator<kind::int1>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::int2: return negate_if(field_comparator<kind::int2>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::int4: return negate_if(field_comparator<kind::int4>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::int8: return negate_if(field_comparator<kind::int8>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::float4: return negate_if(field_comparator<kind::float4>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::float8: return negate_if(field_comparator<kind::float8>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::character: return negate_if(field_comparator<kind::character>{}(a, b, l_offset, r_offset), field_index);
         default:
             // TODO implement other types
             std::abort();
     }
     std::abort();
 }
+
 }

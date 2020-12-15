@@ -33,7 +33,7 @@ input_partition::input_partition(
     resource_for_varlen_data_(std::move(resource_for_varlen_data)),
     info_(std::move(info)),
     context_(context),
-    comparator_(info_->sort_key_meta().get()),
+    comparator_(info_->sort_compare_info()),
     max_pointers_(pointer_table_size)
 {}
 

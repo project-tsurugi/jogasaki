@@ -99,7 +99,8 @@ public:
         resource_for_hash_tables_(std::move(resource_for_hash_tables)),
         info_(std::move(info)),
         context_(context),
-        comparator_(info_->key_meta().get()),
+        compare_info_(*info_->key_meta()),
+        comparator_(compare_info_),
         initial_hash_table_size_(initial_hash_table_size)
     {
         (void)context_;
@@ -288,6 +289,7 @@ private:
     std::unique_ptr<data::record_store> keys_{};
     std::unique_ptr<data::record_store> values_{};
     hash_tables tables_{};
+    compare_info compare_info_{};
     comparator comparator_{};
     bool current_table_active_{false};
     std::size_t initial_hash_table_size_{};

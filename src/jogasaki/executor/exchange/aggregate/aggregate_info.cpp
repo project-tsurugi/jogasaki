@@ -209,7 +209,8 @@ aggregate_info::output_info::output_info(
         )
     ),
     source_field_locators_(create_source_field_locators(aggregator_specs_, phase_input_)),
-    target_field_locators_(create_target_field_locators(aggregator_specs_, group_))
+    target_field_locators_(create_target_field_locators(aggregator_specs_, group_)),
+    key_compare_info_(group_->key())
 {}
 
 const maybe_shared_ptr<meta::group_meta> &aggregate_info::output_info::group_meta() const noexcept {

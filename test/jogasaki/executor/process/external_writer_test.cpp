@@ -62,7 +62,8 @@ TEST_F(external_writer_test, basic) {
     writer.write(rec1.ref());
     writer.write(rec2.ref());
 
-    comparator comp{meta.get()};
+    compare_info cm{*meta};
+    comparator comp{cm};
     auto b = store.begin();
     EXPECT_EQ(0, comp(rec1.ref(), b.ref()));
     ++b;

@@ -61,7 +61,8 @@ public:
             params_(&c),
             key_offset_(l_meta_->key().value_offset(0)),
             value_offset_(l_meta_->value().value_offset(0)),
-            key_comparator_(l_meta_->key_shared().get()),
+            compare_info_(l_meta_->key()),
+            key_comparator_(compare_info_),
             key_size_(l_meta_->key().record_size())
     {}
 
@@ -174,6 +175,7 @@ private:
     std::size_t l_keys_ = 0;
     std::size_t r_keys_ = 0;
     std::size_t total_key_ = 0;
+    compare_info compare_info_{};
     comparator key_comparator_{};
     std::size_t key_size_ = 0;
     double total_val_ = 0;

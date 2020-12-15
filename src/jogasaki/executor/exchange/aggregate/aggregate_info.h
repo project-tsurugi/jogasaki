@@ -26,6 +26,7 @@
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/aggregate_function_info.h>
 #include <jogasaki/executor/function/aggregator_info.h>
@@ -213,6 +214,9 @@ public:
          */
         [[nodiscard]] field_locator const& target_field_locator(std::size_t aggregator_index) const noexcept;
 
+        [[nodiscard]] compare_info const& key_compare_info() const noexcept {
+            return key_compare_info_;
+        }
     private:
         output_kind kind_{};
         std::vector<aggregator_spec> aggregator_specs_{};
@@ -220,6 +224,7 @@ public:
         maybe_shared_ptr<meta::group_meta> group_{std::make_shared<meta::group_meta>()};
         std::vector<std::vector<field_locator>> source_field_locators_{};
         std::vector<field_locator> target_field_locators_{};
+        compare_info key_compare_info_{};
 
         std::shared_ptr<meta::record_meta> create_key_meta(
             output_kind kind,

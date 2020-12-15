@@ -222,7 +222,8 @@ public:
         if (a.meta_->field_count() != b.meta_->field_count()) {
             return false;
         }
-        executor::comparator comp{a.meta_.get(), b.meta_.get()};
+        executor::compare_info cm{*a.meta_, *b.meta_};
+        executor::comparator comp{cm};
         return comp(a.ref(), b.ref()) == 0;
     }
 
@@ -236,7 +237,8 @@ public:
         if (a.meta_->field_count() != b.meta_->field_count()) {
             return false;
         }
-        executor::comparator comp{a.meta_.get(), b.meta_.get()};
+        executor::compare_info cm{*a.meta_, *b.meta_};
+        executor::comparator comp{cm};
         return comp(a.ref(), b.ref()) < 0;
     }
 
@@ -245,7 +247,8 @@ public:
         if (a.meta_->field_count() != b.meta_->field_count()) {
             return false;
         }
-        executor::comparator comp{a.meta_.get(), b.meta_.get()};
+        executor::compare_info cm{*a.meta_, *b.meta_};
+        executor::comparator comp{cm};
         return comp(a.ref(), b.ref()) > 0;
     }
     /**

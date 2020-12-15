@@ -26,7 +26,7 @@ priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info,
         queue_(iterator_pair_comparator(info_.get())),
         record_size_(info_->record_meta()->record_size()),
         buf_(info_->record_meta()), //NOLINT
-        key_comparator_(info_->sort_key_meta().get()) {
+        key_comparator_(info_->sort_compare_info()) {
     for(auto& p : partitions_) {
         if (!p) continue;
         for(auto& t : *p) {
@@ -107,7 +107,7 @@ void priority_queue_reader::release() {
 iterator_pair_comparator::iterator_pair_comparator(const shuffle_info *info) :
     info_(info),
     record_size_(info_->record_meta()->record_size()),
-    key_comparator_(info_->sort_key_meta().get()) {}
+    key_comparator_(info_->sort_compare_info()) {}
 
 bool iterator_pair_comparator::operator()(const iterator_pair &x, const iterator_pair &y) {
     auto& it_x = x.first;

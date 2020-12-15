@@ -24,8 +24,6 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/partitioner.h>
-#include <jogasaki/executor/comparator.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -34,15 +32,20 @@ using takatori::util::maybe_shared_ptr;
 shuffle_info::shuffle_info(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<field_index_type> key_indices,
-    std::vector<field_index_type> key_indices_for_sort
+    std::vector<field_index_type> const& key_indices_for_sort,
+    std::vector<ordering> const& key_ordering_for_sort
 ) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
     group_(std::make_shared<meta::group_meta>(
         from_keys(record_, key_indices_),
         create_value_meta(record_, key_indices_))),
-    sort_key_(create_sort_key_meta(record_, key_indices_, std::move(key_indices_for_sort)))
-{}
+    sort_key_(create_sort_key_meta(record_, key_indices_, key_indices_for_sort)),
+    sort_key_ordering_(create_sort_key_ordering(key_indices_.size(), key_ordering_for_sort)),
+    sort_compare_info_(*sort_key_, sort_key_ordering_)
+{
+    BOOST_ASSERT(key_indices_for_sort.size() == key_ordering_for_sort.size());  //NOLINT
+}
 
 accessor::record_ref shuffle_info::extract_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
@@ -54,6 +57,10 @@ accessor::record_ref shuffle_info::extract_value(accessor::record_ref record) co
 
 accessor::record_ref shuffle_info::extract_sort_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
+}
+
+sequence_view<ordering const> shuffle_info::sort_key_ordering() const noexcept {
+    return sort_key_ordering_;
 }
 
 const maybe_shared_ptr<meta::record_meta> &shuffle_info::record_meta() const noexcept {
@@ -131,6 +138,15 @@ std::shared_ptr<meta::record_meta> shuffle_info::create_sort_key_meta(
     std::vector<std::size_t> merged{indices.begin(), indices.end()};
     merged.insert(merged.end(), sort_key_indices.begin(), sort_key_indices.end());
     return from_keys(std::move(record), merged);
+}
+
+std::vector<ordering> shuffle_info::create_sort_key_ordering(
+    std::size_t group_key_count,
+    std::vector<ordering> const& sort_key_ordering
+) {
+    std::vector<ordering> order(group_key_count, ordering::undefined);
+    order.insert(order.end(), sort_key_ordering.begin(), sort_key_ordering.end());
+    return order;
 }
 
 }

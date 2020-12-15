@@ -171,9 +171,12 @@ public:
      * @brief construct new object
      * @attention key_meta is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    group_input_comparator(std::vector<group_input>* inputs, meta::record_meta const* key_meta) :
+    group_input_comparator(
+        std::vector<group_input>* inputs,
+        compare_info const& meta
+    ) :
         inputs_(inputs),
-        key_comparator_(key_meta)
+        key_comparator_(meta)
     {}
 
     [[nodiscard]] bool operator()(input_index const& x, input_index const& y) {

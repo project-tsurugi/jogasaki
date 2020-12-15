@@ -18,14 +18,14 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 
 namespace jogasaki::executor::exchange::group {
 
 input_partition::input_partition(
     std::unique_ptr<memory::paged_memory_resource> resource_for_records,
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
-    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data, std::shared_ptr<shuffle_info> info,
+    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data, std::shared_ptr<group_info> info,
     request_context *context, std::size_t pointer_table_size
 ) :
     resource_for_records_(std::move(resource_for_records)),

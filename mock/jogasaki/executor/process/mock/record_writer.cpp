@@ -15,7 +15,63 @@
  */
 #include "record_writer.h"
 
+#include <jogasaki/meta/record_meta.h>
+
 namespace jogasaki::executor::process::mock {
 
+basic_record_writer::basic_record_writer(maybe_shared_ptr <meta::record_meta> meta) :
+    meta_(std::move(meta))
+{}
+
+basic_record_writer::basic_record_writer(maybe_shared_ptr <meta::record_meta> meta, std::size_t capacity,
+    basic_record_writer::memory_resource_type* resource) :
+    meta_(std::move(meta)),
+    records_(resource),
+    capacity_(capacity)
+{
+    records_.reserve(capacity);
+}
+
+bool basic_record_writer::write(accessor::record_ref rec) {
+    record_type r{rec, meta_, resource_.get()};
+    if (capacity_ == npos || records_.size() < capacity_) {
+        auto& x = records_.emplace_back(r);
+        DVLOG(2) << x;
+    } else {
+        records_[pos_ % capacity_] = r;
+        DVLOG(2) << records_[pos_ % capacity_];
+        ++pos_;
+    }
+    ++write_count_;
+    return false;
+}
+
+void basic_record_writer::flush() {
+    // no-op
+}
+
+void basic_record_writer::release() {
+    released_ = true;
+}
+
+void basic_record_writer::acquire() {
+    acquired_ = true;
+}
+
+std::size_t basic_record_writer::size() const noexcept {
+    return std::max(write_count_, records_.size());
+}
+
+const basic_record_writer::records_type& basic_record_writer::records() const noexcept {
+    return records_;
+}
+
+bool basic_record_writer::is_released() const noexcept {
+    return released_;
+}
+
+bool basic_record_writer::is_acquired() const noexcept {
+    return acquired_;
+}
 }
 

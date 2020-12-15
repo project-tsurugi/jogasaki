@@ -18,6 +18,7 @@ target_include_directories(join-cli
 
 target_link_libraries(join-cli
         PRIVATE jogasaki-impl
+        PRIVATE jogasaki-mock
         PRIVATE jogasaki-mock-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags

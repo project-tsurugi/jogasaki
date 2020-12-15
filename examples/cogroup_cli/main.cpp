@@ -22,7 +22,7 @@
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/utils/performance_tools.h>
 
@@ -74,7 +74,7 @@ std::shared_ptr<meta::record_meta> test_record_meta() {
 
 static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
-    auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0});
+    auto info = std::make_shared<group_info>(meta, std::vector<std::size_t>{0});
 
     auto channel = std::make_shared<class channel>();
     auto compiler_context = std::make_shared<plan::compiler_context>();

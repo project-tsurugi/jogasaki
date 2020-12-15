@@ -24,7 +24,7 @@ namespace jogasaki::executor::exchange::group {
 source::source() = default;
 source::~source() = default;
 
-source::source(std::shared_ptr<shuffle_info> info,
+source::source(std::shared_ptr<group_info> info,
         request_context* context
 ) : info_(std::move(info)), context_(context) {}
 

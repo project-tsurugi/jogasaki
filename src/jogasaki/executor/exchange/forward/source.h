@@ -16,7 +16,6 @@
 #pragma once
 
 #include <jogasaki/executor/exchange/source.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/executor/group_reader.h>
 

@@ -35,7 +35,7 @@
 
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <takatori/plan/group.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 
 #include "verifier.h"
@@ -201,7 +201,7 @@ TEST_F(take_cogroup_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
-    exchange::group::shuffle_info s_info{input_meta, {0,1}};
+    exchange::group::group_info s_info{input_meta, {0,1}};
     auto key_meta = s_info.key_meta();
     auto value_meta = s_info.value_meta();
     auto& block_info = p_info.scopes_info()[0];

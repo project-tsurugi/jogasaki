@@ -16,7 +16,9 @@
 #pragma once
 
 #include <takatori/util/sequence_view.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/meta/group_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/group_reader.h>
@@ -25,6 +27,8 @@
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::mock {
+
+using takatori::util::maybe_shared_ptr;
 
 using kind = meta::field_type_kind;
 

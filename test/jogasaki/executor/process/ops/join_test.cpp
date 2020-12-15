@@ -37,7 +37,6 @@
 #include <jogasaki/executor/process/impl/ops/join.h>
 #include <jogasaki/executor/process/impl/ops/take_cogroup.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/executor/process/mock/iterable_group_store.h>
 

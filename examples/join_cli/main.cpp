@@ -346,7 +346,7 @@ public:
 
     int run(params& s, std::shared_ptr<configuration> cfg) {
         auto meta = test_record_meta();
-        auto info = std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0,1});
+        auto info = std::make_shared<group_info>(meta, std::vector<std::size_t>{0,1});
 
         auto channel = std::make_shared<class channel>();
         auto compiler_context = std::make_shared<plan::compiler_context>();

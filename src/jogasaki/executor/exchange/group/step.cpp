@@ -19,15 +19,15 @@
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/process/step.h>
-#include "shuffle_info.h"
+#include "group_info.h"
 #include "flow.h"
 
 namespace jogasaki::executor::exchange::group {
 
-step::step() : info_(std::make_shared<shuffle_info>()) {}
+step::step() : info_(std::make_shared<group_info>()) {}
 
 step::step(
-    std::shared_ptr<shuffle_info> info,
+    std::shared_ptr<group_info> info,
     meta::variable_order input_column_order,
     meta::variable_order output_column_order
 ) : shuffle::step(info->record_meta(), std::move(input_column_order)),
@@ -42,7 +42,7 @@ step::step(
     meta::variable_order output_column_order
 ) :
     step(
-        std::make_shared<shuffle_info>(std::move(input_meta), std::move(key_indices)),
+        std::make_shared<group_info>(std::move(input_meta), std::move(key_indices)),
         std::move(input_column_order),
         std::move(output_column_order)
     )

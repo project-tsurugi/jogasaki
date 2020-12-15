@@ -36,14 +36,14 @@ using takatori::util::sequence_view;
 /**
  * @brief information to execute shuffle, used to extract schema and record layout information for key/value parts
  */
-class shuffle_info {
+class group_info {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
     /**
      * @brief construct empty object
      */
-    shuffle_info() = default;
+    group_info() = default;
 
     /**
      * @brief construct new object
@@ -52,7 +52,7 @@ public:
      * @param key_indices_for_sort the ordered indices to specify additional key fields to sort group members
      * within groups
      */
-    shuffle_info(
+    group_info(
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
         std::vector<field_index_type> const& key_indices_for_sort = {},

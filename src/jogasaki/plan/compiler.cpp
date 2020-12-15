@@ -59,7 +59,7 @@
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
@@ -226,7 +226,7 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
         key_indices[output_order.index(k)] = input_order.index(k);
     }
 
-    auto info = std::make_shared<executor::exchange::group::shuffle_info>(std::move(meta), std::move(key_indices));
+    auto info = std::make_shared<executor::exchange::group::group_info>(std::move(meta), std::move(key_indices));
     return executor::exchange::group::step(
         std::move(info),
         std::move(input_order),

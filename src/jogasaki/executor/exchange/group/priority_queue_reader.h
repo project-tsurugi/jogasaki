@@ -52,12 +52,12 @@ public:
      * @param info shuffle information
      * @attention info is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    explicit iterator_pair_comparator(shuffle_info const* info);
+    explicit iterator_pair_comparator(group_info const* info);
 
     [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y);
 
 private:
-    shuffle_info const* info_{};
+    group_info const* info_{};
     std::size_t record_size_{};
     comparator key_comparator_{};
 };
@@ -77,7 +77,7 @@ public:
     priority_queue_reader(priority_queue_reader&& other) noexcept = delete;
     priority_queue_reader& operator=(priority_queue_reader&& other) noexcept = delete;
 
-    priority_queue_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
+    priority_queue_reader(std::shared_ptr<group_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
 
     [[nodiscard]] bool next_group() override;
 
@@ -91,7 +91,7 @@ public:
 
 private:
     std::vector<std::unique_ptr<input_partition>>& partitions_;
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     std::priority_queue<impl::iterator_pair, std::vector<impl::iterator_pair>, impl::iterator_pair_comparator> queue_;
     std::size_t record_size_{};
 

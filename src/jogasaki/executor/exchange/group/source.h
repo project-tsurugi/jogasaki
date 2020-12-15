@@ -17,7 +17,7 @@
 
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/exchange/source.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/executor/group_reader.h>
 
@@ -32,7 +32,7 @@ public:
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
     explicit source(
-            std::shared_ptr<shuffle_info> info,
+            std::shared_ptr<group_info> info,
             request_context* context
     );
     void receive(std::unique_ptr<input_partition> in);
@@ -41,7 +41,7 @@ public:
 
 private:
     std::vector<std::unique_ptr<group_reader>> readers_;
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     request_context* context_{};
     std::vector<std::unique_ptr<input_partition>> partitions_{};
 };

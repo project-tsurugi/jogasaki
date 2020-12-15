@@ -43,7 +43,7 @@ public:
                 meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
                 meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
         }, boost::dynamic_bitset<std::uint64_t>(std::string("00")));
-        exchange::group::shuffle_info info{rec_meta, {1}};
+        exchange::group::group_info info{rec_meta, {1}};
         auto key_meta = info.key_meta();
 
         memory::page_pool pool{};

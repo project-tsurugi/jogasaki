@@ -19,7 +19,7 @@
 
 #include <jogasaki/executor/record_writer.h>
 #include "input_partition.h"
-#include "shuffle_info.h"
+#include "group_info.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::group {
@@ -27,7 +27,7 @@ namespace jogasaki::executor::exchange::group {
 using takatori::util::fail;
 
 sink::sink(std::size_t downstream_partitions,
-    std::shared_ptr<shuffle_info> info,
+    std::shared_ptr<group_info> info,
     request_context* context
 ) :
     downstream_partitions_(downstream_partitions),

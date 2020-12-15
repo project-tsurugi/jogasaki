@@ -20,7 +20,7 @@
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/executor/exchange/sink.h>
 #include "input_partition.h"
-#include "shuffle_info.h"
+#include "group_info.h"
 
 namespace jogasaki::executor::exchange::group {
 
@@ -35,7 +35,7 @@ public:
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
     sink(std::size_t downstream_partitions,
-            std::shared_ptr<shuffle_info> info,
+            std::shared_ptr<group_info> info,
             request_context* context
             );
 
@@ -49,7 +49,7 @@ public:
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>> partitions_{};
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     request_context* context_{};
     std::unique_ptr<group::writer> writer_;
 };

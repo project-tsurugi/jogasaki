@@ -20,7 +20,7 @@
 
 namespace jogasaki::executor::exchange::group {
 
-sorted_vector_reader::sorted_vector_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
+sorted_vector_reader::sorted_vector_reader(std::shared_ptr<group_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
         partitions_(partitions),
         info_(std::move(info)),
         record_size_(info_->record_meta()->record_size()),

@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
@@ -52,7 +52,7 @@ TEST_F(input_partition_test, basic) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}), context.get()};
+            std::make_shared<group_info>(test_record_meta1(), std::vector<std::size_t>{0}), context.get()};
     test::record r1 {1, 1.0};
     test::record r2 {2, 2.0};
     test::record r3 {3, 3.0};
@@ -73,7 +73,7 @@ TEST_F(input_partition_test, use_monotonic_resource) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(test_record_meta1(), std::vector<std::size_t>{0}),
+            std::make_shared<group_info>(test_record_meta1(), std::vector<std::size_t>{0}),
             context.get(),
             };
 
@@ -98,7 +98,7 @@ TEST_F(input_partition_test, auto_flush_to_next_table_when_full) {
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
             std::make_unique<mock_memory_resource>(),
-            std::make_shared<shuffle_info>(meta, std::vector<std::size_t>{0}),
+            std::make_shared<group_info>(meta, std::vector<std::size_t>{0}),
             context.get(),
             2
             };
@@ -152,7 +152,7 @@ TEST_F(input_partition_test, text) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
-        std::make_shared<shuffle_info>(
+        std::make_shared<group_info>(
             meta,
             std::vector<std::size_t>{0}),
         context.get(),
@@ -191,7 +191,7 @@ TEST_F(input_partition_test, empty_keys) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
-        std::make_shared<shuffle_info>(
+        std::make_shared<group_info>(
             test_record_meta1(),
             std::vector<std::size_t>{},
         std::vector<std::size_t>{},
@@ -217,7 +217,7 @@ TEST_F(input_partition_test, sort_keys_only) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
-        std::make_shared<shuffle_info>(
+        std::make_shared<group_info>(
             meta,
             std::vector<std::size_t>{},
             std::vector<std::size_t>{0, 1},
@@ -280,7 +280,7 @@ TEST_F(input_partition_test, sort_asc) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
-        std::make_shared<shuffle_info>(
+        std::make_shared<group_info>(
             meta,
             std::vector<std::size_t>{0},
             std::vector<std::size_t>{1, 2},
@@ -381,7 +381,7 @@ TEST_F(input_partition_test, sort_desc) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
-        std::make_shared<shuffle_info>(
+        std::make_shared<group_info>(
             meta,
             std::vector<std::size_t>{0},
             std::vector<std::size_t>{1, 2},
@@ -482,7 +482,7 @@ TEST_F(input_partition_test, sort_desc_asc) {
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
         std::make_unique<mock_memory_resource>(),
-        std::make_shared<shuffle_info>(
+        std::make_shared<group_info>(
             meta,
             std::vector<std::size_t>{0},
             std::vector<std::size_t>{1, 2},

@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/writer.h>
 
 namespace jogasaki::executor::exchange::group {
@@ -40,7 +40,7 @@ TEST_F(shuffle_sink_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::float8>),
     },boost::dynamic_bitset<std::uint64_t>("00"s));
-    auto info = std::make_shared<shuffle_info>(rec_meta, std::vector<std::size_t>{0});
+    auto info = std::make_shared<group_info>(rec_meta, std::vector<std::size_t>{0});
     auto context = std::make_shared<request_context>();
     sink s{1UL, info, context.get()};
     auto key_meta = info->key_meta();

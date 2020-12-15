@@ -20,7 +20,7 @@ namespace jogasaki::executor::exchange::group {
 using namespace impl;
 
 
-priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
+priority_queue_reader::priority_queue_reader(std::shared_ptr<group_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
         partitions_(partitions),
         info_(std::move(info)),
         queue_(iterator_pair_comparator(info_.get())),
@@ -107,7 +107,7 @@ void priority_queue_reader::release() {
     partitions_.clear();
 }
 
-iterator_pair_comparator::iterator_pair_comparator(const shuffle_info *info) :
+iterator_pair_comparator::iterator_pair_comparator(const group_info *info) :
     info_(info),
     record_size_(info_->record_meta()->record_size()),
     key_comparator_(info_->sort_compare_info()) {}

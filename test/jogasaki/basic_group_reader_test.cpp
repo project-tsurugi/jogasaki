@@ -15,6 +15,7 @@
  */
 #include <jogasaki/executor/process/mock/group_reader.h>
 
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include "test_root.h"
 
 namespace jogasaki::executor::process::mock {
@@ -96,7 +97,7 @@ TEST_F(basic_group_reader_test, meta) {
     value_record value3{create_record<kind::float4, kind::float8>(300.0, 3000.0)};
 
     group_meta meta{key1.record_meta(), value1.record_meta()};
-    shuffle_info s_info(create_meta<kind::int4, kind::float4, kind::float8, kind::int8>(), {0,3});
+    group_info s_info(create_meta<kind::int4, kind::float4, kind::float8, kind::int8>(), {0,3});
     using reader_type = basic_group_reader;
     reader_type reader{
         {

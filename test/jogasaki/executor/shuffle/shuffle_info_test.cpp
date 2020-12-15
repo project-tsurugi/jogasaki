@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -38,7 +38,7 @@ TEST_F(shuffle_info_test, simple) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>("0001"s));
-    shuffle_info info{rec_meta, {1}};
+    group_info info{rec_meta, {1}};
     auto key_meta = info.key_meta();
     EXPECT_EQ(1, key_meta->field_count());
     EXPECT_EQ(3, info.value_meta()->field_count());
@@ -51,7 +51,7 @@ TEST_F(shuffle_info_test, mutiple_key_fields) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>("0001"s));
-    shuffle_info info{rec_meta, {3,0,1}};
+    group_info info{rec_meta, {3,0,1}};
     auto key_meta = info.key_meta();
     ASSERT_EQ(3, key_meta->field_count());
     EXPECT_EQ(1, info.value_meta()->field_count());
@@ -70,7 +70,7 @@ TEST_F(shuffle_info_test, nullability_for_value) {
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>("0001"s));
-    shuffle_info info{rec_meta, {2}};
+    group_info info{rec_meta, {2}};
     auto value_meta = info.value_meta();
     ASSERT_EQ(1, info.key_meta()->field_count());
     EXPECT_EQ(3, info.value_meta()->field_count());

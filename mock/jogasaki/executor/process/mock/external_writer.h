@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -27,6 +29,7 @@
 
 namespace jogasaki::executor::process::mock {
 
+using takatori::util::maybe_shared_ptr;
 using kind = meta::field_type_kind;
 
 class cache_align basic_external_writer : public executor::record_writer {

@@ -31,7 +31,6 @@
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/constants.h>

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "shuffle_info.h"
+#include "group_info.h"
 
 #include <vector>
 #include <set>
@@ -29,7 +29,7 @@ namespace jogasaki::executor::exchange::group {
 
 using takatori::util::maybe_shared_ptr;
 
-shuffle_info::shuffle_info(
+group_info::group_info(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<field_index_type> key_indices,
     std::vector<field_index_type> const& key_indices_for_sort,
@@ -48,43 +48,43 @@ shuffle_info::shuffle_info(
     BOOST_ASSERT(key_indices_for_sort.size() == key_ordering_for_sort.size());  //NOLINT
 }
 
-accessor::record_ref shuffle_info::extract_key(accessor::record_ref record) const noexcept {
+accessor::record_ref group_info::extract_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
 }
 
-accessor::record_ref shuffle_info::extract_value(accessor::record_ref record) const noexcept {
+accessor::record_ref group_info::extract_value(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
 }
 
-accessor::record_ref shuffle_info::extract_sort_key(accessor::record_ref record) const noexcept {
+accessor::record_ref group_info::extract_sort_key(accessor::record_ref record) const noexcept {
     return accessor::record_ref(record.data(), record_->record_size());
 }
 
-sequence_view<ordering const> shuffle_info::sort_key_ordering() const noexcept {
+sequence_view<ordering const> group_info::sort_key_ordering() const noexcept {
     return sort_key_ordering_;
 }
 
-const maybe_shared_ptr<meta::record_meta> &shuffle_info::record_meta() const noexcept {
+const maybe_shared_ptr<meta::record_meta> &group_info::record_meta() const noexcept {
     return record_;
 }
 
-const maybe_shared_ptr<meta::record_meta> &shuffle_info::key_meta() const noexcept {
+const maybe_shared_ptr<meta::record_meta> &group_info::key_meta() const noexcept {
     return group_->key_shared();
 }
 
-const maybe_shared_ptr<meta::record_meta> &shuffle_info::value_meta() const noexcept {
+const maybe_shared_ptr<meta::record_meta> &group_info::value_meta() const noexcept {
     return group_->value_shared();
 }
 
-const maybe_shared_ptr<meta::record_meta> &shuffle_info::sort_key_meta() const noexcept {
+const maybe_shared_ptr<meta::record_meta> &group_info::sort_key_meta() const noexcept {
     return sort_key_;
 }
 
-const maybe_shared_ptr<meta::group_meta> &shuffle_info::group_meta() const noexcept {
+const maybe_shared_ptr<meta::group_meta> &group_info::group_meta() const noexcept {
     return group_;
 }
 
-std::shared_ptr<meta::record_meta> shuffle_info::from_keys(
+std::shared_ptr<meta::record_meta> group_info::from_keys(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<std::size_t> const& indices
 ) {
@@ -115,7 +115,7 @@ std::shared_ptr<meta::record_meta> shuffle_info::from_keys(
     );
 }
 
-std::shared_ptr<meta::record_meta> shuffle_info::create_value_meta(
+std::shared_ptr<meta::record_meta> group_info::create_value_meta(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<std::size_t> const& key_indices
 ) {
@@ -131,7 +131,7 @@ std::shared_ptr<meta::record_meta> shuffle_info::create_value_meta(
     return from_keys(std::move(record), vec);
 }
 
-std::shared_ptr<meta::record_meta> shuffle_info::create_sort_key_meta(
+std::shared_ptr<meta::record_meta> group_info::create_sort_key_meta(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<std::size_t> const& indices,
     std::vector<std::size_t> const& sort_key_indices
@@ -141,7 +141,7 @@ std::shared_ptr<meta::record_meta> shuffle_info::create_sort_key_meta(
     return from_keys(std::move(record), merged);
 }
 
-std::vector<ordering> shuffle_info::create_sort_key_ordering(
+std::vector<ordering> group_info::create_sort_key_ordering(
     std::size_t group_key_count,
     std::vector<ordering> const& sort_key_ordering
 ) {
@@ -150,11 +150,11 @@ std::vector<ordering> shuffle_info::create_sort_key_ordering(
     return order;
 }
 
-class compare_info const& shuffle_info::compare_info() const noexcept {
+class compare_info const& group_info::compare_info() const noexcept {
     return compare_info_;
 }
 
-class compare_info const& shuffle_info::sort_compare_info() const noexcept {
+class compare_info const& group_info::sort_compare_info() const noexcept {
     return sort_compare_info_;
 }
 

@@ -22,6 +22,7 @@
 #include <boost/container/pmr/memory_resource.hpp>
 
 #include <takatori/util/standard_memory_resource.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -34,6 +35,7 @@
 
 namespace jogasaki::executor::process::mock {
 
+using takatori::util::maybe_shared_ptr;
 using kind = meta::field_type_kind;
 
 class cache_align basic_record_writer : public executor::record_writer {
@@ -56,9 +58,7 @@ public:
      */
     explicit basic_record_writer(
         maybe_shared_ptr<meta::record_meta> meta
-    ) :
-        meta_(std::move(meta))
-    {}
+    );
 
     /**
      * @brief create new object
@@ -70,59 +70,27 @@ public:
         maybe_shared_ptr<meta::record_meta> meta,
         std::size_t capacity,
         memory_resource_type* resource = takatori::util::get_standard_memory_resource()
-    ) :
-        meta_(std::move(meta)),
-        records_(resource),
-        capacity_(capacity)
-    {
-        records_.reserve(capacity);
-    }
+    );
 
     /**
      * @brief write record and store internal storage as basic_record.
      * The record_meta passed to constructor is used to convert the input ref to basic_record.
      */
-    bool write(accessor::record_ref rec) override {
-        record_type r{rec, meta_, resource_.get()};
-        if (capacity_ == npos || records_.size() < capacity_) {
-            auto& x = records_.emplace_back(r);
-            DVLOG(2) << x;
-        } else {
-            records_[pos_ % capacity_] = r;
-            DVLOG(2) << records_[pos_ % capacity_];
-            ++pos_;
-        }
-        ++write_count_;
-        return false;
-    }
+    bool write(accessor::record_ref rec) override;
 
-    void flush() override {
-        // no-op
-    }
+    void flush() override;
 
-    void release() override {
-        released_ = true;
-    }
+    void release() override;
 
-    void acquire() {
-        acquired_ = true;
-    }
+    void acquire();
 
-    [[nodiscard]] std::size_t size() const noexcept {
-        return std::max(write_count_, records_.size());
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
-    [[nodiscard]] records_type const& records() const noexcept {
-        return records_;
-    }
+    [[nodiscard]] records_type const& records() const noexcept;
 
-    [[nodiscard]] bool is_released() const noexcept {
-        return released_;
-    }
+    [[nodiscard]] bool is_released() const noexcept;
 
-    [[nodiscard]] bool is_acquired() const noexcept {
-        return acquired_;
-    }
+    [[nodiscard]] bool is_acquired() const noexcept;
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     records_type records_{};

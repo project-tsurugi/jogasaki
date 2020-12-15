@@ -52,7 +52,7 @@ public:
     sorted_vector_reader(sorted_vector_reader&& other) noexcept = delete;
     sorted_vector_reader& operator=(sorted_vector_reader&& other) noexcept = delete;
 
-    sorted_vector_reader(std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
+    sorted_vector_reader(std::shared_ptr<group_info> info, std::vector<std::unique_ptr<input_partition>>& partitions);
 
     [[nodiscard]] bool next_group() override;
 
@@ -66,7 +66,7 @@ public:
 
 private:
     std::vector<std::unique_ptr<input_partition>>& partitions_;
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     std::size_t record_size_{};
     std::unique_ptr<char[]> buf_{}; //NOLINT
     reader_state state_{reader_state::init};

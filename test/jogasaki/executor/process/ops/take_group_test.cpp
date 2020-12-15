@@ -27,7 +27,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/take_group_context.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -163,7 +163,7 @@ TEST_F(take_group_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
-    shuffle_info s_info{input_meta, {0,1}};
+    group_info s_info{input_meta, {0,1}};
 
     auto d = std::make_unique<group_verifier>();
     auto downstream = d.get();

@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/accessor/record_ref.h>
 
@@ -46,7 +46,7 @@ public:
 
 using kind = meta::field_type_kind;
 
-auto const info = std::make_shared<shuffle_info>(test_root::test_record_meta1(), std::vector<size_t>{0});
+auto const info = std::make_shared<group_info>(test_root::test_record_meta1(), std::vector<size_t>{0});
 
 auto get_key = [](group_reader& r) {
     return r.get_group().get_value<std::int64_t>(info->key_meta()->value_offset(0));

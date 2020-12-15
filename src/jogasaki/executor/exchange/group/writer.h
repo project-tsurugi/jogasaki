@@ -18,7 +18,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/record_writer.h>
 #include "input_partition.h"
-#include "shuffle_info.h"
+#include "group_info.h"
 #include "sink.h"
 
 namespace jogasaki::executor::exchange::group {
@@ -33,7 +33,7 @@ public:
 
     writer(
         std::size_t downstream_partitions,
-        std::shared_ptr<shuffle_info> info,
+        std::shared_ptr<group_info> info,
         std::vector<std::unique_ptr<input_partition>>& partitions,
         group::sink& owner
     );
@@ -47,7 +47,7 @@ public:
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>>& partitions_;
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     partitioner partitioner_{};
     sink* owner_{};
 

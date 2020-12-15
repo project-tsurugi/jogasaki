@@ -19,7 +19,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/memory/paged_memory_resource.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/shuffle/pointer_table.h>
 
 namespace jogasaki::executor::exchange::group {
@@ -52,7 +52,7 @@ public:
         std::unique_ptr<memory::paged_memory_resource> resource_for_records,
         std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
         std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
-        std::shared_ptr<shuffle_info> info,
+        std::shared_ptr<group_info> info,
         request_context* context,
         [[maybe_unused]] std::size_t pointer_table_size = ptr_table_size
     );
@@ -89,7 +89,7 @@ private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     request_context* context_{};
     std::unique_ptr<data::record_store> records_{};
     pointer_tables_type pointer_tables_{};

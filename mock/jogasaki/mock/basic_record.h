@@ -23,10 +23,11 @@
 
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_traits.h>
-#include <jogasaki/executor/exchange/group/shuffle_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/comparator.h>
 
 namespace jogasaki::mock {
 

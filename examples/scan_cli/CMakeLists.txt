@@ -17,6 +17,7 @@ target_include_directories(scan-cli
 
 target_link_libraries(scan-cli
         PRIVATE jogasaki-impl #FIXME
+        PRIVATE jogasaki-mock
         PRIVATE jogasaki-mock-impl #FIXME
         PRIVATE glog::glog
         PRIVATE gflags::gflags

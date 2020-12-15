@@ -17,14 +17,14 @@
 
 #include <jogasaki/executor/global.h>
 #include "input_partition.h"
-#include "shuffle_info.h"
+#include "group_info.h"
 #include "sink.h"
 
 namespace jogasaki::executor::exchange::group {
 
 writer::writer(
     std::size_t downstream_partitions,
-    std::shared_ptr<shuffle_info> info,
+    std::shared_ptr<group_info> info,
     std::vector<std::unique_ptr<input_partition>> &partitions,
     sink &owner
 ) :

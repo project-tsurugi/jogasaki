@@ -58,7 +58,7 @@ public:
      * @param input_meta input record metadata
      * @param key_indices indices for key fields
      */
-    flow(std::shared_ptr<shuffle_info> info,
+    flow(std::shared_ptr<group_info> info,
             request_context* context,
             step* owner,
             std::size_t downstream_partitions);
@@ -98,7 +98,7 @@ public:
     [[nodiscard]] class request_context* context() const noexcept;
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    std::shared_ptr<shuffle_info> info_{};
+    std::shared_ptr<group_info> info_{};
     std::vector<std::unique_ptr<group::sink>> sinks_;
     std::vector<std::unique_ptr<group::source>> sources_{};
     class request_context* context_{};

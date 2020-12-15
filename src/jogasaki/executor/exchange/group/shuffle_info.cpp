@@ -42,6 +42,7 @@ shuffle_info::shuffle_info(
         create_value_meta(record_, key_indices_))),
     sort_key_(create_sort_key_meta(record_, key_indices_, key_indices_for_sort)),
     sort_key_ordering_(create_sort_key_ordering(key_indices_.size(), key_ordering_for_sort)),
+    compare_info_(group_->key()),
     sort_compare_info_(*sort_key_, sort_key_ordering_)
 {
     BOOST_ASSERT(key_indices_for_sort.size() == key_ordering_for_sort.size());  //NOLINT
@@ -147,6 +148,14 @@ std::vector<ordering> shuffle_info::create_sort_key_ordering(
     std::vector<ordering> order(group_key_count, ordering::undefined);
     order.insert(order.end(), sort_key_ordering.begin(), sort_key_ordering.end());
     return order;
+}
+
+class compare_info const& shuffle_info::compare_info() const noexcept {
+    return compare_info_;
+}
+
+class compare_info const& shuffle_info::sort_compare_info() const noexcept {
+    return sort_compare_info_;
 }
 
 }

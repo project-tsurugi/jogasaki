@@ -85,21 +85,24 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept;
 
     /**
+     * @brief return compare info to compare keys
+     */
+    [[nodiscard]] class compare_info const& compare_info() const noexcept;
+
+    /**
      * @brief returns metadata for sort key (grouping key fields + fields for member sorting) part
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& sort_key_meta() const noexcept;
 
     /**
-     * @brief returns
+     * @brief returns sort key ordering
      */
     [[nodiscard]] sequence_view<ordering const> sort_key_ordering() const noexcept;
 
     /**
-     * @brief returns
+     * @brief return compare info to compare sort keys
      */
-    [[nodiscard]] compare_info const& sort_compare_info() const noexcept {
-        return sort_compare_info_;
-    }
+    [[nodiscard]] class compare_info const& sort_compare_info() const noexcept;
 
     /**
      * @brief returns metadata for value part (fields outside grouping key)
@@ -117,7 +120,8 @@ private:
     maybe_shared_ptr<meta::group_meta> group_{};
     maybe_shared_ptr<meta::record_meta> sort_key_{};
     std::vector<ordering> sort_key_ordering_{};
-    compare_info sort_compare_info_{};
+    class compare_info compare_info_{};
+    class compare_info sort_compare_info_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> from_keys(
         maybe_shared_ptr<meta::record_meta> record,

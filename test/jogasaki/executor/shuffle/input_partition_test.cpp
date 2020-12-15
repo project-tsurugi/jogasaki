@@ -185,5 +185,366 @@ TEST_F(input_partition_test, text) {
     EXPECT_EQ(0, comp(ref3, res3));
 }
 
+TEST_F(input_partition_test, empty_keys) {
+    auto context = std::make_shared<request_context>();
+    input_partition partition{
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_shared<shuffle_info>(
+            test_record_meta1(),
+            std::vector<std::size_t>{},
+        std::vector<std::size_t>{},
+        std::vector<ordering>{}
+        ), context.get()};
+    test::record r1 {1, 1.0};
+    test::record r2 {2, 2.0};
+    test::record r3 {3, 3.0};
+
+    partition.write(r3.ref());
+    partition.write(r1.ref());
+    partition.write(r2.ref());
+    partition.flush();
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    EXPECT_EQ(3, std::distance(t.begin(), t.end()));
+}
+
+TEST_F(input_partition_test, sort_keys_only) {
+    auto context = std::make_shared<request_context>();
+    auto meta = test_record_meta1();
+    input_partition partition{
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_shared<shuffle_info>(
+            meta,
+            std::vector<std::size_t>{},
+            std::vector<std::size_t>{0, 1},
+            std::vector<ordering>{ordering::ascending, ordering::descending}
+        ), context.get()};
+    test::record r1 {1, 1.0};
+    test::record r2 {2, 2.0};
+    test::record r3 {3, 3.0};
+
+    partition.write(r3.ref());
+    partition.write(r1.ref());
+    partition.write(r2.ref());
+    partition.flush();
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    EXPECT_EQ(3, std::distance(t.begin(), t.end()));
+    auto it = t.begin();
+    mock::basic_record res0{accessor::record_ref{*it++, meta->record_size()}, meta};
+    mock::basic_record res1{accessor::record_ref{*it++, meta->record_size()}, meta};
+    mock::basic_record res2{accessor::record_ref{*it++, meta->record_size()}, meta};
+    EXPECT_EQ(r1, res0);
+    EXPECT_EQ(r2, res1);
+    EXPECT_EQ(r3, res2);
+}
+
+TEST_F(input_partition_test, sort_asc) {
+    auto context = std::make_shared<request_context>();
+    struct S {
+        std::int64_t i1_{};
+        std::int64_t i2_{};
+        std::int64_t i3_{};
+        std::int64_t i4_{};
+        char n_[1];
+    };
+    std::size_t nullity_base = offsetof(S, n_) * bits_per_byte;
+    auto meta = std::make_shared<meta::record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{4}.flip(),
+        std::vector<std::size_t>{
+            offsetof(S, i1_),
+            offsetof(S, i2_),
+            offsetof(S, i3_),
+            offsetof(S, i4_),
+        },
+        std::vector<std::size_t>{
+            nullity_base + 0,
+            nullity_base + 1,
+            nullity_base + 2,
+            nullity_base + 3,
+        },
+        alignof(S),
+        sizeof(S)
+    );
+    input_partition partition{
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_shared<shuffle_info>(
+            meta,
+            std::vector<std::size_t>{0},
+            std::vector<std::size_t>{1, 2},
+            std::vector<ordering>{ordering::ascending, ordering::ascending}
+        ),
+        context.get(),
+    };
+
+    mock_memory_resource res{};
+    S r00{0, 0, 0, 0, '\0'};
+    S r01{0, 1, 2, 1, '\0'};
+    S r02{0, 2, 1, 2, '\0'};
+    S r10{1, 1, 0, 10, '\0'};
+    S r11{1, 1, 1, 11, '\0'};
+    S r12{1, 1, 2, 12, '\0'};
+    S r20{2, 0, 0, 20, '\0'};
+    S r21{2, 1, 1, 21, '\0'};
+    S r22{2, 2, 2, 22, '\0'};
+    accessor::record_ref ref00{&r00, sizeof(S)};
+    accessor::record_ref ref01{&r01, sizeof(S)};
+    accessor::record_ref ref02{&r02, sizeof(S)};
+    accessor::record_ref ref10{&r10, sizeof(S)};
+    accessor::record_ref ref11{&r11, sizeof(S)};
+    accessor::record_ref ref12{&r12, sizeof(S)};
+    accessor::record_ref ref20{&r20, sizeof(S)};
+    accessor::record_ref ref21{&r21, sizeof(S)};
+    accessor::record_ref ref22{&r22, sizeof(S)};
+
+    partition.write(ref11);
+    partition.write(ref10);
+    partition.write(ref12);
+    partition.write(ref01);
+    partition.write(ref00);
+    partition.write(ref02);
+    partition.write(ref21);
+    partition.write(ref20);
+    partition.write(ref22);
+    partition.flush();
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    ASSERT_EQ(9, std::distance(t.begin(), t.end()));
+    auto it = t.begin();
+    mock::basic_record res00{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res01{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res02{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res10{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res11{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res12{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res20{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res21{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res22{accessor::record_ref{*it++, sizeof(S)}, meta};
+
+    EXPECT_EQ(mock::basic_record(ref00, meta), res00);
+    EXPECT_EQ(mock::basic_record(ref01, meta), res01);
+    EXPECT_EQ(mock::basic_record(ref02, meta), res02);
+    EXPECT_EQ(mock::basic_record(ref10, meta), res10);
+    EXPECT_EQ(mock::basic_record(ref11, meta), res11);
+    EXPECT_EQ(mock::basic_record(ref12, meta), res12);
+    EXPECT_EQ(mock::basic_record(ref20, meta), res20);
+    EXPECT_EQ(mock::basic_record(ref21, meta), res21);
+    EXPECT_EQ(mock::basic_record(ref22, meta), res22);
+}
+
+TEST_F(input_partition_test, sort_desc) {
+    auto context = std::make_shared<request_context>();
+    struct S {
+        std::int64_t i1_{};
+        std::int64_t i2_{};
+        std::int64_t i3_{};
+        std::int64_t i4_{};
+        char n_[1];
+    };
+    std::size_t nullity_base = offsetof(S, n_) * bits_per_byte;
+    auto meta = std::make_shared<meta::record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{4}.flip(),
+        std::vector<std::size_t>{
+            offsetof(S, i1_),
+            offsetof(S, i2_),
+            offsetof(S, i3_),
+            offsetof(S, i4_),
+        },
+        std::vector<std::size_t>{
+            nullity_base + 0,
+            nullity_base + 1,
+            nullity_base + 2,
+            nullity_base + 3,
+        },
+        alignof(S),
+        sizeof(S)
+    );
+    input_partition partition{
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_shared<shuffle_info>(
+            meta,
+            std::vector<std::size_t>{0},
+            std::vector<std::size_t>{1, 2},
+            std::vector<ordering>{ordering::descending, ordering::descending}
+        ),
+        context.get(),
+    };
+
+    mock_memory_resource res{};
+    S r00{0, 0, 0, 0, '\0'};
+    S r01{0, 1, 2, 1, '\0'};
+    S r02{0, 2, 1, 2, '\0'};
+    S r10{1, 1, 0, 10, '\0'};
+    S r11{1, 1, 1, 11, '\0'};
+    S r12{1, 1, 2, 12, '\0'};
+    S r20{2, 0, 0, 20, '\0'};
+    S r21{2, 1, 1, 21, '\0'};
+    S r22{2, 2, 2, 22, '\0'};
+    accessor::record_ref ref00{&r00, sizeof(S)};
+    accessor::record_ref ref01{&r01, sizeof(S)};
+    accessor::record_ref ref02{&r02, sizeof(S)};
+    accessor::record_ref ref10{&r10, sizeof(S)};
+    accessor::record_ref ref11{&r11, sizeof(S)};
+    accessor::record_ref ref12{&r12, sizeof(S)};
+    accessor::record_ref ref20{&r20, sizeof(S)};
+    accessor::record_ref ref21{&r21, sizeof(S)};
+    accessor::record_ref ref22{&r22, sizeof(S)};
+
+    partition.write(ref11);
+    partition.write(ref10);
+    partition.write(ref12);
+    partition.write(ref01);
+    partition.write(ref00);
+    partition.write(ref02);
+    partition.write(ref21);
+    partition.write(ref20);
+    partition.write(ref22);
+    partition.flush();
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    ASSERT_EQ(9, std::distance(t.begin(), t.end()));
+    auto it = t.begin();
+    mock::basic_record res00{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res01{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res02{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res10{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res11{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res12{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res20{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res21{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res22{accessor::record_ref{*it++, sizeof(S)}, meta};
+
+    EXPECT_EQ(mock::basic_record(ref02, meta), res00);
+    EXPECT_EQ(mock::basic_record(ref01, meta), res01);
+    EXPECT_EQ(mock::basic_record(ref00, meta), res02);
+    EXPECT_EQ(mock::basic_record(ref12, meta), res10);
+    EXPECT_EQ(mock::basic_record(ref11, meta), res11);
+    EXPECT_EQ(mock::basic_record(ref10, meta), res12);
+    EXPECT_EQ(mock::basic_record(ref22, meta), res20);
+    EXPECT_EQ(mock::basic_record(ref21, meta), res21);
+    EXPECT_EQ(mock::basic_record(ref20, meta), res22);
+}
+
+TEST_F(input_partition_test, sort_desc_asc) {
+    auto context = std::make_shared<request_context>();
+    struct S {
+        std::int64_t i1_{};
+        std::int64_t i2_{};
+        std::int64_t i3_{};
+        std::int64_t i4_{};
+        char n_[1];
+    };
+    std::size_t nullity_base = offsetof(S, n_) * bits_per_byte;
+    auto meta = std::make_shared<meta::record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{4}.flip(),
+        std::vector<std::size_t>{
+            offsetof(S, i1_),
+            offsetof(S, i2_),
+            offsetof(S, i3_),
+            offsetof(S, i4_),
+        },
+        std::vector<std::size_t>{
+            nullity_base + 0,
+            nullity_base + 1,
+            nullity_base + 2,
+            nullity_base + 3,
+        },
+        alignof(S),
+        sizeof(S)
+    );
+    input_partition partition{
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_shared<shuffle_info>(
+            meta,
+            std::vector<std::size_t>{0},
+            std::vector<std::size_t>{1, 2},
+            std::vector<ordering>{ordering::descending, ordering::ascending}
+        ),
+        context.get(),
+    };
+
+    mock_memory_resource res{};
+    S r00{0, 2, 0, 0, '\0'};
+    S r01{0, 2, 1, 1, '\0'};
+    S r02{0, 2, 2, 2, '\0'};
+    S r10{0, 1, 0, 10, '\0'};
+    S r11{0, 1, 1, 11, '\0'};
+    S r12{0, 1, 2, 12, '\0'};
+    S r20{0, 0, 0, 20, '\0'};
+    S r21{0, 0, 1, 21, '\0'};
+    S r22{0, 0, 2, 22, '\0'};
+    accessor::record_ref ref00{&r00, sizeof(S)};
+    accessor::record_ref ref01{&r01, sizeof(S)};
+    accessor::record_ref ref02{&r02, sizeof(S)};
+    accessor::record_ref ref10{&r10, sizeof(S)};
+    accessor::record_ref ref11{&r11, sizeof(S)};
+    accessor::record_ref ref12{&r12, sizeof(S)};
+    accessor::record_ref ref20{&r20, sizeof(S)};
+    accessor::record_ref ref21{&r21, sizeof(S)};
+    accessor::record_ref ref22{&r22, sizeof(S)};
+
+    partition.write(ref11);
+    partition.write(ref10);
+    partition.write(ref12);
+    partition.write(ref01);
+    partition.write(ref00);
+    partition.write(ref02);
+    partition.write(ref21);
+    partition.write(ref20);
+    partition.write(ref22);
+    partition.flush();
+    ASSERT_EQ(1, std::distance(partition.begin(), partition.end())); //number of tables
+    auto& t = *partition.begin();
+    ASSERT_EQ(9, std::distance(t.begin(), t.end()));
+    auto it = t.begin();
+    mock::basic_record res00{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res01{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res02{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res10{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res11{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res12{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res20{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res21{accessor::record_ref{*it++, sizeof(S)}, meta};
+    mock::basic_record res22{accessor::record_ref{*it++, sizeof(S)}, meta};
+
+    EXPECT_EQ(mock::basic_record(ref00, meta), res00);
+    EXPECT_EQ(mock::basic_record(ref01, meta), res01);
+    EXPECT_EQ(mock::basic_record(ref02, meta), res02);
+    EXPECT_EQ(mock::basic_record(ref10, meta), res10);
+    EXPECT_EQ(mock::basic_record(ref11, meta), res11);
+    EXPECT_EQ(mock::basic_record(ref12, meta), res12);
+    EXPECT_EQ(mock::basic_record(ref20, meta), res20);
+    EXPECT_EQ(mock::basic_record(ref21, meta), res21);
+    EXPECT_EQ(mock::basic_record(ref22, meta), res22);
+}
+
 }
 

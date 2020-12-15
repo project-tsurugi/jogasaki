@@ -227,5 +227,172 @@ TEST_F(priority_queue_reader_test, empty_partition) {
     EXPECT_EQ(3.0, get_value(r));
 }
 
+TEST_F(priority_queue_reader_test, ordering) {
+    std::vector<std::unique_ptr<input_partition>> partitions{};
+    partitions.reserve(10); // avoid relocation when using references into vector
+    auto context = std::make_shared<request_context>();
+    auto meta = test_root::test_record_meta1();
+
+    auto info = std::make_shared<shuffle_info>(
+        meta,
+        std::vector<std::size_t>{},
+        std::vector<std::size_t>{0, 1},
+        std::vector<ordering>{ordering::ascending, ordering::descending}
+    );
+        auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        info,
+        context.get()
+    ));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        info,
+        context.get()
+    ));
+
+    test::record arr[] = {
+        {0, 3.0},
+        {0, 2.0},
+        {0, 1.0},
+        {1, 3.0},
+        {1, 2.0},
+        {1, 1.0},
+        {2, 3.0},
+        {2, 2.0},
+        {2, 1.0},
+    };
+    auto sz = sizeof(arr[0]);
+
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
+    p1->write(arr[7].ref());
+    p1->write(arr[5].ref());
+    p1->flush();
+    p2->write(arr[0].ref());
+    p2->write(arr[3].ref());
+    p2->write(arr[6].ref());
+    p2->write(arr[4].ref());
+    p2->write(arr[8].ref());
+    p2->flush();
+
+    auto get_key = [&](group_reader& r) {
+        return r.get_member().get_value<std::int64_t>(info->value_meta()->value_offset(0));
+    };
+
+    auto get_value = [&](group_reader& r) {
+        return r.get_member().get_value<double>(info->value_meta()->value_offset(1));
+    };
+
+    priority_queue_reader r{info, partitions};
+    std::multiset<double> res{};
+    ASSERT_TRUE(r.next_group());
+    EXPECT_FALSE(r.get_group());
+    {
+        ASSERT_TRUE(r.next_member());
+        EXPECT_EQ(0, get_key(r));
+        EXPECT_DOUBLE_EQ(3.0, get_value(r));
+        ASSERT_TRUE(r.next_member());
+        EXPECT_DOUBLE_EQ(2.0, get_value(r));
+        ASSERT_TRUE(r.next_member());
+        EXPECT_DOUBLE_EQ(1.0, get_value(r));
+    }
+    {
+        ASSERT_TRUE(r.next_member());
+        EXPECT_EQ(1, get_key(r));
+        EXPECT_DOUBLE_EQ(3.0, get_value(r));
+        ASSERT_TRUE(r.next_member());
+        EXPECT_DOUBLE_EQ(2.0, get_value(r));
+        ASSERT_TRUE(r.next_member());
+        EXPECT_DOUBLE_EQ(1.0, get_value(r));
+    }
+    {
+        ASSERT_TRUE(r.next_member());
+        EXPECT_EQ(2, get_key(r));
+        EXPECT_DOUBLE_EQ(3.0, get_value(r));
+        ASSERT_TRUE(r.next_member());
+        EXPECT_DOUBLE_EQ(2.0, get_value(r));
+        ASSERT_TRUE(r.next_member());
+        EXPECT_DOUBLE_EQ(1.0, get_value(r));
+    }
+    ASSERT_FALSE(r.next_member());
+    ASSERT_FALSE(r.next_group());
+}
+
+TEST_F(priority_queue_reader_test, empty_keys) {
+    std::vector<std::unique_ptr<input_partition>> partitions{};
+    partitions.reserve(10); // avoid relocation when using references into vector
+    auto context = std::make_shared<request_context>();
+    auto meta = test_root::test_record_meta1();
+    auto info = std::make_shared<shuffle_info>(
+        meta,
+        std::vector<std::size_t>{},
+        std::vector<std::size_t>{},
+        std::vector<ordering>{}
+    );
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        info,
+        context.get()
+    ));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        info,
+        context.get()
+    ));
+
+    test::record arr[] = {
+        {0, 3.0},
+        {1, 2.0},
+        {2, 1.0},
+    };
+    auto sz = sizeof(arr[0]);
+
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
+    p1->flush();
+    p2->write(arr[0].ref());
+    p2->flush();
+
+    auto get_key = [&](group_reader& r) {
+        return r.get_member().get_value<std::int64_t>(info->value_meta()->value_offset(0));
+    };
+
+    auto get_value = [&](group_reader& r) {
+        return r.get_member().get_value<double>(info->value_meta()->value_offset(1));
+    };
+
+    priority_queue_reader r{info, partitions};
+    std::multiset<double> values{};
+    std::multiset<std::int64_t> keys{};
+    ASSERT_TRUE(r.next_group());
+    EXPECT_FALSE(r.get_group());
+    {
+        ASSERT_TRUE(r.next_member());
+        keys.emplace( get_key(r));
+        values.emplace( get_value(r));
+        ASSERT_TRUE(r.next_member());
+        keys.emplace( get_key(r));
+        values.emplace( get_value(r));
+        ASSERT_TRUE(r.next_member());
+        keys.emplace( get_key(r));
+        values.emplace( get_value(r));
+    }
+    std::multiset<std::int64_t> exp_keys{0, 1, 2};
+    EXPECT_EQ(exp_keys, keys);
+    std::multiset<double> exp_values{1.0, 2.0, 3.0};
+    EXPECT_EQ(exp_values, values);
+
+    ASSERT_FALSE(r.next_member());
+    ASSERT_FALSE(r.next_group());
+}
+
 }
 

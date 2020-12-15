@@ -26,7 +26,7 @@ priority_queue_reader::priority_queue_reader(std::shared_ptr<shuffle_info> info,
         queue_(iterator_pair_comparator(info_.get())),
         record_size_(info_->record_meta()->record_size()),
         buf_(info_->record_meta()), //NOLINT
-        key_comparator_(info_->sort_compare_info()) {
+        key_comparator_(info_->compare_info()) {
     for(auto& p : partitions_) {
         if (!p) continue;
         for(auto& t : *p) {
@@ -63,6 +63,9 @@ bool priority_queue_reader::next_group() {
 
 accessor::record_ref priority_queue_reader::get_group() const {
     if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
+        if (info_->key_meta()->field_count() == 0) {
+            return {};
+        }
         return info_->extract_key(buf_.ref());
     }
     std::abort();
@@ -81,8 +84,8 @@ bool priority_queue_reader::next_member() {
         auto it = queue_.top().first;
         auto end = queue_.top().second;
         if (key_comparator_(
-                info_->extract_sort_key(buf_.ref()),
-                info_->extract_sort_key(accessor::record_ref(*it, record_size_))) == 0) {
+                info_->extract_key(buf_.ref()),
+                info_->extract_key(accessor::record_ref(*it, record_size_))) == 0) {
             read_and_pop(it, end);
             return true;
         }

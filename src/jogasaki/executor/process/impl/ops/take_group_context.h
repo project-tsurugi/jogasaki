@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/group_reader.h>
 #include "context_base.h"
 
@@ -35,25 +34,16 @@ public:
     /**
      * @brief create new object
      */
-    explicit take_group_context(
+    take_group_context(
         class abstract::task_context* ctx,
         block_scope& variables,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) :
-        context_base(ctx, variables, resource, varlen_resource)
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::take_group;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
-        if(reader_) {
-            reader_->release();
-            reader_ = nullptr;
-        }
-    }
+    void release() override;
 private:
     group_reader* reader_{};
 };

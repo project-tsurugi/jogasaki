@@ -19,8 +19,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::maybe_shared_ptr;
-
 /**
  * @brief project context
  */
@@ -40,16 +38,11 @@ public:
         block_scope& variables,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) : context_base(ctx, variables, resource, varlen_resource)
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::project;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
-        //TODO any cleanup?
-    }
+    void release() override;
 private:
 
 };

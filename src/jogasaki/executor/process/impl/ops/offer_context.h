@@ -68,6 +68,7 @@ private:
     record_writer* writer_{};
 };
 
+
 }
 
 

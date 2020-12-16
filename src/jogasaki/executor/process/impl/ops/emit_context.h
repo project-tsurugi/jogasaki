@@ -44,22 +44,15 @@ public:
         maybe_shared_ptr<meta::record_meta> meta,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr
-    ) : context_base(ctx, variables, resource, varlen_resource),
-        buffer_(std::move(meta))
-    {}
+    );
 
     // for test
-    [[nodiscard]] data::small_record_store& store() noexcept {
-        return buffer_;
-    }
+    [[nodiscard]] data::small_record_store& store() noexcept;
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::emit;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
-        // TODO
-    }
+    void release() override;
+
 private:
     data::small_record_store buffer_{};
     external_writer* writer_{};

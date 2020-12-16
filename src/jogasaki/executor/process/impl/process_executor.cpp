@@ -17,6 +17,29 @@
 
 namespace jogasaki::executor::process::impl {
 
+abstract::process_executor_factory& default_process_executor_factory() {
+    static abstract::process_executor_factory f = [](
+        std::shared_ptr<abstract::processor> processor,
+        std::vector<std::shared_ptr<abstract::task_context>> contexts
+    ) {
+        return std::make_shared<process_executor>(std::move(processor), std::move(contexts));
+    };
+    return f;
+}
+
+process_executor::status process_executor::run() {
+    // assign context
+    auto context = contexts_->pop();
+
+    // execute task
+    auto rc = processor_->run(context.get());
+
+    if (rc != status::completed && rc != status::completed_with_errors) {
+        // task is suspended in the middle, put the current context back
+        contexts_->push(std::move(context));
+    }
+    return rc;
+}
 }
 
 

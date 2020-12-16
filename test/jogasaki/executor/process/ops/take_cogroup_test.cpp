@@ -32,6 +32,7 @@
 #include <jogasaki/test_utils.h>
 
 #include <jogasaki/executor/process/impl/ops/join.h>
+#include <jogasaki/executor/process/impl/block_scope.h>
 
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <takatori/plan/group.h>

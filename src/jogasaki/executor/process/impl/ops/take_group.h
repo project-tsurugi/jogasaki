@@ -19,19 +19,10 @@
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/object_creator.h>
 #include <takatori/relation/step/take_group.h>
-#include <takatori/descriptor/variable.h>
 
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-#include <jogasaki/data/record_store.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/validation.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/meta/group_meta.h>
 #include "operator_base.h"
 #include "take_group_context.h"
 
@@ -86,34 +77,13 @@ public:
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
         std::unique_ptr<operator_base> downstream = nullptr
-    ) : record_operator(index, info, block_index),
-        meta_(std::move(meta)),
-        fields_(create_fields(meta_, order, columns)),
-        reader_index_(reader_index),
-        downstream_(std::move(downstream))
-    {
-        utils::assert_all_fields_nullable(meta_->key());
-        utils::assert_all_fields_nullable(meta_->value());
-    }
+    );
 
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
      */
-    void process_record(abstract::task_context* context) override {
-        BOOST_ASSERT(context != nullptr);  //NOLINT
-        context_helper ctx{*context};
-        auto* p = find_context<take_group_context>(index(), ctx.contexts());
-        if (! p) {
-            p = ctx.make_context<take_group_context>(
-                index(),
-                ctx.block_scope(block_index()),
-                ctx.resource(),
-                ctx.varlen_resource()
-            );
-        }
-        (*this)(*p, context);
-    }
+    void process_record(abstract::task_context* context) override;
 
     /**
      * @brief process record with context object
@@ -121,69 +91,13 @@ public:
      * @param ctx operator context object for the execution
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(take_group_context& ctx, abstract::task_context* context = nullptr) {
-        auto target = ctx.variables().store().ref();
-        if (! ctx.reader_) {
-            auto r = ctx.task_context().reader(reader_index_);
-            ctx.reader_ = r.reader<group_reader>();
-        }
-        auto resource = ctx.varlen_resource();
-        while(ctx.reader_->next_group()) {
-            utils::checkpoint_holder group_cp{resource};
-            auto key = ctx.reader_->get_group();
-            for(auto &f : fields_) {
-                if (! f.is_key_) continue;
-                utils::copy_nullable_field(
-                    f.type_,
-                    target,
-                    f.target_offset_,
-                    f.target_nullity_offset_,
-                    key,
-                    f.source_offset_,
-                    f.source_nullity_offset_,
-                    resource
-                );
-            }
-            if(! ctx.reader_->next_member()) continue;
-            bool has_next = true;
-            while(has_next) {
-                utils::checkpoint_holder member_cp{resource};
-                auto value = ctx.reader_->get_member();
-                for(auto &f : fields_) {
-                    if (f.is_key_) continue;
-                    utils::copy_nullable_field(
-                        f.type_,
-                        target,
-                        f.target_offset_,
-                        f.target_nullity_offset_,
-                        value,
-                        f.source_offset_,
-                        f.source_nullity_offset_,
-                        resource
-                    );
-                }
-                has_next = ctx.reader_->next_member();
-                if (downstream_) {
-                    unsafe_downcast<group_operator>(downstream_.get())->process_group(context, !has_next);
-                }
-            }
-        }
-        if (downstream_) {
-            unsafe_downcast<group_operator>(downstream_.get())->finish(context);
-        }
-    }
+    void operator()(take_group_context& ctx, abstract::task_context* context = nullptr);
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::take_group;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() const noexcept {
-        return meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() const noexcept;
 
-    void finish(abstract::task_context*) override {
-        fail();
-    }
+    void finish(abstract::task_context*) override;
 private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
@@ -194,39 +108,8 @@ private:
         maybe_shared_ptr<meta::group_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns
-    ) {
-        std::vector<details::take_group_field> fields{};
-        auto& key_meta = meta->key();
-        auto& value_meta = meta->value();
-        BOOST_ASSERT(order.size() == key_meta.field_count()+value_meta.field_count());  //NOLINT
-        BOOST_ASSERT(order.key_count() == key_meta.field_count());  //NOLINT
-        BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT // it's possible requested columns are only part of exchange fields
-        fields.resize(columns.size());
-        auto num_keys = 0;
-        for(auto&& c : columns) {
-            if(order.is_key(c.source())) {
-                ++num_keys;
-            }
-        }
-        auto& vmap = block_info().value_map();
-        for(auto&& c : columns) {
-            auto [src_idx, is_key] = order.key_value_index(c.source());
-            auto& target_info = vmap.at(c.destination());
-            auto idx = src_idx + (is_key ? 0 : num_keys); // copy keys first, then values
-            fields[idx] = details::take_group_field{
-                is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
-                is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),
-                target_info.value_offset(),
-                is_key ? key_meta.nullity_offset(src_idx) : value_meta.nullity_offset(src_idx),
-                target_info.nullity_offset(),
-                is_key ? key_meta.nullable(src_idx) : value_meta.nullable(src_idx),
-                is_key
-            };
-        }
-        return fields;
-    }
+    );
 };
-
 }
 
 

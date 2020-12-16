@@ -46,6 +46,8 @@
 #include <takatori/statement/write.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
+#include <takatori/scalar/unary.h>
+#include <takatori/scalar/unary_operator.h>
 #include <takatori/plan/process.h>
 #include <takatori/plan/forward.h>
 #include <takatori/serializer/json_printer.h>

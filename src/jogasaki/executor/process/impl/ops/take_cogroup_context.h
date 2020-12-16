@@ -15,11 +15,21 @@
  */
 #pragma once
 
+#include <queue>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/comparator.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::maybe_shared_ptr;
 
 namespace details {
 
@@ -38,101 +48,36 @@ public:
         memory::lifo_paged_memory_resource* resource,
         memory::lifo_paged_memory_resource* varlen_resource,
         maybe_shared_ptr<meta::group_meta> meta
-    ) :
-        reader_(std::addressof(reader)),
-        store_(std::move(store)),
+    );
 
-        resource_(resource),
-        varlen_resource_(varlen_resource),
-        resource_last_checkpoint_(resource_ ? resource_->get_checkpoint() : checkpoint{}),
-        varlen_resource_last_checkpoint_(varlen_resource_ ? varlen_resource_->get_checkpoint() : checkpoint{}),
+    [[nodiscard]] accessor::record_ref current_key() const noexcept;
 
-        meta_(std::move(meta)),
-        key_size_(meta_->key().record_size()),
-        current_key_(meta_->key_shared()),
-        next_key_(meta_->key_shared())
-    {}
+    [[nodiscard]] accessor::record_ref next_key() const noexcept;
 
-    [[nodiscard]] accessor::record_ref current_key() const noexcept {
-        BOOST_ASSERT(values_filled_);  //NOLINT
-        return current_key_.ref();
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta();
 
-    [[nodiscard]] accessor::record_ref next_key() const noexcept {
-        BOOST_ASSERT(next_key_read_);  //NOLINT
-        BOOST_ASSERT(! reader_eof_);  //NOLINT
-        return next_key_.ref();
-    }
+    [[nodiscard]] bool eof() const noexcept;
 
-    [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() {
-        return meta_;
-    }
-
-    [[nodiscard]] bool eof() const noexcept {
-        return reader_eof_;
-    }
-
-    [[nodiscard]] bool filled() const noexcept {
-        return values_filled_;
-    }
+    [[nodiscard]] bool filled() const noexcept;
 
     /**
      * @return true if key has been read
      * @return false if key has not been read, or reader reached eof
      */
-    [[nodiscard]] bool next_key_read() const noexcept {
-        return next_key_read_;
-    }
+    [[nodiscard]] bool next_key_read() const noexcept;
 
-    [[nodiscard]] iterator begin() {
-        return store_->begin();
-    }
+    [[nodiscard]] iterator begin();
 
-    [[nodiscard]] iterator end() {
-        return store_->end();
-    }
+    [[nodiscard]] iterator end();
 
-    [[nodiscard]] bool read_next_key() {
-        if(! reader_->next_group()) {
-            next_key_read_ = false;
-            reader_eof_ = true;
-            return false;
-        }
-        next_key_.set(reader_->get_group());
-        next_key_read_ = true;
-        reader_eof_ = false;
-        return true;
-    }
+    [[nodiscard]] bool read_next_key();
 
     /**
      * @brief fill values
      */
-    void fill() noexcept {
-        BOOST_ASSERT(next_key_read_);  //NOLINT
-        BOOST_ASSERT(! reader_eof_);  //NOLINT
-        while(reader_->next_member()) {
-            auto rec = reader_->get_member();
-            store_->append(rec);
-        }
-        current_key_.set(next_key_.ref());
-        next_key_read_ = false;
-        values_filled_ = true;
-    }
+    void fill() noexcept;
 
-    void reset_values() {
-        if (values_filled_) {
-            store_->reset();
-            if (resource_) {
-                resource_->deallocate_after(resource_last_checkpoint_);
-                resource_last_checkpoint_ = resource_->get_checkpoint();
-            }
-            if (varlen_resource_) {
-                varlen_resource_->deallocate_after(varlen_resource_last_checkpoint_);
-                varlen_resource_last_checkpoint_ = varlen_resource_->get_checkpoint();
-            }
-            values_filled_ = false;
-        }
-    }
+    void reset_values();
 
 private:
 
@@ -174,16 +119,9 @@ public:
     group_input_comparator(
         std::vector<group_input>* inputs,
         compare_info const& meta
-    ) :
-        inputs_(inputs),
-        key_comparator_(meta)
-    {}
+    );
 
-    [[nodiscard]] bool operator()(input_index const& x, input_index const& y) {
-        auto& l = inputs_->operator[](x);
-        auto& r = inputs_->operator[](y);
-        return key_comparator_(l.next_key(), r.next_key()) > 0;
-    }
+    [[nodiscard]] bool operator()(input_index const& x, input_index const& y);
 
 private:
     std::vector<group_input>* inputs_{};
@@ -215,22 +153,11 @@ public:
         maybe_shared_ptr<meta::record_meta> key_meta,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) :
-        context_base(ctx, variables, resource, varlen_resource),
-        key_buf_(std::move(key_meta))
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::take_cogroup;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
-        for(auto* r : readers_) {
-            if(r) {
-                r->release();
-            }
-        }
-    }
+    void release() override;
 
 private:
     std::vector<executor::group_reader*> readers_{};

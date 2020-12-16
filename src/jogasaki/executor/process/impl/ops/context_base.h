@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include "operator_kind.h"
 

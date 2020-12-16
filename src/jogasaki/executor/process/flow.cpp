@@ -21,6 +21,7 @@
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/task_context.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
 

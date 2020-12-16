@@ -37,31 +37,22 @@ public:
      */
     explicit block_scope(
         block_scope_info const& info
-    ) :
-        info_(std::addressof(info)),
-        store_(std::make_unique<data::small_record_store>(info.meta()))
-    {}
+    );
 
     /**
      * @brief accessor to variable store
      */
-    [[nodiscard]] data::small_record_store& store() const noexcept {
-        return *store_;
-    }
+    [[nodiscard]] data::small_record_store& store() const noexcept;
 
     /**
      * @brief accessor to variable value map
      */
-    [[nodiscard]] variable_value_map const& value_map() const noexcept {
-        return info_->value_map();
-    }
+    [[nodiscard]] variable_value_map const& value_map() const noexcept;
 
     /**
      * @brief accessor to metadata of variable store
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
-        return info_->meta();
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
     block_scope_info const* info_{};

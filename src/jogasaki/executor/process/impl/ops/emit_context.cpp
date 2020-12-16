@@ -13,37 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "emit_context.h"
 
+#include <jogasaki/data/small_record_store.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
-/**
- * @brief flatten context
- */
-class flatten_context : public context_base {
-public:
-    friend class flatten;
-    /**
-     * @brief create empty object
-     */
-    flatten_context() = default;
+emit_context::emit_context(
+    class abstract::task_context* ctx,
+    block_scope& variables,
+    maybe_shared_ptr<meta::record_meta> meta,
+    emit_context::memory_resource* resource,
+    emit_context::memory_resource* varlen_resource
+) :
+    context_base(ctx, variables, resource, varlen_resource),
+    buffer_(std::move(meta))
+{}
 
-    /**
-     * @brief create new object
-     */
-    flatten_context(
-        class abstract::task_context* ctx,
-        block_scope& variables,
-        memory_resource* resource,
-        memory_resource* varlen_resource
-    );
+data::small_record_store& emit_context::store() noexcept {
+    return buffer_;
+}
 
-    [[nodiscard]] operator_kind kind() const noexcept override;
+operator_kind emit_context::kind() const noexcept {
+    return operator_kind::emit;
+}
 
-    void release() override;
-};
+void emit_context::release() {
+    // TODO
+}
 
 }
 

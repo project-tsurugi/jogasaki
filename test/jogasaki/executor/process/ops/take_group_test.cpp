@@ -27,6 +27,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/take_group_context.h>
+#include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 
 #include <jogasaki/mock/basic_record.h>

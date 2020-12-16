@@ -16,17 +16,11 @@
 #pragma once
 
 #include <vector>
-
-#include <takatori/util/sequence_view.h>
+#include <memory>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/iterator.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include "context_base.h"
 
@@ -54,27 +48,13 @@ public:
         impl::scan_info const* scan_info,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) :
-        context_base(ctx, variables, resource, varlen_resource),
-        stg_(std::move(stg)),
-        tx_(tx),
-        scan_info_(scan_info)
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::scan;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
-        if(it_) {
-            // TODO revisit the life-time of storage objects
-            it_ = nullptr;
-        }
-    }
+    void release() override;
 
-    [[nodiscard]] kvs::transaction* transaction() const noexcept {
-        return tx_;
-    }
+    [[nodiscard]] kvs::transaction* transaction() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> stg_{};

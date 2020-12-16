@@ -18,8 +18,10 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_builder.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include "block_scope_info.h"
-#include "ops/operator_builder.h"
 
 namespace jogasaki::executor::process::impl {
 
@@ -28,7 +30,7 @@ using takatori::util::unsafe_downcast;
 processor::processor(
     std::shared_ptr<processor_info> info,
     plan::compiler_context const& compiler_ctx,
-    std::shared_ptr<io_info> io_info,
+    std::shared_ptr<ops::io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
     memory::lifo_paged_memory_resource* resource
@@ -47,6 +49,10 @@ abstract::status processor::run(abstract::task_context *context) {
     unsafe_downcast<ops::record_operator>(operators_.root()).process_record(context);
     // TODO handling status code
     return abstract::status::completed;
+}
+
+ops::operator_container const& processor::operators() const noexcept {
+    return operators_;
 }
 
 }

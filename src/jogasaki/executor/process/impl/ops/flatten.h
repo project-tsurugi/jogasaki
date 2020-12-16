@@ -19,8 +19,6 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
 #include "operator_base.h"
 #include "flatten_context.h"
 
@@ -52,31 +50,14 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::unique_ptr<operator_base> downstream = nullptr
-    ) :
-        group_operator(index, info, block_index),
-        downstream_(std::move(downstream))
-    {}
+    );
 
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
      * @param last_member specify whether the current member is the last within the group
      */
-    void process_group(abstract::task_context* context, bool last_member) override {
-        BOOST_ASSERT(context != nullptr);  //NOLINT
-        (void)last_member;
-        context_helper ctx{*context};
-        auto* p = find_context<flatten_context>(index(), ctx.contexts());
-        if (! p) {
-            p = ctx.make_context<flatten_context>(
-                index(),
-                ctx.block_scope(block_index()),
-                ctx.resource(),
-                ctx.varlen_resource()
-            );
-        }
-        (*this)(*p, context);
-    }
+    void process_group(abstract::task_context* context, bool last_member) override;
 
     /**
      * @brief process record with context object
@@ -84,22 +65,12 @@ public:
      * @param ctx context object for the execution
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(flatten_context& ctx, abstract::task_context* context = nullptr) {
-        (void)ctx;
-        if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
-        }
-    }
+    void operator()(flatten_context& ctx, abstract::task_context* context = nullptr);
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::flatten;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void finish(abstract::task_context* context) override {
-        if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-        }
-    }
+    void finish(abstract::task_context* context) override;
+
 private:
     std::unique_ptr<operator_base> downstream_{};
 };

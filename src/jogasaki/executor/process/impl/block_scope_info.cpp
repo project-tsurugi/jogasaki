@@ -15,14 +15,10 @@
  */
 #include "block_scope_info.h"
 
-#include <cassert>
-
-#include <takatori/relation/expression.h>
-#include <takatori/graph/graph.h>
 #include <takatori/util/fail.h>
 #include <yugawara/analyzer/block_builder.h>
-#include <yugawara/analyzer/block_algorithm.h>
 #include <yugawara/analyzer/variable_liveness_analyzer.h>
+#include <yugawara/analyzer/block_algorithm.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>
@@ -85,7 +81,7 @@ create_scopes_info(relation::graph_type &relations, const yugawara::compiled_inf
     std::size_t block_index = 0;
 
     // FIXME support multiple blocks
-    auto b0 = find_unique_head(bg);
+    auto b0 = yugawara::analyzer::find_unique_head(bg);
     if (!b0) {
         fail();
     }

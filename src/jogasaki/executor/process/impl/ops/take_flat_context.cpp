@@ -13,37 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-
-#include "context_base.h"
+#include "take_flat_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
-/**
- * @brief flatten context
- */
-class flatten_context : public context_base {
-public:
-    friend class flatten;
-    /**
-     * @brief create empty object
-     */
-    flatten_context() = default;
+take_flat_context::take_flat_context(class abstract::task_context* ctx, block_scope& variables,
+    context_base::memory_resource* resource, context_base::memory_resource* varlen_resource) :
+    context_base(ctx, variables, resource, varlen_resource)
+{}
 
-    /**
-     * @brief create new object
-     */
-    flatten_context(
-        class abstract::task_context* ctx,
-        block_scope& variables,
-        memory_resource* resource,
-        memory_resource* varlen_resource
-    );
+operator_kind take_flat_context::kind() const noexcept {
+    return operator_kind::take_flat;
+}
 
-    [[nodiscard]] operator_kind kind() const noexcept override;
-
-    void release() override;
-};
+void take_flat_context::release() {
+    if(reader_) {
+        reader_->release();
+        reader_ = nullptr;
+    }
+}
 
 }
 

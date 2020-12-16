@@ -16,7 +16,6 @@
 #pragma once
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/block_scope_info.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 
@@ -43,46 +42,34 @@ public:
     operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
-        io_exchange_map& io_exchange_map,
+        class io_exchange_map& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info
-    ) :
-        root_(std::move(root)),
-        operator_count_(operator_count),
-        io_exchange_map_(std::addressof(io_exchange_map)),
-        scan_info_(std::move(scan_info))
-    {}
+    );
 
     /**
      * @brief accessor to operator count
      * @return the number of operators
      */
-    [[nodiscard]] std::size_t size() const noexcept {
-        return operator_count_;
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
     /**
      * @brief accessor to I/O exchange mapping
      * @return the mapping object
      */
-    [[nodiscard]] class io_exchange_map const& io_exchange_map() const noexcept {
-        return *io_exchange_map_;
-    };
+    [[nodiscard]] class io_exchange_map const& io_exchange_map() const noexcept;;
 
     /**
      * @brief accessor to operator tree root
      * @return the root object of the operators
      */
-    [[nodiscard]] ops::operator_base& root() const noexcept {
-        return *root_;
-    }
+    [[nodiscard]] ops::operator_base& root() const noexcept;
 
     /**
      * @brief accessor to scan info
      * @return the scan info, or nullptr if there is no scan operation in the process
      */
-    [[nodiscard]] std::shared_ptr<impl::scan_info> const& scan_info() const noexcept {
-        return scan_info_;
-    }
+    [[nodiscard]] std::shared_ptr<impl::scan_info> const& scan_info() const noexcept;
+
 private:
     std::unique_ptr<ops::operator_base> root_{};
     std::size_t operator_count_{};

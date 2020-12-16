@@ -17,21 +17,13 @@
 
 #include <vector>
 
-#include <takatori/util/sequence_view.h>
-#include <takatori/util/object_creator.h>
 #include <takatori/relation/emit.h>
-#include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-#include <jogasaki/data/record_store.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/interference_size.h>
-#include "operator_base.h"
+#include <jogasaki/utils/validation.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
+#include "operator_base.h"
 #include "emit_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -113,6 +105,19 @@ emit::create_fields(const maybe_shared_ptr<meta::record_meta> &meta, sequence_vi
         });
     }
     return fields;
+}
+
+operator_kind emit::kind() const noexcept {
+    return operator_kind::emit;
+}
+
+void emit::finish(abstract::task_context* context) {
+    BOOST_ASSERT(context != nullptr);  //NOLINT
+    context_helper ctx{*context};
+    auto* p = find_context<emit_context>(index(), ctx.contexts());
+    if (p && p->writer_) {
+        p->writer_->flush();
+    }
 }
 
 }

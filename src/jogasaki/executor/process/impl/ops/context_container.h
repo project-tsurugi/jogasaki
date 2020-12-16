@@ -19,9 +19,7 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -46,9 +44,7 @@ public:
      */
     explicit context_container(
         std::size_t size
-    ) :
-        contexts_(size)
-    {}
+    );
 
     /**
      * @brief setter for the context at the given index
@@ -56,11 +52,7 @@ public:
      * @param ctx the context to be stored
      * @return reference to the stored context
      */
-    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx) noexcept {
-        if (idx >= contexts_.size()) fail();
-        contexts_[idx] = std::move(ctx);
-        return contexts_[idx];
-    }
+    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx) noexcept;
 
     /**
      * @brief returns whether the context is stored at the given index
@@ -68,16 +60,12 @@ public:
      * @return true if context is already stored
      * @return false otherwise
      */
-    [[nodiscard]] bool exists(std::size_t idx) const noexcept {
-        return contexts_[idx] != nullptr;
-    }
+    [[nodiscard]] bool exists(std::size_t idx) const noexcept;
 
     /**
      * @brief return the capacity of the container
      */
-    [[nodiscard]] std::size_t size() const noexcept {
-        return contexts_.size();
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
     /**
      * @brief getter for the context at the given index
@@ -85,10 +73,7 @@ public:
      * @return the context object at the index
      * @return nullptr if no context object is stored
      */
-    [[nodiscard]] ops::context_base* at(std::size_t idx) const noexcept {
-        if (idx >= contexts_.size()) return nullptr;
-        return contexts_.at(idx).get();
-    }
+    [[nodiscard]] ops::context_base* at(std::size_t idx) const noexcept;
 
 private:
     contexts_type contexts_{};

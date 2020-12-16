@@ -17,18 +17,18 @@
 
 #include <memory>
 
-#include <takatori/relation/expression.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/graph.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>
-#include <takatori/relation/graph.h>
 #include "variable_value_map.h"
 
 namespace jogasaki::executor::process::impl {
 
-namespace relation = takatori::relation;
 using takatori::util::maybe_shared_ptr;
+namespace relation = takatori::relation;
 
 /**
  * @brief information on block scoped variables
@@ -88,7 +88,8 @@ using scope_indices = std::unordered_map<takatori::relation::expression const*, 
  */
 [[nodiscard]] std::pair<scopes_info, scope_indices> create_scopes_info(
     relation::graph_type& relations,
-    yugawara::compiled_info const& info);
+    yugawara::compiled_info const& info
+);
 
 }
 

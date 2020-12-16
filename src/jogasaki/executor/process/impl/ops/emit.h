@@ -18,26 +18,17 @@
 #include <vector>
 
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/object_creator.h>
 #include <takatori/relation/emit.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-#include <jogasaki/data/record_store.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/utils/validation.h>
 #include "operator_base.h"
-#include <jogasaki/executor/process/impl/ops/context_helper.h>
 #include "emit_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::sequence_view;
 
 namespace details {
 
@@ -73,7 +64,7 @@ public:
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        takatori::util::sequence_view<column const> columns
+        sequence_view<column const> columns
     );
 
     /**
@@ -89,22 +80,13 @@ public:
      */
     void operator()(emit_context& ctx);
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::emit;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
     void external_writer_index(std::size_t index) noexcept;
 
-    void finish(abstract::task_context* context) override {
-        BOOST_ASSERT(context != nullptr);  //NOLINT
-        context_helper ctx{*context};
-        auto* p = find_context<emit_context>(index(), ctx.contexts());
-        if (p && p->writer_) {
-            p->writer_->flush();
-        }
-    }
+    void finish(abstract::task_context* context) override;
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::emit_field> fields_{};
@@ -112,12 +94,12 @@ private:
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,
-        takatori::util::sequence_view<column const> columns
+        sequence_view<column const> columns
     );
 
     [[nodiscard]] std::vector<details::emit_field> create_fields(
         maybe_shared_ptr<meta::record_meta> const& meta,
-        takatori::util::sequence_view<column const> columns
+        sequence_view<column const> columns
     );
 };
 

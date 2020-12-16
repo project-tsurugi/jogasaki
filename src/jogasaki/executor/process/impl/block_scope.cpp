@@ -13,38 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "block_scope.h"
 
-#include "context_base.h"
+namespace jogasaki::executor::process::impl {
 
-namespace jogasaki::executor::process::impl::ops {
+block_scope::block_scope(const block_scope_info& info) :
+    info_(std::addressof(info)),
+    store_(std::make_unique<data::small_record_store>(info.meta()))
+{}
 
-/**
- * @brief flatten context
- */
-class flatten_context : public context_base {
-public:
-    friend class flatten;
-    /**
-     * @brief create empty object
-     */
-    flatten_context() = default;
+data::small_record_store& block_scope::store() const noexcept {
+    return *store_;
+}
 
-    /**
-     * @brief create new object
-     */
-    flatten_context(
-        class abstract::task_context* ctx,
-        block_scope& variables,
-        memory_resource* resource,
-        memory_resource* varlen_resource
-    );
+variable_value_map const& block_scope::value_map() const noexcept {
+    return info_->value_map();
+}
 
-    [[nodiscard]] operator_kind kind() const noexcept override;
-
-    void release() override;
-};
-
+const maybe_shared_ptr<meta::record_meta>& block_scope::meta() const noexcept {
+    return info_->meta();
+}
 }
 
 

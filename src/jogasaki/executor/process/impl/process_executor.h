@@ -38,19 +38,7 @@ public:
         : processor_(std::move(processor)), contexts_(std::make_shared<impl::task_context_pool>(std::move(contexts)))
     {}
 
-    [[nodiscard]] status run() override {
-        // assign context
-        auto context = contexts_->pop();
-
-        // execute task
-        auto rc = processor_->run(context.get());
-
-        if (rc != status::completed && rc != status::completed_with_errors) {
-            // task is suspended in the middle, put the current context back
-            contexts_->push(std::move(context));
-        }
-        return rc;
-    }
+    [[nodiscard]] status run() override;
 
 private:
     std::shared_ptr<abstract::processor> processor_{};
@@ -61,14 +49,6 @@ private:
  * @brief global constant accessor to default process executor factory
  * @return factory of default process_executor implementation
  */
-[[nodiscard]] inline abstract::process_executor_factory& default_process_executor_factory() {
-    static abstract::process_executor_factory f = [](
-        std::shared_ptr<abstract::processor> processor,
-        std::vector<std::shared_ptr<abstract::task_context>> contexts
-    ) {
-        return std::make_shared<process_executor>(std::move(processor), std::move(contexts));
-    };
-    return f;
-}
+[[nodiscard]] abstract::process_executor_factory& default_process_executor_factory();
 
 }

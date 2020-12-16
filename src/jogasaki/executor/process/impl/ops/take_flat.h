@@ -35,6 +35,7 @@
 #include <jogasaki/utils/validation.h>
 #include "operator_base.h"
 #include "take_flat_context.h"
+#include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -91,33 +92,13 @@ public:
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
         std::unique_ptr<operator_base> downstream = nullptr
-    ) : record_operator(index, info, block_index),
-        meta_(std::move(meta)),
-        fields_(create_fields(meta_, order, columns)),
-        reader_index_(reader_index),
-        downstream_(std::move(downstream))
-    {
-        utils::assert_all_fields_nullable(*meta_);
-    }
+    );
 
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
      */
-    void process_record(abstract::task_context* context) override {
-        BOOST_ASSERT(context != nullptr);  //NOLINT
-        context_helper ctx{*context};
-        auto* p = find_context<take_flat_context>(index(), ctx.contexts());
-        if (! p) {
-            p = ctx.make_context<take_flat_context>(
-                index(),
-                ctx.block_scope(block_index()),
-                ctx.resource(),
-                ctx.varlen_resource()
-            );
-        }
-        (*this)(*p, context);
-    }
+    void process_record(abstract::task_context* context) override;
 
     /**
      * @brief process record with context object
@@ -125,48 +106,13 @@ public:
      * @param ctx operator context object for the execution
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(take_flat_context& ctx, abstract::task_context* context = nullptr) {
-        auto target = ctx.variables().store().ref();
-        if (! ctx.reader_) {
-            auto r = ctx.task_context().reader(reader_index_);
-            ctx.reader_ = r.reader<record_reader>();
-        }
-        auto resource = ctx.varlen_resource();
-        while(ctx.reader_->next_record()) {
-            utils::checkpoint_holder cp{resource};
-            auto source = ctx.reader_->get_record();
-            for(auto &f : fields_) {
-                utils::copy_nullable_field(
-                    f.type_,
-                    target,
-                    f.target_offset_,
-                    f.target_nullity_offset_,
-                    source,
-                    f.source_offset_,
-                    f.source_nullity_offset_,
-                    resource
-                );
-            }
-            if (downstream_) {
-                unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
-            }
-        }
-        if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-        }
-    }
+    void operator()(take_flat_context& ctx, abstract::task_context* context = nullptr);
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::take_flat;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
-        return meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
-    void finish(abstract::task_context*) override {
-        fail();
-    }
+    void finish(abstract::task_context*) override;
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::take_flat_field> fields_{};
@@ -177,24 +123,7 @@ private:
         maybe_shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns
-    ) {
-        std::vector<details::take_flat_field> fields{};
-        fields.resize(meta->field_count());
-        auto& vmap = block_info().value_map();
-        for(auto&& c : columns) {
-            auto ind = order.index(c.source());
-            auto& info = vmap.at(c.destination());
-            fields[ind] = details::take_flat_field{
-                meta->at(ind),
-                meta->value_offset(ind),
-                info.value_offset(),
-                meta->nullity_offset(ind),
-                info.nullity_offset(),
-                meta->nullable(ind)
-            };
-        }
-        return fields;
-    }
+    );
 };
 
 }

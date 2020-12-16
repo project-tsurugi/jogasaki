@@ -15,12 +15,10 @@
  */
 #include "context_container.h"
 
-#include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
 context_container::context_container(std::size_t size) :

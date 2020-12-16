@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <takatori/plan/forward.h>
+#include <takatori/relation/step/offer.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
@@ -49,7 +50,6 @@ using namespace boost::container::pmr;
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
 using take = relation::step::take_flat;
-using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 

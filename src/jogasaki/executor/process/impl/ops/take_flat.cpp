@@ -18,28 +18,15 @@
 #include <vector>
 
 #include <takatori/util/downcast.h>
-#include <takatori/util/sequence_view.h>
-#include <takatori/util/object_creator.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/dispatch.h>
-#include <takatori/descriptor/variable.h>
 
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
-#include <jogasaki/data/record_store.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/validation.h>
-#include "operator_base.h"
-#include "take_flat_context.h"
 #include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::relation::step::dispatch;
 using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 

@@ -17,7 +17,6 @@
 
 #include <vector>
 
-#include <takatori/util/sequence_view.h>
 #include <takatori/util/downcast.h>
 #include <takatori/relation/scan.h>
 #include <yugawara/binding/factory.h>
@@ -37,7 +36,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 
 namespace details {

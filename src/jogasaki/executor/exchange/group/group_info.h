@@ -124,15 +124,15 @@ private:
     class compare_info sort_compare_info_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> from_keys(
-        maybe_shared_ptr<meta::record_meta> record,
+        maybe_shared_ptr<meta::record_meta> const& record,
         std::vector<std::size_t> const& indices
     );
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_value_meta(
-        maybe_shared_ptr<meta::record_meta> record,
+        maybe_shared_ptr<meta::record_meta> const& record,
         std::vector<std::size_t> const& key_indices
     );
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_sort_key_meta(
-        maybe_shared_ptr<meta::record_meta> record,
+        maybe_shared_ptr<meta::record_meta> const& record,
         std::vector<std::size_t> const& indices,
         std::vector<std::size_t> const& sort_key_indices
     );

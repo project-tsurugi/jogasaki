@@ -15,32 +15,6 @@
  */
 #include "join.h"
 
-#include <memory>
-#include <glog/logging.h>
-
-#include <takatori/relation/step/join.h>
-#include <takatori/util/downcast.h>
-
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/group_reader.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/comparator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/utils/iterator_pair.h>
-#include <jogasaki/utils/iterator_incrementer.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include "join_context.h"
-#include "context_helper.h"
-
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::unsafe_downcast;
 
 }

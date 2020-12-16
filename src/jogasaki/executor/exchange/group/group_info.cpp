@@ -85,7 +85,7 @@ const maybe_shared_ptr<meta::group_meta> &group_info::group_meta() const noexcep
 }
 
 std::shared_ptr<meta::record_meta> group_info::from_keys(
-    maybe_shared_ptr<meta::record_meta> record,
+    maybe_shared_ptr<meta::record_meta> const& record,
     std::vector<std::size_t> const& indices
 ) {
     auto num = indices.size();
@@ -116,7 +116,7 @@ std::shared_ptr<meta::record_meta> group_info::from_keys(
 }
 
 std::shared_ptr<meta::record_meta> group_info::create_value_meta(
-    maybe_shared_ptr<meta::record_meta> record,
+    maybe_shared_ptr<meta::record_meta> const& record,
     std::vector<std::size_t> const& key_indices
 ) {
     std::size_t num = record_->field_count() - key_indices.size();
@@ -128,17 +128,17 @@ std::shared_ptr<meta::record_meta> group_info::create_value_meta(
             vec.emplace_back(i);
         }
     }
-    return from_keys(std::move(record), vec);
+    return from_keys(record, vec);
 }
 
 std::shared_ptr<meta::record_meta> group_info::create_sort_key_meta(
-    maybe_shared_ptr<meta::record_meta> record,
+    maybe_shared_ptr<meta::record_meta> const& record,
     std::vector<std::size_t> const& indices,
     std::vector<std::size_t> const& sort_key_indices
 ) {
     std::vector<std::size_t> merged{indices.begin(), indices.end()};
     merged.insert(merged.end(), sort_key_indices.begin(), sort_key_indices.end());
-    return from_keys(std::move(record), merged);
+    return from_keys(record, merged);
 }
 
 std::vector<ordering> group_info::create_sort_key_ordering(

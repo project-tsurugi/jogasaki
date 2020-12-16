@@ -15,36 +15,13 @@
  */
 #include "operator_builder.h"
 
-#include <cassert>
-
-#include <takatori/relation/expression.h>
 #include <takatori/util/fail.h>
-#include <takatori/relation/step/offer.h>
-#include <yugawara/compiled_info.h>
 
-#include <yugawara/compiler_result.h>
-#include <takatori/relation/graph.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/emit.h>
 #include <takatori/relation/step/dispatch.h>
-#include <takatori/relation/expression.h>
-
 #include <yugawara/binding/factory.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/binding/relation_info.h>
 
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/utils/field_types.h>
-#include <jogasaki/utils/relation_indices.h>
-#include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/ops/io_info.h>
-#include <jogasaki/executor/process/io_exchange_map.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/executor/exchange/forward/step.h>
-#include <jogasaki/executor/exchange/shuffle/step.h>
-#include "operator_container.h"
 #include "scan.h"
 #include "emit.h"
 #include "filter.h"
@@ -62,7 +39,6 @@ namespace relation = takatori::relation;
 
 using takatori::util::fail;
 using takatori::relation::step::dispatch;
-using takatori::util::maybe_shared_ptr;
 
 operator_builder::operator_builder(std::shared_ptr<processor_info> info, const plan::compiler_context& compiler_ctx,
     std::shared_ptr<io_info> io_info, std::shared_ptr<relation_io_map> relation_io_map,
@@ -193,7 +169,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
     auto reader_index = relation_io_map_->input_index(node.source());
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& input = io_info_->input_at(reader_index);
-    assert(! input.is_group_input());  //NOLINT
+    BOOST_ASSERT(! input.is_group_input());  //NOLINT
 
     return std::make_unique<take_flat>(
         index_++,

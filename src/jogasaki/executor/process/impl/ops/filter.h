@@ -116,6 +116,11 @@ public:
         return operator_kind::filter;
     }
 
+    void finish(abstract::task_context* context) override {
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+    }
 private:
     expression::evaluator evaluator_{};
     std::unique_ptr<operator_base> downstream_{};

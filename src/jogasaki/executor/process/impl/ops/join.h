@@ -147,6 +147,11 @@ public:
         return operator_kind::join;
     }
 
+    void finish(abstract::task_context* context) override {
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+    }
 private:
     join_kind kind_{};
     expression::evaluator evaluator_{};

@@ -74,6 +74,8 @@ public:
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
 
     [[nodiscard]] operator_index_type index() const noexcept;
+
+    virtual void finish(abstract::task_context* context) = 0;
 private:
     operator_index_type index_{};
     processor_info const* processor_info_{};

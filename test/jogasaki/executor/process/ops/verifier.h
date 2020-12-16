@@ -33,6 +33,8 @@ public:
         return operator_kind::unknown;
     }
     std::function<void(void)> f_{}; //NOLINT
+
+    void finish(abstract::task_context*) override {}
 };
 
 class group_verifier : public group_operator {
@@ -48,6 +50,8 @@ public:
         return operator_kind::unknown;
     }
     std::function<void(bool)> f_{}; //NOLINT
+
+    void finish(abstract::task_context*) override {}
 };
 
 template<class Iterator>
@@ -64,6 +68,8 @@ public:
         return operator_kind::unknown;
     }
     std::function<void(cogroup<Iterator>& c)> f_{}; //NOLINT
+
+    void finish(abstract::task_context*) override {}
 };
 
 }

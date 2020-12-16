@@ -137,6 +137,14 @@ public:
         return meta_;
     }
 
+    void finish(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<offer_context>(index(), ctx.contexts());
+        if (p && p->writer_) {
+            p->writer_->flush();
+        }
+    }
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::offer_field> fields_{};

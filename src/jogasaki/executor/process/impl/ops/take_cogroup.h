@@ -161,6 +161,7 @@ public:
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
     void operator()(take_cogroup_context& ctx, abstract::task_context* context = nullptr) {
+        using iterator = data::iterable_record_store::iterator;
         if (ctx.readers_.empty()) {
             create_readers(ctx);
         }
@@ -227,7 +228,6 @@ public:
                 }
                 case state::values_filled:
                     if (downstream_) {
-                        using iterator = data::iterable_record_store::iterator;
                         std::vector<group<iterator>> groups{};
                         groups.reserve(inputs.size());
                         for(std::size_t i = 0, n = inputs.size(); i < n; ++i) {
@@ -254,12 +254,18 @@ public:
         for(auto* r : ctx.readers_) {
             r->release();
         }
+        if (downstream_) {
+            unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->finish(context);
+        }
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::take_cogroup;
     }
 
+    void finish(abstract::task_context*) override {
+        fail();
+    }
 private:
     std::vector<group_element> groups_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};

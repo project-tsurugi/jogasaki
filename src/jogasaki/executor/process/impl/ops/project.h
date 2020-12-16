@@ -130,6 +130,11 @@ public:
         return operator_kind::project;
     }
 
+    void finish(abstract::task_context* context) override {
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+    }
 private:
     std::vector<expression::evaluator> evaluators_{};
     std::vector<takatori::descriptor::variable> variables_{};

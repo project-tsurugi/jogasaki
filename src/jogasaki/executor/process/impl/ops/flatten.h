@@ -95,6 +95,11 @@ public:
         return operator_kind::flatten;
     }
 
+    void finish(abstract::task_context* context) override {
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+    }
 private:
     std::unique_ptr<operator_base> downstream_{};
 };

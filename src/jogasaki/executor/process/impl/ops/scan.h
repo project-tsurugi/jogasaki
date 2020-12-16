@@ -197,6 +197,9 @@ public:
                 unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             }
         }
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
         close(ctx);
     }
 
@@ -211,6 +214,10 @@ public:
     [[nodiscard]] std::string_view storage_name() const noexcept {
         return storage_name_;
     }
+
+    void finish(abstract::task_context*) override {
+        fail();
+    };
 private:
     std::string storage_name_{};
     std::vector<details::scan_field> key_fields_{};

@@ -168,6 +168,9 @@ public:
                 }
             }
         }
+        if (downstream_) {
+            unsafe_downcast<group_operator>(downstream_.get())->finish(context);
+        }
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -178,6 +181,9 @@ public:
         return meta_;
     }
 
+    void finish(abstract::task_context*) override {
+        fail();
+    }
 private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};

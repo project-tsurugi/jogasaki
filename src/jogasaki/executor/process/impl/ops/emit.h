@@ -96,6 +96,15 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
     void external_writer_index(std::size_t index) noexcept;
+
+    void finish(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<emit_context>(index(), ctx.contexts());
+        if (p && p->writer_) {
+            p->writer_->flush();
+        }
+    }
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::emit_field> fields_{};

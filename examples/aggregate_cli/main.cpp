@@ -66,7 +66,6 @@
 #include <takatori/relation/step/flatten.h>
 #include "params.h"
 #include "producer_process.h"
-#include "consumer_process.h"
 #include "params.h"
 //#include "../common/cli_constants.h"
 #include "../common/aggregator.h"

@@ -77,6 +77,7 @@ public:
     // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two, so round down here to avoid going over allocator limit
     constexpr static std::size_t default_initial_hash_table_size = utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
 
+    static_assert(sizeof(bucket_type) == 24);
     static_assert(sizeof(hash_table::value_type) == 16);  // two pointers
     static_assert(alignof(hash_table::value_type) == 8);
     static_assert(sizeof(bucket_type::neighborhood_bitmap) == 8);

@@ -100,6 +100,7 @@ void input_partition::flush() {
             accessor::record_ref(x, sz),
             accessor::record_ref(y, sz)) < 0;
     });
+    hash_table_->clear();
 }
 
 void input_partition::initialize_lazy() {

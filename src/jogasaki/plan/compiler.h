@@ -19,10 +19,12 @@
 
 #include <takatori/plan/forward.h>
 #include <takatori/plan/group.h>
+#include <takatori/plan/aggregate.h>
 #include <takatori/plan/process.h>
 
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/process/step.h>
 
 #include "compiler_context.h"
@@ -34,6 +36,7 @@ namespace impl {
 [[nodiscard]] executor::process::step create(takatori::plan::process const& process, compiler_context& ctx);
 [[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx);
 [[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx);
+[[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiler_context& ctx);
 }
 
 /**

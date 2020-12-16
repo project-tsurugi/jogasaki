@@ -121,7 +121,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.right_upstream_partitions_ = FLAGS_right_upstream_partitions;
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
-	s.use_priority_queue = FLAGS_use_priority_queue;
+    s.use_priority_queue = FLAGS_use_priority_queue;
     s.key_modulo_ = FLAGS_key_modulo;
 
     cfg->core_affinity(FLAGS_core_affinity);

@@ -15,18 +15,18 @@
  */
 #pragma once
 
+#include <limits>
+#include <cstdint>
+
 namespace jogasaki::aggregate_cli {
 
-class params {
-public:
-    std::size_t records_per_upstream_partition_ = 1000;
-    std::size_t upstream_partitions_ = 10;
-    std::size_t downstream_partitions_ = 10;
-    bool debug_ = false;
-    bool sequential_data_ = false;
-    bool interactive_ = false;
-    std::string original_args_{};
-    std::size_t key_modulo_ = -1;
-};
+constexpr static std::size_t time_point_prepare = 0;
+constexpr static std::size_t time_point_produce = 1;
+constexpr static std::size_t time_point_produced = 2;
+constexpr static std::size_t time_point_consume = 3;
+constexpr static std::size_t time_point_consumed = 4;
+constexpr static std::size_t time_point_release_pool = 5;
+constexpr static std::size_t time_point_start_completion = 6;
+constexpr static std::size_t time_point_end_completion = 7;
 
 }

@@ -16,10 +16,10 @@
 #pragma once
 
 #include "../common/producer_process.h"
-#include "params.h"
+#include "producer_params.h"
 
 namespace jogasaki::aggregate_cli {
 
-using producer_process = common_cli::producer_process<params>;
+using producer_process = common_cli::producer_process<producer_params>;
 
 }

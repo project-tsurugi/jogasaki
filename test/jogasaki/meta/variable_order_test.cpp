@@ -95,10 +95,14 @@ TEST_F(variable_order_test, stream_variables) {
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::flat_record>, cols};
 
     EXPECT_FALSE(ord.for_group());
-    // currently ordering as is TODO fix when ordering is corrected
     EXPECT_EQ(1, ord.index(c0));
     EXPECT_EQ(0, ord.index(c1));
     EXPECT_EQ(2, ord.index(c2));
+    auto it = ord.begin();
+    EXPECT_EQ(c1, *it++);
+    EXPECT_EQ(c0, *it++);
+    EXPECT_EQ(c2, *it++);
+    EXPECT_EQ(ord.end(), it);
 }
 
 TEST_F(variable_order_test, create_from_exchange_columns) {
@@ -119,6 +123,12 @@ TEST_F(variable_order_test, create_from_exchange_columns) {
     EXPECT_EQ(0, ord.index(c0));
     EXPECT_EQ(1, ord.index(c1));
     EXPECT_EQ(2, ord.index(c2));
+
+    auto it = ord.begin();
+    EXPECT_EQ(c0, *it++);
+    EXPECT_EQ(c1, *it++);
+    EXPECT_EQ(c2, *it++);
+    EXPECT_EQ(ord.end(), it);
 }
 
 TEST_F(variable_order_test, flat_record_from_keys_values) {
@@ -135,12 +145,18 @@ TEST_F(variable_order_test, flat_record_from_keys_values) {
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::flat_record_from_keys_values>, keys, values};
 
     EXPECT_FALSE(ord.for_group());
-    // currently ordering as is TODO fix when ordering is corrected
     using pair = std::pair<std::size_t, bool>;
     EXPECT_EQ(0,  ord.index(c0));
     EXPECT_EQ(1,  ord.index(c1));
     EXPECT_EQ(2,  ord.index(c2));
     EXPECT_EQ(3,  ord.index(c3));
+
+    auto it = ord.begin();
+    EXPECT_EQ(c0, *it++);
+    EXPECT_EQ(c1, *it++);
+    EXPECT_EQ(c2, *it++);
+    EXPECT_EQ(c3, *it++);
+    EXPECT_EQ(ord.end(), it);
 }
 
 TEST_F(variable_order_test, group_from_keys) {
@@ -157,12 +173,20 @@ TEST_F(variable_order_test, group_from_keys) {
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>, cols, keys};
 
     EXPECT_TRUE(ord.for_group());
-    // currently ordering as is TODO fix when ordering is corrected
     using pair = std::pair<std::size_t, bool>;
     EXPECT_EQ(pair(0, false), ord.key_value_index(c0));
     EXPECT_EQ(pair(1, true), ord.key_value_index(c1));
     EXPECT_EQ(pair(0, true), ord.key_value_index(c2));
     EXPECT_EQ(pair(1, false), ord.key_value_index(c3));
+
+    auto it = ord.begin();
+    EXPECT_EQ(c2, *it++);
+    EXPECT_EQ(c1, *it++);
+    EXPECT_EQ(ord.end(), it);
+    auto it2 = ord.value_begin();
+    EXPECT_EQ(c0, *it2++);
+    EXPECT_EQ(c3, *it2++);
+    EXPECT_EQ(ord.value_end(), it2);
 }
 
 TEST_F(variable_order_test, group_from_keys_not_all_keys_in_columns) {
@@ -178,11 +202,18 @@ TEST_F(variable_order_test, group_from_keys_not_all_keys_in_columns) {
     variable_order ord{ variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>, cols, keys};
 
     EXPECT_TRUE(ord.for_group());
-    // currently ordering as is TODO fix when ordering is corrected
     using pair = std::pair<std::size_t, bool>;
     EXPECT_EQ(pair(0, false), ord.key_value_index(c0));
     EXPECT_EQ(pair(0, true), ord.key_value_index(c1));
     EXPECT_EQ(pair(1, false), ord.key_value_index(c3));
+
+    auto it = ord.begin();
+    EXPECT_EQ(c1, *it++);
+    EXPECT_EQ(ord.end(), it);
+    auto it2 = ord.value_begin();
+    EXPECT_EQ(c0, *it2++);
+    EXPECT_EQ(c3, *it2++);
+    EXPECT_EQ(ord.value_end(), it2);
 }
 
 }

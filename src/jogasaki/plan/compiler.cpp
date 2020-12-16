@@ -210,27 +210,44 @@ executor::exchange::group::step create(takatori::plan::group const& group, compi
         group.columns(),
         group.group_keys()
     };
-
     std::vector<meta::field_type> fields{};
-    for(auto&& c: group.columns()) {
+    auto sz = group.columns().size();
+    fields.reserve(sz);
+    for(auto&& c: input_order) {
         fields.emplace_back(utils::type_for(ctx.compiled_info(), c));
     }
-    auto cnt = fields.size();
-    auto meta = std::make_shared<meta::record_meta>(
-        std::move(fields),
-        boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
-    );
     std::vector<std::size_t> key_indices{};
     key_indices.resize(group.group_keys().size());
     for(auto&& k : group.group_keys()) {
         key_indices[output_order.index(k)] = input_order.index(k);
     }
 
-    auto info = std::make_shared<executor::exchange::group::group_info>(std::move(meta), std::move(key_indices));
+    std::vector<std::size_t> sort_key_indices{};
+    std::vector<executor::ordering> sort_ordering{};
+    auto ssz = group.sort_keys().size();
+    sort_key_indices.reserve(ssz);
+    sort_ordering.reserve(ssz);
+    for(auto&& k : group.sort_keys()) {
+        auto&& v = k.variable();
+        auto ord = k.direction() == takatori::relation::sort_direction::ascendant ?
+            executor::ordering::ascending :
+            executor::ordering::descending;
+        sort_key_indices.emplace_back(input_order.index(v));
+        sort_ordering.emplace_back(ord);
+    }
     return executor::exchange::group::step(
-        std::move(info),
+        std::make_shared<executor::exchange::group::group_info>(
+            std::make_shared<meta::record_meta>(
+                std::move(fields),
+                boost::dynamic_bitset{sz}.flip() // currently assuming all fields are nullable
+            ),
+            std::move(key_indices),
+            std::move(sort_key_indices),
+            std::move(sort_ordering)
+        ),
         std::move(input_order),
-        std::move(output_order));
+        std::move(output_order)
+    );
 }
 
 executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiler_context& ctx) {

@@ -87,6 +87,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     xch >> emit;
     emit >> dvr;
 
+    jogasaki::utils::get_latches().enable(sync_wait_prepare,
+        std::min(s.upstream_partitions_, cfg->thread_pool_size()));
     dag_controller dc{std::move(cfg)};
     dc.schedule(g);
     return 0;

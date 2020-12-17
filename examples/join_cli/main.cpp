@@ -402,6 +402,8 @@ public:
             jogasaki::utils::get_watch().set_point(jogasaki::join_cli::time_point_consumed, arg->identity_);
             LOG(INFO) << arg->identity_ << " end consume";
         }));
+        jogasaki::utils::get_latches().enable(sync_wait_prepare,
+            std::min(s.left_upstream_partitions_+s.right_upstream_partitions_, cfg->thread_pool_size()));
         consumer.partitions(s.downstream_partitions_);
         dag_controller dc{std::move(cfg)};
         dc.schedule(g);

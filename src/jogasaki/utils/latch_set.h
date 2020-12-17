@@ -68,7 +68,7 @@ private:
     std::unordered_set<latch_id> enabled_{}; // using flags because erasing a latch caused assert failure in boost::latch
 };
 
-latch_set& get_latches() {
+inline latch_set& get_latches() {
     static std::unique_ptr<latch_set> set = std::make_unique<latch_set>();
     return *set;
 }

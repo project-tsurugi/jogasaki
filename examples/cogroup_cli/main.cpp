@@ -29,7 +29,7 @@
 #include "params.h"
 #include "producer_process.h"
 #include "consumer_process.h"
-#include "../common/cli_constants.h"
+#include "../common/producer_constants.h"
 #include "../common/dump.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
@@ -53,6 +53,8 @@ DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector ins
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(use_priority_queue, true, "use priority_queue to conduct cogroup");  //NOLINT
 DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
+DEFINE_int32(prepare_pages, 600, "prepare specified number of memory pages per partition that are first touched beforehand. Specify -1 to disable.");  //NOLINT
+DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
 
 namespace jogasaki::cogroup_cli {
 
@@ -81,8 +83,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
 
     common::graph g{*context};
-    producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.key_modulo_ };
-    producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.key_modulo_ };
+    producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.key_modulo_, s.sequential_data_, s.prepare_pages_ };
+    producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.key_modulo_, s.sequential_data_, s.prepare_pages_ };
     auto& scan1 = g.emplace<producer_process>(meta, l_params);
     auto& scan2 = g.emplace<producer_process>(meta, r_params);
     auto& xch1 = g.emplace<group::step>(info, meta::variable_order{}, meta::variable_order{});
@@ -123,6 +125,8 @@ extern "C" int main(int argc, char* argv[]) {
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
     s.use_priority_queue = FLAGS_use_priority_queue;
     s.key_modulo_ = FLAGS_key_modulo;
+    s.sequential_data_ = FLAGS_sequential_data;
+    s.prepare_pages_ = FLAGS_prepare_pages;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

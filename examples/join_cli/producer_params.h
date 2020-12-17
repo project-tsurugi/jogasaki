@@ -23,6 +23,7 @@ public:
     std::size_t upstream_partitions_ = 5;
     bool sequential_data_ = false;
     std::size_t key_modulo_ = -1;
+    std::int32_t prepare_pages_ = 600;
 };
 
 }

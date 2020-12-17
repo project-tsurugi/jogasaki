@@ -18,13 +18,7 @@
 #include <limits>
 #include <cstdint>
 
-namespace jogasaki::cogroup_cli {
+constexpr static std::size_t time_point_consume = 10;
+constexpr static std::size_t time_point_consumed = 11;
+constexpr static std::size_t time_point_main_completed = 12;
 
-constexpr static std::size_t time_point_prepare = 0;
-constexpr static std::size_t time_point_produce = 1;
-constexpr static std::size_t time_point_produced = 2;
-constexpr static std::size_t time_point_consume = 3;
-constexpr static std::size_t time_point_consumed = 4;
-constexpr static std::size_t time_point_main_completed = 5;
-
-}

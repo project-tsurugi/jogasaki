@@ -48,8 +48,6 @@
 #include <takatori/plan/process.h>
 #include <takatori/statement/execute.h>
 
-#include <performance-tools/synchronizer.h>
-
 #include "params.h"
 #include "cli_constants.h"
 
@@ -62,7 +60,7 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
-#include "params.h"
+#include "../common/producer_dump.h"
 #include "producer_process.h"
 
 DEFINE_int32(thread_pool_size, 100, "Thread pool size");  //NOLINT
@@ -79,7 +77,7 @@ DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all nu
 DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
-DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
+DEFINE_int32(prepare_pages, 600, "prepare specified number of memory pages per partition that are first touched beforehand. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::join_cli {
 
@@ -149,8 +147,8 @@ bool fill_from_flags(
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
     s.debug_ = FLAGS_debug;
     s.sequential_data_ = FLAGS_sequential_data;
-    s.interactive_ = FLAGS_interactive;
     s.key_modulo_ = FLAGS_key_modulo;
+    s.prepare_pages_ = FLAGS_prepare_pages;
 
     cfg.core_affinity(FLAGS_core_affinity);
     cfg.initial_core(FLAGS_initial_core);
@@ -186,8 +184,7 @@ bool fill_from_flags(
 void dump_perf_info(bool prepare = true, bool run = true, bool completion = false) {
     auto& watch = utils::get_watch();
     if (prepare) {
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_produce, "prepare");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_produce, time_point_produced, "produce");
+        common_cli::dump_producer_perf_info();
     }
     if (run) {
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_consume, time_point_consumed, "consume");
@@ -202,12 +199,7 @@ class cli {
 public:
     // entry point from main
     int operator()(params& param, std::shared_ptr<configuration> const& cfg) {
-        if (param.interactive_) {
-//            common_options_ = param.original_args_;
-//            run_interactive(param, cfg);
-        } else {
-            run(param, cfg);
-        }
+        run(param, cfg);
         utils::get_watch().set_point(time_point_release_pool, 0);
         LOG(INFO) << "start releasing memory pool";
         (void)global::page_pool(global::pool_operation::reset);
@@ -381,8 +373,8 @@ public:
         };
 
         common::graph g{*context};
-        producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.sequential_data_, s.key_modulo_};
-        producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.sequential_data_, s.key_modulo_};
+        producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.sequential_data_, s.key_modulo_, s.prepare_pages_};
+        producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.sequential_data_, s.key_modulo_, s.prepare_pages_};
         auto& producer1 = g.emplace<producer_process>(meta, l_params);
         auto& producer2 = g.emplace<producer_process>(meta, r_params);
         auto& xch1 = g.emplace<exchange::group::step>(info, input_order, order0);
@@ -473,18 +465,6 @@ extern "C" int main(int argc, char* argv[]) {
     jogasaki::join_cli::params s{};
     auto cfg = std::make_shared<jogasaki::configuration>();
     if(! fill_from_flags(s, *cfg)) return -1;
-    if (s.interactive_) {
-        std::stringstream ss{};
-        if (argc > 1) {
-            for(std::size_t i=1, n=argc; i < n; ++i) {
-                std::string arg{argv[i]};  //NOLINT
-                if(arg.rfind("interactive") != std::string::npos) continue;
-                ss << arg;
-                ss << " ";
-            }
-            s.original_args_ = ss.str();
-        }
-    }
     try {
         jogasaki::join_cli::cli{}(s, cfg);  // NOLINT
     } catch (std::exception& e) {

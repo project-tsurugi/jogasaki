@@ -25,8 +25,9 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/performance_tools.h>
 #include <jogasaki/utils/random.h>
+#include <jogasaki/utils/latch_set.h>
 #include "task_base.h"
-#include "cli_constants.h"
+#include "producer_constants.h"
 
 namespace jogasaki::common_cli {
 
@@ -37,17 +38,17 @@ class producer_task : public task_base {
 public:
     producer_task() = delete;
     producer_task(request_context* context,
-            model::step* src,
-            executor::exchange::sink* sink,
-            maybe_shared_ptr<meta::record_meta> meta,
-            Params& c,
-            memory::monotonic_paged_memory_resource& resource
+        model::step* src,
+        executor::exchange::sink* sink,
+        maybe_shared_ptr<meta::record_meta> meta,
+        Params& c,
+        memory::monotonic_paged_memory_resource& resource
     ) :
-            task_base(std::move(context),  src),
-            sink_(sink),
-            meta_(std::move(meta)),
-            params_(&c),
-            resource_(&resource)
+        task_base(std::move(context),  src),
+        sink_(sink),
+        meta_(std::move(meta)),
+        params_(&c),
+        resource_(&resource)
     {}
 
     void execute() override {
@@ -59,10 +60,15 @@ public:
         prepare_data(continuous_ranges);
         utils::get_watch().set_point(time_point_prepared, id());
         LOG(INFO) << id() << " end prepare";
+        if (params_->prepare_pages_ != -1) {
+            prepare_pages(params_->prepare_pages_);
+        }
+        utils::get_watch().set_point(time_point_touched, id());
+        LOG(INFO) << id() << " prepared pages";
         if(auto* s = utils::get_latches().get(sync_wait_prepare); s) {
             s->count_down_and_wait();
+            utils::get_latches().disable(sync_wait_prepare);
         }
-        utils::get_latches().disable(sync_wait_prepare);
         utils::get_watch().set_point(time_point_produce, id());
         LOG(INFO) << id() << " start produce";
         produce_data(continuous_ranges);
@@ -72,6 +78,19 @@ public:
         LOG(INFO) << id() << " end produce";
     }
 
+    void prepare_pages(std::int32_t pages) {
+        auto& pool = global::page_pool();
+        std::vector<memory::page_pool::page_info> v{};
+        v.reserve(pages);
+        for(std::size_t i=0, n=pages; i<n; ++i) {
+            auto p = pool.acquire_page(true);
+            std::memset(p.address(), '\1', memory::page_size);
+            v.emplace_back(p);
+        }
+        for(auto&& p : v) {
+            pool.release_page(p);
+        }
+    }
 private:
     executor::exchange::sink* sink_{};
     maybe_shared_ptr<meta::record_meta> meta_{};

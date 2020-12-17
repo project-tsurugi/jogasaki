@@ -20,15 +20,10 @@
 
 namespace jogasaki::aggregate_cli {
 
-constexpr static std::size_t time_point_prepare = 0;  // used in common cli
-constexpr static std::size_t time_point_prepared = 1;  // used in common cli
-constexpr static std::size_t time_point_produce = 2; // used in common cli
-constexpr static std::size_t time_point_produced = 3; // used in common cli
-constexpr static std::size_t time_point_consume = 4;
-constexpr static std::size_t time_point_consumed = 5;
-constexpr static std::size_t time_point_release_pool = 6;
-constexpr static std::size_t time_point_start_completion = 7;
-constexpr static std::size_t time_point_end_completion = 8;
+constexpr static std::size_t time_point_consume = 10;
+constexpr static std::size_t time_point_consumed = 11;
+constexpr static std::size_t time_point_release_pool = 12;
+constexpr static std::size_t time_point_start_completion = 13;
+constexpr static std::size_t time_point_end_completion = 14;
 
-constexpr static std::size_t sync_wait_prepare = 100; // shared with common cli
 }

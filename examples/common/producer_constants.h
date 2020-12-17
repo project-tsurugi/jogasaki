@@ -15,13 +15,13 @@
  */
 #pragma once
 
-#include <memory>
+#include <limits>
+#include <cstdint>
 
-#include "../common/producer_flow.h"
-#include "params.h"
+constexpr static std::size_t time_point_prepare = 0;
+constexpr static std::size_t time_point_prepared = 1;
+constexpr static std::size_t time_point_touched = 2;
+constexpr static std::size_t time_point_produce = 3;
+constexpr static std::size_t time_point_produced = 4;
 
-namespace jogasaki::mock_aggregate_cli {
-
-using producer_flow = common_cli::producer_flow<params>;
-
-}
+constexpr static std::size_t sync_wait_prepare = 100;

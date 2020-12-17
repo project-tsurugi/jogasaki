@@ -24,7 +24,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include "../common/task_base.h"
-#include "../common/cli_constants.h"
+#include "cli_constants.h"
 
 namespace jogasaki::mock_aggregate_cli {
 

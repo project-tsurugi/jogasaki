@@ -29,7 +29,8 @@
 #include "producer_process.h"
 #include "consumer_process.h"
 #include "params.h"
-#include "../common/cli_constants.h"
+#include "../common/producer_constants.h"
+#include "cli_constants.h"
 #include "../common/dump.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
@@ -41,17 +42,15 @@ DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLINT
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
-DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_int32(local_partition_default_size, 1000000, "default size for local partition used to store scan results");  //NOLINT
-DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(noop_pregroup, false, "do nothing in the shuffle pregroup");  //NOLINT
 DEFINE_bool(shuffle_uses_sorted_vector, false, "shuffle to use sorted vector instead of priority queue, this enables noop_pregroup as well");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 DEFINE_bool(aggregate_group, false, "whether the result group will be aggregated");  //NOLINT
+DEFINE_int32(prepare_pages, 600, "prepare specified number of memory pages per partition that are first touched beforehand. Specify -1 to disable.");  //NOLINT
 
 namespace jogasaki::group_cli {
 
@@ -114,6 +113,7 @@ extern "C" int main(int argc, char* argv[]) {
     s.records_per_upstream_partition_ = FLAGS_records_per_partition;
     s.key_modulo_ = FLAGS_key_modulo;
     s.aggregate_group_ = FLAGS_aggregate_group;
+    s.prepare_pages_ = FLAGS_prepare_pages;
 
     cfg->core_affinity(FLAGS_core_affinity);
     cfg->initial_core(FLAGS_initial_core);

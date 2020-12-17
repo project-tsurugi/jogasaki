@@ -30,7 +30,7 @@
 
 #include "../common/task_base.h"
 #include "params.h"
-#include "../common/cli_constants.h"
+#include "cli_constants.h"
 
 namespace jogasaki::cogroup_cli {
 

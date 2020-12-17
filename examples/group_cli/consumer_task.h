@@ -26,7 +26,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include "../common/task_base.h"
 #include "../common/aggregator.h"
-#include "../common/cli_constants.h"
+#include "cli_constants.h"
 
 namespace jogasaki::group_cli {
 

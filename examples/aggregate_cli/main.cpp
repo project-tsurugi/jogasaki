@@ -66,9 +66,9 @@
 #include <takatori/relation/step/flatten.h>
 #include "params.h"
 #include "producer_process.h"
-#include "../common/aggregator.h"
 #include "cli_constants.h"
 #include "producer_params.h"
+#include "../common/producer_dump.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
@@ -189,9 +189,7 @@ bool fill_from_flags(
 void dump_perf_info(bool prepare = true, bool run = true, bool completion = false) {
     auto& watch = utils::get_watch();
     if (prepare) {
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_prepared, "prepare");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepared, time_point_produce, "wait others prepare");
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_produce, time_point_produced, "produce");
+        common_cli::dump_producer_perf_info();
     }
     if (run) {
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_consume, time_point_consumed, "consume");

@@ -17,21 +17,16 @@
 
 #include <glog/logging.h>
 #include <jogasaki/utils/performance_tools.h>
-#include "producer_dump.h"
+#include "producer_constants.h"
 
 namespace jogasaki::common_cli {
 
-void dump_perf_info() {
+void dump_producer_perf_info() {
     auto& watch = utils::get_watch();
-    watch.set_point(time_point_main_completed);
-    dump_producer_perf_info();
-#ifndef PERFORMANCE_TOOLS
-    LOG(INFO) << "transfer: total " << watch.duration(time_point_produced, time_point_consume, true) << "ms" ;
-#endif
-    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_consume, time_point_consumed, "consume");
-#ifndef PERFORMANCE_TOOLS
-    LOG(INFO) << "finish: total " << watch.duration(time_point_consumed, time_point_main_completed, true) << "ms" ;
-#endif
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_prepared, "prepare");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepared, time_point_touched, "first touch");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_touched, time_point_produce, "wait others prepare");
+    LOG(INFO) << jogasaki::utils::textualize(watch, time_point_produce, time_point_produced, "produce");
 }
 
 } //namespace

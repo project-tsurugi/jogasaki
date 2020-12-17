@@ -25,9 +25,8 @@ public:
     std::size_t downstream_partitions_ = 10;
     bool debug_ = false;
     bool sequential_data_ = false;
-    bool interactive_ = false;
-    std::string original_args_{};
     std::size_t key_modulo_ = -1;
+    std::int32_t prepare_pages_ = 600;
 };
 
 }

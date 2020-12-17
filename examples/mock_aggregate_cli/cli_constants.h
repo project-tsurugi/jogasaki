@@ -15,11 +15,10 @@
  */
 #pragma once
 
-#include "../common/producer_task.h"
-#include "params.h"
+#include <limits>
+#include <cstdint>
 
-namespace jogasaki::group_cli {
+constexpr static std::size_t time_point_consume = 10;
+constexpr static std::size_t time_point_consumed = 11;
+constexpr static std::size_t time_point_main_completed = 12;
 
-using producer_task = common_cli::producer_task<params>;
-
-}

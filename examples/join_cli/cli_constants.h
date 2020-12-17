@@ -20,13 +20,10 @@
 
 namespace jogasaki::join_cli {
 
-constexpr static std::size_t time_point_prepare = 0;
-constexpr static std::size_t time_point_produce = 1;
-constexpr static std::size_t time_point_produced = 2;
-constexpr static std::size_t time_point_consume = 3;
-constexpr static std::size_t time_point_consumed = 4;
-constexpr static std::size_t time_point_release_pool = 5;
-constexpr static std::size_t time_point_start_completion = 6;
-constexpr static std::size_t time_point_end_completion = 7;
+constexpr static std::size_t time_point_consume = 10;
+constexpr static std::size_t time_point_consumed = 11;
+constexpr static std::size_t time_point_release_pool = 12;
+constexpr static std::size_t time_point_start_completion = 13;
+constexpr static std::size_t time_point_end_completion = 14;
 
 }

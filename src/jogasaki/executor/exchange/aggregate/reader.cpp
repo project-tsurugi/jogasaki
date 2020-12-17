@@ -63,7 +63,7 @@ bool reader::next_group() {
         read_and_pop(it, end);
         bool initial = true;
         internal_on_member_ = false;
-        auto info = info_->mid();
+        auto& info = info_->mid();
         while(internal_next_member()) {
             auto src = internal_get_member();
             auto tgt = mid_value_buf_.ref();

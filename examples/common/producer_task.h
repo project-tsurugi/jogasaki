@@ -111,7 +111,7 @@ private:
                         break;
                     }
                     case kind::float8: {
-                        double c2 = rnd();
+                        double c2 = params_->sequential_data_ ? i : rnd();
                         ref.set_value<double>(offset, c2);
                         break;
                     }

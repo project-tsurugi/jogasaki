@@ -19,9 +19,11 @@
 #include <cstdint>
 
 constexpr static std::size_t time_point_prepare = 0;
-constexpr static std::size_t time_point_produce = 1;
-constexpr static std::size_t time_point_produced = 2;
-constexpr static std::size_t time_point_consume = 3;
-constexpr static std::size_t time_point_consumed = 4;
-constexpr static std::size_t time_point_main_completed = 5;
+constexpr static std::size_t time_point_prepared = 1;
+constexpr static std::size_t time_point_produce = 2;
+constexpr static std::size_t time_point_produced = 3;
+constexpr static std::size_t time_point_consume = 4;
+constexpr static std::size_t time_point_consumed = 5;
+constexpr static std::size_t time_point_main_completed = 6;
 
+constexpr static std::size_t sync_wait_prepare = 100;

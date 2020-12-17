@@ -57,6 +57,7 @@
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/utils/performance_tools.h>
+#include <jogasaki/utils/latch_set.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/plan/compiler.h>
@@ -188,7 +189,8 @@ bool fill_from_flags(
 void dump_perf_info(bool prepare = true, bool run = true, bool completion = false) {
     auto& watch = utils::get_watch();
     if (prepare) {
-        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_produce, "prepare");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_prepared, "prepare");
+        LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepared, time_point_produce, "wait others prepare");
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_produce, time_point_produced, "produce");
     }
     if (run) {
@@ -352,6 +354,8 @@ public:
             jogasaki::utils::get_watch().set_point(jogasaki::aggregate_cli::time_point_consumed, arg->identity_);
             LOG(INFO) << arg->identity_ << " end consume";
         }));
+
+        jogasaki::utils::get_latches().enable(sync_wait_prepare, std::min(s.upstream_partitions_, cfg->thread_pool_size()));
         consumer.partitions(s.downstream_partitions_);
         dag_controller dc{std::move(cfg)};
         dc.schedule(g);

@@ -57,6 +57,12 @@ public:
         initialize_writer();
         std::vector<std::pair<void*, void*>> continuous_ranges{}; // bunch of records are separated to multiple continuous regions
         prepare_data(continuous_ranges);
+        utils::get_watch().set_point(time_point_prepared, id());
+        LOG(INFO) << id() << " end prepare";
+        if(auto* s = utils::get_latches().get(sync_wait_prepare); s) {
+            s->count_down_and_wait();
+        }
+        utils::get_latches().disable(sync_wait_prepare);
         utils::get_watch().set_point(time_point_produce, id());
         LOG(INFO) << id() << " start produce";
         produce_data(continuous_ranges);

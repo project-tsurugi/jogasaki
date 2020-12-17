@@ -262,7 +262,7 @@ public:
             },
             {
                 {
-                    bindings(find_agg_func(*functions, "avg", 1)),
+                    bindings(find_agg_func(*functions, "sum", 1)),
                     g0a1,
                     g0c1,
                 }

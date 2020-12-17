@@ -52,7 +52,6 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/function/builtin_functions.h>
@@ -66,8 +65,6 @@
 #include <takatori/relation/step/flatten.h>
 #include "params.h"
 #include "producer_process.h"
-#include "params.h"
-//#include "../common/cli_constants.h"
 #include "../common/aggregator.h"
 #include "cli_constants.h"
 #include "producer_params.h"
@@ -83,13 +80,11 @@ DEFINE_int32(upstream_partitions, 10, "Number of upstream partitions");  //NOLIN
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_string(proffile, "", "Performance measurement result file.");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_int64(key_modulo, -1, "key value integer is calculated based on the given modulo. Specify -1 to disable.");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_bool(sequential_data, false, "use sequential data instead of randomly generated");  //NOLINT
-DEFINE_bool(interactive, false, "run on interactive mode. The other options specified on command line is saved as common option.");  //NOLINT
 
 namespace jogasaki::aggregate_cli {
 
@@ -155,10 +150,9 @@ bool fill_from_flags(
 
     s.downstream_partitions_ = FLAGS_downstream_partitions;
     s.upstream_partitions_ = FLAGS_upstream_partitions;
-    s.records_per_upstream_partition_ = FLAGS_records_per_partition;
+    s.records_per_partition_ = FLAGS_records_per_partition;
     s.debug_ = FLAGS_debug;
     s.sequential_data_ = FLAGS_sequential_data;
-    s.interactive_ = FLAGS_interactive;
     s.key_modulo_ = FLAGS_key_modulo;
 
     cfg.core_affinity(FLAGS_core_affinity);
@@ -173,7 +167,7 @@ bool fill_from_flags(
         cfg.core_affinity(false);
 
         s.upstream_partitions_ = 1;
-        s.records_per_upstream_partition_ = 3;
+        s.records_per_partition_ = 3;
     }
 
     if (cfg.assign_numa_nodes_uniformly()) {
@@ -181,8 +175,8 @@ bool fill_from_flags(
     }
 
     std::cout << std::boolalpha <<
-        "left_upstream_partitions:" << s.upstream_partitions_ <<
-        " records_per_upstream_partition:" << s.records_per_upstream_partition_ <<
+        "upstream_partitions:" << s.upstream_partitions_ <<
+        " records_per_partition:" << s.records_per_partition_ <<
         " debug:" << s.debug_ <<
         " sequential:" << s.sequential_data_ <<
         " key_modulo:" << s.key_modulo_ <<
@@ -209,12 +203,7 @@ class cli {
 public:
     // entry point from main
     int operator()(params& param, std::shared_ptr<configuration> const& cfg) {
-        if (param.interactive_) {
-//            common_options_ = param.original_args_;
-//            run_interactive(param, cfg);
-        } else {
-            run(param, cfg);
-        }
+        run(param, cfg);
         utils::get_watch().set_point(time_point_release_pool, 0);
         LOG(INFO) << "start releasing memory pool";
         (void)global::page_pool(global::pool_operation::reset);
@@ -345,7 +334,7 @@ public:
         auto& p0 = find_process(p);
         auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
 
-        producer_params prod_params{s.records_per_upstream_partition_, s.upstream_partitions_, s.sequential_data_, s.key_modulo_};
+        producer_params prod_params{s.records_per_partition_, s.upstream_partitions_, s.sequential_data_, s.key_modulo_};
         auto& producer = g.emplace<producer_process>(meta, prod_params);
         producer >> xch;
         xch >> consumer;
@@ -426,18 +415,6 @@ extern "C" int main(int argc, char* argv[]) {
     jogasaki::aggregate_cli::params s{};
     auto cfg = std::make_shared<jogasaki::configuration>();
     if(! fill_from_flags(s, *cfg)) return -1;
-    if (s.interactive_) {
-        std::stringstream ss{};
-        if (argc > 1) {
-            for(std::size_t i=1, n=argc; i < n; ++i) {
-                std::string arg{argv[i]};  //NOLINT
-                if(arg.rfind("interactive") != std::string::npos) continue;
-                ss << arg;
-                ss << " ";
-            }
-            s.original_args_ = ss.str();
-        }
-    }
     try {
         jogasaki::aggregate_cli::cli{}(s, cfg);  // NOLINT
     } catch (std::exception& e) {

@@ -19,13 +19,11 @@ namespace jogasaki::aggregate_cli {
 
 class params {
 public:
-    std::size_t records_per_upstream_partition_ = 1000;
+    std::size_t records_per_partition_ = 1000;
     std::size_t upstream_partitions_ = 10;
     std::size_t downstream_partitions_ = 10;
     bool debug_ = false;
     bool sequential_data_ = false;
-    bool interactive_ = false;
-    std::string original_args_{};
     std::size_t key_modulo_ = -1;
 };
 

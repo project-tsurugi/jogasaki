@@ -176,6 +176,7 @@ bool fill_from_flags(
 
     std::cout << std::boolalpha <<
         "upstream_partitions:" << s.upstream_partitions_ <<
+        "downstream_partitions:" << s.downstream_partitions_ <<
         " records_per_partition:" << s.records_per_partition_ <<
         " debug:" << s.debug_ <<
         " sequential:" << s.sequential_data_ <<

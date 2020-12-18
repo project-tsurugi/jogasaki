@@ -25,7 +25,7 @@ namespace jogasaki::data {
 /**
  * @brief the store to hold result data from sql execution
  */
-class result_store {
+class cache_align result_store {
 public:
     using store_type = data::iterable_record_store;
     using stores_type = std::vector<std::unique_ptr<store_type>>;

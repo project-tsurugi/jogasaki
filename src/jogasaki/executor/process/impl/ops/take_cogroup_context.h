@@ -38,7 +38,7 @@ using checkpoint = memory::lifo_paged_memory_resource::checkpoint;
 /**
  * @brief responsible for reading from reader and filling the record store
  */
-class group_input {
+class cache_align group_input {
 public:
     using iterator = data::iterable_record_store::iterator;
 

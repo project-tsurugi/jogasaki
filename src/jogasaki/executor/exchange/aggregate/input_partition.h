@@ -162,17 +162,6 @@ public:
      */
     [[nodiscard]] bool empty(std::size_t index) const noexcept;
 
-    /**
-     * @brief retrieve the hash table access object
-     * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
-     * @return the object to access hash table with iterator
-     */
-//    pointer_table_type table_at(std::size_t index) {
-//        return iterable_hash_table(*tables_[index],
-//            info_->key_meta()->record_size(),
-//            info_->value_meta()->record_size());
-//    }
-
     void release_hashtable() noexcept;
 private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_keys_{};

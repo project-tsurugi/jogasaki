@@ -114,11 +114,11 @@ public:
     std::shared_ptr<impl::scan_info> create_scan_info(
         endpoint const& lower,
         endpoint const& upper,
-        std::vector<key, takatori::util::object_allocator<key>> const& index_keys
+        sequence_view<key const> index_keys
     );
     std::shared_ptr<impl::scan_info> create_scan_info(
         relation::scan const& node,
-        std::vector<key, takatori::util::object_allocator<key>> const& index_keys
+        sequence_view<key const> index_keys
     );
 private:
     std::shared_ptr<processor_info> info_{};
@@ -134,7 +134,7 @@ private:
 
     std::string encode_scan_endpoint(
         relation::scan::endpoint const& e,
-        std::vector<key, takatori::util::object_allocator<key>> const& index_keys
+        sequence_view<key const> index_keys
     );
 };
 

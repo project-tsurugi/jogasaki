@@ -234,8 +234,11 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::shared_ptr<impl::scan_info>
-operator_builder::create_scan_info(const operator_builder::endpoint& lower, const operator_builder::endpoint& upper,
-    const std::vector<key, takatori::util::object_allocator<key>>& index_keys) {
+operator_builder::create_scan_info(
+    operator_builder::endpoint const& lower,
+    operator_builder::endpoint const& upper,
+    sequence_view<key const> index_keys
+) {
     return std::make_shared<impl::scan_info>(
         encode_scan_endpoint(lower, index_keys),
         from(lower.kind()),
@@ -244,8 +247,10 @@ operator_builder::create_scan_info(const operator_builder::endpoint& lower, cons
     );
 }
 
-std::shared_ptr<impl::scan_info> operator_builder::create_scan_info(const relation::scan& node,
-    const std::vector<key, takatori::util::object_allocator<key>>& index_keys) {
+std::shared_ptr<impl::scan_info> operator_builder::create_scan_info(
+    relation::scan const& node,
+    sequence_view<key const> index_keys
+) {
     return create_scan_info(node.lower(), node.upper(), index_keys);
 }
 
@@ -262,8 +267,10 @@ kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type t
     fail();
 }
 
-std::string operator_builder::encode_scan_endpoint(const relation::scan::endpoint& e,
-    const std::vector<key, takatori::util::object_allocator<key>>& index_keys) {
+std::string operator_builder::encode_scan_endpoint(
+    relation::scan::endpoint const& e,
+    sequence_view<key const> index_keys
+) {
     BOOST_ASSERT(e.keys().size() <= index_keys.size());  //NOLINT
     auto cp = resource_->get_checkpoint();
     executor::process::impl::block_scope scope{};

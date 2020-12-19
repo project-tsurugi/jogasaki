@@ -62,9 +62,13 @@ ops::scan::scan(operator_base::operator_index_type index, const processor_info& 
     downstream_(std::move(downstream))
 {}
 
-scan::scan(operator_base::operator_index_type index, const processor_info& info,
-    operator_base::block_index_type block_index, std::string_view storage_name, const yugawara::storage::index& idx,
-    const std::vector<column, takatori::util::object_allocator<column>>& columns,
+scan::scan(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    std::string_view storage_name,
+    yugawara::storage::index const& idx,
+    sequence_view<column const> columns,
     std::unique_ptr<operator_base> downstream) : scan(
     index,
     info,
@@ -172,25 +176,29 @@ scan::decode_fields(const std::vector<details::scan_field>& fields, kvs::stream&
     }
 }
 
-std::vector<details::scan_field> scan::create_fields(const yugawara::storage::index& idx,
-    const std::vector<column, takatori::util::object_allocator<column>>& columns, const processor_info& info,
-    operator_base::block_index_type block_index, bool key) {
+std::vector<details::scan_field> scan::create_fields(
+    yugawara::storage::index const& idx,
+    sequence_view<column const> columns,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    bool key
+) {
     std::vector<details::scan_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};
-    for(auto&& m : columns) {
-        table_to_stream.emplace(m.source(), m.destination());
+    for(auto&& c : columns) {
+        table_to_stream.emplace(c.source(), c.destination());
     }
     auto& block = info.scopes_info()[block_index];
     if (key) {
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
-            auto b = bindings(k.column());
+            auto kc = bindings(k.column());
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            if (table_to_stream.count(b) == 0) {
+            if (table_to_stream.count(kc) == 0) {
                 ret.emplace_back(
                     t,
                     false,
@@ -201,7 +209,7 @@ std::vector<details::scan_field> scan::create_fields(const yugawara::storage::in
                 );
                 continue;
             }
-            auto&& var = table_to_stream.at(b);
+            auto&& var = table_to_stream.at(kc);
             ret.emplace_back(
                 t,
                 true,

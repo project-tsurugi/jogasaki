@@ -115,7 +115,7 @@ public:
         block_index_type block_index,
         std::string_view storage_name,
         yugawara::storage::index const& idx,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        sequence_view<column const> columns,
         std::unique_ptr<operator_base> downstream
     );
 
@@ -156,7 +156,7 @@ private:
 
     std::vector<details::scan_field> create_fields(
         yugawara::storage::index const& idx,
-        std::vector<column, takatori::util::object_allocator<column>> const& columns,
+        sequence_view<column const> columns,
         processor_info const& info,
         block_index_type block_index,
         bool key

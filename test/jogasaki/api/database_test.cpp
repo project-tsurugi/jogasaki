@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 
 #include <jogasaki/test_utils.h>
+#include <jogasaki/api/result_set_impl.h>
 
 namespace jogasaki::testing {
 
@@ -30,12 +31,21 @@ using namespace std::string_view_literals;
  * @brief test database api
  * FIXME this is temporary
  */
-class database_test : public ::testing::Test {};
+class database_test : public ::testing::Test {
 
-TEST_F(database_test, DISABLED_simple) {
+};
+
+TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
     api::database db{};
+    db.start();
     auto rs = db.execute(sql);
+    auto it = rs->begin();
+    EXPECT_EQ(0, std::distance(it, rs->end()));
+    while(it != rs->end()) {
+        (void)it.ref();
+        ++it;
+    }
 }
 
 }

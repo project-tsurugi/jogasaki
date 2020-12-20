@@ -13,28 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
 
-#include<cstdlib>
-#include<mutex>
-#include<unordered_map>
-#include<chrono>
+#include <jogasaki/data/aligned_buffer.h>
 
-namespace jogasaki::utils {
+#include <gtest/gtest.h>
 
-template<class T>
-class delete_aligned {
-public:
-    void operator()(T* p) {
-        std::free(p); //NOLINT
-    }
-};
+#include <jogasaki/accessor/record_ref.h>
 
-template<class T> using aligned_array = std::unique_ptr<T[], delete_aligned<T>>;  //NOLINT
+#include <jogasaki/mock_memory_resource.h>
 
-template<class T>
-[[nodiscard]] aligned_array<T> make_aligned_array(size_t alignment, size_t size) {
-    return aligned_array<T>( static_cast<T*>(std::aligned_alloc(alignment, size)), delete_aligned<T>{});
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
+
+namespace jogasaki::data {
+
+using namespace testing;
+using namespace accessor;
+using namespace takatori::util;
+using namespace std::string_view_literals;
+
+using namespace jogasaki::memory;
+using namespace boost::container::pmr;
+
+class aligned_buffer_test : public test_root {};
+
+TEST_F(aligned_buffer_test, basic) {
+    aligned_buffer buf{10};
+    EXPECT_EQ(10, buf.size());
 }
 
-} // namespace
+}
+

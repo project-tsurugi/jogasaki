@@ -338,8 +338,10 @@ void create_mirror_for_execute(compiler_context& ctx) {
             }
             case takatori::plan::step_kind::broadcast:
                 // TODO implement
+                fail();
                 break;
             case takatori::plan::step_kind::discard:
+                fail();
                 break;
             case takatori::plan::step_kind::process: {
                 auto& process = unsafe_downcast<takatori::plan::process const>(s);  //NOLINT
@@ -382,23 +384,15 @@ void create_mirror_for_execute(compiler_context& ctx) {
  */
 bool create_mirror(compiler_context& ctx) {
     auto& statement = ctx.statement();
-    using statement_kind = takatori::statement::statement_kind;
+    using kind = takatori::statement::statement_kind;
     switch(statement.kind()) {
-        case statement_kind::execute:
+        case kind::execute:
             create_mirror_for_execute(ctx);
             break;
-        case statement_kind::write: {
-            /*
-            auto&& c = downcast<statement::write>(statement);
-            auto& g = c.();
-            auto mirror = std::make_shared<executor::common::graph>();
-            auto& process = static_cast<takatori::plan::process const&>(s);  //NOLINT
-            steps[&process] = &mirror->emplace<executor::process::step>(create(process, ctx));
-            break;
-             */
+        case kind::write: {
             fail();
         }
-        case statement_kind::extension:
+        case kind::extension:
             return false;
     }
     return true;

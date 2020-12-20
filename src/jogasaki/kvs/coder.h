@@ -320,7 +320,14 @@ inline void encode(accessor::record_ref src, std::size_t offset, meta::field_typ
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  */
-inline void encode_nullable(accessor::record_ref src, std::size_t offset, std::size_t nullity_offset, meta::field_type const& type, coding_spec spec, stream& dest) {
+inline void encode_nullable(
+    accessor::record_ref src,
+    std::size_t offset,
+    std::size_t nullity_offset,
+    meta::field_type const& type,
+    coding_spec spec,
+    stream& dest
+) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     bool is_null = src.is_null(nullity_offset);
@@ -362,7 +369,12 @@ inline void encode(executor::process::impl::expression::any const& src, meta::fi
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  */
-inline void encode_nullable(executor::process::impl::expression::any const& src, meta::field_type const& type, coding_spec spec, stream& dest) {
+inline void encode_nullable(
+    executor::process::impl::expression::any const& src,
+    meta::field_type const& type,
+    coding_spec spec,
+    stream& dest
+) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     bool is_null = !src.has_value();
@@ -377,12 +389,51 @@ inline void encode_nullable(executor::process::impl::expression::any const& src,
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param dest the any container for the result value
+ * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ */
+inline void decode(
+    stream& src,
+    meta::field_type const& type,
+    coding_spec spec,
+    executor::process::impl::expression::any& dest,
+    memory::paged_memory_resource* resource = nullptr
+) {
+    using kind = meta::field_type_kind;
+    using any = executor::process::impl::expression::any;
+    auto odr = spec.ordering();
+    switch(type.kind()) {
+        case kind::boolean: dest = any{std::in_place_type<meta::field_type_traits<kind::boolean>::runtime_type>, src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false)}; break;
+        case kind::int1: dest = any{std::in_place_type<meta::field_type_traits<kind::int1>::runtime_type>, src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, false)}; break;
+        case kind::int2: dest = any{std::in_place_type<meta::field_type_traits<kind::int2>::runtime_type>, src.read<meta::field_type_traits<kind::int2>::runtime_type>(odr, false)}; break;
+        case kind::int4: dest = any{std::in_place_type<meta::field_type_traits<kind::int4>::runtime_type>, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)}; break;
+        case kind::int8: dest = any{std::in_place_type<meta::field_type_traits<kind::int8>::runtime_type>, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)}; break;
+        case kind::float4: dest = any{std::in_place_type<meta::field_type_traits<kind::float4>::runtime_type>, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)}; break;
+        case kind::float8: dest = any{std::in_place_type<meta::field_type_traits<kind::float8>::runtime_type>, src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, false)}; break;
+        case kind::character: dest = any{std::in_place_type<meta::field_type_traits<kind::character>::runtime_type>, src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, false, resource)}; break;
+        default:
+            fail();
+    }
+}
+
+/**
+ * @brief decode a non-nullable field's kvs binary representation to a field data
+ * @param src the stream where the encoded data is read
+ * @param type the type of the field that holds decoded data
+ * @param spec the coding spec for the decoded field
  * @param dest the record to containing the field
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  */
-inline void decode(stream& src, meta::field_type const& type, coding_spec spec, accessor::record_ref dest, std::size_t offset, memory::paged_memory_resource* resource = nullptr) {
+inline void decode(
+    stream& src,
+    meta::field_type const& type,
+    coding_spec spec,
+    accessor::record_ref dest,
+    std::size_t offset,
+    memory::paged_memory_resource* resource = nullptr
+) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     switch(type.kind()) {
@@ -427,6 +478,33 @@ inline void decode_nullable(
     if (! is_null) {
         decode(src, type, spec, dest, offset, resource);
     }
+}
+
+/**
+ * @brief decode a nullable field's kvs binary representation to a field data
+ * @param src the stream where the encoded data is read
+ * @param type the type of the field that holds decoded data
+ * @param spec the coding spec for the decoded field
+ * @param dest the any container for the result value
+ * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ */
+inline void decode_nullable(
+    stream& src,
+    meta::field_type const& type,
+    coding_spec spec,
+    executor::process::impl::expression::any& dest,
+    memory::paged_memory_resource* resource = nullptr
+) {
+    using kind = meta::field_type_kind;
+    auto odr = spec.ordering();
+    auto flag = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false);
+    BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
+    bool is_null = flag == 0;
+    if (is_null) {
+        dest = {};
+        return;
+    }
+    decode(src, type, spec, dest, resource);
 }
 
 /**

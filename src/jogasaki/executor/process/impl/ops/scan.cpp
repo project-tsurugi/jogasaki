@@ -69,25 +69,27 @@ scan::scan(
     std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    std::unique_ptr<operator_base> downstream) : scan(
-    index,
-    info,
-    block_index,
-    storage_name,
-    create_fields(idx, columns, info, block_index, true),
-    create_fields(idx, columns, info, block_index, false),
-    std::move(downstream)
-) {}
+    std::unique_ptr<operator_base> downstream
+) :
+    scan(
+        index,
+        info,
+        block_index,
+        storage_name,
+        create_fields(idx, columns, info, block_index, true),
+        create_fields(idx, columns, info, block_index, false),
+        std::move(downstream)
+    )
+{}
 
 void scan::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<scan_context>(index(), ctx.contexts());
     if (! p) {
-        auto stg = ctx.database()->get_storage(storage_name());
         p = ctx.make_context<scan_context>(index(),
             ctx.block_scope(block_index()),
-            std::move(stg),
+            ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
             unsafe_downcast<impl::scan_info const>(ctx.task_context()->scan_info()),  //NOLINT
             ctx.resource(),
@@ -95,8 +97,6 @@ void scan::process_record(abstract::task_context* context) {
         );
     }
     (*this)(*p, context);
-
-    close(*p);
 }
 
 void scan::operator()(scan_context& ctx, abstract::task_context* context) {

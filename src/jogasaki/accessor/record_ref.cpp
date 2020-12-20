@@ -50,7 +50,7 @@ record_ref::operator bool() const noexcept {
     return data_ != nullptr;
 }
 
-void *record_ref::data() const noexcept {
+void* record_ref::data() const noexcept {
     return data_;
 }
 

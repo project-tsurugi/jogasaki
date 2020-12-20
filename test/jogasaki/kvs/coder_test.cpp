@@ -363,7 +363,7 @@ TEST_F(coder_test, encode_decode) {
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
 }
 
-TEST_F(coder_test, encode_any) {
+TEST_F(coder_test, encode_decode_any) {
     std::string src(100, 0);
     std::string tgt(100, 0);
     kvs::stream s{src};
@@ -386,6 +386,13 @@ TEST_F(coder_test, encode_any) {
 
     ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
+
+    s.reset();
+    executor::process::impl::expression::any res{};
+    decode(s, tgt_meta->at(0), spec_asc, res, &resource);
+    EXPECT_EQ(2, res.to<std::int64_t>());
+    decode(s, tgt_meta->at(1), spec_asc, res, &resource);
+    EXPECT_EQ(2.0, res.to<double>());
 }
 
 TEST_F(coder_test, nullable) {
@@ -434,7 +441,7 @@ TEST_F(coder_test, nullable) {
     }
 }
 
-TEST_F(coder_test, encode_any_nullable) {
+TEST_F(coder_test, encode_decode_any_nullable) {
     mock_memory_resource resource{};
     std::string src(100, 0);
     std::string tgt(100, 0);
@@ -460,10 +467,21 @@ TEST_F(coder_test, encode_any_nullable) {
     decode_nullable(s, tgt_meta->at(2), spec_asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource);
     decode_nullable(s, tgt_meta->at(3), spec_asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource);
 
-    ASSERT_EQ(2, *target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
-    ASSERT_FALSE(target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
+    ASSERT_EQ(2, *target_record.ref().get_if<std::int32_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
+    ASSERT_FALSE(target_record.ref().get_if<std::int32_t>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
     ASSERT_EQ(2.0, *target_record.ref().get_if<double>(tgt_meta->nullity_offset(2), tgt_meta->value_offset(2)));
     ASSERT_FALSE(target_record.ref().get_if<double>(tgt_meta->nullity_offset(3), tgt_meta->value_offset(3)));
+
+    s.reset();
+    executor::process::impl::expression::any res{};
+    decode_nullable(s, tgt_meta->at(0), spec_asc, res, &resource);
+    EXPECT_EQ(2, res.to<std::int32_t>());
+    decode_nullable(s, tgt_meta->at(1), spec_asc, res, &resource);
+    EXPECT_FALSE(res);
+    decode_nullable(s, tgt_meta->at(2), spec_asc, res, &resource);
+    EXPECT_EQ(2.0, res.to<double>());
+    decode_nullable(s, tgt_meta->at(3), spec_asc, res, &resource);
+    EXPECT_FALSE(res);
 }
 
 TEST_F(coder_test, streams) {

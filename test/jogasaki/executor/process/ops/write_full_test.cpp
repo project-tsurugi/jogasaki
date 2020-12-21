@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/write.h>
+#include <jogasaki/executor/process/impl/ops/write_full.h>
 
 #include <string>
 
@@ -25,7 +25,7 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/executor/process/impl/ops/write_context.h>
+#include <jogasaki/executor/process/impl/ops/write_full_context.h>
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/kvs/coder.h>
 
@@ -52,7 +52,7 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class write_test : public test_root {
+class write_full_test : public test_root {
 public:
     static constexpr kvs::order undef = kvs::order::undefined;
     static constexpr kvs::order asc = kvs::order::ascending;
@@ -169,7 +169,7 @@ public:
     }
 };
 
-TEST_F(write_test, simple) {
+TEST_F(write_full_test, simple) {
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
     std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
@@ -275,7 +275,7 @@ TEST_F(write_test, simple) {
 
     processor_info p_info{p0.operators(), c_info};
 
-    std::vector<write::column> write_columns{
+    std::vector<write_full::column> write_columns{
         {c0, bindings(t1c0)},
         {c1, bindings(t1c1)},
         {c2, bindings(t1c2)},
@@ -290,7 +290,7 @@ TEST_F(write_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
-    write wrt{
+    write_full wrt{
         0,
         p_info,
         0,
@@ -322,7 +322,7 @@ TEST_F(write_test, simple) {
 
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
-    write_context ctx{
+    write_full_context ctx{
         &task_ctx,
         variables,
         std::move(stg),
@@ -371,7 +371,7 @@ TEST_F(write_test, simple) {
     EXPECT_EQ(2, res.to<std::int64_t>());
 }
 
-TEST_F(write_test, delete) {
+TEST_F(write_full_test, delete) {
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
     std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
@@ -474,7 +474,7 @@ TEST_F(write_test, delete) {
 
     processor_info p_info{p0.operators(), c_info};
 
-    std::vector<write::column> write_columns{
+    std::vector<write_full::column> write_columns{
         {c0, bindings(t1c0)},
         {c1, bindings(t1c1)},
         {c2, bindings(t1c2)},
@@ -489,7 +489,7 @@ TEST_F(write_test, delete) {
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
-    write wrt{
+    write_full wrt{
         0,
         p_info,
         0,
@@ -526,7 +526,7 @@ TEST_F(write_test, delete) {
 
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
-    write_context ctx{
+    write_full_context ctx{
         &task_ctx,
         variables,
         std::move(stg),

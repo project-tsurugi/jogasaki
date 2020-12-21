@@ -22,7 +22,8 @@ namespace jogasaki::executor::process::impl::ops {
 enum class operator_kind : std::size_t {
     unknown = 0,
     emit,
-    write,
+    write_full,
+    write_partial,
     scan,
     take_group,
     take_flat,
@@ -44,7 +45,8 @@ constexpr inline std::string_view to_string_view(operator_kind value) noexcept {
     switch (value) {
         case operator_kind::unknown: return "unknown"sv;
         case operator_kind::emit: return "emit"sv;
-        case operator_kind::write: return "write"sv;
+        case operator_kind::write_partial: return "write_partial"sv;
+        case operator_kind::write_full: return "write_full"sv;
         case operator_kind::scan: return "scan"sv;
         case operator_kind::take_group: return "take_group"sv;
         case operator_kind::take_flat: return "take_flat"sv;

@@ -1,0 +1,82 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include <vector>
+
+#include <takatori/util/fail.h>
+#include <takatori/relation/write.h>
+
+namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::fail;
+
+/**
+ * @brief write kind corresponding to takatori::relation::write_kind
+ */
+enum class write_kind : std::size_t {
+    insert = 0,
+    update,
+    delete_,
+    insert_or_update,
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(write_kind value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = write_kind;
+    switch (value) {
+        case kind::insert: return "insert"sv;
+        case kind::update: return "update"sv;
+        case kind::delete_: return "delete_"sv;
+        case kind::insert_or_update: return "insert_or_update"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, write_kind value) {
+    return out << to_string_view(value);
+}
+
+/// @brief a set of write_kind
+using write_kind_set = takatori::util::enum_set<
+    write_kind,
+    write_kind::insert,
+    write_kind::insert_or_update>;
+
+constexpr inline write_kind from(relation::write_kind kind) noexcept {
+    using k = relation::write_kind;
+    switch (kind) {
+        case k::insert: return write_kind::insert;
+        case k::update: return write_kind::update;
+        case k::delete_: return write_kind::delete_;
+        case k::insert_or_update: return write_kind::insert_or_update;
+    }
+}
+
+}
+
+

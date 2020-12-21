@@ -19,6 +19,7 @@
 #include <memory>
 
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/iterator.h>
@@ -29,18 +30,18 @@ namespace jogasaki::executor::process::impl::ops {
 /**
  * @brief scan context
  */
-class write_context : public context_base {
+class write_full_context : public context_base {
 public:
-    friend class write;
+    friend class write_full;
     /**
      * @brief create empty object
      */
-    write_context() = default;
+    write_full_context() = default;
 
     /**
      * @brief create new object
      */
-    write_context(
+    write_full_context(
         class abstract::task_context* ctx,
         block_scope& variables,
         std::unique_ptr<kvs::storage> stg,
@@ -54,7 +55,7 @@ public:
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::write;
+        return operator_kind::write_full;
     }
 
     void release() override {

@@ -23,8 +23,9 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
-#include "write_context.h"
+#include "write_full_context.h"
 #include "context_helper.h"
+#include "write_kind.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -38,7 +39,7 @@ namespace details {
  * @details write operator uses these fields to know how the scope variables or input record fields are are mapped to
  * key/value fields.
  */
-struct cache_align write_field {
+struct cache_align write_full_field {
     /**
      * @brief create new write field
      * @param type type of the write field
@@ -47,7 +48,7 @@ struct cache_align write_field {
      * @param source_nullable whether the target field is nullable or not
      * @param spec the spec of the source field used for encode/decode
      */
-    write_field(
+    write_full_field(
         meta::field_type type,
         std::size_t source_offset,
         std::size_t source_nullity_offset,
@@ -71,21 +72,11 @@ struct cache_align write_field {
 }
 
 /**
- * @brief write kind corresponding to takatori::relation::write_kind
- */
-enum class write_kind {
-    insert,
-    update,
-    delete_,
-    insert_or_update,
-};
-
-/**
  * @brief write operator
  */
-class write : public record_operator {
+class write_full : public record_operator {
 public:
-    friend class write_context;
+    friend class write_full_context;
 
     using key = takatori::relation::write::key;
     using column = takatori::relation::write::column;
@@ -93,7 +84,7 @@ public:
     /**
      * @brief create empty object
      */
-    write() = default;
+    write_full() = default;
 
     /**
      * @brief create new object
@@ -105,14 +96,14 @@ public:
      * @param key_fields field offset information for keys
      * @param value_fields field offset information for values
      */
-    write(
+    write_full(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         write_kind kind,
         std::string_view storage_name,
-        std::vector<details::write_field> key_fields,
-        std::vector<details::write_field> value_fields
+        std::vector<details::write_full_field> key_fields,
+        std::vector<details::write_full_field> value_fields
     ) :
         kind_(kind),
         storage_name_(storage_name),
@@ -131,7 +122,7 @@ public:
      * @param keys takatori write keys information
      * @param columns takatori write columns information
      */
-    write(
+    write_full(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
@@ -141,7 +132,7 @@ public:
         sequence_view<key const> keys,
         sequence_view<column const> columns
     ) :
-        write(
+        write_full(
             index,
             info,
             block_index,
@@ -160,9 +151,9 @@ public:
     void process_record(abstract::task_context* context) override {
         BOOST_ASSERT(context != nullptr);  //NOLINT
         context_helper ctx{*context};
-        auto* p = find_context<write_context>(index(), ctx.contexts());
+        auto* p = find_context<write_full_context>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<write_context>(index(),
+            p = ctx.make_context<write_full_context>(index(),
                 ctx.block_scope(block_index()),
                 ctx.database()->get_storage(storage_name()),
                 ctx.transaction(),
@@ -178,28 +169,26 @@ public:
      * @details process record, construct key/value sequences and invoke kvs to conduct write operations
      * @param ctx operator context object for the execution
      */
-    void operator()(write_context& ctx) {
+    void operator()(write_full_context& ctx) {
         auto source = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
-
         switch(kind_) {
             case write_kind::insert:
-                do_insert(kind_, ctx);
-                break;
-            case write_kind::update:
                 do_insert(kind_, ctx);
                 break;
             case write_kind::insert_or_update:
                 do_insert(kind_, ctx);
                 break;
             case write_kind::delete_:
-                do_delete(kind_, ctx);
+                do_delete(ctx);
                 break;
+            default:
+                fail();
         }
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::write;
+        return operator_kind::write_full;
     }
     /**
      * @brief return storage name
@@ -215,11 +204,11 @@ public:
 private:
     write_kind kind_{};
     std::string storage_name_{};
-    std::vector<details::write_field> key_fields_{};
-    std::vector<details::write_field> value_fields_{};
+    std::vector<details::write_full_field> key_fields_{};
+    std::vector<details::write_full_field> value_fields_{};
 
     void encode_fields(
-        std::vector<details::write_field> const& fields,
+        std::vector<details::write_full_field> const& fields,
         kvs::stream& stream,
         accessor::record_ref source,
         memory_resource* resource
@@ -229,17 +218,7 @@ private:
         }
     }
 
-    write_kind from(relation::write_kind kind) {
-        using k = relation::write_kind;
-        switch (kind) {
-            case k::insert: return write_kind::insert;
-            case k::update: return write_kind::update;
-            case k::delete_: return write_kind::delete_;
-            case k::insert_or_update: return write_kind::insert_or_update;
-        }
-        fail();
-    }
-    std::vector<details::write_field> create_fields(
+    std::vector<details::write_full_field> create_fields(
         write_kind kind,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
@@ -248,7 +227,7 @@ private:
         block_index_type block_index,
         bool key
     ) {
-        std::vector<details::write_field> ret{};
+        std::vector<details::write_full_field> ret{};
         using variable = takatori::descriptor::variable;
         yugawara::binding::factory bindings{};
         auto& block = info.scopes_info()[block_index];
@@ -302,12 +281,12 @@ private:
     }
 
     void check_length_and_extend_buffer(
-        write_context& ctx,
-        std::vector<details::write_field> const& fields,
-        data::aligned_buffer& buffer
+        write_full_context& ctx,
+        std::vector<details::write_full_field> const& fields,
+        data::aligned_buffer& buffer,
+        accessor::record_ref source,
+        memory_resource* resource
     ) {
-        auto source = ctx.variables().store().ref();
-        auto resource = ctx.varlen_resource();
         kvs::stream null_stream{};
         encode_fields(fields, null_stream, source, resource);
         if (null_stream.length() > buffer.size()) {
@@ -315,12 +294,12 @@ private:
         }
     }
 
-    void do_insert(write_kind kind, write_context& ctx) {
+    void do_insert(write_kind kind, write_full_context& ctx) {
         auto source = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
         // calculate length first, then put
-        check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_);
-        check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_);
+        check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source, resource);
+        check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source, resource);
         auto* k = static_cast<char*>(ctx.key_buf_.data());
         auto* v = static_cast<char*>(ctx.value_buf_.data());
         kvs::stream keys{k, ctx.key_buf_.size()};
@@ -332,27 +311,35 @@ private:
                 {k, keys.length()},
                 {v, values.length()}
             ); !res) {
-            fail();
+            if (kind == write_kind::insert) {
+                //TODO handle error
+                fail();
+            }
+            LOG(INFO) << "overwriting existing record";
         }
     }
 
-    void do_delete(write_kind kind, write_context& ctx) {
+    std::string_view prepare_key(write_full_context& ctx) {
         auto source = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
         // calculate length first, and then put
-        check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_);
+        check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source, resource);
         auto* k = static_cast<char*>(ctx.key_buf_.data());
         kvs::stream keys{k, ctx.key_buf_.size()};
         encode_fields(key_fields_, keys, source, resource);
+        return {k, keys.length()};
+    }
+
+    void do_delete(write_full_context& ctx) {
+        auto k = prepare_key(ctx);
         if(auto res = ctx.stg_->remove(
                 *ctx.tx_,
-                {k, keys.length()}
+                k
             ); !res) {
-            LOG(WARNING) << "deletion target not found";
+            LOG(INFO) << "deletion target not found";
         }
     }
 };
-
 
 }
 

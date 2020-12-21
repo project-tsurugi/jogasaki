@@ -20,7 +20,6 @@
 #include <takatori/relation/write.h>
 #include <yugawara/binding/factory.h>
 
-#include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
@@ -42,7 +41,7 @@ namespace details {
 struct cache_align write_field {
     /**
      * @brief create new write field
-     * @param type type of the scanned field
+     * @param type type of the write field
      * @param source_offset byte offset of the source field in the source record reference
      * @param source_nullity_offset bit offset of the source field nullity in the source record reference
      * @param source_nullable whether the target field is nullable or not
@@ -82,7 +81,7 @@ enum class write_kind {
 };
 
 /**
- * @brief scan operator
+ * @brief write operator
  */
 class write : public record_operator {
 public:
@@ -90,7 +89,6 @@ public:
 
     using key = takatori::relation::write::key;
     using column = takatori::relation::write::column;
-
     using memory_resource = memory::lifo_paged_memory_resource;
     /**
      * @brief create empty object
@@ -102,7 +100,8 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param storage_name the storage name to scan
+     * @param kind write operation kind
+     * @param storage_name the storage name to write
      * @param key_fields field offset information for keys
      * @param value_fields field offset information for values
      */
@@ -126,8 +125,11 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param storage_name the storage name to scan
-     * @param columns takatori scan column information
+     * @param kind write operation kind
+     * @param storage_name the storage name to write
+     * @param idx target index information
+     * @param keys takatori write keys information
+     * @param columns takatori write columns information
      */
     write(
         operator_index_type index,
@@ -168,16 +170,15 @@ public:
                 ctx.varlen_resource()
             );
         }
-        (*this)(*p, context);
+        (*this)(*p);
     }
 
     /**
      * @brief process record with context object
-     * @details process record, fill variables with scanned result, and invoke downstream
+     * @details process record, construct key/value sequences and invoke kvs to conduct write operations
      * @param ctx operator context object for the execution
-     * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      */
-    void operator()(write_context& ctx, abstract::task_context* context = nullptr) {
+    void operator()(write_context& ctx) {
         if (! opened_) {
             open(ctx);
             opened_ = true;
@@ -206,7 +207,7 @@ public:
     }
     /**
      * @brief return storage name
-     * @return the storage name of the scan target
+     * @return the storage name of the write target
      */
     [[nodiscard]] std::string_view storage_name() const noexcept {
         return storage_name_;
@@ -241,8 +242,7 @@ private:
         accessor::record_ref source,
         memory_resource* resource
     ) {
-        for(std::size_t i=0, n=fields.size(); i<n; ++i) {
-            auto& f = fields[i];
+        for(auto const& f : fields) {
             kvs::encode_nullable(source, f.source_offset_, f.source_nullity_offset_, f.type_, f.spec_, stream);
         }
     }
@@ -295,6 +295,7 @@ private:
             }
             return ret;
         }
+        if (kind == write_kind::delete_) return ret;
         for(auto&& c : columns) {
             table_to_stream.emplace(c.destination(), c.source());
         }
@@ -317,7 +318,8 @@ private:
         }
         return ret;
     }
-    void check_length_and_extend(
+
+    void check_length_and_extend_buffer(
         write_context& ctx,
         std::vector<details::write_field> const& fields,
         data::aligned_buffer& buffer
@@ -335,8 +337,8 @@ private:
         auto source = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
         // calculate length first, then put
-        check_length_and_extend(ctx, key_fields_, ctx.key_buf_);
-        check_length_and_extend(ctx, value_fields_, ctx.value_buf_);
+        check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_);
+        check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_);
         auto* k = static_cast<char*>(ctx.key_buf_.data());
         auto* v = static_cast<char*>(ctx.value_buf_.data());
         kvs::stream keys{k, ctx.key_buf_.size()};
@@ -355,9 +357,8 @@ private:
     void do_delete(write_kind kind, write_context& ctx) {
         auto source = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
-        bool insert = kind != write_kind::delete_;
-        // calculate length first, then put
-        check_length_and_extend(ctx, key_fields_, ctx.key_buf_);
+        // calculate length first, and then put
+        check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_);
         auto* k = static_cast<char*>(ctx.key_buf_.data());
         kvs::stream keys{k, ctx.key_buf_.size()};
         encode_fields(key_fields_, keys, source, resource);
@@ -365,7 +366,7 @@ private:
                 *ctx.tx_,
                 {k, keys.length()}
             ); !res) {
-            fail();
+            LOG(WARNING) << "deletion target not found";
         }
     }
 };

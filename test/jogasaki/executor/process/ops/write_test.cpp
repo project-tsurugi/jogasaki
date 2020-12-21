@@ -52,7 +52,122 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class write_test : public test_root {};
+class write_test : public test_root {
+public:
+    static constexpr kvs::order undef = kvs::order::undefined;
+    static constexpr kvs::order asc = kvs::order::ascending;
+    static constexpr kvs::order desc = kvs::order::descending;
+
+    static constexpr kvs::coding_spec spec_asc = kvs::spec_key_ascending;
+    static constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
+    static constexpr kvs::coding_spec spec_val = kvs::spec_value;
+    basic_record create_key(
+        std::int32_t arg0
+    ) {
+        return create_nullable_record<kind::int4>(arg0);
+    }
+
+    basic_record create_value(
+        double arg0,
+        std::int64_t arg1
+    ) {
+        return create_nullable_record<kind::float8, kind::int8>(arg0, arg1);
+    }
+
+    basic_record create_nullable_value(
+        double arg0,
+        std::int64_t arg1,
+        bool arg0_null,
+        bool arg1_null
+    ) {
+        return create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(arg0, arg1), {arg0_null, arg1_null});
+    }
+    using key_record = jogasaki::mock::basic_record;
+    using value_record = jogasaki::mock::basic_record;
+    void add_data(kvs::database& db) {
+        auto stg = db.create_storage("I1");
+        auto tx = db.create_transaction();
+
+        std::string key_buf(100, '\0');
+        std::string val_buf(100, '\0');
+        kvs::stream key_stream{key_buf};
+        kvs::stream val_stream{val_buf};
+        {
+            key_record key_rec{create_key(10)};
+            auto key_meta = key_rec.record_meta();
+            kvs::encode_nullable(key_rec.ref(), key_meta->value_offset(0), key_meta->nullity_offset(0), key_meta->at(0), spec_asc, key_stream);
+            value_record val_rec{create_value(1.0, 100)};
+            auto val_meta = val_rec.record_meta();
+            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
+            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
+            ASSERT_TRUE(stg->put(*tx,
+                std::string_view{key_buf.data(), key_stream.length()},
+                std::string_view{val_buf.data(), val_stream.length()}
+            ));
+        }
+        key_stream.reset();
+        val_stream.reset();
+        {
+            key_record key_rec{create_key(20)};
+            auto key_meta = key_rec.record_meta();
+            kvs::encode_nullable(key_rec.ref(), key_meta->value_offset(0), key_meta->nullity_offset(0), key_meta->at(0), spec_asc, key_stream);
+            value_record val_rec{create_value(2.0, 200)};
+            auto val_meta = val_rec.record_meta();
+            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
+            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
+            ASSERT_TRUE(stg->put(*tx,
+                std::string_view{key_buf.data(), key_stream.length()},
+                std::string_view{val_buf.data(), val_stream.length()}
+            ));
+        }
+        ASSERT_TRUE(tx->commit());
+    }
+
+    void show_record(
+        meta::record_meta const& meta,
+        std::string_view data
+    ) {
+        std::string in{data};
+        kvs::stream key_stream{in};
+        std::string out(meta.record_size(), '\0');
+        accessor::record_ref target{out.data(), out.capacity()};
+        for(std::size_t i=0, n=meta.field_count(); i<n; ++i) {
+            kvs::decode_nullable(
+                key_stream,
+                meta.at(i),
+                spec_asc,
+                target,
+                meta.value_offset(i),
+                meta.nullity_offset(i)
+            );
+        }
+        std::cout << target << meta;
+    }
+    void check_data(
+        kvs::database& db,
+        meta::record_meta const& key_meta,
+        meta::record_meta const& value_meta
+    ) {
+        auto stg = db.get_storage("I1");
+        auto tx = db.create_transaction();
+
+        std::string key_buf(100, '\0');
+        std::string val_buf(100, '\0');
+        kvs::stream key_stream{key_buf};
+        kvs::stream val_stream{val_buf};
+
+        std::unique_ptr<kvs::iterator> it{};
+        std::string_view k{};
+        std::string_view v{};
+        ASSERT_TRUE(stg->scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
+        while(it->next()) {
+            (void)it->key(k);
+            (void)it->value(v);
+            show_record(key_meta, k);
+            show_record(value_meta, v);
+        }
+    }
+};
 
 TEST_F(write_test, simple) {
     binding::factory bindings;
@@ -254,6 +369,189 @@ TEST_F(write_test, simple) {
         res
     );
     EXPECT_EQ(2, res.to<std::int64_t>());
+}
+
+TEST_F(write_test, delete) {
+    binding::factory bindings;
+    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
+    std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
+        "T0",
+        {
+            { "C0", t::int4() },
+            { "C1", t::float8() },
+            { "C2", t::int8() },
+        },
+    });
+    storage::column const& t0c0 = t0->columns()[0];
+    storage::column const& t0c1 = t0->columns()[1];
+    storage::column const& t0c2 = t0->columns()[2];
+
+    std::shared_ptr<storage::index> i0 = storages->add_index(
+        "I0",
+        { t0, "I0",
+            {
+                t0->columns()[0],
+            },
+            {
+                t0->columns()[1],
+                t0->columns()[2],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        }
+    );
+    std::shared_ptr<storage::table> t1 = storages->add_table("T1", {
+        "T1",
+        {
+            { "C0", t::int4() },
+            { "C1", t::float8() },
+            { "C2", t::int8() },
+        },
+    });
+    storage::column const& t1c0 = t1->columns()[0];
+    storage::column const& t1c1 = t1->columns()[1];
+    storage::column const& t1c2 = t1->columns()[2];
+
+    std::shared_ptr<storage::index> i1 = storages->add_index(
+        "I1",
+        { t1, "I1",
+            {
+                t1->columns()[0],
+            },
+            {
+                t1->columns()[1],
+                t1->columns()[2],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        }
+    );
+
+    takatori::plan::graph_type p;
+    auto&& p0 = p.insert(takatori::plan::process {});
+    auto c0 = bindings.stream_variable("c0");
+    auto c1 = bindings.stream_variable("c1");
+    auto c2 = bindings.stream_variable("c2");
+    auto& r0 = p0.operators().insert(relation::scan {
+        bindings(*i0),
+        {
+            { bindings(t0c0), c0 },
+            { bindings(t0c1), c1 },
+            { bindings(t0c2), c2 },
+        },
+    });
+
+    auto&& r1 = p0.operators().insert(relation::write {
+        relation::write_kind::delete_,
+        bindings(*i1),
+        {
+            { c0, bindings(t1c0) },
+        },
+        {},
+    });
+
+    r0.output() >> r1.input();
+
+    auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
+    vm->bind(c0, t::int4{});
+    vm->bind(c1, t::float8{});
+    vm->bind(c2, t::int8{});
+    vm->bind(bindings(t1c0), t::int4{});
+    vm->bind(bindings(t1c1), t::float8{});
+    vm->bind(bindings(t1c2), t::int8{});
+    vm->bind(bindings(t0c0), t::int4{});
+    vm->bind(bindings(t0c1), t::float8{});
+    vm->bind(bindings(t0c2), t::int8{});
+    yugawara::compiled_info c_info{{}, vm};
+
+    processor_info p_info{p0.operators(), c_info};
+
+    std::vector<write::column> write_columns{
+        {c0, bindings(t1c0)},
+        {c1, bindings(t1c1)},
+        {c2, bindings(t1c2)},
+    };
+
+    using kind = meta::field_type_kind;
+    auto meta = std::make_shared<record_meta>(
+        std::vector<field_type>{
+            field_type(enum_tag<kind::int4>),
+            field_type(enum_tag<kind::float8>),
+            field_type(enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{3}.flip()
+    );
+    write wrt{
+        0,
+        p_info,
+        0,
+        write_kind::delete_,
+        "I1",
+        *i1,
+        r1.keys(),
+        r1.columns()
+    };
+
+    ASSERT_EQ(1, p_info.scopes_info().size());
+    auto& block_info = p_info.scopes_info()[wrt.block_index()];
+    block_scope variables{block_info};
+
+    using kind = meta::field_type_kind;
+    using test_record = jogasaki::mock::basic_record;
+
+    mock::task_context task_ctx{
+        {},
+        {},
+        {},
+        {},
+    };
+
+    auto db = kvs::database::open();
+    add_data(*db);
+    auto key_meta = create_key(0).record_meta();
+    auto val_meta = create_value(0,0).record_meta();
+    //check_data(*db, *key_meta, *val_meta);
+
+    auto tx = db->create_transaction();
+    auto stg = db->get_storage("I1");
+    auto s = stg.get();
+
+    lifo_paged_memory_resource resource{&global::page_pool()};
+    lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+    write_context ctx{
+        &task_ctx,
+        variables,
+        std::move(stg),
+        tx.get(),
+        &resource,
+        &varlen_resource
+    };
+
+    auto vars_ref = variables.store().ref();
+    auto map = variables.value_map();
+    vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 10);
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
+    wrt(ctx);
+
+    std::string str(100, '\0');
+    kvs::stream key{str};
+    kvs::encode_nullable(
+        expression::any{std::in_place_type<std::int32_t>, 10},
+        meta::field_type{enum_tag<kind::int4>},
+        kvs::coding_spec{true, kvs::order::ascending},
+        key
+    );
+    std::string_view k{str.data(), key.length()};
+    std::string_view v{};
+    ASSERT_FALSE(s->get(*tx, k, v));
 }
 
 }

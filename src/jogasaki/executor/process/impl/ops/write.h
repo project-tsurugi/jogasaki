@@ -179,10 +179,6 @@ public:
      * @param ctx operator context object for the execution
      */
     void operator()(write_context& ctx) {
-        if (! opened_) {
-            open(ctx);
-            opened_ = true;
-        }
         auto source = ctx.variables().store().ref();
         auto resource = ctx.varlen_resource();
 
@@ -214,27 +210,13 @@ public:
     }
 
     void finish(abstract::task_context* context) override {
-        context_helper ctx{*context};
-        auto* p = find_context<write_context>(index(), ctx.contexts());
-        if (p) {
-            close(*p);
-        }
+        //no-op
     }
 private:
     write_kind kind_{};
     std::string storage_name_{};
     std::vector<details::write_field> key_fields_{};
     std::vector<details::write_field> value_fields_{};
-    bool opened_{};
-
-    void open(write_context& ctx) {
-        // TODO
-    }
-
-    void close(write_context& ctx) {
-        // TODO
-        opened_ = false;
-    }
 
     void encode_fields(
         std::vector<details::write_field> const& fields,

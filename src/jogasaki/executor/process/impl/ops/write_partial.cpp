@@ -116,13 +116,14 @@ void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
     kvs::stream values{const_cast<char*>(v.data()), v.size()};
     decode_fields(key_fields_, keys, key_source, resource);
     decode_fields(value_fields_, values, val_source, resource);
-    if(auto res = ctx.stg_->remove(
-            *ctx.tx_,
-            k
-        ); !res) {
-        //TODO handle error
-        fail();
-    }
+    // FIXME temporarily disabling support for key update
+//    if(auto res = ctx.stg_->remove(
+//            *ctx.tx_,
+//            k
+//        ); !res) {
+//        //TODO handle error
+//        fail();
+//    }
 }
 
 void

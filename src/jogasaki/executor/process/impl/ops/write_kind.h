@@ -23,6 +23,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::fail;
+namespace relation = takatori::relation;
 
 /**
  * @brief write kind corresponding to takatori::relation::write_kind

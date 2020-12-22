@@ -28,6 +28,7 @@
 #include <jogasaki/executor/process/impl/ops/write_partial_context.h>
 #include <jogasaki/executor/process/impl/block_scope.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/iterator.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>

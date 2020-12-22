@@ -20,15 +20,14 @@
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 /**
- * @brief scan context
+ * @brief full write operator context
  */
 class write_full_context : public context_base {
 public:
@@ -48,23 +47,16 @@ public:
         kvs::transaction* tx,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) :
-        context_base(ctx, variables, resource, varlen_resource),
-        stg_(std::move(stg)),
-        tx_(tx)
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::write_full;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
+    void release() override;
 
-    }
-
-    [[nodiscard]] kvs::transaction* transaction() const noexcept {
-        return tx_;
-    }
+    /**
+     * @brief accessor to transaction held by this object
+     */
+    [[nodiscard]] kvs::transaction* transaction() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
@@ -72,6 +64,7 @@ private:
     data::aligned_buffer key_buf_{};
     data::aligned_buffer value_buf_{};
 };
+
 
 }
 

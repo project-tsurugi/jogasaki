@@ -18,17 +18,20 @@
 #include <vector>
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::maybe_shared_ptr;
+
 /**
- * @brief scan context
+ * @brief partial write operator context
  */
 class write_partial_context : public context_base {
 public:
@@ -50,25 +53,13 @@ public:
         maybe_shared_ptr<meta::record_meta> value_meta,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) :
-        context_base(ctx, variables, resource, varlen_resource),
-        stg_(std::move(stg)),
-        tx_(tx),
-        key_store_(std::move(key_meta)),
-        value_store_(std::move(value_meta))
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::write_partial;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
-    void release() override {
+    void release() override;
 
-    }
-
-    [[nodiscard]] kvs::transaction* transaction() const noexcept {
-        return tx_;
-    }
+    [[nodiscard]] kvs::transaction* transaction() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> stg_{};

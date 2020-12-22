@@ -1,0 +1,250 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "write_full.h"
+
+#include <vector>
+
+#include <yugawara/binding/factory.h>
+
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/utils/field_types.h>
+#include "operator_base.h"
+#include "context_helper.h"
+
+namespace jogasaki::executor::process::impl::ops {
+
+using takatori::util::maybe_shared_ptr;
+using takatori::util::unsafe_downcast;
+
+
+details::write_full_field::write_full_field(meta::field_type type, std::size_t source_offset,
+    std::size_t source_nullity_offset, bool target_nullable, kvs::coding_spec spec) :
+    type_(std::move(type)),
+    source_offset_(source_offset),
+    source_nullity_offset_(source_nullity_offset),
+    target_nullable_(target_nullable),
+    spec_(spec)
+{}
+
+ops::write_full::write_full(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    write_kind kind,
+    std::string_view storage_name,
+    std::vector<details::write_full_field> key_fields,
+    std::vector<details::write_full_field> value_fields
+) :
+    record_operator(index, info, block_index),
+    kind_(kind),
+    storage_name_(storage_name),
+    key_fields_(std::move(key_fields)),
+    value_fields_(std::move(value_fields))
+{}
+
+ops::write_full::write_full(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    write_kind kind,
+    std::string_view storage_name,
+    yugawara::storage::index const& idx,
+    sequence_view<key const> keys,
+    sequence_view<column const> columns
+) :
+    write_full(
+        index,
+        info,
+        block_index,
+        kind,
+        storage_name,
+        create_fields(kind, idx, keys, columns, info, block_index, true),
+        create_fields(kind, idx, keys, columns, info, block_index, false)
+    )
+{}
+
+void ops::write_full::process_record(abstract::task_context* context) {
+    BOOST_ASSERT(context != nullptr);  //NOLINT
+    context_helper ctx{*context};
+    auto* p = find_context<write_full_context>(index(), ctx.contexts());
+    if (! p) {
+        p = ctx.make_context<write_full_context>(index(),
+            ctx.block_scope(block_index()),
+            ctx.database()->get_storage(storage_name()),
+            ctx.transaction(),
+            ctx.resource(),
+            ctx.varlen_resource()
+        );
+    }
+    (*this)(*p);
+}
+
+void ops::write_full::operator()(write_full_context& ctx) {
+    switch(kind_) {
+        case write_kind::insert:
+            do_insert(kind_, ctx);
+            break;
+        case write_kind::insert_or_update:
+            do_insert(kind_, ctx);
+            break;
+        case write_kind::delete_:
+            do_delete(ctx);
+            break;
+        default:
+            fail();
+    }
+}
+
+operator_kind ops::write_full::kind() const noexcept {
+    return operator_kind::write_full;
+}
+
+std::string_view ops::write_full::storage_name() const noexcept {
+    return storage_name_;
+}
+
+void ops::write_full::finish(abstract::task_context*) {
+    //no-op
+}
+
+void ops::write_full::encode_fields(std::vector<details::write_full_field> const& fields, kvs::stream& stream,
+    accessor::record_ref source, memory::lifo_paged_memory_resource*) {
+    for(auto const& f : fields) {
+        kvs::encode_nullable(source, f.source_offset_, f.source_nullity_offset_, f.type_, f.spec_, stream);
+    }
+}
+
+
+std::vector<details::write_full_field>
+ops::write_full::create_fields(write_kind kind, yugawara::storage::index const& idx, sequence_view<key const> keys,
+    sequence_view<column const> columns, processor_info const& info, operator_base::block_index_type block_index,
+    bool key) {
+    std::vector<details::write_full_field> ret{};
+    using variable = takatori::descriptor::variable;
+    yugawara::binding::factory bindings{};
+    auto& block = info.scopes_info()[block_index];
+    std::unordered_map<variable, variable> table_to_stream{};
+    if (key) {
+        for(auto&& c : keys) {
+            table_to_stream.emplace(c.destination(), c.source());
+        }
+        ret.reserve(idx.keys().size());
+        for(auto&& k : idx.keys()) {
+            auto kc = bindings(k.column());
+            auto t = utils::type_for(k.column().type());
+            auto spec = k.direction() == relation::sort_direction::ascendant ?
+                kvs::spec_key_ascending : kvs::spec_key_descending;
+            if (table_to_stream.count(kc) == 0) {
+                fail();
+            }
+            auto&& var = table_to_stream.at(kc);
+            ret.emplace_back(
+                t,
+                block.value_map().at(var).value_offset(),
+                block.value_map().at(var).nullity_offset(),
+                k.column().criteria().nullity().nullable(),
+                spec
+            );
+        }
+        return ret;
+    }
+    if (kind == write_kind::delete_) return ret;
+    for(auto&& c : columns) {
+        table_to_stream.emplace(c.destination(), c.source());
+    }
+    ret.reserve(idx.values().size());
+    for(auto&& v : idx.values()) {
+        auto b = bindings(v);
+        auto& c = static_cast<yugawara::storage::column const&>(v);
+        auto t = utils::type_for(c.type());
+        if (table_to_stream.count(b) == 0) {
+            fail();
+        }
+        auto&& var = table_to_stream.at(b);
+        ret.emplace_back(
+            t,
+            block.value_map().at(var).value_offset(),
+            block.value_map().at(var).nullity_offset(),
+            c.criteria().nullity().nullable(),
+            kvs::spec_value
+        );
+    }
+    return ret;
+}
+
+void ops::write_full::do_insert(write_kind kind, write_full_context& ctx) {
+    auto source = ctx.variables().store().ref();
+    auto resource = ctx.varlen_resource();
+    // calculate length first, then put
+    check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source, resource);
+    check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source, resource);
+    auto* k = static_cast<char*>(ctx.key_buf_.data());
+    auto* v = static_cast<char*>(ctx.value_buf_.data());
+    kvs::stream keys{k, ctx.key_buf_.size()};
+    kvs::stream values{v, ctx.value_buf_.size()};
+    encode_fields(key_fields_, keys, source, resource);
+    encode_fields(value_fields_, values, source, resource);
+    if(auto res = ctx.stg_->put(
+            *ctx.tx_,
+            {k, keys.length()},
+            {v, values.length()}
+        ); !res) {
+        if (kind == write_kind::insert) {
+            //TODO handle error
+            fail();
+        }
+        LOG(INFO) << "overwriting existing record";
+    }
+}
+
+void ops::write_full::check_length_and_extend_buffer(
+    write_full_context&,
+    std::vector<details::write_full_field> const& fields,
+    data::aligned_buffer& buffer,
+    accessor::record_ref source,
+    memory::lifo_paged_memory_resource* resource
+) {
+    kvs::stream null_stream{};
+    encode_fields(fields, null_stream, source, resource);
+    if (null_stream.length() > buffer.size()) {
+        buffer.resize(null_stream.length());
+    }
+}
+
+void ops::write_full::do_delete(write_full_context& ctx) {
+    auto k = prepare_key(ctx);
+    if(auto res = ctx.stg_->remove(
+            *ctx.tx_,
+            k
+        ); !res) {
+        LOG(INFO) << "deletion target not found";
+    }
+}
+
+std::string_view ops::write_full::prepare_key(write_full_context& ctx) {
+    auto source = ctx.variables().store().ref();
+    auto resource = ctx.varlen_resource();
+    // calculate length first, and then put
+    check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source, resource);
+    auto* k = static_cast<char*>(ctx.key_buf_.data());
+    kvs::stream keys{k, ctx.key_buf_.size()};
+    encode_fields(key_fields_, keys, source, resource);
+    return {k, keys.length()};
+}
+
+}
+
+

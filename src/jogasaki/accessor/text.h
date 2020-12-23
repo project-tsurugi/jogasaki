@@ -33,7 +33,7 @@ namespace jogasaki::accessor {
  * should be cared in pair with the paged_memory_resource. When the paged_memory_resource ends lifetime and its resource
  * is released, this object's memory area will also become invalid.
  */
-class text {
+class text {  //NOLINT(cppcoreguidelines-pro-type-union-access)
 public:
     /// @brief size of text data in byte
     using size_type = std::size_t;

@@ -44,6 +44,7 @@ public:
         auto db_impl = api::database::impl::get_impl(db_);
         add_benchmark_tables(*db_impl->tables());
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
     }
     static void TearDownTestSuite() {
         db_.stop();

@@ -86,10 +86,12 @@ void scan::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<scan_context>(index(), ctx.contexts());
+    auto stg = ctx.database()->get_storage(storage_name());
+    BOOST_ASSERT(stg);  //TODO handle error
     if (! p) {
         p = ctx.make_context<scan_context>(index(),
             ctx.block_scope(block_index()),
-            ctx.database()->get_storage(storage_name()),
+            std::move(stg),
             ctx.transaction(),
             unsafe_downcast<impl::scan_info const>(ctx.task_context()->scan_info()),  //NOLINT
             ctx.resource(),

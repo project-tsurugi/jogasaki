@@ -127,9 +127,11 @@ void take_group::finish(abstract::task_context*) {
     fail();
 }
 
-std::vector<details::take_group_field>
-take_group::create_fields(const maybe_shared_ptr<meta::group_meta>& meta, const meta::variable_order& order,
-    sequence_view<const column> columns) {
+std::vector<details::take_group_field> take_group::create_fields(
+    maybe_shared_ptr<meta::group_meta> const& meta,
+    meta::variable_order const& order,
+    sequence_view<const column> columns
+) {
     std::vector<details::take_group_field> fields{};
     auto& key_meta = meta->key();
     auto& value_meta = meta->value();

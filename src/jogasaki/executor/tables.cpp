@@ -278,7 +278,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "c_data", type::character(500), not_null },
             },
         });
-        auto i = provider.add_index("CUSTOMER0", {
+        auto i0 = provider.add_index("CUSTOMER0", {
             t,
             "CUSTOMER0",
             {
@@ -308,8 +308,6 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-    }
-    {
 //        "CREATE TABLE CUSTOMER_SECONDARY ("
 //        "c_d_id INT NOT NULL, "
 //        "c_w_id INT NOT NULL, "
@@ -317,27 +315,17 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
 //        "c_first CHAR(16) NOT NULL, "
 //        "c_id INT NOT NULL, "
 //        "PRIMARY KEY(c_w_id, c_d_id, c_last, c_first))",
-        auto t = provider.add_table("CUSTOMER_SECONDARY", {
-            "CUSTOMER_SECONDARY",
-            {
-                { "c_d_id", int_type(), not_null },
-                { "c_w_id", int_type(), not_null },
-                { "c_last", type::character(16), not_null },
-                { "c_first", type::character(16), not_null },
-                { "c_id", int_type(), not_null },
-            },
-        });
-        auto i = provider.add_index("CUSTOMER_SECONDARY0", {
+        auto i1 = provider.add_index("CUSTOMER1", {
             t,
-            "CUSTOMER_SECONDARY0",
+            "CUSTOMER1",
             {
-                t->columns()[1],
-                t->columns()[0],
                 t->columns()[2],
+                t->columns()[1],
+                t->columns()[5],
                 t->columns()[3],
             },
             {
-                t->columns()[4],
+                t->columns()[0],
             },
             index_features
         });
@@ -393,7 +381,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "o_all_local", int_type(), not_null },
             },
         });
-        auto i = provider.add_index("ORDERS0", {
+        auto i0 = provider.add_index("ORDERS0", {
             t,
             "ORDERS0",
             {
@@ -410,34 +398,22 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-    }
-    {
 //        "CREATE TABLE ORDERS_SECONDARY ("
 //        "o_d_id INT NOT NULL, "
 //        "o_w_id INT NOT NULL, "
 //        "o_c_id INT NOT NULL, "
 //        "o_id INT NOT NULL, "
 //        "PRIMARY KEY(o_w_id, o_d_id, o_c_id, o_id))",
-        auto t = provider.add_table("ORDERS_SECONDARY", {
-            "ORDERS_SECONDARY",
-            {
-                { "o_d_id", int_type(), not_null },
-                { "o_w_id", int_type(), not_null },
-                { "o_c_id", int_type(), not_null },
-                { "o_id", int_type(), not_null },
-            },
-        });
-        auto i = provider.add_index("ORDERS_SECONDARY0", {
+        auto i1 = provider.add_index("ORDERS1", {
             t,
-            "ORDERS_SECONDARY0",
+            "ORDERS1",
             {
-                t->columns()[1],
-                t->columns()[0],
                 t->columns()[2],
+                t->columns()[1],
                 t->columns()[3],
+                t->columns()[0],
             },
-            {
-            },
+            {},
             index_features
         });
     }

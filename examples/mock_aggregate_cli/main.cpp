@@ -33,7 +33,7 @@
 #include "cli_constants.h"
 #include "../common/producer_constants.h"
 #include "../common/aggregator.h"
-#include "../common/dump.h"
+#include "../common/show_perf_info.h"
 
 #ifdef ENABLE_GOOGLE_PERFTOOLS
 #include "gperftools/profiler.h"
@@ -152,7 +152,7 @@ extern "C" int main(int argc, char* argv[]) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
-    jogasaki::common_cli::dump_perf_info();
+    jogasaki::common_cli::show_perf_info();
 
     return 0;
 }

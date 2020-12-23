@@ -21,7 +21,7 @@
 
 namespace jogasaki::common_cli {
 
-void dump_producer_perf_info() {
+void show_producer_perf_info() {
     auto& watch = utils::get_watch();
     LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepare, time_point_prepared, "prepare");
     LOG(INFO) << jogasaki::utils::textualize(watch, time_point_prepared, time_point_touched, "first touch");

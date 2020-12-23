@@ -17,14 +17,14 @@
 
 #include <glog/logging.h>
 #include <jogasaki/utils/performance_tools.h>
-#include "producer_dump.h"
+#include "show_producer_perf_info.h"
 
 namespace jogasaki::common_cli {
 
-void dump_perf_info() {
+void show_perf_info() {
     auto& watch = utils::get_watch();
     watch.set_point(time_point_main_completed);
-    dump_producer_perf_info();
+    show_producer_perf_info();
 #ifndef PERFORMANCE_TOOLS
     LOG(INFO) << "transfer: total " << watch.duration(time_point_produced, time_point_consume, true) << "ms" ;
 #endif

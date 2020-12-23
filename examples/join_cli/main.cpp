@@ -60,7 +60,7 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
-#include "../common/producer_dump.h"
+#include "../common/show_producer_perf_info.h"
 #include "producer_process.h"
 
 DEFINE_int32(thread_pool_size, 100, "Thread pool size");  //NOLINT
@@ -184,7 +184,7 @@ bool fill_from_flags(
 void dump_perf_info(bool prepare = true, bool run = true, bool completion = false) {
     auto& watch = utils::get_watch();
     if (prepare) {
-        common_cli::dump_producer_perf_info();
+        common_cli::show_producer_perf_info();
     }
     if (run) {
         LOG(INFO) << jogasaki::utils::textualize(watch, time_point_consume, time_point_consumed, "consume");

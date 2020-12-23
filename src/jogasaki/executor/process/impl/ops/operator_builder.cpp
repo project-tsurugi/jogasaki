@@ -69,6 +69,7 @@ relation::expression& operator_builder::head() {
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::find& node) {
     (void)node;
+    fail();
     return {};
 }
 
@@ -94,6 +95,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_find& node) {
     (void)node;
+    fail();
     return {};
 }
 
@@ -105,6 +107,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::proj
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_scan& node) {
     (void)node;
+    fail();
     return {};
 }
 
@@ -116,6 +119,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::filt
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::buffer& node) {
     (void)node;
+    fail();
     return {};
 }
 
@@ -129,11 +133,13 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::write& node) {
     (void)node;
+    fail();
     return {};
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {
     (void)node;
+    fail();
     return {};
 }
 
@@ -145,16 +151,19 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::aggregate& node) {
     (void)node;
+    fail();
     return {};
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::intersection& node) {
     (void)node;
+    fail();
     return {};
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::difference& node) {
     (void)node;
+    fail();
     return {};
 }
 

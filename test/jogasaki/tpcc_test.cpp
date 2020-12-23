@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <regex>
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/common/graph.h>
@@ -23,9 +24,11 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/database_impl.h>
 #include <jogasaki/api/result_set.h>
+
 namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
@@ -36,18 +39,23 @@ using namespace jogasaki::scheduler;
 
 class tpcc_test : public ::testing::Test {
 public:
+    static void SetUpTestSuite() {
+        db_.start();
+        auto db_impl = api::database::impl::get_impl(db_);
+        add_benchmark_tables(*db_impl->tables());
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
+    }
+    static void TearDownTestSuite() {
+        db_.stop();
+    }
+
+    static jogasaki::api::database db_;
 };
 
-TEST_F(tpcc_test, empty_graph) {
-    jogasaki::api::database db{};
-    db.start();
+jogasaki::api::database tpcc_test::db_{};
 
-    auto db_impl = api::database::impl::get_impl(db);
-    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
-    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
-    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
-
-    auto rs = db.execute(sql);
+TEST_F(tpcc_test, warehouse) {
+    auto rs = db_.execute("SELECT * FROM WAREHOUSE");
     auto it = rs->begin();
     while(it != rs->end()) {
         auto record = it.ref();
@@ -57,7 +65,38 @@ TEST_F(tpcc_test, empty_graph) {
         ++it;
     }
     rs->close();
-    db.stop();
+}
+
+void resolve(std::string& query, std::string_view place_holder, std::string value) {
+    query = std::regex_replace(query, std::regex(std::string(place_holder)), value);
+}
+
+TEST_F(tpcc_test, new_order1) {
+
+    std::string query =
+        "SELECT w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
+        "WHERE w_id = :w_id "
+        "AND c_w_id = w_id AND "
+        "c_d_id = :c_d_id AND "
+        "c_id = :c_id "
+        ;
+
+    resolve(query, ":w_id", "1");
+    resolve(query, ":c_d_id", "1");
+    resolve(query, ":c_id", "1");
+
+    std::cout << query;
+
+    auto rs = db_.execute(query);
+    auto it = rs->begin();
+    while(it != rs->end()) {
+        auto record = it.ref();
+        std::stringstream ss{};
+        ss << record << *rs->meta();
+        LOG(INFO) << ss.str();
+        ++it;
+    }
+    rs->close();
 }
 
 }

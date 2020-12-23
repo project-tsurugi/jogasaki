@@ -21,4 +21,5 @@ namespace jogasaki::executor {
 
 void add_builtin_tables(yugawara::storage::configurable_provider& provider);
 
+void add_benchmark_tables(yugawara::storage::configurable_provider& provider);
 }

@@ -340,8 +340,6 @@ TEST_F(write_partial_test , simple_update) {
     vars_ref.set_null(map.at(c0).nullity_offset(), false);
     vars_ref.set_value<double>(map.at(c1).value_offset(), 10.0);
     vars_ref.set_null(map.at(c1).nullity_offset(), false);
-//    vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 2);
-//    vars_ref.set_null(map.at(c2).nullity_offset(), false);
     wrt(ctx);
 
     {

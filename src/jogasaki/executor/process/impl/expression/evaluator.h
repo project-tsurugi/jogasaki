@@ -25,6 +25,7 @@
 #include <takatori/value/character.h>
 #include <takatori/util/post_visit.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/downcast.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -36,14 +37,65 @@
 namespace jogasaki::executor::process::impl::expression {
 
 using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 
 namespace details {
 
+/**
+ * @brief extract value from immediate scalar expression
+ * @details this function supports different type values in immediate expression, e.g. value of kind int4 can be held
+ * by immediate of type int8.
+ * @tparam T the takatori value type of the scalar expression
+ * @param expr the immediate scalar expression
+ * @return the view type of the value
+ */
 template<class T>
 inline static typename T::view_type value_of(takatori::scalar::expression const& expr) {
     if (auto e = takatori::util::dynamic_pointer_cast<takatori::scalar::immediate>(expr)) {
-        if (auto v = takatori::util::dynamic_pointer_cast<T>(e->value())) {
-            return v->get();
+        switch(e.value().value().kind()) {
+            case takatori::value::value_kind::boolean: {
+                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::boolean>(e->value()).get();
+                if constexpr (std::is_same_v<T, takatori::value::boolean>) {  //NOLINT
+                    return x;
+                }
+                break;
+            }
+            case takatori::value::value_kind::int4: {
+                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::int4>(e->value()).get();
+                if constexpr (std::is_same_v<T, takatori::value::int4> || std::is_same_v<T, takatori::value::int8>) {  //NOLINT
+                    return x;
+                }
+                break;
+            }
+            case takatori::value::value_kind::int8: {
+                [[maybe_unused]]auto x = unsafe_downcast<takatori::value::int8>(e->value()).get();
+                if constexpr (std::is_same_v<T, takatori::value::int4> || std::is_same_v<T, takatori::value::int8>) {  //NOLINT
+                    return x;
+                }
+                break;
+            }
+            case takatori::value::value_kind::float4: {
+                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float4>(e->value()).get();
+                if constexpr (std::is_same_v<T, takatori::value::float4> || std::is_same_v<T, takatori::value::float8>) {  //NOLINT
+                    return x;
+                }
+                break;
+            }
+            case takatori::value::value_kind::float8: {
+                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float4>(e->value()).get();
+                if constexpr (std::is_same_v<T, takatori::value::float4> || std::is_same_v<T, takatori::value::float8>) {  //NOLINT
+                    return x;
+                }
+                break;
+            }
+            case takatori::value::value_kind::character: {
+                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::character>(e->value()).get();
+                if constexpr (std::is_same_v<T, takatori::value::character>) {  //NOLINT
+                    return x;
+                }
+                break;
+            }
+            default: break;
         }
         throw std::domain_error("inconsistent value type");
     }

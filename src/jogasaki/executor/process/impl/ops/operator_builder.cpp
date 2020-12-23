@@ -33,6 +33,9 @@
 #include "take_flat.h"
 #include "join.h"
 #include "flatten.h"
+#include "write_full.h"
+#include "write_partial.h"
+#include "write_kind.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -144,9 +147,31 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::write& node) {
-    (void)node;
-    fail();
-    return {};
+    auto block_index = info_->scope_indices().at(&node);
+    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
+
+    if (node.operator_kind() == relation::write_kind::update) {
+        return std::make_unique<write_partial>(
+            index_++,
+            *info_,
+            block_index,
+            write_kind_from(node.operator_kind()),
+            index.simple_name(),
+            index,
+            node.keys(),
+            node.columns()
+        );
+    }
+    return std::make_unique<write_full>(
+        index_++,
+        *info_,
+        block_index,
+        write_kind_from(node.operator_kind()),
+        index.simple_name(),
+        index,
+        node.keys(),
+        node.columns()
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {

@@ -68,7 +68,7 @@ using write_kind_set = takatori::util::enum_set<
     write_kind::insert,
     write_kind::insert_or_update>;
 
-constexpr inline write_kind from(relation::write_kind kind) noexcept {
+constexpr inline write_kind write_kind_from(relation::write_kind kind) noexcept {
     using k = relation::write_kind;
     switch (kind) {
         case k::insert: return write_kind::insert;
@@ -76,6 +76,7 @@ constexpr inline write_kind from(relation::write_kind kind) noexcept {
         case k::delete_: return write_kind::delete_;
         case k::insert_or_update: return write_kind::insert_or_update;
     }
+    std::abort();
 }
 
 }

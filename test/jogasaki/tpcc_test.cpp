@@ -44,10 +44,31 @@ public:
         auto db_impl = api::database::impl::get_impl(db_);
         add_benchmark_tables(*db_impl->tables());
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER1", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS1", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
     }
     static void TearDownTestSuite() {
         db_.stop();
+    }
+
+    void execute_query(std::string_view query) {
+        auto rs = db_.execute(query);
+        auto it = rs->begin();
+        while(it != rs->end()) {
+            auto record = it.ref();
+            std::stringstream ss{};
+            ss << record << *rs->meta();
+            LOG(INFO) << ss.str();
+            ++it;
+        }
+        rs->close();
     }
 
     static jogasaki::api::database db_;
@@ -73,7 +94,6 @@ void resolve(std::string& query, std::string_view place_holder, std::string valu
 }
 
 TEST_F(tpcc_test, new_order1) {
-
     std::string query =
         "SELECT w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
         "WHERE w_id = :w_id "
@@ -85,19 +105,33 @@ TEST_F(tpcc_test, new_order1) {
     resolve(query, ":w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_id", "1");
-
-    std::cout << query;
-
-    auto rs = db_.execute(query);
-    auto it = rs->begin();
-    while(it != rs->end()) {
-        auto record = it.ref();
-        std::stringstream ss{};
-        ss << record << *rs->meta();
-        LOG(INFO) << ss.str();
-        ++it;
-    }
-    rs->close();
+    execute_query(query);
 }
 
+TEST_F(tpcc_test, new_order2) {
+    std::string query =
+        "SELECT d_next_o_id, d_tax FROM DISTRICT "
+        "WHERE "
+        "d_w_id = :d_w_id AND "
+        "d_id = :d_id "
+    ;
+
+    resolve(query, ":d_w_id", "1");
+    resolve(query, ":d_id", "1");
+    execute_query(query);
+}
+TEST_F(tpcc_test, new_order_update) {
+    std::string query =
+        "UPDATE "
+        "DISTRICT SET "
+        "d_next_o_id = :d_next_o_id WHERE "
+        "d_w_id = :d_w_id AND "
+        "d_id = :d_id"
+    ;
+
+    resolve(query, ":d_next_o_id", "2");
+    resolve(query, ":d_w_id", "1");
+    resolve(query, ":d_id", "1");
+    execute_query(query);
+}
 }

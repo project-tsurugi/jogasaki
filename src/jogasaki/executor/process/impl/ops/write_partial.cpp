@@ -29,7 +29,6 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::unsafe_downcast;
 
 details::write_partial_field::write_partial_field(
     meta::field_type type,

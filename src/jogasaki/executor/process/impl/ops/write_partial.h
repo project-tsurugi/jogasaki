@@ -19,6 +19,7 @@
 
 #include <yugawara/storage/index.h>
 #include <takatori/relation/write.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/kvs/coder.h>
@@ -28,7 +29,6 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::unsafe_downcast;
 
 namespace details {
 

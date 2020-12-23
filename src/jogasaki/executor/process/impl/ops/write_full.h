@@ -27,9 +27,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::maybe_shared_ptr;
-using takatori::util::unsafe_downcast;
-
 namespace details {
 
 /**

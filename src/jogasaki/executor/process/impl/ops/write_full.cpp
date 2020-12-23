@@ -26,10 +26,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::maybe_shared_ptr;
-using takatori::util::unsafe_downcast;
-
-
 details::write_full_field::write_full_field(meta::field_type type, std::size_t source_offset,
     std::size_t source_nullity_offset, bool target_nullable, kvs::coding_spec spec) :
     type_(std::move(type)),

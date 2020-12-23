@@ -56,6 +56,7 @@
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/performance_tools.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
@@ -409,7 +410,7 @@ public:
             common_cli::load_storage("db", db, index_name);
             return compiler_context;
         }
-        common_cli::populate_storage_data(db, compiler_context->storage_provider(), index_name, param.records_per_partition_, param.sequential_data_);
+        utils::populate_storage_data(db, compiler_context->storage_provider(), index_name, param.records_per_partition_, param.sequential_data_);
         if (param.dump_) {
             common_cli::dump_storage("db", db, index_name);
         }

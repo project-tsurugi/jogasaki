@@ -27,6 +27,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/database_impl.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/utils/mock/storage_data.h>
 
 #include "../common/load.h"
 
@@ -53,9 +54,9 @@ static int run(std::string_view sql) {
     db.start();
 
     auto db_impl = api::database::impl::get_impl(db);
-    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
-    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
-    common_cli::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
 
     auto rs = db.execute(sql);
     auto it = rs->begin();

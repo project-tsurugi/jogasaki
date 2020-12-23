@@ -121,6 +121,13 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
     using ::yugawara::variable::nullity;
     const static nullity not_null = nullity{false};
     const static nullity nullable = nullity{true};
+
+    yugawara::storage::index_feature_set index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+        ::yugawara::storage::index_feature::unique,
+        ::yugawara::storage::index_feature::primary,
+    };
     {
 //        "CREATE TABLE WAREHOUSE ("
 //        "w_id INT NOT NULL, "
@@ -163,12 +170,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[7],
                 t->columns()[8],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -219,12 +221,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[9],
                 t->columns()[10],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -305,12 +302,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[19],
                 t->columns()[20],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -343,12 +335,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             {
                 t->columns()[4],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -375,12 +362,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             },
             {
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -422,12 +404,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[6],
                 t->columns()[7],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -457,12 +434,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             },
             {
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -510,12 +482,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[8],
                 t->columns()[9],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -548,12 +515,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[3],
                 t->columns()[4],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -622,12 +584,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[15],
                 t->columns()[16],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
 }

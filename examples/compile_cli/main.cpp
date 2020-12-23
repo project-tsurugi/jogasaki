@@ -48,6 +48,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/tables.h>
 
 namespace jogasaki::compile_cli {
 
@@ -203,6 +204,7 @@ static int run(std::string_view sql) {
     if (sql.empty()) return 0;
     auto p = shakujo_program(sql);
     auto storages = tables();
+    executor::add_benchmark_tables(*storages);
     auto agg_functions = aggregate_functions();
 
     shakujo_translator translator;
@@ -213,7 +215,12 @@ static int run(std::string_view sql) {
         agg_functions,
     };
 
-    yugawara::runtime_feature_set runtime_features { yugawara::compiler_options::default_runtime_features };
+    yugawara::runtime_feature_set runtime_features {
+//        yugawara::runtime_feature::broadcast_exchange,
+        yugawara::runtime_feature::aggregate_exchange,
+//        yugawara::runtime_feature::index_join,
+//        yugawara::runtime_feature::broadcast_join_scan,
+    };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
     yugawara::compiler_options c_options{

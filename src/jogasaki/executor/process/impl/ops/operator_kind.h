@@ -25,6 +25,7 @@ enum class operator_kind : std::size_t {
     write_full,
     write_partial,
     scan,
+    find,
     take_group,
     take_flat,
     offer,
@@ -48,6 +49,7 @@ constexpr inline std::string_view to_string_view(operator_kind value) noexcept {
         case operator_kind::write_partial: return "write_partial"sv;
         case operator_kind::write_full: return "write_full"sv;
         case operator_kind::scan: return "scan"sv;
+        case operator_kind::find: return "find"sv;
         case operator_kind::take_group: return "take_group"sv;
         case operator_kind::take_flat: return "take_flat"sv;
         case operator_kind::offer: return "offer"sv;

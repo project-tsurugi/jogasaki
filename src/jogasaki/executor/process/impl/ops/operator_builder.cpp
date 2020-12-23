@@ -23,6 +23,7 @@
 #include <yugawara/binding/relation_info.h>
 
 #include "scan.h"
+#include "find.h"
 #include "emit.h"
 #include "filter.h"
 #include "project.h"
@@ -68,9 +69,20 @@ relation::expression& operator_builder::head() {
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::find& node) {
-    (void)node;
-    fail();
-    return {};
+    auto block_index = info_->scope_indices().at(&node);
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto k = encode_key<relation::find::key>(node.keys(), index.keys(), *info_, *resource_);
+    return std::make_unique<find>(
+        index_++,
+        *info_,
+        block_index,
+        index.simple_name(),
+        k,
+        index,
+        node.columns(),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan& node) {
@@ -249,9 +261,9 @@ operator_builder::create_scan_info(
     sequence_view<key const> index_keys
 ) {
     return std::make_shared<impl::scan_info>(
-        encode_scan_endpoint(lower, index_keys),
+        encode_key<relation::scan::key>(lower.keys(), index_keys, *info_, *resource_),
         from(lower.kind()),
-        encode_scan_endpoint(upper, index_keys),
+        encode_key<relation::scan::key>(upper.keys(), index_keys, *info_, *resource_),
         from(upper.kind())
     );
 }
@@ -276,25 +288,28 @@ kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type t
     fail();
 }
 
-std::string operator_builder::encode_scan_endpoint(
-    relation::scan::endpoint const& e,
-    sequence_view<key const> index_keys
+template<class Key>
+std::string operator_builder::encode_key(
+    takatori::tree::tree_fragment_vector<Key> const& keys,
+    sequence_view<key const> index_keys,
+    processor_info const& info,
+    memory::lifo_paged_memory_resource& resource
 ) {
-    BOOST_ASSERT(e.keys().size() <= index_keys.size());  //NOLINT
-    auto cp = resource_->get_checkpoint();
+    BOOST_ASSERT(keys.size() <= index_keys.size());  //NOLINT
+    auto cp = resource.get_checkpoint();
     executor::process::impl::block_scope scope{};
     std::string buf{};  //TODO create own buffer class
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.capacity(); // capacity 0 makes stream empty write to calc. length
         kvs::stream s{buf.data(), capacity};
         std::size_t i = 0;
-        for(auto&& k : e.keys()) {
-            expression::evaluator eval{k.value(), info_->compiled_info()};
-            auto res = eval(scope, resource_);
+        for(auto&& k : keys) {
+            expression::evaluator eval{k.value(), info.compiled_info()};
+            auto res = eval(scope, &resource);
             auto spec = index_keys[i].direction() == relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending: kvs::spec_key_descending;
-            kvs::encode(res, utils::type_for(info_->compiled_info(), k.variable()), spec, s);
-            resource_->deallocate_after(cp);
+            kvs::encode(res, utils::type_for(info.compiled_info(), k.variable()), spec, s);
+            resource.deallocate_after(cp);
             ++i;
         }
         if (loop == 0) {

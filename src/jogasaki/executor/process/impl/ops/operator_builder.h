@@ -120,6 +120,14 @@ public:
         relation::scan const& node,
         sequence_view<key const> index_keys
     );
+
+    template<class Key>
+    static std::string encode_key(
+        takatori::tree::tree_fragment_vector<Key> const& keys,
+        sequence_view<yugawara::storage::index::key const> index_keys,
+        processor_info const& info,
+        memory::lifo_paged_memory_resource& resource
+    );
 private:
     std::shared_ptr<processor_info> info_{};
     plan::compiler_context const* compiler_ctx_{};
@@ -132,10 +140,6 @@ private:
 
     kvs::end_point_kind from(relation::scan::endpoint::kind_type type);
 
-    std::string encode_scan_endpoint(
-        relation::scan::endpoint const& e,
-        sequence_view<key const> index_keys
-    );
 };
 
 /**

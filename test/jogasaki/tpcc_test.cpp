@@ -59,7 +59,7 @@ public:
     }
 
     void execute_query(std::string_view query) {
-        auto rs = db_.execute(query);
+        auto rs = db_.query(query);
         auto it = rs->begin();
         while(it != rs->end()) {
             auto record = it.ref();
@@ -70,6 +70,9 @@ public:
         }
         rs->close();
     }
+    void execute_statement(std::string_view query) {
+        (void)db_.query(query);
+    }
 
     static jogasaki::api::database db_;
 };
@@ -77,7 +80,7 @@ public:
 jogasaki::api::database tpcc_test::db_{};
 
 TEST_F(tpcc_test, warehouse) {
-    auto rs = db_.execute("SELECT * FROM WAREHOUSE");
+    auto rs = db_.query("SELECT * FROM WAREHOUSE");
     auto it = rs->begin();
     while(it != rs->end()) {
         auto record = it.ref();
@@ -132,6 +135,7 @@ TEST_F(tpcc_test, new_order_update) {
     resolve(query, ":d_next_o_id", "2");
     resolve(query, ":d_w_id", "1");
     resolve(query, ":d_id", "1");
-    execute_query(query);
+    execute_statement(query);
 }
+
 }

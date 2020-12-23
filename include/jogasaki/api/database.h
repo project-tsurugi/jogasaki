@@ -39,7 +39,7 @@ public:
 
     bool start();
     bool stop();
-    std::unique_ptr<result_set> execute(std::string_view sql);
+    std::unique_ptr<result_set> query(std::string_view sql);
 
     class impl;
 private:

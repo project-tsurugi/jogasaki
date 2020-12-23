@@ -273,7 +273,11 @@ void ops::write_partial::encode_fields(bool from_variable, std::vector<details::
     for(auto const& f : fields) {
         std::size_t offset = from_variable ? f.source_offset_ : f.target_offset_;
         std::size_t nullity_offset = from_variable ? f.source_nullity_offset_ : f.target_nullity_offset_;
-        kvs::encode_nullable(source, offset, nullity_offset, f.type_, f.spec_, stream);
+        if(f.nullable_) {
+            kvs::encode_nullable(source, offset, nullity_offset, f.type_, f.spec_, stream);
+        } else {
+            kvs::encode(source, offset, f.type_, f.spec_, stream);
+        }
     }
 }
 

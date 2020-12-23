@@ -39,7 +39,7 @@ TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
     api::database db{};
     db.start();
-    auto rs = db.execute(sql);
+    auto rs = db.query(sql);
     auto it = rs->begin();
     EXPECT_EQ(0, std::distance(it, rs->end()));
     while(it != rs->end()) {

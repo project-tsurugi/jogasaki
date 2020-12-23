@@ -98,7 +98,7 @@ bool database::impl::stop() {
 database::database() : impl_(std::make_unique<database::impl>()) {}
 database::~database() = default;
 
-std::unique_ptr<result_set> database::execute(std::string_view sql) {
+std::unique_ptr<result_set> database::query(std::string_view sql) {
     return impl_->execute(sql);
 }
 

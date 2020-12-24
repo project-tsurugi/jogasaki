@@ -82,7 +82,7 @@ inline static typename T::view_type value_of(takatori::scalar::expression const&
                 break;
             }
             case takatori::value::value_kind::float8: {
-                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float4>(e->value()).get();
+                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float8>(e->value()).get();
                 if constexpr (std::is_same_v<T, takatori::value::float4> || std::is_same_v<T, takatori::value::float8>) {  //NOLINT
                     return x;
                 }

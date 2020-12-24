@@ -42,76 +42,78 @@ using namespace boost::container::pmr;
 
 class aggregate_reader_test : public test_root {
 public:
+    using kind = meta::field_type_kind;
 
-};
+    using sum_info_impl = function::aggregate_function_info_impl<function::aggregate_function_kind::sum>;
+    using avg_info_impl = function::aggregate_function_info_impl<function::aggregate_function_kind::avg>;
+    std::shared_ptr<sum_info_impl> func_sum = std::make_shared<sum_info_impl>();
+    std::shared_ptr<avg_info_impl> func_avg = std::make_shared<avg_info_impl>();
 
-using kind = meta::field_type_kind;
-
-auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::sum>>();
-auto func_avg = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
-
-auto const sum_info = std::make_shared<aggregate_info>(
-    test_root::test_record_meta1(),
-    std::vector<size_t>{0},
-    std::vector<aggregate_info::value_spec>{
-        {
-            *func_sum,
+    std::shared_ptr<aggregate_info> sum_info = std::make_shared<aggregate_info>(
+        test_root::test_record_meta1(),
+        std::vector<size_t>{0},
+        std::vector<aggregate_info::value_spec>{
             {
-                1
-            },
-            meta::field_type(enum_tag<kind::float8>)
+                *func_sum,
+                {
+                    1
+                },
+                meta::field_type(enum_tag<kind::float8>)
+            }
         }
-    }
-);
+    );
 
-auto const avg_info = std::make_shared<aggregate_info>(
-    test_root::test_record_meta1(),
-    std::vector<size_t>{0},
-    std::vector<aggregate_info::value_spec>{
-        {
-            *func_avg,
+    std::shared_ptr<aggregate_info> avg_info = std::make_shared<aggregate_info>(
+        test_root::test_record_meta1(),
+        std::vector<size_t>{0},
+        std::vector<aggregate_info::value_spec>{
             {
-                1
-            },
-            meta::field_type(enum_tag<kind::float8>)
+                *func_avg,
+                {
+                    1
+                },
+                meta::field_type(enum_tag<kind::float8>)
+            }
         }
-    }
-);
+    );
 
-auto const avg_avg_info = std::make_shared<aggregate_info>(
-    test_root::test_record_meta1(),
-    std::vector<size_t>{0},
-    std::vector<aggregate_info::value_spec>{
-        {
-            *func_avg,
+    std::shared_ptr<aggregate_info> avg_avg_info = std::make_shared<aggregate_info>(
+        test_root::test_record_meta1(),
+        std::vector<size_t>{0},
+        std::vector<aggregate_info::value_spec>{
             {
-                1
+                *func_avg,
+                {
+                    1
+                },
+                meta::field_type(enum_tag<kind::float8>)
             },
-            meta::field_type(enum_tag<kind::float8>)
-        },
-        {
-            *func_avg,
             {
-                1
-            },
-            meta::field_type(enum_tag<kind::float8>)
+                *func_avg,
+                {
+                    1
+                },
+                meta::field_type(enum_tag<kind::float8>)
+            }
         }
-    }
-);
-auto get_key = [](group_reader& r) {
-    return r.get_group().get_value<std::int64_t>(sum_info->post().group_meta()->key().value_offset(0));
-};
+    );
 
-auto get_value = [](group_reader& r) {
-    return r.get_member().get_value<double>(sum_info->post().group_meta()->value().value_offset(0));
-};
+    std::function<std::int64_t(group_reader&)> get_key = [this](group_reader& r) {
+        return r.get_group().get_value<std::int64_t>(sum_info->post().group_meta()->key().value_offset(0));
+    };
 
-auto get_key_record = [](group_reader& r) {
-    return r.get_group();
-};
+    std::function<double(group_reader&)> get_value = [this](group_reader& r) {
+        return r.get_member().get_value<double>(sum_info->post().group_meta()->value().value_offset(0));
+    };
 
-auto get_value_record = [](group_reader& r) {
-    return r.get_member();
+    std::function<accessor::record_ref(group_reader&)> get_key_record = [](group_reader& r) {
+        return r.get_group();
+    };
+
+    std::function<accessor::record_ref(group_reader&)> get_value_record = [](group_reader& r) {
+        return r.get_member();
+    };
+
 };
 
 mock::basic_record create_rec(std::int64_t x, double y) {

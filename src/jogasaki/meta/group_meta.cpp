@@ -17,11 +17,28 @@
 
 namespace jogasaki::meta {
 
-group_meta::group_meta() : key_meta_(std::make_shared<meta::record_meta>()), value_meta_(std::make_shared<meta::record_meta>()) {}
+group_meta::group_meta() :
+    key_meta_(std::make_shared<meta::record_meta>()),
+    value_meta_(std::make_shared<meta::record_meta>())
+{}
 
-group_meta::group_meta(group_meta::record_meta_type key_meta, group_meta::record_meta_type value_meta) : key_meta_(std::move(key_meta)), value_meta_(std::move(value_meta)) {}
+group_meta::group_meta(
+    group_meta::record_meta_type key_meta,
+    group_meta::record_meta_type value_meta
+) :
+    key_meta_(std::move(key_meta)),
+    value_meta_(std::move(value_meta))
+{}
 
-group_meta::group_meta(const record_meta &key_meta, const record_meta &value_meta) : group_meta(std::make_shared<record_meta>(key_meta), std::make_shared<record_meta>(value_meta)) {}
+group_meta::group_meta(
+    const record_meta &key_meta,
+    const record_meta &value_meta
+) :
+    group_meta(
+        std::make_shared<record_meta>(key_meta),
+        std::make_shared<record_meta>(value_meta)
+    )
+{}
 
 record_meta const& group_meta::key() const noexcept {
     return *key_meta_;

@@ -285,10 +285,7 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
             auto idx = input_order.index(f);
             argument_indices.emplace_back(idx);
         }
-        auto& provider = ctx.aggregate_provider();
         auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(e.function());
-        (void)decl;
-        (void)provider;
         auto f = repo.find(decl.definition_id());
         BOOST_ASSERT(f != nullptr);  //NOLINT
         specs.emplace_back(

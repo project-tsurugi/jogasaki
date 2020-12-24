@@ -114,6 +114,31 @@ void add_builtin_tables(storage::configurable_provider& provider) {
             },
         });
     }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table("INT4_TAB", {
+            "INT4_TAB",
+            {
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::int4(), nullity{true} },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i = provider.add_index("INT4_TAB", {
+            t,
+            "INT4_TAB",
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        });
+    }
 }
 
 void add_benchmark_tables(storage::configurable_provider& provider) {

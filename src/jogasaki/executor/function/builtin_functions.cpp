@@ -49,36 +49,36 @@ void add_builtin_aggregate_functions(
     // sum
     /////////
     auto sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
-//    repo.add(id, sum);
-//    functions.add({
-//        id++,
-//        "sum",
-//        t::int4(),
-//        {
-//            t::int4(),
-//        },
-//        true,
-//    });
-//    repo.add(id, sum);
-//    functions.add({
-//        id++,
-//        "sum",
-//        t::int8(),
-//        {
-//            t::int8(),
-//        },
-//        true,
-//    });
-//    repo.add(id, sum);
-//    functions.add({
-//        id++,
-//        "sum",
-//        t::float4(),
-//        {
-//            t::float4(),
-//        },
-//        true,
-//    });
+    repo.add(id, sum);
+    functions.add({
+        id++,
+        "sum",
+        t::int4(),
+        {
+            t::int4(),
+        },
+        true,
+    });
+    repo.add(id, sum);
+    functions.add({
+        id++,
+        "sum",
+        t::int8(),
+        {
+            t::int8(),
+        },
+        true,
+    });
+    repo.add(id, sum);
+    functions.add({
+        id++,
+        "sum",
+        t::float4(),
+        {
+            t::float4(),
+        },
+        true,
+    });
     repo.add(id, sum);
     functions.add({
         id++,

@@ -169,7 +169,7 @@ private:
     void create_compiled_info(std::shared_ptr<plan::compiler_context> compiler_context) {
         binding::factory bindings;
         std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-        std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
+        std::shared_ptr<storage::table> t0 = storages->add_table({
             "T0",
             {
                 { "C0", t::int4() },
@@ -181,7 +181,7 @@ private:
         storage::column const& t0c1 = t0->columns()[1];
         storage::column const& t0c2 = t0->columns()[2];
 
-        std::shared_ptr<storage::index> i0 = storages->add_index("I0", { t0, "I0", });
+        std::shared_ptr<storage::index> i0 = storages->add_index({ t0, "I0", });
         auto p = std::make_shared<takatori::plan::graph_type>();
         auto& f0 = p->insert(::takatori::plan::forward{
             variable_vector{

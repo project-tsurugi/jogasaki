@@ -517,7 +517,7 @@ TEST_F(tpcc_test, stock_level1) {
     execute_query(query);
 }
 
-TEST_F(tpcc_test, stock_level2) {
+TEST_F(tpcc_test, DISABLED_stock_level2) {
     std::string query =
         "SELECT COUNT(DISTINCT s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
         "WHERE "

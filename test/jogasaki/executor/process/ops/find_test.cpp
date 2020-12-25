@@ -99,7 +99,7 @@ TEST_F(find_test, simple) {
 
     binding::factory bindings;
     std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table("T0", {
+    std::shared_ptr<storage::table> t0 = storages->add_table({
         "T0",
         {
             { "C0", t::int4(), nullity{false} },
@@ -111,7 +111,7 @@ TEST_F(find_test, simple) {
     storage::column const& t0c1 = t0->columns()[1];
     storage::column const& t0c2 = t0->columns()[2];
 
-    std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
+    std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index({
         t0,
         "I0",
         {

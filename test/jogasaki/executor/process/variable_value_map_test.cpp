@@ -64,7 +64,7 @@ TEST_F(variable_value_map_test, basic) {
 
 TEST_F(variable_value_map_test, table_column) {
     yugawara::storage::configurable_provider storages_;
-    auto t1 = storages_.add_table("T1", yugawara::storage::table {
+    auto t1 = storages_.add_table({
         "T1",
         {
             { "C1", t::int4() },

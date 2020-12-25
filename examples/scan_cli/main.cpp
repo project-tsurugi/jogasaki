@@ -577,7 +577,7 @@ private:
         binding::factory bindings;
         std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
 
-        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table(table_name, {
+        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table({
             table_name,
             {
                 { "C0", t::int4(), nullity(false) },
@@ -587,7 +587,7 @@ private:
                 { "C4", t::character(t::varying, max_char_len) , nullity(true) },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index(index_name, {
+        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index({
             t0,
             index_name,
             {
@@ -708,7 +708,7 @@ private:
         binding::factory bindings;
         std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
 
-        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table(table_name, {
+        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table({
             table_name,
             {
                 { "C0", t::int4() , nullity(true) },
@@ -727,7 +727,7 @@ private:
                 { "C13", t::int8(), nullity(false)  },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index(index_name, {
+        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index({
             t0,
             index_name,
             {

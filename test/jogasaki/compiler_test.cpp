@@ -108,14 +108,14 @@ public:
         std::shared_ptr<::yugawara::storage::configurable_provider> storages
             = std::make_shared<::yugawara::storage::configurable_provider>();
 
-        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table("T0", {
+        std::shared_ptr<::yugawara::storage::table> t0 = storages->add_table({
             "T0",
             {
                 { "C0", type::int8(), criteria{nullity{false}}},
                 { "C1", type::float8 () },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index("I0", {
+        std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index({
             t0,
             "I0",
             {
@@ -131,14 +131,14 @@ public:
                 ::yugawara::storage::index_feature::primary,
             },
         });
-        std::shared_ptr<::yugawara::storage::table> t1 = storages->add_table("T1", {
+        std::shared_ptr<::yugawara::storage::table> t1 = storages->add_table({
             "T1",
             {
                 { "C0", type::int8(), criteria{nullity{false}}},
                 { "C1", type::float8 () },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i1 = storages->add_index("I1", {
+        std::shared_ptr<::yugawara::storage::index> i1 = storages->add_index({
             t1,
             "I1",
             {

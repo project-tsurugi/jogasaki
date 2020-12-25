@@ -75,7 +75,7 @@ TEST_F(ordered_variable_set_test, basic) {
 
     auto provider = std::make_shared<configurable_provider>();
 
-    std::shared_ptr<::yugawara::storage::table> t0 = provider->add_table("T0", {
+    std::shared_ptr<::yugawara::storage::table> t0 = provider->add_table({
         "T0",
         {
             { "C0", t::int8() },

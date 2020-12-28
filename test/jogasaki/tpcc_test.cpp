@@ -46,10 +46,10 @@ public:
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER1", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS1", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
@@ -224,7 +224,7 @@ TEST_F(tpcc_test, payment2) {
 
 TEST_F(tpcc_test, payment3) {
     std::string query =
-        "SELECT COUNT(c_id) FROM CUSTOMER "
+        "SELECT COUNT(c_id) FROM CUSTOMER_SECONDARY "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -239,7 +239,7 @@ TEST_F(tpcc_test, payment3) {
 
 TEST_F(tpcc_test, payment4) {
     std::string query =
-        "SELECT c_id FROM CUSTOMER "
+        "SELECT c_id FROM CUSTOMER_SECONDARY "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -324,7 +324,7 @@ TEST_F(tpcc_test, payment_update4) {
 
 TEST_F(tpcc_test, order_status1) {
     std::string query =
-        "SELECT COUNT(c_id) FROM CUSTOMER "
+        "SELECT COUNT(c_id) FROM CUSTOMER_SECONDARY "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -339,7 +339,7 @@ TEST_F(tpcc_test, order_status1) {
 
 TEST_F(tpcc_test, order_status2) {
     std::string query =
-        "SELECT c_id FROM CUSTOMER "
+        "SELECT c_id FROM CUSTOMER_SECONDARY "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -370,7 +370,7 @@ TEST_F(tpcc_test, order_status3) {
 
 TEST_F(tpcc_test, order_status4) {
     std::string query =
-        "SELECT o_id FROM ORDERS "
+        "SELECT o_id FROM ORDERS_SECONDARY "
         "WHERE "
         "o_d_id = :o_d_id AND "
         "o_w_id = :o_w_id AND "

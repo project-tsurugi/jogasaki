@@ -74,11 +74,11 @@ std::vector<group_field> group_element::create_fields(
         }
     }
     auto& vmap = block_info.value_map();
-    for(auto&& c : columns) {
+    for(std::size_t i=0, n=columns.size(); i < n; ++i) {
+        auto& c = columns[i];
         auto [src_idx, is_key] = order.key_value_index(c.source());
         auto& target_info = vmap.at(c.destination());
-        auto idx = src_idx + (is_key ? 0 : num_keys); // copy keys first, then values
-        fields[idx] = group_field{
+        fields[i] = group_field{
             is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
             is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),
             target_info.value_offset(),

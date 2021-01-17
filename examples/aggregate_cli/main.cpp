@@ -46,6 +46,7 @@
 #include <takatori/plan/process.h>
 #include <takatori/plan/aggregate.h>
 #include <takatori/statement/execute.h>
+#include <takatori/util/object_creator.h>
 
 #include <performance-tools/synchronizer.h>
 
@@ -307,8 +308,14 @@ public:
 
         compiler_context->aggregate_provider(std::move(functions));
         input_exchanges_.emplace_back(&g0);
-        compiler_context->compiled_info(c_info);
-        compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(p)));
+        object_creator creator{};
+        compiler_context->executable_statement(
+            std::make_shared<plan::executable_statement>(
+                creator.create_unique<takatori::statement::execute>(std::move(p)),
+                c_info,
+                std::shared_ptr<model::statement>{}
+            )
+        );
     }
 
     int run(params& s, std::shared_ptr<configuration> cfg) {
@@ -329,11 +336,11 @@ public:
 
         auto& g0 = unsafe_downcast<takatori::plan::aggregate>(*input_exchanges_[0]);
         common::graph g{*context};
-        auto& xch = g.emplace<exchange::aggregate::step>(plan::impl::create(g0, *compiler_context));
+        auto& xch = g.emplace<exchange::aggregate::step>(plan::impl::create(g0, compiler_context->executable_statement()->compiled_info()));
 
-        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
-        auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
+        auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));
 
         producer_params prod_params{s.records_per_partition_, s.upstream_partitions_, s.sequential_data_, s.key_modulo_};
         auto& producer = g.emplace<producer_process>(meta, prod_params);

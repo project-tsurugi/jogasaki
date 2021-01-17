@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include <takatori/util/fail.h>
+#include <takatori/util/downcast.h>
 
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_impl.h>
@@ -28,17 +29,20 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/write.h>
 
 namespace jogasaki::api {
 
 using configurable_provider = ::yugawara::storage::configurable_provider;
 using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 
 std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    if(!plan::compile(sql, *ctx)) {
+    if(!plan::compile(sql, *ctx, {})) {
         LOG(ERROR) << "compilation failed.";
         return {};
     }
@@ -48,7 +52,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     }
     auto result = std::make_unique<data::result_store>();
     // TODO redesign how request context is passed
-    auto* g = ctx->step_graph();
+    auto e = ctx->executable_statement();
     auto request_ctx = std::make_shared<request_context>(
         std::make_shared<class channel>(),
         cfg_,
@@ -58,9 +62,10 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
         result.get()
     );
-
-    dynamic_cast<executor::common::graph*>(g)->context(*request_ctx);
-    scheduler_.schedule(*g);
+    auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
+    auto& g = stmt->operators();
+    g.context(*request_ctx);
+    scheduler_.schedule(*stmt);
 
     // for now, assume only one result is returned
     return std::make_unique<result_set>(std::make_unique<result_set::impl>(

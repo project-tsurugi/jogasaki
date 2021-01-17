@@ -28,6 +28,8 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/graph.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/plan/executable_statement.h>
 
 namespace jogasaki::plan {
 
@@ -37,34 +39,20 @@ namespace jogasaki::plan {
 class cache_align compiler_context {
 public:
 
-    void compiler_result(yugawara::compiler_result compiler_result) noexcept {
-        statement_ = compiler_result.release_statement();
-        compiled_info_ = std::move(compiler_result.info());
+    void prepared_statement(std::shared_ptr<prepared_statement> statement) noexcept {
+        prepared_statement_ = std::move(statement);
     }
 
-    [[nodiscard]] ::takatori::statement::statement& statement() noexcept {
-        return *statement_;
+    [[nodiscard]] std::shared_ptr<class prepared_statement> const& prepared_statement() noexcept {
+        return prepared_statement_;
     }
 
-    void compiled_info(yugawara::compiled_info compiled_info) noexcept {
-        compiled_info_ = std::move(compiled_info);
+    void executable_statement(std::shared_ptr<class executable_statement> statement) noexcept {
+        executable_statement_ = std::move(statement);
     }
 
-    void statement(std::unique_ptr<::takatori::statement::statement> statement) noexcept {
-        takatori::util::object_creator creator{};
-        statement_ = creator.wrap_unique(statement.release());
-    }
-
-    [[nodiscard]] yugawara::compiled_info& compiled_info() noexcept {
-        return compiled_info_;
-    }
-
-    void step_graph(std::shared_ptr<model::graph> step_graph) noexcept {
-        step_graph_ = std::move(step_graph);
-    }
-
-    [[nodiscard]] model::graph* step_graph() const noexcept {
-        return step_graph_.get();
+    [[nodiscard]] std::shared_ptr<class executable_statement> const& executable_statement() noexcept {
+        return executable_statement_;
     }
 
     void storage_provider(std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider) noexcept {
@@ -98,10 +86,10 @@ public:
     [[nodiscard]] std::shared_ptr<::yugawara::aggregate::configurable_provider> const& aggregate_provider() const {
         return aggregate_provider_;
     }
+
 private:
-    takatori::util::unique_object_ptr<::takatori::statement::statement> statement_{};
-    yugawara::compiled_info compiled_info_{};
-    std::shared_ptr<model::graph> step_graph_{};
+    std::shared_ptr<class prepared_statement> prepared_statement_{};
+    std::shared_ptr<class executable_statement> executable_statement_{};
     std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider_{};
     std::shared_ptr<::yugawara::variable::configurable_provider> variable_provider_{};
     std::shared_ptr<::yugawara::function::configurable_provider> function_provider_{};

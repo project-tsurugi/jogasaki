@@ -26,6 +26,8 @@
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/process/step.h>
+#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/plan/parameter_set.h>
 
 #include "compiler_context.h"
 
@@ -33,10 +35,10 @@ namespace jogasaki::plan {
 
 // for testing
 namespace impl {
-[[nodiscard]] executor::process::step create(takatori::plan::process const& process, compiler_context& ctx);
-[[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, compiler_context& ctx);
-[[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, compiler_context& ctx);
-[[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiler_context& ctx);
+[[nodiscard]] executor::process::step create(takatori::plan::process const& process, yugawara::compiled_info& info);
+[[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, yugawara::compiled_info& info);
+[[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, yugawara::compiled_info& info);
+[[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, yugawara::compiled_info& info);
 }
 
 /**
@@ -44,6 +46,13 @@ namespace impl {
  * @param sql the sql statement to compile
  * @param ctx the compiler context filled with storage provider required to compile the sql
  */
-[[nodiscard]] bool compile(std::string_view sql, compiler_context& ctx);
+[[nodiscard]] bool compile(std::string_view sql, compiler_context& ctx, parameter_set const& parameters = {});
+
+/**
+ * @brief pre-compile sql
+ * @param sql the sql statement to compile
+ * @param ctx the compiler context filled with storage provider required to pre-compile the sql
+ */
+[[nodiscard]] bool prepare(std::string_view sql, compiler_context& ctx);
 
 }

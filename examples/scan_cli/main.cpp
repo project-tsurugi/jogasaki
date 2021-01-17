@@ -480,7 +480,7 @@ public:
         utils::get_watch().set_point(time_point_start_creating_request, thread_id);
         LOG(INFO) << "thread " << thread_id << " create request start";
         // create step graph with only process
-        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<class channel>();
         data::result_store result{};
@@ -495,7 +495,7 @@ public:
             &result
         );
         common::graph g{*context};
-        g.emplace<process::step>(jogasaki::plan::impl::create(p0, *compiler_context));
+        g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));
 
         std::shared_ptr<configuration> thread_cfg = std::make_shared<configuration>(*cfg);
         if (cfg->core_affinity()) {
@@ -696,8 +696,13 @@ private:
         yugawara::compiled_info c_info{expressions, vm};
 
         compiler_context->storage_provider(std::move(storages));
-        compiler_context->compiled_info(c_info);
-        compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
+        compiler_context->executable_statement(
+            std::make_shared<plan::executable_statement>(
+                creator.create_unique<takatori::statement::execute>(std::move(*p)),
+                c_info,
+                std::shared_ptr<model::statement>{}
+            )
+        );
     }
 
     void create_compiled_info_no_text(
@@ -860,8 +865,14 @@ private:
         yugawara::compiled_info c_info{{}, vm};
 
         compiler_context->storage_provider(std::move(storages));
-        compiler_context->compiled_info(c_info);
-        compiler_context->statement(std::make_unique<takatori::statement::execute>(std::move(*p)));
+        object_creator creator{};
+        compiler_context->executable_statement(
+            std::make_shared<plan::executable_statement>(
+                creator.create_unique<takatori::statement::execute>(std::move(*p)),
+                c_info,
+                std::shared_ptr<model::statement>{}
+            )
+        );
     }
 
     takatori::plan::process& find_process(takatori::plan::graph_type& p) {

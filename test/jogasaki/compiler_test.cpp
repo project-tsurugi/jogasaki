@@ -169,7 +169,7 @@ TEST_F(compiler_test, DISABLED_insert) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
-    auto&& write = downcast<statement::write>(ctx.statement());
+    auto&& write = unsafe_downcast<statement::write>(ctx.executable_statement()->statement());
 
     EXPECT_EQ(write.operator_kind(), relation::write_kind::insert);
 
@@ -184,7 +184,9 @@ TEST_F(compiler_test, DISABLED_insert) {
     EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int4()));
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
 
-    dump(ctx.compiled_info(), ctx.statement());
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    dump(info, stmt);
 }
 
 TEST_F(compiler_test, simple_query) {
@@ -193,7 +195,9 @@ TEST_F(compiler_test, simple_query) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
-    auto&& c = downcast<statement::execute>(ctx.statement());
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    auto&& c = downcast<statement::execute>(stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 1);
     auto&& p0 = top(c.execution_plan());
@@ -224,14 +228,14 @@ TEST_F(compiler_test, simple_query) {
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
     EXPECT_EQ(emit.columns()[1].source(), c1p0);
 
-    EXPECT_EQ(ctx.compiled_info().type_of(c0p0), type::int8());
-    EXPECT_EQ(ctx.compiled_info().type_of(c1p0), type::float8());
+    EXPECT_EQ(info.type_of(c0p0), type::int8());
+    EXPECT_EQ(info.type_of(c1p0), type::float8());
 
-    dump(ctx.compiled_info(), ctx.statement());
+    dump(info, stmt);
 
     // test utils
-    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(ctx.compiled_info(), c0p0));
-    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(ctx.compiled_info(), c1p0));
+    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(info, c0p0));
+    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(info, c1p0));
 
 }
 
@@ -241,7 +245,9 @@ TEST_F(compiler_test, filter) {
     ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
 
-    auto&& c = downcast<statement::execute>(ctx.statement());
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    auto&& c = downcast<statement::execute>(stmt);
     ASSERT_EQ(c.execution_plan().size(), 1);
 
     auto b = c.execution_plan().begin();
@@ -270,7 +276,7 @@ TEST_F(compiler_test, filter) {
     ASSERT_EQ(emit.columns().size(), 1);
     EXPECT_EQ(emit.columns()[0].source(), c0p0);
 
-    EXPECT_EQ(ctx.compiled_info().type_of(c0p0), type::int8());
+    EXPECT_EQ(info.type_of(c0p0), type::int8());
 }
 
 TEST_F(compiler_test, project_filter) {
@@ -278,8 +284,10 @@ TEST_F(compiler_test, project_filter) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
-    auto&& c = downcast<statement::execute>(ctx.statement());
-    dump(ctx.compiled_info(), ctx.statement());
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    auto&& c = downcast<statement::execute>(stmt);
+    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 1);
 
@@ -320,8 +328,10 @@ TEST_F(compiler_test, join) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
-    auto&& c = downcast<statement::execute>(ctx.statement());
-    dump(ctx.compiled_info(), ctx.statement());
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    auto&& c = downcast<statement::execute>(stmt);
+    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 5);
 
@@ -348,7 +358,7 @@ TEST_F(compiler_test, join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, ctx);
+    auto s = jogasaki::plan::impl::create(b, info);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 }
@@ -358,9 +368,10 @@ TEST_F(compiler_test, left_outer_join) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ASSERT_TRUE(compile(sql, ctx));
-    auto&& c = downcast<statement::execute>(ctx.statement());
-    dump(ctx.compiled_info(), ctx.statement());
-    auto& cinfo = ctx.compiled_info();
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    auto&& c = downcast<statement::execute>(stmt);
+    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 5);
 
@@ -387,7 +398,7 @@ TEST_F(compiler_test, left_outer_join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, ctx);
+    auto s = jogasaki::plan::impl::create(b, info);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 
@@ -407,7 +418,7 @@ TEST_F(compiler_test, left_outer_join) {
             auto g0 = take.groups()[0];
             auto src_c0 = g0.columns()[0].source();
             auto dest_c0 = g0.columns()[0].destination();
-            auto& resolved = cinfo.type_of(dest_c0);
+            auto& resolved = info.type_of(dest_c0);
         }
     }
 }
@@ -418,9 +429,10 @@ TEST_F(compiler_test, aggregate) {
     ctx.storage_provider(tables());
     ctx.aggregate_provider(aggregate_functions());
     ASSERT_TRUE(compile(sql, ctx));
-    auto&& c = downcast<statement::execute>(ctx.statement());
-    dump(ctx.compiled_info(), ctx.statement());
-    auto& cinfo = ctx.compiled_info();
+    auto& info =ctx.executable_statement()->compiled_info();
+    auto& stmt =ctx.executable_statement()->statement();
+    auto&& c = downcast<statement::execute>(stmt);
+    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 3);
 
@@ -436,7 +448,7 @@ TEST_F(compiler_test, aggregate) {
 
     auto& agg = b.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, ctx);
+    auto s = jogasaki::plan::impl::create(b, info);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(agg)));
 

@@ -40,7 +40,7 @@ flow::flow(
 {}
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-    auto& stmt = context_->compiler_context()->statement();
+    auto& stmt = context_->compiler_context()->executable_statement()->statement();
     std::shared_ptr<impl::processor> proc{};
     switch(stmt.kind()) {
         case takatori::statement::statement_kind::execute:

@@ -28,6 +28,8 @@
 #include <yugawara/compiler_options.h>
 
 #include <mizugaki/translator/shakujo_translator.h>
+#include <mizugaki/placeholder_map.h>
+#include <mizugaki/placeholder_entry.h>
 
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -134,8 +136,10 @@ static int run(std::string_view sql) {
         options.get_object_creator(),
     };
 
-    placeholder_map placeholders;
-    ::takatori::document::document_map documents;
+    placeholder_map placeholders{};
+    ::takatori::document::document_map documents{};
+    placeholders.add("p0", {type::int8(), value::int8(1)});
+    placeholders.add("p1", {type::float8(), value::float8(10.0)});
     auto r = translator(options, *p->main(), documents, placeholders);
     if (!r.is_valid()) {
         auto error = r.release<result_kind::diagnostics>();

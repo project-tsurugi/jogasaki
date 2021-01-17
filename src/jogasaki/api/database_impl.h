@@ -33,7 +33,7 @@
 #include <jogasaki/channel.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
-#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/executor/function/builtin_functions.h>
@@ -74,7 +74,7 @@ public:
     }
 private:
     std::shared_ptr<configuration> cfg_{};
-    scheduler::dag_controller scheduler_{};
+    scheduler::statement_scheduler scheduler_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{std::make_shared<yugawara::storage::configurable_provider>()};
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{std::make_shared<yugawara::aggregate::configurable_provider>()};
     std::shared_ptr<kvs::database> kvs_db_{};

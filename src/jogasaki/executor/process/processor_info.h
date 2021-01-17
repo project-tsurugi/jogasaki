@@ -66,13 +66,13 @@ public:
 
     processor_info(
         relation::graph_type& relations,
-        yugawara::compiled_info const& info
+        yugawara::compiled_info info
     ) :
         relations_(std::addressof(relations)),
-        info_(std::addressof(info)),
+        info_(std::move(info)),
         details_(create_details())
     {
-        auto&& p = impl::create_scopes_info(*relations_, *info_);
+        auto&& p = impl::create_scopes_info(*relations_, info_);
         scopes_info_ = std::move(p.first);
         scope_indices_ = std::move(p.second);
     }
@@ -82,7 +82,7 @@ public:
     }
 
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
-        return *info_;
+        return info_;
     }
 
     [[nodiscard]] impl::scopes_info const& scopes_info() const noexcept {
@@ -98,7 +98,7 @@ public:
     }
 private:
     relation::graph_type* relations_{};
-    yugawara::compiled_info const* info_{};
+    yugawara::compiled_info info_{};
     impl::scopes_info scopes_info_{};
     impl::scope_indices scope_indices_{};
     processor_details details_{};

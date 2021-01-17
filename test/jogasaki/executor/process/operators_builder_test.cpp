@@ -199,7 +199,7 @@ TEST_F(operators_builder_test, temp) {
     memory::lifo_paged_memory_resource resource{&global::page_pool()};
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
-    auto v = operator_builder{pinfo, compiler_ctx, {}, {}, exchange_map, &resource}();
+    auto v = operator_builder{pinfo, {}, {}, exchange_map, &resource}();
 
     ASSERT_EQ(2, v.size());
 }

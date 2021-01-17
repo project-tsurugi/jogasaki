@@ -42,7 +42,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    if(!plan::compile(sql, *ctx, {})) {
+    if(! plan::compile(sql, *ctx, {})) {
         LOG(ERROR) << "compilation failed.";
         return {};
     }
@@ -56,7 +56,6 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto request_ctx = std::make_shared<request_context>(
         std::make_shared<class channel>(),
         cfg_,
-        std::move(ctx),
         std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
         kvs_db_,
         kvs_db_->create_transaction(),  // TODO retrieve from api transaction object

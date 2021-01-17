@@ -80,7 +80,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
 
     auto channel = std::make_shared<class channel>();
     auto compiler_context = std::make_shared<plan::compiler_context>();
-    auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
+    auto context = std::make_shared<request_context>(channel, cfg);
 
     common::graph g{*context};
     producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.key_modulo_, s.sequential_data_, s.prepare_pages_ };

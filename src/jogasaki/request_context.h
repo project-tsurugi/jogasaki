@@ -41,14 +41,12 @@ public:
      * @brief create new context object
      * @param ch channel used for the scope objects to communicate with scheduler
      * @param config global configuration
-     * @param compiler_context the compiler context for this request
      * @param request_resource the memory resource used to construct request wide objects such as processors and operators
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
      * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
     request_context(std::shared_ptr<class channel> ch,
         std::shared_ptr<class configuration> config,
-        std::shared_ptr<plan::compiler_context> compiler_context,
         std::unique_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<kvs::transaction> transaction = {},
@@ -74,12 +72,6 @@ public:
     [[nodiscard]] data::result_store* result();
 
     /**
-     * @brief accessor for the compiler context
-     * @return compiler context for this request
-     */
-    [[nodiscard]] std::shared_ptr<plan::compiler_context> const& compiler_context() const;
-
-    /**
      * @brief accessor for the request resource
      * @return request wide memory resource
      */
@@ -102,7 +94,6 @@ public:
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
-    std::shared_ptr<plan::compiler_context> compiler_context_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};

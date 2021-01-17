@@ -44,11 +44,14 @@ namespace relation = takatori::relation;
 using takatori::util::fail;
 using takatori::relation::step::dispatch;
 
-operator_builder::operator_builder(std::shared_ptr<processor_info> info, const plan::compiler_context& compiler_ctx,
-    std::shared_ptr<io_info> io_info, std::shared_ptr<relation_io_map> relation_io_map,
-    io_exchange_map& io_exchange_map, memory::lifo_paged_memory_resource* resource) :
+operator_builder::operator_builder(
+    std::shared_ptr<processor_info> info,
+    std::shared_ptr<io_info> io_info,
+    std::shared_ptr<relation_io_map> relation_io_map,
+    io_exchange_map& io_exchange_map,
+    memory::lifo_paged_memory_resource* resource
+) :
     info_(std::move(info)),
-    compiler_ctx_(std::addressof(compiler_ctx)),
     io_info_(std::move(io_info)),
     io_exchange_map_(std::addressof(io_exchange_map)),
     relation_io_map_(std::move(relation_io_map)),
@@ -344,12 +347,15 @@ std::string operator_builder::encode_key(
     return buf;
 }
 
-operator_container create_operators(std::shared_ptr<processor_info> info, const plan::compiler_context& compiler_ctx,
-    std::shared_ptr<io_info> io_info, std::shared_ptr<relation_io_map> relation_io_map,
-    io_exchange_map& io_exchange_map, memory::lifo_paged_memory_resource* resource) {
+operator_container create_operators(
+    std::shared_ptr<processor_info> info,
+    std::shared_ptr<io_info> io_info,
+    std::shared_ptr<relation_io_map> relation_io_map,
+    io_exchange_map& io_exchange_map,
+    memory::lifo_paged_memory_resource* resource
+) {
     return operator_builder{
         std::move(info),
-        compiler_ctx,
         std::move(io_info),
         std::move(relation_io_map),
         io_exchange_map,

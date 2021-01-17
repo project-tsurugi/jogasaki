@@ -126,7 +126,7 @@ public:
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<class channel>();
-        auto context = std::make_shared<request_context>(channel, cfg, compiler_context);
+        auto context = std::make_shared<request_context>(channel, cfg);
         common::graph g{*context};
         auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));
         customize_process(

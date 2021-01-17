@@ -35,6 +35,8 @@ namespace jogasaki::plan {
 
 /**
  * @brief vehicle of objects generated during sql compilation
+ * @details This object lives during compilation time, i.e. when compilation completes, the context retires and will be
+ * deleted.
  */
 class cache_align compiler_context {
 public:

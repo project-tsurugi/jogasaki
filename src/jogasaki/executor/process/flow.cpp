@@ -40,24 +40,13 @@ flow::flow(
 {}
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-    auto& stmt = context_->compiler_context()->executable_statement()->statement();
-    std::shared_ptr<impl::processor> proc{};
-    switch(stmt.kind()) {
-        case takatori::statement::statement_kind::execute:
-            proc = std::make_shared<impl::processor>(
-                info_,
-                *context_->compiler_context(),
-                step_->io_info(),
-                step_->relation_io_map(),
-                *step_->io_exchange_map(),
-                context_->request_resource()
-            );
-            break;
-        case takatori::statement::statement_kind::write:
-            //FIXME
-        default:
-            takatori::util::fail();
-    }
+    auto proc = std::make_shared<impl::processor>(
+        info_,
+        step_->io_info(),
+        step_->relation_io_map(),
+        *step_->io_exchange_map(),
+        context_->request_resource()
+    );
     // create process executor
     auto& factory = step_->executor_factory() ? *step_->executor_factory() : impl::default_process_executor_factory();
 

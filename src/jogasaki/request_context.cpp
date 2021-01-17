@@ -21,15 +21,13 @@
 namespace jogasaki {
 
 request_context::request_context() :
-    channel_{std::make_shared<class channel>()},
-    config_{std::make_shared<class configuration>()},
-    compiler_context_{std::make_shared<plan::compiler_context>()}
+    channel_(std::make_shared<class channel>()),
+    config_(std::make_shared<class configuration>())
 {}
 
 request_context::request_context(
     std::shared_ptr<class channel> ch,
     std::shared_ptr<class configuration> config,
-    std::shared_ptr<plan::compiler_context> compiler_context,
     std::unique_ptr<memory::lifo_paged_memory_resource> request_resource,
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<kvs::transaction> transaction,
@@ -37,7 +35,6 @@ request_context::request_context(
 ) :
     channel_(std::move(ch)),
     config_(std::move(config)),
-    compiler_context_(std::move(compiler_context)),
     request_resource_(std::move(request_resource)),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
@@ -54,10 +51,6 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
 
 [[nodiscard]] data::result_store* request_context::result() {
     return result_;
-}
-
-std::shared_ptr<plan::compiler_context> const& request_context::compiler_context() const {
-    return compiler_context_;
 }
 
 [[nodiscard]] std::shared_ptr<kvs::database> const& request_context::database() const {

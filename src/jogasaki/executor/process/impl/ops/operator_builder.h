@@ -77,7 +77,6 @@ public:
      */
     operator_builder(
         std::shared_ptr<processor_info> info,
-        plan::compiler_context const& compiler_ctx,
         std::shared_ptr<io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
         io_exchange_map& io_exchange_map,
@@ -130,7 +129,6 @@ public:
     );
 private:
     std::shared_ptr<processor_info> info_{};
-    plan::compiler_context const* compiler_ctx_{};
     std::shared_ptr<io_info> io_info_{};
     io_exchange_map* io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
@@ -145,7 +143,6 @@ private:
 /**
  * @brief create operators for a processor
  * @param info the processor information
- * @param compiler_ctx compiler context
  * @param io_info I/O information
  * @param relation_io_map mapping from relation to I/O index
  * @param resource the memory resource used to building operators
@@ -153,7 +150,6 @@ private:
  */
 [[nodiscard]] operator_container create_operators(
     std::shared_ptr<processor_info> info,
-    plan::compiler_context const& compiler_ctx,
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,

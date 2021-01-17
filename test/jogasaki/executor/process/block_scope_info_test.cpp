@@ -288,7 +288,7 @@ TEST_F(block_scope_info_test, filter) {
     memory::lifo_paged_memory_resource resource{&global::page_pool()};
     // additionally test ops builder
     io_exchange_map exchange_map{};
-    auto ops = ops::operator_builder{pinfo, compiler_ctx, {}, {}, exchange_map, &resource}();
+    auto ops = ops::operator_builder{pinfo, {}, {}, exchange_map, &resource}();
 
     ASSERT_EQ(3, ops.size());
 }

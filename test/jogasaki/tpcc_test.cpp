@@ -59,7 +59,8 @@ public:
     }
 
     void execute_query(std::string_view query) {
-        auto rs = db_.query(query);
+        std::unique_ptr<api::result_set> rs{};
+        ASSERT_TRUE(db_.execute(query, rs));
         auto it = rs->begin();
         while(it != rs->end()) {
             auto record = it.ref();
@@ -71,7 +72,7 @@ public:
         rs->close();
     }
     void execute_statement(std::string_view query) {
-        (void)db_.query(query);
+        ASSERT_TRUE(db_.execute(query));
     }
 
     static jogasaki::api::database db_;
@@ -80,16 +81,7 @@ public:
 jogasaki::api::database tpcc_test::db_{};
 
 TEST_F(tpcc_test, warehouse) {
-    auto rs = db_.query("SELECT * FROM WAREHOUSE");
-    auto it = rs->begin();
-    while(it != rs->end()) {
-        auto record = it.ref();
-        std::stringstream ss{};
-        ss << record << *rs->meta();
-        LOG(INFO) << ss.str();
-        ++it;
-    }
-    rs->close();
+    execute_query("SELECT * FROM WAREHOUSE");
 }
 
 void resolve(std::string& query, std::string_view place_holder, std::string value) {

@@ -40,9 +40,10 @@ TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
     api::database db{};
     db.start();
-    db.query("INSERT INTO T0 (C0, C1) VALUES(1, 10.0)");
-    db.query("INSERT INTO T0 (C0, C1) VALUES(2, 20.0)");
-    auto rs = db.query(sql);
+    ASSERT_TRUE(db.execute("INSERT INTO T0 (C0, C1) VALUES(1, 10.0)"));
+    ASSERT_TRUE(db.execute("INSERT INTO T0 (C0, C1) VALUES(2, 20.0)"));
+    std::unique_ptr<api::result_set> rs{};
+    ASSERT_TRUE(db.execute(sql, rs));
     auto it = rs->begin();
     EXPECT_EQ(2, std::distance(it, rs->end()));
     while(it != rs->end()) {

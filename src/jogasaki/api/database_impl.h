@@ -53,7 +53,7 @@ public:
         executor::add_builtin_tables(*tables_);
         executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
     }
-    std::unique_ptr<result_set> execute(std::string_view sql);
+    bool execute(std::string_view sql, std::unique_ptr<result_set>& result);
     bool start();
     bool stop();
 
@@ -72,6 +72,7 @@ public:
     [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const& aggregate_functions() const noexcept {
         return aggregate_functions_;
     }
+
 private:
     std::shared_ptr<configuration> cfg_{};
     scheduler::statement_scheduler scheduler_{};

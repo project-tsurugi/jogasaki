@@ -38,7 +38,7 @@ using configurable_provider = ::yugawara::storage::configurable_provider;
 using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
-std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
+bool database::impl::execute(std::string_view sql, std::unique_ptr<result_set>& result) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
@@ -46,13 +46,13 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     ctx->aggregate_provider(aggregate_functions_);
     if(! plan::compile(sql, *ctx, {})) {
         LOG(ERROR) << "compilation failed.";
-        return {};
+        return false;
     }
     if (! kvs_db_) {
         LOG(ERROR) << "database not started";
-        fail();
+        return false;
     }
-    auto result = std::make_unique<data::result_store>();
+    auto store = std::make_unique<data::result_store>();
     // TODO redesign how request context is passed
     auto e = ctx->executable_statement();
     auto request_ctx = std::make_shared<request_context>(
@@ -61,7 +61,7 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         std::move(resource),
         kvs_db_,
         kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
-        result.get()
+        store.get()
     );
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
@@ -69,13 +69,14 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
         g.context(*request_ctx);
         scheduler_.schedule(*stmt, *request_ctx);
         // for now, assume only one result is returned
-        return std::make_unique<result_set>(std::make_unique<result_set::impl>(
-            std::move(result)
+        result = std::make_unique<result_set>(std::make_unique<result_set::impl>(
+            std::move(store)
         ));
+        return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
     scheduler_.schedule(*stmt, *request_ctx);
-    return {};
+    return true;
 }
 
 bool database::impl::start() {
@@ -108,8 +109,13 @@ bool database::impl::stop() {
 database::database() : impl_(std::make_unique<database::impl>()) {}
 database::~database() = default;
 
-std::unique_ptr<result_set> database::query(std::string_view sql) {
-    return impl_->execute(sql);
+bool database::execute(std::string_view sql, std::unique_ptr<result_set>& result) {
+    return impl_->execute(sql, result);
+}
+
+bool database::execute(std::string_view sql) {
+    std::unique_ptr<result_set> result{};
+    return execute(sql, result);
 }
 
 bool database::start() {

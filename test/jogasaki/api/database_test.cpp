@@ -21,6 +21,7 @@
 
 #include <jogasaki/test_utils.h>
 #include <jogasaki/api/result_set_impl.h>
+#include <jogasaki/accessor/record_printer.h>
 
 namespace jogasaki::testing {
 
@@ -39,11 +40,15 @@ TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
     api::database db{};
     db.start();
+    db.query("INSERT INTO T0 (C0, C1) VALUES(1, 10.0)");
+    db.query("INSERT INTO T0 (C0, C1) VALUES(2, 20.0)");
     auto rs = db.query(sql);
     auto it = rs->begin();
-    EXPECT_EQ(0, std::distance(it, rs->end()));
+    EXPECT_EQ(2, std::distance(it, rs->end()));
     while(it != rs->end()) {
-        (void)it.ref();
+        std::stringstream ss{};
+        ss << it.ref() << *rs->meta();
+        LOG(INFO) << ss.str();
         ++it;
     }
 }

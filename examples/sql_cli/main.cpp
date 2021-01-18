@@ -64,6 +64,10 @@ static int run(std::string_view sql) {
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
 
     auto rs = db.query(sql);
+    if (! rs) {
+        db.stop();
+        return 0;
+    }
     auto it = rs->begin();
     while(it != rs->end()) {
         auto record = it.ref();

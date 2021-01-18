@@ -58,6 +58,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/process/step.h>
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
@@ -254,10 +255,28 @@ void create_mirror_for_write(
     unique_object_ptr<statement::statement> statement,
     yugawara::compiled_info info
 ) {
-    (void)ctx;
-    (void)statement;
-    (void)info;
-    fail(); //TODO
+    auto& node = unsafe_downcast<statement::write>(*statement);
+    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
+    auto write = std::make_shared<executor::common::write>(
+        executor::process::impl::ops::write_kind_from(node.operator_kind()),
+        index.simple_name(),
+        index,
+        node.columns(),
+        node.tuples(),
+        *ctx.resource(),
+        info
+    );
+    BOOST_ASSERT( //NOLINT
+        node.operator_kind() == relation::write_kind::insert ||
+            node.operator_kind() == relation::write_kind::insert_or_update
+    );
+    ctx.executable_statement(
+        std::make_shared<executable_statement>(
+            std::move(statement),
+            std::move(info),
+            std::move(write)
+        )
+    );
 }
 
 void create_mirror_for_execute(
@@ -431,14 +450,21 @@ bool prepare(std::string_view sql, compiler_context &ctx) {
     return false;
 }
 
-bool compile(compiler_context &ctx, parameter_set const& parameters) {
+bool compile(
+    compiler_context &ctx,
+    parameter_set const& parameters
+) {
     if(auto success = impl::create_executable_statement(ctx, parameters); !success) {
         return false;
     }
     return true;
 }
 
-bool compile(std::string_view sql, compiler_context &ctx, parameter_set const& parameters) {
+bool compile(
+    std::string_view sql,
+    compiler_context &ctx,
+    parameter_set const& parameters
+) {
     if(auto b = prepare(sql, ctx); !b) {
         return false;
     }

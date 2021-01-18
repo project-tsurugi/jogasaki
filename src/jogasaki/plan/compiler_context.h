@@ -30,6 +30,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/plan/prepared_statement.h>
 #include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::plan {
 
@@ -89,6 +90,13 @@ public:
         return aggregate_provider_;
     }
 
+    void resource(std::shared_ptr<memory::lifo_paged_memory_resource> resource) noexcept {
+        resource_ = std::move(resource);
+    }
+
+    [[nodiscard]] memory::lifo_paged_memory_resource* resource() const noexcept {
+        return resource_.get();
+    }
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
@@ -96,6 +104,7 @@ private:
     std::shared_ptr<::yugawara::variable::configurable_provider> variable_provider_{};
     std::shared_ptr<::yugawara::function::configurable_provider> function_provider_{};
     std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider_{};
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
 };
 
 }

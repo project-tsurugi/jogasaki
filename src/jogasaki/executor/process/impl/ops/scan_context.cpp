@@ -23,9 +23,15 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-scan_context::scan_context(class abstract::task_context* ctx, block_scope& variables,
-    std::unique_ptr<kvs::storage> stg, kvs::transaction* tx, const impl::scan_info* scan_info,
-    context_base::memory_resource* resource, context_base::memory_resource* varlen_resource) :
+scan_context::scan_context(
+    class abstract::task_context* ctx,
+    block_scope& variables,
+    std::unique_ptr<kvs::storage> stg,
+    kvs::transaction* tx,
+    impl::scan_info const* scan_info,
+    context_base::memory_resource* resource,
+    context_base::memory_resource* varlen_resource
+) :
     context_base(ctx, variables, resource, varlen_resource),
     stg_(std::move(stg)),
     tx_(tx),

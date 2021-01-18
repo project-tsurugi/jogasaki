@@ -76,6 +76,10 @@ public:
         return operators_.get();
     }
 
+    [[nodiscard]] bool is_execute() const noexcept {
+        return statement_ && statement_->kind() == takatori::statement::statement_kind::execute;
+    }
+
 private:
     takatori::util::unique_object_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};

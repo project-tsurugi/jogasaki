@@ -70,7 +70,10 @@ public:
     /**
      * @brief schedule the statement to run
      */
-    void schedule(model::statement &s);
+    void schedule(
+        model::statement& s,
+        request_context& context
+    );
 
 private:
     class impl;

@@ -21,6 +21,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/write.h>
 
 namespace jogasaki::scheduler {
 
@@ -34,7 +35,10 @@ public:
         cfg_(std::move(cfg))
     {}
 
-    void schedule(model::statement &s) {
+    void schedule(
+        model::statement& s,
+        request_context& context
+    ) {
         using kind = model::statement_kind;
         switch(s.kind()) {
             case kind::execute: {
@@ -42,8 +46,11 @@ public:
                 dag_controller_.schedule(g);
                 break;
             }
-            case kind::write:
-                fail();
+            case kind::write: {
+                auto& w = unsafe_downcast<executor::common::write>(s);
+                w(context);
+                break;
+            }
         }
     }
 private:
@@ -55,8 +62,11 @@ statement_scheduler::statement_scheduler() : statement_scheduler(std::make_share
 statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg) : impl_(std::make_unique<impl>(std::move(cfg))) {};
 statement_scheduler::~statement_scheduler() = default;
 
-void statement_scheduler::schedule(model::statement& s) {
-    return impl_->schedule(s);
+void statement_scheduler::schedule(
+    model::statement& s,
+    request_context& context
+) {
+    return impl_->schedule(s, context);
 }
 
 } // namespace

@@ -39,7 +39,9 @@ using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
 std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
+    auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
+    ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     if(! plan::compile(sql, *ctx, {})) {
@@ -56,20 +58,24 @@ std::unique_ptr<result_set> database::impl::execute(std::string_view sql) {
     auto request_ctx = std::make_shared<request_context>(
         std::make_shared<class channel>(),
         cfg_,
-        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        std::move(resource),
         kvs_db_,
         kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
         result.get()
     );
-    auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
-    auto& g = stmt->operators();
-    g.context(*request_ctx);
-    scheduler_.schedule(*stmt);
-
-    // for now, assume only one result is returned
-    return std::make_unique<result_set>(std::make_unique<result_set::impl>(
-        std::move(result)
-    ));
+    if (e->is_execute()) {
+        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
+        auto& g = stmt->operators();
+        g.context(*request_ctx);
+        scheduler_.schedule(*stmt, *request_ctx);
+        // for now, assume only one result is returned
+        return std::make_unique<result_set>(std::make_unique<result_set::impl>(
+            std::move(result)
+        ));
+    }
+    auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
+    scheduler_.schedule(*stmt, *request_ctx);
+    return {};
 }
 
 bool database::impl::start() {

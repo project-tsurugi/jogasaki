@@ -47,7 +47,7 @@ public:
      */
     request_context(std::shared_ptr<class channel> ch,
         std::shared_ptr<class configuration> config,
-        std::unique_ptr<memory::lifo_paged_memory_resource> request_resource = {},
+        std::shared_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<kvs::transaction> transaction = {},
         data::result_store* result = {}
@@ -94,7 +94,7 @@ public:
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
-    std::unique_ptr<memory::lifo_paged_memory_resource> request_resource_{};
+    std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};

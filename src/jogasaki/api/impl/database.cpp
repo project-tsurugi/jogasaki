@@ -13,32 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "database_impl.h"
+#include "database.h"
+
+#include <jogasaki/api/impl/result_set.h>
 
 #include <string_view>
-#include <glog/logging.h>
+#include <memory>
 
-#include <takatori/util/fail.h>
-#include <takatori/util/downcast.h>
+namespace jogasaki::api::impl {
 
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/result_set_impl.h>
-#include <jogasaki/request_context.h>
-#include <jogasaki/channel.h>
-#include <jogasaki/plan/compiler_context.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/executor/common/execute.h>
-#include <jogasaki/executor/common/write.h>
-
-namespace jogasaki::api {
-
-using configurable_provider = ::yugawara::storage::configurable_provider;
-using takatori::util::fail;
-using takatori::util::unsafe_downcast;
-
-bool database::impl::execute(std::string_view sql, std::unique_ptr<result_set>& result) {
+bool database::execute(std::string_view sql, std::unique_ptr<api::result_set>& result) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
@@ -69,9 +53,9 @@ bool database::impl::execute(std::string_view sql, std::unique_ptr<result_set>& 
         g.context(*request_ctx);
         scheduler_.schedule(*stmt, *request_ctx);
         // for now, assume only one result is returned
-        result = std::make_unique<result_set>(std::make_unique<result_set::impl>(
+        result = std::make_unique<impl::result_set>(
             std::move(store)
-        ));
+        );
         return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
@@ -79,7 +63,28 @@ bool database::impl::execute(std::string_view sql, std::unique_ptr<result_set>& 
     return true;
 }
 
-bool database::impl::start() {
+bool database::execute(std::string_view sql) {
+    std::unique_ptr<api::result_set> result{};
+    return execute(sql, result);
+}
+
+database* database::get_impl(api::database& arg) noexcept {
+    return unsafe_downcast<database>(std::addressof(arg));
+}
+
+std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
+    return kvs_db_;
+}
+
+std::shared_ptr<yugawara::storage::configurable_provider> const& database::tables() const noexcept {
+    return tables_;
+}
+
+std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::aggregate_functions() const noexcept {
+    return aggregate_functions_;
+}
+
+bool database::start() {
     if (! kvs_db_) {
         kvs_db_ = kvs::database::open();
     }
@@ -97,7 +102,7 @@ bool database::impl::start() {
     return success;
 }
 
-bool database::impl::stop() {
+bool database::stop() {
     if (kvs_db_) {
         if(!kvs_db_->close()) {
             return false;
@@ -106,24 +111,13 @@ bool database::impl::stop() {
     }
     return true;
 }
-database::database() : impl_(std::make_unique<database::impl>()) {}
-database::~database() = default;
 
-bool database::execute(std::string_view sql, std::unique_ptr<result_set>& result) {
-    return impl_->execute(sql, result);
-}
-
-bool database::execute(std::string_view sql) {
-    std::unique_ptr<result_set> result{};
-    return execute(sql, result);
-}
-
-bool database::start() {
-    return impl_->start();
-}
-
-bool database::stop() {
-    return impl_->stop();
+database::database(std::shared_ptr<configuration> cfg) :
+    cfg_(std::move(cfg)),
+    scheduler_(cfg_)
+{
+    executor::add_builtin_tables(*tables_);
+    executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
 }
 
 }

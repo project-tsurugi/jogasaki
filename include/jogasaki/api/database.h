@@ -24,29 +24,29 @@
 namespace jogasaki::api {
 
 class result_set;
+
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
- * @attention under development
  */
 class database {
 public:
     database();
-    ~database();
+    virtual ~database();
     database(database const& other) = delete;
     database& operator=(database const& other) = delete;
     database(database&& other) noexcept = delete;
     database& operator=(database&& other) noexcept = delete;
 
-    bool start();
-    bool stop();
-    bool execute(std::string_view sql);
-    bool execute(std::string_view sql, std::unique_ptr<result_set>& result);
-
-    class impl;
-private:
-    std::unique_ptr<impl> impl_;
-
-    friend impl;
+    virtual bool start() = 0;
+    virtual bool stop() = 0;
+    virtual bool execute(std::string_view sql) = 0;
+    virtual bool execute(std::string_view sql, std::unique_ptr<result_set>& result) = 0;
 };
+
+/**
+ * @brief factory method for database
+ * @return Database for the current implementation
+ */
+std::unique_ptr<database> create_database();
 
 }

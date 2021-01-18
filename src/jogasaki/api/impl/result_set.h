@@ -131,19 +131,31 @@ private:
     }
 };
 
-class result_set::impl {
+} // namespace jogasaki::api
+
+namespace jogasaki::api::impl {
+
+class result_set : public api::result_set {
 public:
-    explicit impl(
+    explicit result_set(
         std::unique_ptr<data::result_store> store
     ) noexcept :
         store_(std::move(store))
     {}
 
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept override {
+        return store_->meta();
+    };
 
-    [[nodiscard]] iterator begin();
-    [[nodiscard]] iterator end();
-    void close();
+    [[nodiscard]] iterator begin() override {
+        return {store_->store(0).begin(), *store_, 0};
+    };
+    [[nodiscard]] iterator end() override {
+        return {store_->store(store_->size()-1).end(), *store_, store_->size()-1};
+    };
+    void close() override {
+        store_.reset();
+    }
 
 private:
     std::unique_ptr<data::result_store> store_{};

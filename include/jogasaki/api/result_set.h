@@ -34,23 +34,20 @@ using takatori::util::maybe_shared_ptr;
  */
 class result_set {
 public:
-    class impl;
     class iterator;
 
-    explicit result_set(std::unique_ptr<impl> i);
-    ~result_set();
+    result_set() = default;
+    virtual ~result_set();
     result_set(result_set const& other) = delete;
     result_set& operator=(result_set const& other) = delete;
     result_set(result_set&& other) noexcept = delete;
     result_set& operator=(result_set&& other) noexcept = delete;
 
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept;
+    [[nodiscard]] virtual maybe_shared_ptr<meta::record_meta> meta() const noexcept = 0;
 
-    [[nodiscard]] iterator begin();
-    [[nodiscard]] iterator end();
-    void close();
-private:
-    std::unique_ptr<impl> impl_;
+    [[nodiscard]] virtual iterator begin() = 0;
+    [[nodiscard]] virtual iterator end() = 0;
+    virtual void close() = 0;
 };
 
 }

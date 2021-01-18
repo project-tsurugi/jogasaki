@@ -43,6 +43,7 @@ public:
         db_.start();
         auto db_impl = api::database::impl::get_impl(db_);
         add_benchmark_tables(*db_impl->tables());
+        register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
@@ -53,6 +54,7 @@ public:
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
+ 
     }
     static void TearDownTestSuite() {
         db_.stop();
@@ -61,6 +63,7 @@ public:
     void execute_query(std::string_view query) {
         std::unique_ptr<api::result_set> rs{};
         ASSERT_TRUE(db_.execute(query, rs));
+        ASSERT_TRUE(rs);
         auto it = rs->begin();
         while(it != rs->end()) {
             auto record = it.ref();
@@ -81,6 +84,7 @@ public:
 jogasaki::api::database tpcc_test::db_{};
 
 TEST_F(tpcc_test, warehouse) {
+    execute_statement( "INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)");
     execute_query("SELECT * FROM WAREHOUSE");
 }
 

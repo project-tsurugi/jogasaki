@@ -16,10 +16,27 @@
 #pragma once
 
 #include <yugawara/storage/configurable_provider.h>
+#include <jogasaki/kvs/database.h>
 
 namespace jogasaki::executor {
 
+/**
+ * @brief add built-in table definitions to the provider
+ * @param provider object to register the built-in tables
+ */
 void add_builtin_tables(yugawara::storage::configurable_provider& provider);
 
+/**
+ * @brief add benchmark table definitions to the provider
+ * @param provider object to register the benchmark tables
+ */
 void add_benchmark_tables(yugawara::storage::configurable_provider& provider);
+
+/**
+ * @brief create kvs storage based on the index definitions in the provider
+ * @param db the database where the kvs storage will be created
+ * @param provider object to provide index definition
+ */
+void register_kvs_storage(kvs::database& db, yugawara::storage::configurable_provider& provider);
+
 }

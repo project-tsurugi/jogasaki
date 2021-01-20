@@ -35,7 +35,6 @@ namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
 
-class result_set;
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
  */

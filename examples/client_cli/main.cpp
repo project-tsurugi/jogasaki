@@ -27,32 +27,42 @@ namespace jogasaki::client_cli {
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
-static int run(std::string_view sql) {
-    if (sql.empty()) return 0;
+static int run() {
     auto env = jogasaki::api::create_environment();
     env->initialize();
-    auto db = jogasaki::api::create_database();
+    auto cfg = std::make_shared<configuration>();
+    cfg->prepare_benchmark_tables(true);
+    auto db = jogasaki::api::create_database(cfg);
     db->start();
 
-//    auto db_impl = api::database::impl::get_impl(db);
-//    executor::add_benchmark_tables(*db_impl->tables());
-//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
-//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
-//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
-
-//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
-//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
-
     std::unique_ptr<api::result_set> rs{};
+    std::string insert_warehouse{"INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)"};
+    std::string insert_customer{ "INSERT INTO CUSTOMER (c_id, c_d_id, c_w_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_data, c_ytd_payment, c_payment_cnt, c_delivery_cnt)  VALUES (1, 1, 1, 'pmdeqxrbgs', 'OE', 'BARBARBAR', 'zlaoknusaxfhasce', 'sagjvpdsyzbhsvnhwzxe', 'adftkgtros', 'qd', '827402212', '8700969702524002', '1973-12-12', 'BC', 50000.00, 0.05, -9.99, 'posxrsroejldsyoyirjofkqsycnbjoalxfkgipoogepnuwmagaxcopincpbfhwercrohqxygjjxhamineoraxkzrirkafmmjkcbkafvnqfzonsdcccijdzqlbywgcgbovpmmjcapfmfqbjnfejaqmhqqtxjayvowuujxqmzvisjghpjpynbamdhvvjncvgzstpvqeeakdpwkjmircrfysmwbbbkzbzefldktqfeubcbcjgdjsjtkcomuhqdazqmgpukiyawmqgyzkciwrxfswnegkrofklawoxypehzzztouvokzhshawbbdkasynuixskxmauxuapnkemytcrchqhvjqhntkvkmgezotza', 10.00, 1, 0)"};
+    std::string select{
+        "SELECT w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
+        "WHERE w_id = 1 "
+        "AND c_w_id = w_id AND "
+        "c_d_id = 1 AND "
+        "c_id = 1 "
+    };
+    std::string sql {"select * from CUSTOMER c JOIN WAREHOUSE w ON c.c_w_id = w.w_id"};
+    if(auto res = db->execute(insert_warehouse); !res) {
+        db->stop();
+        return 1;
+    }
+    if(auto res = db->execute(insert_customer); !res) {
+        db->stop();
+        return 1;
+    }
     if(auto res = db->execute(sql, rs); !res || !rs) {
         db->stop();
-        return 0;
+        return 1;
     }
     auto it = rs->iterator();
     while(it->has_next()) {
         auto* record = it->next();
         std::stringstream ss{};
-        ss << record;
+        ss << *record;
         LOG(INFO) << ss.str();
     }
     rs->close();
@@ -63,21 +73,10 @@ static int run(std::string_view sql) {
 }  // namespace
 
 extern "C" int main(int argc, char* argv[]) {
-    // ignore log level
-    if (FLAGS_log_dir.empty()) {
-        FLAGS_logtostderr = true;
-    }
-    google::InitGoogleLogging("client cli");
-    google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("client cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-//    if (argc != 2) {
-//        gflags::ShowUsageWithFlags(argv[0]); // NOLINT
-//        return -1;
-//    }
-    std::string_view source { argv[1] }; // NOLINT
     try {
-        jogasaki::client_cli::run(source);  // NOLINT
+        jogasaki::client_cli::run();  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

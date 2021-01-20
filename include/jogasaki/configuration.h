@@ -114,8 +114,16 @@ public:
     void force_numa_node(std::size_t arg) noexcept {
         force_numa_node_ = arg;
     }
+
+    [[nodiscard]] bool prepare_benchmark_tables() const noexcept {
+        return prepare_benchmark_tables_;
+    }
+
+    void prepare_benchmark_tables(bool arg) noexcept {
+        prepare_benchmark_tables_ = arg;
+    }
 private:
-    bool single_thread_task_scheduler_ = true;
+    bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;
     std::size_t default_process_partitions_ = 5;
     std::size_t default_scan_process_partitions_ = 5;
@@ -126,6 +134,7 @@ private:
     bool assign_numa_nodes_uniformly_ = false;
     std::size_t randomize_memory_usage_ = 0;
     std::size_t force_numa_node_ = numa_node_unspecified;
+    bool prepare_benchmark_tables_ = false;
 };
 
 }

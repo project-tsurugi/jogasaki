@@ -112,8 +112,10 @@ bool database::stop() {
         kvs_db_ = nullptr;
     }
 
+    // destorying providers in destructor cause pure virtual function call, so reset here // FIXME
     aggregate_functions_.reset();
     tables_.reset();
+
     return true;
 }
 
@@ -123,6 +125,9 @@ database::database(std::shared_ptr<configuration> cfg) :
 {
     executor::add_builtin_tables(*tables_);
     executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
+    if(cfg_->prepare_benchmark_tables()) {
+        executor::add_benchmark_tables(*tables_);
+    }
 }
 
 }

@@ -20,6 +20,7 @@
 #include <boost/filesystem.hpp>
 
 #include <takatori/util/fail.h>
+#include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/executor/process/impl/expression/any.h>
 

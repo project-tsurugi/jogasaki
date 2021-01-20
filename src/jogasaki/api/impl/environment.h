@@ -15,29 +15,25 @@
  */
 #pragma once
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/data/result_store.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <sharksfin/Environment.h>
+
+#include <jogasaki/api/environment.h>
 
 namespace jogasaki::api::impl {
 
-class result_set : public api::result_set {
+/**
+ * @brief environment initializer
+ */
+class environment : public api::environment {
 public:
-    explicit result_set(
-        std::unique_ptr<data::result_store> store
-    ) noexcept;
+    environment() = default;
 
-    [[nodiscard]] api::record_meta const* meta() const noexcept override;
-
-    [[nodiscard]] std::unique_ptr<result_set_iterator> iterator() override;
-
-    void close() override;
-
+    void initialize() override {
+        environment_.initialize();
+    };
 private:
-    std::unique_ptr<data::result_store> store_{};
-    impl::record_meta meta_{};
+    sharksfin::Environment environment_{};
 };
 
 }
+

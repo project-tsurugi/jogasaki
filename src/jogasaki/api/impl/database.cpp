@@ -52,10 +52,12 @@ bool database::execute(std::string_view sql, std::unique_ptr<api::result_set>& r
         auto& g = stmt->operators();
         g.context(*request_ctx);
         scheduler_.schedule(*stmt, *request_ctx);
-        // for now, assume only one result is returned
-        result = std::make_unique<impl::result_set>(
-            std::move(store)
-        );
+        if (store->size() > 0) {
+            // for now, assume only one result is returned
+            result = std::make_unique<impl::result_set>(
+                std::move(store)
+            );
+        }
         return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
@@ -109,6 +111,9 @@ bool database::stop() {
         }
         kvs_db_ = nullptr;
     }
+
+    aggregate_functions_.reset();
+    tables_.reset();
     return true;
 }
 
@@ -118,6 +123,14 @@ database::database(std::shared_ptr<configuration> cfg) :
 {
     executor::add_builtin_tables(*tables_);
     executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
+}
+
+}
+
+namespace jogasaki::api {
+
+std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg) {
+    return std::make_unique<impl::database>(std::move(cfg));
 }
 
 }

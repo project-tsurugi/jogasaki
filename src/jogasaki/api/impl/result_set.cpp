@@ -17,9 +17,30 @@
 
 #include <jogasaki/executor/global.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/api/impl/result_set_iterator.h>
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::api::impl {
 
+result_set::result_set(std::unique_ptr<data::result_store> store) noexcept:
+    store_(std::move(store)),
+    meta_(store_->meta())
+{}
+
+api::record_meta const* result_set::meta() const noexcept {
+    return std::addressof(meta_);
+}
+
+std::unique_ptr<api::result_set_iterator> result_set::iterator() {
+    return std::make_unique<impl::result_set_iterator>(
+        store_->store(0).begin(),
+        store_->store(0).end(),
+        store_->meta());
+}
+
+void result_set::close() {
+    store_.reset();
+}
 }

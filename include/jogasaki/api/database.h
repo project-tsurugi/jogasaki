@@ -18,6 +18,8 @@
 #include <string_view>
 #include <memory>
 
+#include <jogasaki/configuration.h>
+
 /**
  * @brief SQL engine public API
  */
@@ -30,8 +32,8 @@ class result_set;
  */
 class database {
 public:
-    database();
-    virtual ~database();
+    database() = default;
+    virtual ~database() = default;
     database(database const& other) = delete;
     database& operator=(database const& other) = delete;
     database(database&& other) noexcept = delete;
@@ -47,6 +49,6 @@ public:
  * @brief factory method for database
  * @return Database for the current implementation
  */
-std::unique_ptr<database> create_database();
+std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
 
 }

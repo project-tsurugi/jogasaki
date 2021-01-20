@@ -20,7 +20,6 @@
 #include <glog/logging.h>
 
 #include <jogasaki/test_utils.h>
-#include <jogasaki/api/result_set_impl.h>
 #include <jogasaki/accessor/record_printer.h>
 
 namespace jogasaki::testing {
@@ -30,7 +29,6 @@ using namespace std::string_view_literals;
 
 /**
  * @brief test database api
- * FIXME this is temporary
  */
 class database_test : public ::testing::Test {
 
@@ -38,20 +36,22 @@ class database_test : public ::testing::Test {
 
 TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
-    api::database db{};
-    db.start();
-    ASSERT_TRUE(db.execute("INSERT INTO T0 (C0, C1) VALUES(1, 10.0)"));
-    ASSERT_TRUE(db.execute("INSERT INTO T0 (C0, C1) VALUES(2, 20.0)"));
+    auto db = api::create_database();
+    db->start();
+    ASSERT_TRUE(db->execute("INSERT INTO T0 (C0, C1) VALUES(1, 10.0)"));
+    ASSERT_TRUE(db->execute("INSERT INTO T0 (C0, C1) VALUES(2, 20.0)"));
     std::unique_ptr<api::result_set> rs{};
-    ASSERT_TRUE(db.execute(sql, rs));
-    auto it = rs->begin();
-    EXPECT_EQ(2, std::distance(it, rs->end()));
-    while(it != rs->end()) {
+    ASSERT_TRUE(db->execute(sql, rs));
+    auto it = rs->iterator();
+    std::size_t count = 0;
+    while(it->has_next()) {
         std::stringstream ss{};
-        ss << it.ref() << *rs->meta();
+        auto* record = it->next();
+        ss << *record;
         LOG(INFO) << ss.str();
-        ++it;
+        ++count;
     }
+    EXPECT_EQ(2, count);
 }
 
 }

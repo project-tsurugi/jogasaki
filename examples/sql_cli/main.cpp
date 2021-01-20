@@ -25,7 +25,6 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/database.h>
-#include <jogasaki/api/database_impl.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/executor/tables.h>
@@ -51,33 +50,32 @@ constexpr kvs::order undef = kvs::order::undefined;
 
 static int run(std::string_view sql) {
     if (sql.empty()) return 0;
-    jogasaki::api::database db{};
-    db.start();
+    auto db = api::create_database();
+    db->start();
 
-    auto db_impl = api::database::impl::get_impl(db);
-    executor::add_benchmark_tables(*db_impl->tables());
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
+//    auto db_impl = api::database::impl::get_impl(db);
+//    executor::add_benchmark_tables(*db_impl->tables());
+//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
+//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
+//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
 
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
+//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
+//    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
 
     std::unique_ptr<api::result_set> rs{};
-    if(auto res = db.execute(sql, rs); !res || !rs) {
-        db.stop();
+    if(auto res = db->execute(sql, rs); !res || !rs) {
+        db->stop();
         return 0;
     }
-    auto it = rs->begin();
-    while(it != rs->end()) {
-        auto record = it.ref();
+    auto it = rs->iterator();
+    while(it->has_next()) {
+        auto* record = it->next();
         std::stringstream ss{};
-        ss << record << *rs->meta();
+        ss << *record;
         LOG(INFO) << ss.str();
-        ++it;
     }
     rs->close();
-    db.stop();
+    db->stop();
     return 0;
 }
 

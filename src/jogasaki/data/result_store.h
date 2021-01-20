@@ -30,6 +30,7 @@ public:
     using store_type = data::iterable_record_store;
     using stores_type = std::vector<std::unique_ptr<store_type>>;
     using resources_type = std::vector<std::unique_ptr<memory::paged_memory_resource>>;
+    using iterator = store_type::iterator;
     /**
      * @brief create default object
      */

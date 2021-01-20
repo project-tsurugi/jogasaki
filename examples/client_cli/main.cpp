@@ -17,27 +17,20 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <takatori/util/fail.h>
-
-#include <jogasaki/executor/process/impl/expression/any.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/environment.h>
 #include <jogasaki/api/result_set.h>
 
 namespace jogasaki::client_cli {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-using kind = meta::field_type_kind;
-using takatori::util::fail;
-using namespace jogasaki::executor::process;
-using namespace jogasaki::executor::process::impl;
-using namespace jogasaki::executor::process::impl::expression;
-using takatori::util::enum_tag_t;
-using takatori::util::enum_tag;
 
 static int run(std::string_view sql) {
     if (sql.empty()) return 0;
+    auto env = jogasaki::api::create_environment();
+    env->initialize();
     auto db = jogasaki::api::create_database();
     db->start();
 
@@ -55,13 +48,12 @@ static int run(std::string_view sql) {
         db->stop();
         return 0;
     }
-    auto it = rs->begin();
-    while(it != rs->end()) {
-        auto record = it.ref();
+    auto it = rs->iterator();
+    while(it->has_next()) {
+        auto* record = it->next();
         std::stringstream ss{};
-        ss << record << *rs->meta();
+        ss << record;
         LOG(INFO) << ss.str();
-        ++it;
     }
     rs->close();
     db->stop();
@@ -79,10 +71,10 @@ extern "C" int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("client cli");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-    if (argc != 2) {
-        gflags::ShowUsageWithFlags(argv[0]); // NOLINT
-        return -1;
-    }
+//    if (argc != 2) {
+//        gflags::ShowUsageWithFlags(argv[0]); // NOLINT
+//        return -1;
+//    }
     std::string_view source { argv[1] }; // NOLINT
     try {
         jogasaki::client_cli::run(source);  // NOLINT

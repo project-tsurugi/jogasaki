@@ -26,7 +26,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/api/database.h>
-#include <jogasaki/api/database_impl.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/result_set.h>
 
 namespace jogasaki::testing {
@@ -40,48 +40,48 @@ using namespace jogasaki::scheduler;
 class tpcc_test : public ::testing::Test {
 public:
     static void SetUpTestSuite() {
-        db_.start();
-        auto db_impl = api::database::impl::get_impl(db_);
+        db_ = api::create_database();
+        db_->start();
+        auto* db_impl = api::impl::database::get_impl(*db_);
         add_benchmark_tables(*db_impl->tables());
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
+//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
  
     }
     static void TearDownTestSuite() {
-        db_.stop();
+        db_->stop();
     }
 
     void execute_query(std::string_view query) {
         std::unique_ptr<api::result_set> rs{};
-        ASSERT_TRUE(db_.execute(query, rs));
+        ASSERT_TRUE(db_->execute(query, rs));
         ASSERT_TRUE(rs);
-        auto it = rs->begin();
-        while(it != rs->end()) {
-            auto record = it.ref();
+        auto it = rs->iterator();
+        while(it->has_next()) {
+            auto* record = it->next();
             std::stringstream ss{};
-            ss << record << *rs->meta();
+            ss << *record;
             LOG(INFO) << ss.str();
-            ++it;
         }
         rs->close();
     }
     void execute_statement(std::string_view query) {
-        ASSERT_TRUE(db_.execute(query));
+        ASSERT_TRUE(db_->execute(query));
     }
 
-    static jogasaki::api::database db_;
+    static std::unique_ptr<jogasaki::api::database> db_;
 };
 
-jogasaki::api::database tpcc_test::db_{};
+std::unique_ptr<jogasaki::api::database> tpcc_test::db_{};
 
 TEST_F(tpcc_test, warehouse) {
     execute_statement( "INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)");

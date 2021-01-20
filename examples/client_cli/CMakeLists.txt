@@ -16,7 +16,8 @@ target_include_directories(client-cli
 )
 
 target_link_libraries(client-cli
-        PRIVATE jogasaki-impl #FIXME
+        PRIVATE jogasaki
+        PRIVATE takatori
         PRIVATE glog::glog
         PRIVATE gflags::gflags
 )

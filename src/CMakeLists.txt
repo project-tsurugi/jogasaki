@@ -44,7 +44,7 @@ target_include_directories(jogasaki
 
 target_link_libraries(jogasaki
         PUBLIC api
-        PRIVATE takatori
+        PUBLIC takatori
         PRIVATE yugawara
         PRIVATE mizugaki
         PRIVATE shakujo-model

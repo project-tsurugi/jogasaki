@@ -23,6 +23,7 @@
 #include <jogasaki/meta/record_meta.h>
 
 #include <jogasaki/mock/mock_task.h>
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor {
 
@@ -39,17 +40,14 @@ public:
     void execute() override {
         LOG(INFO) << *this << " simple_scan_process_main_task executed. count: " << count_;
 
-        auto rec_meta = std::make_shared<meta::record_meta>(std::vector<meta::field_type>{
-                meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-                meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
-        }, boost::dynamic_bitset<std::uint64_t>(std::string("00")));
+        auto rec_meta = test_root::test_record_meta1();
         exchange::group::group_info info{rec_meta, {1}};
         auto key_meta = info.key_meta();
 
         memory::page_pool pool{};
         memory::monotonic_paged_memory_resource resource{&pool};
         auto offset_c1 = rec_meta->value_offset(0);
-        auto offset_c2 = rec_meta->value_offset(0);
+        auto offset_c2 = rec_meta->value_offset(1);
         for(std::size_t i = 0; i < 3; ++i) {
             auto sz = rec_meta->record_size();
             auto ptr = resource.allocate(sz, rec_meta->record_alignment());

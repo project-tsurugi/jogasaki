@@ -40,22 +40,23 @@ using namespace jogasaki::scheduler;
 class tpcc_test : public ::testing::Test {
 public:
     static void SetUpTestSuite() {
-        db_ = api::create_database();
+        auto cfg = std::make_shared<configuration>();
+        cfg->single_thread(true);
+        db_ = api::create_database(cfg);
         db_->start();
         auto* db_impl = api::impl::database::get_impl(*db_);
         add_benchmark_tables(*db_impl->tables());
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
-//        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
- 
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
     }
     static void TearDownTestSuite() {
         db_->stop();

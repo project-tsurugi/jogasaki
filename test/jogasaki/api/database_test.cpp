@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/result_set.h>
+#include <jogasaki/api.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -38,10 +37,27 @@ TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
     auto db = api::create_database();
     db->start();
-    ASSERT_TRUE(db->execute("INSERT INTO T0 (C0, C1) VALUES(1, 10.0)"));
-    ASSERT_TRUE(db->execute("INSERT INTO T0 (C0, C1) VALUES(2, 20.0)"));
+    std::unique_ptr<api::prepared_statement> prepared{};
+    ASSERT_TRUE(db->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
+
+    {
+        auto tx = db->create_transaction();
+        for(std::size_t i=0; i < 2; ++i) {
+            auto ps = api::create_parameter_set();
+            ps->set_int8("p1", 1);
+            ps->set_float8("p2", 10.0);
+            std::unique_ptr<api::executable_statement> exec{};
+            ASSERT_TRUE(db->resolve(*prepared, *ps, exec));
+            ASSERT_TRUE(tx->execute(*exec));
+        }
+        tx->commit();
+    }
+
+    auto tx = db->create_transaction();
+    std::unique_ptr<api::executable_statement> exec{};
+    ASSERT_TRUE(db->create_executable("select * from T0", exec));
     std::unique_ptr<api::result_set> rs{};
-    ASSERT_TRUE(db->execute(sql, rs));
+    ASSERT_TRUE(tx->execute(*exec, rs));
     auto it = rs->iterator();
     std::size_t count = 0;
     while(it->has_next()) {
@@ -52,6 +68,7 @@ TEST_F(database_test, simple) {
         ++count;
     }
     EXPECT_EQ(2, count);
+    tx->commit();
 }
 
 }

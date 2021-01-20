@@ -26,7 +26,6 @@
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 
-
 namespace jogasaki::api {
 
 /**

@@ -19,6 +19,7 @@
 #include <memory>
 
 #include <jogasaki/configuration.h>
+#include "executable_statement.h"
 
 /**
  * @brief SQL engine public API
@@ -26,6 +27,10 @@
 namespace jogasaki::api {
 
 class result_set;
+class transaction;
+class prepared_statement;
+class executable_statement;
+class parameter_set;
 
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
@@ -41,8 +46,21 @@ public:
 
     virtual bool start() = 0;
     virtual bool stop() = 0;
-    virtual bool execute(std::string_view sql) = 0;
-    virtual bool execute(std::string_view sql, std::unique_ptr<result_set>& result) = 0;
+
+    virtual bool prepare(std::string_view sql,
+        std::unique_ptr<prepared_statement>& statement) = 0;
+
+    virtual bool create_executable(std::string_view sql,
+        std::unique_ptr<executable_statement>& statement) = 0;
+
+    virtual bool resolve(
+        prepared_statement const& prepared,
+        parameter_set const& parameters,
+        std::unique_ptr<executable_statement>& statement
+    ) = 0;
+    virtual bool explain(executable_statement const& executable, std::ostream& out) = 0;
+
+    virtual std::unique_ptr<transaction> create_transaction() = 0;
 };
 
 /**

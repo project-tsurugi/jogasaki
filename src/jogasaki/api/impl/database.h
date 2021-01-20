@@ -48,13 +48,42 @@ public:
     database(database&& other) noexcept = delete;
     database& operator=(database&& other) noexcept = delete;
 
-    bool start() override;;
+    [[nodiscard]] bool start() override;;
 
-    bool stop() override;;
+    [[nodiscard]] bool stop() override;;
 
-    bool execute(std::string_view sql, std::unique_ptr<api::result_set>& result) override;;
+    [[nodiscard]] bool prepare(std::string_view sql, std::unique_ptr<prepared_statement>& statement) override {
+        (void)sql;
+        (void)statement;
+        return true;
+    }
 
-    bool execute(std::string_view sql) override;;
+    [[nodiscard]] bool create_executable(std::string_view sql, std::unique_ptr<executable_statement>& statement) override {
+        (void)sql;
+        (void)statement;
+        return true;
+    }
+
+    [[nodiscard]] bool resolve(
+        prepared_statement const& prepared,
+        parameter_set const& parameters,
+        std::unique_ptr<executable_statement>& statement
+    ) override {
+        (void)prepared;
+        (void)parameters;
+        (void)statement;
+        return true;
+    }
+
+    [[nodiscard]] bool explain(executable_statement const& executable, std::ostream& out) override {
+        (void)executable;
+        (void)out;
+        return true;
+    }
+
+    std::unique_ptr<transaction> create_transaction() override {
+        return {};
+    }
 
     [[nodiscard]] static database* get_impl(api::database& arg) noexcept;
 

@@ -22,13 +22,12 @@ namespace jogasaki::api {
  */
 class environment {
 public:
-
     environment() = default;
     virtual ~environment() = default;
     environment(environment const& other) = delete;
-    environment(environment&& other) = default;
+    environment(environment&& other) = delete;
     environment& operator=(environment const& other) = delete;
-    environment& operator=(environment&& other) = default;
+    environment& operator=(environment&& other) = delete;
 
     /**
      * @brief initialize the environment in order to initialize static control area (e.g. one held by glog).

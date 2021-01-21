@@ -19,6 +19,8 @@
 
 namespace jogasaki::plan {
 
+using ::shakujo::model::program::Program;
+
 /**
  * @brief prepared statement
  */
@@ -26,22 +28,17 @@ class prepared_statement {
 public:
     prepared_statement() = default;
     ~prepared_statement() = default;
-    prepared_statement(prepared_statement const& other) = default;
-    prepared_statement& operator=(prepared_statement const& other) = default;
+    prepared_statement(prepared_statement const& other) = delete;
+    prepared_statement& operator=(prepared_statement const& other) = delete;
     prepared_statement(prepared_statement&& other) noexcept = default;
     prepared_statement& operator=(prepared_statement&& other) noexcept = default;
 
-    explicit prepared_statement(
-        std::unique_ptr<::shakujo::model::program::Program> program
-    ) noexcept :
-        program_(std::move(program))
-    {}
+    explicit prepared_statement(std::unique_ptr<::shakujo::model::program::Program> program) noexcept;
 
-    [[nodiscard]] std::unique_ptr<::shakujo::model::program::Program> const& program() const noexcept {
-        return program_;
-    }
+    [[nodiscard]] std::unique_ptr<::shakujo::model::program::Program> const& program() const noexcept;
+
 private:
-    std::unique_ptr<::shakujo::model::program::Program> program_{};
+    std::unique_ptr<Program> program_{};
 };
 
 }

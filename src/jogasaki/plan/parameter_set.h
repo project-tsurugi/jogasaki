@@ -15,17 +15,10 @@
  */
 #pragma once
 
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
-
 #include <mizugaki/placeholder_map.h>
 #include <mizugaki/placeholder_entry.h>
 
-#include <jogasaki/accessor/text.h>
+#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::plan {
 
@@ -34,6 +27,8 @@ namespace jogasaki::plan {
  */
 class parameter_set {
 public:
+    using kind = meta::field_type_kind;
+
     parameter_set() = default;
     ~parameter_set() = default;
     parameter_set(parameter_set const& other) = default;
@@ -41,58 +36,12 @@ public:
     parameter_set& operator=(parameter_set const& other) = default;
     parameter_set& operator=(parameter_set&& other) = default;
 
-//    explicit parameter_set(
-//        std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>> values
-//    ) :
-//        values_(std::move(values))
-//    {}
-
-    void set_null(std::string_view name);
-    void set_int4(std::string_view name, std::int32_t value) {
-        map_.add(std::string(name),
-            {
-                takatori::type::int4(),
-                takatori::value::int4(value),
-            }
-        );
-    }
-    void set_int8(std::string_view name, std::int64_t value) {
-        map_.add(std::string(name),
-            {
-                takatori::type::int8(),
-                takatori::value::int8(value),
-            }
-        );
-    }
-    void set_float8(std::string_view name, double value) {
-        map_.add(std::string(name),
-            {
-                takatori::type::float8(),
-                takatori::value::float8(value),
-            }
-        );
-    }
-    void set_float4(std::string_view name, float value) {
-        map_.add(std::string(name),
-            {
-                takatori::type::float4(),
-                takatori::value::float4(value),
-            }
-        );
-    }
-
-    void set_character(std::string_view name, accessor::text value) {
-        map_.add(std::string(name),
-            {
-                takatori::type::character(takatori::type::varying),
-                takatori::value::character(static_cast<std::string_view>(value)),
-            }
-        );
-
-    }
-    [[nodiscard]] mizugaki::placeholder_map const& map() const noexcept {
-        return map_;
-    }
+    void set_int4(std::string_view name, meta::field_type_traits<kind::int4>::runtime_type value);
+    void set_int8(std::string_view name, meta::field_type_traits<kind::int8>::runtime_type value);
+    void set_float4(std::string_view name, meta::field_type_traits<kind::float4>::runtime_type value);
+    void set_float8(std::string_view name, meta::field_type_traits<kind::float8>::runtime_type value);
+    void set_character(std::string_view name, meta::field_type_traits<kind::character>::runtime_type value);
+    [[nodiscard]] mizugaki::placeholder_map const& map() const noexcept;
 private:
     mizugaki::placeholder_map map_{};
 };

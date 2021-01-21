@@ -37,7 +37,6 @@ public:
     parameter_set(parameter_set&& other) noexcept = delete;
     parameter_set& operator=(parameter_set&& other) noexcept = delete;
 
-    virtual void set_null(std::string_view name) = 0;
     virtual void set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) = 0;
     virtual void set_int8(std::string_view name, field_type_traits<kind::int8>::runtime_type value) = 0;
     virtual void set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) = 0;
@@ -49,8 +48,8 @@ public:
         set_character(name, &value[0]);  // NOLINT
     }
 
-    virtual parameter_set* clone() const& = 0;
-    virtual parameter_set* clone() && = 0;
+    [[nodiscard]] virtual parameter_set* clone() const& = 0;
+    [[nodiscard]] virtual parameter_set* clone() && = 0;
 };
 
 std::unique_ptr<parameter_set> create_parameter_set();

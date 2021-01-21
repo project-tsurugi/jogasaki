@@ -30,10 +30,10 @@ namespace jogasaki::api::impl {
 class prepared_statement : public api::prepared_statement {
 public:
     prepared_statement() = default;
-    explicit prepared_statement(std::shared_ptr<plan::prepared_statement> body) : body_(std::move(body)) {}
-    [[nodiscard]] std::shared_ptr<plan::prepared_statement> const& body() const noexcept {
-        return body_;
-    }
+
+    explicit prepared_statement(std::shared_ptr<plan::prepared_statement> body);
+
+    [[nodiscard]] std::shared_ptr<plan::prepared_statement> const& body() const noexcept;
 private:
     std::shared_ptr<plan::prepared_statement> body_{};
 };

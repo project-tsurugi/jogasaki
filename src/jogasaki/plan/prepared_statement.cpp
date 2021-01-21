@@ -15,16 +15,18 @@
  */
 #include "prepared_statement.h"
 
-namespace jogasaki::api::impl {
+#include <shakujo/model/program/Program.h>
 
-std::shared_ptr<plan::prepared_statement> const& prepared_statement::body() const noexcept {
-    return body_;
-}
+namespace jogasaki::plan {
 
 prepared_statement::prepared_statement(
-    std::shared_ptr<plan::prepared_statement> body
-) :
-    body_(std::move(body))
+    std::unique_ptr<::shakujo::model::program::Program> program
+) noexcept :
+    program_(std::move(program))
 {}
+
+std::unique_ptr<::shakujo::model::program::Program> const& prepared_statement::program() const noexcept {
+    return program_;
+}
 
 }

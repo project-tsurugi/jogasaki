@@ -19,6 +19,38 @@ namespace jogasaki::api::impl {
 
 parameter_set::parameter_set(std::shared_ptr<plan::parameter_set> body) noexcept: body_(std::move(body)) {}
 
+void parameter_set::set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) {
+    body_->set_int4(name, value);
+}
+
+void parameter_set::set_int8(std::string_view name, field_type_traits<kind::int8>::runtime_type value) {
+    body_->set_int8(name, value);
+}
+
+void parameter_set::set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) {
+    body_->set_float4(name, value);
+}
+
+void parameter_set::set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) {
+    body_->set_float8(name, value);
+}
+
+void parameter_set::set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) {
+    body_->set_character(name, accessor::text{const_cast<char*>(value.data()), value.size()});
+}
+
+parameter_set* parameter_set::clone() const& {
+    return new parameter_set(std::make_shared<plan::parameter_set>(*body_));
+}
+
+parameter_set* parameter_set::clone() && {
+    return new parameter_set(std::make_shared<plan::parameter_set>(std::move(*body_)));
+}
+
+std::shared_ptr<plan::parameter_set> const& parameter_set::body() const noexcept {
+    return body_;
+}
+
 }
 
 namespace jogasaki::api {

@@ -47,20 +47,20 @@ namespace impl {
  * @param ctx the compiler context filled with storage provider required to compile the sql
  * @param parameters parameters to resolve the place holder in the sql
  */
-[[nodiscard]] bool compile(std::string_view sql, compiler_context& ctx, parameter_set const* parameters = nullptr);
+[[nodiscard]] status compile(std::string_view sql, compiler_context& ctx, parameter_set const* parameters = nullptr);
 
 /**
  * @brief compile sql and store executable statement in the context
  * @param ctx the compiler context filled with prepared statement
  * @param parameters parameters to resolve the place holder in the prepared statement
  */
-[[nodiscard]] bool compile(compiler_context &ctx, parameter_set const* parameters = nullptr);
+[[nodiscard]] status compile(compiler_context &ctx, parameter_set const* parameters = nullptr);
 
 /**
  * @brief pre-compile sql and store preprared statement in the context
  * @param sql the sql statement to compile
  * @param ctx the compiler context filled with storage provider required to pre-compile the sql
  */
-[[nodiscard]] bool prepare(std::string_view sql, compiler_context& ctx);
+[[nodiscard]] status prepare(std::string_view sql, compiler_context& ctx);
 
 }

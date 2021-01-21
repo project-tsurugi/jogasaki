@@ -35,16 +35,20 @@ transaction::~transaction() noexcept {
     sharksfin::transaction_dispose(tx_);
 }
 
-bool transaction::commit() {
-    sharksfin::transaction_commit(tx_);
+status transaction::commit() {
+    if(auto rc = sharksfin::transaction_commit(tx_); rc != sharksfin::StatusCode::OK) {
+        return status::err_unknown; //TODO resolve error code
+    }
     active_ = false;
-    return true;
+    return status::ok;
 }
 
-bool transaction::abort() {
-    sharksfin::transaction_abort(tx_);
+status transaction::abort() {
+    if(auto rc = sharksfin::transaction_abort(tx_); rc != sharksfin::StatusCode::OK) {
+        return status::err_unknown; //TODO resolve error code
+    }
     active_ = false;
-    return true;
+    return status::ok;
 }
 
 sharksfin::TransactionControlHandle transaction::control_handle() const noexcept {

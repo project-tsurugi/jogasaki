@@ -80,7 +80,7 @@ TEST_F(kvs_database_test, create_transaction) {
     ASSERT_TRUE(db);
     auto tx = db->create_transaction();
     ASSERT_TRUE(tx);
-    ASSERT_TRUE(tx->abort());
+    ASSERT_EQ(status::ok, tx->abort());
     ASSERT_TRUE(db->close());
 }
 

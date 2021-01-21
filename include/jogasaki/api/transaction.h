@@ -19,6 +19,7 @@
 
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::api {
 
@@ -34,10 +35,10 @@ public:
     transaction(transaction&& other) noexcept = delete;
     transaction& operator=(transaction&& other) noexcept = delete;
 
-    virtual bool commit() = 0;
-    virtual bool abort() = 0;
-    virtual bool execute(executable_statement& statement) = 0;
-    virtual bool execute(executable_statement& statement, std::unique_ptr<result_set>& result) = 0;
+    virtual status commit() = 0;
+    virtual status abort() = 0;
+    virtual status execute(executable_statement& statement) = 0;
+    virtual status execute(executable_statement& statement, std::unique_ptr<result_set>& result) = 0;
 };
 
 }

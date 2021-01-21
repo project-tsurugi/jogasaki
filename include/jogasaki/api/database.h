@@ -19,7 +19,7 @@
 #include <memory>
 
 #include <jogasaki/configuration.h>
-#include "executable_statement.h"
+#include <jogasaki/status.h>
 
 /**
  * @brief SQL engine public API
@@ -37,29 +37,40 @@ class parameter_set;
  */
 class database {
 public:
+    /**
+     * @brief create empty object
+     */
     database() = default;
+
+    /**
+     * @brief destruct the object
+     */
     virtual ~database() = default;
+
     database(database const& other) = delete;
     database& operator=(database const& other) = delete;
     database(database&& other) noexcept = delete;
     database& operator=(database&& other) noexcept = delete;
 
-    virtual bool start() = 0;
-    virtual bool stop() = 0;
+    /**
+     * @brief start servicing database initializing internal thread pools etc.
+     */
+    virtual status start() = 0;
+    virtual status stop() = 0;
 
-    virtual bool prepare(std::string_view sql,
+    virtual status prepare(std::string_view sql,
         std::unique_ptr<prepared_statement>& statement) = 0;
 
-    virtual bool create_executable(std::string_view sql,
+    virtual status create_executable(std::string_view sql,
         std::unique_ptr<executable_statement>& statement) = 0;
 
-    virtual bool resolve(
+    virtual status resolve(
         prepared_statement const& prepared,
         parameter_set const& parameters,
         std::unique_ptr<executable_statement>& statement
     ) = 0;
 
-    virtual bool explain(executable_statement const& executable, std::ostream& out) = 0;
+    virtual status explain(executable_statement const& executable, std::ostream& out) = 0;
 
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
 
@@ -70,7 +81,9 @@ public:
 
 /**
  * @brief factory method for database
- * @return Database for the current implementation
+ * @param cfg configuration for the database
+ * @return database api object
+ * @return nullptr if error occurs on creation
  */
 std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
 

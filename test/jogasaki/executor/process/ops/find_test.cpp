@@ -259,7 +259,7 @@ TEST_F(find_test, simple) {
             std::string_view{val_buf.data(), val_stream.length()}
         ));
     }
-    ASSERT_TRUE(tx->commit());
+    ASSERT_EQ(status::ok, tx->commit());
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();

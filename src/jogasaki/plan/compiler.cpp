@@ -363,10 +363,10 @@ void create_mirror_for_execute(
  * @brief compile prepared statement, resolve parameters, and generate executable statement
  * @pre storage provider exists and populated in the compiler context
  */
-bool create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
+status create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
     auto p = ctx.prepared_statement();
     if (!p) {
-        return false;
+        return status::err_invalid_argument;
     }
 
     shakujo_translator translator;
@@ -401,7 +401,7 @@ bool create_executable_statement(compiler_context& ctx, parameter_set const* par
         for(auto&& e : errors) {
             LOG(ERROR) << e.code() << " " << e.message();
         }
-        return false;
+        return status::err_translator_error;
     }
     switch(r.kind()) {
         case result_kind::execution_plan: {
@@ -409,7 +409,7 @@ bool create_executable_statement(compiler_context& ctx, parameter_set const* par
             auto&& graph = *ptr;
             auto result = yugawara::compiler()(c_options, std::move(graph));
             if(!result.success()) {
-                return false;
+                return status::err_compiler_error;
             }
             create_mirror_for_execute(
                 ctx,
@@ -423,7 +423,7 @@ bool create_executable_statement(compiler_context& ctx, parameter_set const* par
             auto&& stmt = *ptr;
             auto result = yugawara::compiler()(c_options, std::move(stmt));
             if(!result.success()) {
-                return false;
+                return status::err_compiler_error;
             }
             create_mirror_for_write(
                 ctx,
@@ -435,41 +435,41 @@ bool create_executable_statement(compiler_context& ctx, parameter_set const* par
         default:
             fail();
     }
-    return true;
+    return status::ok;
 }
 
 } // namespace impl
 
-bool prepare(std::string_view sql, compiler_context &ctx) {
+status prepare(std::string_view sql, compiler_context &ctx) {
     if(auto p = impl::prepare(sql); p) {
         ctx.prepared_statement(std::move(p));
-        return true;
+        return status::ok;
     }
-    return false;
+    return status::err_parse_error;
 }
 
-bool compile(
+status compile(
     compiler_context &ctx,
     parameter_set const* parameters
 ) {
-    if(auto success = impl::create_executable_statement(ctx, parameters); !success) {
-        return false; //NOLINT //FIXME
+    if(auto rc = impl::create_executable_statement(ctx, parameters); rc != status::ok) {
+        return rc;
     }
-    return true;
+    return status::ok;
 }
 
-bool compile(
+status compile(
     std::string_view sql,
     compiler_context &ctx,
     parameter_set const* parameters
 ) {
-    if(auto b = prepare(sql, ctx); !b) {
-        return false;
+    if(auto rc = prepare(sql, ctx); rc != status::ok) {
+        return rc;
     }
-    if(auto b = compile(ctx, parameters); !b) {
-        return false;
+    if(auto rc = compile(ctx, parameters); rc != status::ok) {
+        return rc;
     }
-    return true;
+    return status::ok;
 }
 
 }

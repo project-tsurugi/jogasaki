@@ -77,7 +77,7 @@ TEST_F(kvs_storage_test, put_get_remove) {
         {
             ASSERT_TRUE(t1->put(*tx, "k1", "v1"));
         }
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
@@ -85,25 +85,25 @@ TEST_F(kvs_storage_test, put_get_remove) {
         ASSERT_TRUE(t1->get(*tx, "k1", v));
         EXPECT_EQ("v1", v);
         ASSERT_TRUE(t1->remove(*tx, "k1"));
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
         std::string_view v;
         ASSERT_FALSE(t1->get(*tx, "k1", v));
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
         ASSERT_TRUE(t1->put(*tx, "k1", "v2"));
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         std::string_view v;
         auto tx = db->create_transaction();
         ASSERT_TRUE(t1->get(*tx, "k1", v));
         EXPECT_EQ("v2", v);
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     ASSERT_TRUE(db->close());
 }
@@ -122,7 +122,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
             ASSERT_TRUE(t1->put(*tx, "k3", "v3"));
             ASSERT_TRUE(t1->put(*tx, "k4", "v4"));
         }
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
@@ -142,7 +142,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
         ASSERT_FALSE(it->next());
-        ASSERT_TRUE(tx->abort());
+        ASSERT_EQ(status::ok, tx->abort());
     }
     {
         auto tx = db->create_transaction();
@@ -162,7 +162,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         EXPECT_EQ("k3", k);
         EXPECT_EQ("v3", v);
         ASSERT_FALSE(it->next());
-        ASSERT_TRUE(tx->abort());
+        ASSERT_EQ(status::ok, tx->abort());
     }
     ASSERT_TRUE(db->close());
 }
@@ -183,7 +183,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
             ASSERT_TRUE(t1->put(*tx, "k3/1", "v3/1"));
             ASSERT_TRUE(t1->put(*tx, "k4", "v4"));
         }
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
@@ -208,7 +208,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
         ASSERT_FALSE(it->next());
-        ASSERT_TRUE(tx->abort());
+        ASSERT_EQ(status::ok, tx->abort());
     }
     {
         auto tx = db->create_transaction();
@@ -233,7 +233,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         EXPECT_EQ("k3/1", k);
         EXPECT_EQ("v3/1", v);
         ASSERT_FALSE(it->next());
-        ASSERT_TRUE(tx->abort());
+        ASSERT_EQ(status::ok, tx->abort());
     }
     ASSERT_TRUE(db->close());
 }

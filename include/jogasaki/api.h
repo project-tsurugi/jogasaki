@@ -15,6 +15,10 @@
  */
 #pragma once
 
+/**
+ * @brief header file aggregating all api files
+ */
+
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/executable_statement.h>

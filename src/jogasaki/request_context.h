@@ -75,9 +75,7 @@ public:
      * @brief accessor for the request resource
      * @return request wide memory resource
      */
-    [[nodiscard]] memory::lifo_paged_memory_resource* request_resource() const noexcept {
-        return request_resource_.get();
-    }
+    [[nodiscard]] memory::lifo_paged_memory_resource* request_resource() const noexcept;
 
     /**
      * @brief accessor for the database
@@ -91,6 +89,15 @@ public:
      */
     [[nodiscard]] std::shared_ptr<kvs::transaction> const& transaction() const;
 
+    /**
+     * @brief setter for the result status
+     */
+    void status_code(status val) noexcept;
+
+    /**
+     * @brief accessor for the result status
+     */
+    [[nodiscard]] status status_code() const noexcept;
 private:
     std::shared_ptr<class channel> channel_{};
     std::shared_ptr<class configuration> config_{};
@@ -98,6 +105,7 @@ private:
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};
+    status status_code_{status::ok};
 };
 
 }

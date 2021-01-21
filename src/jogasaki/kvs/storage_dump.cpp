@@ -52,14 +52,14 @@ public:
         std::unique_ptr<iterator> it{};
         if (!cont_) {
             cont_ = true;
-            sharksfin_check(stg->scan(
+            check(stg->scan(
                 tx,
                 "", end_point_kind::unbound,
                 "", end_point_kind::unbound,
                 it
             ));
         } else {
-            sharksfin_check(stg->scan(
+            check(stg->scan(
                 tx,
                 last_key_, end_point_kind::exclusive,
                 "", end_point_kind::unbound,
@@ -75,8 +75,8 @@ public:
             }
             std::string_view key{};
             std::string_view value{};
-            sharksfin_check(it->key(key));
-            sharksfin_check(it->value(value));
+            check(it->key(key));
+            check(it->value(value));
             storage_dump::append(stream_, key, value);
 
             if (batch_size_ > 0 && i >= batch_size_) {
@@ -119,7 +119,7 @@ public:
                 eof_ = true;
                 break;
             }
-            sharksfin_check(stg->put(
+            check(stg->put(
                 tx,
                 key_buffer_,
                 value_buffer_
@@ -151,7 +151,7 @@ template<class Step>
 static void process_step(database& db, Step& step) {
     auto tx = db.create_transaction();
     step(*tx);
-    sharksfin_check(tx->commit());
+    check(tx->commit() == status::ok);
 }
 
 }  // namespace

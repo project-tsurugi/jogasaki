@@ -28,20 +28,20 @@ namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
 
-bool transaction::commit() {
+status transaction::commit() {
     return tx_->commit();
 }
 
-bool transaction::abort() {
+status transaction::abort() {
     return tx_->abort();
 }
 
-bool transaction::execute(api::executable_statement& statement) {
+status transaction::execute(api::executable_statement& statement) {
     std::unique_ptr<api::result_set> result{};
     return execute(statement, result);
 }
 
-bool transaction::execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) {
+status transaction::execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) {
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
     auto store = std::make_unique<data::result_store>();
@@ -64,11 +64,11 @@ bool transaction::execute(api::executable_statement& statement, std::unique_ptr<
                 std::move(store)
             );
         }
-        return true;
+        return request_ctx->status_code();
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
     scheduler_.schedule(*stmt, *request_ctx);
-    return true;
+    return request_ctx->status_code();
 }
 
 impl::database& transaction::database() {

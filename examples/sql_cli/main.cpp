@@ -61,16 +61,16 @@ static int run(std::string_view sql) {
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
 
     std::unique_ptr<api::executable_statement> e{};
-    if(auto res = db->create_executable(sql, e); !res) {
+    if(auto rc = db->create_executable(sql, e); rc != status::ok) {
         db->stop();
-        return 1;
+        return -1;
     }
     std::unique_ptr<api::result_set> rs{};
     {
         auto tx = db->create_transaction();
-        if(auto res = tx->execute(*e, rs); !res || !rs) {
+        if(auto rc = tx->execute(*e, rs); rc != status::ok || !rs) {
             db->stop();
-            return 1;
+            return -1;
         }
         auto it = rs->iterator();
         while(it->has_next()) {

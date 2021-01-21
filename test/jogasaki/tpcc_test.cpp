@@ -67,10 +67,10 @@ public:
 
     void execute_query(std::string_view query) {
         std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_TRUE(db_->create_executable(query, stmt));
+        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
         auto tx = db_->create_transaction();
         std::unique_ptr<api::result_set> rs{};
-        ASSERT_TRUE(tx->execute(*stmt, rs));
+        ASSERT_EQ(status::ok, tx->execute(*stmt, rs));
         ASSERT_TRUE(rs);
         auto it = rs->iterator();
         while(it->has_next()) {
@@ -85,10 +85,10 @@ public:
 
     void execute_statement(std::string_view query) {
         std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_TRUE(db_->create_executable(query, stmt));
+        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
         auto tx = db_->create_transaction();
-        ASSERT_TRUE(tx->execute(*stmt));
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->commit());
     }
 
     std::unique_ptr<jogasaki::api::database> db_;

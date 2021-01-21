@@ -22,6 +22,7 @@
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
+#include <jogasaki/status.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/api/impl/parameter_set.h>
@@ -42,21 +43,21 @@ public:
 
     explicit database(std::shared_ptr<class configuration> cfg);
 
-    [[nodiscard]] bool start() override;
+    [[nodiscard]] status start() override;
 
-    [[nodiscard]] bool stop() override;
+    [[nodiscard]] status stop() override;
 
-    [[nodiscard]] bool prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) override;
+    [[nodiscard]] status prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) override;
 
-    [[nodiscard]] bool create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) override;
+    [[nodiscard]] status create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) override;
 
-    [[nodiscard]] bool resolve(
+    [[nodiscard]] status resolve(
         api::prepared_statement const& prepared,
         api::parameter_set const& parameters,
         std::unique_ptr<api::executable_statement>& statement
     ) override;
 
-    [[nodiscard]] bool explain(api::executable_statement const& executable, std::ostream& out) override;
+    [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
 
     std::unique_ptr<api::transaction> do_create_transaction(bool readonly) override;
 

@@ -45,13 +45,13 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
     return aggregate_functions_;
 }
 
-bool database::start() {
+status database::start() {
     if (! kvs_db_) {
         kvs_db_ = kvs::database::open();
     }
     if (! kvs_db_) {
         LOG(ERROR) << "opening db failed";
-        return false;
+        return status::err_io_error;
     }
     bool success = true;
     tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
@@ -59,14 +59,15 @@ bool database::start() {
     });
     if (! success) {
         LOG(ERROR) << "creating table schema entries failed";
+        return status::err_io_error;
     }
-    return success;
+    return status::ok;
 }
 
-bool database::stop() {
+status database::stop() {
     if (kvs_db_) {
-        if(!kvs_db_->close()) {
-            return false;
+        if(! kvs_db_->close()) {
+            return status::err_io_error;
         }
         kvs_db_ = nullptr;
     }
@@ -74,11 +75,12 @@ bool database::stop() {
     // destorying providers in destructor cause pure virtual function call, so reset here // FIXME
     aggregate_functions_.reset();
     tables_.reset();
-
-    return true;
+    return status::ok;
 }
 
-database::database(std::shared_ptr<class configuration> cfg) :
+database::database(
+    std::shared_ptr<class configuration> cfg
+) :
     cfg_(std::move(cfg))
 {
     executor::add_builtin_tables(*tables_);
@@ -94,35 +96,35 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
-bool database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
+status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    if(! plan::prepare(sql, *ctx)) {
+    if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         LOG(ERROR) << "compilation failed.";
-        return false;
+        return rc;
     }
     statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
-    return true;
+    return status::ok;
 }
 
-bool database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
+status database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
     std::unique_ptr<api::prepared_statement> prepared{};
-    if(auto rc = prepare(sql, prepared); !rc) {
-        return false;
+    if(auto rc = prepare(sql, prepared); rc != status::ok) {
+        return rc;
     }
     std::unique_ptr<api::executable_statement> exec{};
     impl::parameter_set parameters{};
-    if(auto rc = resolve(*prepared, parameters, exec); !rc) {
-        return false;
+    if(auto rc = resolve(*prepared, parameters, exec); rc != status::ok) {
+        return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
         unsafe_downcast<impl::executable_statement>(*exec).body(),
         unsafe_downcast<impl::executable_statement>(*exec).resource()
     );
-    return true;
+    return status::ok;
 }
 
 std::unique_ptr<api::transaction> database::do_create_transaction(bool readonly) {
@@ -133,7 +135,7 @@ std::unique_ptr<api::transaction> database::do_create_transaction(bool readonly)
     return std::make_unique<impl::transaction>(*this, readonly);
 }
 
-bool database::resolve(
+status database::resolve(
     api::prepared_statement const& prepared,
     api::parameter_set const& parameters,
     std::unique_ptr<api::executable_statement>& statement
@@ -147,24 +149,24 @@ bool database::resolve(
         unsafe_downcast<impl::prepared_statement>(prepared).body()
     );
     auto params = unsafe_downcast<impl::parameter_set>(parameters).body();
-    if(! plan::compile(*ctx, params.get())) {
+    if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
         LOG(ERROR) << "compilation failed.";
-        return false;
+        return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
         ctx->executable_statement(),
         std::move(resource)
     );
-    return true;
+    return status::ok;
 }
 
-bool database::explain(api::executable_statement const& executable, std::ostream& out) {
+status database::explain(api::executable_statement const& executable, std::ostream& out) {
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
     r->compiled_info().object_scanner()(
         r->statement(),
         takatori::serializer::json_printer{ out }
     );
-    return true;
+    return status::ok;
 }
 
 }

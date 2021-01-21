@@ -168,7 +168,7 @@ TEST_F(compiler_test, DISABLED_insert) {
     std::string sql = "insert into T0(C0, C1) values (1,1.0)";
     compiler_context ctx{};
     ctx.storage_provider(tables());
-    ASSERT_TRUE(compile(sql, ctx));
+    ASSERT_EQ(status::ok, compile(sql, ctx));
     auto&& write = unsafe_downcast<statement::write>(ctx.executable_statement()->statement());
 
     EXPECT_EQ(write.operator_kind(), relation::write_kind::insert);
@@ -194,9 +194,9 @@ TEST_F(compiler_test, simple_query) {
 
     compiler_context ctx{};
     ctx.storage_provider(tables());
-    ASSERT_TRUE(compile(sql, ctx));
-    auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    ASSERT_EQ(status::ok, compile(sql, ctx));
+    auto& info = ctx.executable_statement()->compiled_info();
+    auto& stmt = ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 1);
@@ -243,7 +243,7 @@ TEST_F(compiler_test, filter) {
     std::string sql = "select C0 from T0 where C1=1.0";
     compiler_context ctx{};
     ctx.storage_provider(tables());
-    ASSERT_TRUE(compile(sql, ctx));
+   ASSERT_EQ(status::ok, compile(sql, ctx));
 
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =ctx.executable_statement()->statement();
@@ -283,7 +283,7 @@ TEST_F(compiler_test, project_filter) {
     std::string sql = "select C1+C0, C0, C1 from T0 where C1=1.0";
     compiler_context ctx{};
     ctx.storage_provider(tables());
-    ASSERT_TRUE(compile(sql, ctx));
+    ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
@@ -327,7 +327,7 @@ TEST_F(compiler_test, join) {
     std::string sql = "select T0.C0, T1.C1 from T0, T0 T1";
     compiler_context ctx{};
     ctx.storage_provider(tables());
-    ASSERT_TRUE(compile(sql, ctx));
+    ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
@@ -367,7 +367,7 @@ TEST_F(compiler_test, left_outer_join) {
     std::string sql = "select T0.C0, T1.C1 from T0 LEFT OUTER JOIN T1 ON T0.C1 = T1.C1";
     compiler_context ctx{};
     ctx.storage_provider(tables());
-    ASSERT_TRUE(compile(sql, ctx));
+    ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
@@ -428,7 +428,7 @@ TEST_F(compiler_test, aggregate) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ctx.aggregate_provider(aggregate_functions());
-    ASSERT_TRUE(compile(sql, ctx));
+    ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);

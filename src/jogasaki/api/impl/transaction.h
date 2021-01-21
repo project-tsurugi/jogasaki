@@ -33,10 +33,10 @@ public:
     transaction() = default;
     transaction(impl::database& database, bool readonly);
 
-    bool commit() override;
-    bool abort() override;
-    bool execute(api::executable_statement& statement) override;
-    bool execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) override;
+    status commit() override;
+    status abort() override;
+    status execute(api::executable_statement& statement) override;
+    status execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) override;
     impl::database& database();
 private:
     impl::database* database_{};

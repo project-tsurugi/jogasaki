@@ -73,7 +73,7 @@ TEST_F(kvs_iterator_test, full_scan) {
             ASSERT_TRUE(t1->put(*tx, "k2", "v2"));
             ASSERT_TRUE(t1->put(*tx, "k3", "v3"));
         }
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
@@ -99,7 +99,7 @@ TEST_F(kvs_iterator_test, full_scan) {
         EXPECT_EQ("k3", k);
         EXPECT_EQ("v3", v);
         ASSERT_FALSE(it->next());
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
     ASSERT_TRUE(db->close());
 }

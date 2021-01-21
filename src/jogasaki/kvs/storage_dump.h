@@ -82,10 +82,9 @@ private:
 
 /**
  * @brief checks status code or raise an exception if it is not OK.
- * @param code the status code
- * @throws api::Exception if status code is not OK
+ * @param result the status code
  */
-inline void sharksfin_check(bool result) {
+inline void check(bool result) {
     if (! result) {
         fail();
     }

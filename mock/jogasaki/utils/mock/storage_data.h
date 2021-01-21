@@ -189,7 +189,7 @@ void populate_storage_data(
         key_stream.reset();
         val_stream.reset();
         if (i == n-1 || (i != 0 && (i % record_per_transaction) == 0)) {
-            if (auto res = tx->commit(); !res) {
+            if (auto res = tx->commit(); res != status::ok) {
                 fail();
             }
             VLOG(2) << "committed after " << i << "-th record";

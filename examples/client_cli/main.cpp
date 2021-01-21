@@ -36,19 +36,19 @@ static int prepare_data(api::database& db) {
 
     std::unique_ptr<api::executable_statement> p1{};
     std::unique_ptr<api::executable_statement> p2{};
-    if(auto res = db.create_executable(insert_warehouse, p1); !res) {
-        return 1;
+    if(auto rc = db.create_executable(insert_warehouse, p1); rc != status::ok) {
+        return -1;
     }
-    if(auto res = db.create_executable(insert_customer, p2); !res) {
-        return 1;
+    if(auto rc = db.create_executable(insert_customer, p2); rc != status::ok) {
+        return -1;
     }
 
     auto tx = db.create_transaction();
-    if(auto res = tx->execute(*p1); !res) {
+    if(auto rc = tx->execute(*p1); rc != status::ok) {
         tx->abort();
-        return 1;
+        return -1;
     }
-    if(auto res = tx->execute(*p2); !res) {
+    if(auto rc = tx->execute(*p2); rc != status::ok) {
         tx->abort();
         return 1;
     }
@@ -95,8 +95,8 @@ static int query(api::database& db) {
 //    std::string sql {"select * from CUSTOMER c JOIN WAREHOUSE w ON c.c_w_id = w.w_id"};
     std::string sql {"select * from CUSTOMER c"};
     std::unique_ptr<api::prepared_statement> p{};
-    if(auto res = db.prepare(sql, p); !res) {
-        return 1;
+    if(auto rc = db.prepare(sql, p); rc != status::ok) {
+        return -1;
     }
 
     auto ps = api::create_parameter_set();
@@ -105,13 +105,13 @@ static int query(api::database& db) {
     ps->set_int8("c_id", 1);
 
     std::unique_ptr<api::executable_statement> e{};
-    if(auto res = db.resolve(*p, *ps, e); !res) {
-        return 1;
+    if(auto rc = db.resolve(*p, *ps, e); rc != status::ok) {
+        return -1;
     }
     auto tx = db.create_transaction();
     std::unique_ptr<api::result_set> rs{};
-    if(auto res = tx->execute(*e, rs); !res) {
-        return 1;
+    if(auto rc = tx->execute(*e, rs); rc != status::ok) {
+        return -1;
     }
 
     report_meta(*rs->meta());

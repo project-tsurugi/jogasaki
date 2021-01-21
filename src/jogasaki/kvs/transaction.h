@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include <takatori/util/fail.h>
 #include <sharksfin/api.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::kvs {
 
@@ -58,7 +59,7 @@ public:
      * @return true if the operation is successful
      * @return false otherwise
      */
-    [[nodiscard]] bool commit();
+    [[nodiscard]] status commit();
 
     /**
      * @brief abort the transaction
@@ -66,7 +67,7 @@ public:
      * @return true if the operation is successful
      * @return false otherwise
      */
-    [[nodiscard]] bool abort();
+    [[nodiscard]] status abort();
 
     /**
      * @brief return the native transaction control handle in the transaction layer

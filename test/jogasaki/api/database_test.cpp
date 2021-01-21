@@ -38,7 +38,7 @@ TEST_F(database_test, simple) {
     auto db = api::create_database();
     db->start();
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_TRUE(db->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
+    ASSERT_EQ(status::ok, db->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
 
     {
         auto tx = db->create_transaction();
@@ -47,8 +47,8 @@ TEST_F(database_test, simple) {
             ps->set_int8("p1", i);
             ps->set_float8("p2", 10.0*i);
             std::unique_ptr<api::executable_statement> exec{};
-            ASSERT_TRUE(db->resolve(*prepared, *ps, exec));
-            ASSERT_TRUE(tx->execute(*exec));
+            ASSERT_EQ(status::ok,db->resolve(*prepared, *ps, exec));
+            ASSERT_EQ(status::ok,tx->execute(*exec));
         }
         tx->commit();
     }
@@ -56,10 +56,10 @@ TEST_F(database_test, simple) {
     {
         auto tx = db->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_TRUE(db->create_executable("select * from T0", exec));
+        ASSERT_EQ(status::ok,db->create_executable("select * from T0", exec));
         db->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
-        ASSERT_TRUE(tx->execute(*exec, rs));
+        ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
         std::size_t count = 0;
         while(it->has_next()) {

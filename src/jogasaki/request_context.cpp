@@ -61,5 +61,17 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
     return transaction_;
 }
 
+memory::lifo_paged_memory_resource* request_context::request_resource() const noexcept {
+    return request_resource_.get();
+}
+
+void request_context::status_code(status val) noexcept {
+    status_code_ = val;
+}
+
+status request_context::status_code() const noexcept {
+    return status_code_;
+}
+
 }
 

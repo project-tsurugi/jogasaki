@@ -121,7 +121,7 @@ public:
                 std::string_view{val_buf.data(), val_stream.length()}
             ));
         }
-        ASSERT_TRUE(tx->commit());
+        ASSERT_EQ(status::ok, tx->commit());
     }
 
     void show_record(

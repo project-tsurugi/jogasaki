@@ -30,30 +30,30 @@ using namespace std::string_view_literals;
 
 using takatori::util::fail;
 
-static int prepare_data(api::database& db) {
+static bool prepare_data(api::database& db) {
     std::string insert_warehouse{"INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)"};
     std::string insert_customer{ "INSERT INTO CUSTOMER (c_id, c_d_id, c_w_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_data, c_ytd_payment, c_payment_cnt, c_delivery_cnt)  VALUES (1, 1, 1, 'pmdeqxrbgs', 'OE', 'BARBARBAR', 'zlaoknusaxfhasce', 'sagjvpdsyzbhsvnhwzxe', 'adftkgtros', 'qd', '827402212', '8700969702524002', '1973-12-12', 'BC', 50000.00, 0.05, -9.99, 'posxrsroejldsyoyirjofkqsycnbjoalxfkgipoogepnuwmagaxcopincpbfhwercrohqxygjjxhamineoraxkzrirkafmmjkcbkafvnqfzonsdcccijdzqlbywgcgbovpmmjcapfmfqbjnfejaqmhqqtxjayvowuujxqmzvisjghpjpynbamdhvvjncvgzstpvqeeakdpwkjmircrfysmwbbbkzbzefldktqfeubcbcjgdjsjtkcomuhqdazqmgpukiyawmqgyzkciwrxfswnegkrofklawoxypehzzztouvokzhshawbbdkasynuixskxmauxuapnkemytcrchqhvjqhntkvkmgezotza', 10.00, 1, 0)"};
 
     std::unique_ptr<api::executable_statement> p1{};
     std::unique_ptr<api::executable_statement> p2{};
     if(auto rc = db.create_executable(insert_warehouse, p1); rc != status::ok) {
-        return -1;
+        return false;
     }
     if(auto rc = db.create_executable(insert_customer, p2); rc != status::ok) {
-        return -1;
+        return false;
     }
 
     auto tx = db.create_transaction();
     if(auto rc = tx->execute(*p1); rc != status::ok) {
         tx->abort();
-        return -1;
+        return false;
     }
     if(auto rc = tx->execute(*p2); rc != status::ok) {
         tx->abort();
-        return 1;
+        return false;
     }
     tx->commit();
-    return 0;
+    return true;
 }
 
 static void report_meta(api::record_meta const& meta) {
@@ -75,7 +75,7 @@ static void report_record(api::record_meta const& meta, api::record const& rec) 
             case kind::float8: ss << rec.get_float8(i); break;
             case kind::character: ss << rec.get_character(i); break;
             default:
-                //not yet supported
+                // other types are not yet supported
                 fail();
         }
         if(i != n-1) {
@@ -84,7 +84,7 @@ static void report_record(api::record_meta const& meta, api::record const& rec) 
     }
     LOG(INFO) << ss.str();
 }
-static int query(api::database& db) {
+static bool query(api::database& db) {
     std::string select{
         "SELECT w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
         "WHERE w_id = :w_id "
@@ -92,11 +92,10 @@ static int query(api::database& db) {
         "c_d_id = :c_d_id AND "
         "c_id = :c_id "
     };
-//    std::string sql {"select * from CUSTOMER c JOIN WAREHOUSE w ON c.c_w_id = w.w_id"};
-    std::string sql {"select * from CUSTOMER c"};
+    std::string sql {"select * from CUSTOMER c where c_id = :c_id"};
     std::unique_ptr<api::prepared_statement> p{};
     if(auto rc = db.prepare(sql, p); rc != status::ok) {
-        return -1;
+        return false;
     }
 
     auto ps = api::create_parameter_set();
@@ -106,12 +105,17 @@ static int query(api::database& db) {
 
     std::unique_ptr<api::executable_statement> e{};
     if(auto rc = db.resolve(*p, *ps, e); rc != status::ok) {
-        return -1;
+        return false;
     }
+
+    if(auto rc = db.explain(*e, std::cout); rc != status::ok) {
+        return false;
+    }
+
     auto tx = db.create_transaction();
     std::unique_ptr<api::result_set> rs{};
     if(auto rc = tx->execute(*e, rs); rc != status::ok) {
-        return -1;
+        return false;
     }
 
     report_meta(*rs->meta());
@@ -122,26 +126,26 @@ static int query(api::database& db) {
         report_record(*rs->meta(), *record);
     }
     rs->close();
-    return 0;
+    return true;
 }
 
-static int run() {
+static bool run() {
     auto env = jogasaki::api::create_environment();
     env->initialize();
     auto cfg = std::make_shared<configuration>();
     cfg->prepare_benchmark_tables(true);
     auto db = jogasaki::api::create_database(cfg);
     db->start();
-    if(auto res = prepare_data(*db); res) {
+    if(auto res = prepare_data(*db); !res) {
         db->stop();
-        return 1;
+        return false;
     }
-    if(auto res = query(*db); res) {
+    if(auto res = query(*db); !res) {
         db->stop();
-        return 1;
+        return false;
     }
     db->stop();
-    return 0;
+    return true;
 }
 
 }  // namespace

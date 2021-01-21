@@ -32,9 +32,9 @@ public:
     parameter_set() = default;
     ~parameter_set() = default;
     parameter_set(parameter_set const& other) = default;
-    parameter_set(parameter_set&& other) = default;
+    parameter_set(parameter_set&& other) noexcept = default;
     parameter_set& operator=(parameter_set const& other) = default;
-    parameter_set& operator=(parameter_set&& other) = default;
+    parameter_set& operator=(parameter_set&& other) noexcept = default;
 
     void set_int4(std::string_view name, meta::field_type_traits<kind::int4>::runtime_type value);
     void set_int8(std::string_view name, meta::field_type_traits<kind::int8>::runtime_type value);

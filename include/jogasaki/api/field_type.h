@@ -34,6 +34,12 @@ public:
      */
     constexpr field_type() noexcept = default;
 
+    virtual ~field_type() = default;
+    field_type(field_type const& other) = default;
+    field_type& operator=(field_type const& other) = default;
+    field_type(field_type&& other) noexcept = default;
+    field_type& operator=(field_type&& other) noexcept = default;
+
     /**
      * @brief getter for type kind
      */

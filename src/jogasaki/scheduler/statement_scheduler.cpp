@@ -15,7 +15,6 @@
  */
 #include "statement_scheduler.h"
 
-#include <takatori/util/fail.h>
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/utils/interference_size.h>
@@ -25,7 +24,6 @@
 
 namespace jogasaki::scheduler {
 
-using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
 class cache_align statement_scheduler::impl {

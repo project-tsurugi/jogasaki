@@ -453,7 +453,7 @@ bool compile(
     parameter_set const* parameters
 ) {
     if(auto success = impl::create_executable_statement(ctx, parameters); !success) {
-        return false;
+        return false; //NOLINT //FIXME
     }
     return true;
 }

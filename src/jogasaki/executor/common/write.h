@@ -134,7 +134,7 @@ public:
         return model::statement_kind::write;
     }
 
-    bool operator()(request_context& context) {
+    bool operator()(request_context& context) const {
         auto& tx = context.transaction();
         auto* db = tx->database();
         auto stg = db->get_storage(storage_name_);

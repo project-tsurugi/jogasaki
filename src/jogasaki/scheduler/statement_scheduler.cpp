@@ -34,7 +34,7 @@ public:
     {}
 
     void schedule(
-        model::statement& s,
+        model::statement const& s,
         request_context& context
     ) {
         using kind = model::statement_kind;
@@ -61,7 +61,7 @@ statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg) : i
 statement_scheduler::~statement_scheduler() = default;
 
 void statement_scheduler::schedule(
-    model::statement& s,
+    model::statement const& s,
     request_context& context
 ) {
     return impl_->schedule(s, context);

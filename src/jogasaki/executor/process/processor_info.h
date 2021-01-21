@@ -65,7 +65,7 @@ public:
     processor_info() = default;
 
     processor_info(
-        relation::graph_type& relations,
+        relation::graph_type const& relations,
         yugawara::compiled_info info
     ) :
         relations_(std::addressof(relations)),
@@ -77,7 +77,7 @@ public:
         scope_indices_ = std::move(p.second);
     }
 
-    [[nodiscard]] relation::graph_type& relations() const noexcept {
+    [[nodiscard]] relation::graph_type const& relations() const noexcept {
         return *relations_;
     }
 
@@ -97,7 +97,7 @@ public:
         return details_;
     }
 private:
-    relation::graph_type* relations_{};
+    relation::graph_type const* relations_{};
     yugawara::compiled_info info_{};
     impl::scopes_info scopes_info_{};
     impl::scope_indices scope_indices_{};
@@ -109,7 +109,7 @@ private:
         bool has_emit_operator = false;
         bool has_write_operator = false;
         using kind = relation::expression_kind;
-        takatori::relation::sort_from_upstream(*relations_, [&](relation::expression& node) {
+        takatori::relation::sort_from_upstream(*relations_, [&](relation::expression const& node) {
             switch(node.kind()) {
                 case kind::scan:
                     has_scan_operator = true;

@@ -103,7 +103,7 @@ std::shared_ptr<plan::prepared_statement> prepare(std::string_view sql) {
     return std::make_shared<plan::prepared_statement>(std::move(program));
 };
 
-executor::process::step create(takatori::plan::process const& process, yugawara::compiled_info& c_info) {
+executor::process::step create(takatori::plan::process const& process, yugawara::compiled_info const& c_info) {
     auto info = std::make_shared<executor::process::processor_info>(
         const_cast<relation::graph_type&>(process.operators()),
         c_info
@@ -126,7 +126,7 @@ executor::process::step create(takatori::plan::process const& process, yugawara:
     );
 }
 
-executor::exchange::forward::step create(takatori::plan::forward const& forward, yugawara::compiled_info& c_info) {
+executor::exchange::forward::step create(takatori::plan::forward const& forward, yugawara::compiled_info const& c_info) {
     meta::variable_order column_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         forward.columns(),
@@ -146,7 +146,7 @@ executor::exchange::forward::step create(takatori::plan::forward const& forward,
         std::move(column_order));
 }
 
-executor::exchange::group::step create(takatori::plan::group const& group, yugawara::compiled_info& c_info) {
+executor::exchange::group::step create(takatori::plan::group const& group, yugawara::compiled_info const& c_info) {
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         group.columns(),
@@ -196,7 +196,7 @@ executor::exchange::group::step create(takatori::plan::group const& group, yugaw
     );
 }
 
-executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, yugawara::compiled_info& c_info) {
+executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, yugawara::compiled_info const& c_info) {
     using executor::exchange::aggregate::aggregate_info;
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,

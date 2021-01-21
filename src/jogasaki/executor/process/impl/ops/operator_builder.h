@@ -85,7 +85,7 @@ public:
 
     [[nodiscard]] operator_container operator()() &&;
 
-    [[nodiscard]] relation::expression& head();
+    [[nodiscard]] relation::expression const& head();
 
     std::unique_ptr<operator_base> operator()(relation::find const& node);
     std::unique_ptr<operator_base> operator()(relation::scan const& node);

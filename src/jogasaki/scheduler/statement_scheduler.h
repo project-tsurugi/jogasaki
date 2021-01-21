@@ -71,7 +71,7 @@ public:
      * @brief schedule the statement to run
      */
     void schedule(
-        model::statement& s,
+        model::statement const& s,
         request_context& context
     );
 

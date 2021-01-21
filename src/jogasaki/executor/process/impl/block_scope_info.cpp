@@ -73,13 +73,13 @@ maybe_shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexce
 
 std::pair<scopes_info, scope_indices>
 create_scopes_info(
-    relation::graph_type &relations,
+    relation::graph_type const& relations,
     yugawara::compiled_info const& info
 ) {
     // analyze variables liveness
     // for each basic block, define a block_scope region with
     // result fields + defined fields (except killed in the same basic block)
-    auto bg = yugawara::analyzer::block_builder::build(relations);
+    auto bg = yugawara::analyzer::block_builder::build(const_cast<relation::graph_type&>(relations)); // work-around
     yugawara::analyzer::variable_liveness_analyzer analyzer { bg };
     std::size_t block_index = 0;
 

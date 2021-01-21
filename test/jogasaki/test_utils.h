@@ -77,7 +77,7 @@ inline T& next(Port& port) {
 }
 
 template<class T>
-inline T& last(::takatori::relation::graph_type& graph) {
+inline T& last(::takatori::relation::graph_type const& graph) {
     for (auto&& e : graph) {
         if (e.output_ports().empty()) {
             return takatori::util::downcast<T>(e);
@@ -87,9 +87,9 @@ inline T& last(::takatori::relation::graph_type& graph) {
 }
 
 template<class T>
-inline T& head(::takatori::relation::graph_type& graph) {
-    T* result = nullptr;
-    ::takatori::relation::enumerate_top(graph, [&](::takatori::relation::expression& v) {
+inline T const& head(::takatori::relation::graph_type const& graph) {
+    T const* result = nullptr;
+    ::takatori::relation::enumerate_top(graph, [&](::takatori::relation::expression const& v) {
         result = takatori::util::downcast<T>(&v);
     });
     if (result != nullptr) {
@@ -101,10 +101,10 @@ inline T& head(::takatori::relation::graph_type& graph) {
             << takatori::util::string_builder::to_string);
 }
 
-inline takatori::plan::process&
-top(takatori::plan::graph_type& g) {
-    takatori::plan::process* ret{};
-    takatori::plan::enumerate_top(g, [&](takatori::plan::step& s) {
+inline takatori::plan::process const&
+top(takatori::plan::graph_type const& g) {
+    takatori::plan::process const* ret{};
+    takatori::plan::enumerate_top(g, [&](takatori::plan::step const& s) {
         if (s.kind() == takatori::plan::step_kind::process) {
             if (!ret) {
                 ret = takatori::util::downcast<takatori::plan::process>(&s);
@@ -119,11 +119,11 @@ top(takatori::plan::graph_type& g) {
     return *ret;
 }
 
-inline takatori::plan::process&
-next_top(takatori::plan::graph_type& g, takatori::plan::process& p) {
-    takatori::plan::process* ret{};
+inline takatori::plan::process const&
+next_top(takatori::plan::graph_type const& g, takatori::plan::process const& p) {
+    takatori::plan::process const* ret{};
     bool prev_found = false;
-    takatori::plan::enumerate_top(g, [&](takatori::plan::step& s) {
+    takatori::plan::enumerate_top(g, [&](takatori::plan::step const& s) {
         if (s.kind() == takatori::plan::step_kind::process) {
             if (prev_found && !ret) {
                 ret = takatori::util::downcast<takatori::plan::process>(&s);
@@ -142,9 +142,9 @@ next_top(takatori::plan::graph_type& g, takatori::plan::process& p) {
 }
 
 template<class T>
-inline T& next_relation(::takatori::relation::expression& v) {
-    T* result = nullptr;
-    ::takatori::relation::enumerate_downstream(v, [&](::takatori::relation::expression& v) {
+inline T const& next_relation(::takatori::relation::expression const& v) {
+    T const* result = nullptr;
+    ::takatori::relation::enumerate_downstream(v, [&](::takatori::relation::expression const& v) {
         result = takatori::util::downcast<T>(&v);
     });
     if (result != nullptr) {
@@ -157,7 +157,7 @@ inline T& next_relation(::takatori::relation::expression& v) {
 }
 
 inline takatori::plan::process&
-find(takatori::plan::graph_type& g, takatori::relation::expression const& e) {
+find(takatori::plan::graph_type const& g, takatori::relation::expression const& e) {
     for (auto&& s : g) {
         if (s.kind() == takatori::plan::step_kind::process) {
             auto&& p = takatori::util::downcast<takatori::plan::process>(s);

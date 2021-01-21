@@ -87,7 +87,7 @@ using scope_indices = std::unordered_map<takatori::relation::expression const*, 
  * @brief create block related information about the operators in a process
  */
 [[nodiscard]] std::pair<scopes_info, scope_indices> create_scopes_info(
-    relation::graph_type& relations,
+    relation::graph_type const& relations,
     yugawara::compiled_info const& info
 );
 

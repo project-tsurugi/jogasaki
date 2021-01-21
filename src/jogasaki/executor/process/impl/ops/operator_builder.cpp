@@ -63,9 +63,9 @@ operator_container operator_builder::operator()()&& {
     return operator_container{std::move(root), index_, *io_exchange_map_, std::move(scan_info_)};
 }
 
-relation::expression& operator_builder::head() {
-    relation::expression* result = nullptr;
-    takatori::relation::enumerate_top(info_->relations(), [&](relation::expression& v) {
+relation::expression const& operator_builder::head() {
+    relation::expression const* result = nullptr;
+    takatori::relation::enumerate_top(info_->relations(), [&](relation::expression const& v) {
         result = &v;
     });
     if (result != nullptr) {

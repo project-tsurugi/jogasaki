@@ -40,45 +40,23 @@ public:
         takatori::util::unique_object_ptr<::takatori::statement::statement> statement,
         yugawara::compiled_info compiled_info,
         std::shared_ptr<model::statement> operators
-    ) :
-        statement_(std::move(statement)),
-        compiled_info_(std::move(compiled_info)),
-        operators_(std::move(operators))
-    {}
+    ) noexcept;
 
-    void compiler_result(yugawara::compiler_result compiler_result) noexcept {
-        statement_ = compiler_result.release_statement();
-        compiled_info_ = std::move(compiler_result.info());
-    }
+    void compiler_result(yugawara::compiler_result compiler_result) noexcept;
 
-    [[nodiscard]] ::takatori::statement::statement& statement() noexcept {
-        return *statement_;
-    }
+    void statement(std::unique_ptr<::takatori::statement::statement> statement) noexcept;
 
-    void compiled_info(yugawara::compiled_info compiled_info) noexcept {
-        compiled_info_ = std::move(compiled_info);
-    }
+    [[nodiscard]] ::takatori::statement::statement const& statement() const noexcept;
 
-    void statement(std::unique_ptr<::takatori::statement::statement> statement) noexcept {
-        takatori::util::object_creator creator{};
-        statement_ = creator.wrap_unique(statement.release());
-    }
+    void compiled_info(yugawara::compiled_info compiled_info) noexcept;
 
-    [[nodiscard]] yugawara::compiled_info& compiled_info() noexcept {
-        return compiled_info_;
-    }
+    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
 
-    void operators(std::shared_ptr<model::statement> operators) noexcept {
-        operators_ = std::move(operators);
-    }
+    void operators(std::shared_ptr<model::statement> operators) noexcept;
 
-    [[nodiscard]] model::statement* operators() const noexcept {
-        return operators_.get();
-    }
+    [[nodiscard]] model::statement const* operators() const noexcept;
 
-    [[nodiscard]] bool is_execute() const noexcept {
-        return statement_ && statement_->kind() == takatori::statement::statement_kind::execute;
-    }
+    [[nodiscard]] bool is_execute() const noexcept;
 
 private:
     takatori::util::unique_object_ptr<::takatori::statement::statement> statement_{};

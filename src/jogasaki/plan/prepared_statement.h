@@ -33,9 +33,9 @@ public:
     prepared_statement(prepared_statement&& other) noexcept = default;
     prepared_statement& operator=(prepared_statement&& other) noexcept = default;
 
-    explicit prepared_statement(std::unique_ptr<::shakujo::model::program::Program> program) noexcept;
+    explicit prepared_statement(std::unique_ptr<Program> program) noexcept;
 
-    [[nodiscard]] std::unique_ptr<::shakujo::model::program::Program> const& program() const noexcept;
+    [[nodiscard]] std::unique_ptr<Program> const& program() const noexcept;
 
 private:
     std::unique_ptr<Program> program_{};

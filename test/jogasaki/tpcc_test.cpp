@@ -27,6 +27,7 @@
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/transaction.h>
 #include <jogasaki/api/result_set.h>
 
 namespace jogasaki::testing {
@@ -39,7 +40,7 @@ using namespace jogasaki::scheduler;
 
 class tpcc_test : public ::testing::Test {
 public:
-    static void SetUpTestSuite() {
+    void SetUp() {
         auto cfg = std::make_shared<configuration>();
         cfg->single_thread(true);
         db_ = api::create_database(cfg);
@@ -58,13 +59,17 @@ public:
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
     }
-    static void TearDownTestSuite() {
+
+    void TearDown() {
         db_->stop();
     }
 
     void execute_query(std::string_view query) {
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_TRUE(db_->create_executable(query, stmt));
+        auto tx = db_->create_transaction();
         std::unique_ptr<api::result_set> rs{};
-        ASSERT_TRUE(db_->execute(query, rs));
+        ASSERT_TRUE(tx->execute(*stmt, rs));
         ASSERT_TRUE(rs);
         auto it = rs->iterator();
         while(it->has_next()) {
@@ -74,15 +79,20 @@ public:
             LOG(INFO) << ss.str();
         }
         rs->close();
-    }
-    void execute_statement(std::string_view query) {
-        ASSERT_TRUE(db_->execute(query));
+        tx->commit();
     }
 
-    static std::unique_ptr<jogasaki::api::database> db_;
+    void execute_statement(std::string_view query) {
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_TRUE(db_->create_executable(query, stmt));
+        auto tx = db_->create_transaction();
+        ASSERT_TRUE(tx->execute(*stmt));
+        ASSERT_TRUE(tx->commit());
+    }
+
+    std::unique_ptr<jogasaki::api::database> db_;
 };
 
-std::unique_ptr<jogasaki::api::database> tpcc_test::db_{};
 
 TEST_F(tpcc_test, warehouse) {
     execute_statement( "INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)");

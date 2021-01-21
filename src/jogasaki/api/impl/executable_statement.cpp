@@ -17,4 +17,21 @@
 
 namespace jogasaki::api::impl {
 
+executable_statement::executable_statement(
+    std::shared_ptr<plan::executable_statement> body,
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource
+) :
+    body_(std::move(body)),
+    resource_(std::move(resource))
+{}
+
+std::shared_ptr<plan::executable_statement> const& executable_statement::body() const noexcept {
+    return body_;
 }
+
+std::shared_ptr<memory::lifo_paged_memory_resource> const& executable_statement::resource() const noexcept {
+    return resource_;
+}
+
+}
+

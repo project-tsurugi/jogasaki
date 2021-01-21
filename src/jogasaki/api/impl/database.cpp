@@ -23,11 +23,6 @@
 
 namespace jogasaki::api::impl {
 
-bool database::execute(std::string_view sql) {
-    std::unique_ptr<api::result_set> result{};
-    return execute(sql, result);
-}
-
 database* database::get_impl(api::database& arg) noexcept {
     return unsafe_downcast<database>(std::addressof(arg));
 }
@@ -109,26 +104,27 @@ bool database::prepare(std::string_view sql, std::unique_ptr<api::prepared_state
 
 bool database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
     std::unique_ptr<api::prepared_statement> prepared{};
-    impl::parameter_set parameters{};
     if(auto rc = prepare(sql, prepared); !rc) {
         return false;
     }
     std::unique_ptr<api::executable_statement> exec{};
+    impl::parameter_set parameters{};
     if(auto rc = resolve(*prepared, parameters, exec); !rc) {
         return false;
     }
     statement = std::make_unique<impl::executable_statement>(
-        unsafe_downcast<impl::executable_statement>(*exec).body()
+        unsafe_downcast<impl::executable_statement>(*exec).body(),
+        unsafe_downcast<impl::executable_statement>(*exec).resource()
     );
     return true;
 }
 
-std::unique_ptr<api::transaction> database::create_transaction() {
+std::unique_ptr<api::transaction> database::do_create_transaction(bool readonly) {
     if (! kvs_db_) {
         LOG(ERROR) << "database not started";
         return {};
     }
-    return std::make_unique<impl::transaction>(*this);
+    return std::make_unique<impl::transaction>(*this, readonly);
 }
 
 bool database::resolve(
@@ -144,12 +140,15 @@ bool database::resolve(
     ctx->prepared_statement(
         unsafe_downcast<impl::prepared_statement>(prepared).body()
     );
-
-    if(! plan::compile(*ctx, *unsafe_downcast<impl::parameter_set>(parameters).body())) {
+    auto params = unsafe_downcast<impl::parameter_set>(parameters).body();
+    if(! plan::compile(*ctx, params.get())) {
         LOG(ERROR) << "compilation failed.";
         return false;
     }
-    statement = std::make_unique<impl::executable_statement>(ctx->executable_statement());
+    statement = std::make_unique<impl::executable_statement>(
+        ctx->executable_statement(),
+        std::move(resource)
+    );
     return true;
 }
 
@@ -157,7 +156,7 @@ bool database::resolve(
 
 namespace jogasaki::api {
 
-std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg) {
+std::unique_ptr<database> create_database(std::shared_ptr<class configuration> cfg) {
     return std::make_unique<impl::database>(std::move(cfg));
 }
 

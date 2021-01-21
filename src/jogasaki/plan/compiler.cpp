@@ -363,7 +363,7 @@ void create_mirror_for_execute(
  * @brief compile prepared statement, resolve parameters, and generate executable statement
  * @pre storage provider exists and populated in the compiler context
  */
-bool create_executable_statement(compiler_context& ctx, parameter_set const& parameters) {
+bool create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
     auto p = ctx.prepared_statement();
     if (!p) {
         return false;
@@ -392,10 +392,7 @@ bool create_executable_statement(compiler_context& ctx, parameter_set const& par
         options.get_object_creator(),
     };
 
-    placeholder_map placeholders{};
-
-    //TODO fill from parameter_set
-    (void)parameters;
+    auto& placeholders = parameters != nullptr ? parameters->map() : placeholder_map{};
 
     ::takatori::document::document_map documents;
     auto r = translator(options, *p->program()->main(), documents, placeholders);
@@ -453,7 +450,7 @@ bool prepare(std::string_view sql, compiler_context &ctx) {
 
 bool compile(
     compiler_context &ctx,
-    parameter_set const& parameters
+    parameter_set const* parameters
 ) {
     if(auto success = impl::create_executable_statement(ctx, parameters); !success) {
         return false;
@@ -464,7 +461,7 @@ bool compile(
 bool compile(
     std::string_view sql,
     compiler_context &ctx,
-    parameter_set const& parameters
+    parameter_set const* parameters
 ) {
     if(auto b = prepare(sql, ctx); !b) {
         return false;

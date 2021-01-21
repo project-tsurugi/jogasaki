@@ -17,6 +17,7 @@
 
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::api::impl {
 
@@ -30,18 +31,11 @@ public:
     executable_statement(
         std::shared_ptr<plan::executable_statement> body,
         std::shared_ptr<memory::lifo_paged_memory_resource> resource
-    ) :
-        body_(std::move(body)),
-        resource_(std::move(resource))
-    {}
+    );
 
-    [[nodiscard]] std::shared_ptr<plan::executable_statement> const& body() const noexcept {
-        return body_;
-    }
+    [[nodiscard]] std::shared_ptr<plan::executable_statement> const& body() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<plan::executable_statement> const& resource() const noexcept {
-        return resource_;
-    }
+    [[nodiscard]] std::shared_ptr<memory::lifo_paged_memory_resource> const& resource() const noexcept;
 private:
     std::shared_ptr<plan::executable_statement> body_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};

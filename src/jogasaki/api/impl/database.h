@@ -46,7 +46,7 @@ class transaction;
 class database : public api::database {
 public:
     database();
-    explicit database(std::shared_ptr<configuration> cfg);
+    explicit database(std::shared_ptr<class configuration> cfg);
 
     [[nodiscard]] bool start() override;
 
@@ -68,7 +68,7 @@ public:
         return true;
     }
 
-    std::unique_ptr<api::transaction> create_transaction() override;
+    std::unique_ptr<api::transaction> do_create_transaction(bool readonly) override;
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
     [[nodiscard]] static database* get_impl(api::database& arg) noexcept;

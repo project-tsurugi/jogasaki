@@ -44,8 +44,8 @@ TEST_F(database_test, simple) {
         auto tx = db->create_transaction();
         for(std::size_t i=0; i < 2; ++i) {
             auto ps = api::create_parameter_set();
-            ps->set_int8("p1", 1);
-            ps->set_float8("p2", 10.0);
+            ps->set_int8("p1", i);
+            ps->set_float8("p2", 10.0*i);
             std::unique_ptr<api::executable_statement> exec{};
             ASSERT_TRUE(db->resolve(*prepared, *ps, exec));
             ASSERT_TRUE(tx->execute(*exec));
@@ -53,22 +53,25 @@ TEST_F(database_test, simple) {
         tx->commit();
     }
 
-    auto tx = db->create_transaction();
-    std::unique_ptr<api::executable_statement> exec{};
-    ASSERT_TRUE(db->create_executable("select * from T0", exec));
-    std::unique_ptr<api::result_set> rs{};
-    ASSERT_TRUE(tx->execute(*exec, rs));
-    auto it = rs->iterator();
-    std::size_t count = 0;
-    while(it->has_next()) {
-        std::stringstream ss{};
-        auto* record = it->next();
-        ss << *record;
-        LOG(INFO) << ss.str();
-        ++count;
+    {
+        auto tx = db->create_transaction();
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_TRUE(db->create_executable("select * from T0", exec));
+        std::unique_ptr<api::result_set> rs{};
+        ASSERT_TRUE(tx->execute(*exec, rs));
+        auto it = rs->iterator();
+        std::size_t count = 0;
+        while(it->has_next()) {
+            std::stringstream ss{};
+            auto* record = it->next();
+            ss << *record;
+            LOG(INFO) << ss.str();
+            ++count;
+        }
+        EXPECT_EQ(2, count);
+        tx->commit();
     }
-    EXPECT_EQ(2, count);
-    tx->commit();
+    db->stop();
 }
 
 }

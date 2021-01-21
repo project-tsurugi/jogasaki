@@ -31,7 +31,7 @@ class database;
 class transaction : public api::transaction {
 public:
     transaction() = default;
-    transaction(impl::database& database);
+    transaction(impl::database& database, bool readonly);
 
     bool commit() override;
     bool abort() override;
@@ -39,9 +39,9 @@ public:
     bool execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) override;
     impl::database& database();
 private:
-    std::shared_ptr<kvs::transaction> tx_{};
     impl::database* database_{};
     scheduler::statement_scheduler scheduler_{};
+    std::shared_ptr<kvs::transaction> tx_{};
 };
 
 }

@@ -58,9 +58,14 @@ public:
         parameter_set const& parameters,
         std::unique_ptr<executable_statement>& statement
     ) = 0;
+
     virtual bool explain(executable_statement const& executable, std::ostream& out) = 0;
 
-    virtual std::unique_ptr<transaction> create_transaction() = 0;
+    virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
+
+    std::unique_ptr<transaction> create_transaction(bool readonly = false) {
+        return do_create_transaction(readonly);
+    }
 };
 
 /**

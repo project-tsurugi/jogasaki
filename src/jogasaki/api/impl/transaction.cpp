@@ -19,6 +19,7 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/plan/compiler.h>
 
 namespace jogasaki::api::impl {
@@ -34,11 +35,11 @@ bool transaction::abort() {
 }
 
 bool transaction::execute(api::executable_statement& statement) {
-    std::unique_ptr<result_set> result{};
+    std::unique_ptr<api::result_set> result{};
     return execute(statement, result);
 }
 
-bool transaction::execute(api::executable_statement& statement, std::unique_ptr<result_set>& result) {
+bool transaction::execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) {
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
     auto store = std::make_unique<data::result_store>();
@@ -73,9 +74,13 @@ impl::database& transaction::database() {
     return *database_;
 }
 
-transaction::transaction(impl::database& database) :
+transaction::transaction(
+    impl::database& database,
+    bool readonly
+) :
     database_(std::addressof(database)),
-    scheduler_(database_->configuration())
+    scheduler_(database_->configuration()),
+    tx_(database_->kvs_db()->create_transaction(readonly))
 {}
 
 }

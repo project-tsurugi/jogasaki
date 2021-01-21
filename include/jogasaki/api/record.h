@@ -60,11 +60,11 @@ public:
      * @param index indicate the field offset originated at 0
      * @return the value of given type
      */
-    virtual field_type_traits<kind::int4>::runtime_type get_int4(std::size_t index) = 0;
-    virtual field_type_traits<kind::int8>::runtime_type get_int8(std::size_t index) = 0;
-    virtual field_type_traits<kind::float4>::runtime_type get_float4(std::size_t index) = 0;
-    virtual field_type_traits<kind::float8>::runtime_type get_float8(std::size_t index) = 0;
-    virtual field_type_traits<kind::character>::runtime_type get_character(std::size_t index) = 0;
+    virtual field_type_traits<kind::int4>::runtime_type get_int4(std::size_t index) const = 0;
+    virtual field_type_traits<kind::int8>::runtime_type get_int8(std::size_t index) const = 0;
+    virtual field_type_traits<kind::float4>::runtime_type get_float4(std::size_t index) const = 0;
+    virtual field_type_traits<kind::float8>::runtime_type get_float8(std::size_t index) const = 0;
+    virtual field_type_traits<kind::character>::runtime_type get_character(std::size_t index) const = 0;
 
     /**
      * @brief getter for nullilty

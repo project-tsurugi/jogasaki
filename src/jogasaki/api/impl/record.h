@@ -73,19 +73,19 @@ public:
     {}
 
     using k = meta::field_type_kind;
-    field_type_traits<kind::int4>::runtime_type get_int4(std::size_t index) override {
+    field_type_traits<kind::int4>::runtime_type get_int4(std::size_t index) const override {
         return ref_.get_value<meta::field_type_traits<k::int4>::runtime_type>(meta_->value_offset(index));
     }
-    field_type_traits<kind::int8>::runtime_type get_int8(std::size_t index) override {
+    field_type_traits<kind::int8>::runtime_type get_int8(std::size_t index) const override {
         return ref_.get_value<meta::field_type_traits<k::int8>::runtime_type>(meta_->value_offset(index));
     }
-    field_type_traits<kind::float4>::runtime_type get_float4(std::size_t index) override {
+    field_type_traits<kind::float4>::runtime_type get_float4(std::size_t index) const override {
         return ref_.get_value<meta::field_type_traits<k::float4>::runtime_type>(meta_->value_offset(index));
     }
-    field_type_traits<kind::float8>::runtime_type get_float8(std::size_t index) override {
+    field_type_traits<kind::float8>::runtime_type get_float8(std::size_t index) const override {
         return ref_.get_value<meta::field_type_traits<k::float8>::runtime_type>(meta_->value_offset(index));
     }
-    field_type_traits<kind::character>::runtime_type get_character(std::size_t index) override {
+    field_type_traits<kind::character>::runtime_type get_character(std::size_t index) const override {
         return static_cast<field_type_traits<kind::character>::runtime_type>(
             ref_.get_value<meta::field_type_traits<k::character>::runtime_type>(meta_->value_offset(index))
         );

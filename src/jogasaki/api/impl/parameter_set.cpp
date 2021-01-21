@@ -18,6 +18,7 @@
 namespace jogasaki::api::impl {
 
 parameter_set::parameter_set(std::shared_ptr<plan::parameter_set> body) noexcept: body_(std::move(body)) {}
+
 }
 
 namespace jogasaki::api {

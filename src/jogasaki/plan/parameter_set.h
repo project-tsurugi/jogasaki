@@ -25,6 +25,8 @@
 #include <mizugaki/placeholder_map.h>
 #include <mizugaki/placeholder_entry.h>
 
+#include <jogasaki/accessor/text.h>
+
 namespace jogasaki::plan {
 
 /**
@@ -78,14 +80,19 @@ public:
             }
         );
     }
-    void set_text(std::string_view name, std::string_view value);
-//    std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>> const& values() const& {
-//        return values_;
-//    }
-//    std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>>&& values() && {
-//        return std::move(values_);
-//    }
 
+    void set_character(std::string_view name, accessor::text value) {
+        map_.add(std::string(name),
+            {
+                takatori::type::character(takatori::type::varying),
+                takatori::value::character(static_cast<std::string_view>(value)),
+            }
+        );
+
+    }
+    [[nodiscard]] mizugaki::placeholder_map const& map() const noexcept {
+        return map_;
+    }
 private:
     mizugaki::placeholder_map map_{};
 };

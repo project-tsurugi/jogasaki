@@ -17,6 +17,7 @@
 
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/plan/parameter_set.h>
+#include <jogasaki/accessor/text.h>
 
 namespace jogasaki::api::impl {
 
@@ -31,24 +32,19 @@ public:
         (void)name;
     }
     void set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) override {
-        (void)name;
-        (void)value;
+        body_->set_int4(name, value);
     }
     void set_int8(std::string_view name, field_type_traits<kind::int8>::runtime_type value) override {
-        (void)name;
-        (void)value;
+        body_->set_int8(name, value);
     }
     void set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) override {
-        (void)name;
-        (void)value;
+        body_->set_float4(name, value);
     }
     void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) override {
-        (void)name;
-        (void)value;
+        body_->set_float8(name, value);
     }
     void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) override {
-        (void)name;
-        (void)value;
+        body_->set_character(name, accessor::text{const_cast<char*>(value.data()), value.size()});
     }
 
     [[nodiscard]] parameter_set* clone() const& override {
@@ -62,7 +58,7 @@ public:
         return body_;
     }
 private:
-    std::shared_ptr<plan::parameter_set> body_{};
+    std::shared_ptr<plan::parameter_set> body_{std::make_shared<plan::parameter_set>()};
 
 };
 

@@ -69,12 +69,6 @@ public:
      */
     virtual record* next() = 0;
 
-    /**
-     * @brief close the iterator
-     * @throw Exception on error
-     */
-    virtual void close() = 0;
-
 };
 
 }

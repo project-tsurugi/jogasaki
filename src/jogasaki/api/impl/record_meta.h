@@ -30,23 +30,12 @@ namespace jogasaki::api::impl {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief record metadata holding information about field types, nullability and binary encoding of records.
- * @details based on the record metadata and knowledge on binary encoding/bits layout, record_meta provides information
- * to access its data via record_ref accessor (e.g. offset for field value or nullity bit.)
+ * @brief record metadata holding information about field types, nullability
  */
 class record_meta : public api::record_meta {
 public:
-    /// @brief fields type
-    using fields_type = std::vector<field_type>;
-
-    /// @brief iterator for fields
-    using field_iterator = fields_type::const_iterator;
-
     /// @brief field index type (origin = 0)
     using field_index_type = std::size_t;
-
-    /// @brief the value indicating invalid offset
-    constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
     /**
      * @brief construct empty object
@@ -56,14 +45,7 @@ public:
     /**
      * @brief construct new object
      */
-    explicit record_meta(maybe_shared_ptr<meta::record_meta> meta) :
-        meta_(std::move(meta))
-    {
-        fields_.reserve(meta_->field_count());
-        for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-            fields_.emplace_back(meta_->at(i));
-        }
-    }
+    explicit record_meta(maybe_shared_ptr<meta::record_meta> meta);
 
     /**
      * @brief getter for field type - same as operator[] but friendly style for pointers
@@ -71,9 +53,7 @@ public:
      * @return field type
      * @warning if index is not in valid range, the behavior is undefined
      */
-    [[nodiscard]] field_type const& at(field_index_type index) const noexcept override {
-        return fields_[index];
-    }
+    [[nodiscard]] field_type const& at(field_index_type index) const noexcept override;
 
     /**
      * @brief getter for the nullability for the field
@@ -82,17 +62,13 @@ public:
      * @return false otherwise
      * @warning if index is not in valid range, the behavior is undefined
      */
-    [[nodiscard]] bool nullable(field_index_type index) const noexcept override {
-        return meta_->nullable(index);
-    }
+    [[nodiscard]] bool nullable(field_index_type index) const noexcept override;
 
     /**
      * @brief retrieve number of fields in the record
      * @return number of the fields
      */
-    [[nodiscard]] std::size_t field_count() const noexcept override {
-        return meta_->field_count();
-    }
+    [[nodiscard]] std::size_t field_count() const noexcept override;
 
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};

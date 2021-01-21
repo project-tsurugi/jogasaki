@@ -15,49 +15,10 @@
  */
 #pragma once
 
-#include <cstddef>
-#include <type_traits>
-#include <variant>
-
-#include <takatori/util/fail.h>
-
 #include <jogasaki/api/field_type.h>
 #include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::api::impl {
-
-using takatori::util::fail;
-
-inline api::field_type_kind from(meta::field_type_kind k) noexcept {
-    using kind = api::field_type_kind;
-    switch(k) {
-        case meta::field_type_kind::undefined: return kind::undefined;
-        case meta::field_type_kind::boolean: return kind::boolean;
-        case meta::field_type_kind::int1: return kind::int1;
-        case meta::field_type_kind::int2: return kind::int2;
-        case meta::field_type_kind::int4: return kind::int4;
-        case meta::field_type_kind::int8: return kind::int8;
-        case meta::field_type_kind::float4: return kind::float4;
-        case meta::field_type_kind::float8: return kind::float8;
-        case meta::field_type_kind::decimal: return kind::decimal;
-        case meta::field_type_kind::character: return kind::character;
-        case meta::field_type_kind::bit: return kind::bit;
-        case meta::field_type_kind::date: return kind::date;
-        case meta::field_type_kind::time_of_day: return kind::time_of_day;
-        case meta::field_type_kind::time_point: return kind::time_point;
-        case meta::field_type_kind::time_interval: return kind::time_interval;
-        case meta::field_type_kind::array: return kind::array;
-        case meta::field_type_kind::record: return kind::record;
-        case meta::field_type_kind::unknown: return kind::unknown;
-        case meta::field_type_kind::row_reference: return kind::row_reference;
-        case meta::field_type_kind::row_id: return kind::row_id;
-        case meta::field_type_kind::declared: return kind::declared;
-        case meta::field_type_kind::extension: return kind::extension;
-        case meta::field_type_kind::pointer: return kind::pointer;
-    }
-    fail();
-}
 
 /**
  * @brief type information for a field
@@ -73,14 +34,12 @@ public:
     /**
      * @brief construct empty object (kind undefined)
      */
-    field_type(meta::field_type type) noexcept : type_(std::move(type)) {}
+    explicit field_type(meta::field_type type) noexcept;
 
     /**
      * @brief getter for type kind
      */
-    [[nodiscard]] api::field_type_kind kind() const noexcept override {
-        return from(type_.kind());
-    };
+    [[nodiscard]] api::field_type_kind kind() const noexcept override;;
 
 private:
     meta::field_type type_{};

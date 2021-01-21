@@ -18,9 +18,6 @@
 #include <string_view>
 #include <memory>
 
-/**
- * @brief SQL engine public API
- */
 namespace jogasaki::api {
 
 /**

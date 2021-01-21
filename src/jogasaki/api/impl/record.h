@@ -17,6 +17,8 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/api/record.h>
+#include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/accessor/record_printer.h>
 
 namespace jogasaki::api::impl {
@@ -28,6 +30,11 @@ using takatori::util::maybe_shared_ptr;
  */
 class record : public api::record {
 public:
+    using kind = api::field_type_kind;
+
+    template<kind Kind>
+    using runtime_type = typename api::field_type_traits<Kind>::runtime_type;
+
     /**
      * @brief construct
      */
@@ -61,46 +68,23 @@ public:
     record(
         accessor::record_ref ref,
         maybe_shared_ptr<meta::record_meta> meta
-    ) :
-        ref_(ref),
-        meta_(std::move(meta))
-    {}
+    );
 
-    explicit record(
-        maybe_shared_ptr<meta::record_meta> meta
-    ) :
-        record({}, std::move(meta))
-    {}
+    explicit record(maybe_shared_ptr<meta::record_meta> meta);
 
     using k = meta::field_type_kind;
-    field_type_traits<kind::int4>::runtime_type get_int4(std::size_t index) const override {
-        return ref_.get_value<meta::field_type_traits<k::int4>::runtime_type>(meta_->value_offset(index));
-    }
-    field_type_traits<kind::int8>::runtime_type get_int8(std::size_t index) const override {
-        return ref_.get_value<meta::field_type_traits<k::int8>::runtime_type>(meta_->value_offset(index));
-    }
-    field_type_traits<kind::float4>::runtime_type get_float4(std::size_t index) const override {
-        return ref_.get_value<meta::field_type_traits<k::float4>::runtime_type>(meta_->value_offset(index));
-    }
-    field_type_traits<kind::float8>::runtime_type get_float8(std::size_t index) const override {
-        return ref_.get_value<meta::field_type_traits<k::float8>::runtime_type>(meta_->value_offset(index));
-    }
-    field_type_traits<kind::character>::runtime_type get_character(std::size_t index) const override {
-        return static_cast<field_type_traits<kind::character>::runtime_type>(
-            ref_.get_value<meta::field_type_traits<k::character>::runtime_type>(meta_->value_offset(index))
-        );
-    }
 
-    [[nodiscard]] bool is_null(size_t index) const noexcept override {
-        return ref_.is_null(meta_->nullity_offset(index));
-    }
-    void ref(accessor::record_ref r) noexcept {
-        ref_ = r;
-    }
+    [[nodiscard]] runtime_type<kind::int4> get_int4(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::int8> get_int8(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::float4> get_float4(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::float8> get_float8(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::character> get_character(std::size_t index) const override;
 
-    void write_to(std::ostream& os) const noexcept override {
-        os << ref_ << *meta_;
-    }
+    [[nodiscard]] bool is_null(size_t index) const noexcept override;
+
+    void ref(accessor::record_ref r) noexcept;
+
+    void write_to(std::ostream& os) const noexcept override;
 
 private:
     accessor::record_ref ref_{};

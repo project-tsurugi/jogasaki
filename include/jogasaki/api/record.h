@@ -19,12 +19,17 @@
 
 namespace jogasaki::api {
 
-using kind = field_type_kind;
+
 /**
  * @brief Record object in the result set
  */
 class record {
 public:
+    using kind = field_type_kind;
+
+    template<kind Kind>
+    using runtime_type = typename field_type_traits<Kind>::runtime_type;
+
     /**
      * @brief construct
      */
@@ -60,18 +65,18 @@ public:
      * @param index indicate the field offset originated at 0
      * @return the value of given type
      */
-    virtual field_type_traits<kind::int4>::runtime_type get_int4(std::size_t index) const = 0;
-    virtual field_type_traits<kind::int8>::runtime_type get_int8(std::size_t index) const = 0;
-    virtual field_type_traits<kind::float4>::runtime_type get_float4(std::size_t index) const = 0;
-    virtual field_type_traits<kind::float8>::runtime_type get_float8(std::size_t index) const = 0;
-    virtual field_type_traits<kind::character>::runtime_type get_character(std::size_t index) const = 0;
+    [[nodiscard]] virtual runtime_type<kind::int4> get_int4(std::size_t index) const = 0;
+    [[nodiscard]] virtual runtime_type<kind::int8> get_int8(std::size_t index) const = 0;
+    [[nodiscard]] virtual runtime_type<kind::float4> get_float4(std::size_t index) const = 0;
+    [[nodiscard]] virtual runtime_type<kind::float8> get_float8(std::size_t index) const = 0;
+    [[nodiscard]] virtual runtime_type<kind::character> get_character(std::size_t index) const = 0;
 
     /**
      * @brief getter for nullilty
      * @param index indicate the field offset originated at 0
      * @return flag indicating whether the value is null or not
      */
-    virtual bool is_null(size_t index) const noexcept = 0;
+    [[nodiscard]] virtual bool is_null(size_t index) const noexcept = 0;
 
     virtual void write_to(std::ostream& os) const noexcept = 0;
 

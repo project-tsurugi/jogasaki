@@ -24,23 +24,12 @@
 namespace jogasaki::api {
 
 /**
- * @brief record metadata holding information about field types, nullability and binary encoding of records.
- * @details based on the record metadata and knowledge on binary encoding/bits layout, record_meta provides information
- * to access its data via record_ref accessor (e.g. offset for field value or nullity bit.)
+ * @brief record metadata holding information about field types and nullability
  */
 class record_meta {
 public:
-    /// @brief fields type
-    using fields_type = std::vector<field_type>;
-
-    /// @brief iterator for fields
-    using field_iterator = fields_type::const_iterator;
-
     /// @brief field index type (origin = 0)
     using field_index_type = std::size_t;
-
-    /// @brief the value indicating invalid offset
-    constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
     /**
      * @brief construct empty object

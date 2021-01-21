@@ -43,7 +43,6 @@ bool transaction::execute(api::executable_statement& statement, std::unique_ptr<
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
     auto store = std::make_unique<data::result_store>();
-//    auto e = ctx->executable_statement();
     auto request_ctx = std::make_shared<request_context>(
         std::make_shared<class channel>(),
         database_->configuration(),

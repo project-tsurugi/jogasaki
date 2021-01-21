@@ -22,6 +22,7 @@
 
 #include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/api/impl/record.h>
+#include <jogasaki/data/result_store.h>
 
 namespace jogasaki::api::impl {
 
@@ -36,12 +37,8 @@ public:
     result_set_iterator(
         data::result_store::iterator it,
         data::result_store::iterator end,
-        maybe_shared_ptr<meta::record_meta> meta
-    ) :
-        it_(it),
-        end_(end),
-        record_(meta)
-    {}
+        maybe_shared_ptr<meta::record_meta> const& meta
+    );
 
     /**
      * @brief copy construct
@@ -68,31 +65,14 @@ public:
      */
     ~result_set_iterator() override = default;
 
-    bool has_next() override {
-        return it_ != end_;
-    }
+    bool has_next() override;
 
     /**
      * @brief move the iterator to the next row returning the current
      * @return the current row
      * @throw Exception on error
      */
-    record* next() override {
-        if (it_ == end_) {
-            return {};
-        }
-        record_.ref(*it_);
-        ++it_;
-        return std::addressof(record_);
-    }
-
-    /**
-     * @brief close the iterator
-     * @throw Exception on error
-     */
-    void close() override {
-
-    }
+    record* next() override;
 
 private:
     data::result_store::iterator it_;

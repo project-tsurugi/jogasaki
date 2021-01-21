@@ -25,7 +25,6 @@ namespace jogasaki::api {
 
 /**
  * @brief result set interface to provide iterator/disposal method
- * @attention under development
  */
 class result_set {
 public:

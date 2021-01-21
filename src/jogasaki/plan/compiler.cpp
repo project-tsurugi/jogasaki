@@ -392,7 +392,8 @@ bool create_executable_statement(compiler_context& ctx, parameter_set const& par
         options.get_object_creator(),
     };
 
-    placeholder_map placeholders;
+    placeholder_map placeholders{};
+
     //TODO fill from parameter_set
     (void)parameters;
 

@@ -17,6 +17,8 @@
 
 #include <jogasaki/api/prepared_statement.h>
 
+#include <jogasaki/plan/prepared_statement.h>
+
 /**
  * @brief SQL engine public API
  */
@@ -28,6 +30,12 @@ namespace jogasaki::api::impl {
 class prepared_statement : public api::prepared_statement {
 public:
     prepared_statement() = default;
+    explicit prepared_statement(std::shared_ptr<plan::prepared_statement> body) : body_(std::move(body)) {}
+    [[nodiscard]] std::shared_ptr<plan::prepared_statement> const& body() const noexcept {
+        return body_;
+    }
+private:
+    std::shared_ptr<plan::prepared_statement> body_{};
 };
 
 }

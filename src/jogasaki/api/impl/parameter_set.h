@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/api/parameter_set.h>
+#include <jogasaki/plan/parameter_set.h>
 
 namespace jogasaki::api::impl {
 
@@ -24,6 +25,7 @@ using kind = field_type_kind;
 class parameter_set : public api::parameter_set {
 public:
     parameter_set() = default;
+    explicit parameter_set(std::shared_ptr<plan::parameter_set> body) noexcept;
 
     void set_null(std::string_view name) override {
         (void)name;
@@ -55,6 +57,13 @@ public:
     [[nodiscard]] parameter_set* clone() && override {
         return nullptr;
     }
+
+    [[nodiscard]] std::shared_ptr<plan::parameter_set> const& body() const noexcept {
+        return body_;
+    }
+private:
+    std::shared_ptr<plan::parameter_set> body_{};
+
 };
 
 

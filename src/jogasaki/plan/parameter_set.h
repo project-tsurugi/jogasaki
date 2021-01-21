@@ -15,7 +15,15 @@
  */
 #pragma once
 
-#include <shakujo/model/program/Program.h>
+#include <takatori/type/int.h>
+#include <takatori/type/float.h>
+#include <takatori/type/character.h>
+#include <takatori/value/int.h>
+#include <takatori/value/float.h>
+#include <takatori/value/character.h>
+
+#include <mizugaki/placeholder_map.h>
+#include <mizugaki/placeholder_entry.h>
 
 namespace jogasaki::plan {
 
@@ -31,7 +39,6 @@ public:
     parameter_set& operator=(parameter_set const& other) = default;
     parameter_set& operator=(parameter_set&& other) = default;
 
-
 //    explicit parameter_set(
 //        std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>> values
 //    ) :
@@ -39,13 +46,38 @@ public:
 //    {}
 
     void set_null(std::string_view name);
-    void set_int(std::string_view name, std::int32_t value){
-        set_int4(name, value);
+    void set_int4(std::string_view name, std::int32_t value) {
+        map_.add(std::string(name),
+            {
+                takatori::type::int4(),
+                takatori::value::int4(value),
+            }
+        );
     }
-    void set_int4(std::string_view name, std::int32_t value);
-    void set_int8(std::string_view name, std::int64_t value);
-    void set_float8(std::string_view name, double value);
-    void set_float4(std::string_view name, float value);
+    void set_int8(std::string_view name, std::int64_t value) {
+        map_.add(std::string(name),
+            {
+                takatori::type::int8(),
+                takatori::value::int8(value),
+            }
+        );
+    }
+    void set_float8(std::string_view name, double value) {
+        map_.add(std::string(name),
+            {
+                takatori::type::float8(),
+                takatori::value::float8(value),
+            }
+        );
+    }
+    void set_float4(std::string_view name, float value) {
+        map_.add(std::string(name),
+            {
+                takatori::type::float4(),
+                takatori::value::float4(value),
+            }
+        );
+    }
     void set_text(std::string_view name, std::string_view value);
 //    std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>> const& values() const& {
 //        return values_;
@@ -53,8 +85,9 @@ public:
 //    std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>>&& values() && {
 //        return std::move(values_);
 //    }
+
 private:
-//    std::map<std::string, std::unique_ptr<shakujo::model::expression::Expression>> values_{};
+    mizugaki::placeholder_map map_{};
 };
 
 }

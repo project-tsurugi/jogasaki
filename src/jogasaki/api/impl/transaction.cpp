@@ -14,7 +14,68 @@
  * limitations under the License.
  */
 #include "transaction.h"
+#include "executable_statement.h"
+
+#include <takatori/util/downcast.h>
+
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/plan/compiler.h>
 
 namespace jogasaki::api::impl {
+
+using takatori::util::unsafe_downcast;
+
+bool transaction::commit() {
+    return tx_->commit();
+}
+
+bool transaction::abort() {
+    return tx_->abort();
+}
+
+bool transaction::execute(api::executable_statement& statement) {
+    std::unique_ptr<result_set> result{};
+    return execute(statement, result);
+}
+
+bool transaction::execute(api::executable_statement& statement, std::unique_ptr<result_set>& result) {
+    auto& s = unsafe_downcast<impl::executable_statement&>(statement);
+    auto& e = s.body();
+    auto store = std::make_unique<data::result_store>();
+//    auto e = ctx->executable_statement();
+    auto request_ctx = std::make_shared<request_context>(
+        std::make_shared<class channel>(),
+        database_->configuration(),
+        s.resource(),
+        database_->kvs_db(),
+        tx_,
+        store.get()
+    );
+    if (e->is_execute()) {
+        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
+        auto& g = stmt->operators();
+        g.context(*request_ctx);
+        scheduler_.schedule(*stmt, *request_ctx);
+        if (store->size() > 0) {
+            // for now, assume only one result is returned
+            result = std::make_unique<impl::result_set>(
+                std::move(store)
+            );
+        }
+        return true;
+    }
+    auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
+    scheduler_.schedule(*stmt, *request_ctx);
+    return true;
+}
+
+impl::database& transaction::database() {
+    return *database_;
+}
+
+transaction::transaction(impl::database& database) :
+    database_(std::addressof(database)),
+    scheduler_(database_->configuration())
+{}
 
 }

@@ -16,54 +16,12 @@
 #include "database.h"
 
 #include <jogasaki/api/impl/result_set.h>
+#include <jogasaki/api/impl/transaction.h>
 
 #include <string_view>
 #include <memory>
 
 namespace jogasaki::api::impl {
-
-bool database::execute(std::string_view sql, std::unique_ptr<api::result_set>& result) {
-    auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
-    auto ctx = std::make_shared<plan::compiler_context>();
-    ctx->resource(resource);
-    ctx->storage_provider(tables_);
-    ctx->aggregate_provider(aggregate_functions_);
-    if(! plan::compile(sql, *ctx, {})) {
-        LOG(ERROR) << "compilation failed.";
-        return false;
-    }
-    if (! kvs_db_) {
-        LOG(ERROR) << "database not started";
-        return false;
-    }
-    auto store = std::make_unique<data::result_store>();
-    // TODO redesign how request context is passed
-    auto e = ctx->executable_statement();
-    auto request_ctx = std::make_shared<request_context>(
-        std::make_shared<class channel>(),
-        cfg_,
-        std::move(resource),
-        kvs_db_,
-        kvs_db_->create_transaction(),  // TODO retrieve from api transaction object
-        store.get()
-    );
-    if (e->is_execute()) {
-        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
-        auto& g = stmt->operators();
-        g.context(*request_ctx);
-        scheduler_.schedule(*stmt, *request_ctx);
-        if (store->size() > 0) {
-            // for now, assume only one result is returned
-            result = std::make_unique<impl::result_set>(
-                std::move(store)
-            );
-        }
-        return true;
-    }
-    auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
-    scheduler_.schedule(*stmt, *request_ctx);
-    return true;
-}
 
 bool database::execute(std::string_view sql) {
     std::unique_ptr<api::result_set> result{};
@@ -119,15 +77,80 @@ bool database::stop() {
     return true;
 }
 
-database::database(std::shared_ptr<configuration> cfg) :
-    cfg_(std::move(cfg)),
-    scheduler_(cfg_)
+database::database(std::shared_ptr<class configuration> cfg) :
+    cfg_(std::move(cfg))
 {
     executor::add_builtin_tables(*tables_);
     executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
     if(cfg_->prepare_benchmark_tables()) {
         executor::add_benchmark_tables(*tables_);
     }
+}
+
+std::shared_ptr<class configuration> const& database::configuration() const noexcept {
+    return cfg_;
+}
+
+database::database() : database(std::make_shared<class configuration>()) {}
+
+bool database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
+    auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
+    auto ctx = std::make_shared<plan::compiler_context>();
+    ctx->resource(resource);
+    ctx->storage_provider(tables_);
+    ctx->aggregate_provider(aggregate_functions_);
+    if(! plan::prepare(sql, *ctx)) {
+        LOG(ERROR) << "compilation failed.";
+        return false;
+    }
+    statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
+    return true;
+}
+
+bool database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
+    std::unique_ptr<api::prepared_statement> prepared{};
+    impl::parameter_set parameters{};
+    if(auto rc = prepare(sql, prepared); !rc) {
+        return false;
+    }
+    std::unique_ptr<api::executable_statement> exec{};
+    if(auto rc = resolve(*prepared, parameters, exec); !rc) {
+        return false;
+    }
+    statement = std::make_unique<impl::executable_statement>(
+        unsafe_downcast<impl::executable_statement>(*exec).body()
+    );
+    return true;
+}
+
+std::unique_ptr<api::transaction> database::create_transaction() {
+    if (! kvs_db_) {
+        LOG(ERROR) << "database not started";
+        return {};
+    }
+    return std::make_unique<impl::transaction>(*this);
+}
+
+bool database::resolve(
+    api::prepared_statement const& prepared,
+    api::parameter_set const& parameters,
+    std::unique_ptr<api::executable_statement>& statement
+) {
+    auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
+    auto ctx = std::make_shared<plan::compiler_context>();
+    ctx->resource(resource);
+    ctx->storage_provider(tables_);
+    ctx->aggregate_provider(aggregate_functions_);
+    ctx->prepared_statement(
+        unsafe_downcast<impl::prepared_statement>(prepared).body()
+    );
+
+    if(! plan::compile(*ctx, *unsafe_downcast<impl::parameter_set>(parameters).body())) {
+        LOG(ERROR) << "compilation failed.";
+        return false;
+    }
+    statement = std::make_unique<impl::executable_statement>(ctx->executable_statement());
+    return true;
 }
 
 }

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/plan/executable_statement.h>
 
 namespace jogasaki::api::impl {
 
@@ -25,6 +26,25 @@ namespace jogasaki::api::impl {
 class executable_statement : public api::executable_statement {
 public:
     executable_statement() = default;
+
+    executable_statement(
+        std::shared_ptr<plan::executable_statement> body,
+        std::shared_ptr<memory::lifo_paged_memory_resource> resource
+    ) :
+        body_(std::move(body)),
+        resource_(std::move(resource))
+    {}
+
+    [[nodiscard]] std::shared_ptr<plan::executable_statement> const& body() const noexcept {
+        return body_;
+    }
+
+    [[nodiscard]] std::shared_ptr<plan::executable_statement> const& resource() const noexcept {
+        return resource_;
+    }
+private:
+    std::shared_ptr<plan::executable_statement> body_{};
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
 };
 
 }

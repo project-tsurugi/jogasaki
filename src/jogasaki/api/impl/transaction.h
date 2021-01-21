@@ -17,34 +17,31 @@
 
 #include <jogasaki/api/transaction.h>
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
+
+#include <jogasaki/kvs/transaction.h>
 
 namespace jogasaki::api::impl {
 
+class database;
+
 /**
- * @brief database interface to start/stop the services and initiate transaction requests
+ * @brief transaction
  */
 class transaction : public api::transaction {
 public:
     transaction() = default;
+    transaction(impl::database& database);
 
-    bool commit() override {
-        return true;
-    }
-
-    bool abort() override {
-        return true;
-    }
-
-    bool execute(api::executable_statement& statement) override {
-        (void)statement;
-        return true;
-    }
-
-    bool execute(executable_statement& statement, std::unique_ptr<result_set>& result) override {
-        (void)statement;
-        (void)result;
-        return true;
-    }
+    bool commit() override;
+    bool abort() override;
+    bool execute(api::executable_statement& statement) override;
+    bool execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) override;
+    impl::database& database();
+private:
+    std::shared_ptr<kvs::transaction> tx_{};
+    impl::database* database_{};
+    scheduler::statement_scheduler scheduler_{};
 };
 
 }

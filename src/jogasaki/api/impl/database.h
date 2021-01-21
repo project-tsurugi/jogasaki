@@ -30,61 +30,47 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/api/impl/parameter_set.h>
+#include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/impl/executable_statement.h>
 
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
+
+class transaction;
 
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
  */
 class database : public api::database {
 public:
-    database() : database(std::make_shared<configuration>()) {}
+    database();
     explicit database(std::shared_ptr<configuration> cfg);
-    ~database() override = default;
-    database(database const& other) = delete;
-    database& operator=(database const& other) = delete;
-    database(database&& other) noexcept = delete;
-    database& operator=(database&& other) noexcept = delete;
 
-    [[nodiscard]] bool start() override;;
+    [[nodiscard]] bool start() override;
 
-    [[nodiscard]] bool stop() override;;
+    [[nodiscard]] bool stop() override;
 
-    [[nodiscard]] bool prepare(std::string_view sql, std::unique_ptr<prepared_statement>& statement) override {
-        (void)sql;
-        (void)statement;
-        return true;
-    }
+    [[nodiscard]] bool prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) override;
 
-    [[nodiscard]] bool create_executable(std::string_view sql, std::unique_ptr<executable_statement>& statement) override {
-        (void)sql;
-        (void)statement;
-        return true;
-    }
+    [[nodiscard]] bool create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) override;
 
     [[nodiscard]] bool resolve(
-        prepared_statement const& prepared,
-        parameter_set const& parameters,
-        std::unique_ptr<executable_statement>& statement
-    ) override {
-        (void)prepared;
-        (void)parameters;
-        (void)statement;
-        return true;
-    }
+        api::prepared_statement const& prepared,
+        api::parameter_set const& parameters,
+        std::unique_ptr<api::executable_statement>& statement
+    ) override;
 
-    [[nodiscard]] bool explain(executable_statement const& executable, std::ostream& out) override {
+    [[nodiscard]] bool explain(api::executable_statement const& executable, std::ostream& out) override {
         (void)executable;
         (void)out;
         return true;
     }
 
-    std::unique_ptr<transaction> create_transaction() override {
-        return {};
-    }
+    std::unique_ptr<api::transaction> create_transaction() override;
 
+    [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
     [[nodiscard]] static database* get_impl(api::database& arg) noexcept;
 
     [[nodiscard]] std::shared_ptr<kvs::database> const& kvs_db() const noexcept;
@@ -93,8 +79,7 @@ public:
 
     [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const& aggregate_functions() const noexcept;
 private:
-    std::shared_ptr<configuration> cfg_{};
-    scheduler::statement_scheduler scheduler_{};
+    std::shared_ptr<class configuration> cfg_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{std::make_shared<yugawara::storage::configurable_provider>()};
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{std::make_shared<yugawara::aggregate::configurable_provider>()};
     std::shared_ptr<kvs::database> kvs_db_{};

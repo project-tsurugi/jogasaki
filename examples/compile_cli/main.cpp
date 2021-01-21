@@ -101,7 +101,6 @@ std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_function
 }
 
 static void dump(yugawara::compiler_result const& r) {
-    ::takatori::serializer::json_printer printer { std::cout };
     r.object_scanner()(
         r.statement(),
         ::takatori::serializer::json_printer { std::cout });

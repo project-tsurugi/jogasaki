@@ -19,20 +19,15 @@
 #include <memory>
 
 #include <takatori/util/downcast.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/common/execute.h>
-#include <jogasaki/executor/common/write.h>
-#include <jogasaki/executor/function/builtin_functions.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/scheduler/statement_scheduler.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/kvs/database.h>
 
 namespace jogasaki::api::impl {
 
@@ -61,11 +56,7 @@ public:
         std::unique_ptr<api::executable_statement>& statement
     ) override;
 
-    [[nodiscard]] bool explain(api::executable_statement const& executable, std::ostream& out) override {
-        (void)executable;
-        (void)out;
-        return true;
-    }
+    [[nodiscard]] bool explain(api::executable_statement const& executable, std::ostream& out) override;
 
     std::unique_ptr<api::transaction> do_create_transaction(bool readonly) override;
 

@@ -57,6 +57,7 @@ TEST_F(database_test, simple) {
         auto tx = db->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_TRUE(db->create_executable("select * from T0", exec));
+        db->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_TRUE(tx->execute(*exec, rs));
         auto it = rs->iterator();

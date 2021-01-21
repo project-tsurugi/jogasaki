@@ -21,6 +21,8 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/write.h>
 
 namespace jogasaki::api::impl {
 

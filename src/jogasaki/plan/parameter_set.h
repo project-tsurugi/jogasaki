@@ -16,7 +16,6 @@
 #pragma once
 
 #include <mizugaki/placeholder_map.h>
-#include <mizugaki/placeholder_entry.h>
 
 #include <jogasaki/meta/field_type_traits.h>
 
@@ -29,6 +28,9 @@ class parameter_set {
 public:
     using kind = meta::field_type_kind;
 
+    template<kind Kind>
+    using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
+
     parameter_set() = default;
     ~parameter_set() = default;
     parameter_set(parameter_set const& other) = default;
@@ -36,12 +38,13 @@ public:
     parameter_set& operator=(parameter_set const& other) = default;
     parameter_set& operator=(parameter_set&& other) noexcept = default;
 
-    void set_int4(std::string_view name, meta::field_type_traits<kind::int4>::runtime_type value);
-    void set_int8(std::string_view name, meta::field_type_traits<kind::int8>::runtime_type value);
-    void set_float4(std::string_view name, meta::field_type_traits<kind::float4>::runtime_type value);
-    void set_float8(std::string_view name, meta::field_type_traits<kind::float8>::runtime_type value);
-    void set_character(std::string_view name, meta::field_type_traits<kind::character>::runtime_type value);
+    void set_int4(std::string_view name, runtime_type<kind::int4> value);
+    void set_int8(std::string_view name, runtime_type<kind::int8> value);
+    void set_float4(std::string_view name, runtime_type<kind::float4> value);
+    void set_float8(std::string_view name, runtime_type<kind::float8> value);
+    void set_character(std::string_view name, runtime_type<kind::character> value);
     [[nodiscard]] mizugaki::placeholder_map const& map() const noexcept;
+
 private:
     mizugaki::placeholder_map map_{};
 };

@@ -17,9 +17,15 @@
 
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
+#include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/compiler.h>
 
 #include <string_view>
 #include <memory>
+#include <takatori/serializer/json_printer.h>
+
 
 namespace jogasaki::api::impl {
 
@@ -148,6 +154,15 @@ bool database::resolve(
     statement = std::make_unique<impl::executable_statement>(
         ctx->executable_statement(),
         std::move(resource)
+    );
+    return true;
+}
+
+bool database::explain(api::executable_statement const& executable, std::ostream& out) {
+    auto r = unsafe_downcast<impl::executable_statement>(executable).body();
+    r->compiled_info().object_scanner()(
+        r->statement(),
+        takatori::serializer::json_printer{ out }
     );
     return true;
 }

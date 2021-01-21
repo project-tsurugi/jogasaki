@@ -15,13 +15,11 @@
  */
 #pragma once
 
-#include <string_view>
-#include <memory>
-
 namespace jogasaki::api {
 
 /**
- * @brief database interface to start/stop the services and initiate transaction requests
+ * @brief prepared statement interface
+ * @details prepared statement represents pre-compiled sql statement with unresolved placeholders
  */
 class prepared_statement {
 public:

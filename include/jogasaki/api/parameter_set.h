@@ -27,6 +27,7 @@ using kind = field_type_kind;
 
 /**
  * @brief parameter set interface
+ * @details this is used to assign values to parameter (a.k.a placeholder) in the sql statement
  */
 class parameter_set {
 public:
@@ -37,6 +38,11 @@ public:
     parameter_set(parameter_set&& other) noexcept = delete;
     parameter_set& operator=(parameter_set&& other) noexcept = delete;
 
+    /**
+     * @brief setter for the placeholder
+     * @param name the name of the placeholder without colon
+     * @param value the value assigned to the placeholder
+     */
     virtual void set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) = 0;
     virtual void set_int8(std::string_view name, field_type_traits<kind::int8>::runtime_type value) = 0;
     virtual void set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) = 0;
@@ -48,10 +54,18 @@ public:
         set_character(name, &value[0]);  // NOLINT
     }
 
+    /**
+     * @brief clone the parameter set
+     * @return the cloned object
+     */
     [[nodiscard]] virtual parameter_set* clone() const& = 0;
     [[nodiscard]] virtual parameter_set* clone() && = 0;
 };
 
+/**
+ * @brief factory method to get the new parameter set
+ * @return new parameter set
+ */
 std::unique_ptr<parameter_set> create_parameter_set();
 
 }

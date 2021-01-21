@@ -24,19 +24,42 @@
 namespace jogasaki::api {
 
 /**
- * @brief result set interface to provide iterator/disposal method
+ * @brief result set interface to provide iterator/disposal method for the query result
  */
 class result_set {
 public:
+    /**
+     * @brief create new object
+     */
     result_set() = default;
+
+    /**
+     * @brief destruct object
+     */
     virtual ~result_set() = default;
+
     result_set(result_set const& other) = delete;
     result_set& operator=(result_set const& other) = delete;
     result_set(result_set&& other) noexcept = delete;
     result_set& operator=(result_set&& other) noexcept = delete;
 
+    /**
+     * @brief accessor to the metadata of the result records
+     * @return the record metadata
+     */
     [[nodiscard]] virtual api::record_meta const* meta() const noexcept = 0;
+
+    /**
+     * @brief getter of the iterator at the beginning of the result records
+     * @return the iterator object on the result records
+     */
     [[nodiscard]] virtual std::unique_ptr<result_set_iterator> iterator() = 0;
+
+    /**
+     * @brief close and release the resources for this result set
+     * @details This method must be called when the query result is not needed any more in order to avoid resource leak.
+     * @note iterators and metadata for this result set becomes invalid and accessing after this call causes undefined behavior
+     */
     virtual void close() = 0;
 };
 

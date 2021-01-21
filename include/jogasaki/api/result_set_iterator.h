@@ -57,15 +57,14 @@ public:
     virtual ~result_set_iterator() = default;
 
     /**
-     * @brief move the iterator to the next row returning the current
+     * @brief provides whether the next record exists
      * @return whether the next record exists
      */
     virtual bool has_next() = 0;
 
     /**
-     * @brief move the iterator to the next row returning the current
+     * @brief move the iterator to the next record and return accessor to it
      * @return the current row
-     * @throw Exception on error
      */
     virtual record* next() = 0;
 

@@ -15,10 +15,6 @@
  */
 #pragma once
 
-#include <cstddef>
-#include <type_traits>
-#include <variant>
-
 #include <jogasaki/api/field_type_kind.h>
 
 namespace jogasaki::api {
@@ -34,14 +30,18 @@ public:
      */
     constexpr field_type() noexcept = default;
 
+    /**
+     * @brief destruct the object
+     */
     virtual ~field_type() = default;
+
     field_type(field_type const& other) = default;
     field_type& operator=(field_type const& other) = default;
     field_type(field_type&& other) noexcept = default;
     field_type& operator=(field_type&& other) noexcept = default;
 
     /**
-     * @brief getter for type kind
+     * @brief getter for field type kind
      */
     [[nodiscard]] virtual field_type_kind kind() const noexcept = 0;
 

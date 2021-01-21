@@ -24,20 +24,57 @@
 namespace jogasaki::api {
 
 /**
- * @brief database interface to start/stop the services and initiate transaction requests
+ * @brief interface to execute statement in the transaction, or to finish the transaction
  */
 class transaction {
 public:
+    /**
+     * @brief create new object
+     */
     transaction() = default;
+
+    /**
+     * @brief destruct the object
+     */
     virtual ~transaction() = default;
+
     transaction(transaction const& other) = delete;
     transaction& operator=(transaction const& other) = delete;
     transaction(transaction&& other) noexcept = delete;
     transaction& operator=(transaction&& other) noexcept = delete;
 
+    /**
+     * @brief commit the transaction
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
     virtual status commit() = 0;
+
+    /**
+     * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
     virtual status abort() = 0;
+
+    /**
+     * @brief execute the statement in the transaction. No result records are expected
+     * from the statement (e.g. insert/update/delete).
+     * @param statement the statement to be executed
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
     virtual status execute(executable_statement& statement) = 0;
+
+    /**
+     * @brief execute the statement in the transaction. The result records are expected.
+     * from the statement (e.g. query to tables/views).
+     * @param statement the statement to be executed
+     * @param result [out] the unique ptr to be filled with result set, which must be closed when caller
+     * completes using the result records.
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
     virtual status execute(executable_statement& statement, std::unique_ptr<result_set>& result) = 0;
 };
 

@@ -21,7 +21,6 @@
 
 #include <fpdecimal/decimal.h>
 
-#include <takatori/util/enum_tag.h>
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>

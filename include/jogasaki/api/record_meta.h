@@ -24,7 +24,7 @@
 namespace jogasaki::api {
 
 /**
- * @brief record metadata holding information about field types and nullability
+ * @brief record metadata holding information about field type and nullability
  */
 class record_meta {
 public:
@@ -37,8 +37,8 @@ public:
     constexpr record_meta() = default;
 
     /**
-     * @brief getter for field type - same as operator[] but friendly style for pointers
-     * @param index field index
+     * @brief getter for field type
+     * @param index field index. Must be equal to, or greater than 0. Must be less than the field count.
      * @return field type
      * @warning if index is not in valid range, the behavior is undefined
      */
@@ -46,7 +46,7 @@ public:
 
     /**
      * @brief getter for the nullability for the field
-     * @param index field index
+     * @param index field index. Must be equal to, or greater than 0. Must be less than the field count.
      * @return true if the field is nullable
      * @return false otherwise
      * @warning if index is not in valid range, the behavior is undefined

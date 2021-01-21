@@ -21,7 +21,7 @@
 namespace jogasaki::api {
 
 /**
- * @brief database interface to start/stop the services and initiate transaction requests
+ * @brief compiled, resolved statement ready to execute
  */
 class executable_statement {
 public:

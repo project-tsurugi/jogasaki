@@ -19,6 +19,8 @@ namespace jogasaki::api {
 
 /**
  * @brief environment initializer
+ * @details this class setup jogasaki client environment.
+ * The client should initialize this object and keep it as long as jogasaki runs.
  */
 class environment {
 public:
@@ -32,7 +34,7 @@ public:
     /**
      * @brief initialize the environment in order to initialize static control area (e.g. one held by glog).
      * The client code must create environment instance, call initialize() function,
-     * and keep it until the client completes interactiion with jogasaki. Typically this can be done in main() of the client.
+     * and keep it until the client completes interaction with jogasaki. Typically this can be done in main() of the client.
      */
     virtual void initialize() = 0;
 };

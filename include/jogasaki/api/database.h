@@ -21,9 +21,6 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
 
-/**
- * @brief SQL engine public API
- */
 namespace jogasaki::api {
 
 class result_set;
@@ -34,6 +31,9 @@ class parameter_set;
 
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
+ * @details this object is thread-safe and can be shared by multiple client threads.
+ * The member functions except start() and stop() can be called from multiple threads simultaneously.
+ * @note other objects in this public api are not thread-safe in general unless otherwise specified.
  */
 class database {
 public:
@@ -53,30 +53,89 @@ public:
     database& operator=(database&& other) noexcept = delete;
 
     /**
-     * @brief start servicing database initializing internal thread pools etc.
+     * @brief start servicing database initializing tables, storages, or internal thread pools etc.
+     * @details database initialization is done by this function.
+     * No request should be made to database prior to this call.
+     * @attention this function is not thread-safe. stop()/start() should be called from single thread at a time.
+     * @return status::ok when successful
+     * @return other code when error
      */
     virtual status start() = 0;
+
+    /**
+     * @brief stop servicing database
+     * @details stopping database and closing internal resources.
+     * No request should be made to the database after this call.
+     * @attention this function is not thread-safe. stop()/start() should be called from single thread at a time.
+     * @return status::ok when successful
+     * @return other code when error
+     */
     virtual status stop() = 0;
 
+    /**
+     * @brief prepare sql statement and create prepared statement
+     * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
+     * @param sql the sql text string to prepare
+     * @param statement [out] the unique ptr to be filled with the created prepared statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
     virtual status prepare(std::string_view sql,
         std::unique_ptr<prepared_statement>& statement) = 0;
 
-    virtual status create_executable(std::string_view sql,
-        std::unique_ptr<executable_statement>& statement) = 0;
-
+    /**
+     * @brief resolve the placeholder and create executable statement
+     * @details Executable statement is the form of statement ready to execute, placeholders are resolved and
+     * compilation is completed.
+     * @param prepared the prepared statement used to create executable statement
+     * @param parameters the parameters to assign value for each placeholder
+     * @param statement [out] the unique ptr to be filled with the created executable statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
     virtual status resolve(
         prepared_statement const& prepared,
         parameter_set const& parameters,
         std::unique_ptr<executable_statement>& statement
     ) = 0;
 
+    /**
+     * @brief prepare and create executable statement
+     * @details this does prepare and resolve at once assuming no placeholder is used in the sql text
+     * @param sql the sql text string to prepare
+     * @param statement [out] the unique ptr to be filled with the created executable statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
+    virtual status create_executable(std::string_view sql,
+        std::unique_ptr<executable_statement>& statement) = 0;
+
+    /**
+     * @brief explain the executable statement and dump the result to output stream
+     * @param executable the executable statement to explain
+     * @param out the output stream to write the result
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
     virtual status explain(executable_statement const& executable, std::ostream& out) = 0;
 
-    virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
-
+    /**
+     * @brief begin the new transaction
+     * @param readonly specify whether the new transaction is read-only or not
+     * @return transaction object when success
+     * @return nullptr when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
     std::unique_ptr<transaction> create_transaction(bool readonly = false) {
         return do_create_transaction(readonly);
     }
+
+protected:
+    virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
 };
 
 /**

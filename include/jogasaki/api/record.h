@@ -19,9 +19,9 @@
 
 namespace jogasaki::api {
 
-
 /**
- * @brief Record object in the result set
+ * @brief record object in the result set
+ * @details this interface represents a record in the query result and provides accessor to field values
  */
 class record {
 public:
@@ -31,7 +31,7 @@ public:
     using runtime_type = typename field_type_traits<Kind>::runtime_type;
 
     /**
-     * @brief construct
+     * @brief construct empty object
      */
     record() = default;
 
@@ -61,9 +61,13 @@ public:
     virtual ~record() = default;
 
     /**
-     * @brief getters for field values
-     * @param index indicate the field offset originated at 0
+     * @brief getter for field values
+     * @param index indicate the field offset originated at 0. This must be smaller than the field count.
      * @return the value of given type
+     * @attention the returned value is valid only when :
+     * - the field is not nullable (i.e. record_meta::nullable() returns false), or
+     * - the field value is not null (i.e. is_null() returns false)
+     * Otherwise, the returned value is invalid and should be ignored.
      */
     [[nodiscard]] virtual runtime_type<kind::int4> get_int4(std::size_t index) const = 0;
     [[nodiscard]] virtual runtime_type<kind::int8> get_int8(std::size_t index) const = 0;
@@ -73,15 +77,13 @@ public:
 
     /**
      * @brief getter for nullilty
-     * @param index indicate the field offset originated at 0
-     * @return flag indicating whether the value is null or not
+     * @param index indicate the field offset originated at 0. This must be smaller than the field count.
+     * @return boolean flag indicating whether the field value is null or not
      */
     [[nodiscard]] virtual bool is_null(size_t index) const noexcept = 0;
 
-    virtual void write_to(std::ostream& os) const noexcept = 0;
-
     /**
-     * @brief appends string representation of the given value.
+     * @brief appends string representation of the record
      * @param out the target output
      * @param value the target value
      * @return the output stream
@@ -90,6 +92,9 @@ public:
         value.write_to(out);
         return out;
     }
+
+protected:
+    virtual void write_to(std::ostream& os) const noexcept = 0;
 };
 
 }

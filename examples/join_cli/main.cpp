@@ -443,11 +443,11 @@ public:
             LOG(INFO) << "record count: " << count << " hash: " << std::hex << hash;
         }
     }
-    takatori::plan::process& find_process(takatori::plan::graph_type& p) {
-        takatori::plan::process* p0{};
-        takatori::plan::sort_from_upstream(p, [&p0](takatori::plan::step& s){
+    takatori::plan::process const& find_process(takatori::plan::graph_type const& p) {
+        takatori::plan::process const* p0{};
+        takatori::plan::sort_from_upstream(p, [&p0](takatori::plan::step const& s){
             if (s.kind() == takatori::plan::step_kind::process) {
-                p0 = &dynamic_cast<takatori::plan::process&>(s);
+                p0 = &dynamic_cast<takatori::plan::process const&>(s);
             }
         });
         if (! p0) fail();

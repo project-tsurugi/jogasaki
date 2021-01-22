@@ -34,25 +34,26 @@ namespace jogasaki::plan {
 class cache_align executable_statement {
 public:
 
+    /**
+     * @brief create empty object
+     */
     executable_statement() = default;
 
+    /**
+     * @brief create new object
+     * @param statement the statement from compiler
+     * @param compiled_info the compiler result
+     * @param operators jogasaki graph or execute statement
+     */
     executable_statement(
         takatori::util::unique_object_ptr<::takatori::statement::statement> statement,
         yugawara::compiled_info compiled_info,
         std::shared_ptr<model::statement> operators
     ) noexcept;
 
-    void compiler_result(yugawara::compiler_result compiler_result) noexcept;
-
-    void statement(std::unique_ptr<::takatori::statement::statement> statement) noexcept;
-
     [[nodiscard]] ::takatori::statement::statement const& statement() const noexcept;
 
-    void compiled_info(yugawara::compiled_info compiled_info) noexcept;
-
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
-
-    void operators(std::shared_ptr<model::statement> operators) noexcept;
 
     [[nodiscard]] model::statement const* operators() const noexcept;
 

@@ -17,6 +17,8 @@
 #include <regex>
 #include <gtest/gtest.h>
 
+#include <takatori/util/downcast.h>
+
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
@@ -39,6 +41,8 @@ using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
+using takatori::util::unsafe_downcast;
+
 class tpcc_test : public ::testing::Test {
 public:
     void SetUp() {
@@ -46,7 +50,7 @@ public:
         cfg->single_thread(true);
         db_ = api::create_database(cfg);
         db_->start();
-        auto* db_impl = api::impl::database::get_impl(*db_);
+        auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
         add_benchmark_tables(*db_impl->tables());
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
         utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);

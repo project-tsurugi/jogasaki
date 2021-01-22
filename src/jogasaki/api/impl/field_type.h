@@ -32,7 +32,7 @@ public:
     constexpr field_type() noexcept = default;
 
     /**
-     * @brief construct empty object (kind undefined)
+     * @brief construct new object
      */
     explicit field_type(meta::field_type type) noexcept;
 
@@ -41,6 +41,7 @@ public:
      */
     [[nodiscard]] api::field_type_kind kind() const noexcept override;;
 
+    // TODO support filed options
 private:
     meta::field_type type_{};
 };

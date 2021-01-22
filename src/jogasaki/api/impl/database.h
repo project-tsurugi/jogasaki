@@ -63,8 +63,6 @@ public:
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
 
-    [[nodiscard]] static database* get_impl(api::database& arg) noexcept;
-
     [[nodiscard]] std::shared_ptr<kvs::database> const& kvs_db() const noexcept;
 
     [[nodiscard]] std::shared_ptr<yugawara::storage::configurable_provider> const& tables() const noexcept;

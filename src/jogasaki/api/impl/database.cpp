@@ -29,10 +29,6 @@
 
 namespace jogasaki::api::impl {
 
-database* database::get_impl(api::database& arg) noexcept {
-    return unsafe_downcast<database>(std::addressof(arg));
-}
-
 std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
 }

@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/downcast.h>
 
 #include <jogasaki/executor/process/impl/expression/any.h>
 
@@ -37,6 +38,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using kind = meta::field_type_kind;
 using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
@@ -52,7 +54,7 @@ static int run(std::string_view sql) {
     if (sql.empty()) return 0;
     auto db = api::create_database();
     db->start();
-    auto db_impl = api::impl::database::get_impl(*db);
+    auto db_impl = unsafe_downcast<api::impl::database>(db.get());
     executor::add_benchmark_tables(*db_impl->tables());
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);

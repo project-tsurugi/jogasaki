@@ -23,6 +23,9 @@ namespace jogasaki::api::impl {
 
 using kind = field_type_kind;
 
+/**
+ * @brief parameter_set implementation
+ */
 class parameter_set : public api::parameter_set {
 public:
     parameter_set() = default;
@@ -38,6 +41,10 @@ public:
     [[nodiscard]] parameter_set* clone() const& override;
     [[nodiscard]] parameter_set* clone() && override;
 
+    /**
+     * @brief accessor to the wrapped object
+     * @return plan::parameter_set implementation
+     */
     [[nodiscard]] std::shared_ptr<plan::parameter_set> const& body() const noexcept;
 private:
     std::shared_ptr<plan::parameter_set> body_{std::make_shared<plan::parameter_set>()};

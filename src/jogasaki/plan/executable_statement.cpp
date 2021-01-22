@@ -37,30 +37,12 @@ executable_statement::executable_statement(
     operators_(std::move(operators))
 {}
 
-void executable_statement::compiler_result(yugawara::compiler_result compiler_result) noexcept {
-    statement_ = compiler_result.release_statement();
-    compiled_info_ = std::move(compiler_result.info());
-}
-
-void executable_statement::statement(std::unique_ptr<::takatori::statement::statement> statement) noexcept {
-    takatori::util::object_creator creator{};
-    statement_ = creator.wrap_unique(statement.release());
-}
-
 ::takatori::statement::statement const& executable_statement::statement() const noexcept {
     return *statement_;
 }
 
-void executable_statement::compiled_info(yugawara::compiled_info compiled_info) noexcept {
-    compiled_info_ = std::move(compiled_info);
-}
-
 yugawara::compiled_info const& executable_statement::compiled_info() const noexcept {
     return compiled_info_;
-}
-
-void executable_statement::operators(std::shared_ptr<model::statement> operators) noexcept {
-    operators_ = std::move(operators);
 }
 
 model::statement const* executable_statement::operators() const noexcept {

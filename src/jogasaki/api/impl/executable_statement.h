@@ -22,7 +22,9 @@
 namespace jogasaki::api::impl {
 
 /**
- * @brief database interface to start/stop the services and initiate transaction requests
+ * @brief executable statement implementation
+ * @details this object holds plan::executable_statement together with memory resource, that is
+ * used for variable length data during compilation.
  */
 class executable_statement : public api::executable_statement {
 public:
@@ -33,8 +35,16 @@ public:
         std::shared_ptr<memory::lifo_paged_memory_resource> resource
     );
 
+    /**
+     * @brief accessor to the wrapped object
+     * @return plan::executable_statement holding compiled result and jogasaki artifacts
+     */
     [[nodiscard]] std::shared_ptr<plan::executable_statement> const& body() const noexcept;
 
+    /**
+     * @brief accessor to the compile-time memory resource
+     * @return resource used in the compile-time processing
+     */
     [[nodiscard]] std::shared_ptr<memory::lifo_paged_memory_resource> const& resource() const noexcept;
 private:
     std::shared_ptr<plan::executable_statement> body_{};

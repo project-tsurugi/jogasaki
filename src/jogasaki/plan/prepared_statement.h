@@ -26,15 +26,31 @@ using ::shakujo::model::program::Program;
  */
 class prepared_statement {
 public:
+    /**
+     * @brief create empty object
+     */
     prepared_statement() = default;
+
+    /**
+     * @brief destruct the object
+     */
     ~prepared_statement() = default;
+
     prepared_statement(prepared_statement const& other) = delete;
     prepared_statement& operator=(prepared_statement const& other) = delete;
     prepared_statement(prepared_statement&& other) noexcept = default;
     prepared_statement& operator=(prepared_statement&& other) noexcept = default;
 
+    /**
+     * @brief create new object
+     * @param program the result from shakujo parser
+     */
     explicit prepared_statement(std::unique_ptr<Program> program) noexcept;
 
+    /**
+     * @brief accessor to the stored program
+     * @return the shakujo Program held by this object
+     */
     [[nodiscard]] std::unique_ptr<Program> const& program() const noexcept;
 
 private:

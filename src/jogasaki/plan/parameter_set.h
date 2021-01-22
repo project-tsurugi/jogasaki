@@ -22,7 +22,7 @@
 namespace jogasaki::plan {
 
 /**
- * @brief parameter for place holders
+ * @brief parameters for place holders
  */
 class parameter_set {
 public:
@@ -31,18 +31,38 @@ public:
     template<kind Kind>
     using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
 
+    /**
+     * @brief create new object
+     */
     parameter_set() = default;
+
+    /**
+     * @brief destruct the object
+     */
     ~parameter_set() = default;
+
     parameter_set(parameter_set const& other) = default;
     parameter_set(parameter_set&& other) noexcept = default;
     parameter_set& operator=(parameter_set const& other) = default;
     parameter_set& operator=(parameter_set&& other) noexcept = default;
 
+    /**
+     * @brief setter functions for placeholder values
+     * @param name the place-holder name without colon at the beginning
+     * @param value the value to assign for the placeholder
+     */
     void set_int4(std::string_view name, runtime_type<kind::int4> value);
     void set_int8(std::string_view name, runtime_type<kind::int8> value);
     void set_float4(std::string_view name, runtime_type<kind::float4> value);
     void set_float8(std::string_view name, runtime_type<kind::float8> value);
     void set_character(std::string_view name, runtime_type<kind::character> value);
+
+    // TODO support set_null
+
+    /**
+     * @brief accessor to the placeholder map
+     * @return the placeholder map held by this object
+     */
     [[nodiscard]] mizugaki::placeholder_map const& map() const noexcept;
 
 private:

@@ -15,6 +15,7 @@
  */
 #include "take_cogroup_context.h"
 
+#include <jogasaki/executor/compare_info.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -23,9 +24,13 @@ namespace details {
 
 using checkpoint = memory::lifo_paged_memory_resource::checkpoint;
 
-group_input::group_input(group_reader& reader, std::unique_ptr<data::iterable_record_store> store,
-    memory::lifo_paged_memory_resource* resource, memory::lifo_paged_memory_resource* varlen_resource,
-    maybe_shared_ptr <meta::group_meta> meta) :
+group_input::group_input(
+    group_reader& reader,
+    std::unique_ptr<data::iterable_record_store> store,
+    memory::lifo_paged_memory_resource* resource,
+    memory::lifo_paged_memory_resource* varlen_resource,
+    maybe_shared_ptr <meta::group_meta> meta
+) :
     reader_(std::addressof(reader)),
     store_(std::move(store)),
 
@@ -114,24 +119,34 @@ void group_input::reset_values() {
     }
 }
 
-group_input_comparator::group_input_comparator(std::vector<group_input>* inputs, const compare_info& meta) :
-    inputs_(inputs),
-    key_comparator_(meta)
+group_input_comparator::group_input_comparator(
+    std::vector<group_input>* inputs
+) :
+    inputs_(inputs)
 {}
 
-bool group_input_comparator::operator()(const group_input_comparator::input_index& x,
-    const group_input_comparator::input_index& y) {
+bool group_input_comparator::operator()(
+    group_input_comparator::input_index const& x,
+    group_input_comparator::input_index const& y
+) {
     auto& l = inputs_->operator[](x);
     auto& r = inputs_->operator[](y);
-    return key_comparator_(l.next_key(), r.next_key()) > 0;
+    compare_info cinfo{
+        l.meta()->key(),
+        r.meta()->key(),
+    };
+    comparator key_comparator{cinfo};
+    return key_comparator(l.next_key(), r.next_key()) > 0;
 }
 } // namespace details
 
-take_cogroup_context::take_cogroup_context(abstract::task_context* ctx, block_scope& variables,
-    maybe_shared_ptr<meta::record_meta> key_meta, context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource) :
-    context_base(ctx, variables, resource, varlen_resource),
-    key_buf_(std::move(key_meta))
+take_cogroup_context::take_cogroup_context(
+    abstract::task_context* ctx,
+    block_scope& variables,
+    context_base::memory_resource* resource,
+    context_base::memory_resource* varlen_resource
+) :
+    context_base(ctx, variables, resource, varlen_resource)
 {}
 
 operator_kind take_cogroup_context::kind() const noexcept {

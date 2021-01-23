@@ -117,15 +117,13 @@ public:
      * @attention key_meta is kept and used by the comparator. The caller must ensure it outlives this object.
      */
     group_input_comparator(
-        std::vector<group_input>* inputs,
-        compare_info const& meta
+        std::vector<group_input>* inputs
     );
 
     [[nodiscard]] bool operator()(input_index const& x, input_index const& y);
 
 private:
     std::vector<group_input>* inputs_{};
-    comparator key_comparator_{};
 };
 
 } // namespace details
@@ -150,7 +148,6 @@ public:
     take_cogroup_context(
         class abstract::task_context* ctx,
         block_scope& variables,
-        maybe_shared_ptr<meta::record_meta> key_meta,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -162,7 +159,6 @@ public:
 private:
     std::vector<executor::group_reader*> readers_{};
     std::vector<details::group_input> inputs_{};
-    data::small_record_store key_buf_{}; // shallow copy of key (varlen body is held by reader)
     queue_type queue_{};
 };
 

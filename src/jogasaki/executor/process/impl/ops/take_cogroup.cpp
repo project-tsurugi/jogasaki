@@ -47,7 +47,8 @@ group_element::group_element(const meta::variable_order& order, maybe_shared_ptr
     order_(std::addressof(order)),
     meta_(std::move(meta)),
     reader_index_(reader_index),
-    fields_(create_fields(meta_, *order_, columns, block_info))
+    fields_(create_fields(meta_, *order_, columns, block_info)),
+    key_meta_(std::addressof(meta_->key()))
 {
     utils::assert_all_fields_nullable(meta_->key());
     utils::assert_all_fields_nullable(meta_->value());
@@ -91,19 +92,21 @@ std::vector<group_field> group_element::create_fields(
     return fields;
 }
 
-take_cogroup::take_cogroup(operator_base::operator_index_type index, const processor_info& info,
-    operator_base::block_index_type block_index, std::vector<group_element> groups,
-    std::unique_ptr<operator_base> downstream) : record_operator(index, info, block_index),
+take_cogroup::take_cogroup(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    std::vector<group_element> groups,
+    std::unique_ptr<operator_base> downstream
+) : record_operator(index, info, block_index),
     groups_(std::move(groups)),
-    key_meta_(groups_[0].meta_->key_shared()),
-    key_size_(key_meta_->record_size()),
-    compare_info_(*key_meta_),
     downstream_(std::move(downstream))
 {
     fields_.reserve(groups_.size());
+    auto& key_meta = groups_[0].meta_->key();
     for(auto&& g : groups_) {
         // key meta are identical on all inputs
-        BOOST_ASSERT(g.meta_->key() == *key_meta_);  //NOLINT
+        BOOST_ASSERT(g.meta_->key() == key_meta);  //NOLINT
         fields_.emplace_back(g.fields_);
     }
 }
@@ -116,7 +119,6 @@ void take_cogroup::process_record(abstract::task_context* context) {
         p = ctx.make_context<take_cogroup_context>(
             index(),
             ctx.block_scope(block_index()),
-            key_meta_,
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -170,15 +172,20 @@ void take_cogroup::operator()(take_cogroup_context& ctx, abstract::task_context*
                 auto idx = queue.top();
                 queue.pop();
                 inputs[idx].fill();
-                ctx.key_buf_.set(inputs[idx].current_key());
-                auto key = ctx.key_buf_.ref();
                 if(inputs[idx].read_next_key()) {
                     queue.emplace(idx);
                 }
-                comparator key_comparator{compare_info_};
                 while(! queue.empty()) {
                     auto idx2 = queue.top();
-                    if (key_comparator(inputs[idx2].next_key(), key) != 0) {
+                    if (idx2 == idx) break;
+                    compare_info cinfo{
+                        inputs[idx2].meta()->key(),
+                        inputs[idx].meta()->key()
+                    };
+                    comparator key_comparator{
+                        cinfo
+                    };
+                    if (key_comparator(inputs[idx2].next_key(), inputs[idx].current_key()) != 0) {
                         break;
                     }
                     queue.pop();
@@ -237,7 +244,7 @@ void take_cogroup::create_readers(take_cogroup_context& ctx) {
         auto* reader = ctx.task_context().reader(idx).reader<group_reader>();
         ctx.readers_.emplace_back(reader);
         ctx.queue_ = queue_type{
-            details::group_input_comparator(&ctx.inputs_, compare_info_)
+            details::group_input_comparator(&ctx.inputs_)
         };
         auto store = std::make_unique<data::iterable_record_store>(
             ctx.resource(),

@@ -57,6 +57,7 @@ public:
     maybe_shared_ptr<meta::group_meta> meta_{}; //NOLINT
     std::size_t reader_index_{}; //NOLINT
     std::vector<group_field> fields_{}; //NOLINT
+    meta::record_meta const* key_meta_{}; //NOLINT
 
     [[nodiscard]] std::vector<group_field> create_fields(
         maybe_shared_ptr<meta::group_meta> const& meta,
@@ -99,9 +100,6 @@ public:
     void finish(abstract::task_context*) override;
 private:
     std::vector<group_element> groups_{};
-    maybe_shared_ptr<meta::record_meta> key_meta_{};
-    std::size_t key_size_{};
-    compare_info compare_info_{};
     std::unique_ptr<operator_base> downstream_{};
     std::vector<sequence_view<group_field>> fields_{};
 

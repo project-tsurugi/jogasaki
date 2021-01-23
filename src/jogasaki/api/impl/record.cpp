@@ -51,7 +51,7 @@ record::runtime_type<kind::float8> impl::record::get_float8(std::size_t index) c
 
 record::runtime_type<kind::character> impl::record::get_character(std::size_t index) const {
     return static_cast<field_type_traits<kind::character>::runtime_type>(
-        ref_.get_value<meta::field_type_traits<k::character>::runtime_type>(meta_->value_offset(index))
+        ref_.get_reference<meta::field_type_traits<k::character>::runtime_type>(meta_->value_offset(index))
     );
 }
 

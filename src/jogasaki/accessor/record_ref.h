@@ -106,6 +106,20 @@ public:
     }
 
     /**
+     * @brief field value reference getter
+     * @tparam T runtime type of each field
+     * @param value_offset byte offset of the field whose value will be retrieved
+     * @warning for nullable field, caller is responsible for checking nullity (e.g. by calling is_null()) to validate the return value.
+     * If nullity is true for nullable field, returned value by this function should be ignored and the field should be handled as null.
+     */
+    template<typename T>
+    [[nodiscard]] T const& get_reference(offset_type value_offset) const {
+        BOOST_ASSERT(value_offset < size_);  //NOLINT
+        static_assert(std::is_trivially_copy_constructible_v<T>);
+        return *reinterpret_cast<T const*>(static_cast<char*>(data_) + value_offset);  //NOLINT
+    }
+
+    /**
      * @brief nullable field value getter
      * @tparam T runtime type of each field
      * @param nullity_offset nullity bit offset of the field whose value will be retrieved

@@ -23,6 +23,8 @@ namespace jogasaki::api {
 
 /**
  * @brief iterator over result records
+ * @details At the beginning, the iterator is on top of the result set pointing no record,
+ * and next() will move the position to the first record.
  */
 class result_set_iterator {
 public:
@@ -60,13 +62,15 @@ public:
      * @brief provides whether the next record exists
      * @return whether the next record exists
      */
-    virtual bool has_next() = 0;
+    [[nodiscard]] virtual bool has_next() const = 0;
 
     /**
-     * @brief move the iterator to the next record and return accessor to it
-     * @return the current row
+     * @brief move the iterator to the next record and return accessor to it.
+     * @return the record at the current (i.e. newly moved to) position. The returned record pointer becomes
+     * invalid when the iterator is moved by another next() call, or when result_set is closed.
+     * @return nullptr if no more record exists
      */
-    virtual record* next() = 0;
+    [[nodiscard]] virtual record* next() = 0;
 
 };
 

@@ -65,14 +65,14 @@ public:
      */
     ~result_set_iterator() override = default;
 
-    bool has_next() override;
+    [[nodiscard]] bool has_next() const noexcept override;  //NOLINT(modernize-use-nodiscard)
 
     /**
      * @brief move the iterator to the next row returning the current
      * @return the current row
      * @throw Exception on error
      */
-    record* next() override;
+    [[nodiscard]] record* next() override;
 
 private:
     data::result_store::iterator it_;

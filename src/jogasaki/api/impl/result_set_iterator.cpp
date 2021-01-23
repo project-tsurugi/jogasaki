@@ -35,7 +35,7 @@ result_set_iterator::result_set_iterator(
     record_(meta)
 {}
 
-bool result_set_iterator::has_next() {
+bool result_set_iterator::has_next() const noexcept {
     return it_ != end_;
 }
 

@@ -31,7 +31,7 @@ api::record_meta const* result_set::meta() const noexcept {
     return std::addressof(meta_);
 }
 
-std::unique_ptr<api::result_set_iterator> result_set::iterator() {
+std::unique_ptr<api::result_set_iterator> result_set::iterator() const {
     BOOST_ASSERT(store_->size() > 0); //NOLINT
     return std::make_unique<impl::result_set_iterator>(
         store_->store(0).begin(), //FIXME

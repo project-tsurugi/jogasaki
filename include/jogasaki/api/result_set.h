@@ -53,7 +53,7 @@ public:
      * @brief getter of the iterator at the beginning of the result records
      * @return the iterator object on the result records
      */
-    [[nodiscard]] virtual std::unique_ptr<result_set_iterator> iterator() = 0;
+    [[nodiscard]] virtual std::unique_ptr<result_set_iterator> iterator() const = 0;
 
     /**
      * @brief close and release the resources for this result set

@@ -31,7 +31,7 @@ public:
 
     [[nodiscard]] api::record_meta const* meta() const noexcept override;
 
-    [[nodiscard]] std::unique_ptr<result_set_iterator> iterator() override;
+    [[nodiscard]] std::unique_ptr<result_set_iterator> iterator() const override;
 
     void close() override;
 

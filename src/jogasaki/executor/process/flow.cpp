@@ -59,7 +59,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     auto* result = context_->result();
     if (result && external_output > 0) {
         auto& emit = unsafe_downcast<impl::ops::emit>(operators.io_exchange_map().external_output_at(0));
-        result->capacity(partitions, emit.meta());
+        result->initialize(partitions, emit.meta());
     }
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {

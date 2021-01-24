@@ -80,7 +80,7 @@ public:
          * @param container the target record store that the constructed object iterates
          * @param range indicates the range entry that the constructed iterator start iterating with
          */
-        iterator(iterable_record_store const& container, range_list::iterator range);
+        iterator(iterable_record_store const& container, range_list::const_iterator range);
 
         /**
          * @brief increment iterator
@@ -132,7 +132,7 @@ public:
     private:
         iterable_record_store const* container_;
         iterable_record_store::record_pointer pos_{};
-        range_list::iterator range_;
+        range_list::const_iterator range_;
     };
 
     /**
@@ -172,14 +172,14 @@ public:
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
-    [[nodiscard]] iterator begin();
+    [[nodiscard]] iterator begin() const noexcept;
 
     /**
      * @brief getter of end iterator
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] iterator end();
+    [[nodiscard]] iterator end() const noexcept;
 
     /**
      * @copydoc record_store::reset()

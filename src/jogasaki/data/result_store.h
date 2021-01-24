@@ -24,13 +24,17 @@ namespace jogasaki::data {
 
 /**
  * @brief the store to hold result data from sql execution
+ * @details this object can be used to store emit result record. This can be lazily initialized after construction with
+ * the number of partitions. The same number of internal stores are kept. Iterator is provided
+ * to iterate on merged result.
  */
 class cache_align result_store {
 public:
     using store_type = data::iterable_record_store;
     using stores_type = std::vector<std::unique_ptr<store_type>>;
     using resources_type = std::vector<std::unique_ptr<memory::paged_memory_resource>>;
-    using iterator = store_type::iterator;
+    using store_iterator = store_type::iterator;
+
     /**
      * @brief create default object
      */
@@ -43,44 +47,150 @@ public:
     result_store& operator=(result_store&& other) noexcept = default;
 
     /**
-     * @brief accessor for n-th internal store
+     * @brief iterator of result store
+     * @detail This iterates on merged results from internal stores that hold records from each partition.
      */
-    [[nodiscard]] store_type& store(std::size_t index) const noexcept {
-        return *stores_[index];
-    }
+    class iterator {
+    public:
+
+        /// @brief iterator category
+        using iterator_category = std::input_iterator_tag;
+
+        /// @brief type of value
+        using value_type = store_type::value_type;
+
+        /// @brief type of difference
+        using difference_type = std::ptrdiff_t;
+
+        /// @brief type of pointer
+        using pointer = value_type*;
+
+        /// @brief type of reference
+        using reference = value_type&;
+
+        /**
+         * @brief construct new iterator
+         * @param container the target record store that the constructed object iterates
+         * @param range indicates the range entry that the constructed iterator start iterating with
+         */
+        iterator(
+            result_store const& container,
+            std::size_t store_index,
+            store_type::iterator it
+        ) noexcept;
+
+        /**
+         * @brief increment iterator
+         * @return reference after the increment
+         */
+        iterator& operator++();
+
+        /**
+         * @brief increment iterator
+         * @return copy of the iterator before the increment
+         */
+        iterator const operator++(int);
+
+        /**
+         * @brief dereference the iterator
+         * @return record ref to the record that the iterator is on
+         */
+        [[nodiscard]] value_type operator*();
+
+        /**
+         * @brief dereference the iterator and return record ref
+         * @return record ref to the record that the iterator is on
+         */
+        [[nodiscard]] accessor::record_ref ref() const noexcept;
+
+        /// @brief equivalent comparison
+        constexpr bool operator==(iterator const& r) const noexcept {
+            return this->container_ == r.container_ &&
+                this->store_index_ == r.store_index_ &&
+                this->it_ == r.it_;
+        }
+
+        /// @brief inequivalent comparison
+        constexpr bool operator!=(const iterator& r) const noexcept {
+            return !(*this == r);
+        }
+
+        /**
+         * @brief appends string representation of the given value.
+         * @param out the target output
+         * @param value the target value
+         * @return the output
+         */
+        friend inline std::ostream& operator<<(std::ostream& out, iterator value) {
+            return out << std::hex
+                << "container [" << value.container_
+                <<"] store_index [" << value.store_index_
+                << "] iterator [" << value.it_ << "]";
+        }
+
+    private:
+        result_store const* container_;
+        std::size_t store_index_{};
+        store_type::iterator it_;
+    };
 
     /**
-     * @brief extend the capacity so that the store holds data from multiple partitions
-     * @param count the number of partitions
+     * @brief returns whether the n-th internal store is valid
+     */
+    [[nodiscard]] bool exists(std::size_t index) const noexcept;
+
+    /**
+     * @brief accessor for n-th internal store
+     * @pre the existence should be ensured beforehand (e.g. by exists() call), otherwise the call causes UB
+     */
+    [[nodiscard]] store_type& store(std::size_t index) noexcept;
+
+    /**
+     * @brief accessor for n-th internal store
+     * @pre the existence should be ensured beforehand (e.g. by exists() call), otherwise the call causes UB
+     */
+    [[nodiscard]] store_type const& store(std::size_t index) const noexcept;
+
+    /**
+     * @brief initialize and set the capacity so that the store holds data from multiple partitions
+     * @param count the number of partitions that generate result records. The same number of internal stores will
+     * be prepared.
      * @param meta the metadata of the result record
      */
-    void capacity(std::size_t count, maybe_shared_ptr<meta::record_meta> const& meta) {
-        BOOST_ASSERT(stores_.empty());  //NOLINT
-        meta_ = meta;
-        stores_.reserve(count);
-        result_record_resources_.reserve(count);
-        result_varlen_resources_.reserve(count);
-        for(std::size_t i=0; i < count; ++i) {
-            auto& res = result_record_resources_.emplace_back(
-                std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
-            );
-            auto& varlen = result_varlen_resources_.emplace_back(
-                std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
-            );
-            stores_.emplace_back(std::make_unique<data::iterable_record_store>( res.get(), varlen.get(), meta));
-        }
-    }
+    void initialize(std::size_t count, maybe_shared_ptr<meta::record_meta> const& meta);
 
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
-        return meta_;
-    }
+    /**
+     * @brief accessor to the metadata of the result record
+     * @return record metadata
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
+
+    /**
+     * @brief return whether the result is empty or not
+     */
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
      * @brief accessor for size (number of partitions)
      */
-    [[nodiscard]] std::size_t size() const noexcept {
-        return stores_.size();
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
+
+    /**
+     * @brief accessor to begin iterator
+     * @details the iterator is intended for read-access of the result stores and gets invalid if the store is
+     * modified
+     * @pre the store is not empty (empty() return false)
+     * @warning if pre-condition is not met, the behavior is undefined.
+     */
+    [[nodiscard]] iterator begin() const noexcept;
+
+    /**
+     * @brief accessor to end iterator
+     * @pre the store is not empty (empty() return false)
+     * @warning if pre-condition is not met, the behavior is undefined.
+     */
+    [[nodiscard]] iterator end() const noexcept;
+
 private:
     stores_type stores_{};
     resources_type result_record_resources_{};

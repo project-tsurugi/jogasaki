@@ -290,7 +290,7 @@ TEST_F(priority_queue_reader_test, ordering) {
     priority_queue_reader r{info, partitions};
     std::multiset<double> res{};
     ASSERT_TRUE(r.next_group());
-    EXPECT_FALSE(r.get_group());
+    EXPECT_TRUE(r.get_group()); // even if key field count is zero, record_ref is valid
     {
         ASSERT_TRUE(r.next_member());
         EXPECT_EQ(0, get_key(r));
@@ -373,7 +373,7 @@ TEST_F(priority_queue_reader_test, empty_keys) {
     std::multiset<double> values{};
     std::multiset<std::int64_t> keys{};
     ASSERT_TRUE(r.next_group());
-    EXPECT_FALSE(r.get_group());
+    EXPECT_TRUE(r.get_group()); // even if key field count is zero, record_ref is valid
     {
         ASSERT_TRUE(r.next_member());
         keys.emplace( get_key(r));

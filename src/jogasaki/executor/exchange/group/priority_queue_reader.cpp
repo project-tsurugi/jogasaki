@@ -63,9 +63,6 @@ bool priority_queue_reader::next_group() {
 
 accessor::record_ref priority_queue_reader::get_group() const {
     if (state_ == reader_state::before_member || state_ == reader_state::on_member) {
-        if (info_->key_meta()->field_count() == 0) {
-            return {};
-        }
         return info_->extract_key(buf_.ref());
     }
     std::abort();

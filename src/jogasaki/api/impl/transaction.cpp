@@ -58,12 +58,10 @@ status transaction::execute(api::executable_statement& statement, std::unique_pt
         auto& g = stmt->operators();
         g.context(*request_ctx);
         scheduler_.schedule(*stmt, *request_ctx);
-        if (store->size() > 0) {
-            // for now, assume only one result is returned
-            result = std::make_unique<impl::result_set>(
-                std::move(store)
-            );
-        }
+        // for now, assume only one result is returned
+        result = std::make_unique<impl::result_set>(
+            std::move(store)
+        );
         return request_ctx->status_code();
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators());

@@ -24,7 +24,7 @@ namespace jogasaki::api::impl {
 
 result_set::result_set(std::unique_ptr<data::result_store> store) noexcept:
     store_(std::move(store)),
-    meta_(store_->meta())
+    meta_(store_->meta() ? store_->meta() : std::make_shared<meta::record_meta>()) // it's possible store has no result and no metadata
 {}
 
 api::record_meta const* result_set::meta() const noexcept {
@@ -32,7 +32,6 @@ api::record_meta const* result_set::meta() const noexcept {
 }
 
 std::unique_ptr<api::result_set_iterator> result_set::iterator() const {
-    BOOST_ASSERT(store_->size() > 0); //NOLINT
     return std::make_unique<impl::result_set_iterator>(
         store_->begin(),
         store_->end(),

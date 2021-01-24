@@ -75,8 +75,8 @@ public:
     [[nodiscard]] record* next() override;
 
 private:
-    data::result_store::iterator it_;
-    data::result_store::iterator end_;
+    data::result_store::iterator it_{};
+    data::result_store::iterator end_{};
     impl::record record_{};
 };
 

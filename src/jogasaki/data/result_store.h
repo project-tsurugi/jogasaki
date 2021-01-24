@@ -33,7 +33,6 @@ public:
     using store_type = data::iterable_record_store;
     using stores_type = std::vector<std::unique_ptr<store_type>>;
     using resources_type = std::vector<std::unique_ptr<memory::paged_memory_resource>>;
-    using store_iterator = store_type::iterator;
 
     /**
      * @brief create default object
@@ -67,6 +66,14 @@ public:
 
         /// @brief type of reference
         using reference = value_type&;
+
+        /**
+         * @brief construct empty iterator
+         * @details this provides "empty" iterator that allows creating iterator even if result store is empty.
+         * This iterator should be simply used as the placeholder when the result store is empty.
+         * Dereferencing and incrementing causes undefined behavior.
+         */
+        iterator() noexcept;
 
         /**
          * @brief construct new iterator
@@ -132,6 +139,8 @@ public:
         result_store const* container_;
         std::size_t store_index_{};
         store_type::iterator it_;
+
+        [[nodiscard]] bool valid() const noexcept;
     };
 
     /**
@@ -153,11 +162,11 @@ public:
 
     /**
      * @brief initialize and set the capacity so that the store holds data from multiple partitions
-     * @param count the number of partitions that generate result records. The same number of internal stores will
+     * @param partitions the number of partitions that generate result records. The same number of internal stores will
      * be prepared.
      * @param meta the metadata of the result record
      */
-    void initialize(std::size_t count, maybe_shared_ptr<meta::record_meta> const& meta);
+    void initialize(std::size_t partitions, maybe_shared_ptr<meta::record_meta> const& meta);
 
     /**
      * @brief accessor to the metadata of the result record
@@ -167,27 +176,25 @@ public:
 
     /**
      * @brief return whether the result is empty or not
+     * @details result set is considered empty either when it's not initialized with initialize(),
+     * or no record has been append to any of the internal stores.
      */
     [[nodiscard]] bool empty() const noexcept;
 
     /**
-     * @brief accessor for size (number of partitions)
+     * @brief accessor for number of partitions
      */
-    [[nodiscard]] std::size_t size() const noexcept;
+    [[nodiscard]] std::size_t partitions() const noexcept;
 
     /**
      * @brief accessor to begin iterator
-     * @details the iterator is intended for read-access of the result stores and gets invalid if the store is
-     * modified
-     * @pre the store is not empty (empty() return false)
-     * @warning if pre-condition is not met, the behavior is undefined.
+     * @details the iterator is intended for read-access of the result stores.
+     * Iterator becomes invalid if the store is modified (e.g. by store(idx).append()).
      */
     [[nodiscard]] iterator begin() const noexcept;
 
     /**
      * @brief accessor to end iterator
-     * @pre the store is not empty (empty() return false)
-     * @warning if pre-condition is not met, the behavior is undefined.
      */
     [[nodiscard]] iterator end() const noexcept;
 

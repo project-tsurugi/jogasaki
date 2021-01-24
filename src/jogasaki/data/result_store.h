@@ -136,7 +136,7 @@ public:
         }
 
     private:
-        result_store const* container_;
+        result_store const* container_{};
         std::size_t store_index_{};
         store_type::iterator it_;
 

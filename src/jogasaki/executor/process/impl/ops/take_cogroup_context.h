@@ -116,7 +116,7 @@ public:
      * @brief construct new object
      * @attention key_meta is kept and used by the comparator. The caller must ensure it outlives this object.
      */
-    group_input_comparator(
+    explicit group_input_comparator(
         std::vector<group_input>* inputs
     );
 

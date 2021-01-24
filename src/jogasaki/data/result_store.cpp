@@ -164,7 +164,6 @@ data::iterable_record_store::iterator empty_iterator() {
 
 
 result_store::iterator::iterator() noexcept:
-    container_(nullptr),
     it_(empty_iterator())
 {}
 

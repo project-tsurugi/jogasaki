@@ -42,7 +42,7 @@ public:
     ~parameter_set() = default;
 
     parameter_set(parameter_set const& other) = default;
-    parameter_set(parameter_set&& other) noexcept = default;  //NOLINT(performance-noexcept-move-constructor)
+    parameter_set(parameter_set&& other) noexcept = default;  //NOLINT(performance-noexcept-move-constructor,hicpp-noexcept-move)
     parameter_set& operator=(parameter_set const& other) = default;
     parameter_set& operator=(parameter_set&& other) noexcept = default;
 

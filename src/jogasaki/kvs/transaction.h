@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <mutex>
+
 #include <glog/logging.h>
 #include <takatori/util/fail.h>
 #include <sharksfin/api.h>
@@ -83,17 +85,24 @@ public:
      */
     [[nodiscard]] sharksfin::TransactionHandle handle() noexcept;
 
-
     /**
      * @brief return the parent database object
      * @return the parent database
      */
     [[nodiscard]] class database* database() const noexcept;
+
+    /**
+     * @brief return the mutex object owned by this transaction
+     * @return the mutex object that can be used to serialize the laned operations for the shared transactin
+     */
+    [[nodiscard]] std::mutex& mutex() noexcept;
+
 private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
     class database* database_{};
     bool active_{true};
+    std::mutex mutex_{};
 };
 
 /**

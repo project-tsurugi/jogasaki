@@ -36,6 +36,7 @@ bool storage::get(
     std::string_view key,
     std::string_view& value
 ) {
+    std::unique_lock lock{tx.mutex()};
     Slice v{};
     if(auto res = sharksfin::content_get(
             tx.handle(),
@@ -53,6 +54,7 @@ bool storage::put(
     std::string_view key,
     std::string_view value
 ) {
+    std::unique_lock lock{tx.mutex()};
     auto res = sharksfin::content_put(
         tx.handle(),
         handle_,
@@ -65,6 +67,7 @@ bool storage::remove(
     transaction& tx,
     std::string_view key
 ) {
+    std::unique_lock lock{tx.mutex()};
     auto res = sharksfin::content_delete(
         tx.handle(),
         handle_,
@@ -77,6 +80,7 @@ bool storage::scan(transaction &tx,
     std::string_view end_key, end_point_kind end_kind,
     std::unique_ptr<iterator>& it
 ) {
+    std::unique_lock lock{tx.mutex()};
     sharksfin::IteratorHandle handle{};
     if(auto res = sharksfin::content_scan(
             tx.handle(),

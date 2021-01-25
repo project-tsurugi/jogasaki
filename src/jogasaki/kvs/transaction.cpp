@@ -68,5 +68,9 @@ class database* transaction::database() const noexcept {
     return database_;
 }
 
+std::mutex& transaction::mutex() noexcept {
+    return mutex_;
+}
+
 }
 

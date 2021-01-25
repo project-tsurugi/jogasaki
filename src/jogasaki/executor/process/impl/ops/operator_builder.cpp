@@ -316,36 +316,6 @@ kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type t
     fail();
 }
 
-template<class Key>
-std::string operator_builder::encode_key(
-    takatori::tree::tree_fragment_vector<Key> const& keys,
-    sequence_view<key const> index_keys,
-    processor_info const& info,
-    memory::lifo_paged_memory_resource& resource
-) {
-    BOOST_ASSERT(keys.size() <= index_keys.size());  //NOLINT
-    auto cp = resource.get_checkpoint();
-    executor::process::impl::block_scope scope{};
-    std::string buf{};  //TODO create own buffer class
-    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-        auto capacity = loop == 0 ? 0 : buf.capacity(); // capacity 0 makes stream empty write to calc. length
-        kvs::stream s{buf.data(), capacity};
-        std::size_t i = 0;
-        for(auto&& k : keys) {
-            expression::evaluator eval{k.value(), info.compiled_info()};
-            auto res = eval(scope, &resource);
-            auto spec = index_keys[i].direction() == relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending: kvs::spec_key_descending;
-            kvs::encode(res, utils::type_for(info.compiled_info(), k.variable()), spec, s);
-            resource.deallocate_after(cp);
-            ++i;
-        }
-        if (loop == 0) {
-            buf.resize(s.length());
-        }
-    }
-    return buf;
-}
 
 operator_container create_operators(
     std::shared_ptr<processor_info> info,

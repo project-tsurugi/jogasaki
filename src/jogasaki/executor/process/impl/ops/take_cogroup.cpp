@@ -104,6 +104,7 @@ take_cogroup::take_cogroup(
 {
     fields_.reserve(groups_.size());
     auto& key_meta = groups_[0].meta_->key();
+    (void)key_meta;
     for(auto&& g : groups_) {
         // key meta are identical on all inputs (except value offset)
         BOOST_ASSERT(g.meta_->key() == key_meta);  //NOLINT

@@ -36,5 +36,5 @@ endif()
 
 add_test(
         NAME client-cli
-        COMMAND client-cli "SELECT C0,C1 FROM T0"
+        COMMAND client-cli
 )

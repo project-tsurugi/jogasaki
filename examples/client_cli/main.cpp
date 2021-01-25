@@ -92,8 +92,9 @@ static bool query(api::database& db) {
         "c_d_id = :c_d_id AND "
         "c_id = :c_id "
     };
+    std::string sql {"select * from CUSTOMER c where c_id = :c_id"};
     std::unique_ptr<api::prepared_statement> p{};
-    if(auto rc = db.prepare(select, p); rc != status::ok) {
+    if(auto rc = db.prepare(sql, p); rc != status::ok) {
         return false;
     }
 

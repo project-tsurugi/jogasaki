@@ -31,10 +31,12 @@ public:
     processor_details(
         bool has_scan_operator,
         bool has_emit_operator,
+        bool has_find_operator,
         bool has_write_operations
     ) :
         has_scan_operator_(has_scan_operator),
         has_emit_operator_(has_emit_operator),
+        has_find_operator_(has_find_operator),
         has_write_operations_(has_write_operations)
     {}
 
@@ -44,12 +46,16 @@ public:
     [[nodiscard]] bool has_emit_operator() const noexcept {
         return has_emit_operator_;
     }
+    [[nodiscard]] bool has_find_operator() const noexcept {
+        return has_find_operator_;
+    }
     [[nodiscard]] bool has_write_operations() const noexcept {
         return has_write_operations_;
     }
 private:
     bool has_scan_operator_ = false;
     bool has_emit_operator_ = false;
+    bool has_find_operator_ = false;
     bool has_write_operations_ = false;
 };
 
@@ -107,6 +113,7 @@ private:
         relation::graph_type g;
         bool has_scan_operator = false;
         bool has_emit_operator = false;
+        bool has_find_operator = false;
         bool has_write_operator = false;
         using kind = relation::expression_kind;
         takatori::relation::sort_from_upstream(*relations_, [&](relation::expression const& node) {
@@ -117,6 +124,9 @@ private:
                 case kind::emit:
                     has_emit_operator = true;
                     break;
+                case kind::find:
+                    has_find_operator = true;
+                    break;
                 case kind::write:
                     has_write_operator = true;
                     break;
@@ -124,7 +134,12 @@ private:
                     break;
             }
         });
-        return {has_scan_operator, has_emit_operator, has_write_operator};
+        return {
+            has_scan_operator,
+            has_emit_operator,
+            has_find_operator,
+            has_write_operator
+        };
     }
 };
 

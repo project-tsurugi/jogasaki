@@ -70,6 +70,7 @@ public:
      */
     [[nodiscard]] std::size_t field_count() const noexcept override;
 
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<impl::field_type> fields_{};

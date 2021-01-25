@@ -84,6 +84,8 @@ public:
 
     void ref(accessor::record_ref r) noexcept;
 
+    [[nodiscard]] accessor::record_ref ref() const noexcept;
+
     void write_to(std::ostream& os) const noexcept override;
 
 private:

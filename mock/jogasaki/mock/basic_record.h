@@ -37,7 +37,7 @@ using takatori::util::fail;
 
 constexpr static std::size_t basic_record_field_size = 16;
 constexpr static std::size_t basic_record_field_alignment = 8;
-constexpr static std::size_t basic_record_max_field_count = 7;
+constexpr static std::size_t basic_record_max_field_count = 14;
 constexpr static std::size_t basic_record_buffer_size = basic_record_field_size * (basic_record_max_field_count + 1); // +1 for nullity bits
 using basic_record_entity_type = std::array<char, basic_record_buffer_size>;
 

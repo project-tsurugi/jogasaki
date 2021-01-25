@@ -48,5 +48,9 @@ bool record_meta::nullable(record_meta::field_index_type index) const noexcept {
 std::size_t record_meta::field_count() const noexcept {
     return meta_->field_count();
 }
+
+maybe_shared_ptr<meta::record_meta> const& record_meta::meta() const noexcept {
+    return meta_;
+}
 } // namespace
 

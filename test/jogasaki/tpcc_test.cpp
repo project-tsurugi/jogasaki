@@ -31,6 +31,8 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/api/impl/record.h>
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 
 namespace jogasaki::testing {
@@ -47,29 +49,28 @@ class tpcc_test : public ::testing::Test {
 public:
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(true);
         db_ = api::create_database(cfg);
         db_->start();
         auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
         add_benchmark_tables(*db_impl->tables());
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 10, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 10, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 3, true, 5);
     }
 
     void TearDown() {
         db_->stop();
     }
 
-    void execute_query(std::string_view query) {
+    void execute_query(std::string_view query, std::vector<mock::basic_record>& out) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
         auto tx = db_->create_transaction();
@@ -81,6 +82,9 @@ public:
             auto* record = it->next();
             std::stringstream ss{};
             ss << *record;
+            auto* rec_impl = unsafe_downcast<api::impl::record>(record);
+            auto* meta_impl = unsafe_downcast<api::impl::record_meta>(rs->meta());
+            out.emplace_back(rec_impl->ref(), meta_impl->meta());
             LOG(INFO) << ss.str();
         }
         rs->close();
@@ -98,10 +102,20 @@ public:
     std::unique_ptr<jogasaki::api::database> db_;
 };
 
+using namespace std::string_view_literals;
 
 TEST_F(tpcc_test, warehouse) {
-    execute_statement( "INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)");
-    execute_query("SELECT * FROM WAREHOUSE");
+    execute_statement( "INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (10, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)");
+    execute_statement( "INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (20, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM WAREHOUSE WHERE w_id >= 10 ORDER BY w_id", result);
+    ASSERT_EQ(2, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(10, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("fogereb"), rec.ref().get_value<accessor::text>(rec.record_meta()->value_offset(1)));
+
+    EXPECT_EQ(20, result[1].ref().get_value<std::int64_t>(result[1].record_meta()->value_offset(0)));
 }
 
 void resolve(std::string& query, std::string_view place_holder, std::string value) {
@@ -120,7 +134,11 @@ TEST_F(tpcc_test, new_order1) {
     resolve(query, ":w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_id", "1");
-    execute_query(query);
+
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, new_order2) {
@@ -133,7 +151,10 @@ TEST_F(tpcc_test, new_order2) {
 
     resolve(query, ":d_w_id", "1");
     resolve(query, ":d_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, new_order_update1) {
@@ -149,6 +170,19 @@ TEST_F(tpcc_test, new_order_update1) {
     resolve(query, ":d_w_id", "1");
     resolve(query, ":d_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT d_next_o_id FROM DISTRICT "
+        "WHERE "
+        "d_w_id = :d_w_id AND "
+        "d_id = :d_id "
+    ;
+    resolve(verify, ":d_w_id", "1");
+    resolve(verify, ":d_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, new_order3) {
@@ -163,7 +197,10 @@ TEST_F(tpcc_test, new_order3) {
 
     resolve(query, ":s_i_id", "1");
     resolve(query, ":s_w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, new_order_update2) {
@@ -179,6 +216,19 @@ TEST_F(tpcc_test, new_order_update2) {
     resolve(query, ":s_i_id", "1");
     resolve(query, ":s_w_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT s_quantity FROM STOCK "
+        "WHERE "
+        "s_i_id = :s_i_id AND "
+        "s_w_id = :s_w_id"
+    ;
+    resolve(verify, ":s_i_id", "1");
+    resolve(verify, ":s_w_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment_update1) {
@@ -192,6 +242,17 @@ TEST_F(tpcc_test, payment_update1) {
     resolve(query, ":h_amount", "100.0");
     resolve(query, ":w_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT w_ytd FROM WAREHOUSE "
+        "WHERE "
+        "w_id = :w_id"
+    ;
+    resolve(verify, ":w_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(101.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 
@@ -203,7 +264,10 @@ TEST_F(tpcc_test, payment1) {
     ;
 
     resolve(query, ":w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment_update2) {
@@ -219,6 +283,19 @@ TEST_F(tpcc_test, payment_update2) {
     resolve(query, ":d_w_id", "1");
     resolve(query, ":d_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT d_ytd FROM DISTRICT "
+        "WHERE "
+        "d_w_id = :d_w_id AND "
+        "d_id = :d_id "
+    ;
+    resolve(verify, ":d_w_id", "1");
+    resolve(verify, ":d_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(101.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment2) {
@@ -231,7 +308,10 @@ TEST_F(tpcc_test, payment2) {
 
     resolve(query, ":d_w_id", "1");
     resolve(query, ":d_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment3) {
@@ -246,7 +326,10 @@ TEST_F(tpcc_test, payment3) {
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment4) {
@@ -262,7 +345,10 @@ TEST_F(tpcc_test, payment4) {
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment5) {
@@ -280,7 +366,10 @@ TEST_F(tpcc_test, payment5) {
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment6) {
@@ -295,7 +384,10 @@ TEST_F(tpcc_test, payment6) {
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, payment_update3) {
@@ -309,12 +401,28 @@ TEST_F(tpcc_test, payment_update3) {
         "c_id = :c_id"
     ;
 
-    resolve(query, ":c_balance", "1.0");
-    resolve(query, ":c_data", "'A'");
+    resolve(query, ":c_balance", "2.0");
+    resolve(query, ":c_data", "'XX'");
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT c_balance, c_data FROM CUSTOMER "
+        "WHERE "
+        "c_w_id = :c_w_id AND "
+        "c_d_id = :c_d_id AND "
+        "c_id = :c_id"
+    ;
+    resolve(verify, ":c_w_id", "1");
+    resolve(verify, ":c_d_id", "1");
+    resolve(verify, ":c_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(2.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("XX"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(1)));
 }
 
 TEST_F(tpcc_test, payment_update4) {
@@ -327,11 +435,26 @@ TEST_F(tpcc_test, payment_update4) {
         "c_id = :c_id"
     ;
 
-    resolve(query, ":c_balance", "1.0");
+    resolve(query, ":c_balance", "10.0");
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT c_balance FROM CUSTOMER "
+        "WHERE "
+        "c_w_id = :c_w_id AND "
+        "c_d_id = :c_d_id AND "
+        "c_id = :c_id"
+    ;
+    resolve(verify, ":c_w_id", "1");
+    resolve(verify, ":c_d_id", "1");
+    resolve(verify, ":c_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(10.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, order_status1) {
@@ -346,7 +469,9 @@ TEST_F(tpcc_test, order_status1) {
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
 }
 
 TEST_F(tpcc_test, order_status2) {
@@ -362,7 +487,10 @@ TEST_F(tpcc_test, order_status2) {
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, order_status3) {
@@ -377,7 +505,10 @@ TEST_F(tpcc_test, order_status3) {
     resolve(query, ":c_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, order_status4) {
@@ -393,7 +524,10 @@ TEST_F(tpcc_test, order_status4) {
     resolve(query, ":o_d_id", "1");
     resolve(query, ":o_w_id", "1");
     resolve(query, ":o_c_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, order_status5) {
@@ -408,7 +542,10 @@ TEST_F(tpcc_test, order_status5) {
     resolve(query, ":ol_o_id", "1");
     resolve(query, ":ol_d_id", "1");
     resolve(query, ":ol_w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, delivery1) {
@@ -421,8 +558,12 @@ TEST_F(tpcc_test, delivery1) {
 
     resolve(query, ":no_d_id", "1");
     resolve(query, ":no_w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
+
 TEST_F(tpcc_test, delivery_delete1) {
     std::string query =
         "DELETE FROM NEW_ORDER "
@@ -436,7 +577,22 @@ TEST_F(tpcc_test, delivery_delete1) {
     resolve(query, ":no_w_id", "1");
     resolve(query, ":no_o_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT no_o_id FROM NEW_ORDER "
+        "WHERE "
+        "no_d_id = :no_d_id AND "
+        "no_w_id = :no_w_id AND "
+        "no_o_id = :no_o_id"
+    ;
+    resolve(verify, ":no_d_id", "1");
+    resolve(verify, ":no_w_id", "1");
+    resolve(verify, ":no_o_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(0, result.size());
 }
+
 TEST_F(tpcc_test, delivery2) {
     std::string query =
         "SELECT o_c_id FROM ORDERS "
@@ -449,8 +605,12 @@ TEST_F(tpcc_test, delivery2) {
     resolve(query, ":o_id", "1");
     resolve(query, ":o_d_id", "1");
     resolve(query, ":o_w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
+
 TEST_F(tpcc_test, delivery_update1) {
     std::string query =
         "UPDATE "
@@ -461,11 +621,26 @@ TEST_F(tpcc_test, delivery_update1) {
         "o_w_id = :o_w_id"
     ;
 
-    resolve(query, ":o_carrier_id", "1"); // nullable
+    resolve(query, ":o_carrier_id", "10"); // nullable
     resolve(query, ":o_id", "1");
     resolve(query, ":o_d_id", "1");
     resolve(query, ":o_w_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT o_carrier_id FROM ORDERS "
+        "WHERE "
+        "o_id = :o_id AND "
+        "o_d_id = :o_d_id AND "
+        "o_w_id = :o_w_id"
+        ;
+    resolve(verify, ":o_id", "1");
+    resolve(verify, ":o_d_id", "1");
+    resolve(verify, ":o_w_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, delivery_update2) {
@@ -483,6 +658,21 @@ TEST_F(tpcc_test, delivery_update2) {
     resolve(query, ":ol_d_id", "1");
     resolve(query, ":ol_w_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT ol_delivery_d FROM ORDER_LINE "
+        "WHERE "
+        "ol_o_id = :ol_o_id AND "
+        "ol_d_id = :ol_d_id AND "
+        "ol_w_id = :ol_w_id"
+    ;
+    resolve(verify, ":ol_o_id", "1");
+    resolve(verify, ":ol_d_id", "1");
+    resolve(verify, ":ol_w_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(accessor::text("A"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, delivery3) {
@@ -496,7 +686,10 @@ TEST_F(tpcc_test, delivery3) {
     resolve(query, ":ol_o_id", "1");
     resolve(query, ":ol_d_id", "1");
     resolve(query, ":ol_w_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, delivery_update3) {
@@ -509,11 +702,26 @@ TEST_F(tpcc_test, delivery_update3) {
         "c_w_id = :c_w_id"
     ;
 
-    resolve(query, ":ol_total", "1.0"); // nullable
+    resolve(query, ":ol_total", "100.0"); // nullable
     resolve(query, ":c_id", "1");
     resolve(query, ":c_d_id", "1");
     resolve(query, ":c_w_id", "1");
     execute_statement(query);
+
+    std::string verify =
+        "SELECT c_balance FROM CUSTOMER "
+        "WHERE "
+        "c_id = :c_id AND "
+        "c_d_id = :c_d_id AND "
+        "c_w_id = :c_w_id"
+    ;
+    resolve(verify, ":c_id", "1");
+    resolve(verify, ":c_d_id", "1");
+    resolve(verify, ":c_w_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(101.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, stock_level1) {
@@ -526,7 +734,10 @@ TEST_F(tpcc_test, stock_level1) {
 
     resolve(query, ":d_w_id", "1");
     resolve(query, ":d_id", "1");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 TEST_F(tpcc_test, DISABLED_stock_level2) {
@@ -547,7 +758,9 @@ TEST_F(tpcc_test, DISABLED_stock_level2) {
     resolve(query, ":ol_o_id_low", "1");
     resolve(query, ":s_w_id", "1");
     resolve(query, ":s_quantity", "10.0");
-    execute_query(query);
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
 }
 
 }

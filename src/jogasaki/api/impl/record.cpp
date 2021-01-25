@@ -67,5 +67,9 @@ void record::write_to(std::ostream& os) const noexcept {
     os << ref_ << *meta_;
 }
 
+accessor::record_ref record::ref() const noexcept {
+    return ref_;
+}
+
 }
 

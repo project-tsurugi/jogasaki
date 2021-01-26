@@ -67,6 +67,7 @@ void project::operator()(project_context& ctx, abstract::task_context* context) 
         auto& ev = evaluators_[i];
         auto result = ev(scope, ctx.varlen_resource()); // result resource will be deallocated at once by take/scan operator
         using t = takatori::type::type_kind;
+        ref.set_null(info.nullity_offset(), ! result.has_value());
         switch(cinfo.type_of(v).kind()) {
             case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), result); break;
             case t::int8: copy_to<std::int64_t>(ref, info.value_offset(), result); break;

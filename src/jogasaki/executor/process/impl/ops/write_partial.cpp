@@ -56,25 +56,23 @@ details::write_partial_field::write_partial_field(
 
 std::string_view ops::write_partial::prepare_encoded_key(write_partial_context& ctx) {
     auto source = ctx.variables().store().ref();
-    auto resource = ctx.varlen_resource();
     // calculate length first, and then put
-    check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source, resource);
+    check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source);
     kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
-    encode_fields(true, key_fields_, keys, source, resource);
+    encode_fields(true, key_fields_, keys, source);
     return {keys.data(), keys.length()};
 }
 
 void ops::write_partial::encode_and_put(write_partial_context& ctx) {
-    auto resource = ctx.varlen_resource();
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put
-    check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source, resource);
-    check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source, resource);
+    check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source);
+    check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source);
     kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     kvs::stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
-    encode_fields(false, key_fields_, keys, key_source, resource);
-    encode_fields(false, value_fields_, values, val_source, resource);
+    encode_fields(false, key_fields_, keys, key_source);
+    encode_fields(false, value_fields_, values, val_source);
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
             {keys.data(), keys.length()},
@@ -91,7 +89,7 @@ void ops::write_partial::update_record(write_partial_context& ctx) {
 }
 
 void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
-    auto resource = ctx.varlen_resource();
+    auto varlen_resource = ctx.varlen_resource();
     auto k = prepare_encoded_key(ctx);
     std::string_view v{};
     if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); !res) {
@@ -101,8 +99,8 @@ void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
     }
     kvs::stream keys{const_cast<char*>(k.data()), k.size()};
     kvs::stream values{const_cast<char*>(v.data()), v.size()};
-    decode_fields(key_fields_, keys, ctx.key_store_.ref(), resource);
-    decode_fields(value_fields_, values, ctx.value_store_.ref(), resource);
+    decode_fields(key_fields_, keys, ctx.key_store_.ref(), varlen_resource);
+    decode_fields(value_fields_, values, ctx.value_store_.ref(), varlen_resource);
     if(auto res = ctx.stg_->remove( *ctx.tx_, k ); !res) {
         fail();
     }
@@ -132,7 +130,7 @@ void ops::write_partial::decode_fields(
     std::vector<details::write_partial_field> const& fields,
     kvs::stream& stream,
     accessor::record_ref target,
-    memory::lifo_paged_memory_resource* resource
+    memory::lifo_paged_memory_resource* varlen_resource
 ) {
     for(auto&& f : fields) {
         if (f.nullable_) {
@@ -143,11 +141,11 @@ void ops::write_partial::decode_fields(
                 target,
                 f.target_offset_,
                 f.target_nullity_offset_,
-                resource
+                varlen_resource
             );
             continue;
         }
-        kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
+        kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, varlen_resource);
         target.set_null(f.target_nullity_offset_, false); // currently assuming fields are nullable and f.nullity_offset_ is valid even if f.nullable_ is false
     }
 }
@@ -157,11 +155,10 @@ void ops::write_partial::check_length_and_extend_buffer(
     write_partial_context& ,
     std::vector<details::write_partial_field> const& fields,
     data::aligned_buffer& buffer,
-    accessor::record_ref source,
-    memory::lifo_paged_memory_resource* resource
+    accessor::record_ref source
 ) {
     kvs::stream null_stream{};
-    encode_fields(from_variables, fields, null_stream, source, resource);
+    encode_fields(from_variables, fields, null_stream, source);
     if (null_stream.length() > buffer.size()) {
         buffer.resize(null_stream.length());
     }
@@ -280,8 +277,7 @@ void ops::write_partial::encode_fields(
     bool from_variable,
     std::vector<details::write_partial_field> const& fields,
     kvs::stream& target,
-    accessor::record_ref source,
-    memory::lifo_paged_memory_resource*
+    accessor::record_ref source
 ) {
     for(auto const& f : fields) {
         std::size_t offset = from_variable ? f.variable_offset_ : f.target_offset_;

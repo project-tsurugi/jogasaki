@@ -197,8 +197,7 @@ private:
         bool from_variable,
         std::vector<details::write_partial_field> const& fields,
         kvs::stream& target,
-        accessor::record_ref source,
-        memory_resource* resource
+        accessor::record_ref source
     );
 
     // create meta for the key_store_/value_store_ in write_partial_context
@@ -219,15 +218,14 @@ private:
         write_partial_context& ctx,
         std::vector<details::write_partial_field> const& fields,
         data::aligned_buffer& buffer,
-        accessor::record_ref source,
-        memory_resource* resource
+        accessor::record_ref source
     );
 
     void decode_fields(
         std::vector<details::write_partial_field> const& fields,
         kvs::stream& stream,
         accessor::record_ref target,
-        memory_resource* resource
+        memory_resource* varlen_resource
     );
 
     void update_fields(

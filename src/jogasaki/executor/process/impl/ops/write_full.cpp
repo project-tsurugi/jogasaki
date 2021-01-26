@@ -26,8 +26,13 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-details::write_full_field::write_full_field(meta::field_type type, std::size_t source_offset,
-    std::size_t source_nullity_offset, bool target_nullable, kvs::coding_spec spec) :
+details::write_full_field::write_full_field(
+    meta::field_type type,
+    std::size_t source_offset,
+    std::size_t source_nullity_offset,
+    bool target_nullable,
+    kvs::coding_spec spec
+) :
     type_(std::move(type)),
     source_offset_(source_offset),
     source_nullity_offset_(source_nullity_offset),
@@ -116,10 +121,17 @@ void ops::write_full::finish(abstract::task_context*) {
     //no-op
 }
 
-void ops::write_full::encode_fields(std::vector<details::write_full_field> const& fields, kvs::stream& stream,
-    accessor::record_ref source, memory::lifo_paged_memory_resource*) {
+void ops::write_full::encode_fields(
+    std::vector<details::write_full_field> const& fields,
+    kvs::stream& stream,
+    accessor::record_ref source
+) {
     for(auto const& f : fields) {
-        kvs::encode_nullable(source, f.source_offset_, f.source_nullity_offset_, f.type_, f.spec_, stream);
+        if(f.target_nullable_) {
+            kvs::encode_nullable(source, f.source_offset_, f.source_nullity_offset_, f.type_, f.spec_, stream);
+        } else {
+            kvs::encode(source, f.source_offset_, f.type_, f.spec_, stream);
+        }
     }
 }
 
@@ -183,16 +195,15 @@ ops::write_full::create_fields(write_kind kind, yugawara::storage::index const& 
 
 void ops::write_full::do_insert(write_kind kind, write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
-    auto resource = ctx.varlen_resource();
     // calculate length first, then put
-    check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source, resource);
-    check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source, resource);
+    check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
+    check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source);
     auto* k = static_cast<char*>(ctx.key_buf_.data());
     auto* v = static_cast<char*>(ctx.value_buf_.data());
     kvs::stream keys{k, ctx.key_buf_.size()};
     kvs::stream values{v, ctx.value_buf_.size()};
-    encode_fields(key_fields_, keys, source, resource);
-    encode_fields(value_fields_, values, source, resource);
+    encode_fields(key_fields_, keys, source);
+    encode_fields(value_fields_, values, source);
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
             {k, keys.length()},
@@ -210,11 +221,10 @@ void ops::write_full::check_length_and_extend_buffer(
     write_full_context&,
     std::vector<details::write_full_field> const& fields,
     data::aligned_buffer& buffer,
-    accessor::record_ref source,
-    memory::lifo_paged_memory_resource* resource
+    accessor::record_ref source
 ) {
     kvs::stream null_stream{};
-    encode_fields(fields, null_stream, source, resource);
+    encode_fields(fields, null_stream, source);
     if (null_stream.length() > buffer.size()) {
         buffer.resize(null_stream.length());
     }
@@ -232,13 +242,11 @@ void ops::write_full::do_delete(write_full_context& ctx) {
 
 std::string_view ops::write_full::prepare_key(write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
-    auto resource = ctx.varlen_resource();
     // calculate length first, and then put
-    check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source, resource);
-    auto* k = static_cast<char*>(ctx.key_buf_.data());
-    kvs::stream keys{k, ctx.key_buf_.size()};
-    encode_fields(key_fields_, keys, source, resource);
-    return {k, keys.length()};
+    check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
+    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    encode_fields(key_fields_, keys, source);
+    return {keys.data(), keys.length()};
 }
 
 }

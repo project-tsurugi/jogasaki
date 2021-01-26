@@ -149,8 +149,7 @@ private:
     void encode_fields(
         std::vector<details::write_full_field> const& fields,
         kvs::stream& stream,
-        accessor::record_ref source,
-        memory_resource* resource
+        accessor::record_ref source
     );
 
     std::vector<details::write_full_field> create_fields(
@@ -167,8 +166,7 @@ private:
         write_full_context& ctx,
         std::vector<details::write_full_field> const& fields,
         data::aligned_buffer& buffer,
-        accessor::record_ref source,
-        memory_resource* resource
+        accessor::record_ref source
     );
 
     void do_insert(write_kind kind, write_full_context& ctx);

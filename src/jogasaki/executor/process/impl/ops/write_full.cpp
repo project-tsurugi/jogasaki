@@ -40,7 +40,7 @@ details::write_full_field::write_full_field(
     spec_(spec)
 {}
 
-ops::write_full::write_full(
+write_full::write_full(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -56,7 +56,7 @@ ops::write_full::write_full(
     value_fields_(std::move(value_fields))
 {}
 
-ops::write_full::write_full(
+write_full::write_full(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -77,7 +77,7 @@ ops::write_full::write_full(
     )
 {}
 
-void ops::write_full::process_record(abstract::task_context* context) {
+void write_full::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<write_full_context>(index(), ctx.contexts());
@@ -93,7 +93,7 @@ void ops::write_full::process_record(abstract::task_context* context) {
     (*this)(*p);
 }
 
-void ops::write_full::operator()(write_full_context& ctx) {
+void write_full::operator()(write_full_context& ctx) {
     switch(kind_) {
         case write_kind::insert:
             do_insert(kind_, ctx);
@@ -109,19 +109,19 @@ void ops::write_full::operator()(write_full_context& ctx) {
     }
 }
 
-operator_kind ops::write_full::kind() const noexcept {
+operator_kind write_full::kind() const noexcept {
     return operator_kind::write_full;
 }
 
-std::string_view ops::write_full::storage_name() const noexcept {
+std::string_view write_full::storage_name() const noexcept {
     return storage_name_;
 }
 
-void ops::write_full::finish(abstract::task_context*) {
+void write_full::finish(abstract::task_context*) {
     //no-op
 }
 
-void ops::write_full::encode_fields(
+void write_full::encode_fields(
     std::vector<details::write_full_field> const& fields,
     kvs::stream& stream,
     accessor::record_ref source
@@ -135,11 +135,15 @@ void ops::write_full::encode_fields(
     }
 }
 
-
-std::vector<details::write_full_field>
-ops::write_full::create_fields(write_kind kind, yugawara::storage::index const& idx, sequence_view<key const> keys,
-    sequence_view<column const> columns, processor_info const& info, operator_base::block_index_type block_index,
-    bool key) {
+std::vector<details::write_full_field> write_full::create_fields(
+    write_kind kind,
+    yugawara::storage::index const& idx,
+    sequence_view<key const> keys,
+    sequence_view<column const> columns,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    bool key
+) {
     std::vector<details::write_full_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
@@ -169,7 +173,10 @@ ops::write_full::create_fields(write_kind kind, yugawara::storage::index const& 
         }
         return ret;
     }
-    if (kind == write_kind::delete_) return ret;
+    if (kind == write_kind::delete_) {
+        // delete requires only key fields
+        return ret;
+    }
     for(auto&& c : columns) {
         table_to_stream.emplace(c.destination(), c.source());
     }
@@ -193,21 +200,19 @@ ops::write_full::create_fields(write_kind kind, yugawara::storage::index const& 
     return ret;
 }
 
-void ops::write_full::do_insert(write_kind kind, write_full_context& ctx) {
+void write_full::do_insert(write_kind kind, write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
     // calculate length first, then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
     check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source);
-    auto* k = static_cast<char*>(ctx.key_buf_.data());
-    auto* v = static_cast<char*>(ctx.value_buf_.data());
-    kvs::stream keys{k, ctx.key_buf_.size()};
-    kvs::stream values{v, ctx.value_buf_.size()};
+    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    kvs::stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
     encode_fields(key_fields_, keys, source);
     encode_fields(value_fields_, values, source);
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
-            {k, keys.length()},
-            {v, values.length()}
+            {keys.data(), keys.length()},
+            {values.data(), values.length()}
         ); !res) {
         if (kind == write_kind::insert) {
             //TODO handle error
@@ -217,7 +222,7 @@ void ops::write_full::do_insert(write_kind kind, write_full_context& ctx) {
     }
 }
 
-void ops::write_full::check_length_and_extend_buffer(
+void write_full::check_length_and_extend_buffer(
     write_full_context&,
     std::vector<details::write_full_field> const& fields,
     data::aligned_buffer& buffer,
@@ -230,17 +235,14 @@ void ops::write_full::check_length_and_extend_buffer(
     }
 }
 
-void ops::write_full::do_delete(write_full_context& ctx) {
+void write_full::do_delete(write_full_context& ctx) {
     auto k = prepare_key(ctx);
-    if(auto res = ctx.stg_->remove(
-            *ctx.tx_,
-            k
-        ); !res) {
+    if(auto res = ctx.stg_->remove(*ctx.tx_, k ); !res) {
         LOG(INFO) << "deletion target not found";
     }
 }
 
-std::string_view ops::write_full::prepare_key(write_full_context& ctx) {
+std::string_view write_full::prepare_key(write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
     // calculate length first, and then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);

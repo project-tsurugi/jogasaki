@@ -47,6 +47,9 @@ using takatori::util::unsafe_downcast;
 
 class tpcc_test : public ::testing::Test {
 public:
+    // change this flag to debug with explain
+    constexpr static bool to_explain = false;
+
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
@@ -70,9 +73,16 @@ public:
         db_->stop();
     }
 
+    void explain(api::executable_statement& stmt) {
+        if (to_explain) {
+            db_->explain(stmt, std::cout);
+            std::cout << std::endl;
+        }
+    }
     void execute_query(std::string_view query, std::vector<mock::basic_record>& out) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
+        explain(*stmt);
         auto tx = db_->create_transaction();
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok, tx->execute(*stmt, rs));
@@ -94,6 +104,7 @@ public:
     void execute_statement(std::string_view query) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
+        explain(*stmt);
         auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok, tx->execute(*stmt));
         ASSERT_EQ(status::ok, tx->commit());

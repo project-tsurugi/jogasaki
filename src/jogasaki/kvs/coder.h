@@ -175,7 +175,7 @@ public:
      * @param buffer pointer to buffer that this instance can use
      * @param capacity length of the buffer
      */
-    stream(char* buffer, std::size_t capacity) : base_(buffer), capacity_(capacity) {}
+    stream(void* buffer, std::size_t capacity) : base_(static_cast<char*>(buffer)), capacity_(capacity) {}
 
     /**
      * @brief construct stream using string as its buffer
@@ -279,6 +279,10 @@ public:
 
     [[nodiscard]] std::size_t capacity() const noexcept {
         return capacity_;
+    }
+
+    [[nodiscard]] char const* data() const noexcept {
+        return base_;
     }
 private:
     char* base_{};

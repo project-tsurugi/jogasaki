@@ -66,6 +66,8 @@ public:
     /**
      * @brief getter for the number of data count added to this store
      * @return the number of records
+     * @warning the returned pointer becomes invalid when this object is modified
+     * by non-const member functions (e.g. resize()).
      */
     [[nodiscard]] void* data() const noexcept {
         return data_.get();
@@ -79,7 +81,7 @@ public:
     }
 
     /**
-     * @brief
+     * @brief reallocate the buffer for resize
      */
     void resize(std::size_t sz) noexcept {
         auto n = utils::make_aligned_array<std::byte>(alignment_, sz);

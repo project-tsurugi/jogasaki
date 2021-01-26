@@ -153,6 +153,7 @@ public:
                 ); !res) {
                 if (kind_ == write_kind::insert) {
                     //TODO handle error
+                    context.status_code(status::already_exists);
                     fail();
                 }
                 LOG(INFO) << "overwriting existing record";

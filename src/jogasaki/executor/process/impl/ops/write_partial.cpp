@@ -32,26 +32,26 @@ using takatori::util::maybe_shared_ptr;
 
 details::write_partial_field::write_partial_field(
     meta::field_type type,
-    std::size_t source_offset,
-    std::size_t source_nullity_offset,
+    std::size_t variable_offset,
+    std::size_t variable_nullity_offset,
     std::size_t target_offset,
     std::size_t target_nullity_offset,
     bool nullable,
     kvs::coding_spec spec,
     bool updated,
-    std::size_t update_source_offset,
-    std::size_t update_source_nullity_offset
+    std::size_t update_variable_offset,
+    std::size_t update_variable_nullity_offset
 ) :
     type_(std::move(type)),
-    source_offset_(source_offset),
-    source_nullity_offset_(source_nullity_offset),
+    variable_offset_(variable_offset),
+    variable_nullity_offset_(variable_nullity_offset),
     target_offset_(target_offset),
     target_nullity_offset_(target_nullity_offset),
     nullable_(nullable),
     spec_(spec),
     updated_(updated),
-    update_source_offset_(update_source_offset),
-    update_source_nullity_offset_(update_source_nullity_offset)
+    update_variable_offset_(update_variable_offset),
+    update_variable_nullity_offset_(update_variable_nullity_offset)
 {}
 
 std::string_view ops::write_partial::prepare_encoded_key(write_partial_context& ctx) {
@@ -59,10 +59,9 @@ std::string_view ops::write_partial::prepare_encoded_key(write_partial_context& 
     auto resource = ctx.varlen_resource();
     // calculate length first, and then put
     check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source, resource);
-    auto* k = static_cast<char*>(ctx.key_buf_.data());
-    kvs::stream keys{k, ctx.key_buf_.size()};
+    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     encode_fields(true, key_fields_, keys, source, resource);
-    return {k, keys.length()};
+    return {keys.data(), keys.length()};
 }
 
 void ops::write_partial::encode_and_put(write_partial_context& ctx) {
@@ -72,80 +71,80 @@ void ops::write_partial::encode_and_put(write_partial_context& ctx) {
     // calculate length first, then put
     check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source, resource);
     check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source, resource);
-    auto* k = static_cast<char*>(ctx.key_buf_.data());
-    auto* v = static_cast<char*>(ctx.value_buf_.data());
-    kvs::stream keys{k, ctx.key_buf_.size()};
-    kvs::stream values{v, ctx.value_buf_.size()};
+    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    kvs::stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
     encode_fields(false, key_fields_, keys, key_source, resource);
     encode_fields(false, value_fields_, values, val_source, resource);
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
-            {k, keys.length()},
-            {v, values.length()}
+            {keys.data(), keys.length()},
+            {values.data(), values.length()}
         ); !res) {
         fail();
     }
 }
 
 void ops::write_partial::update_record(write_partial_context& ctx) {
-    auto key_source = ctx.key_store_.ref();
-    auto val_source = ctx.value_store_.ref();
     auto variables = ctx.variables().store().ref();
-    {
-        update_fields(key_fields_, key_source, variables);
-        update_fields(value_fields_, val_source, variables);
-    }
+    update_fields(key_fields_, ctx.key_store_.ref(), variables);
+    update_fields(value_fields_, ctx.value_store_.ref(), variables);
 }
 
 void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
     auto resource = ctx.varlen_resource();
-    auto key_source = ctx.key_store_.ref();
-    auto val_source = ctx.value_store_.ref();
     auto k = prepare_encoded_key(ctx);
     std::string_view v{};
-    if(auto res = ctx.stg_->get(
-            *ctx.tx_,
-            k,
-            v
-        ); !res) {
-        //TODO handle error
+    if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); !res) {
+        // The update target has been identified on the upstream operator such as find,
+        // so this lookup must be successful. If the control reaches here, it's internal error.
         fail();
     }
     kvs::stream keys{const_cast<char*>(k.data()), k.size()};
     kvs::stream values{const_cast<char*>(v.data()), v.size()};
-    decode_fields(key_fields_, keys, key_source, resource);
-    decode_fields(value_fields_, values, val_source, resource);
-    if(auto res = ctx.stg_->remove(
-            *ctx.tx_,
-            k
-        ); !res) {
-        //TODO handle error
+    decode_fields(key_fields_, keys, ctx.key_store_.ref(), resource);
+    decode_fields(value_fields_, values, ctx.value_store_.ref(), resource);
+    if(auto res = ctx.stg_->remove( *ctx.tx_, k ); !res) {
         fail();
     }
 }
 
-void
-ops::write_partial::update_fields(std::vector<details::write_partial_field> const& fields, accessor::record_ref target,
-    accessor::record_ref source) {
+void ops::write_partial::update_fields(
+    std::vector<details::write_partial_field> const& fields,
+    accessor::record_ref target,
+    accessor::record_ref source
+) {
     for(auto const& f : fields) {
         if (! f.updated_) continue;
+        // currently assuming all the fields in source/target are nullable
         utils::copy_nullable_field(
             f.type_,
             target,
             f.target_offset_,
             f.target_nullity_offset_,
             source,
-            f.update_source_offset_,
-            f.update_source_nullity_offset_
+            f.update_variable_offset_,
+            f.update_variable_nullity_offset_
         );
     }
 }
 
-void ops::write_partial::decode_fields(std::vector<details::write_partial_field> const& fields, kvs::stream& stream,
-    accessor::record_ref target, memory::lifo_paged_memory_resource* resource) {
+void ops::write_partial::decode_fields(
+    std::vector<details::write_partial_field> const& fields,
+    kvs::stream& stream,
+    accessor::record_ref target,
+    memory::lifo_paged_memory_resource* resource
+) {
     for(auto&& f : fields) {
         if (f.nullable_) {
-            kvs::decode_nullable(stream, f.type_, f.spec_, target, f.target_offset_, f.target_nullity_offset_, resource);
+            kvs::decode_nullable(
+                stream,
+                f.type_,
+                f.spec_,
+                target,
+                f.target_offset_,
+                f.target_nullity_offset_,
+                resource
+            );
             continue;
         }
         kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
@@ -153,9 +152,14 @@ void ops::write_partial::decode_fields(std::vector<details::write_partial_field>
     }
 }
 
-void ops::write_partial::check_length_and_extend_buffer(bool from_variables, write_partial_context& ,
-    std::vector<details::write_partial_field> const& fields, data::aligned_buffer& buffer, accessor::record_ref source,
-    memory::lifo_paged_memory_resource* resource) {
+void ops::write_partial::check_length_and_extend_buffer(
+    bool from_variables,
+    write_partial_context& ,
+    std::vector<details::write_partial_field> const& fields,
+    data::aligned_buffer& buffer,
+    accessor::record_ref source,
+    memory::lifo_paged_memory_resource* resource
+) {
     kvs::stream null_stream{};
     encode_fields(from_variables, fields, null_stream, source, resource);
     if (null_stream.length() > buffer.size()) {
@@ -163,21 +167,26 @@ void ops::write_partial::check_length_and_extend_buffer(bool from_variables, wri
     }
 }
 
-std::vector<details::write_partial_field>
-ops::write_partial::create_fields(write_kind, yugawara::storage::index const& idx, sequence_view<key const> keys,
-    sequence_view<column const> columns, processor_info const& info, operator_base::block_index_type block_index,
-    bool key) {
+std::vector<details::write_partial_field> ops::write_partial::create_fields(
+    write_kind,
+    yugawara::storage::index const& idx,
+    sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
+    sequence_view<column const> columns, // columns to be updated
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    bool key
+) {
     std::vector<details::write_partial_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     auto& block = info.scopes_info()[block_index];
-    std::unordered_map<variable, variable> table_key_to_stream{};
-    std::unordered_map<variable, variable> table_columns_to_stream{};
+    std::unordered_map<variable, variable> key_dest_to_src{};
+    std::unordered_map<variable, variable> column_dest_to_src{};
     for(auto&& c : keys) {
-        table_key_to_stream.emplace(c.destination(), c.source());
+        key_dest_to_src.emplace(c.destination(), c.source());
     }
     for(auto&& c : columns) {
-        table_columns_to_stream.emplace(c.destination(), c.source());
+        column_dest_to_src.emplace(c.destination(), c.source());
     }
     if (key) {
         auto meta = create_meta(idx, true);
@@ -188,18 +197,18 @@ ops::write_partial::create_fields(write_kind, yugawara::storage::index const& id
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            if (table_key_to_stream.count(kc) == 0) {
-                fail();
+            if (key_dest_to_src.count(kc) == 0) {
+                fail(); // TODO update by non-unique keys
             }
-            auto&& var = table_key_to_stream.at(kc);
+            auto&& var = key_dest_to_src.at(kc);
             std::size_t source_offset{block.value_map().at(var).value_offset()};
             std::size_t source_nullity_offset{block.value_map().at(var).nullity_offset()};
             bool updated = false;
             std::size_t update_source_offset{npos};
             std::size_t update_source_nullity_offset{npos};
-            if (table_columns_to_stream.count(kc) != 0) {
+            if (column_dest_to_src.count(kc) != 0) {
                 updated = true;
-                auto&& src = table_columns_to_stream.at(kc);
+                auto&& src = column_dest_to_src.at(kc);
                 update_source_offset = block.value_map().at(src).value_offset();
                 update_source_nullity_offset = block.value_map().at(src).nullity_offset();
             }
@@ -228,16 +237,16 @@ ops::write_partial::create_fields(write_kind, yugawara::storage::index const& id
         bool updated = false;
         std::size_t update_source_offset{npos};
         std::size_t update_source_nullity_offset{npos};
-        if (table_columns_to_stream.count(b) != 0) {
+        if (column_dest_to_src.count(b) != 0) {
             updated = true;
-            auto&& src = table_columns_to_stream.at(b);
+            auto&& src = column_dest_to_src.at(b);
             update_source_offset = block.value_map().at(src).value_offset();
             update_source_nullity_offset = block.value_map().at(src).nullity_offset();
         }
         ret.emplace_back(
             t,
-            npos,
-            npos,
+            npos, // in value handling, no src variable coming from upstream
+            npos, // in value handling, no src variable coming from upstream
             meta->value_offset(i),
             meta->nullity_offset(i),
             c.criteria().nullity().nullable(),
@@ -267,15 +276,20 @@ maybe_shared_ptr<meta::record_meta> ops::write_partial::create_meta(yugawara::st
     return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
 }
 
-void ops::write_partial::encode_fields(bool from_variable, std::vector<details::write_partial_field> const& fields,
-    kvs::stream& stream, accessor::record_ref source, memory::lifo_paged_memory_resource* ) {
+void ops::write_partial::encode_fields(
+    bool from_variable,
+    std::vector<details::write_partial_field> const& fields,
+    kvs::stream& target,
+    accessor::record_ref source,
+    memory::lifo_paged_memory_resource*
+) {
     for(auto const& f : fields) {
-        std::size_t offset = from_variable ? f.source_offset_ : f.target_offset_;
-        std::size_t nullity_offset = from_variable ? f.source_nullity_offset_ : f.target_nullity_offset_;
+        std::size_t offset = from_variable ? f.variable_offset_ : f.target_offset_;
+        std::size_t nullity_offset = from_variable ? f.variable_nullity_offset_ : f.target_nullity_offset_;
         if(f.nullable_) {
-            kvs::encode_nullable(source, offset, nullity_offset, f.type_, f.spec_, stream);
+            kvs::encode_nullable(source, offset, nullity_offset, f.type_, f.spec_, target);
         } else {
-            kvs::encode(source, offset, f.type_, f.spec_, stream);
+            kvs::encode(source, offset, f.type_, f.spec_, target);
         }
     }
 }
@@ -301,8 +315,13 @@ operator_kind ops::write_partial::kind() const noexcept {
 }
 
 void ops::write_partial::operator()(write_partial_context& ctx) {
+    // find update target and fill ctx.key_store_ and ctx.value_store_
     find_record_and_extract(ctx);
+
+    // update fields in key_store_/value_store_ with values from scope variable
     update_record(ctx);
+
+    // encode values from key_store_/value_store_ and send to kvs
     encode_and_put(ctx);
 }
 
@@ -311,7 +330,8 @@ void ops::write_partial::process_record(abstract::task_context* context) {
     context_helper ctx{*context};
     auto* p = find_context<write_partial_context>(index(), ctx.contexts());
     if (! p) {
-        p = ctx.make_context<write_partial_context>(index(),
+        p = ctx.make_context<write_partial_context>(
+            index(),
             ctx.block_scope(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),

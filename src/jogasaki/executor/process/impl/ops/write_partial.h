@@ -48,39 +48,41 @@ struct cache_align write_partial_field {
     /**
      * @brief create new object
      * @param type type of the field
-     * @param source_offset byte offset of the field in the input variables record
-     * @param source_nullity_offset bit offset of the field nullity in the input variables record
-     * @param target_offset byte offset of the field in the decoded record
-     * @param target_nullity_offset bit offset of the field nullity in the decoded record
+     * @param variable_offset byte offset of the field in the input variables record (scope variables)
+     * @param variable_nullity_offset bit offset of the field nullity in the input variables record
+     * @param target_offset byte offset of the field in the target record in ctx.key_store_/value_store_.
+     * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.key_store_/value_store_.
      * @param nullable whether the target field is nullable or not
      * @param spec the spec of the source field used for encode/decode
      * @param updated indicates whether the field will be updated or not
-     * @param update_source_offset byte offset of the field in the source variables record (used if updated is true)
-     * @param update_source_nullity_offset bit offset of the field nullity in the source variables record (used if updated is true)
+     * @param update_variable_offset byte offset of the field in the scope variables record.
+     * Used to provide values only if `updated` is true.
+     * @param update_variable_nullity_offset bit offset of the field nullity in the scope variables record.
+     * Used to provide values nullity only if `updated` is true.
      */
     write_partial_field(
         meta::field_type type,
-        std::size_t source_offset,
-        std::size_t source_nullity_offset,
+        std::size_t variable_offset,
+        std::size_t variable_nullity_offset,
         std::size_t target_offset,
         std::size_t target_nullity_offset,
         bool nullable,
         kvs::coding_spec spec,
         bool updated,
-        std::size_t update_source_offset,
-        std::size_t update_source_nullity_offset
+        std::size_t update_variable_offset,
+        std::size_t update_variable_nullity_offset
     );
 
     meta::field_type type_{}; //NOLINT
-    std::size_t source_offset_{}; //NOLINT
-    std::size_t source_nullity_offset_{}; //NOLINT
+    std::size_t variable_offset_{}; //NOLINT
+    std::size_t variable_nullity_offset_{}; //NOLINT
     std::size_t target_offset_{}; //NOLINT
     std::size_t target_nullity_offset_{}; //NOLINT
     bool nullable_{}; //NOLINT
     kvs::coding_spec spec_{}; //NOLINT
     bool updated_{}; //NOLINT
-    std::size_t update_source_offset_{}; //NOLINT
-    std::size_t update_source_nullity_offset_{}; //NOLINT
+    std::size_t update_variable_offset_{}; //NOLINT
+    std::size_t update_variable_nullity_offset_{}; //NOLINT
 };
 
 }
@@ -186,14 +188,20 @@ private:
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
 
+    /**
+     * @brief private encoding function
+     * @param from_variable specify where the source comes from. True when encoding from scope variables to
+     * internal buffer (key_buf_/value_buf_). False when encoding internal buffer to kvs::streams.
+     */
     void encode_fields(
         bool from_variable,
         std::vector<details::write_partial_field> const& fields,
-        kvs::stream& stream,
+        kvs::stream& target,
         accessor::record_ref source,
         memory_resource* resource
     );
 
+    // create meta for the key_store_/value_store_ in write_partial_context
     maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
 
     std::vector<details::write_partial_field> create_fields(

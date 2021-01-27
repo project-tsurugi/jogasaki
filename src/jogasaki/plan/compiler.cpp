@@ -441,7 +441,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
 } // namespace impl
 
 status prepare(std::string_view sql, compiler_context &ctx) {
-    if(auto p = impl::prepare(sql); p) {
+    if(auto p = impl::prepare(sql); p != nullptr && p->program()) {
         ctx.prepared_statement(std::move(p));
         return status::ok;
     }

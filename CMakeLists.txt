@@ -48,7 +48,7 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
             FORCE
     )
 endif()
-set(EXECUTOR "executor-${SHARKSFIN_IMPLEMENTATION}")
+set(ENGINE "engine")
 
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
@@ -78,8 +78,8 @@ if (BUILD_TESTS OR BUILD_EXAMPLES)
     enable_testing()
 endif()
 
-set(export_name "jogasaki")
-set(package_name "jogasaki")
+set(export_name "jogasaki-${SHARKSFIN_IMPLEMENTATION}")
+set(package_name "jogasaki-${SHARKSFIN_IMPLEMENTATION}")
 
 add_library(api INTERFACE)
 

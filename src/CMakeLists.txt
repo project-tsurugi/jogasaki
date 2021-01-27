@@ -34,15 +34,19 @@ file(GLOB SOURCES
         "jogasaki/utils/*.cpp"
 )
 
-add_library(jogasaki
+add_library(${ENGINE}
         ${SOURCES}
 )
 
-target_include_directories(jogasaki
+set_target_properties(${ENGINE} PROPERTIES
+        OUTPUT_NAME ${export_name}
+        )
+
+target_include_directories(${ENGINE}
         PRIVATE .
 )
 
-target_link_libraries(jogasaki
+target_link_libraries(${ENGINE}
         PUBLIC api
         PUBLIC takatori
         PRIVATE yugawara
@@ -61,20 +65,20 @@ target_link_libraries(jogasaki
 )
 
 if (PERFORMANCE_TOOLS)
-    target_link_libraries(jogasaki
+    target_link_libraries(${ENGINE}
             PRIVATE performance-tools::api
             PRIVATE performance-tools::lib
             )
-    target_compile_definitions(jogasaki PUBLIC PERFORMANCE_TOOLS)
+    target_compile_definitions(${ENGINE} PUBLIC PERFORMANCE_TOOLS)
 endif()
 
 # Boost.Thread doesn't seem to allow multiple versions to coexist.
 # This version definition should be shared with caller at least.
-target_compile_definitions(jogasaki PUBLIC BOOST_THREAD_VERSION=4)
+target_compile_definitions(${ENGINE} PUBLIC BOOST_THREAD_VERSION=4)
 
-set_compile_options(jogasaki)
+set_compile_options(${ENGINE})
 
-install_custom(jogasaki ${export_name})
+install_custom(${ENGINE} ${export_name})
 
 # for tests
 add_library(jogasaki-impl INTERFACE)
@@ -84,7 +88,7 @@ target_include_directories(jogasaki-impl
         )
 
 target_link_libraries(jogasaki-impl
-        INTERFACE jogasaki
+        INTERFACE ${ENGINE}
         INTERFACE takatori
         INTERFACE yugawara
         INTERFACE mizugaki

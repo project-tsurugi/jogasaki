@@ -12,6 +12,11 @@ target_include_directories(jogasaki-mock
         PRIVATE .
 )
 
+# avoid name conflict with mock sharksfin implementation
+set_target_properties(jogasaki-mock PROPERTIES
+        OUTPUT_NAME jogasaki-mock-utils
+        )
+
 target_link_libraries(jogasaki-mock
         PRIVATE jogasaki-impl
         PRIVATE Boost::boost
@@ -49,7 +54,7 @@ target_include_directories(jogasaki-mock-impl
         )
 
 target_link_libraries(jogasaki-mock-impl
-        INTERFACE jogasaki
+        INTERFACE ${ENGINE}
         INTERFACE takatori
         INTERFACE yugawara
         INTERFACE mizugaki

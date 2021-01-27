@@ -44,7 +44,10 @@ endif()
 
 set_compile_options(jogasaki-mock)
 
-install_custom(jogasaki-mock ${export_name})
+# mock library needs install only when examples are used
+if(INSTALL_EXAMPLES)
+    install_custom(jogasaki-mock ${export_name})
+endif()
 
 # for tests
 add_library(jogasaki-mock-impl INTERFACE)

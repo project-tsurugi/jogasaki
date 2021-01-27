@@ -48,6 +48,7 @@ available options:
 * `-DBUILD_SHARED_LIBS=OFF` - create static libraries instead of shared libraries
 * `-DBUILD_TESTS=OFF` - don't build test programs
 * `-DBUILD_DOCUMENTS=OFF` - don't build documents by doxygen
+* `-DINSTALL_EXAMPLES=ON` - install example applications
 * `-DFORCE_INSTALL_RPATH=ON` - automatically configure `INSTALL_RPATH` for non-default library paths
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory`, `mock` and `kvs` (default: `memory`)
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance

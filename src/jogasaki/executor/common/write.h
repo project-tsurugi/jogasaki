@@ -15,32 +15,19 @@
  */
 #pragma once
 
-#include <unordered_set>
-#include <optional>
-
-#include <takatori/util/optional_ptr.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <takatori/statement/write.h>
-#include <yugawara/binding/factory.h>
 
+#include <jogasaki/kvs/coder.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/utils/field_types.h>
 #include <jogasaki/data/aligned_buffer.h>
 
 namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
-using jogasaki::executor::process::impl::expression::evaluator;
 using yugawara::compiled_info;
-
-using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 namespace details {
 
@@ -130,6 +117,7 @@ public:
 
     bool operator()(request_context& context) const;
 private:
+
     write_kind kind_{};
     std::string storage_name_{};
     std::vector<details::write_tuple> keys_{};

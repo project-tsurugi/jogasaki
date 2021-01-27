@@ -15,8 +15,6 @@
  */
 #include "write.h"
 
-#include <takatori/util/optional_ptr.h>
-#include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 #include <takatori/statement/write.h>
 #include <yugawara/binding/factory.h>
@@ -27,7 +25,6 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/data/aligned_buffer.h>
 
@@ -37,7 +34,6 @@ using jogasaki::executor::process::impl::ops::write_kind;
 using jogasaki::executor::process::impl::expression::evaluator;
 using yugawara::compiled_info;
 
-using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
 write::write(

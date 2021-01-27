@@ -50,7 +50,7 @@ constexpr kvs::order undef = kvs::order::undefined;
 
 namespace {
 
-void encode_field(
+inline void encode_field(
     expression::any const& a,
     meta::field_type f,
     kvs::coding_spec spec,
@@ -133,7 +133,7 @@ static void fill_fields(
 
 }
 
-void populate_storage_data(
+inline void populate_storage_data(
     kvs::database* db,
     std::shared_ptr<configurable_provider> const& provider,
     std::string_view storage_name,

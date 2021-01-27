@@ -20,6 +20,7 @@
 #include <takatori/relation/write.h>
 #include <yugawara/binding/factory.h>
 
+#include <jogasaki/error.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
@@ -77,9 +78,10 @@ void ops::write_partial::encode_and_put(write_partial_context& ctx) {
             *ctx.tx_,
             {keys.data(), keys.length()},
             {values.data(), values.length()}
-        ); !res) {
+        ); is_error(res)) {
         fail();
     }
+    // warnings such as status::not_found are safely ignored
 }
 
 void ops::write_partial::update_record(write_partial_context& ctx) {
@@ -92,7 +94,7 @@ void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
     auto varlen_resource = ctx.varlen_resource();
     auto k = prepare_encoded_key(ctx);
     std::string_view v{};
-    if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); !res) {
+    if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); ! is_ok(res)) {
         // The update target has been identified on the upstream operator such as find,
         // so this lookup must be successful. If the control reaches here, it's internal error.
         fail();
@@ -101,7 +103,7 @@ void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
     kvs::stream values{const_cast<char*>(v.data()), v.size()};
     decode_fields(key_fields_, keys, ctx.key_store_.ref(), varlen_resource);
     decode_fields(value_fields_, values, ctx.value_store_.ref(), varlen_resource);
-    if(auto res = ctx.stg_->remove( *ctx.tx_, k ); !res) {
+    if(auto res = ctx.stg_->remove( *ctx.tx_, k ); ! is_ok(res)) {
         fail();
     }
 }

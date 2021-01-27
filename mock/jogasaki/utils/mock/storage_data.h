@@ -29,6 +29,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/storage_dump.h>
+#include <jogasaki/error.h>
 
 namespace jogasaki::utils {
 
@@ -183,7 +184,7 @@ void populate_storage_data(
         if(auto res = stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}
-            ); !res) {
+            ); ! is_ok(res)) {
             fail();
         }
         key_stream.reset();

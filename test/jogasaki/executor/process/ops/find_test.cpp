@@ -239,7 +239,7 @@ TEST_F(find_test, simple) {
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), spec_val, val_stream);
         kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), spec_val, val_stream);
-        ASSERT_TRUE(stg->put(*tx,
+        ASSERT_EQ(status::ok, stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}
         ));
@@ -254,7 +254,7 @@ TEST_F(find_test, simple) {
         auto val_meta = val_rec.record_meta();
         kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), spec_val, val_stream);
         kvs::encode(val_rec.ref(), val_meta->value_offset(1), val_meta->at(1), spec_val, val_stream);
-        ASSERT_TRUE(stg->put(*tx,
+        ASSERT_EQ(status::ok, stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.length()},
             std::string_view{val_buf.data(), val_stream.length()}
         ));

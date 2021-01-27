@@ -101,7 +101,7 @@ public:
             auto val_meta = val_rec.record_meta();
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
-            ASSERT_TRUE(stg->put(*tx,
+            ASSERT_EQ(status::ok, stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}
             ));
@@ -116,7 +116,7 @@ public:
             auto val_meta = val_rec.record_meta();
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
-            ASSERT_TRUE(stg->put(*tx,
+            ASSERT_EQ(status::ok, stg->put(*tx,
                 std::string_view{key_buf.data(), key_stream.length()},
                 std::string_view{val_buf.data(), val_stream.length()}
             ));
@@ -160,7 +160,7 @@ public:
         std::unique_ptr<kvs::iterator> it{};
         std::string_view k{};
         std::string_view v{};
-        ASSERT_TRUE(stg->scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
+        ASSERT_EQ(status::ok, stg->scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
         while(it->next()) {
             (void)it->key(k);
             (void)it->value(v);
@@ -351,7 +351,7 @@ TEST_F(write_partial_test , simple_update) {
         );
         std::string_view k{str.data(), key.length()};
         std::string_view v{};
-        ASSERT_TRUE(s->get(*tx, k, v));
+        ASSERT_EQ(status::ok, s->get(*tx, k, v));
         std::string buf{v};
         kvs::stream value{buf};
         expression::any res{};
@@ -381,7 +381,7 @@ TEST_F(write_partial_test , simple_update) {
         );
         std::string_view k{str.data(), key.length()};
         std::string_view v{};
-        ASSERT_TRUE(s->get(*tx, k, v));
+        ASSERT_EQ(status::ok, s->get(*tx, k, v));
         std::string buf{v};
         kvs::stream value{buf};
         expression::any res{};

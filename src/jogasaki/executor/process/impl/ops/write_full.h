@@ -169,7 +169,7 @@ private:
         accessor::record_ref source
     );
 
-    void do_insert(write_kind kind, write_full_context& ctx);
+    void do_insert(write_full_context& ctx);
 
     std::string_view prepare_key(write_full_context& ctx);
 

@@ -16,6 +16,8 @@
 #include "transaction.h"
 #include "database.h"
 
+#include <jogasaki/kvs/error.h>
+
 namespace jogasaki::kvs {
 
 transaction::transaction(class database &db, bool readonly) : database_(std::addressof(db)) {
@@ -36,19 +38,21 @@ transaction::~transaction() noexcept {
 }
 
 status transaction::commit() {
-    if(auto rc = sharksfin::transaction_commit(tx_); rc != sharksfin::StatusCode::OK) {
-        return status::err_unknown; //TODO resolve error code
+    auto rc = sharksfin::transaction_commit(tx_);
+    if(rc == sharksfin::StatusCode::OK) {
+        active_ = false;
+        return status::ok;
     }
-    active_ = false;
-    return status::ok;
+    return resolve(rc);
 }
 
 status transaction::abort() {
-    if(auto rc = sharksfin::transaction_abort(tx_); rc != sharksfin::StatusCode::OK) {
-        return status::err_unknown; //TODO resolve error code
+    auto rc = sharksfin::transaction_abort(tx_);
+    if(rc == sharksfin::StatusCode::OK) {
+        active_ = false;
+        return status::ok;
     }
-    active_ = false;
-    return status::ok;
+    return resolve(rc);
 }
 
 sharksfin::TransactionControlHandle transaction::control_handle() const noexcept {

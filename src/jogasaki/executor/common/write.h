@@ -44,6 +44,9 @@ using takatori::util::fail;
 
 namespace details {
 
+/**
+ * @brief tuple holds the buffer for tuple values
+ */
 class cache_align write_tuple {
 public:
     /**
@@ -52,24 +55,19 @@ public:
      */
     explicit write_tuple(
         std::string_view data
-    ) :
-        buf_(data.size())
-    {
-        std::memcpy(buf_.data(), data.data(), data.size());
-    }
+    );
 
-    [[nodiscard]] void* data() const noexcept {
-        return buf_.data();
-    }
+    [[nodiscard]] void* data() const noexcept;
 
-    [[nodiscard]] std::size_t size() const noexcept {
-        return buf_.size();
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
 private:
     data::aligned_buffer buf_{};
 };
 
+/**
+ * @brief field info. for write
+ */
 struct write_field {
     write_field(
         std::size_t index,
@@ -92,26 +90,31 @@ struct write_field {
 } // namespace
 
 /**
- * @brief graph common implementation
+ * @brief write statement
  */
 class write : public model::statement {
 public:
     using column = takatori::statement::write::column;
     using tuple = takatori::statement::write::tuple;
 
+    /**
+     * @brief create empty object
+     */
     write() = default;
 
+    /**
+     * @brief create new object
+     * @param kind
+     * @param storage_name
+     * @param keys
+     * @param values
+     */
     write(
         write_kind kind,
         std::string_view storage_name,
         std::vector<details::write_tuple> keys,
         std::vector<details::write_tuple> values
-    ) noexcept :
-        kind_(kind),
-        storage_name_(storage_name),
-        keys_(std::move(keys)),
-        values_(std::move(values))
-    {}
+    ) noexcept;
 
     write(
         write_kind kind,
@@ -121,46 +124,11 @@ public:
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
         memory::lifo_paged_memory_resource& resource,
         compiled_info const& info
-    ) noexcept :
-        write(
-            kind,
-            storage_name,
-            create_tuples(idx, columns, tuples, info, resource, true),
-            create_tuples(idx, columns, tuples, info, resource, false)
-        )
-    {}
+    ) noexcept;
 
-    [[nodiscard]] model::statement_kind kind() const noexcept override {
-        return model::statement_kind::write;
-    }
+    [[nodiscard]] model::statement_kind kind() const noexcept override;
 
-    bool operator()(request_context& context) const {
-        auto& tx = context.transaction();
-        auto* db = tx->database();
-        auto stg = db->get_storage(storage_name_);
-        if(! stg) {
-            fail();
-        }
-
-        BOOST_ASSERT(keys_.size() == values_.size());  //NOLINT
-        for(std::size_t i=0, n=keys_.size(); i<n; ++i) {
-            auto& key = keys_[i];
-            auto& value = values_[i];
-            if(auto res = stg->put(
-                    *tx,
-                    {static_cast<char*>(key.data()), key.size()},
-                    {static_cast<char*>(value.data()), value.size()}
-                ); !res) {
-                if (kind_ == write_kind::insert) {
-                    //TODO handle error
-                    context.status_code(status::already_exists);
-                    fail();
-                }
-                LOG(INFO) << "overwriting existing record";
-            }
-        }
-        return true;
-    }
+    bool operator()(request_context& context) const;
 private:
     write_kind kind_{};
     std::string storage_name_{};
@@ -175,86 +143,14 @@ private:
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource,
         bool key
-    ) {
-        std::vector<details::write_tuple> ret{};
-        using variable = takatori::descriptor::variable;
-        yugawara::binding::factory bindings{};
-        std::unordered_map<variable, std::size_t> variable_indices{};
-        for(std::size_t i=0, n=columns.size(); i<n; ++i) {
-            auto&& c = columns[i];
-            variable_indices[c]=i;
-        }
-        std::vector<details::write_field> fields{};
-        if (key) {
-            fields.reserve(idx.keys().size());
-            for(auto&& k : idx.keys()) {
-                auto v = bindings(k.column());
-                std::size_t index{npos};
-                if(variable_indices.count(v) != 0) {
-                    index = variable_indices[v];
-                }
-                fields.emplace_back(
-                    index,
-                    utils::type_for(k.column().type()),
-                    k.direction() == takatori::relation::sort_direction::ascendant ?
-                        kvs::spec_key_ascending: kvs::spec_key_descending,
-                    k.column().criteria().nullity().nullable()
-                );
-            }
-        } else {
-            fields.reserve(idx.values().size());
-            for(auto&& c : idx.values()) {
-                auto v = bindings(c);
-                std::size_t index{npos};
-                if(variable_indices.count(v) != 0) {
-                    index = variable_indices[v];
-                }
-                auto& casted = static_cast<yugawara::storage::column const&>(c);
-                fields.emplace_back(
-                    index,
-                    utils::type_for(casted.type()),
-                    kvs::spec_value,
-                    casted.criteria().nullity().nullable()
-                );
-            }
-        }
-        for(auto& tuple: tuples) {
-            auto s = encode_tuple(tuple, fields, info, resource);
-            ret.emplace_back(s);
-        }
-        return ret;
-    }
+    );
 
     std::string encode_tuple(
         tuple const& t,
         std::vector<details::write_field> const& fields,
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource
-    ) {
-        BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
-        auto cp = resource.get_checkpoint();
-        executor::process::impl::block_scope scope{};
-        std::string buf{};  //TODO create own buffer class
-        for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-            auto capacity = loop == 0 ? 0 : buf.capacity(); // capacity 0 makes stream empty write to calc. length
-            kvs::stream s{buf.data(), capacity};
-            for(auto&& f : fields) {
-                evaluator eval{t.elements()[f.index_], info};
-                auto res = eval(scope, &resource);
-
-                if (f.nullable_) {
-                    kvs::encode_nullable(res, f.type_, f.spec_, s);
-                } else {
-                    kvs::encode(res, f.type_, f.spec_, s);
-                }
-                resource.deallocate_after(cp);
-            }
-            if (loop == 0) {
-                buf.resize(s.length());
-            }
-        }
-        return buf;
-    }
+    );
 
 };
 

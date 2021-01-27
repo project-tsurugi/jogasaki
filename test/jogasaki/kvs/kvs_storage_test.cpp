@@ -49,7 +49,7 @@ TEST_F(kvs_storage_test, delete_storage) {
     auto db = database::open(options);
     auto t = db->create_storage("T");
     ASSERT_TRUE(t);
-    ASSERT_TRUE(t->delete_storage());
+    ASSERT_EQ(status::ok, t->delete_storage());
     auto t2 = db->get_storage("T");
     ASSERT_FALSE(t2);
     ASSERT_TRUE(db->close());
@@ -75,33 +75,33 @@ TEST_F(kvs_storage_test, put_get_remove) {
     {
         auto tx = db->create_transaction();
         {
-            ASSERT_TRUE(t1->put(*tx, "k1", "v1"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
         }
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
         std::string_view v;
-        ASSERT_TRUE(t1->get(*tx, "k1", v));
+        ASSERT_EQ(status::ok, t1->get(*tx, "k1", v));
         EXPECT_EQ("v1", v);
-        ASSERT_TRUE(t1->remove(*tx, "k1"));
+        ASSERT_EQ(status::ok, t1->remove(*tx, "k1"));
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
         std::string_view v;
-        ASSERT_FALSE(t1->get(*tx, "k1", v));
+        ASSERT_EQ(status::err_not_found, t1->get(*tx, "k1", v));
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db->create_transaction();
-        ASSERT_TRUE(t1->put(*tx, "k1", "v2"));
+        ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v2"));
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
         std::string_view v;
         auto tx = db->create_transaction();
-        ASSERT_TRUE(t1->get(*tx, "k1", v));
+        ASSERT_EQ(status::ok, t1->get(*tx, "k1", v));
         EXPECT_EQ("v2", v);
         ASSERT_EQ(status::ok, tx->commit());
     }
@@ -116,11 +116,11 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
     {
         auto tx = db->create_transaction();
         {
-            ASSERT_TRUE(t1->put(*tx, "k0", "v0"));
-            ASSERT_TRUE(t1->put(*tx, "k1", "v1"));
-            ASSERT_TRUE(t1->put(*tx, "k2", "v2"));
-            ASSERT_TRUE(t1->put(*tx, "k3", "v3"));
-            ASSERT_TRUE(t1->put(*tx, "k4", "v4"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k0", "v0"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k2", "v2"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k3", "v3"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k4", "v4"));
         }
         ASSERT_EQ(status::ok, tx->commit());
     }
@@ -129,7 +129,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
-        ASSERT_TRUE(t1->scan(*tx, "k1", end_point_kind::inclusive, "k3", end_point_kind::exclusive, it));
+        ASSERT_EQ(status::ok, t1->scan(*tx, "k1", end_point_kind::inclusive, "k3", end_point_kind::exclusive, it));
         ASSERT_TRUE(it);
         ASSERT_TRUE(it->next());
         ASSERT_TRUE(it->key(k));
@@ -149,7 +149,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
-        ASSERT_TRUE(t1->scan(*tx, "k1", end_point_kind::exclusive, "k3", end_point_kind::inclusive,it));
+        ASSERT_EQ(status::ok, t1->scan(*tx, "k1", end_point_kind::exclusive, "k3", end_point_kind::inclusive,it));
         ASSERT_TRUE(it);
         ASSERT_TRUE(it->next());
         ASSERT_TRUE(it->key(k));
@@ -175,13 +175,13 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
     {
         auto tx = db->create_transaction();
         {
-            ASSERT_TRUE(t1->put(*tx, "k0", "v0"));
-            ASSERT_TRUE(t1->put(*tx, "k1/0", "v1/0"));
-            ASSERT_TRUE(t1->put(*tx, "k1/1", "v1/1"));
-            ASSERT_TRUE(t1->put(*tx, "k2", "v2"));
-            ASSERT_TRUE(t1->put(*tx, "k3/0", "v3/0"));
-            ASSERT_TRUE(t1->put(*tx, "k3/1", "v3/1"));
-            ASSERT_TRUE(t1->put(*tx, "k4", "v4"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k0", "v0"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k1/0", "v1/0"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k1/1", "v1/1"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k2", "v2"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k3/0", "v3/0"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k3/1", "v3/1"));
+            ASSERT_EQ(status::ok, t1->put(*tx, "k4", "v4"));
         }
         ASSERT_EQ(status::ok, tx->commit());
     }
@@ -190,7 +190,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
-        ASSERT_TRUE(t1->scan(*tx, "k1/", end_point_kind::prefixed_inclusive, "k3/", end_point_kind::prefixed_exclusive, it));
+        ASSERT_EQ(status::ok, t1->scan(*tx, "k1/", end_point_kind::prefixed_inclusive, "k3/", end_point_kind::prefixed_exclusive, it));
         ASSERT_TRUE(it);
         ASSERT_TRUE(it->next());
         ASSERT_TRUE(it->key(k));
@@ -215,7 +215,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
-        ASSERT_TRUE(t1->scan(*tx, "k1/", end_point_kind::prefixed_exclusive, "k3/", end_point_kind::prefixed_inclusive, it));
+        ASSERT_EQ(status::ok, t1->scan(*tx, "k1/", end_point_kind::prefixed_exclusive, "k3/", end_point_kind::prefixed_inclusive, it));
         ASSERT_TRUE(it);
         ASSERT_TRUE(it->next());
         ASSERT_TRUE(it->key(k));

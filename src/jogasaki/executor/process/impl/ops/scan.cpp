@@ -147,7 +147,7 @@ void scan::open(scan_context& ctx) {
                 ctx.scan_info_->end_key(),
                 ctx.scan_info_->end_endpoint(),
                 ctx.it_);
-            !res) {
+            res != status::ok) {
             fail();
         }
     }

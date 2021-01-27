@@ -84,6 +84,16 @@ private:
  * @brief checks status code or raise an exception if it is not OK.
  * @param result the status code
  */
+inline void check(status st) {
+    if (st != status::ok) {
+        fail();
+    }
+}
+
+/**
+ * @brief checks return value or raise an exception if it is not OK.
+ * @param result the return value from executed function
+ */
 inline void check(bool result) {
     if (! result) {
         fail();

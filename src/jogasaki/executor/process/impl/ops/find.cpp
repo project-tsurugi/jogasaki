@@ -110,7 +110,7 @@ void find::operator()(class find_context& ctx, abstract::task_context* context) 
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
     std::string_view v{};
-    if(! ctx.stg_->get(*ctx.tx_, key_, v)) {
+    if(auto res = ctx.stg_->get(*ctx.tx_, key_, v); res != status::ok) {
         return;
     }
     kvs::stream keys{const_cast<char*>(key_.data()), key_.length()}; //TODO create read-only stream

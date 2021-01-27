@@ -34,6 +34,24 @@ enum class end_point_kind : std::uint32_t {
     prefixed_inclusive,
     prefixed_exclusive,
 };
+
+enum class put_option : std::uint32_t {
+    /**
+     * @brief to update the existing entry, or create new one if the entry doesn't exist.
+     */
+    create_or_update = 0U,
+
+    /**
+     * @brief to create new entry. status::err_already_exists is returned from put operation if the entry already exist.
+     */
+    create,
+
+    /**
+     * @brief to update existing entry. status::err_not_found is returned from put operation if the entry doesn't exist.
+     */
+    update,
+};
+
 /**
  * @brief storage object in the database
  * @details storage typically represents a table on the database in the transaction engine layer.
@@ -74,13 +92,13 @@ public:
 
     /**
      * @brief delete the storage
-     * @return true if the storage is successfully deleted
-     * @return false any other error happens
+     * @return status::ok if the storage is successfully deleted
+     * @return otherwise, other status code
      * @attention Concurrent operations for adding/removing storage entries are not strictly controlled for safety.
      * For the time being, storages are expected to be created sequentially before any transactions are started.
      * Accessing the storage object which is deleted by this call causes undefined behavior.
      */
-    [[nodiscard]] bool delete_storage();
+    [[nodiscard]] status delete_storage();
 
     /**
      * @brief scan the storage with given key conditions
@@ -90,10 +108,10 @@ public:
      * @param end_key the end key
      * @param end_kind endpoint of the end key
      * @param it[out] iterator for the scan result
-     * @return true if the operation is successful
-     * @return false otherwise
+     * @return status::ok if the operation is successful
+     * @return otherwise, other status code
      */
-    [[nodiscard]] bool scan(
+    [[nodiscard]] status scan(
         transaction& tx,
         std::string_view begin_key, end_point_kind begin_kind,
         std::string_view end_key, end_point_kind end_kind,
@@ -106,37 +124,43 @@ public:
      * @param key key for searching
      * @param value[out] the value of the entry matching the key
      * The data pointed by the returned value gets invalidated after any other api call.
-     * @return true if the operation is successful
-     * @return false otherwise (e.g. the entry for the key is not found)
+     * @return status::ok if the operation is successful
+     * @return status::err_not_found if the entry for the key is not found
+     * @return otherwise, other status code
      */
-    [[nodiscard]] bool get(
+    [[nodiscard]] status get(
         transaction& tx,
         std::string_view key,
         std::string_view& value
     );
 
     /**
-     * @brief put the value for the given key (create new entry if it does not exist, otherwise update)
+     * @brief put the value for the given key
      * @param tx transaction used
      * @param key the key for the entry
      * @param value the value for the entry
-     * @return true if the operation is successful
-     * @return false otherwise
+     * @param option option to set put mode
+     * @return status::ok if the operation is successful
+     * @return status::err_already_exists if the option is `create` and record already exists for the key
+     * @return status::err_not_found if the option is `update` and the record doesn't exist for the key
+     * @return otherwise, other status code
      */
-    [[nodiscard]] bool put(
+    [[nodiscard]] status put(
         transaction& tx,
         std::string_view key,
-        std::string_view value
+        std::string_view value,
+        put_option option = put_option::create_or_update
     );
 
     /**
      * @brief remove the entry for the given key
      * @param tx transaction used for the delete operation
      * @param key the key for searching
-     * @return true if the operation is successful
-     * @return false otherwise
+     * @return status::ok if the operation is successful
+     * @return status::not_found if the entry for the key is not found
+     * @return otherwise, other status code
      */
-    [[nodiscard]] bool remove(
+    [[nodiscard]] status remove(
         transaction& tx,
         std::string_view key
     );

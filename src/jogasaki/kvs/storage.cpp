@@ -21,49 +21,71 @@
 #include "transaction.h"
 #include "iterator.h"
 
+#include <jogasaki/kvs/error.h>
+
 namespace jogasaki::kvs {
 
 using sharksfin::Slice;
 using sharksfin::StatusCode;
 
-bool storage::delete_storage() {
+status storage::delete_storage() {
     auto res = sharksfin::storage_delete(handle_);
-    return res == sharksfin::StatusCode::OK;
+    return resolve(res);
 }
 
-bool storage::get(
+status storage::get(
     transaction& tx,
     std::string_view key,
     std::string_view& value
 ) {
     std::unique_lock lock{tx.mutex()};
     Slice v{};
-    if(auto res = sharksfin::content_get(
-            tx.handle(),
-            handle_,
-            key,
-            &v); res != StatusCode::OK) {
-        return false;
+    StatusCode res = sharksfin::content_get(
+        tx.handle(),
+        handle_,
+        key,
+        &v
+    );
+    if (res == StatusCode::OK) {
+        value = v.to_string_view();
+        return status::ok;
     }
-    value = v.to_string_view();
-    return true;
+    if (res == StatusCode::NOT_FOUND) {
+        return status::err_not_found;
+    }
+    return resolve(res);
 }
 
-bool storage::put(
+status storage::put(
     transaction& tx,
     std::string_view key,
-    std::string_view value
+    std::string_view value,
+    put_option option
 ) {
     std::unique_lock lock{tx.mutex()};
     auto res = sharksfin::content_put(
         tx.handle(),
         handle_,
         key,
-        value);
-    return res == StatusCode::OK;
+        value,
+        static_cast<sharksfin::PutOperation>(option)
+    );
+    if (res == StatusCode::NOT_FOUND) {
+        if (option == put_option::update) {
+            return status::err_not_found;
+        }
+        return status::ok;
+    }
+    if (res == StatusCode::ALREADY_EXISTS) {
+        if (option == put_option::create) {
+            return status::err_already_exists;
+        }
+        return status::ok;
+    }
+    return resolve(res);
 }
 
-bool storage::remove(
+status storage::remove(
     transaction& tx,
     std::string_view key
 ) {
@@ -72,25 +94,27 @@ bool storage::remove(
         tx.handle(),
         handle_,
         key);
-    return res == StatusCode::OK;
+    return resolve(res);
 }
 
-bool storage::scan(transaction &tx,
+status storage::scan(transaction &tx,
     std::string_view begin_key, end_point_kind begin_kind,
     std::string_view end_key, end_point_kind end_kind,
     std::unique_ptr<iterator>& it
 ) {
     std::unique_lock lock{tx.mutex()};
     sharksfin::IteratorHandle handle{};
-    if(auto res = sharksfin::content_scan(
-            tx.handle(),
-            handle_,
-            sharksfin::Slice(begin_key), kind(begin_kind),
-            sharksfin::Slice(end_key), kind(end_kind), &handle); res != sharksfin::StatusCode::OK) {
-        return false;
+    auto res = sharksfin::content_scan(
+        tx.handle(),
+        handle_,
+        sharksfin::Slice(begin_key), kind(begin_kind),
+        sharksfin::Slice(end_key), kind(end_kind), &handle
+    );
+    if(res == sharksfin::StatusCode::OK) {
+        it = std::make_unique<iterator>(handle);
+        return status::ok;
     }
-    it = std::make_unique<iterator>(handle);
-    return true;
+    return resolve(res);
 }
 
 }

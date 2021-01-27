@@ -20,6 +20,7 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/error.h>
 #include <jogasaki/utils/field_types.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -96,10 +97,10 @@ void write_full::process_record(abstract::task_context* context) {
 void write_full::operator()(write_full_context& ctx) {
     switch(kind_) {
         case write_kind::insert:
-            do_insert(kind_, ctx);
+            do_insert(ctx);
             break;
         case write_kind::insert_or_update:
-            do_insert(kind_, ctx);
+            do_insert(ctx);
             break;
         case write_kind::delete_:
             do_delete(ctx);
@@ -200,7 +201,7 @@ std::vector<details::write_full_field> write_full::create_fields(
     return ret;
 }
 
-void write_full::do_insert(write_kind kind, write_full_context& ctx) {
+void write_full::do_insert(write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
     // calculate length first, then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
@@ -209,16 +210,17 @@ void write_full::do_insert(write_kind kind, write_full_context& ctx) {
     kvs::stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
     encode_fields(key_fields_, keys, source);
     encode_fields(value_fields_, values, source);
+    kvs::put_option opt = kind_ == write_kind::insert ?
+        kvs::put_option::create :
+        kvs::put_option::create_or_update;
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
             {keys.data(), keys.length()},
-            {values.data(), values.length()}
-        ); !res) {
-        if (kind == write_kind::insert) {
-            //TODO handle error
-            fail();
-        }
-        LOG(INFO) << "overwriting existing record";
+            {values.data(), values.length()},
+            opt
+        ); ! is_ok(res)) {
+        // TODO handle error
+        fail();
     }
 }
 
@@ -237,9 +239,10 @@ void write_full::check_length_and_extend_buffer(
 
 void write_full::do_delete(write_full_context& ctx) {
     auto k = prepare_key(ctx);
-    if(auto res = ctx.stg_->remove(*ctx.tx_, k ); !res) {
-        LOG(INFO) << "deletion target not found";
+    if(auto res = ctx.stg_->remove(*ctx.tx_, k ); is_error(res)) {
+        fail();
     }
+    // warning such as status::not_found are safely ignored for delete
 }
 
 std::string_view write_full::prepare_key(write_full_context& ctx) {

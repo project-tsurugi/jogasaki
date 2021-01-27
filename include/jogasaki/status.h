@@ -23,23 +23,28 @@ namespace jogasaki {
 /**
  * @brief status code
  */
-enum class status : std::size_t {
+enum class status : std::int64_t {
     ok = 0,
-    not_found,
-    already_exists,
-    user_rollback,
-    err_io_error,
-    err_parse_error,
-    err_translator_error,
-    err_compiler_error,
-    err_invalid_argument,
-    err_invalid_state,
-    err_unsupported,
-    err_user_error,
-    err_aborted,
-    err_aborted_retryable,
-    err_unknown,
-    undefined,
+
+    // warnings
+    not_found = 1,
+    already_exists = 2,
+    user_rollback = 3,
+
+    // errors
+    err_unknown = -1,
+    err_io_error = -2,
+    err_parse_error = -3,
+    err_translator_error = -4,
+    err_compiler_error = -5,
+    err_invalid_argument = -6,
+    err_invalid_state = -7,
+    err_unsupported = -8,
+    err_user_error = -9,
+    err_aborted = -10,
+    err_aborted_retryable = -11,
+    err_not_found = -12,
+    err_already_exists = -13,
 };
 
 /**
@@ -51,9 +56,12 @@ enum class status : std::size_t {
     using namespace std::string_view_literals;
     switch (value) {
         case status::ok: return "ok"sv;
+
         case status::not_found: return "not_found"sv;
         case status::already_exists: return "already_exists"sv;
         case status::user_rollback: return "user_rollback"sv;
+
+        case status::err_unknown: return "err_unknown"sv;
         case status::err_io_error: return "err_io_error"sv;
         case status::err_parse_error: return "err_parse_error"sv;
         case status::err_translator_error: return "err_translator_error"sv;
@@ -64,8 +72,8 @@ enum class status : std::size_t {
         case status::err_user_error: return "err_user_error"sv;
         case status::err_aborted: return "err_aborted"sv;
         case status::err_aborted_retryable: return "err_aborted_retryable"sv;
-        case status::err_unknown: return "err_unknown"sv;
-        case status::undefined: return "undefined"sv;
+        case status::err_not_found: return "err_not_found"sv;
+        case status::err_already_exists: return "err_already_exists"sv;
     }
     std::abort();
 }
@@ -79,12 +87,6 @@ enum class status : std::size_t {
 inline std::ostream& operator<<(std::ostream& out, status value) {
     return out << to_string_view(value);
 }
-
-/// @brief a set of expression_kind.
-using status_code_set = takatori::util::enum_set<
-        status,
-        status::ok,
-        status::undefined>;
 
 } // namespace
 

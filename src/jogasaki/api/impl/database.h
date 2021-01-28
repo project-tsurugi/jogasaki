@@ -59,6 +59,10 @@ public:
 
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
 
+    void dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;
+
+    void load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;
+
     std::unique_ptr<api::transaction> do_create_transaction(bool readonly) override;
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;

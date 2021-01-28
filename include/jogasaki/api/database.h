@@ -134,6 +134,26 @@ public:
         return do_create_transaction(readonly);
     }
 
+    /**
+     * @brief creates a table dump into the given output.
+     * @param output the destination output stream
+     * @param index_name the target index name
+     * @param batch_size the max number of entries to be processed in each transaction,
+     *    or 0 to process all entries in one transaction
+     * @attention this function is not thread-safe. dump()/load() should be called from single thread at a time.
+     */
+    virtual void dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) = 0;
+
+    /**
+     * @brief restores the table contents from dump() result.
+     * @param input the source input stream
+     * @param index_name the target index name
+     * @param batch_size the max number of entries to be processed in each transaction,
+     *    or 0 to process all entries in one transaction
+     * @attention this function is not thread-safe. dump()/load() should be called from single thread at a time.
+     */
+    virtual void load(std::istream& input, std::string_view index_name, std::size_t batch_size) = 0;
+
 protected:
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
 };

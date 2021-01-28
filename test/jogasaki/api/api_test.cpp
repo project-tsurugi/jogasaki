@@ -163,4 +163,24 @@ TEST_F(api_test, resolve_place_holder_with_null) {
     EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(1)));
 }
 
+TEST_F(api_test, dump_load) {
+    execute_statement( "DELETE FROM T0");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
+    std::stringstream ss{};
+    db_->dump(ss, "I0", 0);
+    execute_statement( "DELETE FROM T0");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
+    ASSERT_EQ(0, result.size());
+    db_->load(ss, "I0", 0);
+    execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
+    ASSERT_EQ(2, result.size());
+    auto meta = result[0].record_meta();
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(meta->value_offset(0)));
+    EXPECT_DOUBLE_EQ(10.0, result[0].ref().get_value<double>(meta->value_offset(1)));
+    EXPECT_EQ(2, result[1].ref().get_value<std::int64_t>(meta->value_offset(0)));
+    EXPECT_DOUBLE_EQ(20.0, result[1].ref().get_value<double>(meta->value_offset(1)));
+}
+
 }

@@ -21,6 +21,7 @@
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/kvs/storage_dump.h>
 
 #include <string_view>
 #include <memory>
@@ -163,6 +164,16 @@ status database::explain(api::executable_statement const& executable, std::ostre
         takatori::serializer::json_printer{ out }
     );
     return status::ok;
+}
+
+void database::dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) {
+    kvs::storage_dump dumper{*kvs_db_};
+    dumper.dump(output, index_name, batch_size);
+}
+
+void database::load(std::istream& input, std::string_view index_name, std::size_t batch_size) {
+    kvs::storage_dump dumper{*kvs_db_};
+    dumper.load(input, index_name, batch_size);
 }
 
 }

@@ -115,9 +115,14 @@ TEST_F(api_test, missing_table) {
     ASSERT_EQ(status::err_translator_error, db_->create_executable("select * from dummy", stmt));
 }
 
-TEST_F(api_test, inconsistent_type) {
+TEST_F(api_test, inconsistent_type_in_write) {
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::err_compiler_error, db_->create_executable("INSERT INTO T0(C0) VALUES('X')", stmt));
+}
+
+TEST_F(api_test, inconsistent_type_in_query) {
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::err_compiler_error, db_->create_executable("select C1 from T0 where C1='X'", stmt));
 }
 
 TEST_F(api_test, primary_key_violation) {

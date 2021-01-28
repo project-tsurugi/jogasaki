@@ -409,6 +409,9 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             auto&& graph = *ptr;
             auto result = yugawara::compiler()(c_options, std::move(graph));
             if(!result.success()) {
+                for (auto&& d : result.diagnostics()) {
+                    LOG(ERROR) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
+                }
                 return status::err_compiler_error;
             }
             create_mirror_for_execute(
@@ -422,7 +425,10 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             auto ptr = r.release<result_kind::statement>();
             auto&& stmt = *ptr;
             auto result = yugawara::compiler()(c_options, std::move(stmt));
-            if(!result.success()) {
+            if(! result.success()) {
+                for (auto&& d : result.diagnostics()) {
+                    LOG(ERROR) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
+                }
                 return status::err_compiler_error;
             }
             create_mirror_for_write(

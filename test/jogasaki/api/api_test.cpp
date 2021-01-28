@@ -141,4 +141,26 @@ TEST_F(api_test, primary_key_violation) {
     EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
 }
 
+TEST_F(api_test, resolve_place_holder_with_null) {
+    std::unique_ptr<api::prepared_statement> prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
+    {
+        auto tx = db_->create_transaction();
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p1", 1);
+        ps->set_null("p2");
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(*prepared, *ps, exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+    }
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1 FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(1)));
+}
+
 }

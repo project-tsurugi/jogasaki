@@ -49,6 +49,12 @@ public:
     virtual void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) = 0;
     virtual void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) = 0;
 
+    /**
+     * @brief setter for the nullity of the placeholder
+     * @param name the name of the placeholder without colon
+     */
+    virtual void set_null(std::string_view name) = 0;
+
     template<std::size_t N>
     void set_character(std::string_view name, char const (&value)[N]) {  //NOLINT
         set_character(name, &value[0]);  // NOLINT

@@ -125,6 +125,10 @@ public:
         stack.emplace_back(std::in_place_type<T>, val);
     }
 
+    void push_null(stack_type& stack) {
+        stack.emplace_back();
+    }
+
     template <typename T>
     T pop(stack_type& stack) {
         auto ret = stack.back().to<T>();
@@ -197,6 +201,7 @@ public:
                 push<accessor::text>(stack, accessor::text{resource, sv});
                 break;
             }
+            case t::unknown: push_null(stack); break;
             default: fail();
         }
         return false;

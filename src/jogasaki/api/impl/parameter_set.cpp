@@ -39,6 +39,10 @@ void parameter_set::set_character(std::string_view name, field_type_traits<kind:
     body_->set_character(name, accessor::text{const_cast<char*>(value.data()), value.size()});
 }
 
+void parameter_set::set_null(std::string_view name) {
+    body_->set_null(name);
+}
+
 parameter_set* parameter_set::clone() const& {
     return new parameter_set(std::make_shared<plan::parameter_set>(*body_));
 }

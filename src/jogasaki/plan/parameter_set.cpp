@@ -18,9 +18,12 @@
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/unknown.h>
 #include <takatori/value/int.h>
 #include <takatori/value/float.h>
 #include <takatori/value/character.h>
+#include <takatori/value/unknown.h>
+#include <takatori/value/unknown_kind.h>
 
 #include <jogasaki/accessor/text.h>
 
@@ -71,7 +74,15 @@ void parameter_set::set_character(std::string_view name, runtime_type<kind::char
             takatori::value::character(static_cast<std::string_view>(value)),
         }
     );
+}
 
+void parameter_set::set_null(std::string_view name) {
+    map_.add(std::string(name),
+        {
+            takatori::type::unknown(),
+            takatori::value::unknown(takatori::value::unknown_kind::null),
+        }
+    );
 }
 
 mizugaki::placeholder_map const& parameter_set::map() const noexcept {

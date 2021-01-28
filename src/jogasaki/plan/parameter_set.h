@@ -57,7 +57,11 @@ public:
     void set_float8(std::string_view name, runtime_type<kind::float8> value);
     void set_character(std::string_view name, runtime_type<kind::character> value);
 
-    // TODO support set_null
+    /**
+     * @brief nullity setter functions for placeholder
+     * @param name the place-holder name without colon at the beginning
+     */
+    void set_null(std::string_view name);
 
     /**
      * @brief accessor to the placeholder map

@@ -123,7 +123,6 @@ private:
     std::vector<details::write_tuple> keys_{};
     std::vector<details::write_tuple> values_{};
 
-    constexpr static std::size_t npos = static_cast<std::size_t>(-1);
     std::vector<details::write_tuple> create_tuples(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
@@ -131,13 +130,6 @@ private:
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource,
         bool key
-    );
-
-    std::string encode_tuple(
-        tuple const& t,
-        std::vector<details::write_field> const& fields,
-        compiled_info const& info,
-        memory::lifo_paged_memory_resource& resource
     );
 
 };

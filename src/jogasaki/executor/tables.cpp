@@ -116,6 +116,62 @@ void add_builtin_tables(storage::configurable_provider& provider) {
     }
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T10",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::float8 (), nullity{true} },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+            t,
+            "I10",
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T20",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::int4(), nullity{true}  },
+                { "C2", type::float8() , nullity{true} },
+                { "C3", type::float4() , nullity{true} },
+                { "C4", type::character(type::varying, 100) , nullity{true} },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+            t,
+            "I20",
+            {
+                t->columns()[0],
+                t->columns()[1],
+            },
+            {
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+            },
+            {
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            },
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
             "INT4_TAB",
             {
                 { "C0", type::int4(), nullity{false} },

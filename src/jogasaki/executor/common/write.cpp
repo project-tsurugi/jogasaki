@@ -98,6 +98,52 @@ bool write::operator()(request_context& context) const {
     return true;
 }
 
+constexpr static std::size_t npos = static_cast<std::size_t>(-1);
+
+// encode tuple into buf, and return result data length
+std::size_t encode_tuple(
+    write::tuple const& t,
+    std::vector<details::write_field> const& fields,
+    compiled_info const& info,
+    memory::lifo_paged_memory_resource& resource,
+    data::aligned_buffer& buf
+) {
+    BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
+    auto cp = resource.get_checkpoint();
+    executor::process::impl::block_scope scope{};
+    std::size_t length = 0;
+    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
+        auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
+        kvs::stream s{buf.data(), capacity};
+        for(auto&& f : fields) {
+            if (f.index_ == npos) {
+                // value not specified for the field
+                if (! f.nullable_) {
+                    fail();
+                }
+                kvs::encode_nullable({}, f.type_, f.spec_, s);
+            } else {
+                evaluator eval{t.elements()[f.index_], info};
+                auto res = eval(scope, &resource);
+
+                if (f.nullable_) {
+                    kvs::encode_nullable(res, f.type_, f.spec_, s);
+                } else {
+                    kvs::encode(res, f.type_, f.spec_, s);
+                }
+                resource.deallocate_after(cp);
+            }
+        }
+        if (loop == 0) {
+            length = s.length();
+            if (buf.size() < length) {
+                buf.resize(length);
+            }
+        }
+    }
+    return length;
+}
+
 std::vector<details::write_tuple> write::create_tuples(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
@@ -148,43 +194,15 @@ std::vector<details::write_tuple> write::create_tuples(
             );
         }
     }
-    for(auto& tuple: tuples) {
-        auto s = encode_tuple(tuple, fields, info, resource);
-        ret.emplace_back(s);
+    data::aligned_buffer buf{};
+    for(auto&& tuple: tuples) {
+        auto sz = encode_tuple(tuple, fields, info, resource, buf);
+        std::string_view sv{static_cast<char*>(buf.data()), sz};
+        ret.emplace_back(sv);
     }
     return ret;
 }
 
-std::string write::encode_tuple(
-    write::tuple const& t,
-    std::vector<details::write_field> const& fields,
-    compiled_info const& info,
-    memory::lifo_paged_memory_resource& resource
-) {
-    BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
-    auto cp = resource.get_checkpoint();
-    executor::process::impl::block_scope scope{};
-    std::string buf{};  //TODO create own buffer class
-    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-        auto capacity = loop == 0 ? 0 : buf.capacity(); // capacity 0 makes stream empty write to calc. length
-        kvs::stream s{buf.data(), capacity};
-        for(auto&& f : fields) {
-            evaluator eval{t.elements()[f.index_], info};
-            auto res = eval(scope, &resource);
-
-            if (f.nullable_) {
-                kvs::encode_nullable(res, f.type_, f.spec_, s);
-            } else {
-                kvs::encode(res, f.type_, f.spec_, s);
-            }
-            resource.deallocate_after(cp);
-        }
-        if (loop == 0) {
-            buf.resize(s.length());
-        }
-    }
-    return buf;
-}
 
 details::write_tuple::write_tuple(std::string_view data) :
     buf_(data.size())

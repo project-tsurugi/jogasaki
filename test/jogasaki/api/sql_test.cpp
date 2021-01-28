@@ -131,4 +131,19 @@ TEST_F(sql_test, update_by_part_of_primary_key) {
     EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(2)));
 }
 
+// shirakami raises err_aborted_retryable on commit
+TEST_F(sql_test, DISABLED_update_primary_key) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
+    ASSERT_EQ(2, result.size());
+    auto meta = result[0].record_meta();
+    EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(meta->value_offset(0)));
+    EXPECT_DOUBLE_EQ(20.0, result[0].ref().get_value<double>(meta->value_offset(1)));
+    EXPECT_EQ(3, result[1].ref().get_value<std::int64_t>(meta->value_offset(0)));
+    EXPECT_DOUBLE_EQ(30.0, result[1].ref().get_value<double>(meta->value_offset(1)));
+}
+
 }

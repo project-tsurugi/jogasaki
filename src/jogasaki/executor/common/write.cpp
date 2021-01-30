@@ -158,7 +158,7 @@ std::vector<details::write_tuple> write::create_tuples(
     std::unordered_map<variable, std::size_t> variable_indices{};
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
         auto&& c = columns[i];
-        variable_indices[c]=i;
+        variable_indices[c] = i;
     }
     std::vector<details::write_field> fields{};
     if (key) {

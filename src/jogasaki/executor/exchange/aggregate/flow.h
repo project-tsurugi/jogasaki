@@ -94,6 +94,7 @@ private:
     class request_context* context_{};
     step* owner_{};
     std::size_t downstream_partitions_{default_partitions};
+    bool generate_record_on_empty_{false};
 };
 
 }

@@ -44,14 +44,16 @@ using function::field_locator;
 aggregate_info::aggregate_info(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<field_index_type> key_indices,
-    std::vector<value_spec> const& value_specs
+    std::vector<value_spec> const& value_specs,
+    bool generate_record_on_empty
 ) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
     extracted_key_meta_(create_extracted_meta(key_indices_, record_)),
     pre_(create_output(output_kind::pre, value_specs, record_, record_, key_indices_)),
     mid_(create_output(output_kind::mid, value_specs, pre_.group_meta()->value_shared(), record_, key_indices_)),
-    post_(create_output(output_kind::post, value_specs, mid_.group_meta()->value_shared(), record_, key_indices_))
+    post_(create_output(output_kind::post, value_specs, mid_.group_meta()->value_shared(), record_, key_indices_)),
+    generate_record_on_empty_(generate_record_on_empty)
 {}
 
 accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) const noexcept {
@@ -323,8 +325,15 @@ const aggregate_info::output_info& aggregate_info::post() const noexcept {
     return post_;
 }
 
-aggregate_info::value_spec::value_spec(const aggregate_function_info &function_info,
-    std::vector<std::size_t> argument_indices, meta::field_type type) noexcept:
+bool aggregate_info::generate_record_on_empty() const noexcept {
+    return generate_record_on_empty_;
+}
+
+aggregate_info::value_spec::value_spec(
+    aggregate_function_info const& function_info,
+    std::vector<std::size_t> argument_indices,
+    meta::field_type type
+) noexcept:
     function_info_(std::addressof(function_info)),
     argument_indices_(std::move(argument_indices)),
     type_(std::move(type))

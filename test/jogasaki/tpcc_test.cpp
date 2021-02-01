@@ -752,9 +752,10 @@ TEST_F(tpcc_test, stock_level1) {
     EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
-TEST_F(tpcc_test, DISABLED_stock_level2) {
+TEST_F(tpcc_test, stock_level2) {
     std::string query =
-        "SELECT COUNT(DISTINCT s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
+//        "SELECT COUNT(DISTINCT s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
+        "SELECT COUNT(s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
         "WHERE "
         "ol_w_id = :ol_w_id AND "
         "ol_d_id = :ol_d_id AND "
@@ -769,10 +770,11 @@ TEST_F(tpcc_test, DISABLED_stock_level2) {
     resolve(query, ":ol_o_id_high", "10");
     resolve(query, ":ol_o_id_low", "1");
     resolve(query, ":s_w_id", "1");
-    resolve(query, ":s_quantity", "10.0");
+    resolve(query, ":s_quantity", "10");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
 }

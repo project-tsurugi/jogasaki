@@ -229,16 +229,15 @@ void count_pre(
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
-    (void)args;
-    (void)source;
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);
+    std::int64_t cnt = source.is_null(args[0].nullity_offset()) ? 0 : 1;
     if (initial) {
-        target.set_value<rtype<kind::int8>>(target_offset, 1);
+        target.set_value<rtype<kind::int8>>(target_offset, cnt);
         return;
     }
-    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + 1);
+    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + cnt);
 }
 
 void count_mid(

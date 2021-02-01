@@ -146,13 +146,12 @@ TEST_F(sql_test, DISABLED_update_primary_key) {
     EXPECT_DOUBLE_EQ(30.0, result[1].ref().get_value<double>(meta->value_offset(1)));
 }
 
-TEST_F(sql_test, select_null_with_count) {
-    execute_statement( "INSERT INTO T0 (C0) VALUES (1)");
+TEST_F(sql_test, count_empty_records) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT COUNT(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
 }
 
 }

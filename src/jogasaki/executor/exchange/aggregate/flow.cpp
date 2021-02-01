@@ -19,6 +19,7 @@
 #include <jogasaki/executor/exchange/aggregate/writer.h>
 
 #include <vector>
+#include <jogasaki/data/aligned_buffer.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -55,9 +56,15 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<aggregate
 flow::~flow() = default;
 flow::flow() : info_(std::make_shared<aggregate_info>()) {}
 flow::flow(std::shared_ptr<aggregate_info> info,
-        request_context* context,
-        step* owner, std::size_t downstream_partitions) :
-        info_(std::move(info)), context_(context), owner_(owner), downstream_partitions_(downstream_partitions) {}
+    request_context* context,
+    step* owner, std::size_t downstream_partitions
+) :
+    info_(std::move(info)),
+    context_(context),
+    owner_(owner),
+    downstream_partitions_(downstream_partitions),
+    generate_record_on_empty_(info_->generate_record_on_empty())
+{}
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     tasks_.emplace_back(std::make_shared<exchange::task>(context_, owner_));
@@ -88,6 +95,27 @@ flow::source_list_view flow::sources() {
 }
 
 void flow::transfer() {
+    if (generate_record_on_empty_) {
+        bool empty = true;
+        for(auto& sink : sinks_) {
+            auto& partitions = sink->input_partitions();
+            for(std::size_t i=0; i < partitions.size(); ++i) {
+                if (! partitions[i]) continue;
+                empty = false;
+            }
+        }
+        if (empty) {
+            auto& writer = sinks_[0]->acquire_writer();
+            auto meta = info_->record_meta();
+            data::aligned_buffer buf{meta->record_size()};
+            accessor::record_ref ref{buf.data(), buf.size()};
+            for(std::size_t i=0, n=meta->field_count(); i < n; ++i) {
+                ref.set_null(meta->nullity_offset(i), true);
+            }
+            writer.write(ref);
+            writer.flush();
+        }
+    }
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
         BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT

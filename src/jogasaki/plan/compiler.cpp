@@ -244,7 +244,8 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
         std::make_shared<aggregate_info>(
             std::move(meta),
             std::move(key_indices),
-            std::move(specs)
+            std::move(specs),
+            agg.mode() == takatori::plan::group_mode::equivalence_or_whole
         ),
         std::move(input_order),
         std::move(output_order));

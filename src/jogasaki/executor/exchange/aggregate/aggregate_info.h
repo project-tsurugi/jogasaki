@@ -254,11 +254,13 @@ public:
      * @param record the metadata of the input record for aggregate operation
      * @param key_indices the ordered indices to choose the keys from the record fields
      * @param value_specs the specification for the values generated
+     * @param generate_record_on_empty specify whether a record will be generated when input records are all empty
      */
     aggregate_info(
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
-        std::vector<value_spec> const& value_specs
+        std::vector<value_spec> const& value_specs,
+        bool generate_record_on_empty = false
     );
 
     /**
@@ -303,6 +305,10 @@ public:
      */
     [[nodiscard]] output_info const& post() const noexcept;
 
+    /**
+     * @brief returns generate_record_on_empty flag
+     */
+    [[nodiscard]] bool generate_record_on_empty() const noexcept;
 private:
     maybe_shared_ptr<meta::record_meta> record_{std::make_shared<meta::record_meta>()};
     std::vector<field_index_type> key_indices_{};
@@ -310,6 +316,7 @@ private:
     output_info pre_{};
     output_info mid_{};
     output_info post_{};
+    bool generate_record_on_empty_{};
 
     std::shared_ptr<meta::record_meta> create_extracted_meta(
         std::vector<std::size_t> const& indices,

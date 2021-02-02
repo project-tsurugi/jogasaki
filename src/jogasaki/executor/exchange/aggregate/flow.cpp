@@ -99,8 +99,8 @@ void flow::transfer() {
         bool empty = true;
         for(auto& sink : sinks_) {
             auto& partitions = sink->input_partitions();
-            for(std::size_t i=0; i < partitions.size(); ++i) {
-                if (! partitions[i]) continue;
+            for(auto& p : partitions) {
+                if (! p) continue;
                 empty = false;
             }
         }

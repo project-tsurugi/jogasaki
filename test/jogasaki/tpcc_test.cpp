@@ -52,7 +52,6 @@ public:
 
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(true);
         db_ = api::create_database(cfg);
         db_->start();
         auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());

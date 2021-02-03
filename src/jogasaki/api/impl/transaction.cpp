@@ -78,7 +78,7 @@ transaction::transaction(
     bool readonly
 ) :
     database_(std::addressof(database)),
-    scheduler_(database_->configuration()),
+    scheduler_(database_->configuration(), *database_->task_scheduler()),
     tx_(database_->kvs_db()->create_transaction(readonly))
 {}
 

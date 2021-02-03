@@ -28,6 +28,11 @@ using takatori::util::unsafe_downcast;
 
 class cache_align statement_scheduler::impl {
 public:
+    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
+        dag_controller_(cfg, scheduler),
+        cfg_(std::move(cfg))
+    {}
+
     explicit impl(std::shared_ptr<configuration> cfg) :
         dag_controller_(cfg),
         cfg_(std::move(cfg))
@@ -57,6 +62,9 @@ private:
 };
 
 statement_scheduler::statement_scheduler() : statement_scheduler(std::make_shared<configuration>()) {}
+statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
+    impl_(std::make_unique<impl>(std::move(cfg), scheduler))
+{}
 statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg) : impl_(std::make_unique<impl>(std::move(cfg))) {};
 statement_scheduler::~statement_scheduler() = default;
 

@@ -34,7 +34,7 @@ public:
     /**
      * @brief create default object with single thread
      */
-    thread_pool();;
+    thread_pool();
 
     thread_pool(thread_pool const& other) = delete;
     thread_pool& operator=(thread_pool const& other) = delete;

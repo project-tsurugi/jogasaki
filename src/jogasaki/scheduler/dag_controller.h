@@ -17,6 +17,7 @@
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::scheduler {
 
@@ -60,6 +61,11 @@ public:
      * @return this
      */
     dag_controller& operator=(dag_controller&& other) noexcept = delete;
+
+    /**
+     * @brief creates a new instance with given configuration
+     */
+    dag_controller(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
 
     /**
      * @brief creates a new instance with given configuration

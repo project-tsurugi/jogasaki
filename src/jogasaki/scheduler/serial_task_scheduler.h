@@ -24,22 +24,40 @@
 
 namespace jogasaki::scheduler {
 
-/*
- * @brief task scheduler using multiple threads
+/**
+ * @brief task scheduler using only single thread - mainly for testing purpose
  */
-class cache_align single_thread_task_scheduler : public task_scheduler {
+class cache_align serial_task_scheduler : public task_scheduler {
 public:
     using entity_type = std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>>;
 
-    void schedule_task(std::shared_ptr<model::task> const& t) override;
+    /**
+     * @brief schedule the task
+     * @param task the task to schedule
+     * @pre scheduler is started
+     */
+    void schedule_task(std::shared_ptr<model::task> const& task) override;
 
+    /**
+     * @brief wait for the scheduler to proceed
+     */
     void wait_for_progress() override;
 
+    /**
+     * @brief start the scheduler
+     */
     void start() override;
 
+    /**
+     * @brief stop the scheduler
+     */
     void stop() override;
 
+    /**
+     * @return kind of the task scheduler
+     */
     [[nodiscard]] task_scheduler_kind kind() const noexcept override;
+
 private:
     entity_type tasks_{};
 };

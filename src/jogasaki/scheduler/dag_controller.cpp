@@ -28,8 +28,8 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
 #include <jogasaki/utils/interference_size.h>
-#include "single_thread_task_scheduler.h"
-#include "multi_thread_task_scheduler.h"
+#include "serial_task_scheduler.h"
+#include "parallel_task_scheduler.h"
 #include "step_state.h"
 #include "dag_controller.h"
 #include "thread_params.h"
@@ -51,8 +51,8 @@ public:
 
     explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)),
             executor_(cfg_->single_thread() ?
-                    std::unique_ptr<task_scheduler>(std::make_unique<single_thread_task_scheduler>()) :
-                    std::unique_ptr<task_scheduler>(std::make_unique<multi_thread_task_scheduler>(thread_params(cfg_)))) {}
+                    std::unique_ptr<task_scheduler>(std::make_unique<serial_task_scheduler>()) :
+                    std::unique_ptr<task_scheduler>(std::make_unique<parallel_task_scheduler>(thread_params(cfg_)))) {}
 
     /*
      * @brief handles providing event

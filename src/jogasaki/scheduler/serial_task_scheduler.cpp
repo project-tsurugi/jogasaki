@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "single_thread_task_scheduler.h"
+#include "serial_task_scheduler.h"
 
 #include <unordered_set>
 #include <memory>
@@ -23,11 +23,11 @@
 
 namespace jogasaki::scheduler {
 
-void single_thread_task_scheduler::schedule_task(const std::shared_ptr<model::task> &t) {
-    tasks_.emplace(t->id(), t);
+void serial_task_scheduler::schedule_task(const std::shared_ptr<model::task> &task) {
+    tasks_.emplace(task->id(), task);
 }
 
-void single_thread_task_scheduler::wait_for_progress() {
+void serial_task_scheduler::wait_for_progress() {
     for(auto it = tasks_.begin(); it != tasks_.end(); ) {
         auto s = it->second.lock();
         if (s == nullptr || s->operator()() == model::task_result::complete) {
@@ -38,16 +38,16 @@ void single_thread_task_scheduler::wait_for_progress() {
     }
 }
 
-void single_thread_task_scheduler::start() {
+void serial_task_scheduler::start() {
     // no-op
 }
 
-void single_thread_task_scheduler::stop() {
+void serial_task_scheduler::stop() {
     tasks_.clear();
 }
 
-task_scheduler_kind single_thread_task_scheduler::kind() const noexcept {
-    return task_scheduler_kind::single_thread;
+task_scheduler_kind serial_task_scheduler::kind() const noexcept {
+    return task_scheduler_kind::serial;
 }
 }
 

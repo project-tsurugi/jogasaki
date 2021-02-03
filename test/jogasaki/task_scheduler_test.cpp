@@ -17,8 +17,8 @@
 #include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
-#include <jogasaki/scheduler/single_thread_task_scheduler.h>
-#include <jogasaki/scheduler/multi_thread_task_scheduler.h>
+#include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/parallel_task_scheduler.h>
 #include <jogasaki/executor/common/task.h>
 
 namespace jogasaki::testing {
@@ -49,7 +49,7 @@ public:
 };
 
 TEST_F(task_scheduler_test, single) {
-    single_thread_task_scheduler executor{};
+    serial_task_scheduler executor{};
     bool run = false;
     auto t = std::make_shared<task_wrapper>([&]() {
         run = true;
@@ -61,7 +61,7 @@ TEST_F(task_scheduler_test, single) {
 }
 
 TEST_F(task_scheduler_test, multi) {
-    multi_thread_task_scheduler executor{thread_params(1)};
+    parallel_task_scheduler executor{thread_params(1)};
     std::atomic_flag run = false;
     auto t = std::make_shared<task_wrapper>([&]() {
         run.test_and_set() ;

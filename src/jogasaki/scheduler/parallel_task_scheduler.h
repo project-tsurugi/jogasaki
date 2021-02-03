@@ -16,61 +16,57 @@
 #pragma once
 
 #include <jogasaki/model/task.h>
+#include "details/thread_pool.h"
+#include "task_scheduler.h"
+#include "thread_params.h"
 
 namespace jogasaki::scheduler {
 
-enum class task_scheduler_kind : std::int32_t {
-    serial = 0,
-    parallel,
-};
-
 /**
- * @brief task scheduler to run tasks efficiently
+ * @brief task scheduler using multiple threads
  */
-class task_scheduler {
+class cache_align parallel_task_scheduler : public task_scheduler {
+public:
+
+    parallel_task_scheduler() = default;
+    ~parallel_task_scheduler() override = default;
+    parallel_task_scheduler(parallel_task_scheduler const& other) = delete;
+    parallel_task_scheduler& operator=(parallel_task_scheduler const& other) = delete;
+    parallel_task_scheduler(parallel_task_scheduler&& other) noexcept = delete;
+    parallel_task_scheduler& operator=(parallel_task_scheduler&& other) noexcept = delete;
+    explicit parallel_task_scheduler(thread_params params);
+
 public:
     /**
-     * @brief create new object
-     */
-    task_scheduler() = default;
-
-    /**
-     * @brief destroy instance
-     */
-    virtual ~task_scheduler() = default;
-
-    task_scheduler(task_scheduler const& other) = delete;
-    task_scheduler& operator=(task_scheduler const& other) = delete;
-    task_scheduler(task_scheduler&& other) noexcept = delete;
-    task_scheduler& operator=(task_scheduler&& other) noexcept = delete;
-
-    /**
      * @brief schedule the task
-     * @param t the task to schedule
+     * @param task the task to schedule
      * @pre scheduler is started
      */
-    virtual void schedule_task(std::shared_ptr<model::task> const& t) = 0;
+    void schedule_task(std::shared_ptr<model::task> const& task) override;
 
     /**
      * @brief wait for the scheduler to proceed
-     * @details serial scheduler requires this to be called periodically, no-op for multi thread scheduler
+     * @details this is no-op for multi-thread scheduler
      */
-    virtual void wait_for_progress() = 0;
+    void wait_for_progress() override;
 
     /**
      * @brief start the scheduler so that it's ready to accept request
      */
-    virtual void start() = 0;
+    void start() override;
 
     /**
      * @brief stop the scheduler joining all the running tasks and canceling ones that are submitted but not yet executed
      */
-    virtual void stop() = 0;
+    void stop() override;
 
     /**
      * @return kind of the task scheduler
      */
-    [[nodiscard]] virtual task_scheduler_kind kind() const noexcept = 0;
+    [[nodiscard]] task_scheduler_kind kind() const noexcept override;
+
+private:
+    details::thread_pool threads_{};
 };
 
 }

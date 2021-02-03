@@ -32,7 +32,7 @@ jobs:
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_sharksfin
         name: Install_sharksfin
@@ -41,7 +41,7 @@ jobs:
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_fpdecimal
         name: Install_fpdecimal
@@ -51,7 +51,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_takatori
         name: Install_takatori
@@ -61,7 +61,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_hopscotch-map
         name: Install_hopscotch-map
@@ -71,7 +71,7 @@ jobs:
           cd ../../build-hopscotch-map
           rm -f CMakeCache.txt
           cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
-          cmake --build . --target install -- -j8
+          cmake --build . --target install -- -j
 
       - id: Install_yugawara
         name: Install_yugawara
@@ -81,7 +81,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_shakujo
         name: Install_shakujo
@@ -91,7 +91,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_mizugaki
         name: Install_mizugaki
@@ -101,7 +101,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${BISON_DIR};${GITHUB_WORKSPACE}/.local" ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: Install_performance_tools
         name: Install_performance_tools
@@ -111,7 +111,7 @@ jobs:
           cd build
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j8
+          cmake --build . --target install --clean-first -- -j
 
       - id: CMake_Build_sharksfin_memory
         name: CMake_Build_sharksfin_memory
@@ -119,7 +119,7 @@ jobs:
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target all --clean-first -- -j8
+          cmake --build . --target all --clean-first -- -j
 
       - id: CTest_sharksfin_memory
         name: CTest_sharksfin_memory
@@ -129,7 +129,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
-          ctest --verbose
+          ctest --verbose -j 100
 
       - id: CMake_Build_sharksfin_kvs
         name: CMake_Build_sharksfin_kvs
@@ -137,7 +137,7 @@ jobs:
           mkdir build-kvs
           cd build-kvs
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target all --clean-first -- -j8
+          cmake --build . --target all --clean-first -- -j
 
       - id: CTest_sharksfin_kvs
         name: CTest_sharksfin_kvs
@@ -147,7 +147,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build-kvs
-          ctest --verbose
+          ctest --verbose -j 100
 
       - id: Clang-Tidy
         name: Clang-Tidy

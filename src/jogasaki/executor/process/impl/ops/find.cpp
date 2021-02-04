@@ -38,8 +38,14 @@ using takatori::util::unsafe_downcast;
 
 namespace details {
 
-details::find_field::find_field(meta::field_type type, bool target_exists, std::size_t target_offset,
-    std::size_t target_nullity_offset, bool source_nullable, kvs::coding_spec spec) :
+details::find_field::find_field(
+    meta::field_type type,
+    bool target_exists,
+    std::size_t target_offset,
+    std::size_t target_nullity_offset,
+    bool source_nullable,
+    kvs::coding_spec spec
+) :
     type_(std::move(type)),
     target_exists_(target_exists),
     target_offset_(target_offset),
@@ -135,9 +141,12 @@ void find::finish(abstract::task_context*) {
     fail();
 }
 
-void
-find::decode_fields(const std::vector<details::find_field>& fields, kvs::stream& stream, accessor::record_ref target,
-    find::memory_resource* resource) {
+void find::decode_fields(
+    std::vector<details::find_field> const& fields,
+    kvs::stream& stream,
+    accessor::record_ref target,
+    find::memory_resource* resource
+) {
     for(auto&& f : fields) {
         if (! f.target_exists_) {
             if (f.source_nullable_) {

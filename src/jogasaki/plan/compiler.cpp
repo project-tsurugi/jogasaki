@@ -382,7 +382,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
         //TODO enable features
 //        yugawara::runtime_feature::broadcast_exchange,
         yugawara::runtime_feature::aggregate_exchange,
-//        yugawara::runtime_feature::index_join,
+        yugawara::runtime_feature::index_join,
 //        yugawara::runtime_feature::broadcast_join_scan,
     };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};

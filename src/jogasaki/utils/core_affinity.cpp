@@ -21,13 +21,6 @@
 
 namespace jogasaki::utils {
 
-/**
- * @brief set the core affinity of current thread
- * @param cpu the core number associated with current thread
- * @param uniform_on_nodes indicate whether the cpu number should be translated to node number to distribute uniformly
- * @return true when successful
- * @return false otherwise
- */
 bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes, std::size_t force_numa_node) {
     if (force_numa_node != numa_node_unspecified) {
         return 0 == numa_run_on_node(force_numa_node);

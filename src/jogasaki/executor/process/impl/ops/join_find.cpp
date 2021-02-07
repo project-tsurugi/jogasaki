@@ -22,8 +22,6 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
@@ -38,63 +36,115 @@ using takatori::util::unsafe_downcast;
 
 namespace details {
 
-details::join_find_field::join_find_field(
+join_find_column::join_find_column(
     meta::field_type type,
     bool target_exists,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
-    bool source_nullable,
+    std::size_t offset,
+    std::size_t nullity_offset,
+    bool nullable,
     kvs::coding_spec spec
 ) :
     type_(std::move(type)),
     target_exists_(target_exists),
-    target_offset_(target_offset),
-    target_nullity_offset_(target_nullity_offset),
-    source_nullable_(source_nullable),
+    offset_(offset),
+    nullity_offset_(nullity_offset),
+    nullable_(nullable),
     spec_(spec)
 {}
 
+join_find_key_field::join_find_key_field(
+    meta::field_type type,
+    bool nullable,
+    kvs::coding_spec spec,
+    expression::evaluator evaluator
+) :
+    type_(std::move(type)),
+    nullable_(nullable),
+    spec_(spec),
+    evaluator_(evaluator)
+{}
+
+
+matcher::matcher(
+    std::vector<details::join_find_key_field> const& key_fields,
+    std::vector<details::join_find_column> const& key_columns,
+    std::vector<details::join_find_column> const& value_columns
+) :
+    key_fields_(key_fields),
+    key_columns_(key_columns),
+    value_columns_(value_columns)
+{}
+
+void matcher::read_stream(
+    block_scope& scope,
+    matcher::memory_resource* resource,
+    kvs::stream& src,
+    std::vector<details::join_find_column> const& columns
+) {
+    auto ref = scope.store().ref();
+    for(auto& c : columns) {
+        if (c.target_exists_) {
+            if (c.nullable_) {
+                kvs::decode_nullable(src, c.type_, c.spec_, ref, c.offset_, c.nullity_offset_, resource);
+                continue;
+            }
+            kvs::decode(src, c.type_, c.spec_, ref, c.offset_, resource);
+            ref.set_null(c.nullity_offset_, false); // currently assuming target variable fields are nullable and f.target_nullity_offset_ is valid even if f.source_nullable_ is false
+            continue;
+        }
+        if (c.nullable_) {
+            kvs::consume_stream_nullable(src, c.type_, c.spec_);
+            continue;
+        }
+        kvs::consume_stream(src, c.type_, c.spec_);
+    }
 }
 
-ops::join_find::join_find(
-    operator_base::operator_index_type index,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
-    std::string_view storage_name,
-    std::string_view key,
-    std::vector<details::join_find_field> key_fields,
-    std::vector<details::join_find_field> value_fields,
-    std::unique_ptr<operator_base> downstream
-) :
-    record_operator(index, info, block_index),
-    storage_name_(storage_name),
-    key_(key),
-    key_fields_(std::move(key_fields)),
-    value_fields_(std::move(value_fields)),
-    downstream_(std::move(downstream))
-{}
+bool
+matcher::operator()(
+    block_scope& scope,
+    kvs::storage& stg,
+    kvs::transaction& tx,
+    matcher::memory_resource* resource
+) {
+    std::size_t len = 0;
+    for(std::size_t loop=0; loop < 2; ++loop) {
+        kvs::stream s{buf_.data(), len};
+        auto cp = resource->get_checkpoint();
+        for(auto&f : key_fields_) {
+            auto any = f.evaluator_(scope, resource);
+            if (f.nullable_) {
+                kvs::encode_nullable(any, f.type_, f.spec_, s);
+            } else {
+                BOOST_ASSERT(any.has_value());  //NOLINT
+                kvs::encode(any, f.type_, f.spec_, s);
+            }
+        }
+        resource->deallocate_after(cp);
+        if (loop == 0) {
+            len = s.length();
+            if (buf_.size() < len) {
+                buf_.resize(len);
+            }
+        }
+    }
+    std::string_view key{static_cast<char*>(buf_.data()), len};
+    std::string_view value{};
+    if(auto res = stg.get(tx, key, value); res != status::ok) {
+        return false;
+    }
+    kvs::stream keys{const_cast<char*>(key.data()), key.size()};
+    kvs::stream values{const_cast<char*>(value.data()), value.size()};
+    read_stream(scope, resource, keys, key_columns_);
+    read_stream(scope, resource, values, value_columns_);
+    return true;
+}
 
-join_find::join_find(
-    operator_base::operator_index_type index,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
-    std::string_view storage_name,
-    std::string_view key,
-    yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
-    std::unique_ptr<operator_base> downstream
-) :
-    join_find(
-        index,
-        info,
-        block_index,
-        storage_name,
-        key,
-        create_fields(idx, columns, info, block_index, true),
-        create_fields(idx, columns, info, block_index, false),
-        std::move(downstream)
-    )
-{}
+bool matcher::next() {
+    return false;
+}
+
+}
 
 void join_find::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
@@ -105,6 +155,7 @@ void join_find::process_record(abstract::task_context* context) {
             ctx.block_scope(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
+            std::make_unique<details::matcher>(key_fields_, key_columns_, value_columns_),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -113,19 +164,18 @@ void join_find::process_record(abstract::task_context* context) {
 }
 
 void join_find::operator()(class join_find_context& ctx, abstract::task_context* context) {
-    auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
-    std::string_view v{};
-    if(auto res = ctx.stg_->get(*ctx.tx_, key_, v); res != status::ok) {
-        return;
-    }
-    kvs::stream keys{const_cast<char*>(key_.data()), key_.length()}; //TODO create read-only stream
-    kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
-    decode_fields(key_fields_, keys, target, resource);
-    decode_fields(value_fields_, values, target, resource);
-    if (downstream_) {
-        unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
-        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+    if((*ctx.matcher_)(ctx.variables(), *ctx.stg_, *ctx.tx_, resource)) {
+        if (condition_) {
+            auto r = evaluator_(ctx.variables());
+            if(r.has_value() && !r.to<bool>()) {
+                return;
+            }
+        }
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
     }
 }
 
@@ -138,41 +188,17 @@ std::string_view join_find::storage_name() const noexcept {
 }
 
 void join_find::finish(abstract::task_context*) {
-    fail();
+    // no-op
 }
 
-void join_find::decode_fields(
-    std::vector<details::join_find_field> const& fields,
-    kvs::stream& stream,
-    accessor::record_ref target,
-    join_find::memory_resource* resource
-) {
-    for(auto&& f : fields) {
-        if (! f.target_exists_) {
-            if (f.source_nullable_) {
-                kvs::consume_stream_nullable(stream, f.type_, f.spec_);
-                continue;
-            }
-            kvs::consume_stream(stream, f.type_, f.spec_);
-            continue;
-        }
-        if (f.source_nullable_) {
-            kvs::decode_nullable(stream, f.type_, f.spec_, target, f.target_offset_, f.target_nullity_offset_, resource);
-            continue;
-        }
-        kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are nullable and f.target_nullity_offset_ is valid even if f.source_nullable_ is false
-    }
-}
-
-std::vector<details::join_find_field> join_find::create_fields(
+std::vector<details::join_find_column> join_find::create_columns(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     processor_info const& info,
     operator_base::block_index_type block_index,
     bool key
 ) {
-    std::vector<details::join_find_field> ret{};
+    std::vector<details::join_find_column> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};
@@ -237,6 +263,90 @@ std::vector<details::join_find_field> join_find::create_fields(
         );
     }
     return ret;
+}
+
+std::vector<details::join_find_key_field> join_find::create_key_fields(
+    yugawara::storage::index const& idx,
+    takatori::tree::tree_fragment_vector<key> const& keys,
+    processor_info const& info
+) {
+    BOOST_ASSERT(idx.keys().size() == keys.size());  //NOLINT
+    std::vector<details::join_find_key_field> ret{};
+    using variable = takatori::descriptor::variable;
+    yugawara::binding::factory bindings{};
+
+    std::unordered_map<variable, takatori::scalar::expression const*> var_to_expression{};
+    for(auto&& k : keys) {
+        var_to_expression.emplace(k.variable(), &k.value());
+    }
+
+    ret.reserve(idx.keys().size());
+    for(auto&& k : idx.keys()) {
+        auto kc = bindings(k.column());
+        auto t = utils::type_for(k.column().type());
+        auto spec = k.direction() == relation::sort_direction::ascendant ?
+            kvs::spec_key_ascending : kvs::spec_key_descending;
+        auto* exp = var_to_expression.at(kc);
+        ret.emplace_back(
+            t,
+            k.column().criteria().nullity().nullable(),
+            spec,
+            expression::evaluator{*exp, info.compiled_info()}
+        );
+    }
+    return ret;
+}
+
+join_find::join_find(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    std::string_view storage_name,
+    yugawara::storage::index const& idx,
+    sequence_view<column const> columns,
+    takatori::tree::tree_fragment_vector<key> const& keys,
+    takatori::util::optional_ptr<takatori::scalar::expression const> condition,
+    std::unique_ptr<operator_base> downstream
+) :
+    join_find(
+        index,
+        info,
+        block_index,
+        storage_name,
+        create_columns(
+            idx,
+            columns,
+            info,
+            block_index,
+            true
+        ),
+        create_columns(
+            idx,
+            columns,
+            info,
+            block_index,
+            false
+        ),
+        create_key_fields(
+            idx,
+            keys,
+            info
+        ),
+        condition,
+        std::move(downstream)
+    )
+{}
+
+std::vector<details::join_find_column> const& join_find::key_columns() const noexcept {
+    return key_columns_;
+}
+
+std::vector<details::join_find_column> const& join_find::value_columns() const noexcept {
+    return value_columns_;
+}
+
+std::vector<details::join_find_key_field> const& join_find::key_fields() const noexcept {
+    return key_fields_;
 }
 
 }

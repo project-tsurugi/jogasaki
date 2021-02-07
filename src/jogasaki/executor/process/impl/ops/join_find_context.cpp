@@ -19,6 +19,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/iterator.h>
 #include "context_base.h"
+#include "join_find.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -27,12 +28,14 @@ join_find_context::join_find_context(
     block_scope& variables,
     std::unique_ptr<kvs::storage> stg,
     kvs::transaction* tx,
+    std::unique_ptr<details::matcher> matcher,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     stg_(std::move(stg)),
-    tx_(tx)
+    tx_(tx),
+    matcher_(std::move(matcher))
 {}
 
 operator_kind join_find_context::kind() const noexcept {

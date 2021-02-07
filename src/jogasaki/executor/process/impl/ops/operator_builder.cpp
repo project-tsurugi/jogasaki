@@ -116,15 +116,15 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
     auto block_index = info_->scope_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
-    auto k = encode_key<relation::join_find::key>(node.keys(), index.keys(), *info_, *resource_);
     return std::make_unique<join_find>(
         index_++,
         *info_,
         block_index,
         index.simple_name(),
-        k,
         index,
         node.columns(),
+        node.keys(),
+        node.condition(),
         std::move(downstream)
     );
 }

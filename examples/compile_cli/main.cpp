@@ -124,7 +124,7 @@ static int run(std::string_view sql) {
     yugawara::runtime_feature_set runtime_features {
 //        yugawara::runtime_feature::broadcast_exchange,
         yugawara::runtime_feature::aggregate_exchange,
-//        yugawara::runtime_feature::index_join,
+        yugawara::runtime_feature::index_join,
 //        yugawara::runtime_feature::broadcast_join_scan,
     };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};

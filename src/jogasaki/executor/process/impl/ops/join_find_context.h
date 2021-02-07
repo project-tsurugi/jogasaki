@@ -25,6 +25,10 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+namespace details {
+class matcher;
+}
+
 /**
  * @brief join_find context
  */
@@ -44,6 +48,7 @@ public:
         block_scope& variables,
         std::unique_ptr<kvs::storage> stg,
         kvs::transaction* tx,
+        std::unique_ptr<details::matcher> matcher,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -57,6 +62,7 @@ public:
 private:
     std::unique_ptr<kvs::storage> stg_{};
     kvs::transaction* tx_{};
+    std::unique_ptr<details::matcher> matcher_{};
 };
 
 }

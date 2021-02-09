@@ -54,7 +54,7 @@ void thread_pool::start() {
     if(set_core_affinity_) {
         utils::thread_core_affinity(0);
     }
-    prepare_threads_();
+    prepare_threads();
     started_ = true;
 }
 
@@ -66,12 +66,12 @@ void thread_pool::stop() {
     } catch (...) {
         LOG(ERROR) << "error on finishing thread pool";
     }
-    cleanup_threads_();
+    cleanup_threads();
     assert(thread_group_.size() == 0); //NOLINT
     started_ = false;
 }
 
-void thread_pool::prepare_threads_() {
+void thread_pool::prepare_threads() {
     threads_.reserve(max_threads_);
     for(std::size_t i = 0; i < max_threads_; ++i) {
         auto& thread = threads_.emplace_back();
@@ -89,7 +89,7 @@ void thread_pool::prepare_threads_() {
     }
 }
 
-void thread_pool::cleanup_threads_() {
+void thread_pool::cleanup_threads() {
     for(auto& t : threads_) {
         thread_group_.remove_thread(t.get());
         t.reset();

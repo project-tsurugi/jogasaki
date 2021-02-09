@@ -84,8 +84,8 @@ private:
     bool started_{false};
     std::size_t force_numa_node_{};
 
-    void prepare_threads_();
-    void cleanup_threads_();
+    void prepare_threads();
+    void cleanup_threads();
 };
 
 }

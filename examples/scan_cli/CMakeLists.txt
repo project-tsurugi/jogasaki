@@ -21,6 +21,7 @@ target_link_libraries(scan-cli
         PRIVATE jogasaki-mock-impl #FIXME
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 
 target_link_libraries(scan-cli

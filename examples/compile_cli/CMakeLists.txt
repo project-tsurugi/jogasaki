@@ -19,6 +19,7 @@ target_link_libraries(compile-cli
         PRIVATE jogasaki-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(compile-cli

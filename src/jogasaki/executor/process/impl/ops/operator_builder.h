@@ -32,6 +32,7 @@
 #include <takatori/relation/buffer.h>
 #include <takatori/relation/write.h>
 #include <takatori/relation/values.h>
+#include <takatori/relation/identify.h>
 #include <takatori/relation/step/take_group.h>
 #include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/offer.h>
@@ -100,6 +101,7 @@ public:
     std::unique_ptr<operator_base> operator()(relation::emit const& node);
     std::unique_ptr<operator_base> operator()(relation::write const& node);
     std::unique_ptr<operator_base> operator()(relation::values const& node);
+    std::unique_ptr<operator_base> operator()(relation::identify const& node);
     std::unique_ptr<operator_base> operator()(relation::step::join const& node);
     std::unique_ptr<operator_base> operator()(relation::step::aggregate const& node);
     std::unique_ptr<operator_base> operator()(relation::step::intersection const& node);

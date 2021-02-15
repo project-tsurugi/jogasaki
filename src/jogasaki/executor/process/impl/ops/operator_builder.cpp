@@ -195,6 +195,12 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::valu
     return {};
 }
 
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::identify& node) {
+    (void)node;
+    fail();
+    return {};
+}
+
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::join& node) {
     auto block_index = info_->scope_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());

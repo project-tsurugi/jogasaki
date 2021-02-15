@@ -126,7 +126,7 @@ public:
     );
 
     template<class Key>
-    static std::string encode_key(
+    static data::aligned_buffer encode_key(
         takatori::tree::tree_fragment_vector<Key> const& keys,
         sequence_view<yugawara::storage::index::key const> index_keys,
         processor_info const& info,
@@ -135,10 +135,9 @@ public:
         BOOST_ASSERT(keys.size() <= index_keys.size());  //NOLINT
         auto cp = resource.get_checkpoint();
         executor::process::impl::block_scope scope{};
-        std::string buf{};  //TODO create own buffer class
+        data::aligned_buffer buf{};
         for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-            auto capacity = loop == 0 ? 0 : buf.capacity(); // capacity 0 makes stream empty write to calc. length
-            kvs::stream s{buf.data(), capacity};
+            kvs::stream s{buf.data(), buf.size()};
             std::size_t i = 0;
             for(auto&& k : keys) {
                 expression::evaluator eval{k.value(), info.compiled_info()};

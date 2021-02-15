@@ -15,6 +15,8 @@
  */
 #include "aligned_buffer.h"
 
+#include <cstring>
+
 #include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::data {
@@ -63,6 +65,26 @@ std::ostream& operator<<(std::ostream& out, aligned_buffer const& value) {
         << " alignment: " << value.alignment()
         << " data: " << utils::binary_printer{value.data_.get(), value.size()};
     return out;
+}
+
+aligned_buffer::aligned_buffer(aligned_buffer const& other) :
+    capacity_(other.capacity_),
+    alignment_(other.alignment_),
+    data_(utils::make_aligned_array<std::byte>(alignment_, capacity_))
+{
+    std::memcpy(data_.get(), other.data_.get(), capacity_);
+}
+
+aligned_buffer& aligned_buffer::operator=(aligned_buffer const& other) {
+    capacity_ = other.capacity_;
+    alignment_ = other.alignment_;
+    data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);
+    std::memcpy(data_.get(), other.data_.get(), capacity_);
+    return *this;
+}
+
+aligned_buffer::operator std::string_view() const noexcept {
+    return {reinterpret_cast<char*>(data_.get()), capacity_};  //NOLINT
 }
 
 } // namespace

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string_view>
 
 #include <jogasaki/utils/aligned_unique_ptr.h>
 
@@ -44,6 +45,36 @@ public:
         std::size_t size,
         std::size_t align = default_alignment
     );
+
+    /**
+     * @brief copy constructor
+     */
+    aligned_buffer(aligned_buffer const& other);
+
+    /**
+     * @brief copy assign
+     */
+    aligned_buffer& operator=(aligned_buffer const& other);
+
+    /**
+     * @brief destruct the object
+     */
+    ~aligned_buffer() = default;
+
+    /**
+     * @brief move constructor
+     */
+    aligned_buffer(aligned_buffer&& other) noexcept = default;
+
+    /**
+     * @brief move assign
+     */
+    aligned_buffer& operator=(aligned_buffer&& other) noexcept = default;
+
+    /**
+     * @brief accessor as string_view
+     */
+    [[nodiscard]] operator std::string_view() const noexcept;  //NOLINT
 
     /**
      * @brief getter for the capacity of the buffer

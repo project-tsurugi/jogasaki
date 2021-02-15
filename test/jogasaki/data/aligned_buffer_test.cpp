@@ -85,5 +85,20 @@ TEST_F(aligned_buffer_test, alignment) {
     EXPECT_EQ(0, reinterpret_cast<std::size_t>(buf.data()) % 16U );
 }
 
+TEST_F(aligned_buffer_test, copy) {
+    aligned_buffer buf{5, 2};
+    std::memcpy(buf.data(), "ABCDE", 5);
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABCDE");
+    aligned_buffer copy{buf};
+    EXPECT_EQ(static_cast<std::string_view>(copy), "ABCDE");
+    EXPECT_EQ(2, copy.alignment());
+    EXPECT_EQ(5, copy.size());
+    aligned_buffer empty{};
+    empty = buf;
+    EXPECT_EQ(static_cast<std::string_view>(empty), "ABCDE");
+    EXPECT_EQ(2, empty.alignment());
+    EXPECT_EQ(5, empty.size());
+}
+
 }
 

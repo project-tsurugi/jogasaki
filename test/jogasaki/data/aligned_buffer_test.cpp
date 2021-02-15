@@ -18,12 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/accessor/record_ref.h>
-
-#include <jogasaki/mock_memory_resource.h>
-
 #include <jogasaki/test_root.h>
-#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::data {
 
@@ -39,7 +34,55 @@ class aligned_buffer_test : public test_root {};
 
 TEST_F(aligned_buffer_test, basic) {
     aligned_buffer buf{10};
+    EXPECT_EQ(1, buf.alignment());
     EXPECT_EQ(10, buf.size());
+    EXPECT_TRUE(buf);
+    EXPECT_FALSE(buf.empty());
+}
+
+TEST_F(aligned_buffer_test, construct) {
+    aligned_buffer buf{};
+    EXPECT_EQ(1, buf.alignment());
+    EXPECT_EQ(0, buf.size());
+    EXPECT_FALSE(buf);
+    EXPECT_TRUE(buf.empty());
+}
+
+TEST_F(aligned_buffer_test, compare) {
+    aligned_buffer buf0{};
+    EXPECT_EQ(buf0, buf0);
+    aligned_buffer buf1{};
+    EXPECT_NE(buf0, buf1);
+    aligned_buffer buf2{10};
+    aligned_buffer buf3{10};
+    EXPECT_NE(buf2, buf3);
+}
+
+TEST_F(aligned_buffer_test, print) {
+    aligned_buffer buf0{};
+    std::cout << buf0 << std::endl;
+    aligned_buffer buf1{10, 2};
+    std::cout << buf1 << std::endl;
+}
+
+TEST_F(aligned_buffer_test, resize) {
+    aligned_buffer buf{5, 1};
+    auto p = buf.data();
+    EXPECT_EQ(1, buf.alignment());
+    EXPECT_EQ(5, buf.size());
+    buf.resize(10);
+    EXPECT_EQ(1, buf.alignment());
+    EXPECT_EQ(10, buf.size());
+    EXPECT_NE(p, buf.data());
+}
+
+TEST_F(aligned_buffer_test, alignment) {
+    aligned_buffer buf{5, 16};
+    auto p = buf.data();
+    EXPECT_EQ(16, buf.alignment());
+    EXPECT_EQ(0, reinterpret_cast<std::size_t>(buf.data()) % 16U );
+    buf.resize(10);
+    EXPECT_EQ(0, reinterpret_cast<std::size_t>(buf.data()) % 16U );
 }
 
 }

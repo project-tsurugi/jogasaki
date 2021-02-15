@@ -15,10 +15,11 @@
  */
 #pragma once
 
-#include<cstdlib>
-#include<mutex>
-#include<unordered_map>
-#include<chrono>
+#include <cstdlib>
+#include <mutex>
+#include <unordered_map>
+#include <chrono>
+#include <memory>
 
 namespace jogasaki::utils {
 

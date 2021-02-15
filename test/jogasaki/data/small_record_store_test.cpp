@@ -66,34 +66,6 @@ TEST_F(small_record_store_test, memory_resource) {
     EXPECT_EQ(2.0, r.ref().get_value<double>(c1_offset));
 }
 
-TEST_F(small_record_store_test, multiple_records) {
-    mock_memory_resource resource{};
-    test::record record0{};
-    test::record record1{};
-    test::record record2{};
-    auto meta = record0.record_meta();
-    small_record_store r{meta, &resource, 3};
-    auto c0_offset = meta->value_offset(0);
-    auto c1_offset = meta->value_offset(1);
-    record2.ref().set_value(c0_offset, 2L);
-    record2.ref().set_value(c1_offset, 2.0);
-    record0.ref().set_value(c0_offset, 0L);
-    record0.ref().set_value(c1_offset, 0.0);
-    record1.ref().set_value(c0_offset, 1L);
-    record1.ref().set_value(c1_offset, 1.0);
-
-    r.set(record2.ref(), 2);
-    r.set(record0.ref(), 0);
-    r.set(record1.ref(), 1);
-
-    EXPECT_EQ(0, r.ref().get_value<std::int64_t>(c0_offset));
-    EXPECT_EQ(0.0, r.ref().get_value<double>(c1_offset));
-    EXPECT_EQ(1, r.ref(1).get_value<std::int64_t>(c0_offset));
-    EXPECT_EQ(1.0, r.ref(1).get_value<double>(c1_offset));
-    EXPECT_EQ(2, r.ref(2).get_value<std::int64_t>(c0_offset));
-    EXPECT_EQ(2.0, r.ref(2).get_value<double>(c1_offset));
-}
-
 TEST_F(small_record_store_test, metadata_variation) {
     mock_memory_resource resource{};
     mock_memory_resource varlen_resource{};

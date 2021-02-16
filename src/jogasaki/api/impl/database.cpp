@@ -22,6 +22,9 @@
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
+#include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/parallel_task_scheduler.h>
+#include <jogasaki/scheduler/thread_params.h>
 
 #include <string_view>
 #include <memory>
@@ -58,10 +61,19 @@ status database::start() {
         LOG(ERROR) << "creating table schema entries failed";
         return status::err_io_error;
     }
+    if (! task_scheduler_) {
+        if (cfg_->single_thread()) {
+            task_scheduler_ = std::make_unique<scheduler::serial_task_scheduler>();
+        } else {
+            task_scheduler_ = std::make_unique<scheduler::parallel_task_scheduler>(scheduler::thread_params(cfg_));
+        }
+    }
+    task_scheduler_->start();
     return status::ok;
 }
 
 status database::stop() {
+    task_scheduler_->stop();
     if (kvs_db_) {
         if(! kvs_db_->close()) {
             return status::err_io_error;
@@ -174,6 +186,10 @@ void database::dump(std::ostream& output, std::string_view index_name, std::size
 void database::load(std::istream& input, std::string_view index_name, std::size_t batch_size) {
     kvs::storage_dump dumper{*kvs_db_};
     dumper.load(input, index_name, batch_size);
+}
+
+scheduler::task_scheduler* database::task_scheduler() const noexcept {
+    return task_scheduler_.get();
 }
 
 }

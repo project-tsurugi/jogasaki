@@ -24,6 +24,7 @@
 
 #include "scan.h"
 #include "find.h"
+#include "join_find.h"
 #include "emit.h"
 #include "filter.h"
 #include "project.h"
@@ -112,9 +113,20 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_find& node) {
-    (void)node;
-    fail();
-    return {};
+    auto block_index = info_->scope_indices().at(&node);
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    return std::make_unique<join_find>(
+        index_++,
+        *info_,
+        block_index,
+        index.simple_name(),
+        index,
+        node.columns(),
+        node.keys(),
+        node.condition(),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::project& node) {
@@ -178,6 +190,12 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {
+    (void)node;
+    fail();
+    return {};
+}
+
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::identify& node) {
     (void)node;
     fail();
     return {};

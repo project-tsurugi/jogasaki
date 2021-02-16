@@ -25,13 +25,17 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-ops::flatten::flatten(operator_base::operator_index_type index, const processor_info& info,
-    operator_base::block_index_type block_index, std::unique_ptr<operator_base> downstream) :
+flatten::flatten(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    std::unique_ptr<operator_base> downstream
+) :
     group_operator(index, info, block_index),
     downstream_(std::move(downstream))
 {}
 
-void ops::flatten::process_group(abstract::task_context* context, bool last_member) {
+void flatten::process_group(abstract::task_context* context, bool last_member) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     (void)last_member;
     context_helper ctx{*context};

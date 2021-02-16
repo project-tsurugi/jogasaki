@@ -21,6 +21,7 @@ target_link_libraries(sql-cli
         PRIVATE jogasaki-mock-impl #FIXME
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(sql-cli

@@ -18,6 +18,7 @@
 #include <jogasaki/model/graph.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/configuration.h>
+#include "task_scheduler.h"
 
 namespace jogasaki::scheduler {
 
@@ -61,6 +62,11 @@ public:
      * @return this
      */
     statement_scheduler& operator=(statement_scheduler&& other) noexcept = delete;
+
+    /**
+     * @brief creates a new instance with given configuration and task schduler
+     */
+    statement_scheduler(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
 
     /**
      * @brief creates a new instance with given configuration

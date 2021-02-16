@@ -22,6 +22,7 @@ target_link_libraries(mock-aggregate-cli
         PRIVATE jogasaki-mock-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 
 if (PERFORMANCE_TOOLS)

@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 
 #include <takatori/util/enum_tag.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
@@ -28,13 +29,15 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
 #include <jogasaki/utils/interference_size.h>
-#include "single_thread_task_scheduler.h"
-#include "multi_thread_task_scheduler.h"
+#include "serial_task_scheduler.h"
+#include "parallel_task_scheduler.h"
 #include "step_state.h"
 #include "dag_controller.h"
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {
+
+using takatori::util::maybe_shared_ptr;
 
 using step = model::step;
 using task_kind = model::task_kind;
@@ -49,10 +52,15 @@ class cache_align dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
+    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
+        cfg_(std::move(cfg)),
+        executor_(std::addressof(scheduler))
+    {}
+
     explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)),
-            executor_(cfg_->single_thread() ?
-                    std::unique_ptr<task_scheduler>(std::make_unique<single_thread_task_scheduler>()) :
-                    std::unique_ptr<task_scheduler>(std::make_unique<multi_thread_task_scheduler>(thread_params(cfg_)))) {}
+        executor_(cfg_->single_thread() ?
+            std::shared_ptr<task_scheduler>(std::make_shared<serial_task_scheduler>()) :
+            std::shared_ptr<task_scheduler>(std::make_shared<parallel_task_scheduler>(thread_params(cfg_)))) {}
 
     /*
      * @brief handles providing event
@@ -338,10 +346,16 @@ private:
     steps_status steps_{};
     std::queue<internal_event> internal_events_{};
     bool graph_deactivated_{false};
-    std::unique_ptr<task_scheduler> executor_{};
+    maybe_shared_ptr<task_scheduler> executor_{};
 };
 
 dag_controller::dag_controller() : dag_controller(std::make_shared<configuration>()) {}
+dag_controller::dag_controller(
+    std::shared_ptr<configuration> cfg,
+    task_scheduler& scheduler
+) :
+    impl_(std::make_unique<impl>(std::move(cfg), scheduler))
+{}
 dag_controller::dag_controller(std::shared_ptr<configuration> cfg) : impl_(std::make_unique<impl>(std::move(cfg))) {};
 dag_controller::~dag_controller() = default;
 

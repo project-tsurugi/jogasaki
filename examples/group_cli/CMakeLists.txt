@@ -20,6 +20,7 @@ target_link_libraries(group-cli
         PRIVATE jogasaki-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 
 if (PERFORMANCE_TOOLS)

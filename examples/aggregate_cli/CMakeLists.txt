@@ -22,6 +22,7 @@ target_link_libraries(aggregate-cli
         PRIVATE jogasaki-mock-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 
 target_link_libraries(aggregate-cli

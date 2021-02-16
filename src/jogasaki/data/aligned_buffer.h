@@ -15,93 +15,79 @@
  */
 #pragma once
 
-#include <vector>
-#include <cstring>
 #include <cstddef>
 
-#include <takatori/util/maybe_shared_ptr.h>
-
 #include <jogasaki/utils/aligned_unique_ptr.h>
-#include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::data {
 
-using takatori::util::maybe_shared_ptr;
-
 /**
- * @brief records container to store just handful of records
+ * @brief small buffer to keep aligned data
  */
 class aligned_buffer {
 public:
 
+    constexpr static std::size_t default_alignment = 1;
+
     /**
-     * @brief create empty object
+     * @brief create default object - alignment = 1 with no capacity
+     * @details the default size is zero and it is expected to be used after resize()
      */
     aligned_buffer() = default;
 
     /**
      * @brief create new instance
-     * @param meta the record metadata
-     * @param varlen_resource memory resource used to store the varlen data referenced from the records stored in this
-     * instance. nullptr is allowed if this instance stores only the copy of reference to varlen data (shallow copy.)
-     * @param capacity the capacity of the container
+     * @param size the size(capacity) of the buffer
+     * @param align the alignment of the buffer
      */
     explicit aligned_buffer(
         std::size_t size,
-        std::size_t align = 1
-    ) :
-        capacity_(size),
-        alignment_(align),
-        data_(utils::make_aligned_array<std::byte>(align, size))
-    {}
+        std::size_t align = default_alignment
+    );
 
     /**
-     * @brief getter for the number of data count added to this store
-     * @return the number of records
+     * @brief getter for the capacity of the buffer
      */
-    [[nodiscard]] std::size_t size() const noexcept {
-        return capacity_;
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
     /**
-     * @brief getter for the number of data count added to this store
-     * @return the number of records
+     * @brief getter for the buffer pointer
      * @warning the returned pointer becomes invalid when this object is modified
      * by non-const member functions (e.g. resize()).
      */
-    [[nodiscard]] void* data() const noexcept {
-        return data_.get();
-    }
+    [[nodiscard]] void* data() const noexcept;
 
     /**
-     * @brief return whether the object is valid or not
+     * @brief return whether the object has capacity larger than zero
      */
-    [[nodiscard]] explicit operator bool() const noexcept {
-        return capacity_ != 0;
-    }
+    [[nodiscard]] explicit operator bool() const noexcept;
 
     /**
-     * @brief reallocate the buffer for resize
+     * @brief return whether the object has capacity larger than zero
      */
-    void resize(std::size_t sz) noexcept {
-        auto n = utils::make_aligned_array<std::byte>(alignment_, sz);
-        data_.swap(n);
-        capacity_ = sz;
-    }
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
-     * @brief compare contents of two objects
+     * @brief rellocate the buffer for different capacity
+     * @param the new buffer capacity
+     * @details the new buffer is allocated and old one will be released. The alignment is not changed.
+     */
+    void resize(std::size_t sz);
+
+    /**
+     * @brief return alignment of the buffer
+     */
+    [[nodiscard]] std::size_t alignment() const noexcept;
+
+    /**
+     * @brief compare two objects
      * @param a first arg to compare
      * @param b second arg to compare
      * @return true if a == b
      * @return false otherwise
      */
-    friend bool operator==(aligned_buffer const& a, aligned_buffer const& b) noexcept {
-        return a.data_ == b.data_;
-    }
-    friend bool operator!=(aligned_buffer const& a, aligned_buffer const& b) noexcept {
-        return !(a == b);
-    }
+    friend bool operator==(aligned_buffer const& a, aligned_buffer const& b) noexcept;
+    friend bool operator!=(aligned_buffer const& a, aligned_buffer const& b) noexcept;
 
     /**
      * @brief appends string representation of the given value.
@@ -109,15 +95,12 @@ public:
      * @param value the target value
      * @return the output
      */
-    friend std::ostream& operator<<(std::ostream& out, aligned_buffer const& value) {
-        out << " capacity: " << value.size()
-            << " data: " << utils::binary_printer{value.data_.get(), value.size()};
-        return out;
-    }
+    friend std::ostream& operator<<(std::ostream& out, aligned_buffer const& value);
+
 private:
     std::size_t capacity_{};
-    std::size_t alignment_{};
-    utils::aligned_array<std::byte> data_ = utils::make_aligned_array<std::byte>(0UL, 0UL);
+    std::size_t alignment_{default_alignment};
+    utils::aligned_array<std::byte> data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);
 };
 
 } // namespace

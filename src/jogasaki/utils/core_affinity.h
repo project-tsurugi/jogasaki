@@ -21,6 +21,16 @@ namespace jogasaki::utils {
 
 constexpr std::size_t numa_node_unspecified = static_cast<std::size_t>(-1); // same constant on configuration.h
 
+/**
+ * @brief set the core affinity of current thread
+ * @param cpu the core number associated with current thread
+ * @param uniform_on_nodes indicate whether the cpu number should be translated to node number to distribute uniformly.
+ * If true is specified for this parameter, the cpu parameter is ignored.
+ * @param force_numa_node force running on the specified node. If other values than numa_node_unspecified are specified,
+ * this parameter precedes the setting given by cpu or uniform_on_nodes fixing the running numa node.
+ * @return true when successful
+ * @return false otherwise
+ */
 bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes = false, std::size_t force_numa_node = numa_node_unspecified);
 
 }

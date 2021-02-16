@@ -20,6 +20,7 @@ target_link_libraries(client-cli
         PRIVATE takatori
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE Threads::Threads
 )
 
 if (ENABLE_GOOGLE_PERFTOOLS)

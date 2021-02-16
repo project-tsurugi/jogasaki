@@ -34,7 +34,7 @@ public:
     /**
      * @brief create default object with single thread
      */
-    thread_pool();;
+    thread_pool();
 
     thread_pool(thread_pool const& other) = delete;
     thread_pool& operator=(thread_pool const& other) = delete;
@@ -84,8 +84,8 @@ private:
     bool started_{false};
     std::size_t force_numa_node_{};
 
-    void prepare_threads_();
-    void cleanup_threads_();
+    void prepare_threads();
+    void cleanup_threads();
 };
 
 }

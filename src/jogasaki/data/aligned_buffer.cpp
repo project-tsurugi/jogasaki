@@ -90,7 +90,9 @@ aligned_buffer::operator std::string_view() const noexcept {
 aligned_buffer::aligned_buffer(std::string_view s) :
     aligned_buffer(s.size())
 {
-    std::memcpy(data_.get(), s.data(), s.size());
+    if (! s.empty()) {
+        std::memcpy(data_.get(), s.data(), s.size());
+    }
 }
 
 } // namespace

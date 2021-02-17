@@ -119,7 +119,7 @@ void find::operator()(class find_context& ctx, abstract::task_context* context) 
     if(auto res = ctx.stg_->get(*ctx.tx_, key_, v); res != status::ok) {
         return;
     }
-    kvs::stream keys{const_cast<char*>(key_.data()), key_.length()}; //TODO create read-only stream
+    kvs::stream keys{key_.data(), key_.size()}; //TODO create read-only stream
     kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
     decode_fields(key_fields_, keys, target, resource);
     decode_fields(value_fields_, values, target, resource);

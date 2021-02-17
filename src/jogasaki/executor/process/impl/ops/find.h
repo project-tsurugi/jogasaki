@@ -145,7 +145,7 @@ public:
     void finish(abstract::task_context*) override;;
 private:
     std::string storage_name_{};
-    std::string key_{};
+    data::aligned_buffer key_{};
     std::vector<details::find_field> key_fields_{};
     std::vector<details::find_field> value_fields_{};
     std::unique_ptr<operator_base> downstream_{};

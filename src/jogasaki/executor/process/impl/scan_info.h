@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <string>
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/kvs/storage.h>
 
@@ -35,12 +35,7 @@ public:
         kvs::end_point_kind begin_endpoint = kvs::end_point_kind::unbound,
         std::string_view end_key = {},
         kvs::end_point_kind end_endpoint = kvs::end_point_kind::unbound
-    ) :
-        begin_key_(begin_key),
-        begin_endpoint_(begin_endpoint),
-        end_key_(end_key),
-        end_endpoint_(end_endpoint)
-    {}
+    );
 
     ~scan_info() override = default;
 
@@ -49,22 +44,15 @@ public:
     scan_info(scan_info&& other) noexcept = default;
     scan_info& operator=(scan_info&& other) noexcept = default;
 
-    [[nodiscard]] std::string_view begin_key() const noexcept {
-        return begin_key_;
-    }
-    [[nodiscard]] std::string_view end_key() const noexcept {
-        return end_key_;
-    }
-    [[nodiscard]] kvs::end_point_kind begin_endpoint() const noexcept {
-        return begin_endpoint_;
-    }
-    [[nodiscard]] kvs::end_point_kind end_endpoint() const noexcept {
-        return end_endpoint_;
-    }
+    [[nodiscard]] std::string_view begin_key() const noexcept;
+    [[nodiscard]] std::string_view end_key() const noexcept;
+    [[nodiscard]] kvs::end_point_kind begin_endpoint() const noexcept;
+    [[nodiscard]] kvs::end_point_kind end_endpoint() const noexcept;
+
 private:
-    std::string begin_key_{};
+    data::aligned_buffer begin_key_{};
     kvs::end_point_kind begin_endpoint_{};
-    std::string end_key_{};
+    data::aligned_buffer end_key_{};
     kvs::end_point_kind end_endpoint_{};
 };
 

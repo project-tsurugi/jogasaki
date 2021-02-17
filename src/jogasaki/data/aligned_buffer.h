@@ -47,6 +47,12 @@ public:
     );
 
     /**
+     * @brief create buffer for given string view
+     * @details the buffer has capacity equals to the string length with default alignment.
+     */
+    explicit aligned_buffer(std::string_view s);
+
+    /**
      * @brief copy constructor
      */
     aligned_buffer(aligned_buffer const& other);

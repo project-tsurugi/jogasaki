@@ -87,4 +87,10 @@ aligned_buffer::operator std::string_view() const noexcept {
     return {reinterpret_cast<char*>(data_.get()), capacity_};  //NOLINT
 }
 
+aligned_buffer::aligned_buffer(std::string_view s) :
+    aligned_buffer(s.size())
+{
+    std::memcpy(data_.get(), s.data(), s.size());
+}
+
 } // namespace

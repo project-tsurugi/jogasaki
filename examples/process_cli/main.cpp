@@ -125,7 +125,7 @@ public:
         // create step graph with only process
         auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
-        auto channel = std::make_shared<class channel>();
+        auto channel = std::make_shared<event_channel>();
         auto context = std::make_shared<request_context>(channel, cfg);
         common::graph g{*context};
         auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));

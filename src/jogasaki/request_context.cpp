@@ -16,17 +16,17 @@
 #include <memory>
 
 #include "request_context.h"
-#include "channel.h"
+#include "event_channel.h"
 
 namespace jogasaki {
 
 request_context::request_context() :
-    channel_(std::make_shared<class channel>()),
+    channel_(std::make_shared<event_channel>()),
     config_(std::make_shared<class configuration>())
 {}
 
 request_context::request_context(
-    std::shared_ptr<class channel> ch,
+    std::shared_ptr<event_channel> ch,
     std::shared_ptr<class configuration> config,
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource,
     std::shared_ptr<kvs::database> database,
@@ -41,7 +41,7 @@ request_context::request_context(
     result_(result)
 {}
 
-std::shared_ptr<class channel> const& request_context::channel() const {
+std::shared_ptr<event_channel> const& request_context::channel() const {
     return channel_;
 }
 

@@ -74,7 +74,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto meta = test_record_meta();
     auto info = std::make_shared<group_info>(meta, std::vector<std::size_t>{0});
 
-    auto channel = std::make_shared<class channel>();
+    auto channel = std::make_shared<event_channel>();
     auto compiler_context = std::make_shared<plan::compiler_context>();
     auto context = std::make_shared<request_context>(channel, cfg);
 

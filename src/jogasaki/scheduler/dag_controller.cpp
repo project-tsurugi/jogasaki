@@ -24,7 +24,7 @@
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
-#include <jogasaki/channel.h>
+#include <jogasaki/event_channel.h>
 #include <jogasaki/internal_event.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
@@ -250,6 +250,7 @@ public:
             case step_state_kind::deactivated:
                 if(all_steps_deactivated(*graph_)) {
                     graph_deactivated_ = true;
+                    graph_->context()->channel()->close();
                 }
                 break;
         }
@@ -283,6 +284,7 @@ public:
             step_state(*v, step_state_kind::created);
         }
         graph_deactivated_ = all_steps_deactivated(g);
+        auto& ch = *g.context()->channel();
         while(!graph_deactivated_) {
             while(!internal_events_.empty()) {
                 auto& ie = internal_events_.front();
@@ -291,13 +293,12 @@ public:
                 internal_events_.pop();
             }
             // watch external event channel after internal ones complete
-            auto& ch = *g.context()->channel();
             event ev{};
             if(ch.pop(ev)) {
                 dispatch(*this, ev.kind(), ev);
             }
 
-            // Currently we run only on single thread
+            // For serial scheduler, give control here in order to
             // simulate tasks execution background so that state changes and proceeds
             executor_->wait_for_progress();
         }

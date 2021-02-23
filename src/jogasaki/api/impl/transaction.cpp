@@ -41,13 +41,17 @@ status transaction::execute(api::executable_statement& statement) {
     return execute(statement, result);
 }
 
-status transaction::execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) {
+status transaction::execute(
+    api::executable_statement& statement,
+    std::unique_ptr<api::result_set>& result
+) {
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
+    auto& c = database_->configuration();
     auto store = std::make_unique<data::result_store>();
     auto request_ctx = std::make_shared<request_context>(
-        std::make_shared<class channel>(),
-        database_->configuration(),
+        std::make_shared<event_channel>(c->single_thread()),
+        c,
         s.resource(),
         database_->kvs_db(),
         tx_,
@@ -62,10 +66,12 @@ status transaction::execute(api::executable_statement& statement, std::unique_pt
         result = std::make_unique<impl::result_set>(
             std::move(store)
         );
+        request_ctx->channel()->close();
         return request_ctx->status_code();
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
     scheduler_.schedule(*stmt, *request_ctx);
+    request_ctx->channel()->close();
     return request_ctx->status_code();
 }
 

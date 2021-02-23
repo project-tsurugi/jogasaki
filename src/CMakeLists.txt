@@ -64,6 +64,10 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
 )
 
+if (USE_BLOCKING_EVENT_QUEUE)
+    target_compile_definitions(${ENGINE} PUBLIC USE_BLOCKING_EVENT_QUEUE)
+endif ()
+
 if (PERFORMANCE_TOOLS)
     target_link_libraries(${ENGINE}
             PRIVATE performance-tools::api
@@ -104,6 +108,10 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         )
+
+if (USE_BLOCKING_EVENT_QUEUE)
+    target_compile_definitions(jogasaki-impl INTERFACE USE_BLOCKING_EVENT_QUEUE)
+endif ()
 
 if (PERFORMANCE_TOOLS)
     target_link_libraries(jogasaki-impl

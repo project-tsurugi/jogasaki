@@ -21,10 +21,9 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/event_channel.h>
 
 namespace jogasaki {
-
-class channel;
 
 /**
  * @brief context object for the request scope
@@ -45,7 +44,7 @@ public:
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
      * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
-    request_context(std::shared_ptr<class channel> ch,
+    request_context(std::shared_ptr<event_channel> ch,
         std::shared_ptr<class configuration> config,
         std::shared_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
@@ -57,7 +56,7 @@ public:
      * @brief accessor for the communication channel
      * @return channel to communicate with the scheduler handling the request
      */
-    [[nodiscard]] std::shared_ptr<class channel> const& channel() const;
+    [[nodiscard]] std::shared_ptr<event_channel> const& channel() const;
 
     /**
      * @brief accessor for the gloabl configuration
@@ -99,7 +98,7 @@ public:
      */
     [[nodiscard]] status status_code() const noexcept;
 private:
-    std::shared_ptr<class channel> channel_{};
+    std::shared_ptr<event_channel> channel_{};
     std::shared_ptr<class configuration> config_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};

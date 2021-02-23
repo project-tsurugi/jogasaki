@@ -22,7 +22,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/channel.h>
+#include <jogasaki/event_channel.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange {

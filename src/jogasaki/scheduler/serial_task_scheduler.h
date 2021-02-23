@@ -25,7 +25,7 @@
 namespace jogasaki::scheduler {
 
 /**
- * @brief task scheduler using only single thread - mainly for testing purpose
+ * @brief task scheduler using only single thread
  */
 class cache_align serial_task_scheduler : public task_scheduler {
 public:
@@ -59,7 +59,7 @@ public:
     [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 
 private:
-    entity_type tasks_{};
+    static thread_local entity_type tasks_;
 };
 
 }

@@ -23,7 +23,11 @@
 
 namespace jogasaki::scheduler {
 
-void serial_task_scheduler::schedule_task(const std::shared_ptr<model::task> &task) {
+thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};
+
+void serial_task_scheduler::schedule_task(
+    std::shared_ptr<model::task> const&task
+) {
     tasks_.emplace(task->id(), task);
 }
 

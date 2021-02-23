@@ -56,7 +56,11 @@ class task {
 public:
     using identity_type = std::size_t;
 
+    /**
+     * @brief returns task id that uniquely identifies the task
+     */
     [[nodiscard]] virtual identity_type id() const = 0;
+
     /**
      * @brief creates a new instance.
      */

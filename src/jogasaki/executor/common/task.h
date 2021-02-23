@@ -33,8 +33,10 @@ public:
         id_ = id_src++;
     }
 
-    task(request_context* context,
-            step* src) : context_(context), src_(src) {
+    task(
+        request_context* context,
+        step* src
+    ) : context_(context), src_(src) {
         id_ = id_src++;
     }
 

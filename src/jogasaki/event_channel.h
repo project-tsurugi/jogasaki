@@ -88,7 +88,7 @@ public:
         if(non_blocking_) {
             return events_->try_pop(e);
         }
-        if constexpr(std::is_same_v<blocking_queue_type, queue_type>) {
+        if constexpr(std::is_same_v<blocking_queue_type, queue_type>) {  //NOLINT
             try {
                 events_->pop(e);
             } catch (tbb::user_abort& e) {
@@ -107,7 +107,7 @@ public:
         if(closed_) {
             return;
         }
-        if constexpr(std::is_same_v<blocking_queue_type, queue_type>) {
+        if constexpr(std::is_same_v<blocking_queue_type, queue_type>) { //NOLINT
             events_->abort();
         }
         closed_ = true;

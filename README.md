@@ -45,6 +45,7 @@ cmake --build .
 available options:
 * `-DCMAKE_INSTALL_PREFIX=<installation directory>` - change install location
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequisite installation directory
+* `-DCMAKE_IGNORE_PATH="/usr/local/include;/usr/local/lib/"` - specify the libraries search paths to ignore. This is convenient if the environment has conflicting version installed on system default search paths. (e.g. gflags in /usr/local)
 * `-DBUILD_SHARED_LIBS=OFF` - create static libraries instead of shared libraries
 * `-DBUILD_TESTS=OFF` - don't build test programs
 * `-DBUILD_DOCUMENTS=OFF` - don't build documents by doxygen
@@ -56,6 +57,7 @@ available options:
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
   * `-DENABLE_COVERAGE=ON` - enable code coverage analysis (requires `-DCMAKE_BUILD_TYPE=Debug`)
+  * `-DUSE_BLOCKING_EVENT_QUEUE=ON` - enable blocking queue for the event channel
 
 ### install 
 

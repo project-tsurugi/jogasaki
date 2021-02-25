@@ -19,6 +19,7 @@
 
 #include <takatori/util/downcast.h>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 
@@ -97,6 +98,10 @@ public:
      */
     [[nodiscard]] abstract::task_context* task_context() const noexcept;
 
+    /**
+     * @brief accessor to request context
+     */
+    [[nodiscard]] request_context* req_context() const noexcept;
 private:
     abstract::task_context *context_{};
     impl::work_context* work_context_{};

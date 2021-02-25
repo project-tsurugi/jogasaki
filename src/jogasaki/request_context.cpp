@@ -66,6 +66,7 @@ memory::lifo_paged_memory_resource* request_context::request_resource() const no
 }
 
 void request_context::status_code(status val) noexcept {
+    // TODO atomic update
     status_code_ = val;
 }
 

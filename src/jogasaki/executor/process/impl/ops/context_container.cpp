@@ -17,6 +17,8 @@
 
 #include <takatori/util/fail.h>
 
+#include <jogasaki/executor/process/impl/ops/context_base.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::fail;

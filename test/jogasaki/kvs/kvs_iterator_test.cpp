@@ -83,22 +83,22 @@ TEST_F(kvs_iterator_test, full_scan) {
         ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
         ASSERT_TRUE(it);
         //ASSERT_FALSE(it->key(k)); // UB until first next() call
-        ASSERT_TRUE(it->next());
+        ASSERT_EQ(status::ok, it->next());
         ASSERT_TRUE(it->key(k));
         ASSERT_TRUE(it->value(v));
         EXPECT_EQ("k1", k);
         EXPECT_EQ("v1", v);
-        ASSERT_TRUE(it->next());
+        ASSERT_EQ(status::ok, it->next());
         ASSERT_TRUE(it->key(k));
         ASSERT_TRUE(it->value(v));
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
-        ASSERT_TRUE(it->next());
+        ASSERT_EQ(status::ok, it->next());
         ASSERT_TRUE(it->key(k));
         ASSERT_TRUE(it->value(v));
         EXPECT_EQ("k3", k);
         EXPECT_EQ("v3", v);
-        ASSERT_FALSE(it->next());
+        ASSERT_EQ(status::not_found, it->next());
         ASSERT_EQ(status::ok, tx->commit());
     }
     ASSERT_TRUE(db->close());

@@ -51,7 +51,7 @@ status storage::get(
         return status::ok;
     }
     if (res == StatusCode::NOT_FOUND) {
-        return status::err_not_found;
+        return status::not_found;
     }
     return resolve(res);
 }

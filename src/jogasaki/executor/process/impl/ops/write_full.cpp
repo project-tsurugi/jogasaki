@@ -21,6 +21,7 @@
 
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/error.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/utils/field_types.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -219,8 +220,8 @@ void write_full::do_insert(write_full_context& ctx) {
             {values.data(), values.length()},
             opt
         ); ! is_ok(res)) {
-        // TODO handle error
-        fail();
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
     }
 }
 
@@ -240,6 +241,11 @@ void write_full::check_length_and_extend_buffer(
 void write_full::do_delete(write_full_context& ctx) {
     auto k = prepare_key(ctx);
     if(auto res = ctx.stg_->remove(*ctx.tx_, k ); is_error(res)) {
+        if(res == status::err_aborted_retryable) {
+            ctx.state(context_state::abort);
+            ctx.req_context()->status_code(res);
+            return;
+        }
         fail();
     }
     // warning such as status::not_found are safely ignored for delete

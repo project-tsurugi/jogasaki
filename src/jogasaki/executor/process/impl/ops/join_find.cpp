@@ -100,8 +100,7 @@ void matcher::read_stream(
     }
 }
 
-bool
-matcher::operator()(
+bool matcher::operator()(
     block_scope& scope,
     kvs::storage& stg,
     kvs::transaction& tx,
@@ -130,7 +129,9 @@ matcher::operator()(
     }
     std::string_view key{static_cast<char*>(buf_.data()), len};
     std::string_view value{};
-    if(auto res = stg.get(tx, key, value); res != status::ok) {
+    auto res = stg.get(tx, key, value);
+    status_ = res;
+    if (res != status::ok) {
         return false;
     }
     kvs::stream keys{const_cast<char*>(key.data()), key.size()};
@@ -141,7 +142,13 @@ matcher::operator()(
 }
 
 bool matcher::next() {
+    // this matcher supports at most one record
+    status_ = status::not_found;
     return false;
+}
+
+status matcher::result() const noexcept {
+    return status_;
 }
 
 }
@@ -176,6 +183,11 @@ void join_find::operator()(class join_find_context& ctx, abstract::task_context*
             unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             unsafe_downcast<record_operator>(downstream_.get())->finish(context);
         }
+        return;
+    }
+    if(ctx.matcher_->result() != status::not_found) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(ctx.matcher_->result());
     }
 }
 

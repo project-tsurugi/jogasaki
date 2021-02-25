@@ -105,7 +105,8 @@ void scan::operator()(scan_context& ctx, abstract::task_context* context) {
     open(ctx);
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
-    while(ctx.it_->next()) {
+    status st{};
+    while((st = ctx.it_->next()) == status::ok) {
         utils::checkpoint_holder cp{resource};
         std::string_view k{};
         std::string_view v{};
@@ -120,8 +121,13 @@ void scan::operator()(scan_context& ctx, abstract::task_context* context) {
             unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
         }
     }
-    if (downstream_) {
-        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+    if (st == status::not_found) {
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+    } else {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(st);
     }
     close(ctx);
 }

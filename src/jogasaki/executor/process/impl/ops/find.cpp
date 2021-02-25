@@ -117,6 +117,11 @@ void find::operator()(class find_context& ctx, abstract::task_context* context) 
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     if(auto res = ctx.stg_->get(*ctx.tx_, key_, v); res != status::ok) {
+        if (res == status::not_found) {
+            return;
+        }
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
         return;
     }
     kvs::stream keys{key_.data(), key_.size()}; //TODO create read-only stream

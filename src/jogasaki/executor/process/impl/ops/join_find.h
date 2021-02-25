@@ -110,6 +110,12 @@ public:
         std::vector<details::join_find_column> const& columns
     );
 
+    /**
+     * @brief execute the matching
+     * @return true if match is successful
+     * @return false if match is not successful, check status with result() function to see if the result is
+     * simply not-found or other error happened.
+     */
     [[nodiscard]] bool operator()(
         executor::process::impl::block_scope& scope,
         kvs::storage& stg,
@@ -117,13 +123,29 @@ public:
         memory_resource* resource = nullptr
     );
 
+    /**
+     * @brief retrieve next match
+     * @return true if match is successful
+     * @return false if match is not successful, check status with result() function to see if the result is
+     * simply not-found or other error happened.
+     */
     bool next();
+
+    /**
+     * @brief retrieve the status code of the last match execution
+     * @details This function provides the status code to check if the match
+     * @return status::ok if match was successful
+     * @return status::not_found if match was not successful due to missing target record
+     * @return other error (e.g. status::err_aborted_retryable) occurred when accessing kvs
+     */
+    [[nodiscard]] status result() const noexcept;
 
 private:
     std::vector<details::join_find_key_field> const& key_fields_{};
     std::vector<details::join_find_column> const& key_columns_{};
     std::vector<details::join_find_column> const& value_columns_{};
     data::aligned_buffer buf_{};
+    status status_{status::ok};
 };
 
 }

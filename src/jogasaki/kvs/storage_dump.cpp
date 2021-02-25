@@ -68,10 +68,15 @@ public:
         }
 
         for (std::size_t i = 1;; ++i) {
-            if (!it->next()) {
+            auto res = it->next();
+            if (res == status::not_found) {
                 eof_ = true;
                 storage_dump::append_eof(stream_);
                 break;
+            }
+            if (res != status::ok) {
+                // aborted_retryable should not come here - outside cc
+                fail();
             }
             std::string_view key{};
             std::string_view value{};

@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include "operator_kind.h"
@@ -22,7 +23,20 @@
 namespace jogasaki::executor::process::impl {
 class block_scope;
 }
+
 namespace jogasaki::executor::process::impl::ops {
+
+enum class context_state {
+    /**
+     * @brief the operator with this context is running normally
+     */
+    active,
+
+    /**
+     * @brief the operator with this context met error and is aborting/aborted
+     */
+    abort,
+};
 
 /**
  * @brief relational operator base class
@@ -43,50 +57,78 @@ public:
         block_scope& variables,
         memory_resource* resource,
         memory_resource* varlen_resource
-    ) :
-        task_context_(context),
-        variables_(std::addressof(variables)),
-        resource_(resource),
-        varlen_resource_(varlen_resource)
-    {}
+    );
 
     context_base(context_base const& other) = default;
     context_base& operator=(context_base const& other) = default;
     context_base(context_base&& other) noexcept = default;
     context_base& operator=(context_base&& other) noexcept = default;
 
+    /**
+     * @brief destory the object
+     */
     virtual ~context_base() = default;
 
+    /**
+     * @brief accessor for operator kind
+     */
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
-    [[nodiscard]] block_scope& variables() {
-        return *variables_;
-    }
+    /**
+     * @brief accessor to block scope variables
+     */
+    [[nodiscard]] block_scope& variables() const noexcept;
 
-    [[nodiscard]] class abstract::task_context& task_context() {
-        return *task_context_;
-    }
+    /**
+     * @brief setter of block scope variables
+     * @param variables reference to the block scope variables
+     */
+    void variables(block_scope& variables) noexcept;
 
-    void variables(block_scope& variables) {
-        variables_ = std::addressof(variables);
-    }
+    /**
+     * @brief accessor to task context
+     * @return the task context
+     */
+    [[nodiscard]] class abstract::task_context& task_context() noexcept;
 
-    [[nodiscard]] memory_resource* resource() {
-        return resource_;
-    }
+    /**
+     * @brief accessor to the memory resource used for context objects (e.g. stack of record objects)
+     */
+    [[nodiscard]] memory_resource* resource() const noexcept;
 
-    [[nodiscard]] memory_resource* varlen_resource() {
-        return varlen_resource_;
-    }
+    /**
+     * @brief accessor to the varlen memory resource referenced by context objects
+     */
+    [[nodiscard]] memory_resource* varlen_resource() const noexcept;
+
     /**
      * @brief subclass releases any resources acquired after context initialization
      */
     virtual void release() = 0;
+
+    /**
+     * @brief accessor for the context state
+     */
+    [[nodiscard]] context_state state() const noexcept;
+
+    /**
+     * @brief update the context state
+     * @param state the new state of the context
+     */
+    void state(context_state state) noexcept;
+
+    /**
+     * @brief accessor to request context
+     * @return the request context
+     */
+    [[nodiscard]] request_context* req_context() noexcept;
+
 private:
     class abstract::task_context* task_context_{};
     block_scope* variables_{};
     memory_resource* resource_{};
     memory_resource* varlen_resource_{};
+    context_state state_{context_state::active};
 };
 
 }

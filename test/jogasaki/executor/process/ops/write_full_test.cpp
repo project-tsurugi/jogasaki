@@ -160,7 +160,7 @@ public:
         std::string_view k{};
         std::string_view v{};
         ASSERT_EQ(status::ok, stg->scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
-        while(it->next()) {
+        while(it->next() == status::ok) {
             (void)it->key(k);
             (void)it->value(v);
             show_record(key_meta, k);
@@ -549,7 +549,7 @@ TEST_F(write_full_test, delete) {
     std::string_view k{str.data(), key.length()};
     std::string_view v{};
     auto tx2 = db->create_transaction();
-    ASSERT_EQ(status::err_not_found, s->get(*tx2, k, v));
+    ASSERT_EQ(status::not_found, s->get(*tx2, k, v));
 }
 
 }

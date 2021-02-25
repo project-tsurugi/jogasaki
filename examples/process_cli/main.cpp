@@ -132,7 +132,8 @@ public:
         customize_process(
             param,
             process,
-            meta
+            meta,
+            context.get()
         );
 
         dag_controller dc{std::move(cfg)};
@@ -273,7 +274,8 @@ private:
     void customize_process(
         params& param,
         process::step& process,
-        maybe_shared_ptr<meta::record_meta> meta
+        maybe_shared_ptr<meta::record_meta> meta,
+        request_context* req_context
     ) {
         // create custom contexts
         utils::xorshift_random64 rnd{1234567U};
@@ -325,6 +327,7 @@ private:
                 );
 
             ctx->work_context(std::make_unique<process::impl::work_context>(
+                req_context,
                 2UL, // operator count
                 1UL, // block_scope count
                 std::make_unique<memory::lifo_paged_memory_resource>(&pool_),

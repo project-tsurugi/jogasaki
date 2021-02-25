@@ -15,15 +15,18 @@
  */
 #pragma once
 
-#include <unordered_map>
+#include <vector>
+#include <memory>
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/process/impl/ops/context_base.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+
+class context_base;
 
 /**
  * @brief relational operator context container
@@ -31,7 +34,7 @@ using takatori::util::unsafe_downcast;
  */
 class cache_align context_container {
 public:
-    using contexts_type = std::vector<std::unique_ptr<ops::context_base>>;
+    using contexts_type = std::vector<std::unique_ptr<context_base>>;
 
     /**
      * @brief create empty object
@@ -73,7 +76,7 @@ public:
      * @return the context object at the index
      * @return nullptr if no context object is stored
      */
-    [[nodiscard]] ops::context_base* at(std::size_t idx) const noexcept;
+    [[nodiscard]] context_base* at(std::size_t idx) const noexcept;
 
 private:
     contexts_type contexts_{};

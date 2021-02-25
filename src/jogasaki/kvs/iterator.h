@@ -19,6 +19,8 @@
 #include <takatori/util/fail.h>
 #include <sharksfin/api.h>
 
+#include <jogasaki/kvs/error.h>
+
 namespace jogasaki::kvs {
 
 using ::takatori::util::fail;
@@ -54,18 +56,20 @@ public:
 
     /**
      * @brief move the iterator to next entry
-     * @return true if the operation is successful
-     * @return false otherwise (e.g. next entry is not found)
+     * @return status::ok if the operation is successful
+     * @return status::not_found if the next entry is not found
+     * @return status::abort_retryable on occ error
+     * @return any other error that occurs on lower layer (sharksfin)
      */
-    [[nodiscard]] bool next() {
+    [[nodiscard]] status next() {
         sharksfin::StatusCode res = sharksfin::iterator_next(handle_);
         if (res == sharksfin::StatusCode::OK) {
-            return true;
+            return status::ok;
         }
         if (res == sharksfin::StatusCode::NOT_FOUND) {
-            return false;
+            return status::not_found;
         }
-        fail();
+        return resolve(res);
     }
 
     /**

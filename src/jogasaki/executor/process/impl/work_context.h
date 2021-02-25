@@ -18,7 +18,9 @@
 #include <memory>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/kvs/database.h>
 
 namespace jogasaki::executor::process::impl {
@@ -38,27 +40,21 @@ public:
 
     /**
      * @brief create new object
+     * @param request_context the request context for the task containing this context
      * @param operator_count the number of operators contained in the process
      * @param block_count the number of block scopes in the process
      * @param resource memory resource used as the process work area
      * @param database the kvs database shared within the request
      */
     work_context(
+        request_context* request_context,
         std::size_t operator_count,
         std::size_t block_count,
         std::unique_ptr<memory_resource> resource,
         std::unique_ptr<memory_resource> varlen_resource,
         std::shared_ptr<kvs::database> database,
         std::shared_ptr<kvs::transaction> transaction
-    ) :
-        contexts_(operator_count),
-        resource_(std::move(resource)),
-        varlen_resource_(std::move(varlen_resource)),
-        database_(std::move(database)),
-        transaction_(std::move(transaction))
-    {
-        variables_.reserve(block_count);
-    }
+    );
 
     /**
      * @brief destruct the object
@@ -74,60 +70,53 @@ public:
      * @brief accessor to context container
      * @return the container for the contexts used by operators in the process
      */
-    [[nodiscard]] ops::context_container& contexts() noexcept {
-        return contexts_;
-    }
+    [[nodiscard]] ops::context_container& contexts() noexcept;
 
     /**
      * @brief accessor to block scopes
      * @return the list of block scopes that the processor uses to store variables
      */
-    [[nodiscard]] block_scopes& scopes() noexcept {
-        return variables_;
-    }
+    [[nodiscard]] block_scopes& scopes() noexcept;
 
     /**
      * @brief accessor to a block scope
      * @param block_index the index to designate the block scope within the list
      * @return the block scope
      */
-    [[nodiscard]] block_scope& variables(std::size_t block_index) noexcept {
-        BOOST_ASSERT(block_index < variables_.size());  //NOLINT
-        return variables_[block_index];
-    }
+    [[nodiscard]] block_scope& variables(std::size_t block_index) noexcept;
 
     /**
      * @brief accessor to memory resource
      * @return the memory resource that processor can use as work area
      */
-    [[nodiscard]] memory_resource* resource() const noexcept {
-        return resource_.get();
-    }
+    [[nodiscard]] memory_resource* resource() const noexcept;
 
     /**
      * @brief accessor to varlen memory resource
      * @return the memory resource that processor can use to work on varlen data
      */
-    [[nodiscard]] memory_resource* varlen_resource() const noexcept {
-        return varlen_resource_.get();
-    }
+    [[nodiscard]] memory_resource* varlen_resource() const noexcept;
 
     /**
      * @brief accessor to kvs database
      * @return the database that is shared within request
      */
-    [[nodiscard]] kvs::database* database() const noexcept {
-        return database_.get();
-    }
+    [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
      * @brief accessor to kvs transaction
      * @return the transaction that is shared within request
      */
-    [[nodiscard]] kvs::transaction* transaction() const noexcept {
-        return transaction_.get();
-    }
+    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+
+    /**
+     * @brief accessor to request context
+     * @return the request context that is shared within request
+     */
+    [[nodiscard]] request_context* req_context() const noexcept;
+
 private:
+    request_context* request_context_{};
     ops::context_container contexts_{};
     block_scopes variables_{};
     std::unique_ptr<memory_resource> resource_{};

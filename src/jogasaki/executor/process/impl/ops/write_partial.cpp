@@ -21,6 +21,7 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/error.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
@@ -55,7 +56,7 @@ details::write_partial_field::write_partial_field(
     update_variable_nullity_offset_(update_variable_nullity_offset)
 {}
 
-std::string_view ops::write_partial::prepare_encoded_key(write_partial_context& ctx) {
+std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) {
     auto source = ctx.variables().store().ref();
     // calculate length first, and then put
     check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source);
@@ -64,7 +65,7 @@ std::string_view ops::write_partial::prepare_encoded_key(write_partial_context& 
     return {keys.data(), keys.length()};
 }
 
-void ops::write_partial::encode_and_put(write_partial_context& ctx) {
+void write_partial::encode_and_put(write_partial_context& ctx) {
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put
@@ -79,22 +80,32 @@ void ops::write_partial::encode_and_put(write_partial_context& ctx) {
             {keys.data(), keys.length()},
             {values.data(), values.length()}
         ); is_error(res)) {
+        if(res == status::err_aborted_retryable) {
+            ctx.state(context_state::abort);
+            ctx.req_context()->status_code(res);
+            return;
+        }
+        // updating already found record, so err_not_found should never happen
         fail();
     }
-    // warnings such as status::not_found are safely ignored
 }
 
-void ops::write_partial::update_record(write_partial_context& ctx) {
+void write_partial::update_record(write_partial_context& ctx) {
     auto variables = ctx.variables().store().ref();
     update_fields(key_fields_, ctx.key_store_.ref(), variables);
     update_fields(value_fields_, ctx.value_store_.ref(), variables);
 }
 
-void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
+void write_partial::find_record_and_extract(write_partial_context& ctx) {
     auto varlen_resource = ctx.varlen_resource();
     auto k = prepare_encoded_key(ctx);
     std::string_view v{};
     if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); ! is_ok(res)) {
+        if(res == status::err_aborted_retryable) {
+            ctx.state(context_state::abort);
+            ctx.req_context()->status_code(res);
+            return;
+        }
         // The update target has been identified on the upstream operator such as find,
         // so this lookup must be successful. If the control reaches here, it's internal error.
         fail();
@@ -104,11 +115,16 @@ void ops::write_partial::find_record_and_extract(write_partial_context& ctx) {
     decode_fields(key_fields_, keys, ctx.key_store_.ref(), varlen_resource);
     decode_fields(value_fields_, values, ctx.value_store_.ref(), varlen_resource);
     if(auto res = ctx.stg_->remove( *ctx.tx_, k ); ! is_ok(res)) {
+        if(res == status::err_aborted_retryable) {
+            ctx.state(context_state::abort);
+            ctx.req_context()->status_code(res);
+            return;
+        }
         fail();
     }
 }
 
-void ops::write_partial::update_fields(
+void write_partial::update_fields(
     std::vector<details::write_partial_field> const& fields,
     accessor::record_ref target,
     accessor::record_ref source
@@ -128,7 +144,7 @@ void ops::write_partial::update_fields(
     }
 }
 
-void ops::write_partial::decode_fields(
+void write_partial::decode_fields(
     std::vector<details::write_partial_field> const& fields,
     kvs::stream& stream,
     accessor::record_ref target,
@@ -152,7 +168,7 @@ void ops::write_partial::decode_fields(
     }
 }
 
-void ops::write_partial::check_length_and_extend_buffer(
+void write_partial::check_length_and_extend_buffer(
     bool from_variables,
     write_partial_context& ,
     std::vector<details::write_partial_field> const& fields,
@@ -166,7 +182,7 @@ void ops::write_partial::check_length_and_extend_buffer(
     }
 }
 
-std::vector<details::write_partial_field> ops::write_partial::create_fields(
+std::vector<details::write_partial_field> write_partial::create_fields(
     write_kind,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
@@ -258,7 +274,7 @@ std::vector<details::write_partial_field> ops::write_partial::create_fields(
     return ret;
 }
 
-maybe_shared_ptr<meta::record_meta> ops::write_partial::create_meta(yugawara::storage::index const& idx, bool for_key) {
+maybe_shared_ptr<meta::record_meta> write_partial::create_meta(yugawara::storage::index const& idx, bool for_key) {
     std::vector<meta::field_type> types{};
     boost::dynamic_bitset<std::uint64_t> nullities{};
     if (for_key) {
@@ -275,7 +291,7 @@ maybe_shared_ptr<meta::record_meta> ops::write_partial::create_meta(yugawara::st
     return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
 }
 
-void ops::write_partial::encode_fields(
+void write_partial::encode_fields(
     bool from_variable,
     std::vector<details::write_partial_field> const& fields,
     kvs::stream& target,
@@ -292,27 +308,27 @@ void ops::write_partial::encode_fields(
     }
 }
 
-maybe_shared_ptr<meta::record_meta> const& ops::write_partial::value_meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& write_partial::value_meta() const noexcept {
     return value_meta_;
 }
 
-maybe_shared_ptr<meta::record_meta> const& ops::write_partial::key_meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& write_partial::key_meta() const noexcept {
     return key_meta_;
 }
 
-void ops::write_partial::finish(abstract::task_context*) {
+void write_partial::finish(abstract::task_context*) {
     //no-op
 }
 
-std::string_view ops::write_partial::storage_name() const noexcept {
+std::string_view write_partial::storage_name() const noexcept {
     return storage_name_;
 }
 
-operator_kind ops::write_partial::kind() const noexcept {
+operator_kind write_partial::kind() const noexcept {
     return operator_kind::write_partial;
 }
 
-void ops::write_partial::operator()(write_partial_context& ctx) {
+void write_partial::operator()(write_partial_context& ctx) {
     // find update target and fill ctx.key_store_ and ctx.value_store_
     find_record_and_extract(ctx);
 
@@ -323,7 +339,7 @@ void ops::write_partial::operator()(write_partial_context& ctx) {
     encode_and_put(ctx);
 }
 
-void ops::write_partial::process_record(abstract::task_context* context) {
+void write_partial::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<write_partial_context>(index(), ctx.contexts());
@@ -342,7 +358,7 @@ void ops::write_partial::process_record(abstract::task_context* context) {
     (*this)(*p);
 }
 
-ops::write_partial::write_partial(
+write_partial::write_partial(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -365,7 +381,7 @@ ops::write_partial::write_partial(
     )
 {}
 
-ops::write_partial::write_partial(
+write_partial::write_partial(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,

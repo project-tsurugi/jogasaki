@@ -96,14 +96,17 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
         (context_->result() && external_output > 0) ? &context_->result()->store(partition) : nullptr
     );
 
-    ctx->work_context(std::make_unique<impl::work_context>(
-        operators.size(),
-        info_->scopes_info().size(),
-        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
-        context_->database(),
-        context_->transaction()
-    ));
+    ctx->work_context(
+        std::make_unique<impl::work_context>(
+            context_,
+            operators.size(),
+            info_->scopes_info().size(),
+            std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+            std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+            context_->database(),
+            context_->transaction()
+        )
+    );
     return ctx;
 }
 }

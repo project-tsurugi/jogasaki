@@ -57,6 +57,10 @@ abstract::task_context* context_helper::task_context() const noexcept {
     return context_;
 }
 
+request_context* context_helper::req_context() const noexcept {
+    return work_context_->req_context();
+}
+
 }
 
 

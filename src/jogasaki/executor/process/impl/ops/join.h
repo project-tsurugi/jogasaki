@@ -93,6 +93,9 @@ public:
                 ctx.varlen_resource()
             );
         }
+        if (p->inactive()) {
+            return {operation_status_kind::aborted};
+        }
         return (*this)(*p, cgrp, context);
     }
 
@@ -136,7 +139,10 @@ public:
                     res = evaluator_(scope, resource).template to<bool>();
                 }
                 if (res && downstream_) {
-                    unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+                    if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                        ctx.abort();
+                        return {operation_status_kind::aborted};
+                    }
                 }
             }
             if(! incr.increment()) {

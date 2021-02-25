@@ -48,13 +48,18 @@ operation_status flatten::process_group(abstract::task_context* context, bool la
             ctx.varlen_resource()
         );
     }
+    if (p->inactive()) {
+        return {operation_status_kind::aborted};
+    }
     return (*this)(*p, context);
 }
 
 operation_status flatten::operator()(flatten_context& ctx, abstract::task_context* context) {
-    (void)ctx;
     if (downstream_) {
-        unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+        if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+            ctx.abort();
+            return {operation_status_kind::aborted};
+        }
     }
     return {};
 }

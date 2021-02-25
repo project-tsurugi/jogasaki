@@ -98,6 +98,9 @@ operation_status scan::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
+    if (p->inactive()) {
+        return {operation_status_kind::aborted};
+    }
     return (*this)(*p, context);
 }
 
@@ -118,7 +121,11 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         decode_fields(key_fields_, keys, target, resource);
         decode_fields(value_fields_, values, target, resource);
         if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
+                ctx.abort();
+                close(ctx);
+                return {operation_status_kind::aborted};
+            }
         }
     }
     if (st == status::not_found) {

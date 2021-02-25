@@ -64,4 +64,8 @@ class request_context* context_base::req_context() noexcept {
     return h.req_context();
 }
 
+void context_base::abort() noexcept {
+    state(context_state::abort);
+}
+
 }

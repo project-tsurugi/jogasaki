@@ -51,6 +51,9 @@ operation_status ops::offer::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
+    if (p->inactive()) {
+        return {operation_status_kind::aborted};
+    }
     return (*this)(*p);
 }
 

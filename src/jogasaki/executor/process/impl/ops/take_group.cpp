@@ -60,6 +60,9 @@ operation_status take_group::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
+    if (p->inactive()) {
+        return {operation_status_kind::aborted};
+    }
     return (*this)(*p, context);
 }
 
@@ -106,7 +109,11 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
             }
             has_next = ctx.reader_->next_member();
             if (downstream_) {
-                unsafe_downcast<group_operator>(downstream_.get())->process_group(context, !has_next);
+                if(auto st = unsafe_downcast<group_operator>(downstream_.get())->
+                        process_group(context, !has_next); !st) {
+                    ctx.abort();
+                    return {operation_status_kind::aborted};
+                }
             }
         }
     }

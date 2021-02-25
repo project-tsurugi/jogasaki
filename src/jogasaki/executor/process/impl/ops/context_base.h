@@ -118,6 +118,18 @@ public:
     void state(context_state state) noexcept;
 
     /**
+     * @brief update the context state aborted
+     */
+    void abort() noexcept;
+
+    /**
+     * @brief update the context state aborted
+     */
+    [[nodiscard]] bool inactive() const noexcept {
+        return state_ != context_state::active;
+    }
+
+    /**
      * @brief accessor to request context
      * @return the request context
      */

@@ -124,6 +124,9 @@ operation_status take_cogroup::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
+    if (p->inactive()) {
+        return {operation_status_kind::aborted};
+    }
     return (*this)(*p, context);
 }
 
@@ -212,7 +215,14 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
                         );
                     }
                     cogroup<iterator> cgrp{ groups };
-                    unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->process_cogroup(context, cgrp);
+                    if(auto st = unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->
+                            process_cogroup(context, cgrp); !st) {
+                        ctx.abort();
+                        for(auto* r : ctx.readers_) {
+                            r->release();
+                        }
+                        return {operation_status_kind::aborted};
+                    }
                 }
                 for(auto&& in : inputs) {
                     in.reset_values();

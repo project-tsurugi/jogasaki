@@ -167,6 +167,9 @@ operation_status join_find::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
+    if (p->inactive()) {
+        return {operation_status_kind::aborted};
+    }
     return (*this)(*p, context);
 }
 
@@ -180,7 +183,10 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
             }
         }
         if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                ctx.abort();
+                return {operation_status_kind::aborted};
+            }
             unsafe_downcast<record_operator>(downstream_.get())->finish(context);
         }
         return {};

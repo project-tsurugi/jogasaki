@@ -40,14 +40,12 @@ public:
     /**
      * @brief create new object
      */
-    explicit iterator(sharksfin::IteratorHandle handle) : handle_(handle) {}
+    explicit iterator(sharksfin::IteratorHandle handle);
 
     /**
      * @brief destruct object
      */
-    ~iterator() noexcept {
-        sharksfin::iterator_dispose(handle_);
-    }
+    ~iterator() noexcept;
 
     iterator(iterator const& other) = delete;
     iterator& operator=(iterator const& other) = delete;
@@ -61,16 +59,7 @@ public:
      * @return status::abort_retryable on occ error
      * @return any other error that occurs on lower layer (sharksfin)
      */
-    [[nodiscard]] status next() {
-        sharksfin::StatusCode res = sharksfin::iterator_next(handle_);
-        if (res == sharksfin::StatusCode::OK) {
-            return status::ok;
-        }
-        if (res == sharksfin::StatusCode::NOT_FOUND) {
-            return status::not_found;
-        }
-        return resolve(res);
-    }
+    [[nodiscard]] status next();
 
     /**
      * @brief retrieve the key of the current iterator position
@@ -81,14 +70,7 @@ public:
      * @return false otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
-    [[nodiscard]] bool key(std::string_view& k) const {
-        sharksfin::Slice slice{};
-        if(sharksfin::StatusCode res = sharksfin::iterator_get_key(handle_, &slice);res != sharksfin::StatusCode::OK) {
-            return false;
-        }
-        k = slice.to_string_view();
-        return true;
-    }
+    [[nodiscard]] bool key(std::string_view& k) const;
 
     /**
      * @brief retrieve the value of the current iterator position
@@ -99,23 +81,15 @@ public:
      * @return false otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
-    [[nodiscard]] bool value(std::string_view& v) const {
-        sharksfin::Slice slice{};
-        if(sharksfin::StatusCode res = sharksfin::iterator_get_value(handle_, &slice);res != sharksfin::StatusCode::OK) {
-            return false;
-        }
-        v = slice.to_string_view();
-        return true;
-    }
+    [[nodiscard]] bool value(std::string_view& v) const;
 
     /**
      * @brief return the native handle in the transaction layer
      * @note this is expected to be package private (i.e. callable from code in kvs namespace)
      * @return the handle held by this object
      */
-    [[nodiscard]] sharksfin::IteratorHandle handle() const noexcept {
-        return handle_;
-    }
+    [[nodiscard]] sharksfin::IteratorHandle handle() const noexcept;
+
 private:
     sharksfin::IteratorHandle handle_{};
 };

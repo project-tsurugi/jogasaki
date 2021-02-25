@@ -17,6 +17,7 @@
 
 #include "request_context.h"
 #include "event_channel.h"
+#include "error.h"
 
 namespace jogasaki {
 
@@ -66,12 +67,17 @@ memory::lifo_paged_memory_resource* request_context::request_resource() const no
 }
 
 void request_context::status_code(status val) noexcept {
-    // TODO atomic update
-    status_code_ = val;
+    status s;
+    do {
+        s = status_code_.load();
+        if (is_error(s)) {
+            return;
+        }
+    } while (!status_code_.compare_exchange_strong(s, val));
 }
 
 status request_context::status_code() const noexcept {
-    return status_code_;
+    return status_code_.load();
 }
 
 }

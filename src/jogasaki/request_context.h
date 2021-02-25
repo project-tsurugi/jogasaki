@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <atomic>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/plan/compiler_context.h>
@@ -90,13 +92,18 @@ public:
 
     /**
      * @brief setter for the result status
+     * @details this overwrites the status code with more severe status code (e.g. warning is overwritten by an error)
+     * If error code is already set to this object, this is no-op.
+     * @note this function is thread-safe and multiple threads can call this function concurrently
      */
     void status_code(status val) noexcept;
 
     /**
      * @brief accessor for the result status
+     * @note this function is not thread-safe and should not be called concurrently with status_code(status val) above.
      */
     [[nodiscard]] status status_code() const noexcept;
+
 private:
     std::shared_ptr<event_channel> channel_{};
     std::shared_ptr<class configuration> config_{};
@@ -104,7 +111,7 @@ private:
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};
-    status status_code_{status::ok};
+    std::atomic<status> status_code_{status::ok};
 };
 
 }

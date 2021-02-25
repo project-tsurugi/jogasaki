@@ -112,7 +112,7 @@ take_cogroup::take_cogroup(
     }
 }
 
-void take_cogroup::process_record(abstract::task_context* context) {
+operation_status take_cogroup::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<take_cogroup_context>(index(), ctx.contexts());
@@ -124,10 +124,10 @@ void take_cogroup::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void take_cogroup::operator()(take_cogroup_context& ctx, abstract::task_context* context) {
+operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::task_context* context) {
     using iterator = data::iterable_record_store::iterator;
     if (ctx.readers_.empty()) {
         create_readers(ctx);
@@ -229,6 +229,7 @@ void take_cogroup::operator()(take_cogroup_context& ctx, abstract::task_context*
     if (downstream_) {
         unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->finish(context);
     }
+    return {};
 }
 
 operator_kind take_cogroup::kind() const noexcept {

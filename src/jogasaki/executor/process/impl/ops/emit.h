@@ -70,15 +70,17 @@ public:
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
+     * @return status of the operation
      */
-    void process_record(abstract::task_context* context) override;
+    operation_status process_record(abstract::task_context* context) override;
 
     /**
      * @brief process record with context object
      * @details emit the record and copy result to client buffer
      * @param ctx operator context object for the execution
+     * @return status of the operation
      */
-    void operator()(emit_context& ctx);
+    operation_status operator()(emit_context& ctx);
 
     [[nodiscard]] operator_kind kind() const noexcept override;
 

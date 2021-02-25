@@ -65,7 +65,7 @@ std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) 
     return {keys.data(), keys.length()};
 }
 
-void write_partial::encode_and_put(write_partial_context& ctx) {
+operation_status write_partial::encode_and_put(write_partial_context& ctx) {
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put
@@ -83,11 +83,12 @@ void write_partial::encode_and_put(write_partial_context& ctx) {
         if(res == status::err_aborted_retryable) {
             ctx.state(context_state::abort);
             ctx.req_context()->status_code(res);
-            return;
+            return {operation_status_kind::aborted};
         }
         // updating already found record, so err_not_found should never happen
         fail();
     }
+    return {};
 }
 
 void write_partial::update_record(write_partial_context& ctx) {
@@ -96,7 +97,7 @@ void write_partial::update_record(write_partial_context& ctx) {
     update_fields(value_fields_, ctx.value_store_.ref(), variables);
 }
 
-void write_partial::find_record_and_extract(write_partial_context& ctx) {
+operation_status write_partial::find_record_and_extract(write_partial_context& ctx) {
     auto varlen_resource = ctx.varlen_resource();
     auto k = prepare_encoded_key(ctx);
     std::string_view v{};
@@ -104,7 +105,7 @@ void write_partial::find_record_and_extract(write_partial_context& ctx) {
         if(res == status::err_aborted_retryable) {
             ctx.state(context_state::abort);
             ctx.req_context()->status_code(res);
-            return;
+            return {operation_status_kind::aborted};
         }
         // The update target has been identified on the upstream operator such as find,
         // so this lookup must be successful. If the control reaches here, it's internal error.
@@ -118,10 +119,11 @@ void write_partial::find_record_and_extract(write_partial_context& ctx) {
         if(res == status::err_aborted_retryable) {
             ctx.state(context_state::abort);
             ctx.req_context()->status_code(res);
-            return;
+            return {operation_status_kind::aborted};
         }
         fail();
     }
+    return {};
 }
 
 void write_partial::update_fields(
@@ -328,18 +330,23 @@ operator_kind write_partial::kind() const noexcept {
     return operator_kind::write_partial;
 }
 
-void write_partial::operator()(write_partial_context& ctx) {
+operation_status write_partial::operator()(write_partial_context& ctx) {
     // find update target and fill ctx.key_store_ and ctx.value_store_
-    find_record_and_extract(ctx);
+    if(auto res = find_record_and_extract(ctx); !res) {
+        return res;
+    }
 
     // update fields in key_store_/value_store_ with values from scope variable
     update_record(ctx);
 
     // encode values from key_store_/value_store_ and send to kvs
-    encode_and_put(ctx);
+    if(auto res = encode_and_put(ctx); !res) {
+        return res;
+    }
+    return {};
 }
 
-void write_partial::process_record(abstract::task_context* context) {
+operation_status write_partial::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<write_partial_context>(index(), ctx.contexts());
@@ -355,7 +362,7 @@ void write_partial::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p);
+    return (*this)(*p);
 }
 
 write_partial::write_partial(

@@ -79,8 +79,9 @@ public:
      * @brief create context (if needed) and process cogroup
      * @param context task-wide context used to create operator context
      * @param cgrp the cogroup to process
+     * @return status of the operation
      */
-    void process_cogroup(abstract::task_context* context, cogroup<iterator>& cgrp) override {
+    operation_status process_cogroup(abstract::task_context* context, cogroup<iterator>& cgrp) override {
         BOOST_ASSERT(context != nullptr);  //NOLINT
         context_helper ctx{*context};
         auto* p = find_context<join_context>(index(), ctx.contexts());
@@ -92,14 +93,15 @@ public:
                 ctx.varlen_resource()
             );
         }
-        (*this)(*p, cgrp, context);
+        return (*this)(*p, cgrp, context);
     }
 
     /**
      * @brief process record with context object
      * @param ctx operator context object for the execution
+     * @return status of the operation
      */
-    void operator()(join_context& ctx, cogroup<iterator>& cgrp, abstract::task_context* context = nullptr) {
+    operation_status operator()(join_context& ctx, cogroup<iterator>& cgrp, abstract::task_context* context = nullptr) {
         (void)kind_;
         std::vector<iterator_pair> iterators{};
         iterators.reserve(cgrp.groups().size());
@@ -141,6 +143,7 @@ public:
                 break;
             }
         }
+        return {};
     }
 
     [[nodiscard]] operator_kind kind() const noexcept override {

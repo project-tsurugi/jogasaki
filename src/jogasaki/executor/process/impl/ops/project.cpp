@@ -41,7 +41,7 @@ ops::project::project(operator_base::operator_index_type index, const processor_
     }
 }
 
-void project::process_record(abstract::task_context* context) {
+operation_status project::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<project_context>(index(), ctx.contexts());
@@ -53,10 +53,10 @@ void project::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void project::operator()(project_context& ctx, abstract::task_context* context) {
+operation_status project::operator()(project_context& ctx, abstract::task_context* context) {
     auto& scope = ctx.variables();
     // fill scope variables
     auto ref = scope.store().ref();
@@ -80,6 +80,7 @@ void project::operator()(project_context& ctx, abstract::task_context* context) 
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
     }
+    return {};
 }
 
 operator_kind project::kind() const noexcept {

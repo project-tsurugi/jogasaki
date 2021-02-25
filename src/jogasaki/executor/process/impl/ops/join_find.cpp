@@ -153,7 +153,7 @@ status matcher::result() const noexcept {
 
 }
 
-void join_find::process_record(abstract::task_context* context) {
+operation_status join_find::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<class join_find_context>(index(), ctx.contexts());
@@ -167,28 +167,30 @@ void join_find::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void join_find::operator()(class join_find_context& ctx, abstract::task_context* context) {
+operation_status join_find::operator()(class join_find_context& ctx, abstract::task_context* context) {
     auto resource = ctx.varlen_resource();
     if((*ctx.matcher_)(ctx.variables(), *ctx.stg_, *ctx.tx_, resource)) {
         if (condition_) {
             auto r = evaluator_(ctx.variables());
             if(r.has_value() && !r.to<bool>()) {
-                return;
+                return {};
             }
         }
         if (downstream_) {
             unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             unsafe_downcast<record_operator>(downstream_.get())->finish(context);
         }
-        return;
+        return {};
     }
     if(ctx.matcher_->result() != status::not_found) {
         ctx.state(context_state::abort);
         ctx.req_context()->status_code(ctx.matcher_->result());
+        return {operation_status_kind::aborted};
     }
+    return {};
 }
 
 operator_kind join_find::kind() const noexcept {

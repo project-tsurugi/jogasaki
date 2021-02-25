@@ -82,7 +82,7 @@ scan::scan(
     )
 {}
 
-void scan::process_record(abstract::task_context* context) {
+operation_status scan::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<scan_context>(index(), ctx.contexts());
@@ -98,10 +98,10 @@ void scan::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void scan::operator()(scan_context& ctx, abstract::task_context* context) {
+operation_status scan::operator()(scan_context& ctx, abstract::task_context* context) {
     open(ctx);
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
@@ -128,8 +128,10 @@ void scan::operator()(scan_context& ctx, abstract::task_context* context) {
     } else {
         ctx.state(context_state::abort);
         ctx.req_context()->status_code(st);
+        return {operation_status_kind::aborted};
     }
     close(ctx);
+    return {};
 }
 
 operator_kind scan::kind() const noexcept {

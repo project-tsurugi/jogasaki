@@ -35,7 +35,7 @@ flatten::flatten(
     downstream_(std::move(downstream))
 {}
 
-void flatten::process_group(abstract::task_context* context, bool last_member) {
+operation_status flatten::process_group(abstract::task_context* context, bool last_member) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     (void)last_member;
     context_helper ctx{*context};
@@ -48,14 +48,15 @@ void flatten::process_group(abstract::task_context* context, bool last_member) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void flatten::operator()(flatten_context& ctx, abstract::task_context* context) {
+operation_status flatten::operator()(flatten_context& ctx, abstract::task_context* context) {
     (void)ctx;
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
     }
+    return {};
 }
 
 operator_kind flatten::kind() const noexcept {

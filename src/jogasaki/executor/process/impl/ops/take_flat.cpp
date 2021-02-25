@@ -42,7 +42,7 @@ ops::take_flat::take_flat(operator_base::operator_index_type index, const proces
     utils::assert_all_fields_nullable(*meta_);
 }
 
-void ops::take_flat::process_record(abstract::task_context* context) {
+operation_status ops::take_flat::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<take_flat_context>(index(), ctx.contexts());
@@ -54,10 +54,10 @@ void ops::take_flat::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void take_flat::operator()(take_flat_context& ctx, abstract::task_context* context) {
+operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_context* context) {
     auto target = ctx.variables().store().ref();
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
@@ -86,6 +86,7 @@ void take_flat::operator()(take_flat_context& ctx, abstract::task_context* conte
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
+    return {};
 }
 
 operator_kind take_flat::kind() const noexcept {

@@ -79,7 +79,7 @@ write_full::write_full(
     )
 {}
 
-void write_full::process_record(abstract::task_context* context) {
+operation_status write_full::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<write_full_context>(index(), ctx.contexts());
@@ -92,19 +92,19 @@ void write_full::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p);
+    return (*this)(*p);
 }
 
-void write_full::operator()(write_full_context& ctx) {
+operation_status write_full::operator()(write_full_context& ctx) {
     switch(kind_) {
         case write_kind::insert:
-            do_insert(ctx);
+            return do_insert(ctx);
             break;
         case write_kind::insert_or_update:
-            do_insert(ctx);
+            return do_insert(ctx);
             break;
         case write_kind::delete_:
-            do_delete(ctx);
+            return do_delete(ctx);
             break;
         default:
             fail();
@@ -202,7 +202,7 @@ std::vector<details::write_full_field> write_full::create_fields(
     return ret;
 }
 
-void write_full::do_insert(write_full_context& ctx) {
+operation_status write_full::do_insert(write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
     // calculate length first, then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
@@ -222,7 +222,9 @@ void write_full::do_insert(write_full_context& ctx) {
         ); ! is_ok(res)) {
         ctx.state(context_state::abort);
         ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
     }
+    return {};
 }
 
 void write_full::check_length_and_extend_buffer(
@@ -238,17 +240,18 @@ void write_full::check_length_and_extend_buffer(
     }
 }
 
-void write_full::do_delete(write_full_context& ctx) {
+operation_status write_full::do_delete(write_full_context& ctx) {
     auto k = prepare_key(ctx);
     if(auto res = ctx.stg_->remove(*ctx.tx_, k ); is_error(res)) {
         if(res == status::err_aborted_retryable) {
             ctx.state(context_state::abort);
             ctx.req_context()->status_code(res);
-            return;
+            return {operation_status_kind::aborted};
         }
         fail();
     }
     // warning such as status::not_found are safely ignored for delete
+    return {};
 }
 
 std::string_view write_full::prepare_key(write_full_context& ctx) {

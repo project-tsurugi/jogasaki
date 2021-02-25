@@ -26,8 +26,9 @@ public:
     void body(std::function<void(void)> f) {
         f_ = std::move(f);
     }
-    void process_record(abstract::task_context* context) override {
+    operation_status process_record(abstract::task_context* context) override {
         f_();
+        return {};
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
@@ -43,8 +44,9 @@ public:
     void body(std::function<void(bool)> f) {
         f_ = std::move(f);
     }
-    void process_group(abstract::task_context* context, bool last_member) override {
+    operation_status process_group(abstract::task_context* context, bool last_member) override {
         f_(last_member);
+        return {};
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
@@ -61,8 +63,9 @@ public:
     void body(std::function<void(cogroup<Iterator>& c)> f) {
         f_ = std::move(f);
     }
-    void process_cogroup(abstract::task_context* context, cogroup<Iterator>& c) override {
+    operation_status process_cogroup(abstract::task_context* context, cogroup<Iterator>& c) override {
         f_(c);
+        return {};
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;

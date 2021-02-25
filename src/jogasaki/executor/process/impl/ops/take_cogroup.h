@@ -84,16 +84,18 @@ public:
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
+     * @return status of the operation
      */
-    void process_record(abstract::task_context* context) override;
+    operation_status process_record(abstract::task_context* context) override;
 
     /**
      * @brief process record with context object
      * @details process record, fill variables, and invoke downstream
      * @param ctx operator context object for the execution
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
+     * @return status of the operation
      */
-    void operator()(take_cogroup_context& ctx, abstract::task_context* context = nullptr);
+    operation_status operator()(take_cogroup_context& ctx, abstract::task_context* context = nullptr);
 
     [[nodiscard]] operator_kind kind() const noexcept override;
 

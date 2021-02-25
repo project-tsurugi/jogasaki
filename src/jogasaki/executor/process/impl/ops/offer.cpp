@@ -38,7 +38,7 @@ ops::offer::offer(operator_base::operator_index_type index, const processor_info
     utils::assert_all_fields_nullable(*meta_);
 }
 
-void ops::offer::process_record(abstract::task_context* context) {
+operation_status ops::offer::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<offer_context>(index(), ctx.contexts());
@@ -51,10 +51,10 @@ void ops::offer::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p);
+    return (*this)(*p);
 }
 
-void ops::offer::operator()(offer_context& ctx) {
+operation_status ops::offer::operator()(offer_context& ctx) {
     auto target = ctx.store_.ref();
     auto source = ctx.variables().store().ref();
     for(auto &f : fields_) {
@@ -65,6 +65,7 @@ void ops::offer::operator()(offer_context& ctx) {
         ctx.writer_ = ctx.task_context().downstream_writer(writer_index_);
     }
     ctx.writer_->write(target);
+    return {};
 }
 
 operator_kind offer::kind() const noexcept {

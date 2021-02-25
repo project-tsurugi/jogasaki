@@ -151,15 +151,17 @@ public:
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
+     * @return status of the operation
      */
-    void process_record(abstract::task_context* context) override;
+    operation_status process_record(abstract::task_context* context) override;
 
     /**
      * @brief process record with context object
      * @details process record, construct key/value sequences and invoke kvs to conduct write operations
      * @param ctx operator context object for the execution
+     * @return status of the operation
      */
-    void operator()(write_partial_context& ctx);
+    operation_status operator()(write_partial_context& ctx);
 
     [[nodiscard]] operator_kind kind() const noexcept override;
 
@@ -234,11 +236,11 @@ private:
         accessor::record_ref source
     );
 
-    void find_record_and_extract(write_partial_context& ctx);
+    operation_status find_record_and_extract(write_partial_context& ctx);
 
     void update_record(write_partial_context& ctx);
 
-    void encode_and_put(write_partial_context& ctx);
+    operation_status encode_and_put(write_partial_context& ctx);
 
     std::string_view prepare_encoded_key(write_partial_context& ctx);
 };

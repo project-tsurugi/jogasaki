@@ -48,7 +48,7 @@ ops::take_group::take_group(
     utils::assert_all_fields_nullable(meta_->value());
 }
 
-void take_group::process_record(abstract::task_context* context) {
+operation_status take_group::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<take_group_context>(index(), ctx.contexts());
@@ -60,10 +60,10 @@ void take_group::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void take_group::operator()(take_group_context& ctx, abstract::task_context* context) {
+operation_status take_group::operator()(take_group_context& ctx, abstract::task_context* context) {
     auto target = ctx.variables().store().ref();
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
@@ -113,6 +113,7 @@ void take_group::operator()(take_group_context& ctx, abstract::task_context* con
     if (downstream_) {
         unsafe_downcast<group_operator>(downstream_.get())->finish(context);
     }
+    return {};
 }
 
 operator_kind take_group::kind() const noexcept {

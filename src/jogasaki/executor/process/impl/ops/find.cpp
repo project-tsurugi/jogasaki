@@ -96,7 +96,7 @@ find::find(
     )
 {}
 
-void find::process_record(abstract::task_context* context) {
+operation_status find::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<class find_context>(index(), ctx.contexts());
@@ -109,20 +109,20 @@ void find::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void find::operator()(class find_context& ctx, abstract::task_context* context) {
+operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     if(auto res = ctx.stg_->get(*ctx.tx_, key_, v); res != status::ok) {
         if (res == status::not_found) {
-            return;
+            return {};
         }
         ctx.state(context_state::abort);
         ctx.req_context()->status_code(res);
-        return;
+        return {operation_status_kind::aborted};
     }
     kvs::stream keys{key_.data(), key_.size()}; //TODO create read-only stream
     kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
@@ -132,6 +132,7 @@ void find::operator()(class find_context& ctx, abstract::task_context* context) 
         unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
+    return {};
 }
 
 operator_kind find::kind() const noexcept {

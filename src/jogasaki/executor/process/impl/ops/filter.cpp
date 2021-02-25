@@ -40,7 +40,7 @@ ops::filter::filter(
     downstream_(std::move(downstream))
 {}
 
-void filter::process_record(abstract::task_context* context) {
+operation_status filter::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<filter_context>(index(), ctx.contexts());
@@ -52,10 +52,10 @@ void filter::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    (*this)(*p, context);
+    return (*this)(*p, context);
 }
 
-void filter::operator()(filter_context& ctx, abstract::task_context* context) {
+operation_status filter::operator()(filter_context& ctx, abstract::task_context* context) {
     auto& scope = ctx.variables();
     auto resource = ctx.varlen_resource();
     bool res;
@@ -68,6 +68,7 @@ void filter::operator()(filter_context& ctx, abstract::task_context* context) {
             unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
         }
     }
+    return {};
 }
 
 operator_kind filter::kind() const noexcept {

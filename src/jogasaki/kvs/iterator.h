@@ -15,17 +15,11 @@
  */
 #pragma once
 
-#include <glog/logging.h>
-#include <takatori/util/fail.h>
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
 
 namespace jogasaki::kvs {
-
-using ::takatori::util::fail;
-
-class database;
 
 /**
  * @brief iterator object

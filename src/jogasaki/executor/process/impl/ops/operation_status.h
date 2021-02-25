@@ -75,7 +75,7 @@ public:
     /**
      * @brief create new object
      */
-    constexpr operation_status(
+    constexpr operation_status(  //NOLINT
         operation_status_kind kind
     ) :
         kind_(kind)

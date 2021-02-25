@@ -15,16 +15,11 @@
  */
 #include "iterator.h"
 
-#include <glog/logging.h>
-#include <takatori/util/fail.h>
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
 
 namespace jogasaki::kvs {
-
-using ::takatori::util::fail;
-
 
 iterator::iterator(sharksfin::IteratorHandle handle) : handle_(handle) {}
 
@@ -64,5 +59,6 @@ bool iterator::value(std::string_view& v) const {
 sharksfin::IteratorHandle iterator::handle() const noexcept {
     return handle_;
 }
+
 }
 

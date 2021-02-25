@@ -189,4 +189,13 @@ TEST_F(api_test, dump_load) {
     EXPECT_DOUBLE_EQ(20.0, result[1].ref().get_value<double>(meta->value_offset(1)));
 }
 
+TEST_F(api_test, select_update_delete_for_missing_record) {
+    // verify no error even if target records are missing
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0", result);
+    ASSERT_EQ(0, result.size());
+    execute_statement("DELETE FROM T0 WHERE C0=1");
+    execute_statement("UPDATE T0 SET C1=1.0 WHERE C0=1");
+}
+
 }

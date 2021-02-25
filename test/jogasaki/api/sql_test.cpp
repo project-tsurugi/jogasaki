@@ -132,7 +132,7 @@ TEST_F(sql_test, update_by_part_of_primary_key) {
 }
 
 // shirakami raises err_aborted_retryable on commit
-TEST_F(sql_test, DISABLED_update_primary_key) {
+TEST_F(sql_test, update_primary_key) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
     execute_statement( "UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");

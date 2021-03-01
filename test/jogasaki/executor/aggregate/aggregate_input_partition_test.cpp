@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
@@ -41,6 +41,9 @@ using namespace jogasaki::executor::exchange::shuffle;
 
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
+
+using executor::function::incremental::aggregate_function_info_impl;
+using executor::function::incremental::aggregate_function_kind;
 
 class aggregate_input_partition_test : public test_root {
 public:
@@ -78,7 +81,7 @@ using kind = meta::field_type_kind;
 
 TEST_F(aggregate_input_partition_test, basic) {
     auto context = std::make_shared<request_context>();
-    auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::sum>>();
+    auto func_sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
     auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},
         std::vector<aggregate_info::value_spec>{
             {
@@ -120,7 +123,7 @@ TEST_F(aggregate_input_partition_test, basic) {
 
 TEST_F(aggregate_input_partition_test, avg) {
     auto context = std::make_shared<request_context>();
-    auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
+    auto func_sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
     auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},
         std::vector<aggregate_info::value_spec>{
             {

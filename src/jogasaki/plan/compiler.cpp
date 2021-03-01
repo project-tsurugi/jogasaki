@@ -56,14 +56,14 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
-#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>

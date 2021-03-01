@@ -55,7 +55,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/utils/performance_tools.h>
 #include <jogasaki/utils/latch_set.h>
@@ -249,7 +249,7 @@ public:
     ) {
         (void)param;
         auto functions = std::make_shared<yugawara::aggregate::configurable_provider>();
-        executor::function::add_builtin_aggregate_functions(*functions, global::function_repository());
+        executor::function::incremental::add_builtin_aggregate_functions(*functions, global::function_repository());
 
         binding::factory bindings;
         auto&& g0c0 = bindings.exchange_column("g0c0");

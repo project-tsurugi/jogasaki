@@ -18,7 +18,7 @@
 #include <memory>
 
 // attention: making globals depend on lower domain slows down compile time
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 class aggregate_function_repository;
 }
 
@@ -51,7 +51,7 @@ enum class pool_operation : std::int32_t {
  */
 [[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
 
-[[nodiscard]] executor::function::aggregate_function_repository& function_repository();
+[[nodiscard]] executor::function::incremental::aggregate_function_repository& function_repository();
 
 }
 

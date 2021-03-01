@@ -23,6 +23,7 @@ file(GLOB SOURCES
         "jogasaki/executor/exchange/group/*.cpp"
         "jogasaki/executor/exchange/shuffle/*.cpp"
         "jogasaki/executor/function/*.cpp"
+        "jogasaki/executor/function/incremental/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"

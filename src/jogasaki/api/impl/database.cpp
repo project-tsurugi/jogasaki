@@ -18,7 +18,7 @@
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
@@ -93,7 +93,10 @@ database::database(
     cfg_(std::move(cfg))
 {
     executor::add_builtin_tables(*tables_);
-    executor::function::add_builtin_aggregate_functions(*aggregate_functions_, global::function_repository());
+    executor::function::incremental::add_builtin_aggregate_functions(
+        *aggregate_functions_,
+        global::function_repository()
+    );
     if(cfg_->prepare_benchmark_tables()) {
         executor::add_benchmark_tables(*tables_);
     }

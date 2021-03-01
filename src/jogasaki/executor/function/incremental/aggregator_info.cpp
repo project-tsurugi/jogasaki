@@ -13,27 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "aggregate_function_repository.h"
+#include "aggregator_info.h"
 
-#include <vector>
+#include <takatori/util/fail.h>
 
-#include <takatori/util/maybe_shared_ptr.h>
+namespace jogasaki::executor::function::incremental {
 
-namespace jogasaki::executor::function {
+aggregator_info::aggregator_info(
+    aggregator_type aggregator,
+    std::size_t arg_count
+) :
+    valid_(true),
+    aggregator_(std::move(aggregator)),
+    arg_count_(arg_count)
+{}
 
-using takatori::util::maybe_shared_ptr;
-
-void aggregate_function_repository::add(std::size_t id, maybe_shared_ptr<aggregate_function_info> info) {
-    map_.emplace(id, std::move(info));
+aggregator_type const &aggregator_info::aggregator() const noexcept {
+    return aggregator_;
 }
 
-aggregate_function_info const* aggregate_function_repository::find(std::size_t id) const noexcept {
-    if (map_.count(id) == 0) return {};
-    return map_.at(id).get();
+aggregator_info::operator bool() const noexcept {
+    return valid_;
 }
 
-void aggregate_function_repository::clear() noexcept {
-    map_.clear();
+std::size_t aggregator_info::arg_count() const noexcept {
+    return arg_count_;
 }
 
 }

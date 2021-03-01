@@ -25,10 +25,10 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/executor/function/aggregate_function_info.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
 using takatori::util::fail;
@@ -39,7 +39,7 @@ using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 
 void add_builtin_aggregate_functions(
     ::yugawara::aggregate::configurable_provider& functions,
-    executor::function::aggregate_function_repository& repo
+    executor::function::incremental::aggregate_function_repository& repo
 ) {
     namespace t = takatori::type;
     using namespace ::yugawara;

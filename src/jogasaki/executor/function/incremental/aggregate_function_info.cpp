@@ -19,12 +19,12 @@
 
 #include <takatori/util/sequence_view.h>
 
-#include <jogasaki/executor/function/aggregate_function_kind.h>
-#include <jogasaki/executor/function/aggregator_info.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
+#include <jogasaki/executor/function/incremental/aggregator_info.h>
 
 #include "builtin_functions.h"
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
 

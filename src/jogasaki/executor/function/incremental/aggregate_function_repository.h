@@ -21,9 +21,9 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 using takatori::util::maybe_shared_ptr;
 

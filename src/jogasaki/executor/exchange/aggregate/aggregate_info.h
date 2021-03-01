@@ -27,9 +27,9 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/compare_info.h>
-#include <jogasaki/executor/function/field_locator.h>
-#include <jogasaki/executor/function/aggregate_function_info.h>
-#include <jogasaki/executor/function/aggregator_info.h>
+#include <jogasaki/executor/function/incremental/field_locator.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
+#include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::exchange::aggregate {
@@ -40,9 +40,9 @@ using takatori::util::fail;
 using takatori::util::enum_tag;
 
 using kind = meta::field_type_kind;
-using function::aggregate_function_info;
-using function::aggregator_info;
-using function::field_locator;
+using function::incremental::aggregate_function_info;
+using function::incremental::aggregator_info;
+using function::incremental::field_locator;
 
 /**
  * @brief information to execute aggregate exchange, used to extract schema and record layout information for key/value parts

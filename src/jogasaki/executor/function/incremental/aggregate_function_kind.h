@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <takatori/util/enum_set.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 /**
  * @brief field type kind

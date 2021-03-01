@@ -18,11 +18,11 @@
 #include <takatori/util/sequence_view.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
-#include <jogasaki/executor/function/field_locator.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/incremental/field_locator.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/accessor/record_ref.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 /**
  * @brief register built-in aggregate functions to the given provider and function repository
@@ -31,7 +31,7 @@ namespace jogasaki::executor::function {
  */
 void add_builtin_aggregate_functions(
     ::yugawara::aggregate::configurable_provider& functions,
-    executor::function::aggregate_function_repository& repo
+    executor::function::incremental::aggregate_function_repository& repo
 );
 
 namespace builtin {

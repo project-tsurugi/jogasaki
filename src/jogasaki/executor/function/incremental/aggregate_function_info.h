@@ -25,10 +25,10 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/executor/function/aggregate_function_kind.h>
-#include <jogasaki/executor/function/aggregator_info.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
+#include <jogasaki/executor/function/incremental/aggregator_info.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
 using takatori::util::enum_tag;

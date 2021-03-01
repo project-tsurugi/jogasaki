@@ -22,7 +22,7 @@
 
 #include <jogasaki/meta/field_type.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
 using takatori::util::enum_tag_t;

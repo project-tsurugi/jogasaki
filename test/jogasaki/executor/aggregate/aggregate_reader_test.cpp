@@ -20,7 +20,7 @@
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
-#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/accessor/record_ref.h>
 
 #include <jogasaki/mock_memory_resource.h>
@@ -40,12 +40,15 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
+using executor::function::incremental::aggregate_function_info_impl;
+using executor::function::incremental::aggregate_function_kind;
+
 class aggregate_reader_test : public test_root {
 public:
     using kind = meta::field_type_kind;
 
-    using sum_info_impl = function::aggregate_function_info_impl<function::aggregate_function_kind::sum>;
-    using avg_info_impl = function::aggregate_function_info_impl<function::aggregate_function_kind::avg>;
+    using sum_info_impl = aggregate_function_info_impl<aggregate_function_kind::sum>;
+    using avg_info_impl = aggregate_function_info_impl<aggregate_function_kind::avg>;
     std::shared_ptr<sum_info_impl> func_sum = std::make_shared<sum_info_impl>();
     std::shared_ptr<avg_info_impl> func_avg = std::make_shared<avg_info_impl>();
 

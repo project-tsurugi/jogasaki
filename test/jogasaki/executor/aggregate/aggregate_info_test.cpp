@@ -18,8 +18,8 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/aggregate_function_info.h>
-#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -32,6 +32,8 @@ using namespace takatori::util;
 class aggregate_info_test : public ::testing::Test {};
 
 using kind = field_type_kind;
+using executor::function::incremental::aggregate_function_info_impl;
+using executor::function::incremental::aggregate_function_kind;
 
 TEST_F(aggregate_info_test, simple) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
@@ -39,7 +41,7 @@ TEST_F(aggregate_info_test, simple) {
             field_type(enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>(2).flip());
 
-    auto func_sum = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::sum>>();
+    auto func_sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
     aggregate_info info{
         rec_meta,
         {1},
@@ -67,7 +69,7 @@ TEST_F(aggregate_info_test, avg_avg) {
         field_type(enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>(2).flip());
 
-    auto func_avg = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
+    auto func_avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
     aggregate_info info{
         rec_meta,
         {1},
@@ -116,8 +118,8 @@ TEST_F(aggregate_info_test, count_avg) {
         field_type(enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>(2).flip());
 
-    auto func_count = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::count>>();
-    auto func_avg = std::make_shared<function::aggregate_function_info_impl<function::aggregate_function_kind::avg>>();
+    auto func_count = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count>>();
+    auto func_avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
     aggregate_info info{
         rec_meta,
         {1},

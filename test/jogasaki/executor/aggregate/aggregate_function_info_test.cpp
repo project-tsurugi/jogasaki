@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 
-namespace jogasaki::executor::function {
+namespace jogasaki::executor::function::incremental {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

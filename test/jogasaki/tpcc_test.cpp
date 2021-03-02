@@ -196,7 +196,110 @@ TEST_F(tpcc_test, new_order_update1) {
     EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
+TEST_F(tpcc_test, new_order_insert1) {
+    std::string query =
+        "INSERT INTO "
+        "ORDERS (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local) "
+        "VALUES (:o_id, :o_d_id, :o_w_id, :o_c_id, :o_entry_d, :o_ol_cnt, :o_all_local)"
+    ;
+
+    resolve(query, ":o_id", "10");
+    resolve(query, ":o_d_id", "10");
+    resolve(query, ":o_w_id", "10");
+    resolve(query, ":o_c_id", "10");
+    resolve(query, ":o_entry_d", "'X'");
+    resolve(query, ":o_ol_cnt", "10");
+    resolve(query, ":o_all_local", "10");
+    execute_statement(query);
+
+    std::string verify =
+        "SELECT o_c_id FROM ORDERS "
+        "WHERE "
+        "o_id = :o_id AND "
+        "o_d_id = :o_d_id AND "
+        "o_w_id = :o_w_id"
+    ;
+    resolve(verify, ":o_id", "10");
+    resolve(verify, ":o_d_id", "10");
+    resolve(verify, ":o_w_id", "10");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+}
+
+TEST_F(tpcc_test, new_order_insert2) {
+    std::string query =
+        "INSERT INTO "
+        "ORDERS_SECONDARY (o_d_id, o_w_id, o_c_id, o_id) "
+        "VALUES (:o_d_id, :o_w_id, :o_c_id, :o_id)"
+    ;
+
+    resolve(query, ":o_d_id", "10");
+    resolve(query, ":o_w_id", "10");
+    resolve(query, ":o_c_id", "10");
+    resolve(query, ":o_id", "10");
+    execute_statement(query);
+
+    std::string verify =
+        "SELECT o_id FROM ORDERS_SECONDARY "
+        "WHERE "
+        "o_d_id = :o_d_id AND "
+        "o_w_id = :o_w_id AND "
+        "o_c_id = :o_c_id "
+    ;
+    resolve(verify, ":o_d_id", "10");
+    resolve(verify, ":o_w_id", "10");
+    resolve(verify, ":o_c_id", "10");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+}
+
+TEST_F(tpcc_test, new_order_insert3) {
+    std::string query =
+        "INSERT INTO "
+        "NEW_ORDER (no_o_id, no_d_id, no_w_id)"
+        "VALUES (:no_o_id, :no_d_id, :no_w_id)"
+    ;
+
+    resolve(query, ":no_o_id", "10");
+    resolve(query, ":no_d_id", "10");
+    resolve(query, ":no_w_id", "10");
+    execute_statement(query);
+
+    std::string verify =
+        "SELECT no_o_id FROM NEW_ORDER "
+        "WHERE "
+        "no_o_id = :no_o_id AND "
+        "no_d_id = :no_d_id AND "
+        "no_w_id = :no_w_id "
+    ;
+    resolve(verify, ":no_o_id", "10");
+    resolve(verify, ":no_d_id", "10");
+    resolve(verify, ":no_w_id", "10");
+    std::vector<mock::basic_record> result{};
+    execute_query(verify, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+}
+
 TEST_F(tpcc_test, new_order3) {
+    std::string query =
+        "SELECT i_price, i_name , i_data FROM ITEM "
+        "WHERE "
+        "i_id = :i_id"
+    ;
+
+    resolve(query, ":i_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+}
+
+TEST_F(tpcc_test, new_order4) {
     std::string query =
         "SELECT s_quantity, s_data, "
         "s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05, "
@@ -526,14 +629,14 @@ TEST_F(tpcc_test, order_status4) {
     std::string query =
         "SELECT o_id FROM ORDERS_SECONDARY "
         "WHERE "
-        "o_d_id = :o_d_id AND "
         "o_w_id = :o_w_id AND "
+        "o_d_id = :o_d_id AND "
         "o_c_id = :o_c_id"
         " ORDER by o_id DESC"
     ;
 
-    resolve(query, ":o_d_id", "1");
     resolve(query, ":o_w_id", "1");
+    resolve(query, ":o_d_id", "1");
     resolve(query, ":o_c_id", "1");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
@@ -542,6 +645,24 @@ TEST_F(tpcc_test, order_status4) {
 }
 
 TEST_F(tpcc_test, order_status5) {
+    std::string query =
+        "SELECT o_carrier_id, o_entry_d, o_ol_cnt "
+        "FROM ORDERS "
+        "WHERE o_w_id = :o_w_id AND "
+        "o_d_id = :o_d_id AND "
+        "o_id = :o_id"
+    ;
+
+    resolve(query, ":o_w_id", "1");
+    resolve(query, ":o_d_id", "1");
+    resolve(query, ":o_id", "1");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+}
+
+TEST_F(tpcc_test, order_status6) {
     std::string query =
         "SELECT ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_delivery_d FROM ORDER_LINE "
         "WHERE "
@@ -564,7 +685,8 @@ TEST_F(tpcc_test, delivery1) {
         "SELECT no_o_id FROM NEW_ORDER "
         "WHERE "
         "no_d_id = :no_d_id AND "
-        "no_w_id = :no_w_id"
+        "no_w_id = :no_w_id "
+        "ORDER BY no_o_id "
     ;
 
     resolve(query, ":no_d_id", "1");

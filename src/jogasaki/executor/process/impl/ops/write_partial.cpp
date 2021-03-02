@@ -331,6 +331,9 @@ operator_kind write_partial::kind() const noexcept {
 }
 
 operation_status write_partial::operator()(write_partial_context& ctx) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     // find update target and fill ctx.key_store_ and ctx.value_store_
     if(auto res = find_record_and_extract(ctx); !res) {
         return res;
@@ -361,9 +364,6 @@ operation_status write_partial::process_record(abstract::task_context* context) 
             ctx.resource(),
             ctx.varlen_resource()
         );
-    }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
     }
     return (*this)(*p);
 }

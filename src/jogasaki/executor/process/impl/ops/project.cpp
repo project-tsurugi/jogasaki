@@ -53,13 +53,13 @@ operation_status project::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p, context);
 }
 
 operation_status project::operator()(project_context& ctx, abstract::task_context* context) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     auto& scope = ctx.variables();
     // fill scope variables
     auto ref = scope.store().ref();

@@ -167,13 +167,13 @@ operation_status join_find::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p, context);
 }
 
 operation_status join_find::operator()(class join_find_context& ctx, abstract::task_context* context) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     auto resource = ctx.varlen_resource();
     if((*ctx.matcher_)(ctx.variables(), *ctx.stg_, *ctx.tx_, resource)) {
         if (condition_) {

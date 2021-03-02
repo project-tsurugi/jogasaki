@@ -93,9 +93,6 @@ public:
                 ctx.varlen_resource()
             );
         }
-        if (p->inactive()) {
-            return {operation_status_kind::aborted};
-        }
         return (*this)(*p, cgrp, context);
     }
 
@@ -106,6 +103,9 @@ public:
      */
     operation_status operator()(join_context& ctx, cogroup<iterator>& cgrp, abstract::task_context* context = nullptr) {
         (void)kind_;
+        if (ctx.inactive()) {
+            return {operation_status_kind::aborted};
+        }
         std::vector<iterator_pair> iterators{};
         iterators.reserve(cgrp.groups().size());
         for(auto&& g : cgrp.groups()) {

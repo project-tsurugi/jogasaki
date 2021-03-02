@@ -50,13 +50,13 @@ operation_status ops::emit::process_record(abstract::task_context *context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p);
 }
 
 operation_status emit::operator()(emit_context &ctx) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     auto target = ctx.buffer_.ref();
     auto source = ctx.variables().store().ref();
     for(auto &f : fields_) {

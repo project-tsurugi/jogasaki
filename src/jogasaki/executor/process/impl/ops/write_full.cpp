@@ -92,13 +92,13 @@ operation_status write_full::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p);
 }
 
 operation_status write_full::operator()(write_full_context& ctx) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     switch(kind_) {
         case write_kind::insert:
             return do_insert(ctx);

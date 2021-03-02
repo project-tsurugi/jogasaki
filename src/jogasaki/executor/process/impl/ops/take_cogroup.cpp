@@ -124,13 +124,13 @@ operation_status take_cogroup::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p, context);
 }
 
 operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::task_context* context) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     using iterator = data::iterable_record_store::iterator;
     if (ctx.readers_.empty()) {
         create_readers(ctx);

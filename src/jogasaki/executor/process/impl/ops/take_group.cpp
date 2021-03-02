@@ -60,13 +60,13 @@ operation_status take_group::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p, context);
 }
 
 operation_status take_group::operator()(take_group_context& ctx, abstract::task_context* context) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     auto target = ctx.variables().store().ref();
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);

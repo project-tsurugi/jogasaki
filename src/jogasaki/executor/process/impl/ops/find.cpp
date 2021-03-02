@@ -109,13 +109,13 @@ operation_status find::process_record(abstract::task_context* context) {
             ctx.varlen_resource()
         );
     }
-    if (p->inactive()) {
-        return {operation_status_kind::aborted};
-    }
     return (*this)(*p, context);
 }
 
 operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {
+    if (ctx.inactive()) {
+        return {operation_status_kind::aborted};
+    }
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
     std::string_view v{};

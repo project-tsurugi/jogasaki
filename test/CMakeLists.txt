@@ -47,6 +47,15 @@ file(GLOB SRCS
         "jogasaki/utils/*.cpp"
         )
 
+if(SHARKSFIN_IMPLEMENTATION STREQUAL "kvs")
+    file(GLOB ADDED
+            "jogasaki/shirakami/*.cpp"
+            )
+    foreach(file ${ADDED})
+        list(APPEND SRCS ${file})
+    endforeach()
+endif()
+
 foreach(file ${SRCS})
     add_test_executable(${file})
 endforeach()

@@ -82,12 +82,24 @@ public:
      */
     operation_status operator()(emit_context& ctx);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
+    /**
+     * @brief access to the record metadata
+     */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
+    /**
+     * @brief set external writer index
+     */
     void external_writer_index(std::size_t index) noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context* context) override;
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};

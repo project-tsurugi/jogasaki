@@ -17,8 +17,13 @@
 
 namespace jogasaki::accessor {
 
-record_copier::record_copier(maybe_shared_ptr<meta::record_meta> meta, memory::paged_memory_resource *resource) :
-        meta_(std::move(meta)), resource_(resource) {
+record_copier::record_copier(
+    maybe_shared_ptr<meta::record_meta> meta,
+    memory::paged_memory_resource *resource
+) :
+    meta_(std::move(meta)),
+    resource_(resource)
+{
     for(std::size_t i=0, n = meta_->field_count(); i < n; ++i) {
         if (meta_->at(i).kind() == meta::field_type_kind::character) {
             text_field_offsets_.emplace_back(meta_->value_offset(i));

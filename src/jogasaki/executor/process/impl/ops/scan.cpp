@@ -52,7 +52,7 @@ details::scan_field::scan_field(meta::field_type type, bool target_exists, std::
 
 }
 
-ops::scan::scan(operator_base::operator_index_type index, const processor_info& info,
+scan::scan(operator_base::operator_index_type index, const processor_info& info,
     operator_base::block_index_type block_index, std::string_view storage_name,
     std::vector<details::scan_field> key_fields, std::vector<details::scan_field> value_fields,
     std::unique_ptr<operator_base> downstream) : record_operator(index, info, block_index),
@@ -150,6 +150,7 @@ std::string_view scan::storage_name() const noexcept {
 }
 
 void scan::finish(abstract::task_context*) {
+    // top operators decide finish timing on their own
     fail();
 }
 

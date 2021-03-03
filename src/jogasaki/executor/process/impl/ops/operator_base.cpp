@@ -19,14 +19,17 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-operator_base::operator_base(operator_base::operator_index_type index, const processor_info &info,
-    operator_base::block_index_type block_index) noexcept:
+operator_base::operator_base(
+    operator_base::operator_index_type index,
+    processor_info const&info,
+    operator_base::block_index_type block_index
+) noexcept:
     index_(index),
     processor_info_(std::addressof(info)),
     block_index_(block_index)
 {}
 
-block_scope_info const &operator_base::block_info() const noexcept {
+block_scope_info const& operator_base::block_info() const noexcept {
     return processor_info_->scopes_info()[block_index_];
 }
 
@@ -34,11 +37,11 @@ operator_base::block_index_type operator_base::block_index() const noexcept {
     return block_index_;
 }
 
-std::vector<block_scope_info> const &operator_base::blocks() const noexcept {
+std::vector<block_scope_info> const& operator_base::blocks() const noexcept {
     return processor_info_->scopes_info();
 }
 
-yugawara::compiled_info const &operator_base::compiled_info() const noexcept {
+yugawara::compiled_info const& operator_base::compiled_info() const noexcept {
     return processor_info_->compiled_info();
 }
 
@@ -46,16 +49,22 @@ operator_base::operator_index_type operator_base::index() const noexcept {
     return index_;
 }
 
-record_operator::record_operator(operator_base::operator_index_type index, const processor_info &info,
-    operator_base::block_index_type block_index) noexcept:
+record_operator::record_operator(
+    operator_base::operator_index_type index,
+    processor_info const&info,
+    operator_base::block_index_type block_index
+) noexcept:
     operator_base(
         index,
         info,
         block_index
     ) {}
 
-group_operator::group_operator(operator_base::operator_index_type index, const processor_info &info,
-    operator_base::block_index_type block_index) noexcept:
+group_operator::group_operator(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index
+) noexcept:
     operator_base(
         index,
         info,

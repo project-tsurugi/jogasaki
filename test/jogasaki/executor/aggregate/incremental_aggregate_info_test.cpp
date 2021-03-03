@@ -29,13 +29,13 @@ using namespace meta;
 using namespace executor;
 using namespace takatori::util;
 
-class aggregate_info_test : public ::testing::Test {};
+class incremental_aggregate_info_test : public ::testing::Test {};
 
 using kind = field_type_kind;
 using executor::function::incremental::aggregate_function_info_impl;
 using executor::function::incremental::aggregate_function_kind;
 
-TEST_F(aggregate_info_test, simple) {
+TEST_F(incremental_aggregate_info_test, simple) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
             field_type(enum_tag<kind::int4>),
             field_type(enum_tag<kind::int8>),
@@ -63,7 +63,7 @@ TEST_F(aggregate_info_test, simple) {
     EXPECT_EQ(1, info.post().group_meta()->value_shared()->field_count());
 }
 
-TEST_F(aggregate_info_test, avg_avg) {
+TEST_F(incremental_aggregate_info_test, avg_avg) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
         field_type(enum_tag<kind::int4>),
         field_type(enum_tag<kind::int8>),
@@ -112,7 +112,7 @@ TEST_F(aggregate_info_test, avg_avg) {
 
 }
 
-TEST_F(aggregate_info_test, count_avg) {
+TEST_F(incremental_aggregate_info_test, count_avg) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
         field_type(enum_tag<kind::int4>),
         field_type(enum_tag<kind::int8>),

@@ -28,7 +28,7 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-ops::emit::emit(operator_base::operator_index_type index, const processor_info &info,
+emit::emit(operator_base::operator_index_type index, const processor_info &info,
     operator_base::block_index_type block_index, sequence_view<const column> columns) : record_operator(index, info, block_index),
     meta_(create_meta(info, columns)),
     fields_(create_fields(meta_, columns))
@@ -37,7 +37,7 @@ ops::emit::emit(operator_base::operator_index_type index, const processor_info &
 }
 
 
-operation_status ops::emit::process_record(abstract::task_context *context) {
+operation_status emit::process_record(abstract::task_context *context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<emit_context>(index(), ctx.contexts());

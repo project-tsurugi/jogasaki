@@ -64,6 +64,7 @@ public:
      * @param block_index the index of the block that this operation belongs to
      * @param order the exchange columns ordering information that assigns the field index of the input record. The index
      * can be used with record_meta to get field metadata.
+     * @param meta the metadata of the group
      * @param reader_index the index that identifies the reader in the task context. This corresponds to the input port
      * number that the input exchange is connected.
      * @param downstream downstream operator that should be invoked with the output from this operation
@@ -95,11 +96,21 @@ public:
      */
     operation_status operator()(take_group_context& ctx, abstract::task_context* context = nullptr);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
+    /**
+     * @brief accessor to group metadata
+     */
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta() const noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context*) override;
+
 private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
@@ -112,6 +123,7 @@ private:
         takatori::util::sequence_view<column const> columns
     );
 };
+
 }
 
 

@@ -26,15 +26,15 @@ using PmrAllocator = boost::container::pmr::polymorphic_allocator<T>;
 using ByteArray = std::array<std::byte, 1024*1024>;
 using ByteArrayAllocator = PmrAllocator<ByteArray>;
 
-namespace jogasaki::testing {
+namespace jogasaki::memory {
 
 class lifo_paged_memory_resource_test : public ::testing::Test {
 public:
 };
 
 TEST_F(lifo_paged_memory_resource_test, basic) {
-    auto my_pool = std::make_unique<memory::page_pool>();
-    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    auto my_pool = std::make_unique<page_pool>();
+    auto my_resource = std::make_unique<lifo_paged_memory_resource>(my_pool.get());
     EXPECT_TRUE(my_pool);
     EXPECT_TRUE(my_resource);
 
@@ -56,15 +56,15 @@ TEST_F(lifo_paged_memory_resource_test, basic) {
 }
 
 TEST_F(lifo_paged_memory_resource_test, deallocate_after_at_even) {
-    auto my_pool = std::make_unique<memory::page_pool>();
-    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    auto my_pool = std::make_unique<page_pool>();
+    auto my_resource = std::make_unique<lifo_paged_memory_resource>(my_pool.get());
     EXPECT_TRUE(my_pool);
     EXPECT_TRUE(my_resource);
 
     ByteArrayAllocator my_allocator(my_resource.get());
     std::size_t count, remaining;
 
-    memory::lifo_paged_memory_resource::checkpoint point;
+    lifo_paged_memory_resource::checkpoint point;
     for(std::size_t i = 0; i < loop; i++) {
         my_allocator.allocate(1);
         if (i == loop / 2) {
@@ -81,15 +81,15 @@ TEST_F(lifo_paged_memory_resource_test, deallocate_after_at_even) {
 }
 
 TEST_F(lifo_paged_memory_resource_test, deallocate_after_at_odd) {
-    auto my_pool = std::make_unique<memory::page_pool>();
-    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    auto my_pool = std::make_unique<page_pool>();
+    auto my_resource = std::make_unique<lifo_paged_memory_resource>(my_pool.get());
     EXPECT_TRUE(my_pool);
     EXPECT_TRUE(my_resource);
 
     ByteArrayAllocator my_allocator(my_resource.get());
     std::size_t count, remaining;
 
-    memory::lifo_paged_memory_resource::checkpoint point;
+    lifo_paged_memory_resource::checkpoint point;
     for(std::size_t i = 0; i < loop; i++) {
         my_allocator.allocate(1);
         if (i == loop / 2 - 1) {
@@ -106,16 +106,17 @@ TEST_F(lifo_paged_memory_resource_test, deallocate_after_at_odd) {
 }
 
 TEST_F(lifo_paged_memory_resource_test, checkpoint_at_the_beginning) {
-    auto my_pool = std::make_unique<memory::page_pool>();
-    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    auto my_pool = std::make_unique<page_pool>();
+    auto my_resource = std::make_unique<lifo_paged_memory_resource>(my_pool.get());
     EXPECT_TRUE(my_pool);
     EXPECT_TRUE(my_resource);
 
     ByteArrayAllocator my_allocator(my_resource.get());
     std::size_t count, remaining;
 
-    memory::lifo_paged_memory_resource::checkpoint point;
+    lifo_paged_memory_resource::checkpoint point;
     point = my_resource->get_checkpoint();
+    EXPECT_EQ(lifo_paged_memory_resource::initial_checkpoint, point);
     count = my_resource->count_pages();
     remaining = my_resource->page_remaining();
     for(std::size_t i = 0; i < loop; i++) {
@@ -128,8 +129,8 @@ TEST_F(lifo_paged_memory_resource_test, checkpoint_at_the_beginning) {
 }
 
 TEST_F(lifo_paged_memory_resource_test, end_current_page) {
-    auto my_pool = std::make_unique<memory::page_pool>();
-    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    auto my_pool = std::make_unique<page_pool>();
+    auto my_resource = std::make_unique<lifo_paged_memory_resource>(my_pool.get());
     EXPECT_TRUE(my_pool);
     EXPECT_TRUE(my_resource);
 
@@ -139,7 +140,7 @@ TEST_F(lifo_paged_memory_resource_test, end_current_page) {
 
     blocks[0] = my_allocator.allocate(1);
     my_resource->end_current_page();
-    EXPECT_TRUE(my_resource->page_remaining() == 0 || my_resource->page_remaining() == jogasaki::memory::page_size);
+    EXPECT_TRUE(my_resource->page_remaining() == 0 || my_resource->page_remaining() == page_size);
     blocks[1] = my_allocator.allocate(1);
     EXPECT_EQ(my_resource->count_pages(), 2);
 
@@ -148,8 +149,8 @@ TEST_F(lifo_paged_memory_resource_test, end_current_page) {
 }
 
 TEST_F(lifo_paged_memory_resource_test, end_current_page_and_do_deallocate) {
-    auto my_pool = std::make_unique<memory::page_pool>();
-    auto my_resource = std::make_unique<memory::lifo_paged_memory_resource>(my_pool.get());
+    auto my_pool = std::make_unique<page_pool>();
+    auto my_resource = std::make_unique<lifo_paged_memory_resource>(my_pool.get());
     EXPECT_TRUE(my_pool);
     EXPECT_TRUE(my_resource);
 
@@ -164,7 +165,7 @@ TEST_F(lifo_paged_memory_resource_test, end_current_page_and_do_deallocate) {
 
     blocks[1] = my_allocator.allocate(1);
     my_resource->end_current_page();
-    EXPECT_TRUE(my_resource->page_remaining() == 0 || my_resource->page_remaining() == jogasaki::memory::page_size);
+    EXPECT_TRUE(my_resource->page_remaining() == 0 || my_resource->page_remaining() == page_size);
     my_allocator.deallocate(blocks[1], 1);
 
     EXPECT_EQ(my_resource->count_pages(), count);

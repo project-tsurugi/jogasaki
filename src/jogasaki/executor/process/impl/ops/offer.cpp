@@ -28,7 +28,7 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-ops::offer::offer(operator_base::operator_index_type index, const processor_info& info,
+offer::offer(operator_base::operator_index_type index, const processor_info& info,
     operator_base::block_index_type block_index, const meta::variable_order& order,
     maybe_shared_ptr<meta::record_meta> meta, sequence_view<const column> columns, std::size_t writer_index) : record_operator(index, info, block_index),
     meta_(std::move(meta)),
@@ -38,7 +38,7 @@ ops::offer::offer(operator_base::operator_index_type index, const processor_info
     utils::assert_all_fields_nullable(*meta_);
 }
 
-operation_status ops::offer::process_record(abstract::task_context* context) {
+operation_status offer::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<offer_context>(index(), ctx.contexts());
@@ -54,7 +54,7 @@ operation_status ops::offer::process_record(abstract::task_context* context) {
     return (*this)(*p);
 }
 
-operation_status ops::offer::operator()(offer_context& ctx) {
+operation_status offer::operator()(offer_context& ctx) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }

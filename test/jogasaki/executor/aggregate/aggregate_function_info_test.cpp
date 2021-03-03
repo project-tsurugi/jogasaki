@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
+#include <jogasaki/executor/function/aggregate_function_info.h>
 
 #include <gtest/gtest.h>
 #include <boost/dynamic_bitset.hpp>
 
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/builtin_functions.h>
 
-namespace jogasaki::executor::function::incremental {
+namespace jogasaki::executor::function {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -35,28 +36,21 @@ class aggregate_function_info_test : public ::testing::Test {};
 using kind = aggregate_function_kind;
 
 TEST_F(aggregate_function_info_test, simple) {
-    aggregate_function_info_impl<kind::sum> info{};
-    auto&& pre = info.pre();
-    auto&& mid = info.mid();
-    auto&& post = info.post();
-    EXPECT_EQ(1, pre.size());
-    EXPECT_EQ(1, mid.size());
-    EXPECT_EQ(1, post.size());
-    EXPECT_EQ(kind::sum, info.kind());
-
+    aggregate_function_info info{
+        aggregate_function_kind::count_distinct,
+        builtin::count_distinct
+    };
 }
 
 TEST_F(aggregate_function_info_test, repo) {
-    auto& repo = global::function_repository();
-    repo.add(0, std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>());
+    auto& repo = global::aggregate_function_repository();
+    repo.add(0, std::make_shared<aggregate_function_info>(
+        aggregate_function_kind::count_distinct,
+        builtin::count_distinct
+    ));
     auto& info = *repo.find(0);
-    auto&& pre = info.pre();
-    auto&& mid = info.mid();
-    auto&& post = info.post();
-    EXPECT_EQ(1, pre.size());
-    EXPECT_EQ(1, mid.size());
-    EXPECT_EQ(1, post.size());
-    EXPECT_EQ(kind::sum, info.kind());
+    EXPECT_EQ(kind::count_distinct, info.kind());
 }
+
 }
 

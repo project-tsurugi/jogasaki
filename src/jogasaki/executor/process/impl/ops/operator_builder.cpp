@@ -22,6 +22,8 @@
 #include <yugawara/binding/extract.h>
 #include <yugawara/binding/relation_info.h>
 
+#include "aggregate_group.h"
+#include "scan.h"
 #include "scan.h"
 #include "find.h"
 #include "join_find.h"
@@ -208,9 +210,15 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::aggregate& node) {
-    (void)node;
-    fail();
-    return {};
+    auto block_index = info_->scope_indices().at(&node);
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    return std::make_unique<aggregate_group>(
+        index_++,
+        *info_,
+        block_index,
+        node.columns(),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::intersection& node) {

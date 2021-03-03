@@ -62,6 +62,12 @@ public:
     };
 
     /**
+     * @brief checkpoint constant that indicates the very beginning
+     * @details this can be used to clear all allocated resource
+     */
+    constexpr static checkpoint initial_checkpoint{nullptr, 0};
+
+    /**
      * @brief returns a checkpoint of the current allocated region.
      * @return the checkpoint
      */
@@ -108,5 +114,26 @@ private:
     details::page_allocation_info& acquire_new_page();
     void release_deallocated_page(page_pool::page_info);
 };
+
+/**
+ * @brief equality comparison operator
+ */
+inline bool operator==(
+    lifo_paged_memory_resource::checkpoint const& a,
+    lifo_paged_memory_resource::checkpoint const& b
+) noexcept {
+    return a.head_ == b.head_ &&
+        a.offset_ == b.offset_;
+}
+
+/**
+ * @brief inequality comparison operator
+ */
+inline bool operator!=(
+    lifo_paged_memory_resource::checkpoint const& a,
+    lifo_paged_memory_resource::checkpoint const& b
+) noexcept {
+    return !(a == b);
+}
 
 } // jogasaki::memory

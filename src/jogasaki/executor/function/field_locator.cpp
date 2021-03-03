@@ -15,7 +15,7 @@
  */
 #include "field_locator.h"
 
-namespace jogasaki::executor::function::incremental {
+namespace jogasaki::executor::function {
 
 field_locator::field_locator(const meta::field_type &type, bool nullable, std::size_t value_offset,
     std::size_t nullity_offset) :

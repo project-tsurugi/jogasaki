@@ -28,7 +28,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-ops::filter::filter(
+filter::filter(
     operator_base::operator_index_type index,
     const processor_info& info,
     operator_base::block_index_type block_index,

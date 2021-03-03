@@ -15,6 +15,8 @@
  */
 #include "builtin_functions.h"
 
+#include <sstream>
+
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 #include <takatori/type/int.h>
@@ -48,136 +50,143 @@ void add_builtin_aggregate_functions(
     /////////
     // sum
     /////////
-    auto sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
-    repo.add(id, sum);
-    functions.add({
-        id++,
-        "sum",
-        t::int4(),
-        {
+    {
+        auto sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
+        repo.add(id, sum);
+        functions.add({
+            id++,
+            "sum",
             t::int4(),
-        },
-        true,
-    });
-    repo.add(id, sum);
-    functions.add({
-        id++,
-        "sum",
-        t::int8(),
-        {
+            {
+                t::int4(),
+            },
+            true,
+        });
+        repo.add(id, sum);
+        functions.add({
+            id++,
+            "sum",
             t::int8(),
-        },
-        true,
-    });
-    repo.add(id, sum);
-    functions.add({
-        id++,
-        "sum",
-        t::float4(),
-        {
+            {
+                t::int8(),
+            },
+            true,
+        });
+        repo.add(id, sum);
+        functions.add({
+            id++,
+            "sum",
             t::float4(),
-        },
-        true,
-    });
-    repo.add(id, sum);
-    functions.add({
-        id++,
-        "sum",
-        t::float8(),
-        {
+            {
+                t::float4(),
+            },
+            true,
+        });
+        repo.add(id, sum);
+        functions.add({
+            id++,
+            "sum",
             t::float8(),
-        },
-        true,
-    });
+            {
+                t::float8(),
+            },
+            true,
+        });
+    }
 
     /////////
     // count
     /////////
-    auto count = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count>>();
-    repo.add(id, count);
-    functions.add({
-        id++,
-        "count",
-        t::int8(),
-        {
-            t::int4(),
-        },
-        true,
-    });
-    repo.add(id, count);
-    functions.add({
-        id++,
-        "count",
-        t::int8(),
-        {
+    {
+        auto count = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count>>();
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
             t::int8(),
-        },
-        true,
-    });
-    repo.add(id, count);
-    functions.add({
-        id++,
-        "count",
-        t::int8(),
-        {
-            t::float4(),
-        },
-    });
-    repo.add(id, count);
-    functions.add({
-        id++,
-        "count",
-        t::int8(),
-        {
-            t::float8(),
-        },
-        true,
-    });
+            {
+                t::int4(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::int8(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::float4(),
+            },
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::float8(),
+            },
+            true,
+        });
+    }
+
 
     /////////
     // avg
     /////////
-    auto avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
-    repo.add(id, avg);
-    functions.add({
-        id++,
-        "avg",
-        t::int4(),
-        {
+    {
+        auto avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
+        repo.add(id, avg);
+        functions.add({
+            id++,
+            "avg",
             t::int4(),
-        },
-        true,
-    });
-    repo.add(id, avg);
-    functions.add({
-        id++,
-        "avg",
-        t::int8(),
-        {
+            {
+                t::int4(),
+            },
+            true,
+        });
+        repo.add(id, avg);
+        functions.add({
+            id++,
+            "avg",
             t::int8(),
-        },
-        true,
-    });
-    repo.add(id, avg);
-    functions.add({
-        id++,
-        "avg",
-        t::float4(),
-        {
+            {
+                t::int8(),
+            },
+            true,
+        });
+        repo.add(id, avg);
+        functions.add({
+            id++,
+            "avg",
             t::float4(),
-        },
-        true,
-    });
-    repo.add(id, avg);
-    functions.add({
-        id++,
-        "avg",
-        t::float8(),
-        {
+            {
+                t::float4(),
+            },
+            true,
+        });
+        repo.add(id, avg);
+        functions.add({
+            id++,
+            "avg",
             t::float8(),
-        },
-        true,
-    });
+            {
+                t::float8(),
+            },
+            true,
+        });
+    }
 }
 
 namespace builtin {
@@ -261,6 +270,26 @@ void count_mid(
         return;
     }
     target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset));
+}
+
+void count_distinct(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+) {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    target.set_null(target_nullity_offset, false);
+    std::int64_t cnt = source.is_null(args[0].nullity_offset()) ? 0 : 1;
+    if (initial) {
+        target.set_value<rtype<kind::int8>>(target_offset, cnt);
+        return;
+    }
+    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + cnt);
 }
 
 void avg_post(

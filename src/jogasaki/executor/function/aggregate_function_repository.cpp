@@ -13,29 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "flatten_context.h"
+#include "aggregate_function_repository.h"
 
-#include "context_base.h"
+#include <vector>
 
-namespace jogasaki::executor::process::impl::ops {
+#include <takatori/util/maybe_shared_ptr.h>
 
-flatten_context::flatten_context(
-    abstract::task_context* ctx,
-    block_scope& variables,
-    context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource
-) :
-    context_base(ctx, variables, resource, varlen_resource)
-{}
+namespace jogasaki::executor::function {
 
-operator_kind flatten_context::kind() const noexcept {
-    return operator_kind::flatten;
+using takatori::util::maybe_shared_ptr;
+
+void aggregate_function_repository::add(std::size_t id, maybe_shared_ptr<aggregate_function_info> info) {
+    map_.emplace(id, std::move(info));
 }
 
-void flatten_context::release() {
-    //no-op
+aggregate_function_info const* aggregate_function_repository::find(std::size_t id) const noexcept {
+    if (map_.count(id) == 0) return {};
+    return map_.at(id).get();
+}
+
+void aggregate_function_repository::clear() noexcept {
+    map_.clear();
 }
 
 }
-
-

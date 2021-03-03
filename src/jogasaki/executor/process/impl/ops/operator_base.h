@@ -34,10 +34,19 @@ namespace jogasaki::executor::process::impl::ops {
  */
 class operator_base {
 public:
+    /**
+     * @brief block index identifies the basic block where this operator belongs
+     */
     using block_index_type = std::size_t;
 
+    /**
+     * @brief operator index is the unique identifier of the operator within the process
+     */
     using operator_index_type = std::size_t;
 
+    /**
+     * @brief undefined position constant
+     */
     static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 
     /**
@@ -45,6 +54,9 @@ public:
      */
     operator_base() = default;
 
+    /**
+     * @brief destruct the object
+     */
     virtual ~operator_base() = default;
 
     /**
@@ -64,24 +76,49 @@ public:
     operator_base(operator_base&& other) noexcept = default;
     operator_base& operator=(operator_base&& other) noexcept = default;
 
+    /**
+     * @brief return the kind of the operator
+     */
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
+    /**
+     * @brief return the block scope variables information, where the operator belongs
+     */
     [[nodiscard]] block_scope_info const& block_info() const noexcept;
 
+    /**
+     * @brief return the block index where the operator belongs
+     */
     [[nodiscard]] block_index_type block_index() const noexcept;
 
+    /**
+     * @brief return the block scope variables array
+     */
     [[nodiscard]] std::vector<block_scope_info> const& blocks() const noexcept;
 
+    /**
+     * @brief accessor to the compiled info
+     */
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
 
+    /**
+     * @brief accessor to the operator index within the process
+     */
     [[nodiscard]] operator_index_type index() const noexcept;
 
+    /**
+     * @brief tell the operator to finish processing
+     * @details This function notifies the operators the end of processing. This is typically called by top operator
+     * in the process by propagating the notice to downstream. The operator can use function to clean-up work
+     * such as flushing buffers.
+     * @param context the task context
+     */
     virtual void finish(abstract::task_context* context) = 0;
+
 private:
     operator_index_type index_{};
     processor_info const* processor_info_{};
     block_index_type block_index_{};
-
 };
 
 /**

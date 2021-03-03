@@ -249,7 +249,7 @@ public:
     ) {
         (void)param;
         auto functions = std::make_shared<yugawara::aggregate::configurable_provider>();
-        executor::function::incremental::add_builtin_aggregate_functions(*functions, global::function_repository());
+        executor::function::incremental::add_builtin_aggregate_functions(*functions, global::incremental_aggregate_function_repository());
 
         binding::factory bindings;
         auto&& g0c0 = bindings.exchange_column("g0c0");

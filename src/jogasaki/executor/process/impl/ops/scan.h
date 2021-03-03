@@ -135,6 +135,9 @@ public:
      */
     operation_status operator()(scan_context& ctx, abstract::task_context* context = nullptr);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
     /**
@@ -143,6 +146,9 @@ public:
      */
     [[nodiscard]] std::string_view storage_name() const noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context*) override;;
 private:
     std::string storage_name_{};

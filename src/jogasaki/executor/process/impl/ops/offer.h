@@ -93,10 +93,19 @@ public:
      */
     operation_status operator()(offer_context& ctx);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
+    /**
+     * @see accessor to record metadata
+     */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context* context) override;
 
 private:

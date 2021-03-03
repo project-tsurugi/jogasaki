@@ -207,8 +207,10 @@ std::string_view join_find::storage_name() const noexcept {
     return storage_name_;
 }
 
-void join_find::finish(abstract::task_context*) {
-    // no-op
+void join_find::finish(abstract::task_context* context) {
+    if (downstream_) {
+        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+    }
 }
 
 std::vector<details::join_find_column> join_find::create_columns(

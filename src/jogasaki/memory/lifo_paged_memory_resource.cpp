@@ -34,7 +34,7 @@ std::size_t lifo_paged_memory_resource::count_pages() const noexcept {
 
 lifo_paged_memory_resource::checkpoint lifo_paged_memory_resource::get_checkpoint() const noexcept {
     if (pages_.empty()) {
-        return { nullptr, 0 };
+        return initial_checkpoint;
     }
     auto& current = pages_.back();
     return { current.head().address(), current.upper_bound_offset() };

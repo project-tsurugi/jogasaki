@@ -224,7 +224,7 @@ executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg,
     }
 
     std::vector<aggregate_info::value_spec> specs{};
-    auto& repo = global::function_repository();
+    auto& repo = global::incremental_aggregate_function_repository();
     for(auto&& e : agg.aggregations()) {
         std::vector<std::size_t> argument_indices{};
         for(auto& f : e.arguments()) {

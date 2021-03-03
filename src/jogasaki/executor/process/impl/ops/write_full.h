@@ -134,6 +134,9 @@ public:
      */
     operation_status operator()(write_full_context& ctx);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
     /**
      * @brief return storage name
@@ -141,6 +144,9 @@ public:
      */
     [[nodiscard]] std::string_view storage_name() const noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context* context) override;
 private:
     write_kind kind_{};

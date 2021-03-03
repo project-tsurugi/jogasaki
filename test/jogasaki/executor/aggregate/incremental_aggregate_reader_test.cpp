@@ -43,7 +43,7 @@ using namespace boost::container::pmr;
 using executor::function::incremental::aggregate_function_info_impl;
 using executor::function::incremental::aggregate_function_kind;
 
-class aggregate_reader_test : public test_root {
+class incremental_aggregate_reader_test : public test_root {
 public:
     using kind = meta::field_type_kind;
 
@@ -123,7 +123,7 @@ mock::basic_record create_rec(std::int64_t x, double y) {
     return mock::create_nullable_record<kind::int8, kind::float8>(x, y);
 }
 
-TEST_F(aggregate_reader_test, basic) {
+TEST_F(incremental_aggregate_reader_test, basic) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(sum_info));
@@ -161,7 +161,7 @@ TEST_F(aggregate_reader_test, basic) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(aggregate_reader_test, multiple_partitions) {
+TEST_F(incremental_aggregate_reader_test, multiple_partitions) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto context = std::make_shared<request_context>();
@@ -207,7 +207,7 @@ TEST_F(aggregate_reader_test, multiple_partitions) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(aggregate_reader_test, empty_partition) {
+TEST_F(incremental_aggregate_reader_test, empty_partition) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>( sum_info ));
@@ -241,7 +241,7 @@ TEST_F(aggregate_reader_test, empty_partition) {
     ASSERT_FALSE(r.next_group());
 }
 
-TEST_F(aggregate_reader_test, avg) {
+TEST_F(incremental_aggregate_reader_test, avg) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(avg_info));
@@ -277,7 +277,7 @@ TEST_F(aggregate_reader_test, avg) {
     ASSERT_FALSE(r.next_member());
     ASSERT_FALSE(r.next_group());
 }
-TEST_F(aggregate_reader_test, avg_avg) {
+TEST_F(incremental_aggregate_reader_test, avg_avg) {
     std::vector<std::unique_ptr<input_partition>> partitions{};
     partitions.reserve(10); // avoid relocation when using references into vector
     auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(avg_avg_info));

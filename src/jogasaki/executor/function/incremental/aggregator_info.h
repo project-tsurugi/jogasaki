@@ -21,7 +21,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/function/incremental/field_locator.h>
+#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor::function::incremental {

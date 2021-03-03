@@ -28,7 +28,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-ops::take_group::take_group(
+take_group::take_group(
     operator_base::operator_index_type index,
     const processor_info& info,
     operator_base::block_index_type block_index,
@@ -132,6 +132,7 @@ const maybe_shared_ptr<meta::group_meta>& take_group::meta() const noexcept {
 }
 
 void take_group::finish(abstract::task_context*) {
+    // top operators decide finish timing on their own
     fail();
 }
 

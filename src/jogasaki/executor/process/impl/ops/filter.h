@@ -75,8 +75,14 @@ public:
      */
     operation_status operator()(filter_context& ctx, abstract::task_context* context = nullptr);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context* context) override;
 
 private:

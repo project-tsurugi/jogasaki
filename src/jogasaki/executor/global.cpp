@@ -18,6 +18,7 @@
 #include <memory>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
 
 namespace jogasaki::global {
 
@@ -33,8 +34,13 @@ memory::page_pool& page_pool(pool_operation op) {
     return *pool;
 }
 
-executor::function::incremental::aggregate_function_repository& function_repository() {
+executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository() {
     static executor::function::incremental::aggregate_function_repository repo{};
+    return repo;
+}
+
+executor::function::aggregate_function_repository& aggregate_function_repository() {
+    static executor::function::aggregate_function_repository repo{};
     return repo;
 }
 

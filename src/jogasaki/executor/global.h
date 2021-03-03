@@ -22,6 +22,10 @@ namespace jogasaki::executor::function::incremental {
 class aggregate_function_repository;
 }
 
+namespace jogasaki::executor::function {
+class aggregate_function_repository;
+}
+
 namespace jogasaki::memory {
 class page_pool;
 }
@@ -51,7 +55,8 @@ enum class pool_operation : std::int32_t {
  */
 [[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
 
-[[nodiscard]] executor::function::incremental::aggregate_function_repository& function_repository();
+[[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
+[[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
 }
 

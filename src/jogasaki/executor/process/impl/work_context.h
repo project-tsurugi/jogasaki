@@ -44,7 +44,9 @@ public:
      * @param operator_count the number of operators contained in the process
      * @param block_count the number of block scopes in the process
      * @param resource memory resource used as the process work area
+     * @param varlen_resource varlen memory resource used as the process work area
      * @param database the kvs database shared within the request
+     * @param transaction the transaction used for the kvs access
      */
     work_context(
         request_context* request_context,

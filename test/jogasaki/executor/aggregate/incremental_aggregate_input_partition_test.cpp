@@ -45,7 +45,7 @@ using namespace boost::container::pmr;
 using executor::function::incremental::aggregate_function_info_impl;
 using executor::function::incremental::aggregate_function_kind;
 
-class aggregate_input_partition_test : public test_root {
+class incremental_aggregate_input_partition_test : public test_root {
 public:
     using iterator = pointer_table::iterator;
     maybe_shared_ptr<meta::group_meta> group_meta_{};
@@ -79,7 +79,7 @@ public:
 
 using kind = meta::field_type_kind;
 
-TEST_F(aggregate_input_partition_test, basic) {
+TEST_F(incremental_aggregate_input_partition_test, basic) {
     auto context = std::make_shared<request_context>();
     auto func_sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
     auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},
@@ -121,7 +121,7 @@ TEST_F(aggregate_input_partition_test, basic) {
     EXPECT_EQ(t.end(), it);
 }
 
-TEST_F(aggregate_input_partition_test, avg) {
+TEST_F(incremental_aggregate_input_partition_test, avg) {
     auto context = std::make_shared<request_context>();
     auto func_sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
     auto info = std::make_shared<aggregate_info>(test_record_meta1(), std::vector<std::size_t>{0},

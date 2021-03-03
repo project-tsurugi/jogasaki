@@ -131,7 +131,6 @@ TEST_F(sql_test, update_by_part_of_primary_key) {
     EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(2)));
 }
 
-// shirakami raises err_aborted_retryable on commit
 TEST_F(sql_test, update_primary_key) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
@@ -152,6 +151,17 @@ TEST_F(sql_test, count_empty_records) {
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+}
+
+TEST_F(sql_test, count_distinct) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 20.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT COUNT(distinct C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
 }
 
 }

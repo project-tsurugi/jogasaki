@@ -39,7 +39,7 @@ class io_exchange_map const& operator_container::io_exchange_map() const noexcep
     return *io_exchange_map_;
 }
 
-ops::operator_base& operator_container::root() const noexcept {
+operator_base& operator_container::root() const noexcept {
     return *root_;
 }
 

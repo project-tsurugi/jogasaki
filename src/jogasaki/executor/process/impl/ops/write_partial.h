@@ -163,6 +163,9 @@ public:
      */
     operation_status operator()(write_partial_context& ctx);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
     /**
@@ -171,6 +174,9 @@ public:
      */
     [[nodiscard]] std::string_view storage_name() const noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context* context) override;
 
     /**

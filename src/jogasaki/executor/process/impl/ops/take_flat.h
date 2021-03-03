@@ -98,10 +98,19 @@ public:
      */
     operation_status operator()(take_flat_context& ctx, abstract::task_context* context = nullptr);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
+    /**
+     * @brief accessor to record metadata
+     */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context*) override;
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};

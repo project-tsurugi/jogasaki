@@ -19,10 +19,13 @@
 #include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/executor/function/field_locator.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/accessor/record_ref.h>
 
-namespace jogasaki::executor::function::incremental {
+namespace jogasaki::executor::function {
+
+template <meta::field_type_kind Kind>
+using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 
 /**
  * @brief register built-in aggregate functions to the given provider and function repository
@@ -31,52 +34,19 @@ namespace jogasaki::executor::function::incremental {
  */
 void add_builtin_aggregate_functions(
     ::yugawara::aggregate::configurable_provider& functions,
-    executor::function::incremental::aggregate_function_repository& repo
+    executor::function::aggregate_function_repository& repo
 );
 
 namespace builtin {
 
 using takatori::util::sequence_view;
 
-void sum(
+void count_distinct(
     accessor::record_ref target,
     field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<std::reference_wrapper<data::value_store> const> args
 );
 
-void count_pre(
-    accessor::record_ref target,
-    field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
-);
-
-void count_mid(
-    accessor::record_ref target,
-    field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
-);
-
-void avg_post(
-    accessor::record_ref target,
-    field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
-);
-
-void identity_post(
-    accessor::record_ref target,
-    field_locator const& target_loc,
-    bool initial,
-    accessor::record_ref source,
-    sequence_view<field_locator const> args
-);
 } // namespace builtin
 
 }

@@ -875,8 +875,7 @@ TEST_F(tpcc_test, stock_level1) {
 
 TEST_F(tpcc_test, stock_level2) {
     std::string query =
-//        "SELECT COUNT(DISTINCT s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
-        "SELECT COUNT(s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
+        "SELECT COUNT(DISTINCT s_i_id) FROM ORDER_LINE JOIN STOCK ON s_i_id = ol_i_id "
         "WHERE "
         "ol_w_id = :ol_w_id AND "
         "ol_d_id = :ol_d_id AND "

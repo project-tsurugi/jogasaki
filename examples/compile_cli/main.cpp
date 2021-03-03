@@ -96,7 +96,7 @@ std::shared_ptr<::yugawara::storage::configurable_provider> tables() {
 
 std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_functions() {
     auto ret = std::make_shared<::yugawara::aggregate::configurable_provider>();
-    executor::function::incremental::add_builtin_aggregate_functions(*ret, global::function_repository());
+    executor::function::incremental::add_builtin_aggregate_functions(*ret, global::incremental_aggregate_function_repository());
     return ret;
 }
 

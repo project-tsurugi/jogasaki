@@ -152,10 +152,16 @@ public:
         return {};
     }
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::join;
     }
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context* context) override {
         if (downstream_) {
             unsafe_downcast<record_operator>(downstream_.get())->finish(context);

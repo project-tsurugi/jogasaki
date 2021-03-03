@@ -97,8 +97,14 @@ public:
      */
     operation_status operator()(take_cogroup_context& ctx, abstract::task_context* context = nullptr);
 
+    /**
+     * @see operator_base::kind()
+     */
     [[nodiscard]] operator_kind kind() const noexcept override;
 
+    /**
+     * @see operator_base::finish()
+     */
     void finish(abstract::task_context*) override;
 private:
     std::vector<group_element> groups_{};

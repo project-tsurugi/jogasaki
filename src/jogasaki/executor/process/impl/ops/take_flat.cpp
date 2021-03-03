@@ -30,7 +30,7 @@ namespace jogasaki::executor::process::impl::ops {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 
-ops::take_flat::take_flat(operator_base::operator_index_type index, const processor_info& info,
+take_flat::take_flat(operator_base::operator_index_type index, const processor_info& info,
     operator_base::block_index_type block_index, const meta::variable_order& order,
     maybe_shared_ptr<meta::record_meta> meta, sequence_view<const column> columns, std::size_t reader_index,
     std::unique_ptr<operator_base> downstream) : record_operator(index, info, block_index),
@@ -42,7 +42,7 @@ ops::take_flat::take_flat(operator_base::operator_index_type index, const proces
     utils::assert_all_fields_nullable(*meta_);
 }
 
-operation_status ops::take_flat::process_record(abstract::task_context* context) {
+operation_status take_flat::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<take_flat_context>(index(), ctx.contexts());

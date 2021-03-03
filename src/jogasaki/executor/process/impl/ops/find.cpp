@@ -56,7 +56,7 @@ details::find_field::find_field(
 
 }
 
-ops::find::find(
+find::find(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -150,6 +150,7 @@ std::string_view find::storage_name() const noexcept {
 }
 
 void find::finish(abstract::task_context*) {
+    // top operators decide finish timing on their own
     fail();
 }
 

@@ -247,6 +247,7 @@ operator_kind take_cogroup::kind() const noexcept {
 }
 
 void take_cogroup::finish(abstract::task_context*) {
+    // top operators decide finish timing on their own
     fail();
 }
 

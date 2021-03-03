@@ -25,7 +25,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/function/incremental/field_locator.h>
+#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 
@@ -39,7 +39,7 @@ using kind = meta::field_type_kind;
 
 using function::incremental::aggregate_function_info;
 using function::incremental::aggregator_info;
-using function::incremental::field_locator;
+using function::field_locator;
 
 aggregate_info::aggregate_info(
     maybe_shared_ptr<meta::record_meta> record,

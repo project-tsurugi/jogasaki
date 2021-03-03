@@ -28,7 +28,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-ops::project::project(operator_base::operator_index_type index, const processor_info& info,
+project::project(operator_base::operator_index_type index, const processor_info& info,
     operator_base::block_index_type block_index,
     const takatori::tree::tree_fragment_vector<takatori::relation::project::column>& columns,
     std::unique_ptr<operator_base> downstream) :

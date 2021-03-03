@@ -13,29 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "flatten_context.h"
+#include "aggregate_group_context.h"
 
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
-flatten_context::flatten_context(
+aggregate_group_context::aggregate_group_context(
     abstract::task_context* ctx,
     block_scope& variables,
     context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource
+    context_base::memory_resource* varlen_resource,
+    std::vector<data::value_store> stores,
+    std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources,
+    std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores
 ) :
-    context_base(ctx, variables, resource, varlen_resource)
+    context_base(ctx, variables, resource, varlen_resource),
+    stores_(std::move(stores)),
+    resources_(std::move(resources)),
+    function_arg_stores_(std::move(function_arg_stores))
 {}
 
-operator_kind flatten_context::kind() const noexcept {
-    return operator_kind::flatten;
+operator_kind aggregate_group_context::kind() const noexcept {
+    return operator_kind::aggregate_group;
 }
 
-void flatten_context::release() {
+void aggregate_group_context::release() {
     //no-op
 }
 
 }
-
-

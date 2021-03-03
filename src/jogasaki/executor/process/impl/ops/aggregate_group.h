@@ -187,6 +187,7 @@ private:
     ) {
         auto vars = variable_indices(columns).first;
         std::vector<details::aggregate_group_argument> ret{};
+        ret.reserve(vars.size());
         for(auto&& v : vars) {
             ret.emplace_back(
                 utils::type_for(compiled_info().type_of(v)),
@@ -206,6 +207,7 @@ private:
         std::size_t index = 0;
         std::vector<takatori::descriptor::variable> first{};
         std::unordered_map<takatori::descriptor::variable, std::size_t> second{};
+        first.reserve(columns.size());
         for(auto&& c : columns) {
             for(auto&& a : c.arguments()) {
                 if (second.count(a) == 0) {

@@ -514,15 +514,15 @@ public:
      */
     template <class T>
     void append(T value) {
-        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {
+        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
             base_->append_int4(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
             base_->append_int8(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
             base_->append_float4(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
             base_->append_float8(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
             base_->append_character(value);
         } else {
             fail();
@@ -544,15 +544,15 @@ public:
      */
     template <class T>
     [[nodiscard]] details::iterator<T> begin() const noexcept {
-        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {
+        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
             return base_->begin_int4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
             return base_->begin_int8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
             return base_->begin_float4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
             return base_->begin_float8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
             return base_->begin_character();
         } else {
             fail();
@@ -566,15 +566,15 @@ public:
      */
     template <class T>
     [[nodiscard]] details::iterator<T> end() const noexcept {
-        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {
+        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
             return base_->end_int4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
             return base_->end_int8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
             return base_->end_float4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
             return base_->end_float8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {
+        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
             return base_->end_character();
         } else {
             fail();

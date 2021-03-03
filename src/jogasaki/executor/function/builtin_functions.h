@@ -24,9 +24,6 @@
 
 namespace jogasaki::executor::function {
 
-template <meta::field_type_kind Kind>
-using rtype = typename meta::field_type_traits<Kind>::runtime_type;
-
 /**
  * @brief register built-in aggregate functions to the given provider and function repository
  * @param functions the provider where the built-in functions are registered

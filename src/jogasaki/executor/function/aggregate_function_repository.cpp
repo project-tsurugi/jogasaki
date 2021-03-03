@@ -36,4 +36,8 @@ void aggregate_function_repository::clear() noexcept {
     map_.clear();
 }
 
+std::size_t aggregate_function_repository::size() const noexcept {
+    return map_.size();
+}
+
 }

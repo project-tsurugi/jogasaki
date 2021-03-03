@@ -16,6 +16,8 @@
 #pragma once
 
 #include <vector>
+#include <memory>
+#include <unordered_map>
 
 #include <takatori/descriptor/variable.h>
 #include <takatori/relation/step/aggregate.h>
@@ -24,9 +26,7 @@
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/executor/function/aggregate_function_info.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
-#include <jogasaki/utils/field_types.h>
-#include "operator_base.h"
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include "aggregate_group_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -48,14 +48,7 @@ public:
         std::size_t offset,
         std::size_t nullity_offset,
         bool nullable
-    ) :
-        type_(std::move(type)),
-        argument_indices_(std::move(argument_indices)),
-        function_info_(std::move(function_info)),
-        offset_(offset),
-        nullity_offset_(nullity_offset),
-        nullable_(nullable)
-    {}
+    );
 
     meta::field_type type_{};  //NOLINT
     std::vector<std::size_t> argument_indices_{};  //NOLINT
@@ -75,12 +68,7 @@ public:
         std::size_t offset,
         std::size_t nullity_offset,
         bool nullable
-    ) noexcept :
-        type_(std::move(type)),
-        offset_(offset),
-        nullity_offset_(nullity_offset),
-        nullable_(nullable)
-    {}
+    ) noexcept;
 
     meta::field_type type_{};  //NOLINT
     std::size_t offset_{};  //NOLINT
@@ -157,68 +145,17 @@ private:
 
     std::vector<details::aggregate_group_column> create_columns(
         sequence_view<column const> columns
-    ) {
-        auto var_indices = variable_indices(columns).second;
-        std::vector<details::aggregate_group_column> ret{};
-        for(auto&& c : columns) {
-            std::vector<std::size_t> argument_indices{};
-            for(auto&& a : c.arguments()) {
-                argument_indices.emplace_back(var_indices[a]);
-            }
-            auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(c.function());
-            auto& repo = global::aggregate_function_repository();
-            auto f = repo.find(decl.definition_id());
-            BOOST_ASSERT(f != nullptr);  //NOLINT
-            auto& v = this->block_info().value_map().at(c.destination());
-            ret.emplace_back(
-                utils::type_for(compiled_info().type_of(c.destination())),
-                std::move(argument_indices),
-                *f,
-                v.value_offset(),
-                v.nullity_offset(),
-                true  // currently scope variables are all nullable
-            );
-        }
-        return ret;
-    }
+    );
 
     std::vector<details::aggregate_group_argument> create_arguments(
         sequence_view<column const> columns
-    ) {
-        auto vars = variable_indices(columns).first;
-        std::vector<details::aggregate_group_argument> ret{};
-        ret.reserve(vars.size());
-        for(auto&& v : vars) {
-            ret.emplace_back(
-                utils::type_for(compiled_info().type_of(v)),
-                block_info().value_map().at(v).value_offset(),
-                block_info().value_map().at(v).nullity_offset(),
-                true
-            );
-        }
-        return ret;
-    }
+    );
 
     std::pair<
         std::vector<takatori::descriptor::variable>,
         std::unordered_map<takatori::descriptor::variable, std::size_t>
     >
-    variable_indices(sequence_view<column const> columns) {
-        std::size_t index = 0;
-        std::vector<takatori::descriptor::variable> first{};
-        std::unordered_map<takatori::descriptor::variable, std::size_t> second{};
-        first.reserve(columns.size());
-        for(auto&& c : columns) {
-            for(auto&& a : c.arguments()) {
-                if (second.count(a) == 0) {
-                    second[a] = index;
-                    ++index;
-                    first.emplace_back(a);
-                }
-            }
-        }
-        return {std::move(first), std::move(second)};
-    }
+    variable_indices(sequence_view<column const> columns);
 };
 
 }

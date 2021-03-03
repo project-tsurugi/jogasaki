@@ -17,15 +17,19 @@
 
 namespace jogasaki::executor::function {
 
-field_locator::field_locator(const meta::field_type &type, bool nullable, std::size_t value_offset,
-    std::size_t nullity_offset) :
+field_locator::field_locator(
+    meta::field_type const& type,
+    bool nullable,
+    std::size_t value_offset,
+    std::size_t nullity_offset
+) :
     type_(std::addressof(type)),
     nullable_(nullable),
     value_offset_(value_offset),
     nullity_offset_(nullity_offset)
 {}
 
-meta::field_type const &field_locator::type() const noexcept {
+meta::field_type const& field_locator::type() const noexcept {
     return *type_;
 }
 
@@ -44,4 +48,5 @@ std::size_t field_locator::nullity_offset() const noexcept {
 field_locator::operator bool() const noexcept {
     return type_ != nullptr;
 }
+
 }

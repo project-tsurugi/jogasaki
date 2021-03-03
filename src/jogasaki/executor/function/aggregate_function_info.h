@@ -65,11 +65,7 @@ public:
         aggregate_function_kind kind,
         aggregator_type aggregator,
         std::size_t arg_count = 1
-    ) :
-        kind_(kind),
-        aggregator_(std::move(aggregator)),
-        arg_count_(arg_count)
-    {}
+    );
 
     /**
      * @brief accessor to aggregate function kind
@@ -82,16 +78,12 @@ public:
     /**
      * @brief accessor to aggregate function
      */
-    [[nodiscard]] aggregator_type const& aggregator() const noexcept {
-        return aggregator_;
-    }
+    [[nodiscard]] aggregator_type const& aggregator() const noexcept;
 
     /**
      * @brief accessor to arg count
      */
-    [[nodiscard]] std::size_t arg_count() const noexcept {
-        return arg_count_;
-    }
+    [[nodiscard]] std::size_t arg_count() const noexcept;
 
 private:
     aggregate_function_kind kind_{};

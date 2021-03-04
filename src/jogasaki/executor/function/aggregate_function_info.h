@@ -19,13 +19,9 @@
 #include <set>
 #include <memory>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/enum_tag.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/data/value_store.h>
-#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/field_locator.h>
@@ -33,8 +29,6 @@
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using takatori::util::enum_tag;
-using takatori::util::fail;
 
 /**
  * @brief definition of aggregator function type

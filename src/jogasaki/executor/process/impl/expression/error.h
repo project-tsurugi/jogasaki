@@ -15,12 +15,13 @@
  */
 #pragma once
 
-#include <takatori/util/fail.h>
+#include <type_traits>
+#include <string_view>
+#include <ostream>
+
 #include <takatori/util/enum_set.h>
 
 namespace jogasaki::executor::process::impl::expression {
-
-using takatori::util::fail;
 
 /**
  * @brief error kind

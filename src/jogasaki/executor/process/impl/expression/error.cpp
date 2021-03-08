@@ -15,17 +15,12 @@
  */
 #include "error.h"
 
-#include <takatori/util/fail.h>
-#include <takatori/util/enum_set.h>
-
 namespace jogasaki::executor::process::impl::expression {
-
-using takatori::util::fail;
-
 
 error::error(error_kind kind) noexcept: kind_(kind) {}
 
 error_kind error::kind() const noexcept {
     return kind_;
 }
+
 }

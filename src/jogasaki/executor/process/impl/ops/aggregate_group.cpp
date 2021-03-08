@@ -176,8 +176,7 @@ void aggregate_group::finish(abstract::task_context* context) {
     }
     if (helper.empty_input_from_shuffle()) {
         // do aggregation from value store and create column values
-        for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
-            auto& c = columns_[i];
+        for(auto & c : columns_) {
             auto& func = c.function_info_.empty_value_generator();
             auto target = ctx.variables().store().ref();
             func(target,

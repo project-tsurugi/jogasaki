@@ -15,15 +15,8 @@
  */
 #pragma once
 
-#include <unordered_set>
-#include <optional>
-
-#include <takatori/util/optional_ptr.h>
-#include <takatori/util/downcast.h>
-
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/model/statement_kind.h>
 

@@ -138,7 +138,7 @@ std::shared_ptr<abstract::process_executor_factory> const& step::executor_factor
     return executor_factory_;
 }
 
-void step::io_info(std::shared_ptr<struct io_info> arg) noexcept {
+void step::io_info(std::shared_ptr<class io_info> arg) noexcept {
     io_info_ = std::move(arg);
 }
 
@@ -146,7 +146,7 @@ std::shared_ptr<class io_info> const& step::io_info() const noexcept {
     return io_info_;
 }
 
-void step::relation_io_map(std::shared_ptr<struct relation_io_map> arg) noexcept {
+void step::relation_io_map(std::shared_ptr<class relation_io_map> arg) noexcept {
     relation_io_map_ = std::move(arg);
 }
 
@@ -154,7 +154,7 @@ std::shared_ptr<class relation_io_map> const& step::relation_io_map() const noex
     return relation_io_map_;
 }
 
-void step::io_exchange_map(std::shared_ptr<struct io_exchange_map> arg) noexcept {
+void step::io_exchange_map(std::shared_ptr<class io_exchange_map> arg) noexcept {
     io_exchange_map_ = std::move(arg);
 }
 

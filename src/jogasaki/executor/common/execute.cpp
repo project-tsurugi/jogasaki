@@ -15,21 +15,7 @@
  */
 #include "execute.h"
 
-#include <unordered_set>
-#include <optional>
-
-#include <takatori/util/optional_ptr.h>
-#include <takatori/util/downcast.h>
-
-#include <jogasaki/model/statement.h>
-#include <jogasaki/request_context.h>
-#include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/model/statement_kind.h>
-
 namespace jogasaki::executor::common {
-
-using takatori::util::unsafe_downcast;
 
 execute::execute(std::shared_ptr<common::graph> graph) noexcept:
     operators_(std::move(graph)),

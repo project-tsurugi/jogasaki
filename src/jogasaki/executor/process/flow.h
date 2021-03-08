@@ -69,8 +69,10 @@ private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     step* step_{};
     std::shared_ptr<processor_info> info_{};
+    bool empty_input_from_shuffle_{};
 
     [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(std::size_t partition, impl::ops::operator_container const& operators);
+    std::size_t check_if_empty_input_from_shuffle();
 };
 
 }

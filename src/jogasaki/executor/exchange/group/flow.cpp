@@ -96,13 +96,19 @@ flow::source_list_view flow::sources() {
 }
 
 void flow::transfer() {
+    bool empty = true;
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
         BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT
         for(std::size_t i=0; i < partitions.size(); ++i) {
-            sources_[i]->receive(std::move(partitions[i]));
+            auto& p = partitions[i];
+            if (! p) continue;
+            sources_[i]->receive(std::move(p));
+            empty = false;
         }
     }
+    updatable_info().empty_input(empty);
+    transfer_completed();
 }
 
 class request_context* flow::context() const noexcept {

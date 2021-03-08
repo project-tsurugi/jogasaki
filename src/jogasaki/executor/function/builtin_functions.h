@@ -38,6 +38,27 @@ namespace builtin {
 
 using takatori::util::sequence_view;
 
+/**
+ * @brief zero value generator function for empty input aggregation
+ * @param target the target record_ref where result value is written
+ * @param target_loc target field locator
+ * @note this generator can be used only for the aggregation whose return type is numeric
+ */
+void zero_generator(
+    accessor::record_ref target,
+    field_locator const& target_loc
+);
+
+/**
+ * @brief null value generator function for empty input aggregation
+ * @param target the target record_ref where result value is written
+ * @param target_loc target field locator
+ */
+void null_generator(
+    accessor::record_ref target,
+    field_locator const& target_loc
+);
+
 void count_distinct(
     accessor::record_ref target,
     field_locator const& target_loc,

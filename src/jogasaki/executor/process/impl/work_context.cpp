@@ -21,14 +21,19 @@ work_context::work_context(
     class request_context* request_context,
     std::size_t operator_count,
     std::size_t block_count,
-    std::unique_ptr<memory_resource> resource, std::unique_ptr<memory_resource> varlen_resource,
-    std::shared_ptr<kvs::database> database, std::shared_ptr<kvs::transaction> transaction) :
+    std::unique_ptr<memory_resource> resource,
+    std::unique_ptr<memory_resource> varlen_resource,
+    std::shared_ptr<kvs::database> database,
+    std::shared_ptr<kvs::transaction> transaction,
+    bool empty_input_from_shuffle
+) :
     request_context_(request_context),
     contexts_(operator_count),
     resource_(std::move(resource)),
     varlen_resource_(std::move(varlen_resource)),
     database_(std::move(database)),
-    transaction_(std::move(transaction))
+    transaction_(std::move(transaction)),
+    empty_input_from_shuffle_(empty_input_from_shuffle)
 {
     variables_.reserve(block_count);
 }
@@ -64,5 +69,9 @@ kvs::transaction* work_context::transaction() const noexcept {
 
 request_context* work_context::req_context() const noexcept {
     return request_context_;
+}
+
+bool work_context::empty_input_from_shuffle() const noexcept {
+    return empty_input_from_shuffle_;
 }
 }

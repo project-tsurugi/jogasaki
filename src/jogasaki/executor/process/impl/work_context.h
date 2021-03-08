@@ -55,7 +55,8 @@ public:
         std::unique_ptr<memory_resource> resource,
         std::unique_ptr<memory_resource> varlen_resource,
         std::shared_ptr<kvs::database> database,
-        std::shared_ptr<kvs::transaction> transaction
+        std::shared_ptr<kvs::transaction> transaction,
+        bool empty_input_from_shuffle
     );
 
     /**
@@ -117,6 +118,12 @@ public:
      */
     [[nodiscard]] request_context* req_context() const noexcept;
 
+    /**
+     * @brief accesor to the empty_input_from_shuffle flag
+     * @return true if inputs are shuffle exchanges and all of them are empty
+     * @return false otherwise
+     */
+    [[nodiscard]] bool empty_input_from_shuffle() const noexcept;
 private:
     request_context* request_context_{};
     ops::context_container contexts_{};
@@ -125,6 +132,7 @@ private:
     std::unique_ptr<memory_resource> varlen_resource_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
+    bool empty_input_from_shuffle_{};
 };
 
 }

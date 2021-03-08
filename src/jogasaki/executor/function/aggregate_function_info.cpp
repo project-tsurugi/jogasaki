@@ -21,14 +21,19 @@ namespace jogasaki::executor::function {
 
 aggregate_function_info::aggregate_function_info(
     aggregate_function_kind kind,
+    empty_value_generator_type empty_generator,
     aggregator_type aggregator,
     std::size_t arg_count
 ) :
     kind_(kind),
+    empty_generator_(std::move(empty_generator)),
     aggregator_(std::move(aggregator)),
     arg_count_(arg_count)
 {}
 
+empty_value_generator_type const& aggregate_function_info::empty_value_generator() const noexcept {
+    return empty_generator_;
+}
 
 aggregator_type const& aggregate_function_info::aggregator() const noexcept {
     return aggregator_;

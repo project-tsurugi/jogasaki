@@ -156,6 +156,8 @@ private:
         std::unordered_map<takatori::descriptor::variable, std::size_t>
     >
     variable_indices(sequence_view<column const> columns);
+
+    aggregate_group_context* create_context_if_not_found(abstract::task_context* context);
 };
 
 }

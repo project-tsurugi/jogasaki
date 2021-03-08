@@ -39,8 +39,7 @@ aggregate_group::aggregate_group(
     arguments_(create_arguments(columns))
 {}
 
-operation_status aggregate_group::process_group(abstract::task_context* context, bool last_member) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::task_context* context) {
     context_helper ctx{*context};
     auto* p = find_context<aggregate_group_context>(index(), ctx.contexts());
     if (! p) {
@@ -76,6 +75,12 @@ operation_status aggregate_group::process_group(abstract::task_context* context,
             std::move(function_arg_stores)
         );
     }
+    return p;
+}
+
+operation_status aggregate_group::process_group(abstract::task_context* context, bool last_member) {
+    BOOST_ASSERT(context != nullptr);  //NOLINT
+    auto p = create_context_if_not_found(context);
     return (*this)(*p, last_member, context);
 }
 
@@ -162,6 +167,34 @@ operator_kind aggregate_group::kind() const noexcept {
 }
 
 void aggregate_group::finish(abstract::task_context* context) {
+    auto& ctx = *create_context_if_not_found(context);
+    context_helper helper{*context};
+    if (ctx.inactive()) {
+        return;
+    }
+    if (helper.empty_input_from_shuffle()) {
+        // do aggregation from value store and create column values
+        for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
+            auto& c = columns_[i];
+            auto& func = c.function_info_.empty_value_generator();
+            auto target = ctx.variables().store().ref();
+            func(target,
+                function::field_locator{
+                    c.type_,
+                    c.nullable_,
+                    c.offset_,
+                    c.nullity_offset_
+                }
+            );
+        }
+
+        if (downstream_) {
+            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                ctx.abort();
+                return;
+            }
+        }
+    }
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }

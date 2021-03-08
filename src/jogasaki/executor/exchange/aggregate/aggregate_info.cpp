@@ -60,12 +60,12 @@ accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) co
     return accessor::record_ref(record.data(), record_->record_size());
 }
 
-const maybe_shared_ptr<meta::record_meta> &aggregate_info::record_meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& aggregate_info::record_meta() const noexcept {
     return record_;
 }
 
 
-sequence_view<const aggregate_info::field_index_type> aggregate_info::key_indices() const noexcept {
+sequence_view<aggregate_info::field_index_type const> aggregate_info::key_indices() const noexcept {
     return key_indices_;
 }
 

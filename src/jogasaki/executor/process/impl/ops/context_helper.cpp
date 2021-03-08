@@ -61,6 +61,10 @@ request_context* context_helper::req_context() const noexcept {
     return work_context_->req_context();
 }
 
+bool context_helper::empty_input_from_shuffle() const noexcept {
+    return work_context_->empty_input_from_shuffle();
+}
+
 }
 
 

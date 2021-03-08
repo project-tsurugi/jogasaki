@@ -19,7 +19,7 @@
 
 #include <jogasaki/model/port.h>
 #include <jogasaki/model/step.h>
-#include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/shuffle/flow.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/executor/common/step_kind.h>
@@ -38,7 +38,7 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<aggregate
 /**
  * @brief group step data flow
  */
-class flow : public exchange::flow {
+class flow : public shuffle::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 

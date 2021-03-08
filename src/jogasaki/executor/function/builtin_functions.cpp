@@ -58,6 +58,7 @@ void add_builtin_aggregate_functions(
     {
         auto count_distinct = std::make_shared<aggregate_function_info>(
             aggregate_function_kind::count_distinct,
+            builtin::zero_generator,
             builtin::count_distinct
         );
         std::stringstream ss{};
@@ -146,6 +147,31 @@ std::int64_t count_distinct(data::value_store const& store) {
 }
 
 } // namespace details
+
+void null_generator(
+    accessor::record_ref target,
+    field_locator const& target_loc
+) {
+    BOOST_ASSERT(target_loc.nullable()); //NOLINT
+    auto target_nullity_offset = target_loc.nullity_offset();
+    target.set_null(target_nullity_offset, true);
+}
+
+void zero_generator(
+    accessor::record_ref target,
+    field_locator const& target_loc
+) {
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    target.set_null(target_nullity_offset, false);
+    switch(target_loc.type().kind()) {
+        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, 0); break;
+        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, 0); break;
+        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, 0); break;
+        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, 0); break;
+        default: fail();
+    }
+}
 
 void count_distinct(
     accessor::record_ref target,

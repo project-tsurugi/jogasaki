@@ -40,6 +40,13 @@ using aggregator_type = std::function<void (
 )>;
 
 /**
+ * @brief definition of aggregator function type for empty input
+ */
+using empty_value_generator_type = std::function<void (
+    accessor::record_ref,
+    field_locator const&
+)>;
+/**
  * @brief aggregate function information interface
  */
 class aggregate_function_info {
@@ -57,6 +64,7 @@ public:
      */
     aggregate_function_info(
         aggregate_function_kind kind,
+        empty_value_generator_type empty_generator,
         aggregator_type aggregator,
         std::size_t arg_count = 1
     );
@@ -70,6 +78,11 @@ public:
     }
 
     /**
+     * @brief accessor to empty value generator function
+     */
+    [[nodiscard]] empty_value_generator_type const& empty_value_generator() const noexcept;
+
+    /**
      * @brief accessor to aggregate function
      */
     [[nodiscard]] aggregator_type const& aggregator() const noexcept;
@@ -81,6 +94,7 @@ public:
 
 private:
     aggregate_function_kind kind_{};
+    empty_value_generator_type empty_generator_{};
     aggregator_type aggregator_{};
     std::size_t arg_count_{};
 };

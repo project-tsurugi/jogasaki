@@ -95,26 +95,27 @@ flow::source_list_view flow::sources() {
 }
 
 void flow::transfer() {
-    if (generate_record_on_empty_) {
-        bool empty = true;
-        for(auto& sink : sinks_) {
-            auto& partitions = sink->input_partitions();
-            for(auto& p : partitions) {
-                if (! p) continue;
-                empty = false;
-            }
+    bool empty = true;
+    for(auto& sink : sinks_) {
+        auto& partitions = sink->input_partitions();
+        for(auto& p : partitions) {
+            if (! p) continue;
+            empty = false;
         }
-        if (empty) {
-            auto& writer = sinks_[0]->acquire_writer();
-            auto meta = info_->record_meta();
-            data::aligned_buffer buf{meta->record_size()};
-            accessor::record_ref ref{buf.data(), buf.size()};
-            for(std::size_t i=0, n=meta->field_count(); i < n; ++i) {
-                ref.set_null(meta->nullity_offset(i), true);
-            }
-            writer.write(ref);
-            writer.flush();
+    }
+    updatable_info().empty_input(empty);
+    if (generate_record_on_empty_ && empty) {
+        // generate a special record for empty input
+        // FIXME with count(*), passing null is simply ignored
+        auto& writer = sinks_[0]->acquire_writer();
+        auto meta = info_->record_meta();
+        data::aligned_buffer buf{meta->record_size()};
+        accessor::record_ref ref{buf.data(), buf.size()};
+        for(std::size_t i=0, n=meta->field_count(); i < n; ++i) {
+            ref.set_null(meta->nullity_offset(i), true);
         }
+        writer.write(ref);
+        writer.flush();
     }
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
@@ -125,6 +126,7 @@ void flow::transfer() {
             sources_[i]->receive(std::move(partitions[i]));
         }
     }
+    transfer_completed();
 }
 
 } // namespace

@@ -35,7 +35,15 @@ processor::processor(
     memory::lifo_paged_memory_resource* resource
 ) :
     info_(std::move(info)),
-    operators_(ops::create_operators(info_, std::move(io_info), std::move(relation_io_map), io_exchange_map, resource)),
+    operators_(
+        ops::create_operators(
+            info_,
+            std::move(io_info),
+            std::move(relation_io_map),
+            io_exchange_map,
+            resource
+        )
+    ),
     relation_io_map_(std::move(relation_io_map))
 {}
 

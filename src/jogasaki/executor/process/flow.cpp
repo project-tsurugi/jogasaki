@@ -39,6 +39,29 @@ flow::flow(
     info_(std::move(info))
 {}
 
+std::size_t flow::check_if_empty_input_from_shuffle() {
+    // If upstreams are empty shuffles, make single partition.
+    auto& exchange_map = step_->io_exchange_map();
+    bool empty = true;
+    bool shuffle_input = true;
+    for(std::size_t i=0, n=exchange_map->input_count(); i < n; ++i) {
+        if(auto* flow = dynamic_cast<executor::exchange::shuffle::flow*>(&exchange_map->input_at(i)->data_flow_object()); flow != nullptr) {
+            if (! flow->info().empty_input()) {
+                empty = false;
+                break;
+            }
+        } else {
+            //other exchanges
+            shuffle_input = false;
+            break;
+        }
+    }
+    if (shuffle_input && empty) {
+        empty_input_from_shuffle_ = true;
+    }
+    return empty_input_from_shuffle_ ? 1 : step_->partitions();
+}
+
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     auto proc = std::make_shared<impl::processor>(
         info_,
@@ -49,9 +72,8 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     );
     // create process executor
     auto& factory = step_->executor_factory() ? *step_->executor_factory() : impl::default_process_executor_factory();
-
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
-    auto partitions = step_->partitions();
+    auto partitions = check_if_empty_input_from_shuffle();
     auto& operators = proc->operators();
     auto external_output = operators.io_exchange_map().external_output_count();
     // for now only one task within a request emits, fix when multiple emits happen
@@ -104,7 +126,8 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             context_->database(),
-            context_->transaction()
+            context_->transaction(),
+            empty_input_from_shuffle_
         )
     );
     return ctx;

@@ -22,6 +22,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/task_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -102,6 +103,11 @@ public:
      * @brief accessor to request context
      */
     [[nodiscard]] request_context* req_context() const noexcept;
+
+    /**
+     * @brief accesor to the empty_input_from_shuffle flag
+     */
+    [[nodiscard]] bool empty_input_from_shuffle() const noexcept;
 private:
     abstract::task_context *context_{};
     impl::work_context* work_context_{};

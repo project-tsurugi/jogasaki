@@ -126,9 +126,11 @@ std::int64_t count_distinct(data::value_store const& store) {
     using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<T, 62, false>;
     using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
     using hash_set = tsl::hopscotch_set<T, std::hash<T>, std::equal_to<>, hash_table_allocator>;
-    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two, so round down here to avoid going over allocator limit
+    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two,
+    // so round down here to avoid going over allocator limit
     constexpr static std::size_t default_initial_hash_table_size =
-        utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type) - 32); // hopscotch has some (~1KB) overhead outside bucket storage
+        utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type) - 32); // hopscotch has some (~1KB)
+                                                                                     // overhead outside bucket storage
 
     auto b = store.begin<T>();
     auto e = store.end<T>();
@@ -196,6 +198,6 @@ void count_distinct(
     target.set_value<rtype<kind::int8>>(target_offset, res);
 }
 
-}
+}  // namespace builtin
 
-}
+}  // namespace jogasaki::executor::function

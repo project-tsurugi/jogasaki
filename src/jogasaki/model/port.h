@@ -40,7 +40,6 @@ namespace jogasaki::model {
 template <class T>
 using sequence_view = takatori::util::sequence_view<T>;
 
-
 class step;
 
 class port {

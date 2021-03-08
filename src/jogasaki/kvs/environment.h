@@ -24,9 +24,8 @@ namespace jogasaki::kvs {
  */
 class environment {
 public:
-    void initialize() {
-        environment_.initialize();
-    }
+    void initialize();
+
 private:
     sharksfin::Environment environment_{};
 };

@@ -22,8 +22,10 @@ namespace jogasaki::executor {
 /**
  * @brief group reader interface for the process to retrieve group data
  * @details The data will be presented as group (represented by key) entry and its members (represented by values).
- * The functions next_group/get_group are used to proceed the group position and to retrieve key corresponding to the group.
- * The functions next_member/get_member are used to proceed the member position and to retrieve value corresponding to the member.
+ * The functions next_group/get_group are used to proceed the group position and to retrieve key corresponding
+ * to the group.
+ * The functions next_member/get_member are used to proceed the member position and to retrieve value corresponding
+ * to the member.
  * At the beginning, initial group position is set just before the first group entry (if any).
  */
 class group_reader {
@@ -34,12 +36,11 @@ public:
      * @return false when there is no next group
      * @pre either the following condition is met:
      * - no next_group() has been called since reader initialization
-     * - most recent next_group() returned true, then next_member() has been called at least once, and most recent call returned false
+     * - most recent next_group() returned true, then next_member() has been called at least once,
+     *   and most recent call returned false
      * @warning the function behavior is undefined when pre-condition stated above is not met
      */
     [[nodiscard]] virtual bool next_group() = 0;
-
-    //FIXME: add get_status() if needed
 
     /**
      * @brief get the key corresponding to the current group

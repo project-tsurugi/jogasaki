@@ -37,8 +37,12 @@ void external_writer::release() {
     store_ = nullptr;
 }
 
-external_writer::external_writer(data::iterable_record_store &store, maybe_shared_ptr<meta::record_meta> meta) :
+external_writer::external_writer(
+    data::iterable_record_store &store,
+    maybe_shared_ptr<meta::record_meta> meta
+) :
     store_(std::addressof(store)),
     meta_(std::move(meta))
 {}
+
 }

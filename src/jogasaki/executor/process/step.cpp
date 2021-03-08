@@ -74,7 +74,11 @@ std::shared_ptr<io_info> step::create_io_info() {
                 fail();
         }
     }
-    return std::make_shared<class io_info>(std::move(inputs), std::move(outputs), io_info::external_output_entity_type{});
+    return std::make_shared<class io_info>(
+        std::move(inputs),
+        std::move(outputs),
+        io_info::external_output_entity_type{}
+    );
 }
 
 step::step(
@@ -111,5 +115,50 @@ void step::activate() {
         this,
         info_
     ));
+}
+
+void step::notify_prepared() {
+    // check if main inputs are already available
+    // raise providing to start main tasks running soon
+}
+
+void step::notify_completed() {
+    // destroy process buffer
+}
+
+void step::partitions(std::size_t num) noexcept {
+    partitions_ = num;
+}
+
+void step::executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept {
+    executor_factory_ = std::move(factory);
+}
+
+std::shared_ptr<abstract::process_executor_factory> const& step::executor_factory() const noexcept {
+    return executor_factory_;
+}
+
+void step::io_info(std::shared_ptr<struct io_info> arg) noexcept {
+    io_info_ = std::move(arg);
+}
+
+std::shared_ptr<class io_info> const& step::io_info() const noexcept {
+    return io_info_;
+}
+
+void step::relation_io_map(std::shared_ptr<struct relation_io_map> arg) noexcept {
+    relation_io_map_ = std::move(arg);
+}
+
+std::shared_ptr<class relation_io_map> const& step::relation_io_map() const noexcept {
+    return relation_io_map_;
+}
+
+void step::io_exchange_map(std::shared_ptr<struct io_exchange_map> arg) noexcept {
+    io_exchange_map_ = std::move(arg);
+}
+
+std::shared_ptr<class io_exchange_map> const& step::io_exchange_map() const noexcept {
+    return io_exchange_map_;
 }
 }

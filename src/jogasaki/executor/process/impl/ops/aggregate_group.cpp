@@ -48,7 +48,9 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
         stores.reserve(arguments_.size());
         resources.reserve(arguments_.size());
         for(auto&& a : arguments_) {
-            auto& res = resources.emplace_back(std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()));
+            auto& res = resources.emplace_back(
+                std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
+            );
             stores.emplace_back(
                 a.type_,
                 res.get(),
@@ -289,7 +291,6 @@ details::aggregate_group_argument::aggregate_group_argument(
     nullity_offset_(nullity_offset),
     nullable_(nullable)
 {}
-
 
 }
 

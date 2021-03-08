@@ -34,7 +34,12 @@ using traits = meta::field_type_traits<Kind>;
  * @param type filed type of the target
  * @param offset offset of the target field in the contained record
  */
-inline void print_field(std::ostream& os, accessor::record_ref record, meta::field_type const& type, meta::record_meta::value_offset_type offset) {
+inline void print_field(
+    std::ostream& os,
+    accessor::record_ref record,
+    meta::field_type const& type,
+    meta::record_meta::value_offset_type offset
+) {
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::undefined: os << kind::undefined; break;
@@ -68,7 +73,7 @@ inline void print_field(std::ostream& os, accessor::record_ref record, meta::fie
 
 /**
  * @brief debug support to print record content
- * @details helper class to override operator<< with record_ref and objects and print record content using record_meta .
+ * @details helper class to override operator<< with record_ref and objects and print record content using record_meta.
  * The object of this class is not explicitly constructed. Only operator << generates the instance implicitly.
  * The output format is (index:type)[content] separated by a space, e.g. (0:int8)[100] (1:double)[1.1] (2:text)[ABC]
  */

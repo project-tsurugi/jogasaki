@@ -166,7 +166,9 @@ void write_partial::decode_fields(
             continue;
         }
         kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, varlen_resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming fields are nullable and f.nullity_offset_ is valid even if f.nullable_ is false
+        target.set_null(f.target_nullity_offset_, false); // currently assuming fields are nullable and
+                                                                // f.nullity_offset_ is valid even if f.nullable_
+                                                                // is false
     }
 }
 

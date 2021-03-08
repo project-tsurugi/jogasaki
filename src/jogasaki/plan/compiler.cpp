@@ -103,7 +103,10 @@ std::shared_ptr<plan::prepared_statement> prepare(std::string_view sql) {
     return std::make_shared<plan::prepared_statement>(std::move(program));
 };
 
-executor::process::step create(takatori::plan::process const& process, yugawara::compiled_info const& c_info) {
+executor::process::step create(
+    takatori::plan::process const& process,
+    yugawara::compiled_info const& c_info
+) {
     auto info = std::make_shared<executor::process::processor_info>(
         const_cast<relation::graph_type&>(process.operators()),
         c_info
@@ -126,7 +129,10 @@ executor::process::step create(takatori::plan::process const& process, yugawara:
     );
 }
 
-executor::exchange::forward::step create(takatori::plan::forward const& forward, yugawara::compiled_info const& c_info) {
+executor::exchange::forward::step create(
+    takatori::plan::forward const& forward,
+    yugawara::compiled_info const& c_info
+) {
     meta::variable_order column_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         forward.columns(),
@@ -146,7 +152,10 @@ executor::exchange::forward::step create(takatori::plan::forward const& forward,
         std::move(column_order));
 }
 
-executor::exchange::group::step create(takatori::plan::group const& group, yugawara::compiled_info const& c_info) {
+executor::exchange::group::step create(
+    takatori::plan::group const& group,
+    yugawara::compiled_info const& c_info
+) {
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
         group.columns(),
@@ -196,7 +205,10 @@ executor::exchange::group::step create(takatori::plan::group const& group, yugaw
     );
 }
 
-executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, yugawara::compiled_info const& c_info) {
+executor::exchange::aggregate::step create(
+    takatori::plan::aggregate const& agg,
+    yugawara::compiled_info const& c_info
+) {
     using executor::exchange::aggregate::aggregate_info;
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
@@ -334,20 +346,26 @@ void create_mirror_for_execute(
     for(auto&& [s, step] : steps) {
         auto map = std::make_shared<executor::process::io_exchange_map>();
         if(takatori::plan::has_upstream(*s)) {
-            takatori::plan::enumerate_upstream(*s, [step=step, &steps, &map](takatori::plan::step const& up){
-                // assuming enumerate_upstream respects the input port ordering TODO confirm
-                *step << *steps[&up];
-                if(step->kind() == executor::common::step_kind::process) {
-                    map->add_input(unsafe_downcast<executor::exchange::step>(steps[&up]));
+            takatori::plan::enumerate_upstream(
+                *s,
+                [step=step, &steps, &map](takatori::plan::step const& up){
+                    // assuming enumerate_upstream respects the input port ordering TODO confirm
+                    *step << *steps[&up];
+                    if(step->kind() == executor::common::step_kind::process) {
+                        map->add_input(unsafe_downcast<executor::exchange::step>(steps[&up]));
+                    }
                 }
-            });
+            );
         }
         if(takatori::plan::has_downstream(*s)) {
-            takatori::plan::enumerate_downstream(*s, [step=step, &steps, &map](takatori::plan::step const& down){
-                if(step->kind() == executor::common::step_kind::process) {
-                    map->add_output(unsafe_downcast<executor::exchange::step>(steps[&down]));
+            takatori::plan::enumerate_downstream(
+                *s,
+                [step=step, &steps, &map](takatori::plan::step const& down){
+                    if(step->kind() == executor::common::step_kind::process) {
+                        map->add_output(unsafe_downcast<executor::exchange::step>(steps[&down]));
+                    }
                 }
-            });
+            );
         }
         if(step->kind() == executor::common::step_kind::process) {
             unsafe_downcast<executor::process::step>(step)->io_exchange_map(std::move(map));

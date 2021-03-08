@@ -74,6 +74,7 @@ public:
     [[nodiscard]] std::size_t force_numa_node() const noexcept {
         return force_numa_node_;
     }
+
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};

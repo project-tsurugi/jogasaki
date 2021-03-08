@@ -38,7 +38,8 @@ using takatori::util::fail;
 constexpr static std::size_t basic_record_field_size = 16;
 constexpr static std::size_t basic_record_field_alignment = 8;
 constexpr static std::size_t basic_record_max_field_count = 14;
-constexpr static std::size_t basic_record_buffer_size = basic_record_field_size * (basic_record_max_field_count + 1); // +1 for nullity bits
+constexpr static std::size_t basic_record_buffer_size =
+    basic_record_field_size * (basic_record_max_field_count + 1); // +1 for nullity bits
 using basic_record_entity_type = std::array<char, basic_record_buffer_size>;
 
 template<kind Kind>
@@ -73,18 +74,34 @@ void create_entity(basic_record_entity_type& entity, to_runtime_type_t<Kind> arg
 }
 
 template <kind ...Kinds, size_t ... Is>
-void create_entity(basic_record_entity_type& entity, memory::paged_memory_resource* resource, std::index_sequence<Is...>, meta::record_meta& meta, to_runtime_type_t<Kinds>...args) {
+void create_entity(
+    basic_record_entity_type& entity,
+    memory::paged_memory_resource* resource,
+    std::index_sequence<Is...>,
+        meta::record_meta& meta,
+        to_runtime_type_t<Kinds>...args
+) {
     (void)resource;
     (void)meta;
     [](auto&&...){}((create_entity<Is, Kinds>(entity, args), 0)...);
 }
 
 template <kind ...Kinds>
-void create_entity(basic_record_entity_type& entity, memory::paged_memory_resource* resource, meta::record_meta& meta, to_runtime_type_t<Kinds>...args) {
+void create_entity(
+    basic_record_entity_type& entity,
+    memory::paged_memory_resource* resource,
+    meta::record_meta& meta,
+    to_runtime_type_t<Kinds>...args
+) {
     create_entity<Kinds...>(entity, resource, std::make_index_sequence<sizeof...(Kinds)>(), meta, args...);
 }
 
-inline void create_entity(basic_record_entity_type& entity, accessor::record_ref record, memory::paged_memory_resource* resource, meta::record_meta& meta) {
+inline void create_entity(
+    basic_record_entity_type& entity,
+    accessor::record_ref record,
+    memory::paged_memory_resource* resource,
+    meta::record_meta& meta
+) {
     (void)resource;
     std::memset(&entity[0], 0, sizeof(entity));
     std::memcpy(&entity[0], record.data(), meta.record_size());
@@ -104,7 +121,8 @@ std::shared_ptr<meta::record_meta> create_meta(
 ) {
     (void)all_fields_nullable;  // for now nulliti bits always exist
     static_assert(sizeof...(Kinds) <= basic_record_max_field_count);
-    static_assert(sizeof...(Kinds) <= basic_record_field_size * bits_per_byte); // nullity bits should be contained in a field
+    static_assert(sizeof...(Kinds) <= basic_record_field_size * bits_per_byte); // nullity bits should be
+                                                                                // contained in a field
     // too many creation is likely to be a program error (e.g. using wrong constructor)
     static constexpr std::size_t limit_creating_meta = 1000;
     cache_align thread_local std::size_t create_count = 0;

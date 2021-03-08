@@ -61,7 +61,10 @@ using ::takatori::util::enum_tag_t;
     fail();
 }
 
-[[nodiscard]] inline meta::field_type type_for(yugawara::compiled_info const& info, ::takatori::descriptor::variable const& var) {
+[[nodiscard]] inline meta::field_type type_for(
+    yugawara::compiled_info const& info,
+    ::takatori::descriptor::variable const& var
+) {
     auto const& type = info.type_of(var);
     return type_for(type);
 }

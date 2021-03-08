@@ -90,29 +90,19 @@ public:
      * @brief create new instance holding record reader
      * @param reader the object to hold
      */
-    explicit reader_container(record_reader* reader) noexcept : reader_(std::in_place_type<record_reader*>, reader) {}
+    explicit reader_container(record_reader* reader) noexcept;
 
     /**
      * @brief create new instance holding group reader
      * @param reader the object to hold
      */
-    explicit reader_container(group_reader* reader) noexcept : reader_(std::in_place_type<group_reader*>, reader) {}
+    explicit reader_container(group_reader* reader) noexcept;
 
     /**
      * @brief getter for the reader kind
      * @return kind of the reader held by this object
      */
-    [[nodiscard]] reader_kind kind() const noexcept {
-        switch(reader_.index()) {
-            case index_of<std::monostate>:
-                return reader_kind::unknown;
-            case index_of<record_reader*>:
-                return details::to_kind<record_reader>;
-            case index_of<group_reader*>:
-                return details::to_kind<group_reader>;
-        }
-        fail();
-    }
+    [[nodiscard]] reader_kind kind() const noexcept;
 
     /**
      * @brief getter for the reader
@@ -128,32 +118,9 @@ public:
      * @brief getter of the validity
      * @return whether the container holds any reader or not
      */
-    [[nodiscard]] explicit operator bool() const noexcept {
-        switch(reader_.index()) {
-            case index_of<std::monostate>:
-                return false;
-            case index_of<record_reader*>:
-                return *std::get_if<record_reader*>(&reader_) != nullptr;
-            case index_of<group_reader*>:
-                return *std::get_if<group_reader*>(&reader_) != nullptr;
-        }
-        fail();
-    }
+    [[nodiscard]] explicit operator bool() const noexcept;
 
-    void release() {
-        if (!*this) return;
-        switch(reader_.index()) {
-            case index_of<std::monostate>:
-                return;
-            case index_of<record_reader*>:
-                std::get<record_reader*>(reader_)->release();
-                return;
-            case index_of<group_reader*>:
-                std::get<group_reader*>(reader_)->release();
-                return;
-        }
-        fail();
-    }
+    void release();
 private:
     entity_type reader_{};
 

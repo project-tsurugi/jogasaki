@@ -63,7 +63,8 @@ public:
     virtual void start() = 0;
 
     /**
-     * @brief stop the scheduler joining all the running tasks and canceling ones that are submitted but not yet executed
+     * @brief stop the scheduler joining all the running tasks and
+     * canceling ones that are submitted but not yet executed
      */
     virtual void stop() = 0;
 

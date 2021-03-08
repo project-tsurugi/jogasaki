@@ -43,4 +43,28 @@ void record_store::reset() noexcept {
     count_ = 0;
 }
 
+record_store::record_store(
+    memory::paged_memory_resource* record_resource,
+    memory::paged_memory_resource* varlen_resource,
+    maybe_shared_ptr<meta::record_meta> meta
+) :
+    resource_(record_resource),
+    varlen_resource_(varlen_resource),
+    meta_(std::move(meta)),
+    copier_(meta_, varlen_resource),
+    record_size_(meta_->record_size())
+{}
+
+maybe_shared_ptr<meta::record_meta> const& record_store::meta() const noexcept {
+    return meta_;
+}
+
+memory::paged_memory_resource* record_store::varlen_resource() const noexcept {
+    return varlen_resource_;
+}
+
+accessor::record_copier& record_store::copier() noexcept {
+    return copier_;
+}
+
 } // namespace

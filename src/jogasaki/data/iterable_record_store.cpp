@@ -18,7 +18,6 @@
 namespace jogasaki::data {
 
 iterable_record_store::iterator &iterable_record_store::iterator::operator++() {
-
     pos_ = static_cast<unsigned char*>(pos_) + container_->record_size_; //NOLINT
     if (pos_ >= range_->e_) {
         ++range_;
@@ -45,15 +44,20 @@ iterable_record_store::iterator::iterator(
     iterable_record_store const& container,
     std::vector<iterable_record_store::record_range>::const_iterator range
 ) :
-    container_(&container), pos_(range != container_->ranges_.end() ? range->b_ : nullptr), range_(range)
+    container_(&container),
+    pos_(range != container_->ranges_.end() ? range->b_ : nullptr),
+    range_(range)
 {}
 
 iterable_record_store::value_type iterable_record_store::iterator::operator*() {
     return ref();
 }
 
-iterable_record_store::iterable_record_store(memory::paged_memory_resource *record_resource,
-    memory::paged_memory_resource *varlen_resource, maybe_shared_ptr<meta::record_meta> meta) :
+iterable_record_store::iterable_record_store(
+    memory::paged_memory_resource *record_resource,
+    memory::paged_memory_resource *varlen_resource,
+    maybe_shared_ptr<meta::record_meta> meta
+) :
     record_size_(meta->record_size()),
     base_(record_resource, varlen_resource, std::move(meta))
 {}
@@ -90,4 +94,5 @@ void iterable_record_store::reset() noexcept {
     prev_ = nullptr;
     ranges_.clear();
 }
+
 } // namespace

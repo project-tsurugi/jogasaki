@@ -47,11 +47,10 @@ public:
      */
     [[nodiscard]] virtual bool next_record() = 0;
 
-    //FIXME: add get_status() to get error status if needed
-
     /**
      * @brief get the record at the current position
-     * @return record reference to the record on the current position if next_record() was called beforehand and the results was true.
+     * @return record reference to the record on the current position if next_record() was called beforehand
+     * and the results was true.
      * The returned record_ref will be invalidated when next_record() is called.
      * @pre next_record() has been called at least once and most recent call returned true
      * @warning the function behavior is undefined when pre-condition stated above is not met

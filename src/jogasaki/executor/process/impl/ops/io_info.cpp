@@ -19,22 +19,28 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::maybe_shared_ptr;
 
-input_info::input_info(maybe_shared_ptr<meta::record_meta> meta, meta::variable_order column_order) :
+input_info::input_info(
+    maybe_shared_ptr<meta::record_meta> meta,
+    meta::variable_order column_order
+) :
     record_meta_(std::move(meta)),
     column_order_(std::move(column_order))
 {}
 
-input_info::input_info(maybe_shared_ptr<meta::group_meta> meta, meta::variable_order column_order) :
+input_info::input_info(
+    maybe_shared_ptr<meta::group_meta> meta,
+    meta::variable_order column_order
+) :
     group_meta_(std::move(meta)),
     column_order_(std::move(column_order)),
     for_group_(true)
 {}
 
-const maybe_shared_ptr<meta::record_meta>& input_info::record_meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& input_info::record_meta() const noexcept {
     return record_meta_;
 }
 
-const maybe_shared_ptr<meta::group_meta>& input_info::group_meta() const noexcept {
+maybe_shared_ptr<meta::group_meta> const& input_info::group_meta() const noexcept {
     return group_meta_;
 }
 
@@ -46,12 +52,15 @@ bool input_info::is_group_input() const noexcept {
     return for_group_;
 }
 
-output_info::output_info(maybe_shared_ptr<meta::record_meta> meta, meta::variable_order column_order) :
+output_info::output_info(
+    maybe_shared_ptr<meta::record_meta> meta,
+    meta::variable_order column_order
+) :
     meta_(std::move(meta)),
     column_order_(std::move(column_order))
 {}
 
-const maybe_shared_ptr<meta::record_meta>& output_info::meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& output_info::meta() const noexcept {
     return meta_;
 }
 

@@ -22,9 +22,10 @@ namespace jogasaki::meta::impl {
 /**
  * @brief Record data buffer layout creator
  * @details Records are binary encoded as follows:
- * First, nullity bits field is placed at the beginning. The bits fields alignment is 1 byte and its size is the ceiling
- * of number of fields divided by 8(bits_per_byte). Then, the field values encoded by the native format of its runtime type are ordered
- * respecting alignment of each runtime type. (The field order has been given to record_meta via constructor.)
+ * First, nullity bits field is placed at the beginning. The bits fields alignment is 1 byte and
+ * its size is the ceiling of number of fields divided by 8(bits_per_byte). Then, the field values encoded
+ * by the native format of its runtime type are ordered respecting alignment of each runtime type.
+ * (The field order has been given to record_meta via constructor.)
  */
 class record_layout_creator {
 public:

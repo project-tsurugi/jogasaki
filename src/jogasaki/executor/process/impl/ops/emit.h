@@ -101,6 +101,7 @@ public:
      * @see operator_base::finish()
      */
     void finish(abstract::task_context* context) override;
+
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::emit_field> fields_{};

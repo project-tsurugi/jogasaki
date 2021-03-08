@@ -96,15 +96,7 @@ public:
      * @attention Concurrent operations for adding/removing storage entries are not strictly controlled for safety.
      * For the time being, storages are expected to be created sequentially before any transactions are started.
      */
-    std::unique_ptr<storage> create_storage(std::string_view name) {
-        sharksfin::StorageHandle stg{};
-        if (auto res = sharksfin::storage_create(handle_, sharksfin::Slice(name), &stg); res == sharksfin::StatusCode::ALREADY_EXISTS) {
-            return {};
-        } else if (res != sharksfin::StatusCode::OK) { //NOLINT
-            fail();
-        }
-        return std::make_unique<storage>(stg);
-    }
+    std::unique_ptr<storage> create_storage(std::string_view name);
 
     /**
      * @brief retrieve the storage on the database
@@ -117,15 +109,7 @@ public:
      * For the time being, storages are expected to be created sequentially before any transactions are started.
      * Accessing the storage object which is deleted by storage::delete_storage() causes undefined behavior.
      */
-    std::unique_ptr<storage> get_storage(std::string_view name) {
-        sharksfin::StorageHandle stg{};
-        if (auto res = sharksfin::storage_get(handle_, sharksfin::Slice(name), &stg); res == sharksfin::StatusCode::NOT_FOUND) {
-            return {};
-        } else if (res != sharksfin::StatusCode::OK) { //NOLINT
-            fail();
-        }
-        return std::make_unique<storage>(stg);
-    }
+    std::unique_ptr<storage> get_storage(std::string_view name);
 
 private:
     sharksfin::DatabaseHandle handle_{};

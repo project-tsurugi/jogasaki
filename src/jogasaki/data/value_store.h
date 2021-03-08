@@ -38,6 +38,7 @@ namespace details {
 
 /**
  * @brief iterator for the stored records
+ * @tparam the value type
  */
 template <class T>
 class iterator {

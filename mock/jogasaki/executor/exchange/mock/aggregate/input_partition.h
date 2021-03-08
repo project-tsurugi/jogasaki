@@ -66,8 +66,10 @@ public:
     using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq, hash_table_allocator>;
     using hash_tables = std::vector<hash_table>;
 
-    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two, so round down here to avoid going over allocator limit
-    constexpr static std::size_t default_initial_hash_table_size = utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
+    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two,
+    // so round down here to avoid going over allocator limit
+    constexpr static std::size_t default_initial_hash_table_size =
+        utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
 
     static_assert(sizeof(hash_table::value_type) == 16);  // two pointers
     static_assert(alignof(hash_table::value_type) == 8);
@@ -118,14 +120,19 @@ public:
         auto value = info_->extract_value(record);
         if (auto it = table.find(key.data()); it != table.end()) {
             auto& aggregator = *info_->aggregator();
-            aggregator(info_->value_meta().get(), accessor::record_ref(it->second, info_->value_meta()->record_size()), value);
+            aggregator(
+                info_->value_meta().get(),
+                accessor::record_ref(it->second, info_->value_meta()->record_size()),
+                value
+            );
         } else {
             table.emplace(keys_->append(key), values_->append(value));
             if (table.load_factor() > load_factor_bound) {
                 flush();
                 return true;
             }
-            // TODO predict and avoid unexpected reallocation (e.g. all neighbors occupied) where memory allocator raises bad_alloc
+            // TODO predict and avoid unexpected reallocation (e.g. all neighbors occupied)
+            //  where memory allocator raises bad_alloc
         }
         return false;
     }
@@ -156,7 +163,12 @@ public:
         iterable_hash_table(hash_table& table,
             std::size_t key_size,
             std::size_t value_size
-        ) noexcept : table_(std::addressof(table)), key_size_(key_size), value_size_(value_size), it_(table_->end()) {}
+        ) noexcept :
+            table_(std::addressof(table)),
+            key_size_(key_size),
+            value_size_(value_size),
+            it_(table_->end())
+        {}
 
         /**
          * @brief proceed the internal iterator
@@ -259,7 +271,8 @@ public:
 
     /**
      * @brief check whether the hash table is empty or not
-     * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
+     * @param index the 0-origin index to specify the hash table. Must be less than the
+     * number of tables returned by tables_count().
      * @return true if the hash table is empty
      * @return false otherwise
      * @attention the behavior is undefined if given index is invalid
@@ -270,7 +283,8 @@ public:
 
     /**
      * @brief retrieve the hash table access object
-     * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
+     * @param index the 0-origin index to specify the hash table. Must be less than the number of
+     * tables returned by tables_count().
      * @return the object to access hash table with iterator
      */
     iterable_hash_table table_at(std::size_t index) {

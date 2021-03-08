@@ -38,31 +38,21 @@ public:
     /**
      * @brief create new empty instance
      */
-    explicit task_context_pool(std::vector<std::shared_ptr<abstract::task_context>> contexts) {
-        for(auto&& c : contexts) {
-            push(std::move(c));
-        }
-    }
+    explicit task_context_pool(std::vector<std::shared_ptr<abstract::task_context>> contexts);
 
     /**
      * @brief add new task context
      * @details this function can be called from multiple threads
      * @param context the context to add
      */
-    void push(std::shared_ptr<abstract::task_context> context) {
-        contexts_.emplace(std::move(context));
-    }
+    void push(std::shared_ptr<abstract::task_context> context);
 
     /**
      * @brief fetch the task context on top
      * @details this function can be called from multiple threads
      * @return the fetched context
      */
-    std::shared_ptr<abstract::task_context> pop() {
-        std::shared_ptr<abstract::task_context> context{};
-        contexts_.pop(context);
-        return context;
-    }
+    std::shared_ptr<abstract::task_context> pop();
 
 private:
     tbb::concurrent_bounded_queue<std::shared_ptr<abstract::task_context>> contexts_{};

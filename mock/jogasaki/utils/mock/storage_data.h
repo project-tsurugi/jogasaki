@@ -119,7 +119,9 @@ static void fill_fields(
                 std::size_t len = 1 + (sequential ? record_count : rnd()) % 70;
                 len = record_count % 2 == 1 ? len + 20 : len;
                 std::string d(len, c);
-                expression::any a{create_value<accessor::text>(accessor::text{d.data(), d.size()}, record_count, nullable)};
+                expression::any a{create_value<accessor::text>(
+                    accessor::text{d.data(), d.size()}, record_count, nullable)
+                };
                 encode_field(a, meta::field_type(enum_tag<kind::character>), spec, nullable, target);
                 break;
             }

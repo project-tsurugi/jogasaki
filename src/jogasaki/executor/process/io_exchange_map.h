@@ -46,68 +46,26 @@ public:
      */
     io_exchange_map() = default;
 
-    std::size_t add_input(input_exchange* s) {
-        input_entity_.emplace_back(s);
-        return input_entity_.size() - 1;
-    }
-    std::size_t add_output(output_exchange* s) {
-        output_entity_.emplace_back(s);
-        return output_entity_.size() - 1;
-    }
+    std::size_t add_input(input_exchange* s);
+    std::size_t add_output(output_exchange* s);
 
-    std::size_t add_external_output(external_output_operator* s) {
-        external_output_entity_.emplace_back(s);
-        return external_output_entity_.size() - 1;
-    }
+    std::size_t add_external_output(external_output_operator* s);
 
-    std::size_t input_index(input_exchange* s) {
-        for(std::size_t i=0, n=input_entity_.size(); i < n; ++i) {
-            if(input_entity_[i] == s) {
-                return i;
-            }
-        }
-        return npos;
-    }
-    std::size_t output_index(output_exchange* s) {
-        for(std::size_t i=0, n=output_entity_.size(); i < n; ++i) {
-            if(output_entity_[i] == s) {
-                return i;
-            }
-        }
-        return npos;
-    }
-    std::size_t external_output_index(external_output_operator* s) {
-        for(std::size_t i=0, n=external_output_entity_.size(); i < n; ++i) {
-            if(external_output_entity_[i] == s) {
-                return i;
-            }
-        }
-        return npos;
-    }
+    std::size_t input_index(input_exchange* s);
+    std::size_t output_index(output_exchange* s);
+    std::size_t external_output_index(external_output_operator* s);
 
-    [[nodiscard]] input_exchange* const& input_at(std::size_t index) const {
-        return input_entity_.at(index);
-    }
+    [[nodiscard]] input_exchange* const& input_at(std::size_t index) const;
 
-    [[nodiscard]] output_exchange* const& output_at(std::size_t index) const {
-        return output_entity_.at(index);
-    }
+    [[nodiscard]] output_exchange* const& output_at(std::size_t index) const;
 
-    [[nodiscard]] external_output_operator const& external_output_at(std::size_t index) const {
-        return *external_output_entity_.at(index);
-    }
+    [[nodiscard]] external_output_operator const& external_output_at(std::size_t index) const;
 
-    [[nodiscard]] std::size_t input_count() const noexcept {
-        return input_entity_.size();
-    }
+    [[nodiscard]] std::size_t input_count() const noexcept;
 
-    [[nodiscard]] std::size_t output_count() const noexcept {
-        return output_entity_.size();
-    }
+    [[nodiscard]] std::size_t output_count() const noexcept;
 
-    [[nodiscard]] std::size_t external_output_count() const noexcept {
-        return external_output_entity_.size();
-    }
+    [[nodiscard]] std::size_t external_output_count() const noexcept;
 
 private:
     input_entity_type input_entity_{};

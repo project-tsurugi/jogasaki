@@ -24,6 +24,7 @@ void run_info::empty_input(bool arg) noexcept {
 bool run_info::empty_input() const noexcept {
     return empty_input_;
 }
+
 }
 
 

@@ -19,7 +19,8 @@
 
 namespace jogasaki::utils {
 
-static constexpr std::size_t hardware_destructive_interference_size = 64; // replace with std one when C++17 becomes available
+// replace with std one when C++17 becomes available
+static constexpr std::size_t hardware_destructive_interference_size = 64;
 
 } // namespace
 

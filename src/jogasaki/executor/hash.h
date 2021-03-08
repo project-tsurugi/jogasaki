@@ -63,6 +63,7 @@ public:
     [[nodiscard]] hash_value operator()(void* ptr) const noexcept {
         return operator()(accessor::record_ref(ptr, meta_->record_size()));
     }
+
 private:
     meta::record_meta const* meta_{};
 

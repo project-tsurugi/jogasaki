@@ -43,26 +43,15 @@ public:
         block_scope& variables,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr
-    ) :
-        context_base(ctx, variables, resource, varlen_resource),
-        store_(std::move(meta))
-    {}
+    );
 
-    [[nodiscard]] operator_kind kind() const noexcept override {
-        return operator_kind::offer;
-    }
+    [[nodiscard]] operator_kind kind() const noexcept override;
 
     // for test
-    [[nodiscard]] data::small_record_store& store() noexcept {
-        return store_;
-    }
+    [[nodiscard]] data::small_record_store& store() noexcept;
 
-    void release() override {
-        if(writer_) {
-            writer_->release();
-            writer_ = nullptr;
-        }
-    }
+    void release() override;
+
 private:
     data::small_record_store store_{};
     record_writer* writer_{};

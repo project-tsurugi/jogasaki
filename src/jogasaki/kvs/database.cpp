@@ -59,5 +59,27 @@ std::unique_ptr<transaction> database::create_transaction(bool readonly) {
     return std::make_unique<transaction>(*this, readonly);
 }
 
+std::unique_ptr<storage> database::create_storage(std::string_view name) {
+    sharksfin::StorageHandle stg{};
+    if (auto res = sharksfin::storage_create(handle_, sharksfin::Slice(name), &stg);
+        res == sharksfin::StatusCode::ALREADY_EXISTS) {
+        return {};
+    } else if (res != sharksfin::StatusCode::OK) { //NOLINT
+        fail();
+    }
+    return std::make_unique<storage>(stg);
+}
+
+std::unique_ptr<storage> database::get_storage(std::string_view name) {
+    sharksfin::StorageHandle stg{};
+    if (auto res = sharksfin::storage_get(handle_, sharksfin::Slice(name), &stg);
+        res == sharksfin::StatusCode::NOT_FOUND) {
+        return {};
+    } else if (res != sharksfin::StatusCode::OK) { //NOLINT
+        fail();
+    }
+    return std::make_unique<storage>(stg);
+}
+
 }
 

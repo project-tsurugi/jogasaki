@@ -196,7 +196,10 @@ public:
         key_fields_(std::move(key_fields)),
         condition_(std::move(condition)),
         downstream_(std::move(downstream)),
-        evaluator_(condition_ ? expression::evaluator{*condition_, info.compiled_info()} : expression::evaluator{})
+        evaluator_(condition_ ?
+            expression::evaluator{*condition_, info.compiled_info()} :
+            expression::evaluator{}
+        )
     {}
 
     /**

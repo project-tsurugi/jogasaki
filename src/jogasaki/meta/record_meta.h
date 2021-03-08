@@ -94,9 +94,12 @@ public:
     /**
      * @brief construct new object
      * @param fields ordered list of field types
-     * @param nullability ordered list of nullability bits, whose size must be equal to number of fields in the record
-     * @param value_offset_table ordered list of value offset, whose size must be equal to number of fields in the record
-     * @param nullity_offset_table ordered list of nullity offset, whose size must be equal to number of fields in the record
+     * @param nullability ordered list of nullability bits, whose size must be equal to
+     * number of fields in the record
+     * @param value_offset_table ordered list of value offset, whose size must be equal to
+     * number of fields in the record
+     * @param nullity_offset_table ordered list of nullity offset, whose size must be equal to
+     * number of fields in the record
      * @param record_alignment the alignment of the record
      * @param record_size the size of the record in byte
      */
@@ -140,7 +143,8 @@ public:
     /**
      * @brief getter for byte offset for field value
      * @param index field index
-     * @return byte offset of the field value, which can be used through accessor api (e.g. set_value/get_value of record_ref)
+     * @return byte offset of the field value, which can be used through accessor api
+     * (e.g. set_value/get_value of record_ref)
      * @warning if index is not in valid range, the behavior is undefined
      */
     [[nodiscard]] value_offset_type value_offset(field_index_type index) const noexcept;
@@ -204,6 +208,7 @@ public:
         }
         return out;
     }
+
 private:
     fields_type fields_{};
     nullability_type nullability_{};
@@ -212,7 +217,6 @@ private:
     nullity_offset_table_type nullity_offset_table_{};
     std::size_t record_alignment_{};
     std::size_t record_size_{};
-
 };
 
 /**

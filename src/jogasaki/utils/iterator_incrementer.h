@@ -38,7 +38,8 @@ public:
 
     /**
      * @brief create new object
-     * @param iterators the list of iterator pairs that define initial value (begin) and upper bound (end) for each digit
+     * @param iterators the list of iterator pairs that define initial value (begin)
+     * and upper bound (end) for each digit
      */
     explicit iterator_incrementer(std::vector<iterator_pair> iterators) noexcept :
         current_(std::move(iterators)),

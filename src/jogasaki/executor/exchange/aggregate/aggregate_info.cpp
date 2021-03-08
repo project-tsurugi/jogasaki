@@ -51,8 +51,24 @@ aggregate_info::aggregate_info(
     key_indices_(std::move(key_indices)),
     extracted_key_meta_(create_extracted_meta(key_indices_, record_)),
     pre_(create_output(output_kind::pre, value_specs, record_, record_, key_indices_)),
-    mid_(create_output(output_kind::mid, value_specs, pre_.group_meta()->value_shared(), record_, key_indices_)),
-    post_(create_output(output_kind::post, value_specs, mid_.group_meta()->value_shared(), record_, key_indices_)),
+    mid_(
+        create_output(
+            output_kind::mid,
+            value_specs,
+            pre_.group_meta()->value_shared(),
+            record_,
+            key_indices_
+        )
+    ),
+    post_(
+        create_output(
+            output_kind::post,
+            value_specs,
+            mid_.group_meta()->value_shared(),
+            record_,
+            key_indices_
+        )
+    ),
     generate_record_on_empty_(generate_record_on_empty)
 {}
 
@@ -230,6 +246,10 @@ std::size_t aggregate_info::output_info::value_count() const noexcept {
 sequence_view<const field_locator>
 aggregate_info::output_info::source_field_locators(std::size_t aggregator_index) const noexcept {
     return source_field_locators_[aggregator_index];
+}
+
+compare_info const& aggregate_info::output_info::key_compare_info() const noexcept {
+    return key_compare_info_;
 }
 
 const maybe_shared_ptr<meta::record_meta> &aggregate_info::extracted_key_meta() const noexcept {

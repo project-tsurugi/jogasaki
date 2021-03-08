@@ -41,12 +41,19 @@ public:
     using table_iterator = pointer_table_type::iterator;
     constexpr static std::size_t ptr_table_size = memory::page_size/sizeof(void*);
 
+    /**
+     * @brief create empty object
+     */
     input_partition() = default;
 
     /**
      * @brief create new instance
-     * @param resource
-     * @param info
+     * @param resource_for_records the memory resource to store records
+     * @param resource_for_ptr_tables the memory resource backing pointer tables
+     * @param resource_for_varlen_data the memory resource storing varlen data
+     * @param info the group information
+     * @param context the request context
+     * @param pointer_table_size the number of pointers that the pointer table can store (convenient for testing)
      */
     input_partition(
         std::unique_ptr<memory::paged_memory_resource> resource_for_records,
@@ -59,7 +66,7 @@ public:
 
     /**
      * @brief write record to the input partition
-     * @param record
+     * @param record the record reference to write
      * @return whether flushing pointer table happens or not
      */
     bool write(accessor::record_ref record);

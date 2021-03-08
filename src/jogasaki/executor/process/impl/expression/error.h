@@ -75,14 +75,12 @@ public:
     /**
      * @brief create new object
      */
-    explicit error(error_kind kind) noexcept : kind_(kind) {}
+    explicit error(error_kind kind) noexcept;
 
     /**
      * @brief accessor for error kind
      */
-    [[nodiscard]] error_kind kind() const noexcept {
-        return kind_;
-    }
+    [[nodiscard]] error_kind kind() const noexcept;
 
 private:
     error_kind kind_{error_kind::undefined};

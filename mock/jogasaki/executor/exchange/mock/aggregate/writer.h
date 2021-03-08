@@ -34,12 +34,17 @@ public:
     writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
-    writer(std::size_t downstream_partitions, std::shared_ptr<shuffle_info> info, std::vector<std::unique_ptr<input_partition>>& partitions, mock::aggregate::sink& owner) :
-            downstream_partitions_(downstream_partitions),
-            partitions_(partitions),
-            info_(std::move(info)),
-            partitioner_(downstream_partitions_, info_->key_meta()),
-            owner_(std::addressof(owner))
+    writer(
+        std::size_t downstream_partitions,
+        std::shared_ptr<shuffle_info> info,
+        std::vector<std::unique_ptr<input_partition>>& partitions,
+        mock::aggregate::sink& owner
+    ) :
+        downstream_partitions_(downstream_partitions),
+        partitions_(partitions),
+        info_(std::move(info)),
+        partitioner_(downstream_partitions_, info_->key_meta()),
+        owner_(std::addressof(owner))
     {}
 
     bool write(accessor::record_ref rec) override {

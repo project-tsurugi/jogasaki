@@ -99,7 +99,9 @@ private:
     std::size_t capacity_{npos};
     std::size_t pos_{};
     std::size_t write_count_{};
-    std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
+    std::unique_ptr<memory::paged_memory_resource> resource_{
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
+    };
 };
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>

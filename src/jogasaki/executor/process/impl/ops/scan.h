@@ -160,7 +160,12 @@ private:
 
     void close(scan_context& ctx);
 
-    void decode_fields(std::vector<details::scan_field> const& fields, kvs::stream& stream, accessor::record_ref target, memory_resource* resource);
+    void decode_fields(
+        std::vector<details::scan_field> const& fields,
+        kvs::stream& stream,
+        accessor::record_ref target,
+        memory_resource* resource
+    );
 
     std::vector<details::scan_field> create_fields(
         yugawara::storage::index const& idx,

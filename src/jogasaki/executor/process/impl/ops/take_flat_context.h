@@ -45,6 +45,7 @@ public:
     [[nodiscard]] operator_kind kind() const noexcept override;
 
     void release() override;
+
 private:
     record_reader* reader_{};
 };

@@ -70,7 +70,11 @@ protected:
      * @param bytes the buffer size in bytes
      * @param alignment the alignment size of the head of buffer
      */
-    void do_deallocate([[maybe_unused]] void* p, [[maybe_unused]] std::size_t bytes, [[maybe_unused]] std::size_t alignment) override;
+    void do_deallocate(
+        [[maybe_unused]] void* p,
+        [[maybe_unused]] std::size_t bytes,
+        [[maybe_unused]] std::size_t alignment
+    ) override;
 
     [[nodiscard]] bool do_is_equal(const memory_resource& other) const noexcept override;
 

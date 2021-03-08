@@ -24,7 +24,10 @@ namespace jogasaki::api::impl {
 using takatori::util::maybe_shared_ptr;
 using kind = api::field_type_kind;
 
-record::record(accessor::record_ref ref, maybe_shared_ptr<meta::record_meta> meta) :
+record::record(
+    accessor::record_ref ref,
+    maybe_shared_ptr<meta::record_meta> meta
+) :
     ref_(ref),
     meta_(std::move(meta))
 {}

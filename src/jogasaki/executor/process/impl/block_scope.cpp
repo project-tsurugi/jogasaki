@@ -17,7 +17,9 @@
 
 namespace jogasaki::executor::process::impl {
 
-block_scope::block_scope(const block_scope_info& info) :
+block_scope::block_scope(
+    block_scope_info const& info
+) :
     info_(std::addressof(info)),
     store_(std::make_unique<data::small_record_store>(info.meta()))
 {}
@@ -30,9 +32,10 @@ variable_value_map const& block_scope::value_map() const noexcept {
     return info_->value_map();
 }
 
-const maybe_shared_ptr<meta::record_meta>& block_scope::meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& block_scope::meta() const noexcept {
     return info_->meta();
 }
+
 }
 
 

@@ -19,7 +19,6 @@
 
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
-#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/scheduler/step_state.h>
 
 namespace jogasaki::scheduler {
@@ -89,7 +88,9 @@ void step_state_table::register_task(step_state_table::slots_type &slots, step_s
     slots[slot] = id;
 }
 
-std::vector<step_state_table::slot_index> step_state_table::list_uninitialized(const step_state_table::slots_type &slots) const {
+std::vector<step_state_table::slot_index> step_state_table::list_uninitialized(
+    step_state_table::slots_type const& slots
+) const {
     std::vector<slot_index> v{};
     v.reserve(slots.size());
     for(slot_index i = 0; i < slots.size(); ++i) {
@@ -100,11 +101,14 @@ std::vector<step_state_table::slot_index> step_state_table::list_uninitialized(c
     return v;
 }
 
-bool
-step_state_table::uninitialized_slot(const step_state_table::slots_type &slots, step_state_table::slot_index ind) const {
+bool step_state_table::uninitialized_slot(
+    step_state_table::slots_type const&slots,
+    step_state_table::slot_index ind
+) const {
     if (ind >= slots.size()) {
         return true;
     }
     return slots[ind] == uninitialized_task_identity;
 }
+
 }

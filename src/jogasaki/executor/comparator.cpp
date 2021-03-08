@@ -17,11 +17,14 @@
 
 namespace jogasaki::executor {
 
-comparator::comparator(const compare_info& info) noexcept:
+comparator::comparator(compare_info const& info) noexcept :
     meta_(std::addressof(info))
 {}
 
-int comparator::operator()(const accessor::record_ref &a, const accessor::record_ref &b) const noexcept {
+int comparator::operator()(
+    accessor::record_ref const&a,
+    accessor::record_ref const&b
+) const noexcept {
     for(std::size_t i = 0, n = meta_->left().field_count(); i < n; ++i) {
         auto res = compare_field(a, b, i);
         if (res != 0) {
@@ -51,8 +54,11 @@ int comparator::negate_if(int ret, std::size_t field_index) const noexcept {
     return meta_->opposite(field_index) ? -ret : ret;
 }
 
-int
-comparator::compare_field(const accessor::record_ref &a, const accessor::record_ref &b, std::size_t field_index) const {
+int comparator::compare_field(
+    accessor::record_ref const&a,
+    accessor::record_ref const&b,
+    std::size_t field_index
+) const {
     auto& l = meta_->left();
     auto& r = meta_->right();
     auto& type = l.at(field_index);

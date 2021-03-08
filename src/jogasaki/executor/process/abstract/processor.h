@@ -61,8 +61,8 @@ enum class status : std::size_t {
  * - one processor for main inputs, or data from scan operation
  * - one processor per sub input
  *
- * The implementation is expected to conduct the process task, whose scope is determined by the I/O objects(readers/writers),
- * or scan_info retrieved from context passed with run().
+ * The implementation is expected to conduct the process task, whose scope is determined
+ * by the I/O objects(readers/writers), or scan_info retrieved from context passed with run().
  *
  * The processor must be re-entrant, i.e. required to allow calling run() from multiple threads for distinct tasks.
  * To save task specific working data across run() function call boundaries, processor can generate work_context
@@ -76,8 +76,9 @@ public:
      * @details execute the processor logic using the context, which gives information on assigned task
      * (e.g. the input data provided by reader, or scan details provided by scan_info)
      *
-     * A task can be completed by one or more calls of run() with same context. Each call may be made from different thread.
-     * But the calls for a task doesn't happen simultaneously, i.e. time interval of run() calls for a task don't over-wrap each other.
+     * A task can be completed by one or more calls of run() with same context. Each call may be made
+     * from different thread. But the calls for a task doesn't happen simultaneously, i.e. time interval
+     * of run() calls for a task don't over-wrap each other.
      *
      * @param context the context for the task conducted by this processor
      * @return status code to notify caller of the execution status

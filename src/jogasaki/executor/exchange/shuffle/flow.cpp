@@ -17,7 +17,6 @@
 
 namespace jogasaki::executor::exchange::shuffle {
 
-
 run_info flow::info() const noexcept {
     BOOST_ASSERT(transfer_completed_);  //NOLINT
     return info_;
@@ -27,6 +26,11 @@ run_info& flow::updatable_info() noexcept {
     BOOST_ASSERT(! transfer_completed_);  //NOLINT
     return info_;
 }
+
+void flow::transfer_completed() noexcept {
+    transfer_completed_ = true;
+}
+
 } // namespace
 
 

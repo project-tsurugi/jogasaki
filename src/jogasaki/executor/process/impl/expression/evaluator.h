@@ -62,28 +62,32 @@ inline static typename T::view_type value_of(takatori::scalar::expression const&
             }
             case takatori::value::value_kind::int4: {
                 [[maybe_unused]] auto x = unsafe_downcast<takatori::value::int4>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::int4> || std::is_same_v<T, takatori::value::int8>) {  //NOLINT
+                if constexpr (std::is_same_v<T, takatori::value::int4> ||
+                    std::is_same_v<T, takatori::value::int8>) {  //NOLINT
                     return x;
                 }
                 break;
             }
             case takatori::value::value_kind::int8: {
                 [[maybe_unused]]auto x = unsafe_downcast<takatori::value::int8>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::int4> || std::is_same_v<T, takatori::value::int8>) {  //NOLINT
+                if constexpr (std::is_same_v<T, takatori::value::int4> ||
+                    std::is_same_v<T, takatori::value::int8>) {  //NOLINT
                     return x;
                 }
                 break;
             }
             case takatori::value::value_kind::float4: {
                 [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float4>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::float4> || std::is_same_v<T, takatori::value::float8>) {  //NOLINT
+                if constexpr (std::is_same_v<T, takatori::value::float4> ||
+                    std::is_same_v<T, takatori::value::float8>) {  //NOLINT
                     return x;
                 }
                 break;
             }
             case takatori::value::value_kind::float8: {
                 [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float8>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::float4> || std::is_same_v<T, takatori::value::float8>) {  //NOLINT
+                if constexpr (std::is_same_v<T, takatori::value::float4> ||
+                    std::is_same_v<T, takatori::value::float8>) {  //NOLINT
                     return x;
                 }
                 break;
@@ -156,7 +160,9 @@ public:
             case k::subtract: result = left-right; break;
             case k::divide: result = left/right; break;
             case k::multiply:
-                if constexpr ((std::is_integral_v<T> || std::is_floating_point_v<T>) && !std::is_same_v<T, bool>) {  //NOLINT
+                if constexpr ((std::is_integral_v<T> ||
+                    std::is_floating_point_v<T>) &&
+                    !std::is_same_v<T, bool>) {  //NOLINT
                     result = left*right; break;
                 }
                 break;
@@ -184,7 +190,12 @@ public:
         push<T>(stack, result);
     }
 
-    void operator()(takatori::util::post_visit, takatori::scalar::binary const& arg, stack_type& stack, memory_resource* resource);
+    void operator()(
+        takatori::util::post_visit,
+        takatori::scalar::binary const& arg,
+        stack_type& stack,
+        memory_resource* resource
+    );
 
     bool operator()(takatori::scalar::immediate const& arg, stack_type& stack, memory_resource* resource) {
         using t = takatori::type::type_kind;
@@ -230,7 +241,12 @@ public:
         push<bool>(stack, result);
     }
 
-    void operator()(takatori::util::post_visit, takatori::scalar::compare const& arg, stack_type& stack, memory_resource* resource) {
+    void operator()(
+        takatori::util::post_visit,
+        takatori::scalar::compare const& arg,
+        stack_type& stack,
+        memory_resource* resource
+    ) {
         auto& type = info_.type_of(arg.left()); //TODO support cases where left/right types differ
         using t = takatori::type::type_kind;
         switch(type.kind()) {
@@ -248,7 +264,12 @@ public:
         return true;
     }
 
-    void operator()(takatori::util::post_visit, takatori::scalar::unary const& arg, stack_type& stack, memory_resource*) {
+    void operator()(
+        takatori::util::post_visit,
+        takatori::scalar::unary const& arg,
+        stack_type& stack,
+        memory_resource*
+    ) {
         using k = takatori::scalar::unary::operator_kind_type;
         using t = takatori::type::type_kind;
         switch(arg.operator_kind()) {
@@ -293,7 +314,11 @@ public:
         }
     }
 
-    bool operator()(takatori::scalar::variable_reference const& arg, stack_type& stack, memory_resource*) {
+    bool operator()(
+        takatori::scalar::variable_reference const& arg,
+        stack_type& stack,
+        memory_resource*
+    ) {
         auto& info = scope_.value_map().at(arg.variable());
         auto ref = scope_.store().ref();
         using t = takatori::type::type_kind;
@@ -316,7 +341,11 @@ private:
 };
 
 template <>
-void callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource);
+void callback::binary<accessor::text>(
+    takatori::scalar::binary_operator op,
+    stack_type& stack,
+    memory_resource* resource
+);
 
 }
 
@@ -346,10 +375,12 @@ public:
      * @brief evaluate the expression
      * @details The required memory is allocated from the memory resource to calculate and store the result value.
      * Caller is responsible for release the allocated store after consuming the result. This can be typically done by
-     * remembering checkpoint before this call and using memory_resource::deallocate_after() after consuming return value.
+     * remembering checkpoint before this call and using memory_resource::deallocate_after() after
+     * consuming return value.
      * @param scope scope variables used to evaluate the expression
      * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
-     * never generate types whose values are stored via memory resource(e.g. accessor::text). Then UB if such type is processed.
+     * never generate types whose values are stored via memory resource(e.g. accessor::text).
+     * Then UB if such type is processed.
      * @return the result of evaluation
      */
     [[nodiscard]] any operator()(

@@ -61,11 +61,5 @@ inline std::ostream& operator<<(std::ostream& out, aggregate_function_kind value
     return out << to_string_view(value);
 }
 
-/// @brief a set of aggregate function kind.
-using aggregate_function_kind_set = takatori::util::enum_set<
-    aggregate_function_kind,
-    aggregate_function_kind::undefined,
-    aggregate_function_kind::avg>;
-
 } // namespace
 

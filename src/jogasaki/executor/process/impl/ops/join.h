@@ -101,7 +101,11 @@ public:
      * @param ctx operator context object for the execution
      * @return status of the operation
      */
-    operation_status operator()(join_context& ctx, cogroup<iterator>& cgrp, abstract::task_context* context = nullptr) {
+    operation_status operator()(
+        join_context& ctx,
+        cogroup<iterator>& cgrp,
+        abstract::task_context* context = nullptr
+    ) {
         (void)kind_;
         if (ctx.inactive()) {
             return {operation_status_kind::aborted};
@@ -127,7 +131,16 @@ public:
                 auto it = cur[i].first;
                 for(auto&& f : g.fields()) {
                     auto src = f.is_key_ ? g.key() : *it;
-                    utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, src, f.source_offset_, f.source_nullity_offset_, ctx.varlen_resource()); // TODO no need to copy between resources
+                    utils::copy_nullable_field(
+                        f.type_,
+                        target,
+                        f.target_offset_,
+                        f.target_nullity_offset_,
+                        src,
+                        f.source_offset_,
+                        f.source_nullity_offset_,
+                        ctx.varlen_resource()
+                    ); // TODO no need to copy between resources
                 }
             }
             if (all_groups_available) {
@@ -139,7 +152,8 @@ public:
                     res = evaluator_(scope, resource).template to<bool>();
                 }
                 if (res && downstream_) {
-                    if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                    if(auto st = unsafe_downcast<record_operator>(
+                            downstream_.get())->process_record(context); !st) {
                         ctx.abort();
                         return {operation_status_kind::aborted};
                     }
@@ -167,6 +181,7 @@ public:
             unsafe_downcast<record_operator>(downstream_.get())->finish(context);
         }
     }
+
 private:
     join_kind kind_{};
     expression::evaluator evaluator_{};

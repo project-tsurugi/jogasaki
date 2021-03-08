@@ -29,37 +29,25 @@ class task : public model::task {
 public:
     using step_type = class step;
 
-    task() {
-        id_ = id_src++;
-    }
+    task();
 
     task(
         request_context* context,
         step* src
-    ) : context_(context), src_(src) {
-        id_ = id_src++;
-    }
+    );
 
-    [[nodiscard]] identity_type id() const override {
-        return id_;
-    }
+    [[nodiscard]] identity_type id() const override;
 
-    [[nodiscard]] step_type* step() const {
-        return src_;
-    }
+    [[nodiscard]] step_type* step() const;
 
-    [[nodiscard]] request_context* context() const {
-        return context_;
-    }
+    [[nodiscard]] request_context* context() const;
 
 protected:
-    std::ostream& write_to(std::ostream& out) const override {
-        using namespace std::string_view_literals;
-        return out << "task[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;
-    };
+    std::ostream& write_to(std::ostream& out) const override;;
 
 private:
     cache_align static inline std::atomic_size_t id_src = 10000;
+
     identity_type id_{};
     request_context* context_{};
     step_type* src_{};

@@ -17,10 +17,6 @@
 
 #include <memory>
 
-namespace jogasaki::api::impl {
-
-}
-
 namespace jogasaki::api {
 /**
  * @brief factory method for environment
@@ -30,4 +26,7 @@ std::unique_ptr<environment> create_environment() {
     return std::make_unique<impl::environment>();
 }
 
+void impl::environment::initialize() {
+    environment_.initialize();
+}
 }

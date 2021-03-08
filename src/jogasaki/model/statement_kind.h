@@ -53,11 +53,5 @@ inline std::ostream& operator<<(std::ostream& out, statement_kind value) {
     return out << to_string_view(value);
 }
 
-/// @brief a set of statement_kind.
-using statement_kind_set = takatori::util::enum_set<
-        statement_kind,
-        statement_kind::execute,
-        statement_kind::write>;
-
 } // namespace
 

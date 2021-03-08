@@ -170,11 +170,21 @@ void find::decode_fields(
             continue;
         }
         if (f.source_nullable_) {
-            kvs::decode_nullable(stream, f.type_, f.spec_, target, f.target_offset_, f.target_nullity_offset_, resource);
+            kvs::decode_nullable(
+                stream,
+                f.type_,
+                f.spec_,
+                target,
+                f.target_offset_,
+                f.target_nullity_offset_,
+                resource
+            );
             continue;
         }
         kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are nullable and f.target_nullity_offset_ is valid even if f.source_nullable_ is false
+        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are
+                                                                // nullable and f.target_nullity_offset_ is valid
+                                                                // even if f.source_nullable_ is false
     }
 }
 

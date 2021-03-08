@@ -17,8 +17,11 @@
 
 namespace jogasaki::executor {
 
-compare_info::compare_info(const meta::record_meta& left, const meta::record_meta& right,
-    std::vector<ordering> orders) noexcept:
+compare_info::compare_info(
+    meta::record_meta const& left,
+    meta::record_meta const& right,
+    std::vector<ordering> orders
+) noexcept:
     left_(std::addressof(left)),
     right_(std::addressof(right)),
     orders_(std::move(orders))
@@ -31,7 +34,10 @@ compare_info::compare_info(const meta::record_meta& left, const meta::record_met
     }
 }
 
-compare_info::compare_info(const meta::record_meta& left, const meta::record_meta& right) noexcept:
+compare_info::compare_info(
+    meta::record_meta const& left,
+    meta::record_meta const& right
+) noexcept:
     left_(std::addressof(left)),
     right_(std::addressof(right))
 {
@@ -58,4 +64,5 @@ bool compare_info::opposite(std::size_t field_index) const noexcept {
     if (orders_.empty()) return false;
     return orders_[field_index] == ordering::descending;
 }
+
 }

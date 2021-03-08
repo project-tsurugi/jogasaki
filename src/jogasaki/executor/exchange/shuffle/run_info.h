@@ -20,15 +20,21 @@
 namespace jogasaki::executor::exchange::shuffle {
 
 /**
- * @brief
+ * @brief the run-time information about the run result of the shuffle
  */
 class run_info {
 public:
+
     /**
-     * @brief create new instance with empty schema (for testing)
+     * @brief create new instance
      */
     run_info() = default;
+
+    /**
+     * @brief destruct the instance
+     */
     ~run_info() = default;
+
     run_info(run_info const& other) = default;
     run_info& operator=(run_info const& other) = default;
     run_info(run_info&& other) noexcept = default;

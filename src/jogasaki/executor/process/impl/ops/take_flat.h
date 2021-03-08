@@ -63,8 +63,8 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param order the exchange columns ordering information that assigns the field index of the input record. The index
-     * can be used with record_meta to get field metadata.
+     * @param order the exchange columns ordering information that assigns the field index of the input record.
+     * The index can be used with record_meta to get field metadata.
      * @param meta the record metadata of the record. This information is typically provided by the upstream exchange.
      * @param columns mapping information between exchange columns and variables
      * @param reader_index the index that identifies the reader in the task context. This corresponds to the input port
@@ -112,6 +112,7 @@ public:
      * @see operator_base::finish()
      */
     void finish(abstract::task_context*) override;
+
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::take_flat_field> fields_{};

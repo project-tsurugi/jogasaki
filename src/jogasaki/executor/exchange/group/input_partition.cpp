@@ -25,7 +25,8 @@ namespace jogasaki::executor::exchange::group {
 input_partition::input_partition(
     std::unique_ptr<memory::paged_memory_resource> resource_for_records,
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
-    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data, std::shared_ptr<group_info> info,
+    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
+    std::shared_ptr<group_info> info,
     request_context *context, std::size_t pointer_table_size
 ) :
     resource_for_records_(std::move(resource_for_records)),

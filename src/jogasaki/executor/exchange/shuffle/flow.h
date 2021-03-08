@@ -43,9 +43,11 @@ protected:
      */
     [[nodiscard]] run_info& updatable_info() noexcept;
 
-    void transfer_completed() noexcept {
-        transfer_completed_ = true;
-    }
+    /**
+     * @brief inform the completion of transfer so that the run_info is available for read
+     */
+    void transfer_completed() noexcept;
+
 private:
     run_info info_{};
     bool transfer_completed_{false};

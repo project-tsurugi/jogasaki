@@ -29,7 +29,8 @@ class flow { //NOLINT(cppcoreguidelines-special-member-functions,hicpp-special-m
 public:
     /**
      * @brief index used to identify the port attached to this step
-     * Each set of Main input ports, Sub input ports, and Output ports consists a category and indexes are 0-origin unique number within each category.
+     * Each set of Main input ports, Sub input ports, and Output ports consists a category and indexes are
+     * 0-origin unique number within each category.
      */
     using port_index_type = std::size_t;
 

@@ -36,8 +36,12 @@ public:
     status commit() override;
     status abort() override;
     status execute(api::executable_statement& statement) override;
-    status execute(api::executable_statement& statement, std::unique_ptr<api::result_set>& result) override;
+    status execute(
+        api::executable_statement& statement,
+        std::unique_ptr<api::result_set>& result
+    ) override;
     impl::database& database();
+
 private:
     impl::database* database_{};
     scheduler::statement_scheduler scheduler_{};

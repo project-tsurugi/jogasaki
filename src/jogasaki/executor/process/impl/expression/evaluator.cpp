@@ -24,7 +24,11 @@ using takatori::util::fail;
 namespace details {
 
 template <>
-void callback::binary<accessor::text>(takatori::scalar::binary_operator op, stack_type& stack, memory_resource* resource) {
+void callback::binary<accessor::text>(
+    takatori::scalar::binary_operator op,
+    stack_type& stack,
+    memory_resource* resource
+) {
     using kind = takatori::scalar::binary_operator;
     auto right = pop<accessor::text>(stack);
     auto left = pop<accessor::text>(stack);
@@ -35,8 +39,12 @@ void callback::binary<accessor::text>(takatori::scalar::binary_operator op, stac
     fail();
 }
 
-void callback::operator()(takatori::util::post_visit, const takatori::scalar::binary &arg,
-    callback::stack_type &stack, callback::memory_resource *resource) {
+void callback::operator()(
+    takatori::util::post_visit,
+    takatori::scalar::binary const&arg,
+    callback::stack_type &stack,
+    callback::memory_resource *resource
+) {
     auto& type = info_.type_of(arg.left()); //TODO support cases where left/right types differ
     using t = takatori::type::type_kind;
     switch(type.kind()) {
@@ -49,6 +57,7 @@ void callback::operator()(takatori::util::post_visit, const takatori::scalar::bi
         default: fail();
     }
 }
+
 }
 
 } // namespace

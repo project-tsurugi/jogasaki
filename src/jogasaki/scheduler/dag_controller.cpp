@@ -57,10 +57,15 @@ public:
         executor_(std::addressof(scheduler))
     {}
 
-    explicit impl(std::shared_ptr<configuration> cfg) : cfg_(std::move(cfg)),
+    explicit impl(std::shared_ptr<configuration> cfg) :
+        cfg_(std::move(cfg)),
         executor_(cfg_->single_thread() ?
             std::shared_ptr<task_scheduler>(std::make_shared<serial_task_scheduler>()) :
-            std::shared_ptr<task_scheduler>(std::make_shared<parallel_task_scheduler>(thread_params(cfg_)))) {}
+            std::shared_ptr<task_scheduler>(
+                std::make_shared<parallel_task_scheduler>(thread_params(cfg_))
+            )
+        )
+    {}
 
     /*
      * @brief handles providing event
@@ -242,7 +247,8 @@ public:
                 // TODO propagate
                 break;
             case step_state_kind::completed:
-                if(!all_upstream_steps_past(s, step_state_kind::completed) || !all_downstream_steps_past(s, step_state_kind::completed)) {
+                if(!all_upstream_steps_past(s, step_state_kind::completed) ||
+                    !all_downstream_steps_past(s, step_state_kind::completed)) {
                     break;
                 }
                 internal_events_.emplace(internal_event_kind::deactivate, s.id());
@@ -357,7 +363,11 @@ dag_controller::dag_controller(
 ) :
     impl_(std::make_unique<impl>(std::move(cfg), scheduler))
 {}
-dag_controller::dag_controller(std::shared_ptr<configuration> cfg) : impl_(std::make_unique<impl>(std::move(cfg))) {};
+
+dag_controller::dag_controller(std::shared_ptr<configuration> cfg) :
+    impl_(std::make_unique<impl>(std::move(cfg)))
+{};
+
 dag_controller::~dag_controller() = default;
 
 void dag_controller::schedule(model::graph &g) {
@@ -426,7 +436,11 @@ void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::deactivate
     }
 }
 
-void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::propagate_downstream_completing>, internal_event& ie, step* s) {
+void dag_controller::impl::operator()(
+    enum_tag_t<internal_event_kind::propagate_downstream_completing>,
+    internal_event& ie,
+    step* s
+) {
     (void)s;
     (void)ie;
 }

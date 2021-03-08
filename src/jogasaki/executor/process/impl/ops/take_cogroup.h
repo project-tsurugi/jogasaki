@@ -106,6 +106,7 @@ public:
      * @see operator_base::finish()
      */
     void finish(abstract::task_context*) override;
+
 private:
     std::vector<group_element> groups_{};
     std::unique_ptr<operator_base> downstream_{};

@@ -19,14 +19,17 @@ namespace jogasaki::executor::exchange::group {
 
 using namespace impl;
 
-
-priority_queue_reader::priority_queue_reader(std::shared_ptr<group_info> info, std::vector<std::unique_ptr<input_partition>>& partitions) :
-        partitions_(partitions),
-        info_(std::move(info)),
-        queue_(iterator_pair_comparator(info_.get())),
-        record_size_(info_->record_meta()->record_size()),
-        buf_(info_->record_meta()), //NOLINT
-        key_comparator_(info_->compare_info()) {
+priority_queue_reader::priority_queue_reader(
+    std::shared_ptr<group_info> info,
+    std::vector<std::unique_ptr<input_partition>>& partitions
+) :
+    partitions_(partitions),
+    info_(std::move(info)),
+    queue_(iterator_pair_comparator(info_.get())),
+    record_size_(info_->record_meta()->record_size()),
+    buf_(info_->record_meta()), //NOLINT
+    key_comparator_(info_->compare_info())
+{
     for(auto& p : partitions_) {
         if (!p) continue;
         for(auto& t : *p) {
@@ -100,7 +103,7 @@ accessor::record_ref priority_queue_reader::get_member() const {
 }
 
 void priority_queue_reader::release() {
-// TODO when multiple readers exist for a source, wait for all readers to complete
+    // TODO when multiple readers exist for a source, wait for all readers to complete
     partitions_.clear();
 }
 

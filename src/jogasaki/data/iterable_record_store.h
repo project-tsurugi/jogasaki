@@ -31,11 +31,12 @@ namespace jogasaki::data {
  * @brief record store with iterators
  * @details This container can store any number of records, which are backed by paged memory resource.
  * The stored records are accessible with the pointer-based iterator, which is pointer with custom increment operator
- * treats gaps between the pages (i.e. not all records are on the same continuous memory region, but iterator allow users
- * to iterate them sequentially as if they are continuous region)
- * @note the backing memory resource is expected to be used almost exclusively for this store. Even if the resource is shared
- * by others and the appended records are not in the adjacent position, this class handles that case, but the ranges become
- * granule, the number of ranges become large and the performance possibly gets affected.
+ * treats gaps between the pages (i.e. not all records are on the same continuous memory region,
+ * but iterator allow users to iterate them sequentially as if they are continuous region)
+ * @note the backing memory resource is expected to be used almost exclusively for this store.
+ * Even if the resource is shared by others and the appended records are not in the adjacent position,
+ * this class handles that case, but the ranges become granule, the number of ranges become large and
+ * the performance possibly gets affected.
  */
 class cache_align iterable_record_store {
 public:
@@ -201,12 +202,12 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> meta() const noexcept {
         return base_.meta();
     }
+
 private:
     std::size_t record_size_{};
     record_store base_{};
     record_pointer prev_{};
     range_list ranges_{};
-
 };
 
 } // namespace

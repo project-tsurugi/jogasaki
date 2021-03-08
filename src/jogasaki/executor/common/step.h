@@ -38,7 +38,11 @@ public:
 
     static constexpr port_index npos = static_cast<port_index>(-1);
 
-    explicit step(number_of_ports inputs = 0, number_of_ports outputs = 0, number_of_ports subinputs = 0);
+    explicit step(
+        number_of_ports inputs = 0,
+        number_of_ports outputs = 0,
+        number_of_ports subinputs = 0
+    );
 
     [[nodiscard]] identity_type id() const override;
     [[nodiscard]] sequence_view<std::unique_ptr<model::port> const> input_ports() const override;
@@ -85,48 +89,38 @@ public:
      * @brief sets callback before creating tasks
      * @param arg the callback
      */
-    void will_create_tasks(std::shared_ptr<callback_type> arg) {
-        will_create_tasks_ = std::move(arg);
-    }
+    void will_create_tasks(std::shared_ptr<callback_type> arg);
 
     /**
      * @brief sets callback after creating tasks
      * @param arg the callback
      */
-    void did_create_tasks(std::shared_ptr<callback_type> arg) {
-        did_create_tasks_ = std::move(arg);
-    }
+    void did_create_tasks(std::shared_ptr<callback_type> arg);
 
     /**
      * @brief sets callback just after starting task
      * @param arg the callback
      */
-    void did_start_task(std::shared_ptr<callback_type> arg) {
-        did_start_task_ = std::move(arg);
-    }
+    void did_start_task(std::shared_ptr<callback_type> arg);
 
     /**
      * @brief accessor to callback
      */
-    std::shared_ptr<callback_type> const& did_start_task() {
-        return did_start_task_;
-    }
+    std::shared_ptr<callback_type> const& did_start_task();
 
     /**
      * @brief sets callback just before ending task
      * @param arg the callback
      */
-    void will_end_task(std::shared_ptr<callback_type> arg) {
-        will_end_task_ = std::move(arg);
-    }
+    void will_end_task(std::shared_ptr<callback_type> arg);
 
     /**
      * @brief accessor to callback
      */
-    std::shared_ptr<callback_type> const& will_end_task() {
-        return will_end_task_;
-    }
+    std::shared_ptr<callback_type> const& will_end_task();
+
 protected:
+
     void data_flow_object(std::unique_ptr<flow> p) noexcept;
     [[nodiscard]] class request_context* context() const noexcept;
 

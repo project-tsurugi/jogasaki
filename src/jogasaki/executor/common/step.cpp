@@ -21,18 +21,34 @@
 
 namespace jogasaki::executor::common {
 
-step::step(number_of_ports inputs, number_of_ports outputs, number_of_ports subinputs) : owner_(graph::undefined().get()) {
+step::step(
+    number_of_ports inputs,
+    number_of_ports outputs,
+    number_of_ports subinputs
+) :
+    owner_(graph::undefined().get())
+{
     main_input_ports_.reserve(inputs);
     sub_input_ports_.reserve(subinputs);
     output_ports_.reserve(outputs);
     for(number_of_ports i=0; i < inputs; ++i) {
-        main_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::main, this));
+        main_input_ports_.emplace_back(std::make_unique<port>(
+            port_direction::input,
+            port_kind::main, this)
+        );
     }
     for(number_of_ports i=0; i < subinputs; ++i) {
-        sub_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::sub, this));
+        sub_input_ports_.emplace_back(std::make_unique<port>(
+            port_direction::input,
+            port_kind::sub, this)
+        );
     }
     for(number_of_ports i=0; i < outputs; ++i) {
-        output_ports_.emplace_back(std::make_unique<port>(port_direction::output, port_kind::main, this));
+        output_ports_.emplace_back(std::make_unique<port>(
+            port_direction::output,
+            port_kind::main,
+            this)
+        );
     }
 }
 
@@ -67,9 +83,11 @@ void step::id(identity_type id) noexcept {
 void step::deactivate() {
     data_flow_object_.reset();
 }
+
 void step::notify_prepared() {
 
 }
+
 bool step::has_subinput() {
     return !sub_input_ports_.empty();
 }
@@ -86,26 +104,40 @@ step::port_index step::sub_input_port_index(step const* source) {
 
 void step::connect_to(step& downstream, port_index src, port_index target) {
     if (src == npos) {
-        output_ports_.emplace_back(std::make_unique<port>(port_direction::output, port_kind::main, this));
+        output_ports_.emplace_back(std::make_unique<port>(
+            port_direction::output,
+            port_kind::main,
+            this)
+            );
         src = output_ports_.size() - 1;
     }
     if (target == npos) {
-        downstream.main_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::main, &downstream));
+        downstream.main_input_ports_.emplace_back(
+            std::make_unique<port>(port_direction::input, port_kind::main, &downstream)
+        );
         target = downstream.main_input_ports_.size() - 1;
     }
-    dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.main_input_ports_[target].get()));
+    dynamic_cast<port*>(output_ports_[src].get())->add_opposite(
+        dynamic_cast<port*>(downstream.main_input_ports_[target].get())
+    );
 }
 
 void step::connect_to_sub(step& downstream, port_index src, port_index target) {
     if (src == npos) {
-        output_ports_.emplace_back(std::make_unique<port>(port_direction::output, port_kind::main, this));
+        output_ports_.emplace_back(
+            std::make_unique<port>(port_direction::output, port_kind::main, this)
+        );
         src = output_ports_.size() - 1;
     }
     if (target == npos) {
-        downstream.sub_input_ports_.emplace_back(std::make_unique<port>(port_direction::input, port_kind::sub, &downstream));
+        downstream.sub_input_ports_.emplace_back(
+            std::make_unique<port>(port_direction::input, port_kind::sub, &downstream)
+        );
         target = downstream.sub_input_ports_.size() - 1;
     }
-    dynamic_cast<port*>(output_ports_[src].get())->add_opposite(dynamic_cast<port*>(downstream.sub_input_ports_[target].get()));
+    dynamic_cast<port*>(output_ports_[src].get())->add_opposite(
+        dynamic_cast<port*>(downstream.sub_input_ports_[target].get())
+    );
 }
 
 sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
@@ -140,8 +172,36 @@ class request_context* step::context() const noexcept {
 
 std::ostream& step::write_to(std::ostream& out) const {
     using namespace std::string_view_literals;
-    return out << to_string_view(kind()) << "[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;
-};
+    return out <<
+        to_string_view(kind()) <<
+        "[id="sv <<
+        std::to_string(static_cast<identity_type>(id_)) <<
+        "]"sv;
+}
+
+void step::will_create_tasks(std::shared_ptr<callback_type> arg) {
+    will_create_tasks_ = std::move(arg);
+}
+
+void step::did_create_tasks(std::shared_ptr<callback_type> arg) {
+    did_create_tasks_ = std::move(arg);
+}
+
+void step::did_start_task(std::shared_ptr<callback_type> arg) {
+    did_start_task_ = std::move(arg);
+}
+
+std::shared_ptr<callback_type> const& step::did_start_task() {
+    return did_start_task_;
+}
+
+void step::will_end_task(std::shared_ptr<callback_type> arg) {
+    will_end_task_ = std::move(arg);
+}
+
+std::shared_ptr<callback_type> const& step::will_end_task() {
+    return will_end_task_;
+}
 
 step& operator<<(step& downstream, step& upstream) {
     upstream.connect_to(downstream);

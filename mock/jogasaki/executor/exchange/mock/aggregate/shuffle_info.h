@@ -45,8 +45,12 @@ public:
     shuffle_info() :
         record_(std::make_shared<meta::record_meta>()),
         group_(std::make_shared<meta::group_meta>()),
-        aggregator_(std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
-    {};
+        aggregator_(
+            std::make_shared<aggregator_type>(
+                [](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}
+            )
+        )
+    {}
 
     /**
      * @brief construct new object
@@ -54,11 +58,20 @@ public:
      * @param key_indices the ordered indices to choose the keys from the record fields
      * @param aggregator the aggregation function
      */
-    shuffle_info(maybe_shared_ptr<meta::record_meta> record, std::vector<field_index_type> key_indices, std::shared_ptr<aggregator_type> aggregator = {}) :
+    shuffle_info(
+        maybe_shared_ptr<meta::record_meta> record,
+        std::vector<field_index_type> key_indices,
+        std::shared_ptr<aggregator_type> aggregator = {}
+    ) :
         record_(std::move(record)),
         key_indices_(std::move(key_indices)),
         group_(std::make_shared<meta::group_meta>(create_key_meta(), create_value_meta())),
-        aggregator_(aggregator != nullptr ? std::move(aggregator) : std::make_shared<aggregator_type>([](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}))
+        aggregator_(aggregator != nullptr ?
+            std::move(aggregator) :
+            std::make_shared<aggregator_type>(
+                [](meta::record_meta const*, accessor::record_ref, accessor::record_ref) {}
+            )
+        )
     {}
 
 

@@ -30,10 +30,16 @@ namespace jogasaki::executor::process::impl::ops {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 
-take_flat::take_flat(operator_base::operator_index_type index, const processor_info& info,
-    operator_base::block_index_type block_index, const meta::variable_order& order,
-    maybe_shared_ptr<meta::record_meta> meta, sequence_view<const column> columns, std::size_t reader_index,
-    std::unique_ptr<operator_base> downstream) : record_operator(index, info, block_index),
+take_flat::take_flat(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    meta::variable_order const& order,
+    maybe_shared_ptr<meta::record_meta> meta,
+    sequence_view<column const> columns,
+    std::size_t reader_index,
+    std::unique_ptr<operator_base> downstream
+) : record_operator(index, info, block_index),
     meta_(std::move(meta)),
     fields_(create_fields(meta_, order, columns)),
     reader_index_(reader_index),
@@ -107,9 +113,11 @@ void take_flat::finish(abstract::task_context*) {
     fail();
 }
 
-std::vector<details::take_flat_field>
-take_flat::create_fields(const maybe_shared_ptr<meta::record_meta>& meta, const meta::variable_order& order,
-    sequence_view<const column> columns) {
+std::vector<details::take_flat_field> take_flat::create_fields(
+    maybe_shared_ptr<meta::record_meta> const& meta,
+    meta::variable_order const& order,
+    sequence_view<column const> columns
+) {
     std::vector<details::take_flat_field> fields{};
     fields.resize(meta->field_count());
     auto& vmap = block_info().value_map();
@@ -129,5 +137,3 @@ take_flat::create_fields(const maybe_shared_ptr<meta::record_meta>& meta, const 
 }
 
 }
-
-

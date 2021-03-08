@@ -158,7 +158,12 @@ private:
     std::vector<details::find_field> value_fields_{};
     std::unique_ptr<operator_base> downstream_{};
 
-    void decode_fields(std::vector<details::find_field> const& fields, kvs::stream& stream, accessor::record_ref target, memory_resource* resource);
+    void decode_fields(
+        std::vector<details::find_field> const& fields,
+        kvs::stream& stream,
+        accessor::record_ref target,
+        memory_resource* resource
+    );
 
     std::vector<details::find_field> create_fields(
         yugawara::storage::index const& idx,

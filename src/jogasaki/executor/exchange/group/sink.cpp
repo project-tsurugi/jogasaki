@@ -26,7 +26,8 @@ namespace jogasaki::executor::exchange::group {
 
 using takatori::util::fail;
 
-sink::sink(std::size_t downstream_partitions,
+sink::sink(
+    std::size_t downstream_partitions,
     std::shared_ptr<group_info> info,
     request_context* context
 ) :

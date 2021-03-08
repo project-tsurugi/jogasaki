@@ -62,12 +62,6 @@ inline std::ostream& operator<<(std::ostream& out, write_kind value) {
     return out << to_string_view(value);
 }
 
-/// @brief a set of write_kind
-using write_kind_set = takatori::util::enum_set<
-    write_kind,
-    write_kind::insert,
-    write_kind::insert_or_update>;
-
 constexpr inline write_kind write_kind_from(relation::write_kind kind) noexcept {
     using k = relation::write_kind;
     switch (kind) {

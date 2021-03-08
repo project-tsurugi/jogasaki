@@ -67,14 +67,12 @@ public:
     /**
      * @brief create new object
      */
-    explicit storage(sharksfin::StorageHandle handle) noexcept : handle_(handle) {}
+    explicit storage(sharksfin::StorageHandle handle) noexcept;
 
     /**
      * @brief destruct object
      */
-    ~storage() noexcept {
-        sharksfin::storage_dispose(handle_);
-    }
+    ~storage() noexcept;
 
     storage(storage const& other) = delete;
     storage& operator=(storage const& other) = delete;
@@ -86,9 +84,7 @@ public:
      * @note this is expected to be package private (i.e. callable from code in kvs namespace)
      * @return the handle held by this object
      */
-    [[nodiscard]] sharksfin::StorageHandle handle() const noexcept {
-        return handle_;
-    }
+    [[nodiscard]] sharksfin::StorageHandle handle() const noexcept;
 
     /**
      * @brief delete the storage
@@ -172,9 +168,7 @@ public:
 private:
     sharksfin::StorageHandle handle_{};
 
-    sharksfin::EndPointKind kind(end_point_kind k) {
-        return sharksfin::EndPointKind(static_cast<std::uint32_t>(k));
-    }
+    sharksfin::EndPointKind kind(end_point_kind k);
 };
 
 /**

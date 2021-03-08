@@ -25,8 +25,9 @@ namespace jogasaki::memory {
  * via memory_resource interface.
  * Subclasses should implement protected member functions of memory_resource (e.g. do_allocate) to allocate/de-allocate
  * memory region from the current page managed by this instance.
- * When paged_memory_resource is destructed, all the storage borrowed from page_pool are returned. This is different from
- * general memory_resource, whose destruction doesn't necessarily return allocated resource (e.g. new_delete_resource)
+ * When paged_memory_resource is destructed, all the storage borrowed from page_pool are returned.
+ * This is different from general memory_resource, whose destruction doesn't necessarily return
+ * allocated resource (e.g. new_delete_resource)
  * Subclasses are required to implement so that allocate(m) is successful as long as m is equal or less than page_size.
  * This interface doesn't assume any allocation/de-allocation patterns by the caller, so subclasses can implement
  * optimized logic specific to their purpose based on access patterns such as FIFO/LIFO.

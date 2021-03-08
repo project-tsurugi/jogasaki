@@ -89,7 +89,9 @@ void matcher::read_stream(
                 continue;
             }
             kvs::decode(src, c.type_, c.spec_, ref, c.offset_, resource);
-            ref.set_null(c.nullity_offset_, false); // currently assuming target variable fields are nullable and f.target_nullity_offset_ is valid even if f.source_nullable_ is false
+            ref.set_null(c.nullity_offset_, false); // currently assuming target variable fields are nullable
+                                                          // and f.target_nullity_offset_ is valid even
+                                                          // if f.source_nullable_ is false
             continue;
         }
         if (c.nullable_) {

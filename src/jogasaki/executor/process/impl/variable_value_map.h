@@ -46,17 +46,13 @@ public:
      * @brief value offset getter for the value
      * @return value offset
      */
-    [[nodiscard]] std::size_t value_offset() const noexcept {
-        return value_offset_;
-    }
+    [[nodiscard]] std::size_t value_offset() const noexcept;
 
     /**
      * @brief nullity offset getter for the value
      * @return nullity offset
      */
-    [[nodiscard]] std::size_t nullity_offset() const noexcept {
-        return nullity_offset_;
-    }
+    [[nodiscard]] std::size_t nullity_offset() const noexcept;
 
 private:
     std::size_t value_offset_{};
@@ -80,18 +76,14 @@ public:
     /**
      * @brief create new instance from map
      */
-    explicit variable_value_map(entity_type map) noexcept :
-        map_(std::move(map))
-    {}
+    explicit variable_value_map(entity_type map) noexcept;
 
     /**
      * @brief getter for value location info. for the given variable
      * @param var the variable descriptor
      * @return value_info for the variable
      */
-    value_info const& at(variable const& var) const {
-        return map_.at(var);
-    }
+    value_info const& at(variable const& var) const;
 
 private:
     entity_type map_{};

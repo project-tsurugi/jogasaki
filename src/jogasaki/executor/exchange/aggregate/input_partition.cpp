@@ -86,7 +86,8 @@ bool input_partition::write(accessor::record_ref record) {
         flush();
         return true;
     }
-    // TODO predict and avoid unexpected reallocation (e.g. all neighbors occupied) where memory allocator raises bad_alloc
+    // TODO predict and avoid unexpected reallocation (e.g. all neighbors occupied)
+    // where memory allocator raises bad_alloc
     return false;
 }
 

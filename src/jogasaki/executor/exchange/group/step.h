@@ -77,6 +77,7 @@ public:
     [[nodiscard]] meta::variable_order const& output_order() const noexcept override;
 
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& output_meta() const noexcept override;
+
 protected:
     [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;
 

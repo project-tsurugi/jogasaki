@@ -35,7 +35,7 @@ fifo_paged_memory_resource::checkpoint fifo_paged_memory_resource::get_checkpoin
     return { current.head().address(), current.upper_bound_offset() };
 }
 
-void fifo_paged_memory_resource::deallocate_before(const fifo_paged_memory_resource::checkpoint &point) {
+void fifo_paged_memory_resource::deallocate_before(fifo_paged_memory_resource::checkpoint const& point) {
     if (point.head_ == nullptr) {
         return;
     }
@@ -104,7 +104,7 @@ void fifo_paged_memory_resource::do_deallocate(void *p, std::size_t bytes, std::
     }
 }
 
-bool fifo_paged_memory_resource::do_is_equal(const boost::container::pmr::memory_resource &other) const noexcept {
+bool fifo_paged_memory_resource::do_is_equal(boost::container::pmr::memory_resource const& other) const noexcept {
     return this == &other;
 }
 
@@ -122,4 +122,5 @@ details::page_allocation_info &fifo_paged_memory_resource::acquire_new_page() {
     }
     return pages_.emplace_back(new_page);
 }
+
 } // namespace jogasaki::memory

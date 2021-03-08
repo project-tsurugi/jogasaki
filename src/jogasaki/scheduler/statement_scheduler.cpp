@@ -56,6 +56,7 @@ public:
             }
         }
     }
+
 private:
     dag_controller dag_controller_{};
     std::shared_ptr<configuration> cfg_{};
@@ -65,7 +66,11 @@ statement_scheduler::statement_scheduler() : statement_scheduler(std::make_share
 statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
     impl_(std::make_unique<impl>(std::move(cfg), scheduler))
 {}
-statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg) : impl_(std::make_unique<impl>(std::move(cfg))) {};
+
+statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg) :
+    impl_(std::make_unique<impl>(std::move(cfg)))
+{};
+
 statement_scheduler::~statement_scheduler() = default;
 
 void statement_scheduler::schedule(

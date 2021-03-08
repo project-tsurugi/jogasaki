@@ -19,8 +19,18 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-filter_context::filter_context(class abstract::task_context* ctx, block_scope& variables,
-    context_base::memory_resource* resource, context_base::memory_resource* varlen_resource) : context_base(ctx, variables, resource, varlen_resource)
+filter_context::filter_context(
+    abstract::task_context* ctx,
+    block_scope& variables,
+    context_base::memory_resource* resource,
+    context_base::memory_resource* varlen_resource
+) :
+    context_base(
+        ctx,
+        variables,
+        resource,
+        varlen_resource
+    )
 {}
 
 operator_kind filter_context::kind() const noexcept {

@@ -27,7 +27,10 @@ using takatori::util::fail;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-[[nodiscard]] inline std::size_t find_input_index(takatori::plan::step const& self, takatori::descriptor::relation const& target) {
+[[nodiscard]] inline std::size_t find_input_index(
+    takatori::plan::step const& self,
+    takatori::descriptor::relation const& target
+) {
     std::size_t ret = npos;
     if (auto t = yugawara::binding::extract_if<::takatori::plan::exchange>(target)) {
         std::size_t count = 0;
@@ -43,7 +46,10 @@ constexpr static std::size_t npos = static_cast<std::size_t>(-1);
     return ret;
 }
 
-[[nodiscard]] inline std::size_t find_output_index(takatori::plan::step const& self, takatori::descriptor::relation const& target) {
+[[nodiscard]] inline std::size_t find_output_index(
+    takatori::plan::step const& self,
+    takatori::descriptor::relation const& target
+) {
     std::size_t ret = npos;
     if (auto t = yugawara::binding::extract_if<::takatori::plan::exchange>(target)) {
         std::size_t count = 0;

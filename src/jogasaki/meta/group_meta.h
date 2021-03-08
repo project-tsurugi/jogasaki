@@ -82,6 +82,7 @@ public:
      * @return record metadata of value part
      */
     [[nodiscard]] record_meta_type const& value_shared() const noexcept;
+
 private:
     record_meta_type key_meta_{};
     record_meta_type value_meta_{};

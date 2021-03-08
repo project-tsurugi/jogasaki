@@ -71,8 +71,7 @@ maybe_shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexce
     return meta_;
 }
 
-std::pair<scopes_info, scope_indices>
-create_scopes_info(
+std::pair<scopes_info, scope_indices> create_scopes_info(
     relation::graph_type const& relations,
     yugawara::compiled_info const& info
 ) {

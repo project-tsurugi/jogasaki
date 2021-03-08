@@ -24,10 +24,11 @@ namespace jogasaki::executor::process::abstract {
 
 /**
  * @brief task context representing task assignment information and its running context
- * @details this object is responsible to provide scope of the work assigned to task, e.g. scan info, input data reader, and transient work area
+ * @details this object is responsible to provide scope of the work assigned to task, e.g. scan info,
+ * input data reader, and transient work area
  *
- * Depending on whether the processor logic is driven by main/sub input or scan, readers() or scan_info() functions are called to
- * locate/retrieve the input data for the task.
+ * Depending on whether the processor logic is driven by main/sub input or scan, readers() or
+ * scan_info() functions are called to locate/retrieve the input data for the task.
  *
  * The knowledge about the number of I/O objects and its index (i.e. what port or exchange the i-th reader/writer
  * corresponds to) are shared with processor.
@@ -63,7 +64,8 @@ public:
      * The release() called second time are no-op, so they are safely called multiple times.
      * @param idx the requested reader's index
      * If this context is for the task processing main input(s), the index corresponds to the index of the main input.
-     * If this context is for the task processing sub input, the parameter is ignored since only one reader/input exists.
+     * If this context is for the task processing sub input, the parameter is ignored since
+     * only one reader/input exists.
      * @return reader corresponding to the given index
      */
     [[nodiscard]] virtual reader_container reader(reader_index idx) = 0;
@@ -84,7 +86,8 @@ public:
      * @details object in the "acquired" state will be borrowed corresponding to the given index.
      * The callers are responsible to call release() of the object when they finish using it.
      * The release() called second time are no-op, so they are safely called multiple times.
-     * @param idx the requested external writer's index, which corresponds to the index of external output from the process step
+     * @param idx the requested external writer's index, which corresponds to the index of
+     * external output from the process step
      * (the knowledge on the index of external output is shared with processor impl.)
      * @return external writer corresponding to the given index
      */
@@ -106,13 +109,15 @@ public:
 
     /**
      * @brief getter of work context
-     * @details processor impl. can use this to access transient working area, which has been passed by the setter above
+     * @details processor impl. can use this to access transient working area, which has been
+     * passed by the setter above
      */
     [[nodiscard]] class work_context* work_context() const;
 
     /**
      * @brief detach and return the work_context held by this instance
-     * @details callers can use this to finalize the work context when it finishes using the context (i.e. the end of assigned work for the task)
+     * @details callers can use this to finalize the work context when it finishes using the
+     * context (i.e. the end of assigned work for the task)
      */
     [[nodiscard]] std::unique_ptr<class work_context> release_work();
 

@@ -97,6 +97,7 @@ public:
     [[nodiscard]] memory::lifo_paged_memory_resource* resource() const noexcept {
         return resource_.get();
     }
+
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};

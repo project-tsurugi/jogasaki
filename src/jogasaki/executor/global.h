@@ -55,8 +55,19 @@ enum class pool_operation : std::int32_t {
  */
 [[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
 
+/**
+ * @brief thread-safe accessor to the global repository for incremental aggregate functions
+ * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @return reference to the repository
+ */
 [[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
+/**
+ * @brief thread-safe accessor to the global repository for aggregate functions
+ * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @return reference to the repository
+ */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
+
 }
 

@@ -36,20 +36,17 @@ class step : public common::step {
 public:
     step() = default;
 
-    explicit step(std::shared_ptr<processor_info> info,
+    step(
+        std::shared_ptr<processor_info> info,
         std::shared_ptr<class relation_io_map> relation_io_map,
         std::shared_ptr<class io_info> io_info = {},
         number_of_ports inputs = 0,
         number_of_ports outputs = 0,
-        number_of_ports subinputs = 0);
+        number_of_ports subinputs = 0
+    );
 
-    void notify_prepared() override {
-        // check if main inputs are already available
-        // raise providing to start main tasks running soon
-    }
-    void notify_completed() override {
-        // destroy process buffer
-    }
+    void notify_prepared() override;
+    void notify_completed() override;
 
     [[nodiscard]] common::step_kind kind() const noexcept override;
 
@@ -64,43 +61,26 @@ public:
     [[nodiscard]] virtual std::size_t partitions() const noexcept;
 
     // for testing
-    void partitions(std::size_t num) noexcept {
-        partitions_ = num;
-    }
+    void partitions(std::size_t num) noexcept;
 
     void activate() override;
 
-    void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept {
-        executor_factory_ = std::move(factory);
-    }
+    void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept;
 
-    [[nodiscard]] std::shared_ptr<abstract::process_executor_factory> const& executor_factory() const noexcept {
-        return executor_factory_;
-    }
+    [[nodiscard]] std::shared_ptr<abstract::process_executor_factory> const& executor_factory() const noexcept;
 
-    void io_info(std::shared_ptr<class io_info> arg) noexcept {
-        io_info_ = std::move(arg);
-    }
+    void io_info(std::shared_ptr<class io_info> arg) noexcept;
 
-    [[nodiscard]] std::shared_ptr<class io_info> const& io_info() const noexcept {
-        return io_info_;
-    }
+    [[nodiscard]] std::shared_ptr<class io_info> const& io_info() const noexcept;
 
-    void relation_io_map(std::shared_ptr<class relation_io_map> arg) noexcept {
-        relation_io_map_ = std::move(arg);
-    }
+    void relation_io_map(std::shared_ptr<class relation_io_map> arg) noexcept;
 
-    [[nodiscard]] std::shared_ptr<class relation_io_map> const& relation_io_map() const noexcept {
-        return relation_io_map_;
-    }
+    [[nodiscard]] std::shared_ptr<class relation_io_map> const& relation_io_map() const noexcept;
 
-    void io_exchange_map(std::shared_ptr<class io_exchange_map> arg) noexcept {
-        io_exchange_map_ = std::move(arg);
-    }
+    void io_exchange_map(std::shared_ptr<class io_exchange_map> arg) noexcept;
 
-    [[nodiscard]] std::shared_ptr<class io_exchange_map> const& io_exchange_map() const noexcept {
-        return io_exchange_map_;
-    }
+    [[nodiscard]] std::shared_ptr<class io_exchange_map> const& io_exchange_map() const noexcept;
+
 private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<abstract::process_executor_factory> executor_factory_{};

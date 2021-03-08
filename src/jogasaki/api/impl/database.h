@@ -48,9 +48,15 @@ public:
 
     [[nodiscard]] status stop() override;
 
-    [[nodiscard]] status prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) override;
+    [[nodiscard]] status prepare(
+        std::string_view sql,
+        std::unique_ptr<api::prepared_statement>& statement
+    ) override;
 
-    [[nodiscard]] status create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) override;
+    [[nodiscard]] status create_executable(
+        std::string_view sql,
+        std::unique_ptr<api::executable_statement>& statement
+    ) override;
 
     [[nodiscard]] status resolve(
         api::prepared_statement const& prepared,
@@ -72,13 +78,18 @@ public:
 
     [[nodiscard]] std::shared_ptr<yugawara::storage::configurable_provider> const& tables() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const& aggregate_functions() const noexcept;
+    [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const&
+        aggregate_functions() const noexcept;
 
     [[nodiscard]] scheduler::task_scheduler* task_scheduler() const noexcept;
 private:
     std::shared_ptr<class configuration> cfg_{};
-    std::shared_ptr<yugawara::storage::configurable_provider> tables_{std::make_shared<yugawara::storage::configurable_provider>()};
-    std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{std::make_shared<yugawara::aggregate::configurable_provider>()};
+    std::shared_ptr<yugawara::storage::configurable_provider> tables_{
+        std::make_shared<yugawara::storage::configurable_provider>()
+    };
+    std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{
+        std::make_shared<yugawara::aggregate::configurable_provider>()
+    };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_{};
 };

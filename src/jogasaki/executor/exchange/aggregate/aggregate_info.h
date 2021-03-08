@@ -45,10 +45,11 @@ using function::incremental::aggregator_info;
 using function::field_locator;
 
 /**
- * @brief information to execute aggregate exchange, used to extract schema and record layout information for key/value parts
+ * @brief information to execute aggregate exchange, used to extract schema and record layout
+ * information for key/value parts
  * @details there are two group meta involved in aggregate output. Intermediate group meta (prefixed with mid-) is the
- * intermediate output, where key has internal pointer field and value has calculation fields. Post group meta (prefixed with post-)
- * is the final output metadata of the aggregate exchange.
+ * intermediate output, where key has internal pointer field and value has calculation fields.
+ * Post group meta (prefixed with post-) is the final output metadata of the aggregate exchange.
  */
 class aggregate_info {
 public:
@@ -156,13 +157,18 @@ public:
     /**
      * @brief output information from the aggregate operation
      * @details this object tells the metadata of the output, and which fields should be used to generate the output.
-     * The aggregate operation are categorized to three groups depending on the operation phase, and each has its output info.
-     *   - pre the pre-aggregation. The output consists of the key (holding internal data) and values (extended fields for calculation)
-     *     The input flat record to the aggregate exchange are separated to key/values and pre-aggregation is conducted in this phase.
+     * The aggregate operation are categorized to three groups depending on the operation phase,
+     * and each has its output info.
+     *   - pre the pre-aggregation. The output consists of the key (holding internal data) and
+     *     values (extended fields for calculation)
+     *     The input flat record to the aggregate exchange are separated to key/values and pre-aggregation is
+     *     conducted in this phase.
      *   - mid the intermediate incremental aggregation. The output consists of the same fields as pre output.
-     *     The input for this phase is the values part from pre agg. and incremental aggregation is conducted (i.e. merging values.)
+     *     The input for this phase is the values part from pre agg. and incremental aggregation is
+     *     conducted (i.e. merging values.)
      *   - post the post aggregation. The output consists of the final value fields of this aggregate operation.
-     *     The input for this phase is the output from mid agg. and calculation fields are consolidated to generate result field.
+     *     The input for this phase is the output from mid agg. and calculation fields are consolidated
+     *     to generate result field.
      */
     class output_info {
     public:
@@ -176,7 +182,8 @@ public:
          * @param kind output kind
          * @param aggregator_specs the aggregators spec executed for this phase
          * @param aggregate_input the input flat record for the aggregate operation
-         * @param phase_input the input record for this phase (the total input record for pre, and value record for mid/post)
+         * @param phase_input the input record for this phase (the total input record for pre,
+         * and value record for mid/post)
          * @param key_indices the indices of fields (0-origin) indicating key columns in aggregate_input
          */
         output_info(
@@ -206,7 +213,9 @@ public:
          * @brief returns aggregator args
          * @param aggregator_index specifies the aggregator index (0-origin)
          */
-        [[nodiscard]] sequence_view<field_locator const> source_field_locators(std::size_t aggregator_index) const noexcept;
+        [[nodiscard]] sequence_view<field_locator const> source_field_locators(
+            std::size_t aggregator_index
+        ) const noexcept;
 
         /**
          * @brief returns target field locator
@@ -214,9 +223,11 @@ public:
          */
         [[nodiscard]] field_locator const& target_field_locator(std::size_t aggregator_index) const noexcept;
 
-        [[nodiscard]] compare_info const& key_compare_info() const noexcept {
-            return key_compare_info_;
-        }
+        /**
+         * @brief returns key compare info
+         */
+        [[nodiscard]] compare_info const& key_compare_info() const noexcept;
+
     private:
         output_kind kind_{};
         std::vector<aggregator_spec> aggregator_specs_{};

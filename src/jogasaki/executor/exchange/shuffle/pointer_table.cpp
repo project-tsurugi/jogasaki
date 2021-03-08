@@ -27,7 +27,13 @@
 
 namespace jogasaki::executor::exchange::shuffle {
 
-pointer_table::pointer_table(memory::paged_memory_resource *resource, std::size_t capacity) : resource_(resource), capacity_(capacity) {
+pointer_table::pointer_table(
+    memory::paged_memory_resource *resource,
+    std::size_t capacity
+) :
+    resource_(resource),
+    capacity_(capacity)
+{
     head_ = static_cast<iterator>(resource_->allocate(sizeof(pointer)*capacity_, alignof(pointer)));
 }
 
@@ -58,4 +64,5 @@ pointer_table::iterator pointer_table::begin() const noexcept {
 pointer_table::iterator pointer_table::end() const noexcept {
     return head_+size_;
 }
+
 } // namespace

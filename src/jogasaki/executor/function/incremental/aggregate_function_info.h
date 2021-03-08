@@ -60,12 +60,7 @@ public:
         aggregators_info&& pre,
         aggregators_info&& mid,
         aggregators_info&& post
-    ) :
-        kind_(kind),
-        pre_(std::move(pre)),
-        mid_(std::move(mid)),
-        post_(std::move(post))
-    {}
+    );
 
     /**
      * @brief accessor to aggregate function kind
@@ -78,23 +73,17 @@ public:
     /**
      * @brief accessor to pre aggregators
      */
-    [[nodiscard]] sequence_view<aggregator_info const> pre() const noexcept {
-        return pre_;
-    };
+    [[nodiscard]] sequence_view<aggregator_info const> pre() const noexcept;;
 
     /**
      * @brief accessor to mid aggregators
      */
-    [[nodiscard]] sequence_view<aggregator_info const> mid() const noexcept {
-        return mid_;
-    };
+    [[nodiscard]] sequence_view<aggregator_info const> mid() const noexcept;;
 
     /**
      * @brief accessor to post aggregators
      */
-    [[nodiscard]] sequence_view<aggregator_info const> post() const noexcept {
-        return post_;
-    };
+    [[nodiscard]] sequence_view<aggregator_info const> post() const noexcept;;
 
     /**
      * @brief fetch field type list used for aggregation calculation
@@ -103,7 +92,9 @@ public:
      * @param args the types used for the input arguments of this aggregate function
      * @return the list of calculation field types corresponding to the input args
      */
-    [[nodiscard]] virtual std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const = 0;
+    [[nodiscard]] virtual std::vector<meta::field_type> intermediate_types(
+        sequence_view<meta::field_type const> args
+    ) const = 0;
 
 private:
     aggregate_function_kind kind_{};
@@ -123,23 +114,27 @@ template <>
 class aggregate_function_info_impl<aggregate_function_kind::sum> : public aggregate_function_info {
 public:
     aggregate_function_info_impl();
-    [[nodiscard]] std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const override;
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(
+        sequence_view<meta::field_type const> args
+    ) const override;
 };
 
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::count> : public aggregate_function_info {
 public:
     aggregate_function_info_impl();
-    [[nodiscard]] std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const override;
-private:
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(
+        sequence_view<meta::field_type const> args
+    ) const override;
 };
 
 template <>
 class aggregate_function_info_impl<aggregate_function_kind::avg> : public aggregate_function_info {
 public:
     aggregate_function_info_impl();
-    [[nodiscard]] std::vector<meta::field_type> intermediate_types(sequence_view<meta::field_type const> args) const override;
-private:
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(
+        sequence_view<meta::field_type const> args
+    ) const override;
 };
 
 }

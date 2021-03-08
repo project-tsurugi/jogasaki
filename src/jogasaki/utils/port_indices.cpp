@@ -15,10 +15,16 @@
  */
 #include "port_indices.h"
 
+#include <takatori/util/sequence_view.h>
+
 namespace jogasaki::utils {
 
-model::step::port_index_type
-find_port_index(const model::port &p, takatori::util::sequence_view<const std::unique_ptr<model::port>> sv) {
+using takatori::util::sequence_view;
+
+model::step::port_index_type find_port_index(
+    model::port const&p,
+    sequence_view<std::unique_ptr<model::port> const> sv
+) {
     for(model::step::port_index_type i=0, n = sv.size(); i < n; ++i) {
         if(sv[i].get() == &p) {
             return i;
@@ -27,16 +33,26 @@ find_port_index(const model::port &p, takatori::util::sequence_view<const std::u
     throw std::domain_error("port not found");
 }
 
-model::step::port_index_type input_port_index(const model::step &s, const model::port &p) {
+model::step::port_index_type input_port_index(
+    model::step const& s,
+    model::port const& p
+) {
     return find_port_index(p, s.input_ports());
 }
 
-model::step::port_index_type subinput_port_index(const model::step &s, const model::port &p) {
+model::step::port_index_type subinput_port_index(
+    model::step const& s,
+    model::port const& p
+) {
     return find_port_index(p, s.subinput_ports());
 }
 
-model::step::port_index_type output_port_index(const model::step &s, const model::port &p) {
+model::step::port_index_type output_port_index(
+    model::step const& s,
+    model::port const& p
+) {
     return find_port_index(p, s.output_ports());
 }
+
 }
 

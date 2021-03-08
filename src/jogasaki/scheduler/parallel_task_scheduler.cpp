@@ -32,7 +32,8 @@ private:
 };
 
 parallel_task_scheduler::parallel_task_scheduler(thread_params params) :
-    threads_(params) {}
+    threads_(params)
+{}
 
 void parallel_task_scheduler::schedule_task(std::shared_ptr<model::task> const& task) {
     threads_.submit(proceeding_task_wrapper(task));

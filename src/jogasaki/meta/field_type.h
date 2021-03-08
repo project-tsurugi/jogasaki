@@ -32,7 +32,8 @@ namespace jogasaki::meta {
 
 /**
  * @brief type information for a field
- * @details this class owns type kind, which is sufficient information for simple types, and optional type information for complex types.
+ * @details this class owns type kind, which is sufficient information for simple types, and optional
+ * type information for complex types.
  * It is designed to be copyable and movable so that it can be passed around without using smart pointers.
  * Optional type information can be retrieved by option() in a type-safely manner.
  */
@@ -87,8 +88,13 @@ public:
      * @tparam Kind type kind for new object
      */
     template <field_type_kind Kind>
-    explicit field_type(takatori::util::enum_tag_t<Kind>) noexcept : entity_(std::in_place_index<static_cast<std::size_t>(Kind)>) {
-        static_assert(std::is_same_v<std::variant_alternative_t<static_cast<std::size_t>(Kind), entity_type>, std::monostate>);
+    explicit field_type(takatori::util::enum_tag_t<Kind>) noexcept :
+        entity_(std::in_place_index<static_cast<std::size_t>(Kind)>)
+    {
+        static_assert(std::is_same_v<
+            std::variant_alternative_t<static_cast<std::size_t>(Kind), entity_type>,
+            std::monostate
+        >);
     }
 
     /**

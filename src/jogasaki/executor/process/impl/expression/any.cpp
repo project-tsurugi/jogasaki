@@ -17,6 +17,17 @@
 
 namespace jogasaki::executor::process::impl::expression {
 
+any::operator bool() const noexcept {
+    return has_value() && !error();
+}
+
+bool any::has_value() const noexcept {
+    return body_.index() != 0;
+}
+
+bool any::error() const noexcept {
+    return body_.index() == 1;
+}
 }
 
 

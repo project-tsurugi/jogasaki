@@ -42,7 +42,8 @@ public:
      * @brief create new context object
      * @param ch channel used for the scope objects to communicate with scheduler
      * @param config global configuration
-     * @param request_resource the memory resource used to construct request wide objects such as processors and operators
+     * @param request_resource the memory resource used to construct request wide objects such as
+     * processors and operators
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
      * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
      */

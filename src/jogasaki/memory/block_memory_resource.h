@@ -139,7 +139,10 @@ protected:
         assert(reinterpret_cast<std::uintptr_t>(p) >= page_size); // NOLINT
 
         // find a page which contains this block
-        page_pool::page_info prev(static_cast<char*>(p) - page_size, page_pool::page_info::undefined_numa_node); //NOLINT
+        page_pool::page_info prev(
+            static_cast<char*>(p) - page_size,  //NOLINT
+            page_pool::page_info::undefined_numa_node
+        );
         auto iter = blocks_.upper_bound(prev);
         if (iter == blocks_.end()) {
             // no such page

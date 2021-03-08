@@ -82,4 +82,28 @@ std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_ki
     };
 }
 
+aggregate_function_info::aggregate_function_info(
+    aggregate_function_kind kind,
+    aggregate_function_info::aggregators_info&& pre,
+    aggregate_function_info::aggregators_info&& mid,
+    aggregate_function_info::aggregators_info&& post
+) :
+    kind_(kind),
+    pre_(std::move(pre)),
+    mid_(std::move(mid)),
+    post_(std::move(post))
+{}
+
+sequence_view<aggregator_info const> aggregate_function_info::pre() const noexcept {
+    return pre_;
+}
+
+sequence_view<aggregator_info const> aggregate_function_info::mid() const noexcept {
+    return mid_;
+}
+
+sequence_view<aggregator_info const> aggregate_function_info::post() const noexcept {
+    return post_;
+}
+
 }

@@ -40,8 +40,14 @@ using takatori::util::unsafe_downcast;
 
 namespace details {
 
-details::scan_field::scan_field(meta::field_type type, bool target_exists, std::size_t target_offset,
-    std::size_t target_nullity_offset, bool source_nullable, kvs::coding_spec spec) :
+details::scan_field::scan_field(
+    meta::field_type type,
+    bool target_exists,
+    std::size_t target_offset,
+    std::size_t target_nullity_offset,
+    bool source_nullable,
+    kvs::coding_spec spec
+) :
     type_(std::move(type)),
     target_exists_(target_exists),
     target_offset_(target_offset),
@@ -52,10 +58,16 @@ details::scan_field::scan_field(meta::field_type type, bool target_exists, std::
 
 }
 
-scan::scan(operator_base::operator_index_type index, const processor_info& info,
-    operator_base::block_index_type block_index, std::string_view storage_name,
-    std::vector<details::scan_field> key_fields, std::vector<details::scan_field> value_fields,
-    std::unique_ptr<operator_base> downstream) : record_operator(index, info, block_index),
+scan::scan(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    std::string_view storage_name,
+    std::vector<details::scan_field> key_fields,
+    std::vector<details::scan_field> value_fields,
+    std::unique_ptr<operator_base> downstream
+) :
+    record_operator(index, info, block_index),
     storage_name_(storage_name),
     key_fields_(std::move(key_fields)),
     value_fields_(std::move(value_fields)),
@@ -162,7 +174,8 @@ void scan::open(scan_context& ctx) {
                 ctx.scan_info_->begin_endpoint(),
                 ctx.scan_info_->end_key(),
                 ctx.scan_info_->end_endpoint(),
-                ctx.it_);
+                ctx.it_
+            );
             res != status::ok) {
             fail();
         }
@@ -186,11 +199,21 @@ scan::decode_fields(const std::vector<details::scan_field>& fields, kvs::stream&
             continue;
         }
         if (f.source_nullable_) {
-            kvs::decode_nullable(stream, f.type_, f.spec_, target, f.target_offset_, f.target_nullity_offset_, resource);
+            kvs::decode_nullable(
+                stream,
+                f.type_,
+                f.spec_,
+                target,
+                f.target_offset_,
+                f.target_nullity_offset_,
+                resource
+            );
             continue;
         }
         kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are nullable and f.target_nullity_offset_ is valid even if f.source_nullable_ is false
+        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are
+                                                                // nullable and f.target_nullity_offset_ is valid
+                                                                // even if f.source_nullable_ is false
     }
 }
 
@@ -269,5 +292,3 @@ std::vector<details::scan_field> scan::create_fields(
 }
 
 }
-
-

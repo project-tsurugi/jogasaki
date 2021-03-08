@@ -20,6 +20,7 @@
 
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/sequence_view.h>
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/request_context.h>
@@ -28,6 +29,8 @@
 namespace jogasaki::executor::common {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::sequence_view;
+using takatori::util::optional_ptr;
 
 /**
  * @brief graph common implementation
@@ -36,35 +39,18 @@ class graph : public model::graph {
 public:
     graph() = default;
 
-    explicit graph(request_context& context) noexcept : context_(std::addressof(context)) {}
+    explicit graph(request_context& context) noexcept;
 
-    [[nodiscard]] takatori::util::sequence_view<std::unique_ptr<model::step> const> steps() const noexcept override {
-        return takatori::util::sequence_view(steps_);
-    }
+    [[nodiscard]] sequence_view<std::unique_ptr<model::step> const> steps() const noexcept override;
 
-    [[nodiscard]] takatori::util::optional_ptr<model::step> find_step(model::step::identity_type id) noexcept override {
-        if (id < steps_.size()) {
-            return takatori::util::optional_ptr<model::step>(steps_[id].get());
-        }
-        return takatori::util::optional_ptr<model::step>{};
-    }
+    [[nodiscard]] optional_ptr<model::step> find_step(model::step::identity_type id) noexcept override;
 
     // TODO graph should have request context?
-    void context(request_context& context) {
-        context_ = std::addressof(context);
-    }
+    void context(request_context& context);
 
-    [[nodiscard]] request_context* context() const noexcept override {
-        return context_;
-    }
+    [[nodiscard]] request_context* context() const noexcept override;
 
-    model::step& insert(std::unique_ptr<model::step> step) {
-        auto impl = unsafe_downcast<common::step>(step.get()); //NOLINT
-        impl->owner(this);
-        impl->id(steps_.size());
-        auto& p = steps_.emplace_back(std::move(step));
-        return *p;
-    }
+    model::step& insert(std::unique_ptr<model::step> step);
 
     template <class T, class ... Args>
     T& emplace(Args&& ... args) {
@@ -76,22 +62,14 @@ public:
         return *impl;
     }
 
-    void reserve(std::size_t n) {
-        steps_.reserve(n);
-    }
+    void reserve(std::size_t n);
 
-    void clear() noexcept {
-        steps_.clear();
-    }
+    void clear() noexcept;
 
-    [[nodiscard]] std::size_t size() const noexcept {
-        return steps_.size();
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
-    [[nodiscard]] static std::shared_ptr<graph> const& undefined() {
-        static std::shared_ptr<graph> undefined = std::make_shared<graph>();
-        return undefined;
-    }
+    [[nodiscard]] static std::shared_ptr<graph> const& undefined();
+
 private:
     std::vector<std::unique_ptr<model::step>> steps_{};
     request_context* context_{};

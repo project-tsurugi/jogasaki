@@ -66,7 +66,8 @@ public:
     text(memory::paged_memory_resource* resource, text src);
 
     /**
-     * @brief concatenate two texts and construct new object allocating from the given memory resource when long format is needed
+     * @brief concatenate two texts and construct new object allocating from the given memory resource
+     * when long format is needed
      * @param resource memory resource used to allocate storage for long format
      * @param src1 first argument for concatenating text strings copied into the new object
      * @param src2 second argument for concatenating text strings copied into the new object
@@ -75,13 +76,13 @@ public:
 
     /**
      * @brief construct new object by directly transferring the data area without copying the data
-     * @details this can be used to create text body beforehand in the memory resource provided area and associate it with
-     * new text object. If the size is small enough, the newly created object becomes short object.
+     * @details this can be used to create text body beforehand in the memory resource provided area and
+     * associate it with new text object. If the size is small enough, the newly created object becomes short object.
      * @param data the text data area which is allocated by the memory resource associated with the new object
      * @param size the size of the data area
-     * @attention differently from other constructors receiving paged_memory_resource, this constructor doesn't receive one,
-     * but the resource allocating `data` area is implicitly associated with this object, and the area pointing by `data`
-     * should be kept as long as this object is actively used.
+     * @attention differently from other constructors receiving paged_memory_resource, this constructor
+     * doesn't receive one, but the resource allocating `data` area is implicitly associated with this object,
+     * and the area pointing by `data` should be kept as long as this object is actively used.
      */
     text(char *data, text::size_type size);
 
@@ -90,8 +91,9 @@ public:
      * @details this can be used to create text object associated with the literal data.
      * If the size is small enough, the newly created object becomes short object.
      * @param data the text data area which is allocated by the memory resource associated with the new object
-     * @attention differently from other constructors receiving paged_memory_resource, this constructor doesn't receive one
-     * and is not associated with memory resource. This object simply points to pre-allocated area for literal data.
+     * @attention differently from other constructors receiving paged_memory_resource, this constructor doesn't
+     * receive one and is not associated with memory resource. This object simply points to pre-allocated
+     * area for literal data.
      */
     template<std::size_t N>
     explicit text(const char (&data)[N]) : text(const_cast<char*>(data), N-1) {} //NOLINT

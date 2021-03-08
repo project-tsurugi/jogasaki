@@ -89,7 +89,9 @@ private:
     records_type records_{};
     bool released_{false};
     bool acquired_{false};
-    std::unique_ptr<memory::paged_memory_resource> resource_{std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())};
+    std::unique_ptr<memory::paged_memory_resource> resource_{
+        std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
+    };
 };
 
 }

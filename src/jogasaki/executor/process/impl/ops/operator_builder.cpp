@@ -206,7 +206,14 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::iden
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::join& node) {
     auto block_index = info_->scope_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
-    return std::make_unique<join<data::iterable_record_store::iterator>>(index_++, *info_, block_index, node.operator_kind(), node.condition(), std::move(downstream));
+    return std::make_unique<join<data::iterable_record_store::iterator>>(
+        index_++,
+        *info_,
+        block_index,
+        node.operator_kind(),
+        node.condition(),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::aggregate& node) {
@@ -305,7 +312,15 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
     auto block_index = info_->scope_indices().at(&node);
     auto writer_index = relation_io_map_->output_index(node.destination());
     auto& output = io_info_->output_at(writer_index);
-    return std::make_unique<offer>(index_++, *info_, block_index, output.column_order(), output.meta(), node.columns(), writer_index);
+    return std::make_unique<offer>(
+        index_++,
+        *info_,
+        block_index,
+        output.column_order(),
+        output.meta(),
+        node.columns(),
+        writer_index
+    );
 }
 
 std::shared_ptr<impl::scan_info>

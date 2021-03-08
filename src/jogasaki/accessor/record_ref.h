@@ -27,10 +27,10 @@ namespace jogasaki::accessor {
 
 /**
  * @brief record reference providing access to record contents
- * @details Given underlying record represented by continuous memory region, this class gives setter/getter for field values
- * or other data manipulating functions. It's assumed that a part of record metadata is shared outside of this class.
- * For example, caller/callee share the offset (for value and nullity) and runtime C++ type used for each field in the record and
- * use them with setter/getter.
+ * @details Given underlying record represented by continuous memory region, this class gives setter/getter
+ * for field values or other data manipulating functions. It's assumed that a part of record metadata is
+ * shared outside of this class. For example, caller/callee share the offset (for value and nullity) and runtime
+ * C++ type used for each field in the record and use them with setter/getter.
  */
 class record_ref {
 public:
@@ -70,7 +70,8 @@ public:
      * @warning this function is meaningful only when the field is nullable.
      * For non-nullable field, the nullity should be governed outside and field-level nullity should not be set.
      * @warning for nullable field, nullity has priority to existence of value, that is, even if the value is already
-     * set beforehand, and this function sets nullity = true, then the value is ignored and the field is handled as null.
+     * set beforehand, and this function sets nullity = true, then the value is ignored and the field
+     * is handled as null.
      */
     void set_null(offset_type nullity_offset, bool nullity = true) noexcept;
 
@@ -93,8 +94,10 @@ public:
      * @brief field value getter
      * @tparam T runtime type of each field
      * @param value_offset byte offset of the field whose value will be retrieved
-     * @warning for nullable field, caller is responsible for checking nullity (e.g. by calling is_null()) to validate the return value.
-     * If nullity is true for nullable field, returned value by this function should be ignored and the field should be handled as null.
+     * @warning for nullable field, caller is responsible for checking nullity (e.g. by calling is_null())
+     * to validate the return value.
+     * If nullity is true for nullable field, returned value by this function should be ignored and the field
+     * should be handled as null.
      */
     template<typename T>
     [[nodiscard]] T get_value(offset_type value_offset) const {
@@ -109,8 +112,10 @@ public:
      * @brief field value reference getter
      * @tparam T runtime type of each field
      * @param value_offset byte offset of the field whose value will be retrieved
-     * @warning for nullable field, caller is responsible for checking nullity (e.g. by calling is_null()) to validate the return value.
-     * If nullity is true for nullable field, returned value by this function should be ignored and the field should be handled as null.
+     * @warning for nullable field, caller is responsible for checking nullity (e.g. by calling is_null())
+     * to validate the return value.
+     * If nullity is true for nullable field, returned value by this function should be ignored and the field
+     * should be handled as null.
      */
     template<typename T>
     [[nodiscard]] T const& get_reference(offset_type value_offset) const {

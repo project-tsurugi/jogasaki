@@ -36,8 +36,8 @@ public:
      * @param root the root of the operator tree
      * @param operator_count the number of operators
      * @param io_exchange_map the mapping from input/output index to exchange
-     * @param scan_info the scan information gathered from the scan operator in the operator tree (if any). Can be nullptr
-     * if the operators don't contain scan operation.
+     * @param scan_info the scan information gathered from the scan operator in the operator tree (if any).
+     * Can be nullptr if the operators don't contain scan operation.
      */
     operator_container(
         std::unique_ptr<ops::operator_base> root,

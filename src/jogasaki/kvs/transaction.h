@@ -57,7 +57,8 @@ public:
 
     /**
      * @brief commit the transaction
-     * @details commit the current transaction. When successful, the object gets invalidated and should not be used any more.
+     * @details commit the current transaction. When successful,
+     * the object gets invalidated and should not be used any more.
      * @return true if the operation is successful
      * @return false otherwise
      */
@@ -65,7 +66,8 @@ public:
 
     /**
      * @brief abort the transaction
-     * @details abort the current transaction. When successful, the object gets invalidated and should not be used any more.
+     * @details abort the current transaction. When successful,
+     * the object gets invalidated and should not be used any more.
      * @return true if the operation is successful
      * @return false otherwise
      */
@@ -115,6 +117,7 @@ private:
 inline bool operator==(transaction const& a, transaction const& b) noexcept {
     return a.control_handle() == b.control_handle();
 }
+
 inline bool operator!=(transaction const& a, transaction const& b) noexcept {
     return !(a == b);
 }

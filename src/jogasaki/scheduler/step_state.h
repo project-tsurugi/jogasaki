@@ -70,12 +70,15 @@ enum class task_state_kind : std::int32_t {
 inline bool operator<(step_state_kind current, step_state_kind from) {
     return static_cast<std::int32_t>(current) < static_cast<std::int32_t>(from);
 }
+
 inline bool operator>(step_state_kind current, step_state_kind from) {
     return from < current;
 }
+
 inline bool operator<=(step_state_kind current, step_state_kind from) {
     return !(current > from);
 }
+
 inline bool operator>=(step_state_kind current, step_state_kind from) {
     return !(current < from);
 }

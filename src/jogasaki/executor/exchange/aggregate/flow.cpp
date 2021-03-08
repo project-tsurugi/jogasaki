@@ -55,7 +55,8 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<aggregate
 
 flow::~flow() = default;
 flow::flow() : info_(std::make_shared<aggregate_info>()) {}
-flow::flow(std::shared_ptr<aggregate_info> info,
+flow::flow(
+    std::shared_ptr<aggregate_info> info,
     request_context* context,
     step* owner, std::size_t downstream_partitions
 ) :

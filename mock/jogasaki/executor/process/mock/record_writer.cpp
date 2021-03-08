@@ -23,8 +23,11 @@ basic_record_writer::basic_record_writer(maybe_shared_ptr <meta::record_meta> me
     meta_(std::move(meta))
 {}
 
-basic_record_writer::basic_record_writer(maybe_shared_ptr <meta::record_meta> meta, std::size_t capacity,
-    basic_record_writer::memory_resource_type* resource) :
+basic_record_writer::basic_record_writer(
+    maybe_shared_ptr <meta::record_meta> meta,
+    std::size_t capacity,
+    basic_record_writer::memory_resource_type* resource
+) :
     meta_(std::move(meta)),
     records_(resource),
     capacity_(capacity)

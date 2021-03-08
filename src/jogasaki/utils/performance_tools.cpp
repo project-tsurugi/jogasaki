@@ -47,7 +47,12 @@ watch_class& get_watch() {
     return *watch_;
 }
 
-std::string textualize(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
+std::string textualize(
+    watch_class& result,
+    watch_class::point_in_code bgn,
+    watch_class::point_in_code end,
+    std::string_view label
+) {
     std::stringstream ss;
     ss << label << ": total " << result.duration(bgn, end) << "ms, average " << result.average_duration(bgn, end) << "ms" ;
     return ss.str();

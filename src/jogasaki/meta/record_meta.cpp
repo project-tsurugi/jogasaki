@@ -22,9 +22,10 @@ namespace jogasaki::meta {
 /**
  * @brief Record data buffer layout creator
  * @details Records are binary encoded as follows:
- * First, nullity bits field is placed at the beginning. The bits fields alignment is 1 byte and its size is the ceiling
- * of number of fields divided by 8(bits_per_byte). Then, the field values encoded by the native format of its runtime type are ordered
- * respecting alignment of each runtime type. (The field order has been given to record_meta via constructor.)
+ * First, nullity bits field is placed at the beginning. The bits fields alignment is 1 byte and its size is
+ * the ceiling of number of fields divided by 8(bits_per_byte). Then, the field values encoded by the native
+ * format of its runtime type are ordered respecting alignment of each runtime type.
+ * (The field order has been given to record_meta via constructor.)
  */
 class simple_layout_creator {
 public:
@@ -48,7 +49,9 @@ public:
             }
             nullity_offset_table_.emplace_back(pos);
         }
-        auto nullity_bytes = utils::round_up_to_power_of_two((nullability.count() + bits_per_byte - 1) / bits_per_byte);
+        auto nullity_bytes = utils::round_up_to_power_of_two(
+            (nullability.count() + bits_per_byte - 1) / bits_per_byte
+        );
         std::size_t record_max_align = std::max(1UL, nullity_bytes);
         std::size_t cur = nullity_bytes;
         for(std::size_t i = 0; i < field_count; ++i) {
@@ -88,13 +91,22 @@ private:
     std::size_t record_size_{};
 };
 
-record_meta::record_meta(record_meta::fields_type fields, record_meta::nullability_type nullability,
+record_meta::record_meta(
+    record_meta::fields_type fields,
+    record_meta::nullability_type nullability,
     record_meta::value_offset_table_type value_offset_table,
-    record_meta::nullity_offset_table_type nullity_offset_table, std::size_t record_alignment, std::size_t record_size)
-    :
-    fields_(std::move(fields)), nullability_(std::move(nullability)), field_count_(fields_.size()),
-    value_offset_table_(std::move(value_offset_table)), nullity_offset_table_(std::move(nullity_offset_table)),
-    record_alignment_(record_alignment), record_size_(record_size) {
+    record_meta::nullity_offset_table_type nullity_offset_table,
+    std::size_t record_alignment,
+    std::size_t record_size
+) :
+    fields_(std::move(fields)),
+    nullability_(std::move(nullability)),
+    field_count_(fields_.size()),
+    value_offset_table_(std::move(value_offset_table)),
+    nullity_offset_table_(std::move(nullity_offset_table)),
+    record_alignment_(record_alignment),
+    record_size_(record_size)
+{
     BOOST_ASSERT(field_count_ == nullability_.size()); // NOLINT
     BOOST_ASSERT(field_count_ == value_offset_table_.size()); // NOLINT
     BOOST_ASSERT(field_count_ == nullity_offset_table_.size()); // NOLINT
@@ -105,7 +117,9 @@ record_meta::record_meta(
     record_meta::nullability_type nullability,
     std::size_t record_size
 ) :
-    fields_(std::move(fields)), nullability_(std::move(nullability)), field_count_(fields_.size())
+    fields_(std::move(fields)),
+    nullability_(std::move(nullability)),
+    field_count_(fields_.size())
 {
     simple_layout_creator c{fields_, nullability_};
     value_offset_table_ = std::move(c.value_offset_table());
@@ -115,11 +129,11 @@ record_meta::record_meta(
     record_size_ = record_size != npos ? record_size : c.record_size();
 }
 
-field_type const &record_meta::operator[](record_meta::field_index_type index) const noexcept {
+field_type const& record_meta::operator[](record_meta::field_index_type index) const noexcept {
     return fields_[index];
 }
 
-field_type const &record_meta::at(record_meta::field_index_type index) const noexcept {
+field_type const& record_meta::at(record_meta::field_index_type index) const noexcept {
     return fields_[index];
 }
 

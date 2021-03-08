@@ -31,7 +31,8 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief auto-expanding container to store any number of record
  * @details This container can store any number of records, which are backed by paged memory resource.
- * No iterator is provided for the stored data. Reference for each record needs to be kept and managed outside the container.
+ * No iterator is provided for the stored data. Reference for each record needs to be kept and managed
+ * outside the container.
  * This container support variable length data such as text field, whose non-SSO data are backed by another paged
  * memory resource.
  */
@@ -56,13 +57,7 @@ public:
             memory::paged_memory_resource* record_resource,
             memory::paged_memory_resource* varlen_resource,
             maybe_shared_ptr<meta::record_meta> meta
-    ) :
-        resource_(record_resource),
-        varlen_resource_(varlen_resource),
-        meta_(std::move(meta)),
-        copier_(meta_, varlen_resource),
-        record_size_(meta_->record_size())
-    {}
+    );
 
     /**
      * @brief copy and store the record
@@ -101,23 +96,17 @@ public:
      * @brief accessor to metadata
      * @return record meta held by this object
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept {
-        return meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
     /**
      * @return variable length resources
      */
-    [[nodiscard]] memory::paged_memory_resource* varlen_resource() const noexcept {
-        return varlen_resource_;
-    }
+    [[nodiscard]] memory::paged_memory_resource* varlen_resource() const noexcept;
 
     /**
      * @return copier to copy data into this store
      */
-    [[nodiscard]] accessor::record_copier & copier() noexcept {
-        return copier_;
-    }
+    [[nodiscard]] accessor::record_copier & copier() noexcept;
 
 private:
     memory::paged_memory_resource* resource_{};

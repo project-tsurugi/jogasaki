@@ -29,7 +29,8 @@ namespace jogasaki::executor::process {
 class task : public common::task {
 public:
     task() = default;
-    task(request_context* context,
+    task(
+        request_context* context,
         step_type* src,
         std::shared_ptr<abstract::process_executor> exec,
         std::shared_ptr<abstract::processor> processor

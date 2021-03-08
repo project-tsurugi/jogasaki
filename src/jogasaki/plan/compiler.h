@@ -33,12 +33,14 @@
 
 namespace jogasaki::plan {
 
+using yugawara::compiled_info;
+
 // for testing
 namespace impl {
-[[nodiscard]] executor::process::step create(takatori::plan::process const& process, yugawara::compiled_info const& info);
-[[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, yugawara::compiled_info const& info);
-[[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, yugawara::compiled_info const& info);
-[[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, yugawara::compiled_info const& info);
+[[nodiscard]] executor::process::step create(takatori::plan::process const& process, compiled_info const& info);
+[[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, compiled_info const& info);
+[[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, compiled_info const& info);
+[[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiled_info const& info);
 }
 
 /**

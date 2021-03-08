@@ -44,7 +44,7 @@ public:
     explicit aligned_buffer(
         std::size_t size,
         std::size_t align = default_alignment
-    );
+    ) noexcept;
 
     /**
      * @brief create buffer for given string view

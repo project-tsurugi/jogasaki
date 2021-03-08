@@ -72,8 +72,6 @@ private:
  * @details the output is always record based
  */
 class external_output_info {
-    maybe_shared_ptr<meta::record_meta> meta_{};
-    meta::variable_order column_order_{};
 public:
     external_output_info(
         maybe_shared_ptr<meta::record_meta> meta,
@@ -81,6 +79,10 @@ public:
     );
     [[nodiscard]] meta::record_meta const& meta() const noexcept;
     [[nodiscard]] meta::variable_order const& column_order() const noexcept;
+
+private:
+    maybe_shared_ptr<meta::record_meta> meta_{};
+    meta::variable_order column_order_{};
 };
 
 class io_info {

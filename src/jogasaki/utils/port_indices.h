@@ -20,13 +20,25 @@
 
 namespace jogasaki::utils {
 
-[[nodiscard]] model::step::port_index_type find_port_index(model::port const& p, takatori::util::sequence_view<std::unique_ptr<model::port> const> sv);
+[[nodiscard]] model::step::port_index_type find_port_index(
+    model::port const& p,
+    takatori::util::sequence_view<std::unique_ptr<model::port> const> sv
+);
 
-[[nodiscard]] model::step::port_index_type input_port_index(model::step const& s, model::port const& p);
+[[nodiscard]] model::step::port_index_type input_port_index(
+    model::step const& s,
+    model::port const& p
+);
 
-[[nodiscard]] model::step::port_index_type subinput_port_index(model::step const& s, model::port const& p);
+[[nodiscard]] model::step::port_index_type subinput_port_index(
+    model::step const& s,
+    model::port const& p
+);
 
-[[nodiscard]] model::step::port_index_type output_port_index(model::step const& s, model::port const& p);
+[[nodiscard]] model::step::port_index_type output_port_index(
+    model::step const& s,
+    model::port const& p
+);
 
 }
 

@@ -40,9 +40,7 @@ public:
      * @brief create new write field
      * @param size size in byte of the tuple to be written
      */
-    explicit write_tuple(
-        std::string_view data
-    );
+    explicit write_tuple(std::string_view data);
 
     [[nodiscard]] void* data() const noexcept;
 

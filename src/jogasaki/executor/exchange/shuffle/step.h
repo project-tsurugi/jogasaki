@@ -25,7 +25,7 @@
 namespace jogasaki::executor::exchange::shuffle {
 
 /**
- * @brief group step
+ * @brief shuffle step
  */
 class step : public exchange::step {
 public:
@@ -36,7 +36,8 @@ public:
     step(
         maybe_shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
-    ) : exchange::step(std::move(input_meta), std::move(column_order))
+    ) :
+        exchange::step(std::move(input_meta), std::move(column_order))
     {}
 
     [[nodiscard]] virtual meta::variable_order const& output_order() const noexcept = 0;

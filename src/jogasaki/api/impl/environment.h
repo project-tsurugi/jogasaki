@@ -28,9 +28,7 @@ class environment : public api::environment {
 public:
     environment() = default;
 
-    void initialize() override {
-        environment_.initialize();
-    };
+    void initialize() override;;
 private:
     sharksfin::Environment environment_{};
 };

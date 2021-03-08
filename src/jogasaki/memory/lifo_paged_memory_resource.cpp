@@ -40,10 +40,11 @@ lifo_paged_memory_resource::checkpoint lifo_paged_memory_resource::get_checkpoin
     return { current.head().address(), current.upper_bound_offset() };
 }
 
-void lifo_paged_memory_resource::deallocate_after(const lifo_paged_memory_resource::checkpoint &point) {
+void lifo_paged_memory_resource::deallocate_after(lifo_paged_memory_resource::checkpoint const& point) {
     auto point_head = point.head_;
     if (point.head_ == nullptr && !pages_.empty()) {
-        point_head = pages_.front().head().address(); // point.head_ is nullptr indicating that the checkpoint was taken when the pages_ was empty
+        point_head = pages_.front().head().address();
+                    // point.head_ is nullptr indicating that the checkpoint was taken when the pages_ was empty
     }
     while (!pages_.empty()) {
         auto&& page = pages_.back();
@@ -113,7 +114,7 @@ void lifo_paged_memory_resource::do_deallocate(void *p, std::size_t bytes, std::
     }
 }
 
-bool lifo_paged_memory_resource::do_is_equal(const boost::container::pmr::memory_resource &other) const noexcept {
+bool lifo_paged_memory_resource::do_is_equal(boost::container::pmr::memory_resource const& other) const noexcept {
     return this == &other;
 }
 
@@ -144,4 +145,5 @@ void lifo_paged_memory_resource::release_deallocated_page(page_pool::page_info d
     }
     reserved_page_ = deallocated_page;
 }
+
 } // jogasaki::memory

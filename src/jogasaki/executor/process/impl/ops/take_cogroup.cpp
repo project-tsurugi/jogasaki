@@ -42,8 +42,13 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-group_element::group_element(const meta::variable_order& order, maybe_shared_ptr<meta::group_meta> meta,
-    sequence_view<const column> columns, std::size_t reader_index, const block_scope_info& block_info) :
+group_element::group_element(
+    meta::variable_order const& order,
+    maybe_shared_ptr<meta::group_meta> meta,
+    sequence_view<column const> columns,
+    std::size_t reader_index,
+    block_scope_info const& block_info
+) :
     order_(std::addressof(order)),
     meta_(std::move(meta)),
     reader_index_(reader_index),
@@ -66,7 +71,8 @@ std::vector<group_field> group_element::create_fields(
     auto& value_meta = meta->value();
     BOOST_ASSERT(order.size() == key_meta.field_count()+value_meta.field_count());  //NOLINT
     BOOST_ASSERT(order.key_count() == key_meta.field_count());  //NOLINT
-    BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT // it's possible requested columns are only part of exchange fields
+    BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT
+                                                 // it's possible requested columns are only part of exchange fields
     fields.resize(columns.size());
     auto num_keys = 0;
     for(auto&& c : columns) {
@@ -273,4 +279,5 @@ void take_cogroup::create_readers(take_cogroup_context& ctx) {
         );
     }
 }
+
 }

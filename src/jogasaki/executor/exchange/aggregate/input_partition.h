@@ -74,8 +74,10 @@ public:
     using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
     using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq, hash_table_allocator>;
 
-    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two, so round down here to avoid going over allocator limit
-    constexpr static std::size_t default_initial_hash_table_size = utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
+    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two,
+    // so round down here to avoid going over allocator limit
+    constexpr static std::size_t default_initial_hash_table_size =
+        utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type));
 
     static_assert(sizeof(bucket_type) == 24);
     static_assert(sizeof(hash_table::value_type) == 16);  // two pointers
@@ -155,7 +157,8 @@ public:
 
     /**
      * @brief check whether the hash table is empty or not
-     * @param index the 0-origin index to specify the hash table. Must be less than the number of tables returned by tables_count().
+     * @param index the 0-origin index to specify the hash table. Must be less than the number of
+     * tables returned by tables_count().
      * @return true if the hash table is empty
      * @return false otherwise
      * @attention the behavior is undefined if given index is invalid
@@ -163,6 +166,7 @@ public:
     [[nodiscard]] bool empty(std::size_t index) const noexcept;
 
     void release_hashtable() noexcept;
+
 private:
     std::unique_ptr<memory::paged_memory_resource> resource_for_keys_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_values_{};

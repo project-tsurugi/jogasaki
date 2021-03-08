@@ -40,6 +40,15 @@ process_executor::status process_executor::run() {
     }
     return rc;
 }
+
+process_executor::process_executor(
+    std::shared_ptr<abstract::processor> processor,
+    std::vector<std::shared_ptr<abstract::task_context>> contexts
+) :
+    processor_(std::move(processor)),
+    contexts_(std::make_shared<impl::task_context_pool>(std::move(contexts)))
+{}
+
 }
 
 

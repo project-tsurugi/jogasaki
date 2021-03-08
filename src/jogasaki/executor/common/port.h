@@ -22,33 +22,21 @@
 
 namespace jogasaki::executor::common {
 
+using takatori::util::sequence_view;
+
 class port : public model::port {
 public:
     port() = default;
-    port(port_direction direction, port_kind kind, model::step* owner = nullptr) : direction_(direction), kind_(kind), owner_(owner) {}
 
-    [[nodiscard]] takatori::util::sequence_view<model::port* const> opposites() const override {
-        return opposites_;
-    }
-    void set_opposites(std::vector<model::port*>&& arg) {
-        opposites_ = std::move(arg);
-    }
-    void owner(model::step* arg) override {
-        owner_ = arg;
-    }
-    [[nodiscard]] port_kind kind() const override {
-        return kind_;
-    }
-    [[nodiscard]] port_direction direction() const override {
-        return direction_;
-    }
-    [[nodiscard]] model::step* const& owner() const override {
-        return owner_;
-    }
-    void add_opposite(port* target) {
-        opposites_.emplace_back(target);
-        target->opposites_.emplace_back(this);
-    }
+    port(port_direction direction, port_kind kind, model::step* owner = nullptr) noexcept;
+
+    [[nodiscard]] sequence_view<model::port* const> opposites() const override;
+    void set_opposites(std::vector<model::port*>&& arg);
+    void owner(model::step* arg) override;
+    [[nodiscard]] port_kind kind() const override;
+    [[nodiscard]] port_direction direction() const override;
+    [[nodiscard]] model::step* const& owner() const override;
+    void add_opposite(port* target);
 
 private:
     port_direction direction_{};

@@ -124,6 +124,7 @@ public:
      * @return false otherwise
      */
     [[nodiscard]] bool empty_input_from_shuffle() const noexcept;
+
 private:
     request_context* request_context_{};
     ops::context_container contexts_{};

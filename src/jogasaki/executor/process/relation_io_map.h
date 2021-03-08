@@ -40,26 +40,15 @@ public:
     relation_io_map(
         entity_type input_entity,
         entity_type output_entity
-    ) :
-        input_entity_(std::move(input_entity)),
-        output_entity_(std::move(output_entity))
-    {}
+    );
 
-    [[nodiscard]] std::size_t input_index(takatori::descriptor::relation const& arg) const {
-        return input_entity_.at(arg);
-    }
+    [[nodiscard]] std::size_t input_index(takatori::descriptor::relation const& arg) const;
 
-    [[nodiscard]] std::size_t output_index(takatori::descriptor::relation const& arg) const {
-        return output_entity_.at(arg);
-    }
+    [[nodiscard]] std::size_t output_index(takatori::descriptor::relation const& arg) const;
 
-    [[nodiscard]] std::size_t input_count() const noexcept {
-        return input_entity_.size();
-    }
+    [[nodiscard]] std::size_t input_count() const noexcept;
 
-    [[nodiscard]] std::size_t output_count() const noexcept {
-        return output_entity_.size();
-    }
+    [[nodiscard]] std::size_t output_count() const noexcept;
 private:
     entity_type input_entity_{};
     entity_type output_entity_{};

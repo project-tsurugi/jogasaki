@@ -62,8 +62,8 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param order the exchange columns ordering information that assigns the field index of the input record. The index
-     * can be used with record_meta to get field metadata.
+     * @param order the exchange columns ordering information that assigns the field index of the input record.
+     * The index can be used with record_meta to get field metadata.
      * @param meta the metadata of the group
      * @param reader_index the index that identifies the reader in the task context. This corresponds to the input port
      * number that the input exchange is connected.

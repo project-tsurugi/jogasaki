@@ -30,11 +30,13 @@ namespace jogasaki::executor::exchange::shuffle {
 /**
  * @brief auto-expanding container to store any number of record
  * @details This container can store any number of records, which are backed by paged memory resource.
- * No iterator is provided for the stored data. Reference for each record needs to be kept and managed outside the container.
+ * No iterator is provided for the stored data. Reference for each record needs to be kept and managed
+ * outside the container.
  * This container support variable length data such as text field, whose non-SSO data are backed by another paged
  * memory resource.
  * Resources referenced from this object (e.g. head_) are owned and managed by backing paged_memory_resource, so
- * this object doesn't clean up or release them on destruction. Their lifetime is defined by the backing memory resource.
+ * this object doesn't clean up or release them on destruction. Their lifetime is defined
+ * by the backing memory resource.
  */
 class cache_align pointer_table {
 public:

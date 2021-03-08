@@ -56,7 +56,8 @@ public:
     void start() override;
 
     /**
-     * @brief stop the scheduler joining all the running tasks and canceling ones that are submitted but not yet executed
+     * @brief stop the scheduler joining all the running tasks and
+     * canceling ones that are submitted but not yet executed
      */
     void stop() override;
 

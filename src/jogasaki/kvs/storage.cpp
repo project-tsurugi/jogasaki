@@ -117,5 +117,19 @@ status storage::scan(transaction &tx,
     return resolve(res);
 }
 
+storage::~storage() noexcept {
+    sharksfin::storage_dispose(handle_);
+}
+
+storage::storage(sharksfin::StorageHandle handle) noexcept: handle_(handle) {}
+
+sharksfin::StorageHandle storage::handle() const noexcept {
+    return handle_;
+}
+
+sharksfin::EndPointKind storage::kind(end_point_kind k) {
+    return sharksfin::EndPointKind(static_cast<std::uint32_t>(k));
+}
+
 }
 

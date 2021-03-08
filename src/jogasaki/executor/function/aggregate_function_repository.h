@@ -64,6 +64,7 @@ public:
      * @brief return the number of function info registered
      */
     [[nodiscard]] std::size_t size() const noexcept;
+
 private:
     map_type map_{};
 };

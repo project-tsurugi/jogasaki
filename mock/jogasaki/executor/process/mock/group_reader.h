@@ -78,8 +78,14 @@ public:
         groups_(std::move(groups)),
         meta_(std::move(meta)),
         external_meta_(std::move(external_meta)),
-        key_store_(external_meta_ ? std::make_shared<data::small_record_store>(external_meta_->key_shared()) : nullptr),
-        value_store_(external_meta_ ? std::make_shared<data::small_record_store>(external_meta_->value_shared()) : nullptr)
+        key_store_(external_meta_ ?
+            std::make_shared<data::small_record_store>(external_meta_->key_shared()) :
+            nullptr
+        ),
+        value_store_(external_meta_ ?
+            std::make_shared<data::small_record_store>(external_meta_->value_shared()) :
+            nullptr
+        )
     {}
 
     bool next_group() override {
@@ -100,7 +106,15 @@ public:
             auto rec = key_store_->ref();
             auto& m = external_meta_->key();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
-                utils::copy_nullable_field(m.at(i), rec, m.value_offset(i), m.nullity_offset(i), r.key().ref(), r.key().record_meta()->value_offset(i), r.key().record_meta()->nullity_offset(i));
+                utils::copy_nullable_field(
+                    m.at(i),
+                    rec,
+                    m.value_offset(i),
+                    m.nullity_offset(i),
+                    r.key().ref(),
+                    r.key().record_meta()->value_offset(i),
+                    r.key().record_meta()->nullity_offset(i)
+                );
             }
             return rec;
         }
@@ -123,7 +137,15 @@ public:
             auto rec = value_store_->ref();
             auto& m = external_meta_->value();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
-                utils::copy_nullable_field(m.at(i), rec, m.value_offset(i), m.nullity_offset(i), r.ref(), r.record_meta()->value_offset(i), r.record_meta()->nullity_offset(i));
+                utils::copy_nullable_field(
+                    m.at(i),
+                    rec,
+                    m.value_offset(i),
+                    m.nullity_offset(i),
+                    r.ref(),
+                    r.record_meta()->value_offset(i),
+                    r.record_meta()->nullity_offset(i)
+                );
             }
             return rec;
         }

@@ -28,10 +28,13 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-project::project(operator_base::operator_index_type index, const processor_info& info,
+project::project(
+    operator_base::operator_index_type index,
+    processor_info const& info,
     operator_base::block_index_type block_index,
-    const takatori::tree::tree_fragment_vector<takatori::relation::project::column>& columns,
-    std::unique_ptr<operator_base> downstream) :
+    takatori::tree::tree_fragment_vector<takatori::relation::project::column> const& columns,
+    std::unique_ptr<operator_base> downstream
+) :
     record_operator(index, info, block_index),
     downstream_(std::move(downstream))
 {
@@ -68,7 +71,8 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& v = variables_[i];
         auto info = scope.value_map().at(variables_[i]);
         auto& ev = evaluators_[i];
-        auto result = ev(scope, ctx.varlen_resource()); // result resource will be deallocated at once by take/scan operator
+        auto result = ev(scope, ctx.varlen_resource()); // result resource will be deallocated at once
+                                                           // by take/scan operator
         using t = takatori::type::type_kind;
         ref.set_null(info.nullity_offset(), ! result.has_value());
         switch(cinfo.type_of(v).kind()) {
@@ -100,5 +104,4 @@ void project::finish(abstract::task_context* context) {
 }
 
 }
-
 

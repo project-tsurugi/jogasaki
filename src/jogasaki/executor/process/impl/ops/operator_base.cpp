@@ -58,7 +58,8 @@ record_operator::record_operator(
         index,
         info,
         block_index
-    ) {}
+    )
+{}
 
 group_operator::group_operator(
     operator_base::operator_index_type index,

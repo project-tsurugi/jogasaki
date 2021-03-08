@@ -21,7 +21,10 @@
 
 namespace jogasaki::data {
 
-aligned_buffer::aligned_buffer(std::size_t size, std::size_t align) :
+aligned_buffer::aligned_buffer(
+    std::size_t size,
+    std::size_t align
+) noexcept :
     capacity_(size),
     alignment_(align)
 {}

@@ -28,10 +28,10 @@
 
 namespace jogasaki::plan {
 
-
 executable_statement::executable_statement(
     takatori::util::unique_object_ptr<::takatori::statement::statement> statement,
-    yugawara::compiled_info compiled_info, std::shared_ptr<model::statement> operators) noexcept:
+    yugawara::compiled_info compiled_info, std::shared_ptr<model::statement> operators
+) noexcept:
     statement_(std::move(statement)),
     compiled_info_(std::move(compiled_info)),
     operators_(std::move(operators))
@@ -52,4 +52,5 @@ model::statement const* executable_statement::operators() const noexcept {
 bool executable_statement::is_execute() const noexcept {
     return statement_ && statement_->kind() == takatori::statement::statement_kind::execute;
 }
+
 }

@@ -81,6 +81,14 @@ public:
      * @return false otherwise
      */
     friend bool operator==(small_record_store const& a, small_record_store const& b) noexcept;
+
+    /**
+     * @brief compare contents of two objects
+     * @param a first arg to compare
+     * @param b second arg to compare
+     * @return true if a != b
+     * @return false otherwise
+     */
     friend bool operator!=(small_record_store const& a, small_record_store const& b) noexcept;
 
     /**

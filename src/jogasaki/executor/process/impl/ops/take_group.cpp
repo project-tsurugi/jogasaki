@@ -30,11 +30,11 @@ using takatori::util::unsafe_downcast;
 
 take_group::take_group(
     operator_base::operator_index_type index,
-    const processor_info& info,
+    processor_info const& info,
     operator_base::block_index_type block_index,
-    const meta::variable_order& order,
+    meta::variable_order const& order,
     maybe_shared_ptr<meta::group_meta> meta,
-    sequence_view<const column> columns,
+    sequence_view<column const> columns,
     std::size_t reader_index,
     std::unique_ptr<operator_base> downstream
 ) :
@@ -109,8 +109,8 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
             }
             has_next = ctx.reader_->next_member();
             if (downstream_) {
-                if(auto st = unsafe_downcast<group_operator>(downstream_.get())->
-                        process_group(context, !has_next); !st) {
+                if(auto st = unsafe_downcast<group_operator>(
+                        downstream_.get())-> process_group(context, !has_next); !st) {
                     ctx.abort();
                     return {operation_status_kind::aborted};
                 }
@@ -146,7 +146,8 @@ std::vector<details::take_group_field> take_group::create_fields(
     auto& value_meta = meta->value();
     BOOST_ASSERT(order.size() == key_meta.field_count()+value_meta.field_count());  //NOLINT
     BOOST_ASSERT(order.key_count() == key_meta.field_count());  //NOLINT
-    BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT // it's possible requested columns are only part of exchange fields
+    BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT
+                                                  // it's possible requested columns are only part of exchange fields
     fields.resize(columns.size());
     auto num_keys = 0;
     for(auto&& c : columns) {

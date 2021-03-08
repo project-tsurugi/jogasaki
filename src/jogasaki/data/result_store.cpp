@@ -72,7 +72,6 @@ bool result_store::empty() const noexcept {
     return true;
 }
 
-
 result_store::iterator result_store::begin() const noexcept {
     if (empty()) {
         return {};

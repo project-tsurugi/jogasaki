@@ -60,23 +60,17 @@ public:
     /**
      * @brief return whether non-error value is assigned to this object
      */
-    [[nodiscard]] explicit operator bool() const noexcept {
-        return has_value() && !error();
-    }
+    [[nodiscard]] explicit operator bool() const noexcept;
 
     /**
      * @brief return whether any value is assigned to this object
      */
-    [[nodiscard]] bool has_value() const noexcept {
-        return body_.index() != 0;
-    }
+    [[nodiscard]] bool has_value() const noexcept;
 
     /**
      * @brief return whether any value is assigned to this object
      */
-    [[nodiscard]] bool error() const noexcept {
-        return body_.index() == 1;
-    }
+    [[nodiscard]] bool error() const noexcept;
 
 private:
     std::variant<

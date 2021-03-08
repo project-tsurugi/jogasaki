@@ -27,8 +27,13 @@ namespace jogasaki::executor {
 
 using takatori::util::maybe_shared_ptr;
 
-partitioner::partitioner(std::size_t partitions, maybe_shared_ptr<meta::record_meta> meta) noexcept:
-    partitions_(partitions), meta_(std::move(meta)) {}
+partitioner::partitioner(
+    std::size_t partitions,
+    maybe_shared_ptr<meta::record_meta> meta
+) noexcept:
+    partitions_(partitions),
+    meta_(std::move(meta))
+{}
 
 std::size_t partitioner::operator()(accessor::record_ref key) const noexcept {
     static const std::size_t p = 18446744073709551557ULL; // arbitrary prime in int64_t
@@ -58,4 +63,5 @@ std::size_t partitioner::field_hash(accessor::record_ref key, std::size_t field_
             std::abort();
     }
 }
+
 }

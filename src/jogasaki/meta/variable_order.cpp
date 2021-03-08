@@ -21,7 +21,7 @@ using takatori::descriptor::variable;
 
 variable_order::variable_order(
     variable_ordering_enum_tag_t<variable_ordering_kind::flat_record>,
-    sequence_view<const variable> columns
+    sequence_view<variable const> columns
 ) :
     record_or_key_(columns.begin(), columns.end())
 {
@@ -83,11 +83,11 @@ variable_order::variable_order(
     }
 }
 
-variable_order::index_type variable_order::index(const variable &var) const {
+variable_order::index_type variable_order::index(variable const& var) const {
     return entity_.at(var);
 }
 
-std::pair<variable_order::index_type, bool> variable_order::key_value_index(const variable &var) const {
+std::pair<variable_order::index_type, bool> variable_order::key_value_index(variable const& var) const {
     BOOST_ASSERT(for_group_);  //NOLINT
     return { entity_.at(var), key_bool_.at(var) };
 }
@@ -96,7 +96,7 @@ bool variable_order::for_group() const noexcept {
     return for_group_;
 }
 
-bool variable_order::is_key(const variable &var) const {
+bool variable_order::is_key(variable const&var) const {
     BOOST_ASSERT(for_group_);  //NOLINT
     return key_bool_.at(var);
 }

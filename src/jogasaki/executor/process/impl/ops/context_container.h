@@ -30,7 +30,8 @@ class context_base;
 
 /**
  * @brief relational operator context container
- * @details 0-origin index is assigned for relational operator and it's used to identify the position to store context in this container.
+ * @details 0-origin index is assigned for relational operator and it's used to identify the position
+ * to store context in this container.
  */
 class cache_align context_container {
 public:

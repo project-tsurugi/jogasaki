@@ -47,9 +47,7 @@ public:
      */
     task_context() = default;
 
-    explicit task_context(partition_index partition) :
-        partition_(partition)
-    {}
+    explicit task_context(partition_index partition);
 
     /**
      * @brief create new object
@@ -63,66 +61,17 @@ public:
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
         data::iterable_record_store* result
-    ) :
-        partition_(partition),
-        io_exchange_map_(std::addressof(io_exchange_map)),
-        scan_info_(std::move(scan_info)),
-        result_(result),
-        external_writers_(io_exchange_map_->external_output_count())
-    {}
+    );
 
-    reader_container reader(reader_index idx) override {
-        auto& flow = io_exchange_map_->input_at(idx)->data_flow_object();
-        using step_kind = common::step_kind;
-        switch(flow.kind()) {
-            case step_kind::group:
-                return unsafe_downcast<exchange::group::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
-            case step_kind::aggregate:
-                return unsafe_downcast<exchange::aggregate::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
-            case step_kind::forward:
-                return unsafe_downcast<exchange::forward::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
-            //TODO other exchanges
-            default:
-                fail();
-        }
-        return {};
-    }
+    reader_container reader(reader_index idx) override;
 
-    record_writer* downstream_writer(writer_index idx) override {
-        auto& flow = io_exchange_map_->output_at(idx)->data_flow_object();
-        using step_kind = common::step_kind;
-        switch(flow.kind()) {
-            case step_kind::group:
-                return &unsafe_downcast<exchange::group::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
-            case step_kind::aggregate:
-                return &unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
-            case step_kind::forward:
-                return &unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
-            //TODO other exchanges
-            default:
-                fail();
-        }
-        return {};
-    }
+    record_writer* downstream_writer(writer_index idx) override;
 
-    record_writer* external_writer(writer_index idx) override {
-        BOOST_ASSERT(idx < external_writers_.size());  //NOLINT
-        BOOST_ASSERT(result_ != nullptr);  //NOLINT
-        auto& op = unsafe_downcast<ops::emit>(io_exchange_map_->external_output_at(idx));
-        auto& slot = external_writers_.operator[](idx);
-        if (! slot) {
-            slot = std::make_shared<class external_writer>(*result_, op.meta());
-        }
-        return slot.get();
-    }
+    record_writer* external_writer(writer_index idx) override;
 
-    class abstract::scan_info const* scan_info() override {
-        return scan_info_.get();
-    }
+    class abstract::scan_info const* scan_info() override;
 
-    [[nodiscard]] std::size_t partition() const noexcept {
-        return partition_;
-    }
+    [[nodiscard]] std::size_t partition() const noexcept;
 
 private:
     std::size_t partition_{};

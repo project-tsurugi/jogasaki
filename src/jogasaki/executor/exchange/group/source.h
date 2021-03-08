@@ -32,8 +32,8 @@ public:
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
     explicit source(
-            std::shared_ptr<group_info> info,
-            request_context* context
+        std::shared_ptr<group_info> info,
+        request_context* context
     );
     void receive(std::unique_ptr<input_partition> in);
 

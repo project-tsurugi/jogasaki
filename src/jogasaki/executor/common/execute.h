@@ -29,35 +29,45 @@
 
 namespace jogasaki::executor::common {
 
-using takatori::util::unsafe_downcast;
-
 /**
  * @brief graph common implementation
  */
 class execute : public model::statement {
 public:
+    /**
+     * @brief create empty object
+     */
     execute() = default;
 
-    explicit execute(std::shared_ptr<common::graph> graph) noexcept :
-        operators_(std::move(graph)),
-        context_(operators_->context())
-    {}
+    /**
+     * @brief create new execute object from graph
+     * @param graph the graph to execute
+     */
+    explicit execute(std::shared_ptr<common::graph> graph) noexcept;
 
-    void context(request_context& context) {
-        context_ = std::addressof(context);
-    }
+    /**
+     * @brief request context setter
+     * @param context the request context to set
+     */
+    void context(request_context& context);
 
-    [[nodiscard]] request_context* context() const noexcept {
-        return context_;
-    }
+    /**
+     * @brief accessor to the request context
+     */
+    [[nodiscard]] request_context* context() const noexcept;
 
-    [[nodiscard]] model::statement_kind kind() const noexcept override {
-        return model::statement_kind::execute;
-    }
+    /**
+     * @brief accessor to the statement kind
+     * @return the statement kind
+     */
+    [[nodiscard]] model::statement_kind kind() const noexcept override;
 
-    [[nodiscard]] common::graph& operators() const noexcept {
-        return *operators_;
-    }
+    /**
+     * @brief accessor to the owned graph
+     * @return the graph
+     */
+    [[nodiscard]] common::graph& operators() const noexcept;
+
 private:
     std::shared_ptr<common::graph> operators_{};
     request_context* context_{};

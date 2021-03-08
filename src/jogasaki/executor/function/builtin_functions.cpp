@@ -142,7 +142,9 @@ std::int64_t count_distinct(data::value_store const& store) {
         hash_table_allocator{&resource}
     };
     while(b != e) {
-        values.emplace(*b);
+        if (! b.is_null()) {
+            values.emplace(*b);
+        }
         ++b;
     }
     return values.size();

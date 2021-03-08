@@ -26,11 +26,13 @@ aggregate_group_context::aggregate_group_context(
     context_base::memory_resource* varlen_resource,
     std::vector<data::value_store> stores,
     std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources,
-    std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores
+    std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores,
+    std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> nulls_resources
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     stores_(std::move(stores)),
     resources_(std::move(resources)),
+    nulls_resources_(std::move(nulls_resources)),
     function_arg_stores_(std::move(function_arg_stores))
 {}
 

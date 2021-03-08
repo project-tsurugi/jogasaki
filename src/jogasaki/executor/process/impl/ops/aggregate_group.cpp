@@ -45,16 +45,22 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
     if (! p) {
         std::vector<data::value_store> stores{};
         std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources{};
+        std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> nulls_resources{};
         stores.reserve(arguments_.size());
         resources.reserve(arguments_.size());
+        nulls_resources.reserve(arguments_.size());
         for(auto&& a : arguments_) {
             auto& res = resources.emplace_back(
+                std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
+            );
+            auto& nulls_res = nulls_resources.emplace_back(
                 std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
             );
             stores.emplace_back(
                 a.type_,
                 res.get(),
-                ctx.varlen_resource()
+                ctx.varlen_resource(),
+                nulls_res.get()
             );
         }
 
@@ -74,7 +80,8 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
             ctx.varlen_resource(),
             std::move(stores),
             std::move(resources),
-            std::move(function_arg_stores)
+            std::move(function_arg_stores),
+            std::move(nulls_resources)
         );
     }
     return p;
@@ -97,9 +104,10 @@ void copy_value(
     data::value_store& dest
 ) {
     using kind = meta::field_type_kind;
-    // TODO handle nulls
-    (void)nullity_offset;
-    (void)nullable;
+    if (nullable && src.is_null(nullity_offset)) {
+        dest.append_null();
+        return;
+    }
     switch(dest.type().kind()) {
         case kind::int4: dest.append(src.get_value<rtype<kind::int4>>(offset)); break;
         case kind::int8: dest.append(src.get_value<rtype<kind::int8>>(offset)); break;
@@ -159,6 +167,7 @@ operation_status aggregate_group::operator()(
         for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
             ctx.stores_[i].reset();
             ctx.resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
+            ctx.nulls_resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
         }
     }
     return {};

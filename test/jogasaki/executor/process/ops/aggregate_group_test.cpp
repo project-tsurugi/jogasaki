@@ -207,16 +207,21 @@ TEST_F(aggregate_group_test, simple) {
     std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources{};
     resources.emplace_back(std::make_unique<memory::lifo_paged_memory_resource>(&pool));
     resources.emplace_back(std::make_unique<memory::lifo_paged_memory_resource>(&pool));
+    std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> nulls_resources{};
+    nulls_resources.emplace_back(std::make_unique<memory::lifo_paged_memory_resource>(&pool));
+    nulls_resources.emplace_back(std::make_unique<memory::lifo_paged_memory_resource>(&pool));
     std::vector<data::value_store> stores{};
     stores.emplace_back(
         meta::field_type{enum_tag<kind::int8>},
         resources[0].get(),
-        &varlen_resource
+        &varlen_resource,
+        nulls_resources[0].get()
     );
     stores.emplace_back(
         meta::field_type{enum_tag<kind::int8>},
         resources[1].get(),
-        &varlen_resource
+        &varlen_resource,
+        nulls_resources[1].get()
     );
     std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores{
         {
@@ -233,7 +238,8 @@ TEST_F(aggregate_group_test, simple) {
         &varlen_resource,
         std::move(stores),
         std::move(resources),
-        std::move(function_arg_stores)
+        std::move(function_arg_stores),
+        std::move(nulls_resources)
     };
 
     std::vector<std::vector<std::int64_t>> test_values {
@@ -268,8 +274,11 @@ TEST_F(aggregate_group_test, simple) {
     std::size_t count = 0;
     for(auto&& values : test_values) {
         vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), values[0]);
+        vars_ref.set_null(map.at(c0).nullity_offset(), false);
         vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), values[1]);
+        vars_ref.set_null(map.at(c1).nullity_offset(), false);
         vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), values[2]);
+        vars_ref.set_null(map.at(c2).nullity_offset(), false);
         bool last_member = count == 2 || count == 5;
         s(ctx, last_member);
         ++count;

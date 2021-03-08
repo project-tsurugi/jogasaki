@@ -20,11 +20,11 @@
 #include <cstring>
 
 #include <takatori/util/print_support.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/fail.h>
 
-#include <jogasaki/data/record_store.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::data {
 
@@ -59,6 +59,10 @@ public:
     /// @brief type of reference
     using reference = value_type&;
 
+    using null_flag_type = std::uint8_t;
+
+    using null_flag_pointer = null_flag_type*;
+
     struct range {
         range(value_pointer b, value_pointer e) : b_(b), e_(e) {}
         value_pointer b_; //NOLINT
@@ -78,20 +82,26 @@ public:
 
     /**
      * @brief construct new iterator
-     * @param container the target record store that the constructed object iterates
+     * @param ranges indicates the ranges container
      * @param range indicates the range entry that the constructed iterator start iterating with
+     * @param base the base pointer of the current range
+     * @param offset the offset of the current entry from the base
+     * @param null_flag_base the base pointer of the null flag value
      */
     iterator(
         range_list const& ranges,
         range_list_iterator range,
         value_pointer base,
-        std::size_t offset
+        std::size_t offset,
+        null_flag_pointer null_flag_base
     ) :
         ranges_(std::addressof(ranges)),
         range_(range),
         base_(base),
-        offset_(offset)
+        offset_(offset),
+        null_flag_base_(null_flag_base)
     {}
+
     /**
      * @brief construct new iterator
      * @param container the target record store that the constructed object iterates
@@ -99,13 +109,15 @@ public:
      */
     iterator(
         range_list const& ranges,
-        range_list_iterator range
+        range_list_iterator range,
+        null_flag_pointer null_flag_base
     ) :
         iterator(
             ranges,
             range,
             ranges.end() == range ? nullptr : range->b_,
-            0
+            0,
+            null_flag_base
         )
     {}
 
@@ -154,8 +166,11 @@ public:
     }
 
     [[nodiscard]] bool is_null() const noexcept {
-        // not supported yet
-        fail();
+        BOOST_ASSERT(valid());  //NOLINT
+        if (null_flag_base_ == nullptr) {
+            return false;
+        }
+        return *(null_flag_base_ + offset_) == static_cast<null_flag_type>(1);
     }
 
     /// @brief equivalent comparison
@@ -163,7 +178,8 @@ public:
         return this->base_ == r.base_ &&
             this->ranges_ == r.ranges_ &&
             this->range_ == r.range_ &&
-            this->offset_ == r.offset_;
+            this->offset_ == r.offset_ &&
+            this->null_flag_base_ == r.null_flag_base_;
     }
 
     /// @brief inequivalent comparison
@@ -182,7 +198,8 @@ public:
             << "ranges [" << takatori::util::print_support(value.ranges_)
             <<"] current range [" << takatori::util::print_support(value.range_)
             << "] base [" << value.base_ << "]"
-            << "] offset [" << value.offset_ << "]";
+            << "] offset [" << value.offset_ << "]"
+            << "] null_flag_base [" << value.null_flag_base_ << "]";
     }
 
 private:
@@ -190,6 +207,7 @@ private:
     range_list_iterator range_{};
     value_pointer base_{};
     std::size_t offset_{};
+    null_flag_pointer null_flag_base_{};
 };
 
 class cache_align typed_store {
@@ -208,17 +226,21 @@ public:
     typed_store& operator=(typed_store&& other) noexcept = default;
 
     /**
+     * @brief append null to the store
+     */
+    virtual void append_null() = 0;
+
+    /**
      * @brief copy and store the value
      * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
      * this object unless it's nullptr.
-     * @param record source of the record added to this container
-     * @return record ref to the stored record
+     * @param value the value to be added
      */
-    virtual void append_int4(rtype<kind::int4> t) = 0;
-    virtual void append_int8(rtype<kind::int8> t) = 0;
-    virtual void append_float4(rtype<kind::float4> t) = 0;
-    virtual void append_float8(rtype<kind::float8> t) = 0;
-    virtual void append_character(rtype<kind::character> t) = 0;
+    virtual void append_int4(rtype<kind::int4> value) = 0;
+    virtual void append_int8(rtype<kind::int8> value) = 0;
+    virtual void append_float4(rtype<kind::float4> value) = 0;
+    virtual void append_float8(rtype<kind::float8> value) = 0;
+    virtual void append_character(rtype<kind::character> value) = 0;
 
     [[nodiscard]] virtual std::size_t count() const noexcept = 0;
 
@@ -267,6 +289,10 @@ public:
 
     using value_pointer = value_type*;
 
+    using null_flag_type = typename iterator<T>::null_flag_type;
+
+    using null_flag_pointer = typename iterator<T>::null_flag_pointer;
+
     using range_list = typename iterator<T>::range_list;
 
     using kind = meta::field_type_kind;
@@ -284,61 +310,67 @@ public:
      * @param record_resource memory resource backing this store
      * @param varlen_resource varlen memory resource for the variable length data stored in this store.
      * Specify nullptr if the value type is not of variable length.
+     * @param nulls_resource memory resource backing null flags. Specify nullptr if the value never becomes null.
      */
     typed_value_store(
         memory::paged_memory_resource* record_resource,
-        memory::paged_memory_resource* varlen_resource
+        memory::paged_memory_resource* varlen_resource,
+        memory::paged_memory_resource* nulls_resource
     ) :
         resource_(record_resource),
-        varlen_resource_(varlen_resource)
+        varlen_resource_(varlen_resource),
+        nulls_resource_(nulls_resource)
     {}
+
+    /**
+     * @brief append null
+     * @pre nulls_resource must be specified on construction
+     */
+    void append_null() override {
+        BOOST_ASSERT(nulls_resource_ != nullptr); //NOLINT
+        internal_append(nullptr);
+    }
 
     /**
      * @brief copy and store the value
      * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
      * this object unless it's nullptr.
-     * @param record source of the record added to this container
-     * @return record ref to the stored record
+     * @param value added to the store
      */
     void append_int4(rtype<kind::int4> value) override {
         if constexpr (std::is_same_v<T, rtype<kind::int4>>) { //NOLINT
-            append(&value);
+            internal_append(&value);
         }
     }
 
     void append_int8(rtype<kind::int8> value) override {
         if constexpr (std::is_same_v<T, rtype<kind::int8>>) { //NOLINT
-            append(&value);
+            internal_append(&value);
         }
     }
 
     void append_float4(rtype<kind::float4> value) override {
         if constexpr (std::is_same_v<T, rtype<kind::float4>>) { //NOLINT
-            append(&value);
+            internal_append(&value);
         }
     }
 
     void append_float8(rtype<kind::float8> value) override {
         if constexpr (std::is_same_v<T, rtype<kind::float8>>) { //NOLINT
-            append(&value);
+            internal_append(&value);
         }
     }
 
     void append_character(rtype<kind::character> value) override {
         if constexpr (std::is_same_v<T, rtype<kind::character>>) { //NOLINT
-            append(&value);
+            internal_append(&value);
         }
     }
-    /**
-     * @copydoc record_store::count()
-     */
+
     [[nodiscard]] std::size_t count() const noexcept override {
         return count_;
     }
 
-    /**
-     * @copydoc record_store::empty()
-     */
     [[nodiscard]] bool empty() const noexcept override {
         return count_ == 0;
     }
@@ -350,7 +382,7 @@ public:
      */
     [[nodiscard]] iterator<rtype<kind::int4>> begin_int4() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::int4>>) { //NOLINT
-            return iterator<T>{ranges_, ranges_.begin()};
+            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else { //NOLINT
             return {};
         }
@@ -358,7 +390,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::int8>> begin_int8() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin()};
+            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -366,7 +398,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::float4>> begin_float4() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin()};
+            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -374,7 +406,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::float8>> begin_float8() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin()};
+            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -382,7 +414,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::character>> begin_character() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin()};
+            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -395,7 +427,7 @@ public:
      */
     [[nodiscard]] iterator<rtype<kind::int4>> end_int4() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end()};
+            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -403,7 +435,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::int8>> end_int8() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end()};
+            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -411,7 +443,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::float4>> end_float4() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end()};
+            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -419,7 +451,7 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::float8>> end_float8() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end()};
+            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
@@ -427,11 +459,12 @@ public:
 
     [[nodiscard]] iterator<rtype<kind::character>> end_character() const noexcept override {
         if constexpr (std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end()};
+            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
+
     /**
      * @brief reset store state except the state managed by memory resource
      * @details To keep consistency, caller needs to reset or release appropriately (e.g. deallocate to some check point)
@@ -441,24 +474,48 @@ public:
         count_ = 0;
         prev_ = nullptr;
         ranges_.clear();
+        null_prev_ = nullptr;
     }
 
 private:
     memory::paged_memory_resource* resource_{};
     memory::paged_memory_resource* varlen_resource_{};
+    memory::paged_memory_resource* nulls_resource_{};
     std::size_t count_{};
     value_pointer prev_{};
     range_list ranges_{};
+    null_flag_pointer null_prev_{};
+    null_flag_pointer null_flag_base_{};
 
-    void append(void* src) {
+    void internal_append_null_flag(bool arg) {
+        BOOST_ASSERT(nulls_resource_ != nullptr);  //NOLINT
+        auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_flag_type), alignof(null_flag_type)));
+        if (!p) fail();
+        if (null_prev_ != nullptr && p != null_prev_ + 1) { //NOLINT
+            // currently assuming nulls flags are up to 2M
+            // TODO add ranges handling for nulls resource
+            fail();
+        }
+        *p = arg ? static_cast<null_flag_type>(1) : static_cast<null_flag_type>(0);
+        null_prev_ = p;
+        null_flag_base_ = (null_flag_base_ == nullptr) ? p : null_flag_base_;
+    }
+
+    void internal_append(void* src) {
+        // If src is null, arbitrary value is copied and stored. Used to store null.
         auto* p = static_cast<value_pointer>(resource_->allocate(value_length, value_alignment));
         if (!p) std::abort();
-        if constexpr (std::is_same_v<T, accessor::text>) {  //NOLINT
-            BOOST_ASSERT(varlen_resource_ != nullptr);  //NOLINT
-            accessor::text t{varlen_resource_, *reinterpret_cast<accessor::text*>(src)}; //NOLINT
-            std::memcpy(p, &t, value_length);
-        } else {  //NOLINT
-            std::memcpy(p, src, value_length);
+        if (src != nullptr) {
+            if constexpr (std::is_same_v<T, accessor::text>) {  //NOLINT
+                BOOST_ASSERT(varlen_resource_ != nullptr);  //NOLINT
+                accessor::text t{varlen_resource_, *reinterpret_cast<accessor::text*>(src)}; //NOLINT
+                std::memcpy(p, &t, value_length);
+            } else {  //NOLINT
+                std::memcpy(p, src, value_length);
+            }
+        }
+        if (nulls_resource_ != nullptr) {
+            internal_append_null_flag(src == nullptr);
         }
         ++count_;
 
@@ -496,14 +553,16 @@ public:
      * @param resource resource used to store the value
      * @param varlen_resource resource used to store the varlen data referenced from value.
      * Specify nullptr if the value type is not variable length.
+     * @param nulls_resource memory resource backing null flags. Specify nullptr if the value never becomes null.
      */
     value_store(
         meta::field_type const& type,
         memory::paged_memory_resource* resource,
-        memory::paged_memory_resource* varlen_resource
+        memory::paged_memory_resource* varlen_resource,
+        memory::paged_memory_resource* nulls_resource = nullptr
     ) :
         type_(type),
-        base_(make_typed_store(type, resource, varlen_resource))
+        base_(make_typed_store(type, resource, varlen_resource, nulls_resource))
     {}
 
     /**
@@ -528,6 +587,10 @@ public:
         } else {
             fail();
         }
+    }
+
+    void append_null() {
+        base_->append_null();
     }
 
     [[nodiscard]] std::size_t count() const noexcept {
@@ -601,16 +664,16 @@ private:
     std::unique_ptr<details::typed_store> make_typed_store(
         meta::field_type const& type,
         memory::paged_memory_resource* record_resource,
-        memory::paged_memory_resource* varlen_resource
+        memory::paged_memory_resource* varlen_resource,
+        memory::paged_memory_resource* nulls_resource
     ) {
         switch(type.kind()) {
-            case kind::int4: return std::make_unique<details::typed_value_store<rtype<kind::int4>>>(record_resource, varlen_resource);
-            case kind::int8: return std::make_unique<details::typed_value_store<rtype<kind::int8>>>(record_resource, varlen_resource);
-            case kind::float4: return std::make_unique<details::typed_value_store<rtype<kind::float4>>>(record_resource, varlen_resource);
-            case kind::float8: return std::make_unique<details::typed_value_store<rtype<kind::float8>>>(record_resource, varlen_resource);
-            case kind::character: return std::make_unique<details::typed_value_store<rtype<kind::character>>>(record_resource, varlen_resource);
-            default:
-                fail();
+            case kind::int4: return std::make_unique<details::typed_value_store<rtype<kind::int4>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::int8: return std::make_unique<details::typed_value_store<rtype<kind::int8>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::float4: return std::make_unique<details::typed_value_store<rtype<kind::float4>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::float8: return std::make_unique<details::typed_value_store<rtype<kind::float8>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::character: return std::make_unique<details::typed_value_store<rtype<kind::character>>>(record_resource, varlen_resource, nulls_resource);
+            default: fail();
         }
     }
 };

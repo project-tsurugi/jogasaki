@@ -307,5 +307,57 @@ TEST_F(value_store_test, range) {
     EXPECT_EQ(end, it);
 }
 
+TEST_F(value_store_test, nullable) {
+    mock_memory_resource resource{};
+    mock_memory_resource varlen_resource{};
+    mock_memory_resource nulls_resource{};
+    value_store store{
+        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        &resource,
+        &varlen_resource,
+        &nulls_resource
+    };
+
+    ASSERT_TRUE(store.empty());
+    ASSERT_EQ(store.begin<std::int32_t>(), store.end<std::int32_t>());
+    store.append_null();
+    ASSERT_FALSE(store.empty());
+    ASSERT_NE(store.begin<std::int32_t>(), store.end<std::int32_t>());
+    store.append<std::int32_t>(10);
+    store.append_null();
+    store.append<std::int32_t>(20);
+    store.append_null();
+    store.append<std::int32_t>(30);
+
+    ASSERT_EQ(6, store.count());
+    EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, store.type());
+    store.reset();
+    ASSERT_EQ(0, store.count());
+    ASSERT_TRUE(store.empty());
+    ASSERT_EQ(store.begin<std::int32_t>(), store.end<std::int32_t>());
+    store.append_null();
+    store.append<std::int32_t>(1);
+    store.append_null();
+    store.append<std::int32_t>(2);
+    store.append_null();
+    store.append<std::int32_t>(3);
+
+    auto it = store.begin<std::int32_t>();
+    EXPECT_TRUE(it.valid());
+    EXPECT_TRUE(it.is_null());
+    it++;
+    EXPECT_EQ(1, *it);
+    it++;
+    EXPECT_TRUE(it.is_null());
+    it++;
+    EXPECT_EQ(2, *it);
+    it++;
+    EXPECT_TRUE(it.is_null());
+    it++;
+    EXPECT_EQ(3, *it);
+    it++;
+    EXPECT_EQ(store.end<std::int32_t>(), it);
+}
+
 }
 

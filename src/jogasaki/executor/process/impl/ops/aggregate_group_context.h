@@ -41,7 +41,8 @@ public:
         memory_resource* varlen_resource,
         std::vector<data::value_store> stores,
         std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources,
-        std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores
+        std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores,
+        std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> nulls_resources
     );
 
     /**
@@ -57,6 +58,7 @@ public:
 private:
     std::vector<data::value_store> stores_{};
     std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources_{};
+    std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> nulls_resources_{};
     std::vector<std::vector<std::reference_wrapper<data::value_store>>> function_arg_stores_{};
 };
 

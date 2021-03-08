@@ -29,8 +29,9 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/utils/round.h>
+#include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::executor::function {
 
@@ -119,17 +120,24 @@ namespace builtin {
 
 namespace details {
 
-using key_pointer = void*;
-using value_pointer = void*;
-using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<std::pair<key_pointer, value_pointer>, 62, false>;
-using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
-
 template<class T>
 std::int64_t count_distinct(data::value_store const& store) {
-    using hash_set = tsl::hopscotch_set<T>;
+    using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<T, 62, false>;
+    using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
+    using hash_set = tsl::hopscotch_set<T, std::hash<T>, std::equal_to<>, hash_table_allocator>;
+    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two, so round down here to avoid going over allocator limit
+    constexpr static std::size_t default_initial_hash_table_size =
+        utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type) - 32); // hopscotch has some (~1KB) overhead outside bucket storage
+
     auto b = store.begin<T>();
     auto e = store.end<T>();
-    hash_set values{};
+    memory::monotonic_paged_memory_resource resource{&global::page_pool()};
+    hash_set values{
+        default_initial_hash_table_size,
+        std::hash<T>{},
+        std::equal_to<>{},
+        hash_table_allocator{&resource}
+    };
     while(b != e) {
         values.emplace(*b);
         ++b;

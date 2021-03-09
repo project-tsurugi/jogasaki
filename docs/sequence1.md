@@ -91,10 +91,13 @@ extern "C" StatusCode sequence_put(
     SequenceVersion version);
 
 /**
- * @brief get sequence value for latest version
- * @details retrieve sequence value of the latest version from the transaction engine. Transaction engine determines
- * the latest one by finding maximum version number of the sequence from the transactions that are durable at the time
- * this function call is made.
+ * @brief get sequence value
+ * @details retrieve sequence value of the "latest" version from the transaction engine.
+ * Transaction engine determines the latest version by finding maximum version number of
+ * the sequence from the transactions that are durable at the time this function call is made.
+ * It's up to transaction engine when to make transactions durable, so there can be delay of indeterminate length
+ * before put operations become visible to this function. As for concurrent put operations, it's only guaranteed that
+ * the version number retrieved by this function is equal or greater than the one that is previously retrieved.
  * @param handle the database handle where the sequence exists
  * @param id the sequence id whose value/version are to be retrieved
  * @param [out] value the sequence value, that is valid only when this function is successful with StatusCode::OK.

@@ -63,6 +63,8 @@ public:
 
     using null_flag_pointer = null_flag_type*;
 
+    using null_flag_const_pointer = null_flag_type const*;
+
     struct range {
         range(value_pointer b, value_pointer e) : b_(b), e_(e) {}
         value_pointer b_; //NOLINT
@@ -93,7 +95,7 @@ public:
         range_list_iterator range,
         value_pointer base,
         std::size_t offset,
-        null_flag_pointer null_flag_base
+        null_flag_const_pointer null_flag_base
     ) :
         ranges_(std::addressof(ranges)),
         range_(range),
@@ -110,7 +112,7 @@ public:
     iterator(
         range_list const& ranges,
         range_list_iterator range,
-        null_flag_pointer null_flag_base
+        null_flag_const_pointer null_flag_base
     ) :
         iterator(
             ranges,
@@ -207,7 +209,7 @@ private:
     range_list_iterator range_{};
     value_pointer base_{};
     std::size_t offset_{};
-    null_flag_pointer null_flag_base_{};
+    null_flag_const_pointer null_flag_base_{};
 };
 
 class cache_align typed_store {

@@ -32,17 +32,14 @@ using ::takatori::util::sequence_view;
  */
 class step : public model::step {
 public:
-    using number_of_ports = std::size_t;
-
     using port_index = std::size_t;
 
     static constexpr port_index npos = static_cast<port_index>(-1);
 
-    explicit step(
-        number_of_ports inputs = 0,
-        number_of_ports outputs = 0,
-        number_of_ports subinputs = 0
-    );
+    /**
+     * @brief create empty object
+     */
+    step();
 
     [[nodiscard]] identity_type id() const override;
     [[nodiscard]] sequence_view<std::unique_ptr<model::port> const> input_ports() const override;

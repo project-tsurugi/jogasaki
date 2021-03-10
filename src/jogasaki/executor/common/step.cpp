@@ -21,36 +21,9 @@
 
 namespace jogasaki::executor::common {
 
-step::step(
-    number_of_ports inputs,
-    number_of_ports outputs,
-    number_of_ports subinputs
-) :
-    owner_(graph::undefined().get())
-{
-    main_input_ports_.reserve(inputs);
-    sub_input_ports_.reserve(subinputs);
-    output_ports_.reserve(outputs);
-    for(number_of_ports i=0; i < inputs; ++i) {
-        main_input_ports_.emplace_back(std::make_unique<port>(
-            port_direction::input,
-            port_kind::main, this)
-        );
-    }
-    for(number_of_ports i=0; i < subinputs; ++i) {
-        sub_input_ports_.emplace_back(std::make_unique<port>(
-            port_direction::input,
-            port_kind::sub, this)
-        );
-    }
-    for(number_of_ports i=0; i < outputs; ++i) {
-        output_ports_.emplace_back(std::make_unique<port>(
-            port_direction::output,
-            port_kind::main,
-            this)
-        );
-    }
-}
+step::step() :
+    owner_(common::graph::undefined().get())
+{}
 
 step::identity_type step::id() const {
     return id_;

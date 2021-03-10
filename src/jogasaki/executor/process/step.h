@@ -39,10 +39,7 @@ public:
     step(
         std::shared_ptr<processor_info> info,
         std::shared_ptr<class relation_io_map> relation_io_map,
-        std::shared_ptr<class io_info> io_info = {},
-        number_of_ports inputs = 0,
-        number_of_ports outputs = 0,
-        number_of_ports subinputs = 0
+        std::shared_ptr<class io_info> io_info = {}
     );
 
     void notify_prepared() override;

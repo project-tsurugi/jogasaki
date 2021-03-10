@@ -84,11 +84,8 @@ std::shared_ptr<io_info> step::create_io_info() {
 step::step(
     std::shared_ptr<processor_info> info,
     std::shared_ptr<class relation_io_map> relation_io_map,
-    std::shared_ptr<class io_info> io_info,
-    step::number_of_ports inputs,
-    step::number_of_ports outputs,
-    step::number_of_ports subinputs
-) : common::step(inputs, outputs, subinputs),
+    std::shared_ptr<class io_info> io_info
+) :
     info_(std::move(info)),
     io_info_(std::move(io_info)),
     relation_io_map_(std::move(relation_io_map))

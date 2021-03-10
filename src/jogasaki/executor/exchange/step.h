@@ -29,15 +29,12 @@ using takatori::util::maybe_shared_ptr;
 
 class step : public common::step {
 public:
-    step() : common::step(0, 0, 0) {}
-
-    step(number_of_ports inputs, number_of_ports outputs) : common::step(inputs, outputs, 0) {}
+    step() = default;
 
     step(
         maybe_shared_ptr<meta::record_meta> input_meta,
         meta::variable_order column_order
     ) :
-        common::step(0, 0, 0),
         input_meta_(std::move(input_meta)),
         column_order_(std::move(column_order))
     {}

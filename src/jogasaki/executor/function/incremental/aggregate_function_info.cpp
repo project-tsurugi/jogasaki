@@ -58,6 +58,21 @@ aggregate_function_info_impl<aggregate_function_kind::count>::intermediate_types
     return {meta::field_type{enum_tag<meta::field_type_kind::int8>}};
 }
 
+aggregate_function_info_impl<aggregate_function_kind::count_rows>::aggregate_function_info_impl() :
+    aggregate_function_info(
+        aggregate_function_kind::count_rows,
+        { aggregator_info{ builtin::count_rows_pre, 0 } },
+        { aggregator_info{ builtin::count_mid, 1 } },
+        { aggregator_info{ builtin::identity_post, 1 } }
+    )
+{}
+
+std::vector<meta::field_type>
+aggregate_function_info_impl<aggregate_function_kind::count_rows>::intermediate_types(
+    sequence_view<const meta::field_type>) const {
+    return {meta::field_type{enum_tag<meta::field_type_kind::int8>}};
+}
+
 aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_info_impl() :
     aggregate_function_info(
         aggregate_function_kind::avg,

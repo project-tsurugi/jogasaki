@@ -27,6 +27,7 @@ enum class aggregate_function_kind : std::size_t {
     undefined = 0,
     sum,
     count,
+    count_rows,
     max,
     min,
     avg
@@ -44,6 +45,7 @@ enum class aggregate_function_kind : std::size_t {
         case kind::undefined: return "undefined"sv;
         case kind::sum: return "sum"sv;
         case kind::count: return "count"sv;
+        case kind::count_rows: return "count_rows"sv;
         case kind::max: return "max"sv;
         case kind::min: return "min"sv;
         case kind::avg: return "avg"sv;

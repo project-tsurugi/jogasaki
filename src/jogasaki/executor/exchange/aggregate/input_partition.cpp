@@ -91,6 +91,27 @@ bool input_partition::write(accessor::record_ref record) {
     return false;
 }
 
+void input_partition::aggregate_empty_input() {
+    initialize_lazy();
+    auto& key_meta = info_->pre().group_meta()->key_shared();
+    auto& value_meta = info_->pre().group_meta()->value_shared();
+    accessor::record_ref value{values_->allocate_record(), value_meta->record_size()};
+    accessor::record_ref key{keys_->allocate_record(), key_meta->record_size()};
+    for(std::size_t i=0, n = key_meta->field_count(); i < n; ++i) {
+        key.set_null(key_meta->nullity_offset(i), true);
+    }
+    key.set_value<void*>(key_meta->value_offset(key_meta->field_count()-1), value.data());
+    auto& table = pointer_tables_.emplace_back(resource_for_ptr_tables_.get(), 1);
+    table.emplace_back(key.data());
+
+    auto& info = info_->pre();
+    for(std::size_t i=0, n = info.aggregator_specs().size(); i < n; ++i) {
+        auto& as = info.aggregator_specs()[i];
+        auto& generator = as.aggregator_info().empty_value_generator();
+        generator(value, info.target_field_locator(i));
+    }
+}
+
 void input_partition::flush() {
     if(! current_table_active_) return;
     current_table_active_ = false;

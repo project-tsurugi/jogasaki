@@ -84,7 +84,7 @@ void copy_field(
 }
 
 void copy_nullable_field(
-    const meta::field_type &type,
+    meta::field_type const& type,
     accessor::record_ref target,
     std::size_t target_offset,
     std::size_t target_nullity_offset,

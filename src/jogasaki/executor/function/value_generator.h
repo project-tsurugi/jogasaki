@@ -15,35 +15,40 @@
  */
 #pragma once
 
-#include <takatori/util/sequence_view.h>
-#include <yugawara/aggregate/configurable_provider.h>
+#include <memory>
 
 #include <jogasaki/executor/function/field_locator.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor::function {
 
 /**
- * @brief register built-in aggregate functions to the given provider and function repository
- * @param functions the provider where the built-in functions are registered
- * @param repo the function repository where the built-in functions are registered
+ * @brief definition of aggregator function type for empty input
  */
-void add_builtin_aggregate_functions(
-    ::yugawara::aggregate::configurable_provider& functions,
-    executor::function::aggregate_function_repository& repo
-);
+using empty_value_generator_type = std::function<void (
+    accessor::record_ref,
+    field_locator const&
+)>;
 
-namespace builtin {
-
-using takatori::util::sequence_view;
-
-void count_distinct(
+/**
+ * @brief zero value generator function for empty input aggregation
+ * @param target the target record_ref where result value is written
+ * @param target_loc target field locator
+ * @note this generator can be used only for the aggregation whose return type is numeric
+ */
+void zero_generator(
     accessor::record_ref target,
-    field_locator const& target_loc,
-    sequence_view<std::reference_wrapper<data::value_store> const> args
+    field_locator const& target_loc
 );
 
-} // namespace builtin
+/**
+ * @brief null value generator function for empty input aggregation
+ * @param target the target record_ref where result value is written
+ * @param target_loc target field locator
+ */
+void null_generator(
+    accessor::record_ref target,
+    field_locator const& target_loc
+);
 
 }

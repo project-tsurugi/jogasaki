@@ -51,7 +51,8 @@ public:
     /**
      * @brief create new object
      * @param kind kind of the aggregate function
-     * @param pre aggregators used for pre aggregation (input record to values)
+     * @param pre aggregators used for pre aggregation (input record to values) The empty_generator function must be
+     * provided for the pre aggregator_info in order to calculate aggregation with empty input.
      * @param mid aggregators used for intermediate aggregation (merge values)
      * @param post aggregators used for post aggregation (calculate final results from intermediate values)
      */

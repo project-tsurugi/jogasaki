@@ -25,6 +25,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/function/value_generator.h>
 
 namespace jogasaki::executor::function {
 
@@ -39,13 +40,6 @@ using aggregator_type = std::function<void (
     sequence_view<std::reference_wrapper<data::value_store> const>
 )>;
 
-/**
- * @brief definition of aggregator function type for empty input
- */
-using empty_value_generator_type = std::function<void (
-    accessor::record_ref,
-    field_locator const&
-)>;
 /**
  * @brief aggregate function information interface
  */

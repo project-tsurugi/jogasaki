@@ -21,14 +21,16 @@ namespace jogasaki::executor::function::incremental {
 
 aggregator_info::aggregator_info(
     aggregator_type aggregator,
-    std::size_t arg_count
+    std::size_t arg_count,
+    empty_value_generator_type empty_generator
 ) :
     valid_(true),
     aggregator_(std::move(aggregator)),
-    arg_count_(arg_count)
+    arg_count_(arg_count),
+    empty_generator_(std::move(empty_generator))
 {}
 
-aggregator_type const &aggregator_info::aggregator() const noexcept {
+aggregator_type const& aggregator_info::aggregator() const noexcept {
     return aggregator_;
 }
 
@@ -38,6 +40,10 @@ aggregator_info::operator bool() const noexcept {
 
 std::size_t aggregator_info::arg_count() const noexcept {
     return arg_count_;
+}
+
+[[nodiscard]] empty_value_generator_type const& aggregator_info::empty_value_generator() const noexcept {
+    return empty_generator_;
 }
 
 }

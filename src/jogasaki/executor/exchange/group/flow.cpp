@@ -112,11 +112,10 @@ void flow::transfer() {
     bool empty = true;
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT
-        for(std::size_t i=0; i < partitions.size(); ++i) {
-            auto& p = partitions[i];
-            if (! p) continue;
-            sources_[i]->receive(std::move(p));
+        BOOST_ASSERT(partitions.size() <= sources_.size()); //NOLINT
+        for(std::size_t i=0, n=sources_.size(); i < n; ++i) {
+            if (i >= partitions.size() || ! partitions[i]) continue;
+            sources_[i]->receive(std::move(partitions[i]));
             empty = false;
         }
     }

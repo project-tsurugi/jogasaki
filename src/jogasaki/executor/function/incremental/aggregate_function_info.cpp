@@ -31,7 +31,7 @@ using takatori::util::sequence_view;
 aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_info_impl() :
     aggregate_function_info(
         aggregate_function_kind::sum,
-        { aggregator_info{ builtin::sum, 1 } },
+        { aggregator_info{ builtin::sum, 1, null_generator } },
         { aggregator_info{ builtin::sum, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
     )
@@ -46,7 +46,7 @@ std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_ki
 aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function_info_impl() :
     aggregate_function_info(
         aggregate_function_kind::count,
-        { aggregator_info{ builtin::count_pre, 1 } },
+        { aggregator_info{ builtin::count_pre, 1 , zero_generator } },
         { aggregator_info{ builtin::count_mid, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
     )
@@ -61,7 +61,7 @@ aggregate_function_info_impl<aggregate_function_kind::count>::intermediate_types
 aggregate_function_info_impl<aggregate_function_kind::count_rows>::aggregate_function_info_impl() :
     aggregate_function_info(
         aggregate_function_kind::count_rows,
-        { aggregator_info{ builtin::count_rows_pre, 0 } },
+        { aggregator_info{ builtin::count_rows_pre, 0, zero_generator } },
         { aggregator_info{ builtin::count_mid, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
     )
@@ -77,9 +77,9 @@ aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_i
     aggregate_function_info(
         aggregate_function_kind::avg,
         {
-            aggregator_info{ builtin::sum, 1 },
-            aggregator_info{ builtin::count_pre, 1 },
-            },
+            aggregator_info{ builtin::sum, 1, null_generator },
+            aggregator_info{ builtin::count_pre, 1, null_generator },
+        },
         {
             aggregator_info{ builtin::sum, 1 },
             aggregator_info{ builtin::count_mid, 1 },
@@ -107,7 +107,11 @@ aggregate_function_info::aggregate_function_info(
     pre_(std::move(pre)),
     mid_(std::move(mid)),
     post_(std::move(post))
-{}
+{
+    for(auto&& info : pre_) {
+        BOOST_ASSERT(info.empty_value_generator());  //NOLINT
+    }
+}
 
 sequence_view<aggregator_info const> aggregate_function_info::pre() const noexcept {
     return pre_;

@@ -135,6 +135,12 @@ public:
     bool write(accessor::record_ref record);
 
     /**
+     * @brief generate special record in the input partition that represents aggregation of empty input.
+     * This is to create input partition with just one record, no further flush is needed.
+     */
+    void aggregate_empty_input();
+
+    /**
      * @brief finish current hash table
      * @details the current internal hash table is finalized and next write() will create new one.
      */

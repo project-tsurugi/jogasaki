@@ -42,4 +42,5 @@ aggregator_type const& aggregate_function_info::aggregator() const noexcept {
 std::size_t aggregate_function_info::arg_count() const noexcept {
     return arg_count_;
 }
+
 }

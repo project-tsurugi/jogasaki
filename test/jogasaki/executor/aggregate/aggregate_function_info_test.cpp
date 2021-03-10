@@ -38,7 +38,7 @@ using kind = aggregate_function_kind;
 TEST_F(aggregate_function_info_test, simple) {
     aggregate_function_info info{
         aggregate_function_kind::count_distinct,
-        builtin::zero_generator,
+        zero_generator,
         builtin::count_distinct
     };
 }
@@ -47,7 +47,7 @@ TEST_F(aggregate_function_info_test, repo) {
     auto& repo = global::aggregate_function_repository();
     repo.add(0, std::make_shared<aggregate_function_info>(
         aggregate_function_kind::count_distinct,
-        builtin::zero_generator,
+        zero_generator,
         builtin::count_distinct
     ));
     auto& info = *repo.find(0);

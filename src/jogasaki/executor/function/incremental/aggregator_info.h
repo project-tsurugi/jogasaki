@@ -21,6 +21,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
 
+#include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/accessor/record_ref.h>
 
@@ -41,7 +42,8 @@ using aggregator_type = std::function<void (
 
 /**
  * @brief aggregator information
- * @details aggregators are the concrete functions composing a aggregate function.
+ * @details aggregators are the concrete functions composing a aggregate function
+ * with a optional value generator for empty input.
  */
 class aggregator_info {
 public:
@@ -58,12 +60,15 @@ public:
 
     /**
      * @brief create new object
-     * @param aggregator
-     * @param arg_count
+     * @param aggregator the concrete aggregation function
+     * @param arg_count the number of arguments for the function
+     * @param empty_generator the value generator function to create value for empty aggregation
+     * (e.g. zero for COUNT, or NULL for SUM)
      */
     aggregator_info(
         aggregator_type aggregator,
-        std::size_t arg_count
+        std::size_t arg_count,
+        empty_value_generator_type empty_generator = {}
     );
 
     /**
@@ -81,10 +86,16 @@ public:
      */
     [[nodiscard]] std::size_t arg_count() const noexcept;
 
+    /**
+     * @brief accessor to empty value generator
+     */
+    [[nodiscard]] empty_value_generator_type const& empty_value_generator() const noexcept;
+
 private:
     bool valid_{false};
     aggregator_type aggregator_{};
     std::size_t arg_count_{};
+    empty_value_generator_type empty_generator_{};
 };
 
 }

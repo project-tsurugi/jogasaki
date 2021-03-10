@@ -107,22 +107,15 @@ void flow::transfer() {
     updatable_info().empty_input(empty);
     if (generate_record_on_empty_ && empty) {
         // generate a special record for empty input
-        // FIXME with count(*), passing null is simply ignored
-        auto& writer = sinks_[0]->acquire_writer();
-        auto meta = info_->record_meta();
-        data::aligned_buffer buf{meta->record_size()};
-        accessor::record_ref ref{buf.data(), buf.size()};
-        for(std::size_t i=0, n=meta->field_count(); i < n; ++i) {
-            ref.set_null(meta->nullity_offset(i), true);
-        }
-        writer.write(ref);
-        writer.flush();
+        auto& partitions = sinks_[0]->input_partitions();
+        auto& p = partitions.emplace_back(std::make_unique<input_partition>(info_));
+        p->aggregate_empty_input();
     }
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        BOOST_ASSERT(partitions.size() == 0 || partitions.size() == sources_.size()); //NOLINT
-        for(std::size_t i=0; i < partitions.size(); ++i) {
-            if (! partitions[i]) continue;
+        BOOST_ASSERT(partitions.size() <= sources_.size()); //NOLINT
+        for(std::size_t i=0, n=sources_.size(); i < n; ++i) {
+            if (i >= partitions.size() || !partitions[i]) continue;
             partitions[i]->release_hashtable();
             sources_[i]->receive(std::move(partitions[i]));
         }

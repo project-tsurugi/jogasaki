@@ -38,17 +38,17 @@ void copy_field(
     switch(type.kind()) {
         case k::undefined:
             break;
-        case k::boolean: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::boolean>::runtime_type>(source_offset)); return;
-        case k::int1: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int1>::runtime_type>(source_offset)); return;
-        case k::int2: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int2>::runtime_type>(source_offset)); return;
-        case k::int4: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int4>::runtime_type>(source_offset)); return;
-        case k::int8: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::int8>::runtime_type>(source_offset)); return;
-        case k::float4: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::float4>::runtime_type>(source_offset)); return;
-        case k::float8: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::float8>::runtime_type>(source_offset)); return;
+        case k::boolean: target.set_value(target_offset, source.get_value<runtime_t<k::boolean>>(source_offset)); return;
+        case k::int1: target.set_value(target_offset, source.get_value<runtime_t<k::int1>>(source_offset)); return;
+        case k::int2: target.set_value(target_offset, source.get_value<runtime_t<k::int2>>(source_offset)); return;
+        case k::int4: target.set_value(target_offset, source.get_value<runtime_t<k::int4>>(source_offset)); return;
+        case k::int8: target.set_value(target_offset, source.get_value<runtime_t<k::int8>>(source_offset)); return;
+        case k::float4: target.set_value(target_offset, source.get_value<runtime_t<k::float4>>(source_offset)); return;
+        case k::float8: target.set_value(target_offset, source.get_value<runtime_t<k::float8>>(source_offset)); return;
         case k::decimal:
             break;
         case k::character: {
-            auto text = source.get_value<meta::field_type_traits<k::character>::runtime_type>(source_offset);
+            auto text = source.get_value<runtime_t<k::character>>(source_offset);
             target.set_value(target_offset,
                 resource != nullptr ? accessor::text(resource, text) : text
             );
@@ -78,7 +78,7 @@ void copy_field(
             break;
         case k::extension:
             break;
-        case k::pointer: target.set_value(target_offset, source.get_value<meta::field_type_traits<k::pointer>::runtime_type>(source_offset)); return;
+        case k::pointer: target.set_value(target_offset, source.get_value<runtime_t<k::pointer>>(source_offset)); return;
     }
     fail();
 }

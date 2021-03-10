@@ -55,9 +55,6 @@ private:
     std::size_t partitions_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
 
-    template <meta::field_type_kind Kind>
-    using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
-
     using kind = meta::field_type_kind;
 
     [[nodiscard]] std::size_t field_hash(accessor::record_ref key, std::size_t field_index) const;

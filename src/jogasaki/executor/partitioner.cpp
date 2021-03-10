@@ -49,14 +49,14 @@ std::size_t partitioner::field_hash(accessor::record_ref key, std::size_t field_
     auto type = meta_->at(field_index);
     auto offset = meta_->value_offset(field_index);
     switch(type.kind()) {
-        case meta::field_type_kind::boolean: return std::hash<runtime_type<kind::boolean>>()(key.get_value<runtime_type<kind::boolean>>(offset));
-        case meta::field_type_kind::int1: return std::hash<runtime_type<kind::int1>>()(key.get_value<runtime_type<kind::int1>>(offset));
-        case meta::field_type_kind::int2: return std::hash<runtime_type<kind::int2>>()(key.get_value<runtime_type<kind::int2>>(offset));
-        case meta::field_type_kind::int4: return std::hash<runtime_type<kind::int4>>()(key.get_value<runtime_type<kind::int4>>(offset));
-        case meta::field_type_kind::int8: return std::hash<runtime_type<kind::int8>>()(key.get_value<runtime_type<kind::int8>>(offset));
-        case meta::field_type_kind::float4: return std::hash<runtime_type<kind::float4>>()(key.get_value<runtime_type<kind::float4>>(offset));
-        case meta::field_type_kind::float8: return std::hash<runtime_type<kind::float8>>()(key.get_value<runtime_type<kind::float8>>(offset));
-        case meta::field_type_kind::character: return std::hash<runtime_type<kind::character>>()(key.get_value<runtime_type<kind::character>>(offset));
+        case meta::field_type_kind::boolean: return std::hash<runtime_t<kind::boolean>>()(key.get_value<runtime_t<kind::boolean>>(offset));
+        case meta::field_type_kind::int1: return std::hash<runtime_t<kind::int1>>()(key.get_value<runtime_t<kind::int1>>(offset));
+        case meta::field_type_kind::int2: return std::hash<runtime_t<kind::int2>>()(key.get_value<runtime_t<kind::int2>>(offset));
+        case meta::field_type_kind::int4: return std::hash<runtime_t<kind::int4>>()(key.get_value<runtime_t<kind::int4>>(offset));
+        case meta::field_type_kind::int8: return std::hash<runtime_t<kind::int8>>()(key.get_value<runtime_t<kind::int8>>(offset));
+        case meta::field_type_kind::float4: return std::hash<runtime_t<kind::float4>>()(key.get_value<runtime_t<kind::float4>>(offset));
+        case meta::field_type_kind::float8: return std::hash<runtime_t<kind::float8>>()(key.get_value<runtime_t<kind::float8>>(offset));
+        case meta::field_type_kind::character: return std::hash<runtime_t<kind::character>>()(key.get_value<runtime_t<kind::character>>(offset));
         case meta::field_type_kind::pointer: return static_cast<std::size_t>(-1); // ignore internal field
         default:
             // TODO implement other types

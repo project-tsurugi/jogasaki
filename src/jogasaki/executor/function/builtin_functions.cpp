@@ -39,8 +39,6 @@ using takatori::util::sequence_view;
 using takatori::util::fail;
 
 using kind = meta::field_type_kind;
-template <kind Kind>
-using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 
 void add_builtin_aggregate_functions(
     ::yugawara::aggregate::configurable_provider& functions,
@@ -165,14 +163,14 @@ void count_distinct(
     auto& store = static_cast<data::value_store&>(args[0]);
     std::int64_t res{};
     switch(store.type().kind()) {
-        case kind::int4: res = details::count_distinct<rtype<kind::int4>>(store); break;
-        case kind::int8: res = details::count_distinct<rtype<kind::int8>>(store); break;
-        case kind::float4: res = details::count_distinct<rtype<kind::float4>>(store); break;
-        case kind::float8: res = details::count_distinct<rtype<kind::float8>>(store); break;
-        case kind::character: res = details::count_distinct<rtype<kind::character>>(store); break;
+        case kind::int4: res = details::count_distinct<runtime_t<kind::int4>>(store); break;
+        case kind::int8: res = details::count_distinct<runtime_t<kind::int8>>(store); break;
+        case kind::float4: res = details::count_distinct<runtime_t<kind::float4>>(store); break;
+        case kind::float8: res = details::count_distinct<runtime_t<kind::float8>>(store); break;
+        case kind::character: res = details::count_distinct<runtime_t<kind::character>>(store); break;
         default: fail();
     }
-    target.set_value<rtype<kind::int8>>(target_offset, res);
+    target.set_value<runtime_t<kind::int8>>(target_offset, res);
 }
 
 }  // namespace builtin

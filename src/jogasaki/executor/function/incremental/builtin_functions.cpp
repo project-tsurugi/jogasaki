@@ -36,8 +36,6 @@ using takatori::util::sequence_view;
 using takatori::util::fail;
 
 using kind = meta::field_type_kind;
-template <kind Kind>
-using rtype = typename meta::field_type_traits<Kind>::runtime_type;
 
 void add_builtin_aggregate_functions(
     ::yugawara::aggregate::configurable_provider& functions,
@@ -235,10 +233,10 @@ void sum(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(arg_type.kind()) {
-        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, target.get_value<rtype<kind::int4>>(target_offset) + source.get_value<rtype<kind::int4>>(arg_offset)); break;
-        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset)); break;
-        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, target.get_value<rtype<kind::float4>>(target_offset) + source.get_value<rtype<kind::float4>>(arg_offset)); break;
-        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, target.get_value<rtype<kind::float8>>(target_offset) + source.get_value<rtype<kind::float8>>(arg_offset)); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, target.get_value<runtime_t<kind::int4>>(target_offset) + source.get_value<runtime_t<kind::int4>>(arg_offset)); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, target.get_value<runtime_t<kind::int8>>(target_offset) + source.get_value<runtime_t<kind::int8>>(arg_offset)); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, target.get_value<runtime_t<kind::float4>>(target_offset) + source.get_value<runtime_t<kind::float4>>(arg_offset)); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, target.get_value<runtime_t<kind::float8>>(target_offset) + source.get_value<runtime_t<kind::float8>>(arg_offset)); break;
         default: fail();
     }
 }
@@ -257,10 +255,10 @@ void count_pre(
     target.set_null(target_nullity_offset, false);
     std::int64_t cnt = source.is_null(args[0].nullity_offset()) ? 0 : 1;
     if (initial) {
-        target.set_value<rtype<kind::int8>>(target_offset, cnt);
+        target.set_value<runtime_t<kind::int8>>(target_offset, cnt);
         return;
     }
-    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + cnt);
+    target.set_value<runtime_t<kind::int8>>(target_offset, target.get_value<runtime_t<kind::int8>>(target_offset) + cnt);
 }
 
 void count_mid(
@@ -280,10 +278,10 @@ void count_mid(
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);
     if (initial) {
-        target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(arg_offset));
+        target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(arg_offset));
         return;
     }
-    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + source.get_value<rtype<kind::int8>>(arg_offset));
+    target.set_value<runtime_t<kind::int8>>(target_offset, target.get_value<runtime_t<kind::int8>>(target_offset) + source.get_value<runtime_t<kind::int8>>(arg_offset));
 }
 
 void count_rows_pre(
@@ -301,10 +299,10 @@ void count_rows_pre(
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);
     if (initial) {
-        target.set_value<rtype<kind::int8>>(target_offset, 1);
+        target.set_value<runtime_t<kind::int8>>(target_offset, 1);
         return;
     }
-    target.set_value<rtype<kind::int8>>(target_offset, target.get_value<rtype<kind::int8>>(target_offset) + 1);
+    target.set_value<runtime_t<kind::int8>>(target_offset, target.get_value<runtime_t<kind::int8>>(target_offset) + 1);
 }
 
 void avg_post(
@@ -332,10 +330,10 @@ void avg_post(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(sum_type.kind()) {
-        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, source.get_value<rtype<kind::int4>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
-        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
-        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, source.get_value<rtype<kind::float4>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
-        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, source.get_value<rtype<kind::float8>>(sum_offset) / source.get_value<rtype<kind::int8>>(count_offset)); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, source.get_value<runtime_t<kind::int4>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
         default: fail();
     }
 }
@@ -358,10 +356,10 @@ void identity_post(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(type.kind()) {
-        case kind::int4: target.set_value<rtype<kind::int4>>(target_offset, source.get_value<rtype<kind::int4>>(offset)); break;
-        case kind::int8: target.set_value<rtype<kind::int8>>(target_offset, source.get_value<rtype<kind::int8>>(offset)); break;
-        case kind::float4: target.set_value<rtype<kind::float4>>(target_offset, source.get_value<rtype<kind::float4>>(offset)); break;
-        case kind::float8: target.set_value<rtype<kind::float8>>(target_offset, source.get_value<rtype<kind::float8>>(offset)); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, source.get_value<runtime_t<kind::int4>>(offset)); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(offset)); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(offset)); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(offset)); break;
         default: fail();
     }
 }

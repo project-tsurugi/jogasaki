@@ -87,8 +87,13 @@ struct field_type_traits<field_type_kind::pointer> : simple_field_type_traits<vo
 
 //TODO add specialization for other types
 
+} // namespace
+
+namespace jogasaki {
+
+///@brief short name for runtime type
 template <meta::field_type_kind Kind>
 using runtime_t = typename meta::field_type_traits<Kind>::runtime_type;
 
-} // namespace
+}
 

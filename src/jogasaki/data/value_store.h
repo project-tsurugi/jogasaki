@@ -31,9 +31,6 @@ namespace jogasaki::data {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
 
-template <meta::field_type_kind Kind>
-using rtype = typename meta::field_type_traits<Kind>::runtime_type;
-
 namespace details {
 
 /**
@@ -238,11 +235,11 @@ public:
      * this object unless it's nullptr.
      * @param value the value to be added
      */
-    virtual void append_int4(rtype<kind::int4> value) = 0;
-    virtual void append_int8(rtype<kind::int8> value) = 0;
-    virtual void append_float4(rtype<kind::float4> value) = 0;
-    virtual void append_float8(rtype<kind::float8> value) = 0;
-    virtual void append_character(rtype<kind::character> value) = 0;
+    virtual void append_int4(runtime_t<kind::int4> value) = 0;
+    virtual void append_int8(runtime_t<kind::int8> value) = 0;
+    virtual void append_float4(runtime_t<kind::float4> value) = 0;
+    virtual void append_float8(runtime_t<kind::float8> value) = 0;
+    virtual void append_character(runtime_t<kind::character> value) = 0;
 
     [[nodiscard]] virtual std::size_t count() const noexcept = 0;
 
@@ -257,22 +254,22 @@ public:
      * @warning the returned iterator will be invalid when new append() is called.
      */
 
-    [[nodiscard]] virtual iterator<rtype<kind::int4>> begin_int4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::int8>> begin_int8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::float4>> begin_float4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::float8>> begin_float8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::character>> begin_character() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> begin_int4() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> begin_int8() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> begin_float4() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> begin_float8() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::character>> begin_character() const noexcept = 0;
 
     /**
      * @brief getter of end iterator
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] virtual iterator<rtype<kind::int4>> end_int4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::int8>> end_int8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::float4>> end_float4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::float8>> end_float8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<rtype<kind::character>> end_character() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> end_int4() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> end_int8() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> end_float4() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> end_float8() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::character>> end_character() const noexcept = 0;
 
     /**
      * @brief reset the store clearing all values
@@ -339,32 +336,32 @@ public:
      * this object unless it's nullptr.
      * @param value added to the store
      */
-    void append_int4(rtype<kind::int4> value) override {
-        if constexpr (std::is_same_v<T, rtype<kind::int4>>) { //NOLINT
+    void append_int4(runtime_t<kind::int4> value) override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) { //NOLINT
             internal_append(&value);
         }
     }
 
-    void append_int8(rtype<kind::int8> value) override {
-        if constexpr (std::is_same_v<T, rtype<kind::int8>>) { //NOLINT
+    void append_int8(runtime_t<kind::int8> value) override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) { //NOLINT
             internal_append(&value);
         }
     }
 
-    void append_float4(rtype<kind::float4> value) override {
-        if constexpr (std::is_same_v<T, rtype<kind::float4>>) { //NOLINT
+    void append_float4(runtime_t<kind::float4> value) override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) { //NOLINT
             internal_append(&value);
         }
     }
 
-    void append_float8(rtype<kind::float8> value) override {
-        if constexpr (std::is_same_v<T, rtype<kind::float8>>) { //NOLINT
+    void append_float8(runtime_t<kind::float8> value) override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) { //NOLINT
             internal_append(&value);
         }
     }
 
-    void append_character(rtype<kind::character> value) override {
-        if constexpr (std::is_same_v<T, rtype<kind::character>>) { //NOLINT
+    void append_character(runtime_t<kind::character> value) override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::character>>) { //NOLINT
             internal_append(&value);
         }
     }
@@ -382,40 +379,40 @@ public:
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
-    [[nodiscard]] iterator<rtype<kind::int4>> begin_int4() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::int4>>) { //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::int4>> begin_int4() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) { //NOLINT
             return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else { //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::int8>> begin_int8() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::int8>> begin_int8() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::float4>> begin_float4() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::float4>> begin_float4() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::float8>> begin_float8() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::float8>> begin_float8() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::character>> begin_character() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::character>> begin_character() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
             return {};
@@ -427,40 +424,40 @@ public:
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] iterator<rtype<kind::int4>> end_int4() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::int4>> end_int4() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::int8>> end_int8() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::int8>> end_int8() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::float4>> end_float4() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::float4>> end_float4() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::float8>> end_float8() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::float8>> end_float8() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<rtype<kind::character>> end_character() const noexcept override {
-        if constexpr (std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
+    [[nodiscard]] iterator<runtime_t<kind::character>> end_character() const noexcept override {
+        if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
         } else {  //NOLINT
             return {};
@@ -576,15 +573,15 @@ public:
      */
     template <class T>
     void append(T value) {
-        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
+        if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
             base_->append_int4(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             base_->append_int8(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             base_->append_float4(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             base_->append_float8(value);
-        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             base_->append_character(value);
         } else {
             fail();
@@ -610,15 +607,15 @@ public:
      */
     template <class T>
     [[nodiscard]] details::iterator<T> begin() const noexcept {
-        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
+        if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
             return base_->begin_int4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             return base_->begin_int8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             return base_->begin_float4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             return base_->begin_float8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             return base_->begin_character();
         } else {
             fail();
@@ -632,15 +629,15 @@ public:
      */
     template <class T>
     [[nodiscard]] details::iterator<T> end() const noexcept {
-        if constexpr(std::is_same_v<T, rtype<kind::int4>>) {  //NOLINT
+        if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
             return base_->end_int4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::int8>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             return base_->end_int8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float4>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             return base_->end_float4();
-        } else if constexpr(std::is_same_v<T, rtype<kind::float8>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             return base_->end_float8();
-        } else if constexpr(std::is_same_v<T, rtype<kind::character>>) {  //NOLINT
+        } else if constexpr(std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             return base_->end_character();
         } else {
             fail();
@@ -670,11 +667,11 @@ private:
         memory::paged_memory_resource* nulls_resource
     ) {
         switch(type.kind()) {
-            case kind::int4: return std::make_unique<details::typed_value_store<rtype<kind::int4>>>(record_resource, varlen_resource, nulls_resource);
-            case kind::int8: return std::make_unique<details::typed_value_store<rtype<kind::int8>>>(record_resource, varlen_resource, nulls_resource);
-            case kind::float4: return std::make_unique<details::typed_value_store<rtype<kind::float4>>>(record_resource, varlen_resource, nulls_resource);
-            case kind::float8: return std::make_unique<details::typed_value_store<rtype<kind::float8>>>(record_resource, varlen_resource, nulls_resource);
-            case kind::character: return std::make_unique<details::typed_value_store<rtype<kind::character>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::int4: return std::make_unique<details::typed_value_store<runtime_t<kind::int4>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::int8: return std::make_unique<details::typed_value_store<runtime_t<kind::int8>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::float4: return std::make_unique<details::typed_value_store<runtime_t<kind::float4>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::float8: return std::make_unique<details::typed_value_store<runtime_t<kind::float8>>>(record_resource, varlen_resource, nulls_resource);
+            case kind::character: return std::make_unique<details::typed_value_store<runtime_t<kind::character>>>(record_resource, varlen_resource, nulls_resource);
             default: fail();
         }
     }

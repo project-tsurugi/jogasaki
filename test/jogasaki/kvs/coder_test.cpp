@@ -528,9 +528,9 @@ void test_ordering() {
     kvs::stream s1{src1};
     kvs::stream s2{src2};
     kvs::stream s3{src3};
-    executor::process::impl::expression::any n1{std::in_place_type<typename meta::field_type_traits<Kind>::runtime_type>, -1};
-    executor::process::impl::expression::any z0{std::in_place_type<typename meta::field_type_traits<Kind>::runtime_type>, 0};
-    executor::process::impl::expression::any p1{std::in_place_type<typename meta::field_type_traits<Kind>::runtime_type>, 1};
+    executor::process::impl::expression::any n1{std::in_place_type<runtime_t<Kind>>, -1};
+    executor::process::impl::expression::any z0{std::in_place_type<runtime_t<Kind>>, 0};
+    executor::process::impl::expression::any p1{std::in_place_type<runtime_t<Kind>>, 1};
     {
         // ascending non nullable
         encode(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);

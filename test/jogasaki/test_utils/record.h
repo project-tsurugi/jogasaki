@@ -60,7 +60,7 @@ class record_f4f8ch : public basic_record {
 public:
     using key_type = std::int32_t;
     using f4_value_type = double;
-    using ch_value_type = meta::field_type_traits<kind::character>::runtime_type;
+    using ch_value_type = runtime_t<kind::character>;
 
     record_f4f8ch() noexcept : basic_record(create_record<kind::float8, kind::int4, kind::character>(0.0, 0, ch_value_type{})) {}
 

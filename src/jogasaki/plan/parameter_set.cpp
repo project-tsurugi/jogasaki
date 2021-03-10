@@ -31,7 +31,7 @@ namespace jogasaki::plan {
 
 using kind = meta::field_type_kind;
 
-void parameter_set::set_int4(std::string_view name, runtime_type<kind::int4> value) {
+void parameter_set::set_int4(std::string_view name, runtime_t<kind::int4> value) {
     map_.add(std::string(name),
         {
             takatori::type::int4(),
@@ -40,7 +40,7 @@ void parameter_set::set_int4(std::string_view name, runtime_type<kind::int4> val
     );
 }
 
-void parameter_set::set_int8(std::string_view name, runtime_type<kind::int8> value) {
+void parameter_set::set_int8(std::string_view name, runtime_t<kind::int8> value) {
     map_.add(std::string(name),
         {
             takatori::type::int8(),
@@ -49,7 +49,7 @@ void parameter_set::set_int8(std::string_view name, runtime_type<kind::int8> val
     );
 }
 
-void parameter_set::set_float4(std::string_view name, runtime_type<kind::float4> value) {
+void parameter_set::set_float4(std::string_view name, runtime_t<kind::float4> value) {
     map_.add(std::string(name),
         {
             takatori::type::float4(),
@@ -58,7 +58,7 @@ void parameter_set::set_float4(std::string_view name, runtime_type<kind::float4>
     );
 }
 
-void parameter_set::set_float8(std::string_view name, runtime_type<kind::float8> value) {
+void parameter_set::set_float8(std::string_view name, runtime_t<kind::float8> value) {
     map_.add(std::string(name),
         {
             takatori::type::float8(),
@@ -67,7 +67,7 @@ void parameter_set::set_float8(std::string_view name, runtime_type<kind::float8>
     );
 }
 
-void parameter_set::set_character(std::string_view name, runtime_type<kind::character> value) {
+void parameter_set::set_character(std::string_view name, runtime_t<kind::character> value) {
     map_.add(std::string(name),
         {
             takatori::type::character(takatori::type::varying),

@@ -43,10 +43,10 @@ void zero_generator(
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);
     switch(target_loc.type().kind()) {
-        case kind::int4: target.set_value<meta::runtime_t<kind::int4>>(target_offset, 0); break;
-        case kind::int8: target.set_value<meta::runtime_t<kind::int8>>(target_offset, 0); break;
-        case kind::float4: target.set_value<meta::runtime_t<kind::float4>>(target_offset, 0); break;
-        case kind::float8: target.set_value<meta::runtime_t<kind::float8>>(target_offset, 0); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, 0); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, 0); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, 0); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, 0); break;
         default: fail();
     }
 }

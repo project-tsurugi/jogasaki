@@ -67,14 +67,12 @@ public:
 private:
     meta::record_meta const* meta_{};
 
-    template <meta::field_type_kind Kind>
-    using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
     using kind = meta::field_type_kind;
 
     template <kind K>
     struct hash_calculator {
         hash_value operator()(accessor::record_ref const& a, std::size_t offset) {
-            using rtype = runtime_type<K>;
+            using rtype = runtime_t<K>;
             auto l = a.get_value<rtype>(offset);
             return std::hash<rtype>{}(l);
         }

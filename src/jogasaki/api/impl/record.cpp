@@ -37,24 +37,24 @@ record::record(maybe_shared_ptr<meta::record_meta> meta) :
 {}
 
 record::runtime_type<kind::int4> impl::record::get_int4(std::size_t index) const {
-    return ref_.get_value<meta::field_type_traits<k::int4>::runtime_type>(meta_->value_offset(index));
+    return ref_.get_value<runtime_t<k::int4>>(meta_->value_offset(index));
 }
 
 record::runtime_type<kind::int8> impl::record::get_int8(std::size_t index) const {
-    return ref_.get_value<meta::field_type_traits<k::int8>::runtime_type>(meta_->value_offset(index));
+    return ref_.get_value<runtime_t<k::int8>>(meta_->value_offset(index));
 }
 
 record::runtime_type<kind::float4> impl::record::get_float4(std::size_t index) const {
-    return ref_.get_value<meta::field_type_traits<k::float4>::runtime_type>(meta_->value_offset(index));
+    return ref_.get_value<runtime_t<k::float4>>(meta_->value_offset(index));
 }
 
 record::runtime_type<kind::float8> impl::record::get_float8(std::size_t index) const {
-    return ref_.get_value<meta::field_type_traits<k::float8>::runtime_type>(meta_->value_offset(index));
+    return ref_.get_value<runtime_t<k::float8>>(meta_->value_offset(index));
 }
 
 record::runtime_type<kind::character> impl::record::get_character(std::size_t index) const {
     return static_cast<field_type_traits<kind::character>::runtime_type>(
-        ref_.get_reference<meta::field_type_traits<k::character>::runtime_type>(meta_->value_offset(index))
+        ref_.get_reference<runtime_t<k::character>>(meta_->value_offset(index))
     );
 }
 

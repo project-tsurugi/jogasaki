@@ -93,9 +93,6 @@ operation_status aggregate_group::process_group(abstract::task_context* context,
     return (*this)(*p, last_member, context);
 }
 
-template <meta::field_type_kind Kind>
-using rtype = typename meta::field_type_traits<Kind>::runtime_type;
-
 void copy_value(
     accessor::record_ref src,
     std::size_t offset,
@@ -109,11 +106,11 @@ void copy_value(
         return;
     }
     switch(dest.type().kind()) {
-        case kind::int4: dest.append(src.get_value<rtype<kind::int4>>(offset)); break;
-        case kind::int8: dest.append(src.get_value<rtype<kind::int8>>(offset)); break;
-        case kind::float4: dest.append(src.get_value<rtype<kind::float4>>(offset)); break;
-        case kind::float8: dest.append(src.get_value<rtype<kind::float8>>(offset)); break;
-        case kind::character: dest.append(src.get_value<rtype<kind::character>>(offset)); break;
+        case kind::int4: dest.append(src.get_value<runtime_t<kind::int4>>(offset)); break;
+        case kind::int8: dest.append(src.get_value<runtime_t<kind::int8>>(offset)); break;
+        case kind::float4: dest.append(src.get_value<runtime_t<kind::float4>>(offset)); break;
+        case kind::float8: dest.append(src.get_value<runtime_t<kind::float8>>(offset)); break;
+        case kind::character: dest.append(src.get_value<runtime_t<kind::character>>(offset)); break;
         default: fail();
     }
 }

@@ -302,14 +302,14 @@ inline void encode(accessor::record_ref src, std::size_t offset, meta::field_typ
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     switch(type.kind()) {
-        case kind::boolean: dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(src.get_value<meta::field_type_traits<kind::boolean>::runtime_type>(offset), odr); break;
-        case kind::int1: dest.write<meta::field_type_traits<kind::int1>::runtime_type>(src.get_value<meta::field_type_traits<kind::int1>::runtime_type>(offset), odr); break;
-        case kind::int2: dest.write<meta::field_type_traits<kind::int2>::runtime_type>(src.get_value<meta::field_type_traits<kind::int2>::runtime_type>(offset), odr); break;
-        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.get_value<meta::field_type_traits<kind::int4>::runtime_type>(offset), odr); break;
-        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.get_value<meta::field_type_traits<kind::int8>::runtime_type>(offset), odr); break;
-        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.get_value<meta::field_type_traits<kind::float4>::runtime_type>(offset), odr); break;
-        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(src.get_value<meta::field_type_traits<kind::float8>::runtime_type>(offset), odr); break;
-        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(src.get_value<meta::field_type_traits<kind::character>::runtime_type>(offset), odr); break;
+        case kind::boolean: dest.write<runtime_t<kind::boolean>>(src.get_value<runtime_t<kind::boolean>>(offset), odr); break;
+        case kind::int1: dest.write<runtime_t<kind::int1>>(src.get_value<runtime_t<kind::int1>>(offset), odr); break;
+        case kind::int2: dest.write<runtime_t<kind::int2>>(src.get_value<runtime_t<kind::int2>>(offset), odr); break;
+        case kind::int4: dest.write<runtime_t<kind::int4>>(src.get_value<runtime_t<kind::int4>>(offset), odr); break;
+        case kind::int8: dest.write<runtime_t<kind::int8>>(src.get_value<runtime_t<kind::int8>>(offset), odr); break;
+        case kind::float4: dest.write<runtime_t<kind::float4>>(src.get_value<runtime_t<kind::float4>>(offset), odr); break;
+        case kind::float8: dest.write<runtime_t<kind::float8>>(src.get_value<runtime_t<kind::float8>>(offset), odr); break;
+        case kind::character: dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr); break;
         default:
             fail();
     }
@@ -335,7 +335,7 @@ inline void encode_nullable(
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     bool is_null = src.is_null(nullity_offset);
-    dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(is_null ? 0 : 1, odr);
+    dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr);
     if (! is_null) {
         encode(src, offset, type, spec, dest);
     }
@@ -353,14 +353,14 @@ inline void encode(executor::process::impl::expression::any const& src, meta::fi
     BOOST_ASSERT(src.has_value());  //NOLINT
     auto odr = spec.ordering();
     switch(type.kind()) {
-        case kind::boolean: dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(src.to<meta::field_type_traits<kind::boolean>::runtime_type>(), odr); break;
-        case kind::int1: dest.write<meta::field_type_traits<kind::int1>::runtime_type>(src.to<meta::field_type_traits<kind::int1>::runtime_type>(), odr); break;
-        case kind::int2: dest.write<meta::field_type_traits<kind::int2>::runtime_type>(src.to<meta::field_type_traits<kind::int2>::runtime_type>(), odr); break;
-        case kind::int4: dest.write<meta::field_type_traits<kind::int4>::runtime_type>(src.to<meta::field_type_traits<kind::int4>::runtime_type>(), odr); break;
-        case kind::int8: dest.write<meta::field_type_traits<kind::int8>::runtime_type>(src.to<meta::field_type_traits<kind::int8>::runtime_type>(), odr); break;
-        case kind::float4: dest.write<meta::field_type_traits<kind::float4>::runtime_type>(src.to<meta::field_type_traits<kind::float4>::runtime_type>(), odr); break;
-        case kind::float8: dest.write<meta::field_type_traits<kind::float8>::runtime_type>(src.to<meta::field_type_traits<kind::float8>::runtime_type>(), odr); break;
-        case kind::character: dest.write<meta::field_type_traits<kind::character>::runtime_type>(src.to<meta::field_type_traits<kind::character>::runtime_type>(), odr); break;
+        case kind::boolean: dest.write<runtime_t<kind::boolean>>(src.to<runtime_t<kind::boolean>>(), odr); break;
+        case kind::int1: dest.write<runtime_t<kind::int1>>(src.to<runtime_t<kind::int1>>(), odr); break;
+        case kind::int2: dest.write<runtime_t<kind::int2>>(src.to<runtime_t<kind::int2>>(), odr); break;
+        case kind::int4: dest.write<runtime_t<kind::int4>>(src.to<runtime_t<kind::int4>>(), odr); break;
+        case kind::int8: dest.write<runtime_t<kind::int8>>(src.to<runtime_t<kind::int8>>(), odr); break;
+        case kind::float4: dest.write<runtime_t<kind::float4>>(src.to<runtime_t<kind::float4>>(), odr); break;
+        case kind::float8: dest.write<runtime_t<kind::float8>>(src.to<runtime_t<kind::float8>>(), odr); break;
+        case kind::character: dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr); break;
         default:
             fail();
     }
@@ -382,7 +382,7 @@ inline void encode_nullable(
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     bool is_null = !src.has_value();
-    dest.write<meta::field_type_traits<kind::boolean>::runtime_type>(is_null ? 0 : 1, odr);
+    dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr);
     if(! is_null) {
         encode(src, type, spec, dest);
     }
@@ -407,14 +407,14 @@ inline void decode(
     using any = executor::process::impl::expression::any;
     auto odr = spec.ordering();
     switch(type.kind()) {
-        case kind::boolean: dest = any{std::in_place_type<meta::field_type_traits<kind::boolean>::runtime_type>, src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false)}; break;
-        case kind::int1: dest = any{std::in_place_type<meta::field_type_traits<kind::int1>::runtime_type>, src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, false)}; break;
-        case kind::int2: dest = any{std::in_place_type<meta::field_type_traits<kind::int2>::runtime_type>, src.read<meta::field_type_traits<kind::int2>::runtime_type>(odr, false)}; break;
-        case kind::int4: dest = any{std::in_place_type<meta::field_type_traits<kind::int4>::runtime_type>, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)}; break;
-        case kind::int8: dest = any{std::in_place_type<meta::field_type_traits<kind::int8>::runtime_type>, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)}; break;
-        case kind::float4: dest = any{std::in_place_type<meta::field_type_traits<kind::float4>::runtime_type>, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)}; break;
-        case kind::float8: dest = any{std::in_place_type<meta::field_type_traits<kind::float8>::runtime_type>, src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, false)}; break;
-        case kind::character: dest = any{std::in_place_type<meta::field_type_traits<kind::character>::runtime_type>, src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, false, resource)}; break;
+        case kind::boolean: dest = any{std::in_place_type<runtime_t<kind::boolean>>, src.read<runtime_t<kind::boolean>>(odr, false)}; break;
+        case kind::int1: dest = any{std::in_place_type<runtime_t<kind::int1>>, src.read<runtime_t<kind::int1>>(odr, false)}; break;
+        case kind::int2: dest = any{std::in_place_type<runtime_t<kind::int2>>, src.read<runtime_t<kind::int2>>(odr, false)}; break;
+        case kind::int4: dest = any{std::in_place_type<runtime_t<kind::int4>>, src.read<runtime_t<kind::int4>>(odr, false)}; break;
+        case kind::int8: dest = any{std::in_place_type<runtime_t<kind::int8>>, src.read<runtime_t<kind::int8>>(odr, false)}; break;
+        case kind::float4: dest = any{std::in_place_type<runtime_t<kind::float4>>, src.read<runtime_t<kind::float4>>(odr, false)}; break;
+        case kind::float8: dest = any{std::in_place_type<runtime_t<kind::float8>>, src.read<runtime_t<kind::float8>>(odr, false)}; break;
+        case kind::character: dest = any{std::in_place_type<runtime_t<kind::character>>, src.read<runtime_t<kind::character>>(odr, false, resource)}; break;
         default:
             fail();
     }
@@ -441,14 +441,14 @@ inline void decode(
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     switch(type.kind()) {
-        case kind::boolean: dest.set_value<meta::field_type_traits<kind::boolean>::runtime_type>(offset, src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false)); break;
-        case kind::int1: dest.set_value<meta::field_type_traits<kind::int1>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, false)); break;
-        case kind::int2: dest.set_value<meta::field_type_traits<kind::int2>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int2>::runtime_type>(odr, false)); break;
-        case kind::int4: dest.set_value<meta::field_type_traits<kind::int4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, false)); break;
-        case kind::int8: dest.set_value<meta::field_type_traits<kind::int8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, false)); break;
-        case kind::float4: dest.set_value<meta::field_type_traits<kind::float4>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, false)); break;
-        case kind::float8: dest.set_value<meta::field_type_traits<kind::float8>::runtime_type>(offset, src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, false)); break;
-        case kind::character: dest.set_value<meta::field_type_traits<kind::character>::runtime_type>(offset, src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, false, resource)); break;
+        case kind::boolean: dest.set_value<runtime_t<kind::boolean>>(offset, src.read<runtime_t<kind::boolean>>(odr, false)); break;
+        case kind::int1: dest.set_value<runtime_t<kind::int1>>(offset, src.read<runtime_t<kind::int1>>(odr, false)); break;
+        case kind::int2: dest.set_value<runtime_t<kind::int2>>(offset, src.read<runtime_t<kind::int2>>(odr, false)); break;
+        case kind::int4: dest.set_value<runtime_t<kind::int4>>(offset, src.read<runtime_t<kind::int4>>(odr, false)); break;
+        case kind::int8: dest.set_value<runtime_t<kind::int8>>(offset, src.read<runtime_t<kind::int8>>(odr, false)); break;
+        case kind::float4: dest.set_value<runtime_t<kind::float4>>(offset, src.read<runtime_t<kind::float4>>(odr, false)); break;
+        case kind::float8: dest.set_value<runtime_t<kind::float8>>(offset, src.read<runtime_t<kind::float8>>(odr, false)); break;
+        case kind::character: dest.set_value<runtime_t<kind::character>>(offset, src.read<runtime_t<kind::character>>(odr, false, resource)); break;
         default:
             fail();
     }
@@ -475,7 +475,7 @@ inline void decode_nullable(
 ) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
-    auto flag = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false);
+    auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
     BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
     bool is_null = flag == 0;
     dest.set_null(nullity_offset, is_null);
@@ -501,7 +501,7 @@ inline void decode_nullable(
 ) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
-    auto flag = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false);
+    auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
     BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
     bool is_null = flag == 0;
     if (is_null) {
@@ -521,14 +521,14 @@ inline void consume_stream(stream& src, meta::field_type const& type, coding_spe
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     switch(type.kind()) {
-        case kind::boolean: src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, true); break;
-        case kind::int1: src.read<meta::field_type_traits<kind::int1>::runtime_type>(odr, true); break;
-        case kind::int2: src.read<meta::field_type_traits<kind::int2>::runtime_type>(odr, true); break;
-        case kind::int4: src.read<meta::field_type_traits<kind::int4>::runtime_type>(odr, true); break;
-        case kind::int8: src.read<meta::field_type_traits<kind::int8>::runtime_type>(odr, true); break;
-        case kind::float4: src.read<meta::field_type_traits<kind::float4>::runtime_type>(odr, true); break;
-        case kind::float8: src.read<meta::field_type_traits<kind::float8>::runtime_type>(odr, true); break;
-        case kind::character: src.read<meta::field_type_traits<kind::character>::runtime_type>(odr, true, nullptr); break;
+        case kind::boolean: src.read<runtime_t<kind::boolean>>(odr, true); break;
+        case kind::int1: src.read<runtime_t<kind::int1>>(odr, true); break;
+        case kind::int2: src.read<runtime_t<kind::int2>>(odr, true); break;
+        case kind::int4: src.read<runtime_t<kind::int4>>(odr, true); break;
+        case kind::int8: src.read<runtime_t<kind::int8>>(odr, true); break;
+        case kind::float4: src.read<runtime_t<kind::float4>>(odr, true); break;
+        case kind::float8: src.read<runtime_t<kind::float8>>(odr, true); break;
+        case kind::character: src.read<runtime_t<kind::character>>(odr, true, nullptr); break;
         default:
             fail();
     }
@@ -543,7 +543,7 @@ inline void consume_stream(stream& src, meta::field_type const& type, coding_spe
 inline void consume_stream_nullable(stream& src, meta::field_type const& type, coding_spec spec) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
-    auto flag = src.read<meta::field_type_traits<kind::boolean>::runtime_type>(odr, false);
+    auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
     BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
     bool is_null = flag == 0;
     if (! is_null) {

@@ -28,9 +28,6 @@ class parameter_set {
 public:
     using kind = meta::field_type_kind;
 
-    template<kind Kind>
-    using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
-
     /**
      * @brief create new object
      */
@@ -51,11 +48,11 @@ public:
      * @param name the place-holder name without colon at the beginning
      * @param value the value to assign for the placeholder
      */
-    void set_int4(std::string_view name, runtime_type<kind::int4> value);
-    void set_int8(std::string_view name, runtime_type<kind::int8> value);
-    void set_float4(std::string_view name, runtime_type<kind::float4> value);
-    void set_float8(std::string_view name, runtime_type<kind::float8> value);
-    void set_character(std::string_view name, runtime_type<kind::character> value);
+    void set_int4(std::string_view name, runtime_t<kind::int4> value);
+    void set_int8(std::string_view name, runtime_t<kind::int8> value);
+    void set_float4(std::string_view name, runtime_t<kind::float4> value);
+    void set_float8(std::string_view name, runtime_t<kind::float8> value);
+    void set_character(std::string_view name, runtime_t<kind::character> value);
 
     /**
      * @brief nullity setter functions for placeholder

@@ -24,9 +24,6 @@ namespace jogasaki::accessor {
 
 using takatori::util::fail;
 
-template <auto Kind>
-using traits = meta::field_type_traits<Kind>;
-
 /**
  * @brief print field value to output stream
  * @param os the target output stream to write
@@ -43,29 +40,29 @@ inline void print_field(
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::undefined: os << kind::undefined; break;
-        case kind::boolean: os << record.get_value<traits<kind::int8>::runtime_type>(offset); break;
-        case kind::int1: os << record.get_value<traits<kind::int1>::runtime_type>(offset); break;
-        case kind::int2: os << record.get_value<traits<kind::int2>::runtime_type>(offset); break;
-        case kind::int4: os << record.get_value<traits<kind::int4>::runtime_type>(offset); break;
-        case kind::int8: os << record.get_value<traits<kind::int8>::runtime_type>(offset); break;
-        case kind::float4: os << record.get_value<traits<kind::float4>::runtime_type>(offset); break;
-        case kind::float8: os << record.get_value<traits<kind::float8>::runtime_type>(offset); break;
-        case kind::decimal: os << record.get_value<traits<kind::decimal>::runtime_type>(offset); break;
+        case kind::boolean: os << record.get_value<runtime_t<kind::int8>>(offset); break;
+        case kind::int1: os << record.get_value<runtime_t<kind::int1>>(offset); break;
+        case kind::int2: os << record.get_value<runtime_t<kind::int2>>(offset); break;
+        case kind::int4: os << record.get_value<runtime_t<kind::int4>>(offset); break;
+        case kind::int8: os << record.get_value<runtime_t<kind::int8>>(offset); break;
+        case kind::float4: os << record.get_value<runtime_t<kind::float4>>(offset); break;
+        case kind::float8: os << record.get_value<runtime_t<kind::float8>>(offset); break;
+        case kind::decimal: os << record.get_value<runtime_t<kind::decimal>>(offset); break;
         case kind::character:
-            os << static_cast<std::string_view>(record.get_value<traits<kind::character>::runtime_type>(offset));
+            os << static_cast<std::string_view>(record.get_value<runtime_t<kind::character>>(offset));
             break;
-//        case kind::bit: os << record.get_value<traits<kind::bit>::runtime_type>(offset); break;
-        case kind::date: os << record.get_value<traits<kind::date>::runtime_type>(offset); break;
-        case kind::time_of_day: os << record.get_value<traits<kind::time_of_day>::runtime_type>(offset); break;
-        case kind::time_point: os << record.get_value<traits<kind::time_point>::runtime_type>(offset); break;
-//        case kind::time_interval: os << record.get_value<traits<kind::time_interval>::runtime_type>(offset); break;
-//        case kind::array: os << record.get_value<traits<kind::array>::runtime_type>(offset); break;
-//        case kind::record: os << record.get_value<traits<kind::record>::runtime_type>(offset); break;
-//        case kind::unknown: os << record.get_value<traits<kind::unknown>::runtime_type>(offset); break;
-//        case kind::row_reference: os << record.get_value<traits<kind::row_reference>::runtime_type>(offset); break;
-//        case kind::row_id: os << record.get_value<traits<kind::row_id>::runtime_type>(offset); break;
-//        case kind::declared: os << record.get_value<traits<kind::declared>::runtime_type>(offset); break;
-//        case kind::extension: os << record.get_value<traits<kind::extension>::runtime_type>(offset); break;
+//        case kind::bit: os << record.get_value<runtime_t<kind::bit>>(offset); break;
+        case kind::date: os << record.get_value<runtime_t<kind::date>>(offset); break;
+        case kind::time_of_day: os << record.get_value<runtime_t<kind::time_of_day>>(offset); break;
+        case kind::time_point: os << record.get_value<runtime_t<kind::time_point>>(offset); break;
+//        case kind::time_interval: os << record.get_value<runtime_t<kind::time_interval>>(offset); break;
+//        case kind::array: os << record.get_value<runtime_t<kind::array>>(offset); break;
+//        case kind::record: os << record.get_value<runtime_t<kind::record>>(offset); break;
+//        case kind::unknown: os << record.get_value<runtime_t<kind::unknown>>(offset); break;
+//        case kind::row_reference: os << record.get_value<runtime_t<kind::row_reference>>(offset); break;
+//        case kind::row_id: os << record.get_value<runtime_t<kind::row_id>>(offset); break;
+//        case kind::declared: os << record.get_value<runtime_t<kind::declared>>(offset); break;
+//        case kind::extension: os << record.get_value<runtime_t<kind::extension>>(offset); break;
         default:
             fail();
     }

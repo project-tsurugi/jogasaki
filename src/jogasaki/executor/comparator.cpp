@@ -34,14 +34,12 @@ int comparator::operator()(
     return 0;
 }
 
-template <meta::field_type_kind Kind>
-using runtime_type = typename meta::field_type_traits<Kind>::runtime_type;
 using kind = meta::field_type_kind;
 
 template <kind K>
 struct field_comparator {
     int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
-        using rtype = runtime_type<K>;
+        using rtype = runtime_t<K>;
         auto l = a.get_value<rtype>(l_offset);
         auto r = b.get_value<rtype>(r_offset);
         if (std::less<rtype>{}(l, r)) return -1;

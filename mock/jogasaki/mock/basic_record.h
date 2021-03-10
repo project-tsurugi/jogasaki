@@ -42,14 +42,6 @@ constexpr static std::size_t basic_record_buffer_size =
     basic_record_field_size * (basic_record_max_field_count + 1); // +1 for nullity bits
 using basic_record_entity_type = std::array<char, basic_record_buffer_size>;
 
-template<kind Kind>
-struct to_runtime_type {
-    using type = typename meta::field_type_traits<Kind>::runtime_type;
-};
-
-template<kind Kind>
-using to_runtime_type_t = typename to_runtime_type<Kind>::type;
-
 namespace details {
 
 template <size_t Is, kind ...Kinds>
@@ -68,7 +60,7 @@ std::vector<std::size_t> offsets() {
 }
 
 template <size_t Is, kind Kind>
-void create_entity(basic_record_entity_type& entity, to_runtime_type_t<Kind> arg) {
+void create_entity(basic_record_entity_type& entity, runtime_t<Kind> arg) {
     std::memset(&entity[0]+Is*basic_record_field_size, 0, basic_record_field_size);  //NOLINT
     std::memcpy(&entity[0]+Is*basic_record_field_size, &arg, sizeof(arg)); //NOLINT
 }
@@ -79,7 +71,7 @@ void create_entity(
     memory::paged_memory_resource* resource,
     std::index_sequence<Is...>,
         meta::record_meta& meta,
-        to_runtime_type_t<Kinds>...args
+        runtime_t<Kinds>...args
 ) {
     (void)resource;
     (void)meta;
@@ -91,7 +83,7 @@ void create_entity(
     basic_record_entity_type& entity,
     memory::paged_memory_resource* resource,
     meta::record_meta& meta,
-    to_runtime_type_t<Kinds>...args
+    runtime_t<Kinds>...args
 ) {
     create_entity<Kinds...>(entity, resource, std::make_index_sequence<sizeof...(Kinds)>(), meta, args...);
 }
@@ -316,7 +308,7 @@ basic_record create_record() {
  * when creating large number of (e.g. thousands of) records.
  */
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
-basic_record create_record(to_runtime_type_t<Kinds>...args) {
+basic_record create_record(runtime_t<Kinds>...args) {
     auto meta = create_meta<Kinds...>(
         boost::dynamic_bitset<std::uint64_t>{sizeof...(args)}  // all fields non-nullable
     );
@@ -334,7 +326,7 @@ basic_record create_record(to_runtime_type_t<Kinds>...args) {
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(
     maybe_shared_ptr<meta::record_meta> meta,
-    to_runtime_type_t<Kinds>...args
+    runtime_t<Kinds>...args
 ) {
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, (args)...);
@@ -352,7 +344,7 @@ basic_record create_record(
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_record(
     boost::dynamic_bitset<std::uint64_t> nullability,
-    to_runtime_type_t<Kinds>...args
+    runtime_t<Kinds>...args
 ) {
     auto meta = create_meta<Kinds...>(std::move(nullability));
     basic_record_entity_type buf{};
@@ -376,7 +368,7 @@ basic_record create_nullable_record() {
  */
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_nullable_record(
-    to_runtime_type_t<Kinds>...args
+    runtime_t<Kinds>...args
 ) {
     auto meta = create_meta<Kinds...>(true);
     basic_record_entity_type buf{};
@@ -386,13 +378,13 @@ basic_record create_nullable_record(
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_nullable_record(
-    std::tuple<to_runtime_type_t<Kinds>...> args,
+    std::tuple<runtime_t<Kinds>...> args,
     std::initializer_list<bool> nullities = {}
 ) {
     BOOST_ASSERT(nullities.size() == 0 || nullities.size() == sizeof...(Kinds));
     auto meta = create_meta<Kinds...>(true);
     basic_record_entity_type buf{};
-    std::apply([&](to_runtime_type_t<Kinds>... values){
+    std::apply([&](runtime_t<Kinds>... values){
         details::create_entity<Kinds...>(buf, nullptr, *meta, values...);
     }, args);
 

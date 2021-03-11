@@ -109,6 +109,7 @@ aggregate_function_info::aggregate_function_info(
     post_(std::move(post))
 {
     for(auto&& info : pre_) {
+        (void)info;
         BOOST_ASSERT(info.empty_value_generator());  //NOLINT
     }
 }

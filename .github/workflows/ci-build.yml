@@ -131,22 +131,22 @@ jobs:
           cd build
           ctest --verbose -j 100
 
-      - id: CMake_Build_sharksfin_kvs
-        name: CMake_Build_sharksfin_kvs
+      - id: CMake_Build_sharksfin_shirakami
+        name: CMake_Build_sharksfin_shirakami
         run: |
-          mkdir build-kvs
-          cd build-kvs
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=kvs -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          mkdir build-shirakami
+          cd build-shirakami
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j
 
-      - id: CTest_sharksfin_kvs
-        name: CTest_sharksfin_kvs
+      - id: CTest_sharksfin_shirakami
+        name: CTest_sharksfin_shirakami
         continue-on-error: false
         env:
           GTEST_OUTPUT: xml
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
-          cd build-kvs
+          cd build-shirakami
           ctest --verbose -j 100
 
       - id: Clang-Tidy

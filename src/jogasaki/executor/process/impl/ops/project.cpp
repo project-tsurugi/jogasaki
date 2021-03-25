@@ -63,15 +63,15 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    auto& scope = ctx.variables();
+    auto& vars = ctx.variables();
     // fill scope variables
-    auto ref = scope.store().ref();
+    auto ref = vars.store().ref();
     auto& cinfo = compiled_info();
     for(std::size_t i=0, n = variables_.size(); i < n; ++i) {
         auto& v = variables_[i];
-        auto info = scope.value_map().at(variables_[i]);
+        auto info = vars.value_map().at(variables_[i]);
         auto& ev = evaluators_[i];
-        auto result = ev(scope, ctx.varlen_resource()); // result resource will be deallocated at once
+        auto result = ev(vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         using t = takatori::type::type_kind;
         ref.set_null(info.nullity_offset(), ! result.has_value());

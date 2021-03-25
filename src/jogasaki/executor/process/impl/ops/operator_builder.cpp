@@ -78,7 +78,7 @@ relation::expression const& operator_builder::head() {
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::find& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto k = encode_key<relation::find::key>(node.keys(), index.keys(), *info_, *resource_);
@@ -95,7 +95,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::find
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
 
@@ -115,7 +115,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_find& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     return std::make_unique<join_find>(
@@ -132,7 +132,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::project& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<project>(index_++, *info_, block_index, node.columns(), std::move(downstream));
 }
@@ -144,7 +144,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::filter& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<filter>(index_++, *info_, block_index, node.condition(), std::move(downstream));
 }
@@ -156,7 +156,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::buff
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto e = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
     auto writer_index = io_exchange_map_->add_external_output(e.get());
     e->external_writer_index(writer_index);
@@ -164,7 +164,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::write& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
 
     if (node.operator_kind() == relation::write_kind::update) {
@@ -204,7 +204,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::iden
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::join& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<join<data::iterable_record_store::iterator>>(
         index_++,
@@ -217,7 +217,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::aggregate& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<aggregate_group>(
         index_++,
@@ -241,13 +241,13 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::flatten& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<flatten>(index_++, *info_, block_index, std::move(downstream));
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::take_flat& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto reader_index = relation_io_map_->input_index(node.source());
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& input = io_info_->input_at(reader_index);
@@ -266,7 +266,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::take_group& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto reader_index = relation_io_map_->input_index(node.source());
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& input = io_info_->input_at(reader_index);
@@ -283,8 +283,8 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::take_cogroup& node) {
-    auto block_index = info_->scope_indices().at(&node);
-    auto& block_info = info_->scopes_info()[block_index];
+    auto block_index = info_->block_indices().at(&node);
+    auto& block_info = info_->vars_info_list()[block_index];
     std::vector<size_t> reader_indices{};
     std::vector<group_element> groups{};
     for(auto&& g : node.groups()) {
@@ -309,7 +309,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::offer& node) {
-    auto block_index = info_->scope_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto writer_index = relation_io_map_->output_index(node.destination());
     auto& output = io_info_->output_at(writer_index);
     return std::make_unique<offer>(

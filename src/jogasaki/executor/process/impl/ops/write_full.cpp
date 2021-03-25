@@ -152,7 +152,7 @@ std::vector<details::write_full_field> write_full::create_fields(
     std::vector<details::write_full_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
-    auto& block = info.scopes_info()[block_index];
+    auto& block = info.vars_info_list()[block_index];
     std::unordered_map<variable, variable> table_to_stream{};
     if (key) {
         for(auto&& c : keys) {

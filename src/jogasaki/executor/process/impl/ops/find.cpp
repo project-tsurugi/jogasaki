@@ -202,7 +202,7 @@ std::vector<details::find_field> find::create_fields(
     for(auto&& c : columns) {
         table_to_stream.emplace(c.source(), c.destination());
     }
-    auto& block = info.scopes_info()[block_index];
+    auto& block = info.vars_info_list()[block_index];
     if (key) {
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {

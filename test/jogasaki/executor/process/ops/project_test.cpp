@@ -205,8 +205,8 @@ TEST_F(project_test, simple) {
         r1.columns()
     };
 
-    ASSERT_EQ(1, p_info.scopes_info().size());
-    auto& block_info = p_info.scopes_info()[s.block_index()];
+    ASSERT_EQ(1, p_info.vars_info_list().size());
+    auto& block_info = p_info.vars_info_list()[s.block_index()];
     variable_table variables{block_info};
 
     mock::task_context task_ctx{
@@ -345,8 +345,8 @@ TEST_F(project_test, text) {
         r1.columns()
     };
 
-    ASSERT_EQ(1, p_info.scopes_info().size());
-    auto& block_info = p_info.scopes_info()[s.block_index()];
+    ASSERT_EQ(1, p_info.vars_info_list().size());
+    auto& block_info = p_info.vars_info_list()[s.block_index()];
     variable_table variables{block_info};
 
     mock::task_context task_ctx{

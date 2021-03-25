@@ -112,10 +112,10 @@ public:
     using memory_resource = memory::paged_memory_resource;
 
     callback(
-        executor::process::impl::variable_table& scope,
+        executor::process::impl::variable_table& variables,
         yugawara::compiled_info const& info
     ) noexcept :
-        scope_(scope),
+        variables_(variables),
         info_(info)
     {}
 
@@ -319,8 +319,8 @@ public:
         stack_type& stack,
         memory_resource*
     ) {
-        auto& info = scope_.value_map().at(arg.variable());
-        auto ref = scope_.store().ref();
+        auto& info = variables_.value_map().at(arg.variable());
+        auto ref = variables_.store().ref();
         using t = takatori::type::type_kind;
         auto& type = info_.type_of(arg);
         switch(type.kind()) {
@@ -336,7 +336,7 @@ public:
         return false;
     }
 private:
-    executor::process::impl::variable_table& scope_;
+    executor::process::impl::variable_table& variables_;
     yugawara::compiled_info const& info_{};
 };
 
@@ -377,17 +377,17 @@ public:
      * Caller is responsible for release the allocated store after consuming the result. This can be typically done by
      * remembering checkpoint before this call and using memory_resource::deallocate_after() after
      * consuming return value.
-     * @param scope scope variables used to evaluate the expression
+     * @param variables variables table used to evaluate the expression
      * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
      * never generate types whose values are stored via memory resource(e.g. accessor::text).
      * Then UB if such type is processed.
      * @return the result of evaluation
      */
     [[nodiscard]] any operator()(
-        executor::process::impl::variable_table& scope,
+        executor::process::impl::variable_table& variables,
         memory_resource* resource = nullptr
     ) const {
-        details::callback c{scope, *info_};
+        details::callback c{variables, *info_};
         details::callback::stack_type stack{};
         takatori::scalar::walk(c, *expression_, stack, resource);
         return stack.back();

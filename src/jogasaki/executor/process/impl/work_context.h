@@ -30,7 +30,7 @@ namespace jogasaki::executor::process::impl {
  */
 class work_context : public process::abstract::work_context {
 public:
-    using variable_tables = std::vector<variable_table>;
+    using variable_table_list = std::vector<variable_table>;
     using memory_resource = ops::context_base::memory_resource;
 
     /**
@@ -42,7 +42,7 @@ public:
      * @brief create new object
      * @param request_context the request context for the task containing this context
      * @param operator_count the number of operators contained in the process
-     * @param block_count the number of block scopes in the process
+     * @param block_count the number of block in the process
      * @param resource memory resource used as the process work area
      * @param varlen_resource varlen memory resource used as the process work area
      * @param database the kvs database shared within the request
@@ -76,15 +76,15 @@ public:
     [[nodiscard]] ops::context_container& contexts() noexcept;
 
     /**
-     * @brief accessor to block scopes
-     * @return the list of block scopes that the processor uses to store variables
+     * @brief accessor to block variables list
+     * @return the list of block variable_tables that the processor uses to store variables
      */
-    [[nodiscard]] variable_tables& scopes() noexcept;
+    [[nodiscard]] variable_table_list& variable_tables() noexcept;
 
     /**
-     * @brief accessor to a block scope
-     * @param block_index the index to designate the block scope within the list
-     * @return the block scope
+     * @brief accessor to variable table for the block
+     * @param block_index the index to designate the block within the list
+     * @return the variable table for the block
      */
     [[nodiscard]] variable_table& variables(std::size_t block_index) noexcept;
 
@@ -128,7 +128,7 @@ public:
 private:
     request_context* request_context_{};
     ops::context_container contexts_{};
-    variable_tables variables_{};
+    variable_table_list variables_{};
     std::unique_ptr<memory_resource> resource_{};
     std::unique_ptr<memory_resource> varlen_resource_{};
     std::shared_ptr<kvs::database> database_{};

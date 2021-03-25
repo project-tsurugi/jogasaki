@@ -95,7 +95,7 @@ class variable_table_info_test : public test_root {
 
 };
 
-TEST_F(variable_table_info_test, create_scopes_info1) {
+TEST_F(variable_table_info_test, create_block_variables_definition1) {
     factory f;
     ::takatori::plan::forward f1 {
         f.exchange_column(),
@@ -144,7 +144,7 @@ TEST_F(variable_table_info_test, create_scopes_info1) {
     yugawara::compiled_info info{expression_mapping, variable_mapping};
 
     auto pinfo = std::make_shared<processor_info>(rg, info);
-    auto [infos, inds] = create_scopes_info(pinfo->relations(), pinfo->compiled_info());
+    auto [infos, inds] = create_block_variables_definition(pinfo->relations(), pinfo->compiled_info());
 
     ASSERT_EQ(1, infos.size());
     auto meta = infos[0].meta();

@@ -34,15 +34,15 @@ namespace details {
 
 /**
  * @brief field info of the join_find operation
- * @details join_find operator uses these fields to know how the found key/value are mapped to scope variables
+ * @details join_find operator uses these fields to know how the found key/value are mapped to variables
  */
 struct cache_align join_find_column {
     /**
      * @brief create new join_find column
      * @param type type of the target column
      * @param target_exists whether the target storage exists. If not, there is no room to copy the data to.
-     * @param offset byte offset of the target field in the target record reference (scope variable)
-     * @param nullity_offset bit offset of the target field nullity in the target record reference (scope variable)
+     * @param offset byte offset of the target field in the target record reference (in variable table)
+     * @param nullity_offset bit offset of the target field nullity in the target record reference (in variable table)
      * @param nullable whether the source field is nullable or not
      * @param spec the spec of the target field used for encode/decode
      */
@@ -65,7 +65,7 @@ struct cache_align join_find_column {
 
 /**
  * @brief key field info of the join_find operation
- * @details join_find operator uses these fields to know how to create search key sequence from the  scope variables
+ * @details join_find operator uses these fields to know how to create search key sequence from the variables
  */
 struct cache_align join_find_key_field {
     /**
@@ -104,7 +104,7 @@ public:
     );
 
     void read_stream(
-        executor::process::impl::variable_table& scope,
+        executor::process::impl::variable_table& vars,
         memory_resource* resource,
         kvs::stream& src,
         std::vector<details::join_find_column> const& columns
@@ -117,7 +117,7 @@ public:
      * simply not-found or other error happened.
      */
     [[nodiscard]] bool operator()(
-        executor::process::impl::variable_table& scope,
+        executor::process::impl::variable_table& vars,
         kvs::storage& stg,
         kvs::transaction& tx,
         memory_resource* resource = nullptr

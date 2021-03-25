@@ -76,12 +76,12 @@ matcher::matcher(
 {}
 
 void matcher::read_stream(
-    variable_table& scope,
+    variable_table& vars,
     matcher::memory_resource* resource,
     kvs::stream& src,
     std::vector<details::join_find_column> const& columns
 ) {
-    auto ref = scope.store().ref();
+    auto ref = vars.store().ref();
     for(auto& c : columns) {
         if (c.target_exists_) {
             if (c.nullable_) {
@@ -103,7 +103,7 @@ void matcher::read_stream(
 }
 
 bool matcher::operator()(
-    variable_table& scope,
+    variable_table& vars,
     kvs::storage& stg,
     kvs::transaction& tx,
     matcher::memory_resource* resource
@@ -113,7 +113,7 @@ bool matcher::operator()(
         kvs::stream s{buf_.data(), len};
         auto cp = resource->get_checkpoint();
         for(auto&f : key_fields_) {
-            auto any = f.evaluator_(scope, resource);
+            auto any = f.evaluator_(vars, resource);
             if (f.nullable_) {
                 kvs::encode_nullable(any, f.type_, f.spec_, s);
             } else {
@@ -138,8 +138,8 @@ bool matcher::operator()(
     }
     kvs::stream keys{const_cast<char*>(key.data()), key.size()};
     kvs::stream values{const_cast<char*>(value.data()), value.size()};
-    read_stream(scope, resource, keys, key_columns_);
-    read_stream(scope, resource, values, value_columns_);
+    read_stream(vars, resource, keys, key_columns_);
+    read_stream(vars, resource, values, value_columns_);
     return true;
 }
 
@@ -229,7 +229,7 @@ std::vector<details::join_find_column> join_find::create_columns(
     for(auto&& c : columns) {
         table_to_stream.emplace(c.source(), c.destination());
     }
-    auto& block = info.scopes_info()[block_index];
+    auto& block = info.vars_info_list()[block_index];
     if (key) {
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {

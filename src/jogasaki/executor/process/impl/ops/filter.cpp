@@ -59,12 +59,12 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    auto& scope = ctx.variables();
+    auto& vars = ctx.variables();
     auto resource = ctx.varlen_resource();
     bool res;
     {
         utils::checkpoint_holder cp{resource};
-        res = evaluator_(scope, resource).to<bool>();
+        res = evaluator_(vars, resource).to<bool>();
     }
     if (res) {
         if (downstream_) {

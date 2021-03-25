@@ -33,7 +33,7 @@ namespace details {
 
 /**
  * @brief field info of the find operation
- * @details find operator uses these fields to know how the found key/value are mapped to scope variables
+ * @details find operator uses these fields to know how the found key/value are mapped to variables
  */
 struct cache_align find_field {
     /**

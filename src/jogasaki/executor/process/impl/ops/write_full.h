@@ -31,7 +31,7 @@ namespace details {
 
 /**
  * @brief field info of the write operation
- * @details write operator uses these fields to know how the scope variables or input record fields are are mapped to
+ * @details write operator uses these fields to know how the variables or input record fields are are mapped to
  * key/value fields.
  */
 struct cache_align write_full_field {

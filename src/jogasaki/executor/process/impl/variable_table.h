@@ -27,7 +27,7 @@ namespace jogasaki::executor::process::impl {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief block scoped variables storage
+ * @brief variables storage
  */
 class variable_table {
 public:

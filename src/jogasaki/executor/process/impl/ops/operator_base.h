@@ -82,7 +82,7 @@ public:
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
     /**
-     * @brief return the block scope variables information, where the operator belongs
+     * @brief return the block variables information, where the operator belongs
      */
     [[nodiscard]] variable_table_info const& block_info() const noexcept;
 
@@ -92,7 +92,7 @@ public:
     [[nodiscard]] block_index_type block_index() const noexcept;
 
     /**
-     * @brief return the block scope variables array
+     * @brief return the variable table info array
      */
     [[nodiscard]] std::vector<variable_table_info> const& blocks() const noexcept;
 

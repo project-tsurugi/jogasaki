@@ -34,9 +34,9 @@ namespace details {
 
 /**
  * @brief field info of the update operation
- * @details update operation uses these fields to know how the scope variables or input record fields are are mapped to
+ * @details update operation uses these fields to know how the variables or input record fields are are mapped to
  * key/value fields. The update operation retrieves the key/value records from kvs and decode to
- * the record (of key/value respectively), updates the record fields by replacing the value with one from scope variable
+ * the record (of key/value respectively), updates the record fields by replacing the value with one from variable table
  * record (source), encodes the record and puts into kvs.
  */
 struct cache_align write_partial_field {
@@ -48,16 +48,16 @@ struct cache_align write_partial_field {
     /**
      * @brief create new object
      * @param type type of the field
-     * @param variable_offset byte offset of the field in the input variables record (scope variables)
+     * @param variable_offset byte offset of the field in the input variables record (in variable table)
      * @param variable_nullity_offset bit offset of the field nullity in the input variables record
      * @param target_offset byte offset of the field in the target record in ctx.key_store_/value_store_.
      * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.key_store_/value_store_.
      * @param nullable whether the target field is nullable or not
      * @param spec the spec of the source field used for encode/decode
      * @param updated indicates whether the field will be updated or not
-     * @param update_variable_offset byte offset of the field in the scope variables record.
+     * @param update_variable_offset byte offset of the field in the variable table.
      * Used to provide values only if `updated` is true.
-     * @param update_variable_nullity_offset bit offset of the field nullity in the scope variables record.
+     * @param update_variable_nullity_offset bit offset of the field nullity in the variable table.
      * Used to provide values nullity only if `updated` is true.
      */
     write_partial_field(
@@ -198,7 +198,7 @@ private:
 
     /**
      * @brief private encoding function
-     * @param from_variable specify where the source comes from. True when encoding from scope variables to
+     * @param from_variable specify where the source comes from. True when encoding from variable table to
      * internal buffer (key_buf_/value_buf_). False when encoding internal buffer to kvs::streams.
      */
     void encode_fields(

@@ -147,13 +147,13 @@ TEST_F(expression_evaluator_test, add_int8) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<std::int64_t>(meta->value_offset(0), 10);
     ref.set_value<std::int64_t>(meta->value_offset(1), 20);
 
-    auto result = ev(scope).to<std::int64_t>();
+    auto result = ev(vars).to<std::int64_t>();
     ASSERT_EQ(30, result);
 }
 
@@ -188,13 +188,13 @@ TEST_F(expression_evaluator_test, add_int4) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<std::int32_t>(meta->value_offset(0), 10);
     ref.set_value<std::int32_t>(meta->value_offset(1), 20);
 
-    auto result = ev(scope).to<std::int32_t>();
+    auto result = ev(vars).to<std::int32_t>();
     ASSERT_EQ(30, result);
 }
 
@@ -229,13 +229,13 @@ TEST_F(expression_evaluator_test, add_float4) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<float>(meta->value_offset(0), 10);
     ref.set_value<float>(meta->value_offset(1), 20);
 
-    auto result = ev(scope).to<float>();
+    auto result = ev(vars).to<float>();
     ASSERT_EQ(30, result);
 }
 
@@ -270,13 +270,13 @@ TEST_F(expression_evaluator_test, add_double) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<double>(meta->value_offset(0), 10);
     ref.set_value<double>(meta->value_offset(1), 20);
 
-    auto result = ev(scope).to<double>();
+    auto result = ev(vars).to<double>();
     ASSERT_EQ(30, result);
 }
 
@@ -311,16 +311,16 @@ TEST_F(expression_evaluator_test, concat_text) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     auto cp = resource.get_checkpoint();
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
     ref.set_value<accessor::text>(meta->value_offset(1), accessor::text{&resource, "B23456789012345678901234567890"});
 
-    auto result = ev(scope, &resource).to<accessor::text>();
+    auto result = ev(vars, &resource).to<accessor::text>();
     accessor::text exp{&resource, "A23456789012345678901234567890B23456789012345678901234567890"};
     ASSERT_EQ(exp, result);
     resource.deallocate_after(cp);
@@ -377,13 +377,13 @@ TEST_F(expression_evaluator_test, binary_expression) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<std::int64_t>(meta->value_offset(0), 10);
     ref.set_value<std::int64_t>(meta->value_offset(1), 20);
 
-    auto result = ev(scope).to<std::int64_t>();
+    auto result = ev(vars).to<std::int64_t>();
     ASSERT_EQ(-40, result);
 }
 
@@ -407,8 +407,8 @@ TEST_F(expression_evaluator_test, unary_expression) {
     };
     expression::evaluator ev{expr, c_info};
 
-    variable_table scope{};
-    auto result = ev(scope).to<std::int64_t>();
+    variable_table vars{};
+    auto result = ev(vars).to<std::int64_t>();
     ASSERT_EQ(-30, result);
 }
 
@@ -423,8 +423,8 @@ TEST_F(expression_evaluator_test, conditional_not) {
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
 
-    variable_table scope{};
-    ASSERT_TRUE(ev(scope).to<bool>());
+    variable_table vars{};
+    ASSERT_TRUE(ev(vars).to<bool>());
 }
 
 TEST_F(expression_evaluator_test, text_length) {
@@ -450,17 +450,17 @@ TEST_F(expression_evaluator_test, text_length) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     auto cp = resource.get_checkpoint();
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
-    auto result = ev(scope, &resource).to<std::int32_t>();
-    ASSERT_EQ(30, ev(scope, &resource).to<std::int32_t>());
+    auto result = ev(vars, &resource).to<std::int32_t>();
+    ASSERT_EQ(30, ev(vars, &resource).to<std::int32_t>());
 }
 
 TEST_F(expression_evaluator_test, compare_int4) {
@@ -495,58 +495,58 @@ TEST_F(expression_evaluator_test, compare_int4) {
     };
 
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::less_equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 2);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::greater);
     ref.set_value<std::int32_t>(meta->value_offset(0), 2);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::greater_equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 2);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     expr.operator_kind(comparison_operator::not_equal);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
     expr.operator_kind(comparison_operator::equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
     expr.operator_kind(comparison_operator::not_equal);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
 }
 
 TEST_F(expression_evaluator_test, conditional_and) {
@@ -581,29 +581,29 @@ TEST_F(expression_evaluator_test, conditional_and) {
         {c2, 1},
     };
     variable_table_info info{m, meta};
-    variable_table scope{info};
+    variable_table vars{info};
 
-    auto&& ref = scope.store().ref();
+    auto&& ref = vars.store().ref();
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 0);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(binary_operator::conditional_or);
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 1);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ASSERT_TRUE(ev(scope).to<bool>());
+    ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 0);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ASSERT_FALSE(ev(scope).to<bool>());
+    ASSERT_FALSE(ev(vars).to<bool>());
 }
 
 }

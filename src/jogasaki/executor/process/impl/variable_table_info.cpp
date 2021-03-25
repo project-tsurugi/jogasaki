@@ -71,7 +71,7 @@ maybe_shared_ptr<meta::record_meta> const& variable_table_info::meta() const noe
     return meta_;
 }
 
-std::pair<scopes_info, scope_indices> create_scopes_info(
+std::pair<variables_info_list, block_indices> create_block_variables_definition(
     relation::graph_type const& relations,
     yugawara::compiled_info const& info
 ) {
@@ -109,8 +109,8 @@ std::pair<scopes_info, scope_indices> create_scopes_info(
         map[v] = i;
     }
 
-    scopes_info entity{};
-    scope_indices indices{};
+    variables_info_list entity{};
+    block_indices indices{};
 
     entity.emplace_back(std::move(map), meta);
     for(auto&& e : *b0) {

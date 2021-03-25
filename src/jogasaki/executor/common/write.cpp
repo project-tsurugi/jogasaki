@@ -110,7 +110,7 @@ std::size_t encode_tuple(
 ) {
     BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
     auto cp = resource.get_checkpoint();
-    executor::process::impl::variable_table scope{};
+    executor::process::impl::variable_table variables{};
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
@@ -124,7 +124,7 @@ std::size_t encode_tuple(
                 kvs::encode_nullable({}, f.type_, f.spec_, s);
             } else {
                 evaluator eval{t.elements()[f.index_], info};
-                auto res = eval(scope, &resource);
+                auto res = eval(variables, &resource);
 
                 if (f.nullable_) {
                     kvs::encode_nullable(res, f.type_, f.spec_, s);

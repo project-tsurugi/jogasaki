@@ -50,8 +50,8 @@ processor::processor(
 abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
     auto* work = unsafe_downcast<work_context>(context->work_context()); //NOLINT
-    for(auto& block_info : info_->scopes_info()) {
-        work->scopes().emplace_back(block_info);
+    for(auto& block_info : info_->vars_info_list()) {
+        work->variable_tables().emplace_back(block_info);
     }
     unsafe_downcast<ops::record_operator>(operators_.root()).process_record(context);
     // TODO handling status code

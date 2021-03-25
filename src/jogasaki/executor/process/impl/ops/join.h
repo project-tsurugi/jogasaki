@@ -145,11 +145,11 @@ public:
             }
             if (all_groups_available) {
                 auto resource = ctx.varlen_resource();
-                auto& scope = ctx.variables();
+                auto& vars = ctx.variables();
                 bool res = true;
                 if (has_condition_) {
                     utils::checkpoint_holder cp{resource};
-                    res = evaluator_(scope, resource).template to<bool>();
+                    res = evaluator_(vars, resource).template to<bool>();
                 }
                 if (res && downstream_) {
                     if(auto st = unsafe_downcast<record_operator>(

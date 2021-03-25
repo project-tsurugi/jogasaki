@@ -179,7 +179,7 @@ TEST_F(take_group_test, simple) {
         std::move(d)
     };
 
-    auto& block_info = p_info.scopes_info()[s.block_index()];
+    auto& block_info = p_info.vars_info_list()[s.block_index()];
     variable_table variables{block_info};
     groups_type groups{
         group_type{

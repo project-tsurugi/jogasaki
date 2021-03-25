@@ -75,13 +75,13 @@ public:
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
     /**
-     * @brief accessor to block scope variables
+     * @brief accessor to variables table for the scope where operator/context belongs
      */
     [[nodiscard]] variable_table& variables() const noexcept;
 
     /**
-     * @brief setter of block scope variables
-     * @param variables reference to the block scope variables
+     * @brief setter of variables table
+     * @param variables reference to the variables table
      */
     void variables(variable_table& variables) noexcept;
 

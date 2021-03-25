@@ -198,7 +198,7 @@ std::vector<details::write_partial_field> write_partial::create_fields(
     std::vector<details::write_partial_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
-    auto& block = info.scopes_info()[block_index];
+    auto& block = info.vars_info_list()[block_index];
     std::unordered_map<variable, variable> key_dest_to_src{};
     std::unordered_map<variable, variable> column_dest_to_src{};
     for(auto&& c : keys) {
@@ -341,7 +341,7 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
         return res;
     }
 
-    // update fields in key_store_/value_store_ with values from scope variable
+    // update fields in key_store_/value_store_ with values from variable table
     update_record(ctx);
 
     // encode values from key_store_/value_store_ and send to kvs

@@ -226,7 +226,7 @@ std::vector<details::aggregate_group_column> aggregate_group::create_columns(seq
             *f,
             v.value_offset(),
             v.nullity_offset(),
-            true  // currently scope variables are all nullable
+            true  // currently variables are all nullable
         );
     }
     return ret;

@@ -61,9 +61,9 @@ processor_info::processor_info(
     info_(std::move(info)),
     details_(create_details())
 {
-    auto&& p = impl::create_scopes_info(*relations_, info_);
-    scopes_info_ = std::move(p.first);
-    scope_indices_ = std::move(p.second);
+    auto&& p = impl::create_block_variables_definition(*relations_, info_);
+    vars_info_list_ = std::move(p.first);
+    block_indices_ = std::move(p.second);
 }
 
 relation::graph_type const& processor_info::relations() const noexcept {
@@ -74,12 +74,12 @@ yugawara::compiled_info const& processor_info::compiled_info() const noexcept {
     return info_;
 }
 
-impl::scopes_info const& processor_info::scopes_info() const noexcept {
-    return scopes_info_;
+impl::variables_info_list const& processor_info::vars_info_list() const noexcept {
+    return vars_info_list_;
 }
 
-impl::scope_indices const& processor_info::scope_indices() const noexcept {
-    return scope_indices_;
+impl::block_indices const& processor_info::block_indices() const noexcept {
+    return block_indices_;
 }
 
 processor_details const& processor_info::details() const noexcept {

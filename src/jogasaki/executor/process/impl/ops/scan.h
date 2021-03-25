@@ -34,7 +34,7 @@ namespace details {
 
 /**
  * @brief field info of the scan operation
- * @details scan operator uses these fields to know how the scanned key/value are mapped to scope variables
+ * @details scan operator uses these fields to know how the scanned key/value are mapped to variables
  */
 struct cache_align scan_field {
     /**

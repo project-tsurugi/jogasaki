@@ -67,17 +67,17 @@ public:
 
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
 
-    [[nodiscard]] impl::scopes_info const& scopes_info() const noexcept;
+    [[nodiscard]] impl::variables_info_list const& vars_info_list() const noexcept;
 
-    [[nodiscard]] impl::scope_indices const& scope_indices() const noexcept;
+    [[nodiscard]] impl::block_indices const& block_indices() const noexcept;
 
     [[nodiscard]] processor_details const& details() const noexcept;
 
 private:
     relation::graph_type const* relations_{};
     yugawara::compiled_info info_{};
-    impl::scopes_info scopes_info_{};
-    impl::scope_indices scope_indices_{};
+    impl::variables_info_list vars_info_list_{};
+    impl::block_indices block_indices_{};
     processor_details details_{};
 
     processor_details create_details();

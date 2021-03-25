@@ -31,7 +31,7 @@ using takatori::util::maybe_shared_ptr;
 namespace relation = takatori::relation;
 
 /**
- * @brief information on block scoped variables
+ * @brief information on variable table
  */
 class variable_table_info {
 public:
@@ -80,17 +80,17 @@ private:
     maybe_shared_ptr<meta::record_meta> meta_{};
 };
 
-using scopes_info = std::vector<variable_table_info>;
-using scope_indices = std::unordered_map<relation::expression const*, std::size_t>;
+using variables_info_list = std::vector<variable_table_info>;
+using block_indices = std::unordered_map<relation::expression const*, std::size_t>;
 
 /**
  * @brief create block related information about the operators in a process
  * @param relations relational operator graph in one process
  * @param info compiled info for the process
- * @return pair of info objects. First object is the list of scope info object ordered
+ * @return pair of info objects. First object is the list of variable table info object ordered
  * by block index, and second is the mapping from relational operator to the block index.
  */
-[[nodiscard]] std::pair<scopes_info, scope_indices> create_scopes_info(
+[[nodiscard]] std::pair<variables_info_list, block_indices> create_block_variables_definition(
     relation::graph_type const& relations,
     yugawara::compiled_info const& info
 );

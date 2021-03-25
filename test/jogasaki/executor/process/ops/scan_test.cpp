@@ -193,7 +193,7 @@ TEST_F(scan_test, simple) {
         std::move(d)
     };
 
-    auto& block_info = p_info.scopes_info()[s.block_index()];
+    auto& block_info = p_info.vars_info_list()[s.block_index()];
     variable_table variables{block_info};
 
     auto sinfo = std::make_shared<impl::scan_info>();
@@ -389,7 +389,7 @@ TEST_F(scan_test, nullable_fields) {
         std::move(d)
     };
 
-    auto& block_info = p_info.scopes_info()[s.block_index()];
+    auto& block_info = p_info.vars_info_list()[s.block_index()];
     variable_table variables{block_info};
 
     auto sinfo = std::make_shared<impl::scan_info>();
@@ -619,7 +619,7 @@ TEST_F(scan_test, scan_info) {
         std::move(d)
     };
 
-    auto& block_info = p_info->scopes_info()[s.block_index()];
+    auto& block_info = p_info->vars_info_list()[s.block_index()];
     variable_table variables{block_info};
 
     memory::lifo_paged_memory_resource resource{&global::page_pool()};

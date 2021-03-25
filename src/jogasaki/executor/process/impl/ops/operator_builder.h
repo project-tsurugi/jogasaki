@@ -134,14 +134,14 @@ public:
     ) {
         BOOST_ASSERT(keys.size() <= index_keys.size());  //NOLINT
         auto cp = resource.get_checkpoint();
-        executor::process::impl::variable_table scope{};
+        executor::process::impl::variable_table vars{};
         data::aligned_buffer buf{};
         for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
             kvs::stream s{buf.data(), buf.size()};
             std::size_t i = 0;
             for(auto&& k : keys) {
                 expression::evaluator eval{k.value(), info.compiled_info()};
-                auto res = eval(scope, &resource);
+                auto res = eval(vars, &resource);
                 auto spec = index_keys[i].direction() == relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending: kvs::spec_key_descending;
                 kvs::encode(res, utils::type_for(info.compiled_info(), k.variable()), spec, s);

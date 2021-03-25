@@ -30,7 +30,7 @@ operator_base::operator_base(
 {}
 
 variable_table_info const& operator_base::block_info() const noexcept {
-    return processor_info_->scopes_info()[block_index_];
+    return processor_info_->vars_info_list()[block_index_];
 }
 
 operator_base::block_index_type operator_base::block_index() const noexcept {
@@ -38,7 +38,7 @@ operator_base::block_index_type operator_base::block_index() const noexcept {
 }
 
 std::vector<variable_table_info> const& operator_base::blocks() const noexcept {
-    return processor_info_->scopes_info();
+    return processor_info_->vars_info_list();
 }
 
 yugawara::compiled_info const& operator_base::compiled_info() const noexcept {

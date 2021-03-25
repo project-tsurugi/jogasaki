@@ -226,7 +226,7 @@ TEST_F(take_cogroup_test, simple) {
     auto key_meta1 = g_info1.key_meta();
     auto value_meta1 = g_info1.value_meta();
 
-    auto& block_info = p_info.scopes_info()[0];
+    auto& block_info = p_info.vars_info_list()[0];
     variable_table variables{block_info};
 
     std::vector<group_element> groups{};

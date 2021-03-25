@@ -299,8 +299,8 @@ TEST_F(write_full_test, simple) {
         r1.columns()
     };
 
-    ASSERT_EQ(1, p_info.scopes_info().size());
-    auto& block_info = p_info.scopes_info()[wrt.block_index()];
+    ASSERT_EQ(1, p_info.vars_info_list().size());
+    auto& block_info = p_info.vars_info_list()[wrt.block_index()];
     variable_table variables{block_info};
 
     using kind = meta::field_type_kind;
@@ -496,8 +496,8 @@ TEST_F(write_full_test, delete) {
         r1.columns()
     };
 
-    ASSERT_EQ(1, p_info.scopes_info().size());
-    auto& block_info = p_info.scopes_info()[wrt.block_index()];
+    ASSERT_EQ(1, p_info.vars_info_list().size());
+    auto& block_info = p_info.vars_info_list()[wrt.block_index()];
     variable_table variables{block_info};
 
     using kind = meta::field_type_kind;

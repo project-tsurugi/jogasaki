@@ -18,7 +18,7 @@
 namespace jogasaki::executor::process::impl {
 
 block_scope::block_scope(
-    block_scope_info const& info
+    variable_table_info const& info
 ) :
     info_(std::addressof(info)),
     store_(std::make_unique<data::small_record_store>(info.meta()))

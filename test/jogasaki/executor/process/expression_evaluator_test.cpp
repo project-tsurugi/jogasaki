@@ -146,7 +146,7 @@ TEST_F(expression_evaluator_test, add_int8) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();
@@ -187,7 +187,7 @@ TEST_F(expression_evaluator_test, add_int4) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();
@@ -228,7 +228,7 @@ TEST_F(expression_evaluator_test, add_float4) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();
@@ -269,7 +269,7 @@ TEST_F(expression_evaluator_test, add_double) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();
@@ -310,7 +310,7 @@ TEST_F(expression_evaluator_test, concat_text) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     memory::page_pool pool{};
@@ -376,7 +376,7 @@ TEST_F(expression_evaluator_test, binary_expression) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();
@@ -449,7 +449,7 @@ TEST_F(expression_evaluator_test, text_length) {
         {c1, 0},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     memory::page_pool pool{};
@@ -494,7 +494,7 @@ TEST_F(expression_evaluator_test, compare_int4) {
         {c2, 1},
     };
 
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();
@@ -580,7 +580,7 @@ TEST_F(expression_evaluator_test, conditional_and) {
         {c1, 0},
         {c2, 1},
     };
-    block_scope_info info{m, meta};
+    variable_table_info info{m, meta};
     block_scope scope{info};
 
     auto&& ref = scope.store().ref();

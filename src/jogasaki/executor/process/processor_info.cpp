@@ -18,7 +18,7 @@
 #include <takatori/graph/graph.h>
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
-#include <jogasaki/executor/process/impl/block_scope_info.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 
 namespace jogasaki::executor::process {
 

@@ -216,7 +216,7 @@ TEST_F(join_find_test, simple) {
         std::move(d)
     };
 
-    block_scope_info block_info{p_info.scopes_info()[0]};
+    variable_table_info block_info{p_info.scopes_info()[0]};
     block_scope variables{block_info};
     auto tmeta = block_info.meta();
 

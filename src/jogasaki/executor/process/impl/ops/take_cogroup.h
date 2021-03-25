@@ -50,7 +50,7 @@ public:
         maybe_shared_ptr<meta::group_meta> meta,
         sequence_view<column const> columns,
         std::size_t reader_index,
-        block_scope_info const& block_info
+        variable_table_info const& block_info
     );
 
     meta::variable_order const* order_{}; //NOLINT
@@ -63,7 +63,7 @@ public:
         maybe_shared_ptr<meta::group_meta> const& meta,
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns,
-        block_scope_info const& block_info
+        variable_table_info const& block_info
     );
 };
 

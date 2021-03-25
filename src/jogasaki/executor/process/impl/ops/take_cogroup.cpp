@@ -47,7 +47,7 @@ group_element::group_element(
     maybe_shared_ptr<meta::group_meta> meta,
     sequence_view<column const> columns,
     std::size_t reader_index,
-    block_scope_info const& block_info
+    variable_table_info const& block_info
 ) :
     order_(std::addressof(order)),
     meta_(std::move(meta)),
@@ -64,7 +64,7 @@ std::vector<group_field> group_element::create_fields(
     maybe_shared_ptr<meta::group_meta> const& meta,
     meta::variable_order const& order,
     sequence_view<const column> columns,
-    block_scope_info const& block_info
+    variable_table_info const& block_info
 ) {
     std::vector<group_field> fields{};
     auto& key_meta = meta->key();

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "block_scope_info.h"
+#include "variable_table_info.h"
 
 #include <takatori/util/fail.h>
 #include <yugawara/analyzer/block_builder.h>
@@ -30,7 +30,7 @@ namespace jogasaki::executor::process::impl {
 
 using takatori::util::fail;
 
-block_scope_info::block_scope_info(
+variable_table_info::variable_table_info(
     variable_value_map value_map,
     maybe_shared_ptr<meta::record_meta> meta
 ) noexcept :
@@ -42,7 +42,7 @@ block_scope_info::block_scope_info(
 }
 
 variable_value_map from_indices(
-    block_scope_info::variable_indices const& indices,
+    variable_table_info::variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> const& meta
 ) {
     variable_value_map::entity_type map{};
@@ -52,7 +52,7 @@ variable_value_map from_indices(
     return variable_value_map{std::move(map)};
 }
 
-block_scope_info::block_scope_info(
+variable_table_info::variable_table_info(
     variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> meta
 ) noexcept :
@@ -63,11 +63,11 @@ block_scope_info::block_scope_info(
     utils::assert_all_fields_nullable(*meta_);
 }
 
-variable_value_map const& block_scope_info::value_map() const noexcept {
+variable_value_map const& variable_table_info::value_map() const noexcept {
     return value_map_;
 }
 
-maybe_shared_ptr<meta::record_meta> const& block_scope_info::meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& variable_table_info::meta() const noexcept {
     return meta_;
 }
 

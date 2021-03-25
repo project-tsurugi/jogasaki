@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/block_scope_info.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>

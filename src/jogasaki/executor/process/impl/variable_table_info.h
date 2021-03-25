@@ -33,7 +33,7 @@ namespace relation = takatori::relation;
 /**
  * @brief information on block scoped variables
  */
-class block_scope_info {
+class variable_table_info {
 public:
     using variable = takatori::descriptor::variable;
     using variable_indices = std::unordered_map<variable, std::size_t>;
@@ -41,7 +41,7 @@ public:
     /**
      * @brief construct empty instance
      */
-    block_scope_info() = default;
+    variable_table_info() = default;
 
     /**
      * @brief construct new instance
@@ -50,7 +50,7 @@ public:
      * @attention offset retrieved from value_map and meta should be identical if they correspond to the same variable.
      * Constructor below is more convenient if meta and variable indices are available.
      */
-    block_scope_info(
+    variable_table_info(
         variable_value_map value_map,
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
@@ -60,7 +60,7 @@ public:
      * @param indices variable mapping to field index that can be used to retrieve offset from meta
      * @param meta metadata of the block variable store
      */
-    block_scope_info(
+    variable_table_info(
         variable_indices const& indices,
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
@@ -80,7 +80,7 @@ private:
     maybe_shared_ptr<meta::record_meta> meta_{};
 };
 
-using scopes_info = std::vector<block_scope_info>;
+using scopes_info = std::vector<variable_table_info>;
 using scope_indices = std::unordered_map<relation::expression const*, std::size_t>;
 
 /**

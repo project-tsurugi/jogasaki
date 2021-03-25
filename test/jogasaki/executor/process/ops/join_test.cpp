@@ -208,7 +208,7 @@ TEST_F(join_test, simple) {
             { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), } },
         }
     };
-    block_scope_info block_info{
+    variable_table_info block_info{
         vvmap,
         tmeta,
     };

@@ -29,7 +29,7 @@ operator_base::operator_base(
     block_index_(block_index)
 {}
 
-block_scope_info const& operator_base::block_info() const noexcept {
+variable_table_info const& operator_base::block_info() const noexcept {
     return processor_info_->scopes_info()[block_index_];
 }
 
@@ -37,7 +37,7 @@ operator_base::block_index_type operator_base::block_index() const noexcept {
     return block_index_;
 }
 
-std::vector<block_scope_info> const& operator_base::blocks() const noexcept {
+std::vector<variable_table_info> const& operator_base::blocks() const noexcept {
     return processor_info_->scopes_info();
 }
 

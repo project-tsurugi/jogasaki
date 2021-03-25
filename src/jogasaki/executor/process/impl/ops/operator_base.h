@@ -24,7 +24,7 @@
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
-class block_scope_info;
+class variable_table_info;
 }
 
 namespace jogasaki::executor::process::impl::ops {
@@ -84,7 +84,7 @@ public:
     /**
      * @brief return the block scope variables information, where the operator belongs
      */
-    [[nodiscard]] block_scope_info const& block_info() const noexcept;
+    [[nodiscard]] variable_table_info const& block_info() const noexcept;
 
     /**
      * @brief return the block index where the operator belongs
@@ -94,7 +94,7 @@ public:
     /**
      * @brief return the block scope variables array
      */
-    [[nodiscard]] std::vector<block_scope_info> const& blocks() const noexcept;
+    [[nodiscard]] std::vector<variable_table_info> const& blocks() const noexcept;
 
     /**
      * @brief accessor to the compiled info

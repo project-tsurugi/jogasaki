@@ -48,7 +48,7 @@ using takatori::util::unsafe_downcast;
 class sql_test : public ::testing::Test {
 public:
     // change this flag to debug with explain
-    constexpr static bool to_explain = false;
+    constexpr static bool to_explain = true;
 
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
@@ -249,6 +249,10 @@ TEST_F(sql_test, avg_empty_table) {
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
+}
+
+TEST_F(sql_test, insert_host_variable) {
+//    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:i8, :f8)");
 }
 
 }

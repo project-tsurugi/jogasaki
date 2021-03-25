@@ -16,7 +16,7 @@
 #include "operator_container.h"
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/block_scope_info.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 

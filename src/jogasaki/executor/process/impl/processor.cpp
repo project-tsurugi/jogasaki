@@ -21,7 +21,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/work_context.h>
-#include "block_scope_info.h"
+#include "variable_table_info.h"
 
 namespace jogasaki::executor::process::impl {
 

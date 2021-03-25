@@ -20,7 +20,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/process/impl/variable_value_map.h>
-#include <jogasaki/executor/process/impl/block_scope_info.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -40,7 +40,7 @@ public:
      * @brief construct new instance
      */
     explicit block_scope(
-        block_scope_info const& info
+        variable_table_info const& info
     );
 
     /**
@@ -59,7 +59,7 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
-    block_scope_info const* info_{};
+    variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};
 };
 

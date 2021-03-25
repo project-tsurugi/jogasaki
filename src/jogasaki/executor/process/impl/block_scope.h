@@ -15,12 +15,16 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/meta/record_meta.h>
-#include "variable_value_map.h"
-#include "block_scope_info.h"
+#include <jogasaki/executor/process/impl/variable_value_map.h>
+#include <jogasaki/executor/process/impl/block_scope_info.h>
 
 namespace jogasaki::executor::process::impl {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief block scoped variables storage

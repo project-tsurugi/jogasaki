@@ -39,7 +39,9 @@ public:
     constexpr value_info(
         std::size_t value_offset,
         std::size_t nullity_offset
-        ) noexcept : value_offset_(value_offset), nullity_offset_(nullity_offset)
+    ) noexcept :
+        value_offset_(value_offset),
+        nullity_offset_(nullity_offset)
     {}
 
     /**
@@ -83,7 +85,15 @@ public:
      * @param var the variable descriptor
      * @return value_info for the variable
      */
-    value_info const& at(variable const& var) const;
+    [[nodiscard]] value_info const& at(variable const& var) const;
+
+    /**
+     * @brief returns if the value exists for the given variable
+     * @param var the variable descriptor
+     * @return true if this object contains the variable
+     * @return false otherwise
+     */
+    [[nodiscard]] bool exists(variable const& var) const;
 
 private:
     entity_type map_{};

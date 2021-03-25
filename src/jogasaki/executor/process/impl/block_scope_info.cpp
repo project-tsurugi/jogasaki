@@ -49,7 +49,7 @@ variable_value_map from_indices(
     for(auto&& [v, i] : indices) {
         map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
     }
-    return variable_value_map{map};
+    return variable_value_map{std::move(map)};
 }
 
 block_scope_info::block_scope_info(

@@ -15,6 +15,10 @@
  */
 #include "database.h"
 
+#include <takatori/type/int.h>
+#include <takatori/type/float.h>
+#include <takatori/type/character.h>
+
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/executor/tables.h>
@@ -105,6 +109,13 @@ database::database(
     if(cfg_->prepare_benchmark_tables()) {
         executor::add_benchmark_tables(*tables_);
     }
+
+    // built-in host variables (for testing)
+    host_variables_->add({"i4", takatori::type::int4{}});
+    host_variables_->add({"i8", takatori::type::int8{}});
+    host_variables_->add({"f4", takatori::type::float4{}});
+    host_variables_->add({"f8", takatori::type::float8{}});
+    host_variables_->add({"ch", takatori::type::character{takatori::type::varying}});
 }
 
 std::shared_ptr<class configuration> const& database::configuration() const noexcept {
@@ -119,6 +130,7 @@ status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_sta
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
+    ctx->variable_provider(host_variables_);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         LOG(ERROR) << "compilation failed.";
         return rc;
@@ -162,6 +174,7 @@ status database::resolve(
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
+    ctx->variable_provider(host_variables_);
     ctx->prepared_statement(
         unsafe_downcast<impl::prepared_statement>(prepared).body()
     );

@@ -81,10 +81,14 @@ private:
 };
 
 using scopes_info = std::vector<block_scope_info>;
-using scope_indices = std::unordered_map<takatori::relation::expression const*, std::size_t>;
+using scope_indices = std::unordered_map<relation::expression const*, std::size_t>;
 
 /**
  * @brief create block related information about the operators in a process
+ * @param relations relational operator graph in one process
+ * @param info compiled info for the process
+ * @return pair of info objects. First object is the list of scope info object ordered
+ * by block index, and second is the mapping from relational operator to the block index.
  */
 [[nodiscard]] std::pair<scopes_info, scope_indices> create_scopes_info(
     relation::graph_type const& relations,

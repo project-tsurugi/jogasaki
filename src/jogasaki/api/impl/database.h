@@ -21,6 +21,7 @@
 #include <takatori/util/downcast.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/aggregate/configurable_provider.h>
+#include <yugawara/variable/configurable_provider.h>
 
 #include <jogasaki/status.h>
 #include <jogasaki/api/database.h>
@@ -82,6 +83,7 @@ public:
         aggregate_functions() const noexcept;
 
     [[nodiscard]] scheduler::task_scheduler* task_scheduler() const noexcept;
+
 private:
     std::shared_ptr<class configuration> cfg_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{
@@ -89,6 +91,9 @@ private:
     };
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{
         std::make_shared<yugawara::aggregate::configurable_provider>()
+    };
+    std::shared_ptr<yugawara::variable::configurable_provider> host_variables_{
+        std::make_shared<yugawara::variable::configurable_provider>()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_{};

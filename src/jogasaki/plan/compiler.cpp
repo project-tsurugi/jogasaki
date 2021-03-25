@@ -393,7 +393,8 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
         ctx.storage_provider(),
         ctx.variable_provider(),
         ctx.function_provider(),
-        ctx.aggregate_provider()
+        ctx.aggregate_provider(),
+        ctx.variable_provider()
     };
 
     yugawara::runtime_feature_set runtime_features {

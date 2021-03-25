@@ -33,6 +33,10 @@ value_info const& variable_value_map::at(variable_value_map::variable const& var
     return map_.at(var);
 }
 
+bool variable_value_map::exists(variable_value_map::variable const& var) const {
+    return map_.count(var) != 0;
+}
+
 }
 
 

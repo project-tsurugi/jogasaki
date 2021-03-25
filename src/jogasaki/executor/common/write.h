@@ -115,7 +115,6 @@ public:
 
     bool operator()(request_context& context) const;
 private:
-
     write_kind kind_{};
     std::string storage_name_{};
     std::vector<details::write_tuple> keys_{};

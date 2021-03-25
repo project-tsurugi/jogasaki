@@ -133,7 +133,6 @@ TEST_F(expression_evaluator_test, add_int8) {
     compiled_info c_info{expressions_, variables_};
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
@@ -216,7 +215,6 @@ TEST_F(expression_evaluator_test, add_float4) {
     compiled_info c_info{expressions_, variables_};
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float4>),
@@ -258,7 +256,6 @@ TEST_F(expression_evaluator_test, add_double) {
     compiled_info c_info{expressions_, variables_};
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
@@ -300,7 +297,6 @@ TEST_F(expression_evaluator_test, concat_text) {
     compiled_info c_info{expressions_, variables_};
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
@@ -367,7 +363,6 @@ TEST_F(expression_evaluator_test, binary_expression) {
     };
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
@@ -443,7 +438,6 @@ TEST_F(expression_evaluator_test, text_length) {
     expressions().bind(expr, t::int4 {});
     expressions().bind(expr.operand(), t::character{type::varying, 200});
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
@@ -487,7 +481,6 @@ TEST_F(expression_evaluator_test, compare_int4) {
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
@@ -575,7 +568,6 @@ TEST_F(expression_evaluator_test, conditional_and) {
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
 
-    std::unique_ptr<variable_value_map> value_map{};
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(takatori::util::enum_tag<meta::field_type_kind::boolean>),

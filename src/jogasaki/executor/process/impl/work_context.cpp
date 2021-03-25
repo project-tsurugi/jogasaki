@@ -42,11 +42,11 @@ ops::context_container& work_context::contexts() noexcept {
     return contexts_;
 }
 
-work_context::block_scopes& work_context::scopes() noexcept {
+work_context::variable_tables& work_context::scopes() noexcept {
     return variables_;
 }
 
-block_scope& work_context::variables(std::size_t block_index) noexcept {
+variable_table& work_context::variables(std::size_t block_index) noexcept {
     BOOST_ASSERT(block_index < variables_.size());  //NOLINT
     return variables_[block_index];
 }

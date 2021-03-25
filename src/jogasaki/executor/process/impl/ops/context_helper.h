@@ -90,9 +90,9 @@ public:
     [[nodiscard]] kvs::transaction* transaction() const noexcept;
 
     /**
-     * @brief accessor to block_scope
+     * @brief accessor to variable_table
      */
-    [[nodiscard]] class block_scope& block_scope(std::size_t index);
+    [[nodiscard]] class variable_table& variable_table(std::size_t index);
 
     /**
      * @brief accessor to task context

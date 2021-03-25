@@ -40,7 +40,7 @@ public:
     offer_context(
         class abstract::task_context* ctx,
         maybe_shared_ptr<meta::record_meta> meta,
-        block_scope& variables,
+        variable_table& variables,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr
     );

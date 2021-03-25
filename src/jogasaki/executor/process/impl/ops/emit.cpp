@@ -48,7 +48,7 @@ operation_status emit::process_record(abstract::task_context *context) {
     if (! p) {
         p = ctx.make_context<emit_context>(
             index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             meta(),
             ctx.resource(),
             ctx.varlen_resource()

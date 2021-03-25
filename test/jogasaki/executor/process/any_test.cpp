@@ -63,7 +63,7 @@
 
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
 namespace jogasaki::executor::process::impl::expression {
 

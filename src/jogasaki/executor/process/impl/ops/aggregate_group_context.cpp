@@ -21,7 +21,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 aggregate_group_context::aggregate_group_context(
     abstract::task_context* ctx,
-    block_scope& variables,
+    variable_table& variables,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource,
     std::vector<data::value_store> stores,

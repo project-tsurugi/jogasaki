@@ -13,26 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "block_scope.h"
+#include "variable_table.h"
 
 namespace jogasaki::executor::process::impl {
 
-block_scope::block_scope(
+variable_table::variable_table(
     variable_table_info const& info
 ) :
     info_(std::addressof(info)),
     store_(std::make_unique<data::small_record_store>(info.meta()))
 {}
 
-data::small_record_store& block_scope::store() const noexcept {
+data::small_record_store& variable_table::store() const noexcept {
     return *store_;
 }
 
-variable_value_map const& block_scope::value_map() const noexcept {
+variable_value_map const& variable_table::value_map() const noexcept {
     return info_->value_map();
 }
 
-maybe_shared_ptr<meta::record_meta> const& block_scope::meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& variable_table::meta() const noexcept {
     return info_->meta();
 }
 

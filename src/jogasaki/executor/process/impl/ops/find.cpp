@@ -102,7 +102,7 @@ operation_status find::process_record(abstract::task_context* context) {
     auto* p = find_context<class find_context>(index(), ctx.contexts());
     if (! p) {
         p = ctx.make_context<class find_context>(index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
             ctx.resource(),

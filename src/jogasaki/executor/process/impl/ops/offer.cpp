@@ -19,7 +19,7 @@
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/record_writer.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
 #include "operator_base.h"
@@ -52,7 +52,7 @@ operation_status offer::process_record(abstract::task_context* context) {
         p = ctx.make_context<offer_context>(
             index(),
             meta(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             ctx.resource(),
             ctx.varlen_resource()
         );

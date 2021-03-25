@@ -29,17 +29,17 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief block scoped variables storage
  */
-class block_scope {
+class variable_table {
 public:
     /**
      * @brief construct empty instance
      */
-    block_scope() = default;
+    variable_table() = default;
 
     /**
      * @brief construct new instance
      */
-    explicit block_scope(
+    explicit variable_table(
         variable_table_info const& info
     );
 

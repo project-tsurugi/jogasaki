@@ -29,7 +29,7 @@ context_helper::context_helper(
     work_context_(unsafe_downcast<work_context>(context_->work_context()))
 {}
 
-block_scope& context_helper::block_scope(std::size_t index) {
+variable_table& context_helper::variable_table(std::size_t index) {
     return work_context_->variables(index); //NOLINT
 }
 

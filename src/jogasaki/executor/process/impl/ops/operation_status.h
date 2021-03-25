@@ -21,7 +21,7 @@
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
-class block_scope;
+class variable_table;
 }
 
 namespace jogasaki::executor::process::impl::ops {

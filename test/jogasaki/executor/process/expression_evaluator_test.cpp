@@ -61,7 +61,7 @@
 
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -147,7 +147,7 @@ TEST_F(expression_evaluator_test, add_int8) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<std::int64_t>(meta->value_offset(0), 10);
@@ -188,7 +188,7 @@ TEST_F(expression_evaluator_test, add_int4) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<std::int32_t>(meta->value_offset(0), 10);
@@ -229,7 +229,7 @@ TEST_F(expression_evaluator_test, add_float4) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<float>(meta->value_offset(0), 10);
@@ -270,7 +270,7 @@ TEST_F(expression_evaluator_test, add_double) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<double>(meta->value_offset(0), 10);
@@ -311,7 +311,7 @@ TEST_F(expression_evaluator_test, concat_text) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
@@ -377,7 +377,7 @@ TEST_F(expression_evaluator_test, binary_expression) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<std::int64_t>(meta->value_offset(0), 10);
@@ -407,7 +407,7 @@ TEST_F(expression_evaluator_test, unary_expression) {
     };
     expression::evaluator ev{expr, c_info};
 
-    block_scope scope{};
+    variable_table scope{};
     auto result = ev(scope).to<std::int64_t>();
     ASSERT_EQ(-30, result);
 }
@@ -423,7 +423,7 @@ TEST_F(expression_evaluator_test, conditional_not) {
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
 
-    block_scope scope{};
+    variable_table scope{};
     ASSERT_TRUE(ev(scope).to<bool>());
 }
 
@@ -450,7 +450,7 @@ TEST_F(expression_evaluator_test, text_length) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
@@ -495,7 +495,7 @@ TEST_F(expression_evaluator_test, compare_int4) {
     };
 
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
@@ -581,7 +581,7 @@ TEST_F(expression_evaluator_test, conditional_and) {
         {c2, 1},
     };
     variable_table_info info{m, meta};
-    block_scope scope{info};
+    variable_table scope{info};
 
     auto&& ref = scope.store().ref();
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);

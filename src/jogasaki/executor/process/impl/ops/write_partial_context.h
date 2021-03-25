@@ -46,7 +46,7 @@ public:
      */
     write_partial_context(
         class abstract::task_context* ctx,
-        block_scope& variables,
+        variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
         kvs::transaction* tx,
         maybe_shared_ptr<meta::record_meta> key_meta,

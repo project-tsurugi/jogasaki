@@ -30,7 +30,7 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
@@ -112,7 +112,7 @@ public:
     using memory_resource = memory::paged_memory_resource;
 
     callback(
-        executor::process::impl::block_scope& scope,
+        executor::process::impl::variable_table& scope,
         yugawara::compiled_info const& info
     ) noexcept :
         scope_(scope),
@@ -336,7 +336,7 @@ public:
         return false;
     }
 private:
-    executor::process::impl::block_scope& scope_;
+    executor::process::impl::variable_table& scope_;
     yugawara::compiled_info const& info_{};
 };
 
@@ -384,7 +384,7 @@ public:
      * @return the result of evaluation
      */
     [[nodiscard]] any operator()(
-        executor::process::impl::block_scope& scope,
+        executor::process::impl::variable_table& scope,
         memory_resource* resource = nullptr
     ) const {
         details::callback c{scope, *info_};

@@ -110,7 +110,7 @@ std::size_t encode_tuple(
 ) {
     BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
     auto cp = resource.get_checkpoint();
-    executor::process::impl::block_scope scope{};
+    executor::process::impl::variable_table scope{};
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length

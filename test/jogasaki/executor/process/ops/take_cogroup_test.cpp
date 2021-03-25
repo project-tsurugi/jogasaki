@@ -30,7 +30,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <takatori/plan/group.h>
@@ -227,7 +227,7 @@ TEST_F(take_cogroup_test, simple) {
     auto value_meta1 = g_info1.value_meta();
 
     auto& block_info = p_info.scopes_info()[0];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     std::vector<group_element> groups{};
     groups.emplace_back(

@@ -102,7 +102,7 @@ operation_status scan::process_record(abstract::task_context* context) {
     BOOST_ASSERT(stg);  //NOLINT //TODO handle error
     if (! p) {
         p = ctx.make_context<scan_context>(index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             std::move(stg),
             ctx.transaction(),
             unsafe_downcast<impl::scan_info const>(ctx.task_context()->scan_info()),  //NOLINT

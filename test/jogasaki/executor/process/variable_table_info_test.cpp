@@ -91,11 +91,11 @@ using filter = relation::filter;
 
 using rgraph = ::takatori::relation::graph_type;
 
-class block_scope_info_test : public test_root {
+class variable_table_info_test : public test_root {
 
 };
 
-TEST_F(block_scope_info_test, create_scopes_info1) {
+TEST_F(variable_table_info_test, create_scopes_info1) {
     factory f;
     ::takatori::plan::forward f1 {
         f.exchange_column(),

@@ -212,7 +212,7 @@ TEST_F(join_test, simple) {
         vvmap,
         tmeta,
     };
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     std::vector<ops::group_element> groups{};
     groups.emplace_back(

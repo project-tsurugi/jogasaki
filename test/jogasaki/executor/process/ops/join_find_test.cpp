@@ -217,7 +217,7 @@ TEST_F(join_find_test, simple) {
     };
 
     variable_table_info block_info{p_info.scopes_info()[0]};
-    block_scope variables{block_info};
+    variable_table variables{block_info};
     auto tmeta = block_info.meta();
 
     mock::task_context task_ctx{

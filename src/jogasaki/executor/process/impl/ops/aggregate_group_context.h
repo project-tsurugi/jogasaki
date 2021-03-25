@@ -36,7 +36,7 @@ public:
      */
     aggregate_group_context(
         class abstract::task_context* ctx,
-        block_scope& variables,
+        variable_table& variables,
         memory_resource* resource,
         memory_resource* varlen_resource,
         std::vector<data::value_store> stores,

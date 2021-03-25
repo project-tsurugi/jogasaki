@@ -26,7 +26,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/offer_context.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -152,7 +152,7 @@ TEST_F(offer_test, simple) {
 
     ASSERT_EQ(1, p_info.scopes_info().size());
     auto& block_info = p_info.scopes_info()[s.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record;

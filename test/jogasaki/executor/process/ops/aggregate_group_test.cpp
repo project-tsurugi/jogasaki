@@ -35,7 +35,7 @@
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/executor/process/impl/ops/take_group.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
 #include "verifier.h"
 #include "../../../mock_memory_resource.h"
@@ -191,7 +191,7 @@ TEST_F(aggregate_group_test, simple) {
 
     ASSERT_EQ(1, p_info.scopes_info().size());
     auto& block_info = p_info.scopes_info()[s.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     mock::task_context task_ctx{
         {},

@@ -51,7 +51,7 @@
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/plan/compiler_context.h>
@@ -134,7 +134,7 @@ public:
     ) {
         BOOST_ASSERT(keys.size() <= index_keys.size());  //NOLINT
         auto cp = resource.get_checkpoint();
-        executor::process::impl::block_scope scope{};
+        executor::process::impl::variable_table scope{};
         data::aligned_buffer buf{};
         for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
             kvs::stream s{buf.data(), buf.size()};

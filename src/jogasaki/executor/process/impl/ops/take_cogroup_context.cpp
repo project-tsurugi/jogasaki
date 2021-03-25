@@ -142,7 +142,7 @@ bool group_input_comparator::operator()(
 
 take_cogroup_context::take_cogroup_context(
     abstract::task_context* ctx,
-    block_scope& variables,
+    variable_table& variables,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :

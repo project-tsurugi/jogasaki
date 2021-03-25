@@ -358,7 +358,7 @@ operation_status write_partial::process_record(abstract::task_context* context) 
     if (! p) {
         p = ctx.make_context<write_partial_context>(
             index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
             key_meta_,

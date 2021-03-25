@@ -76,7 +76,7 @@ matcher::matcher(
 {}
 
 void matcher::read_stream(
-    block_scope& scope,
+    variable_table& scope,
     matcher::memory_resource* resource,
     kvs::stream& src,
     std::vector<details::join_find_column> const& columns
@@ -103,7 +103,7 @@ void matcher::read_stream(
 }
 
 bool matcher::operator()(
-    block_scope& scope,
+    variable_table& scope,
     kvs::storage& stg,
     kvs::transaction& tx,
     matcher::memory_resource* resource
@@ -161,7 +161,7 @@ operation_status join_find::process_record(abstract::task_context* context) {
     auto* p = find_context<class join_find_context>(index(), ctx.contexts());
     if (! p) {
         p = ctx.make_context<class join_find_context>(index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
             std::make_unique<details::matcher>(key_fields_, key_columns_, value_columns_),

@@ -55,7 +55,7 @@ operation_status take_group::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<take_group_context>(
             index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             ctx.resource(),
             ctx.varlen_resource()
         );

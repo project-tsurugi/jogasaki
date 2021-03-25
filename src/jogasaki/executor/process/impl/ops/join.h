@@ -88,7 +88,7 @@ public:
         if (! p) {
             p = ctx.make_context<join_context>(
                 index(),
-                ctx.block_scope(block_index()),
+                ctx.variable_table(block_index()),
                 ctx.resource(),
                 ctx.varlen_resource()
             );

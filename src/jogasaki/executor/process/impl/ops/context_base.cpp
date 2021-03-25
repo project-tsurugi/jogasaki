@@ -21,7 +21,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 context_base::context_base(
     abstract::task_context* context,
-    block_scope& variables,
+    variable_table& variables,
     memory::lifo_paged_memory_resource* resource,
     memory::lifo_paged_memory_resource* varlen_resource
 ) :
@@ -31,11 +31,11 @@ context_base::context_base(
     varlen_resource_(varlen_resource)
 {}
 
-block_scope& context_base::variables() const noexcept {
+variable_table& context_base::variables() const noexcept {
     return *variables_;
 }
 
-void context_base::variables(block_scope& variables) noexcept {
+void context_base::variables(variable_table& variables) noexcept {
     variables_ = std::addressof(variables);
 }
 

@@ -26,7 +26,7 @@ using takatori::util::maybe_shared_ptr;
 offer_context::offer_context(
     abstract::task_context* ctx,
     maybe_shared_ptr<meta::record_meta> meta,
-    block_scope& variables,
+    variable_table& variables,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :

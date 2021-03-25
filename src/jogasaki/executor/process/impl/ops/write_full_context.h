@@ -42,7 +42,7 @@ public:
      */
     write_full_context(
         class abstract::task_context* ctx,
-        block_scope& variables,
+        variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
         kvs::transaction* tx,
         memory_resource* resource,

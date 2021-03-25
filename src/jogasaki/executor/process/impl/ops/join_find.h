@@ -104,7 +104,7 @@ public:
     );
 
     void read_stream(
-        executor::process::impl::block_scope& scope,
+        executor::process::impl::variable_table& scope,
         memory_resource* resource,
         kvs::stream& src,
         std::vector<details::join_find_column> const& columns
@@ -117,7 +117,7 @@ public:
      * simply not-found or other error happened.
      */
     [[nodiscard]] bool operator()(
-        executor::process::impl::block_scope& scope,
+        executor::process::impl::variable_table& scope,
         kvs::storage& stg,
         kvs::transaction& tx,
         memory_resource* resource = nullptr

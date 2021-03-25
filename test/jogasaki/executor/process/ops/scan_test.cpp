@@ -29,7 +29,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/scan_context.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -194,7 +194,7 @@ TEST_F(scan_test, simple) {
     };
 
     auto& block_info = p_info.scopes_info()[s.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{
@@ -390,7 +390,7 @@ TEST_F(scan_test, nullable_fields) {
     };
 
     auto& block_info = p_info.scopes_info()[s.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{
@@ -620,7 +620,7 @@ TEST_F(scan_test, scan_info) {
     };
 
     auto& block_info = p_info->scopes_info()[s.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     memory::lifo_paged_memory_resource resource{&global::page_pool()};
     memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};

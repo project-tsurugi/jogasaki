@@ -329,7 +329,7 @@ private:
             ctx->work_context(std::make_unique<process::impl::work_context>(
                 req_context,
                 2UL, // operator count
-                1UL, // block_scope count
+                1UL, // variable_table count
                 std::make_unique<memory::lifo_paged_memory_resource>(&pool_),
                 std::make_unique<memory::lifo_paged_memory_resource>(&pool_),
                 std::shared_ptr<kvs::database>{},

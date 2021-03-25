@@ -21,7 +21,7 @@
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {
-class block_scope;
+class variable_table;
 }
 
 namespace jogasaki::executor::process::impl::ops {
@@ -54,7 +54,7 @@ public:
      */
     context_base(
         class abstract::task_context* context,
-        block_scope& variables,
+        variable_table& variables,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -77,13 +77,13 @@ public:
     /**
      * @brief accessor to block scope variables
      */
-    [[nodiscard]] block_scope& variables() const noexcept;
+    [[nodiscard]] variable_table& variables() const noexcept;
 
     /**
      * @brief setter of block scope variables
      * @param variables reference to the block scope variables
      */
-    void variables(block_scope& variables) noexcept;
+    void variables(variable_table& variables) noexcept;
 
     /**
      * @brief accessor to task context
@@ -137,7 +137,7 @@ public:
 
 private:
     class abstract::task_context* task_context_{};
-    block_scope* variables_{};
+    variable_table* variables_{};
     memory_resource* resource_{};
     memory_resource* varlen_resource_{};
     context_state state_{context_state::active};

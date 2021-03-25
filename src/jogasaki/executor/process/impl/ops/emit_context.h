@@ -40,7 +40,7 @@ public:
      */
     emit_context(
         class abstract::task_context* ctx,
-        block_scope& variables,
+        variable_table& variables,
         maybe_shared_ptr<meta::record_meta> meta,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr

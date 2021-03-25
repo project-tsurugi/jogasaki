@@ -181,7 +181,7 @@ TEST_F(filter_test, simple) {
 
     ASSERT_EQ(1, p_info.scopes_info().size());
     auto& block_info = p_info.scopes_info()[s.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     mock::task_context task_ctx{
         {},

@@ -75,7 +75,7 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
         }
         p = ctx.make_context<aggregate_group_context>(
             index(),
-            ctx.block_scope(block_index()),
+            ctx.variable_table(block_index()),
             ctx.resource(),
             ctx.varlen_resource(),
             std::move(stores),

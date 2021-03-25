@@ -25,7 +25,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/executor/process/impl/ops/write_full_context.h>
-#include <jogasaki/executor/process/impl/block_scope.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/iterator.h>
 
@@ -301,7 +301,7 @@ TEST_F(write_full_test, simple) {
 
     ASSERT_EQ(1, p_info.scopes_info().size());
     auto& block_info = p_info.scopes_info()[wrt.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record;
@@ -498,7 +498,7 @@ TEST_F(write_full_test, delete) {
 
     ASSERT_EQ(1, p_info.scopes_info().size());
     auto& block_info = p_info.scopes_info()[wrt.block_index()];
-    block_scope variables{block_info};
+    variable_table variables{block_info};
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record;

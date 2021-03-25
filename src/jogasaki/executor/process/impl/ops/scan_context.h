@@ -42,7 +42,7 @@ public:
      */
     scan_context(
         class abstract::task_context* ctx,
-        block_scope& variables,
+        variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
         kvs::transaction* tx,
         impl::scan_info const* scan_info,

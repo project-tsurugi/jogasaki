@@ -109,10 +109,9 @@ std::vector<details::offer_field> offer::create_fields(
 ) {
     std::vector<details::offer_field> fields{};
     fields.resize(meta->field_count());
-    auto& vmap = block_info().value_map();
     for(auto&& c : columns) {
         auto ind = order.index(c.destination());
-        auto& info = vmap.at(c.source());
+        auto& info = block_info().at(c.source());
         fields[ind] = details::offer_field{
             meta->at(ind),
             info.value_offset(),

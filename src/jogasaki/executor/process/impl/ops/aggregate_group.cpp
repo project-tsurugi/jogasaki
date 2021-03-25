@@ -219,7 +219,7 @@ std::vector<details::aggregate_group_column> aggregate_group::create_columns(seq
         auto& repo = global::aggregate_function_repository();
         auto f = repo.find(decl.definition_id());
         BOOST_ASSERT(f != nullptr);  //NOLINT
-        auto& v = this->block_info().value_map().at(c.destination());
+        auto& v = this->block_info().at(c.destination());
         ret.emplace_back(
             utils::type_for(compiled_info().type_of(c.destination())),
             std::move(argument_indices),
@@ -239,8 +239,8 @@ std::vector<details::aggregate_group_argument> aggregate_group::create_arguments
     for(auto&& v : vars) {
         ret.emplace_back(
             utils::type_for(compiled_info().type_of(v)),
-            block_info().value_map().at(v).value_offset(),
-            block_info().value_map().at(v).nullity_offset(),
+            block_info().at(v).value_offset(),
+            block_info().at(v).nullity_offset(),
             true
         );
     }

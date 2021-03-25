@@ -168,7 +168,7 @@ TEST_F(offer_test, simple) {
     offer_context ctx(&task_ctx, meta, variables);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
     vars_ref.set_null(map.at(c0).nullity_offset(), false);
     vars_ref.set_value<double>(map.at(c1).value_offset(), 1.0);

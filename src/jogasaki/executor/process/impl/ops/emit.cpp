@@ -113,7 +113,7 @@ emit::create_fields(const maybe_shared_ptr<meta::record_meta> &meta, sequence_vi
     fields.reserve(sz);
     for(std::size_t ind = 0 ; ind < sz; ++ind) {
         auto&& c = columns[ind];
-        auto& info = blocks().at(block_index()).value_map().at(c.source());
+        auto& info = blocks().at(block_index()).at(c.source());
         fields.emplace_back(details::emit_field{
             meta_->at(ind),
             info.value_offset(),

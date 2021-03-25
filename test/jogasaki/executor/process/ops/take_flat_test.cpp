@@ -162,7 +162,7 @@ TEST_F(take_flat_test, simple) {
     take_flat_context ctx(&task_ctx, variables, &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
 
     auto c0_offset = map.at(c0).value_offset();

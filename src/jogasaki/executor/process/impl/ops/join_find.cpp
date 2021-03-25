@@ -252,8 +252,8 @@ std::vector<details::join_find_column> join_find::create_columns(
             ret.emplace_back(
                 t,
                 true,
-                block.value_map().at(var).value_offset(),
-                block.value_map().at(var).nullity_offset(),
+                block.at(var).value_offset(),
+                block.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -280,8 +280,8 @@ std::vector<details::join_find_column> join_find::create_columns(
         ret.emplace_back(
             t,
             true,
-            block.value_map().at(var).value_offset(),
-            block.value_map().at(var).nullity_offset(),
+            block.at(var).value_offset(),
+            block.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );

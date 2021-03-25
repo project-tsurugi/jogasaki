@@ -254,8 +254,8 @@ std::vector<details::scan_field> scan::create_fields(
             ret.emplace_back(
                 t,
                 true,
-                block.value_map().at(var).value_offset(),
-                block.value_map().at(var).nullity_offset(),
+                block.at(var).value_offset(),
+                block.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -282,8 +282,8 @@ std::vector<details::scan_field> scan::create_fields(
         ret.emplace_back(
             t,
             true,
-            block.value_map().at(var).value_offset(),
-            block.value_map().at(var).nullity_offset(),
+            block.at(var).value_offset(),
+            block.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );

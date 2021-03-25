@@ -196,7 +196,7 @@ TEST_F(filter_test, simple) {
     filter_context ctx(&task_ctx, variables, &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
     vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
     vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 11);

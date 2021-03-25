@@ -222,7 +222,7 @@ TEST_F(project_test, simple) {
     project_context ctx(&task_ctx, variables, &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
     vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
     vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 11);
@@ -362,7 +362,7 @@ TEST_F(project_test, text) {
     project_context ctx(&task_ctx, variables, &res, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
 
     vars_ref.set_value<text>(map.at(c0).value_offset(), text{&res, "A23456789012345678901234567890"});

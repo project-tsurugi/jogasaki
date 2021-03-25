@@ -155,11 +155,10 @@ std::vector<details::take_group_field> take_group::create_fields(
             ++num_keys;
         }
     }
-    auto& vmap = block_info().value_map();
     for(std::size_t i=0, n=columns.size(); i < n; ++i) {
         auto& c = columns[i];
         auto [src_idx, is_key] = order.key_value_index(c.source());
-        auto& target_info = vmap.at(c.destination());
+        auto& target_info = block_info().at(c.destination());
         fields[i] = details::take_group_field{
             is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
             is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),

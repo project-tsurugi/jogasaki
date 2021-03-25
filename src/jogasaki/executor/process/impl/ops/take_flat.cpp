@@ -120,10 +120,9 @@ std::vector<details::take_flat_field> take_flat::create_fields(
 ) {
     std::vector<details::take_flat_field> fields{};
     fields.resize(meta->field_count());
-    auto& vmap = block_info().value_map();
     for(auto&& c : columns) {
         auto ind = order.index(c.source());
-        auto& info = vmap.at(c.destination());
+        auto& info = block_info().at(c.destination());
         fields[ind] = details::take_flat_field{
             meta->at(ind),
             meta->value_offset(ind),

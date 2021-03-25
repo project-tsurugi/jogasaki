@@ -198,7 +198,7 @@ TEST_F(join_test, simple) {
     auto value_meta = value.record_meta();
     auto g_meta = group_meta{key_meta, value_meta};
     auto tmeta = tgt.record_meta();
-    variable_value_map vvmap{
+    variable_table_info block_info{
         {
             { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), } },
             { g0v1, { tmeta->value_offset(1), tmeta->nullity_offset(1), } },
@@ -206,10 +206,7 @@ TEST_F(join_test, simple) {
             { g1v0, { tmeta->value_offset(3), tmeta->nullity_offset(3), } },
             { g1v1, { tmeta->value_offset(4), tmeta->nullity_offset(4), } },
             { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), } },
-        }
-    };
-    variable_table_info block_info{
-        vvmap,
+        },
         tmeta,
     };
     variable_table variables{block_info};

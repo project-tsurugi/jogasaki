@@ -333,7 +333,7 @@ TEST_F(write_partial_test , simple_update) {
     };
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 10);
     vars_ref.set_null(map.at(c0).nullity_offset(), false);
     vars_ref.set_value<double>(map.at(c1).value_offset(), 10.0);

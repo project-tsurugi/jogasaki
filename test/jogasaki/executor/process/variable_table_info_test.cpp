@@ -90,10 +90,51 @@ using buffer = relation::buffer;
 using filter = relation::filter;
 
 using rgraph = ::takatori::relation::graph_type;
-
+using kind = meta::field_type_kind;
 class variable_table_info_test : public test_root {
 
 };
+
+TEST_F(variable_table_info_test, basic) {
+    factory f;
+    auto v1 = f.stream_variable("v1");
+    auto v2 = f.exchange_column("v2");
+    variable_table_info::entity_type map{};
+    map[v1] = value_info{1, 1};
+    map[v2] = value_info{2,2};
+
+    auto rec = mock::create_nullable_record<kind::int1, kind::int1>();
+    variable_table_info m{std::move(map), rec.record_meta()};
+    auto& i1 = m.at(v1);
+    ASSERT_EQ(1, i1.value_offset());
+    auto& i2 = m.at(v2);
+    ASSERT_EQ(2, i2.value_offset());
+}
+
+TEST_F(variable_table_info_test, table_column) {
+    yugawara::storage::configurable_provider storages_;
+    auto t1 = storages_.add_table({
+        "T1",
+        {
+            { "C1", t::int4() },
+        },
+    });
+    auto&& cols = t1->columns();
+
+    factory f;
+    auto v1 = f.stream_variable("v1");
+    auto v2 = f.table_column(cols[0]);
+    variable_table_info::entity_type map{};
+    map[v1] = value_info{1, 1};
+    map[v2] = value_info{2,2};
+
+    auto rec = mock::create_nullable_record<kind::int1, kind::int1>();
+    variable_table_info m{std::move(map), rec.record_meta()};
+    auto& i1 = m.at(v1);
+    ASSERT_EQ(1, i1.value_offset());
+    auto& i2 = m.at(v2);
+    ASSERT_EQ(2, i2.value_offset());
+}
 
 TEST_F(variable_table_info_test, create_block_variables_definition1) {
     factory f;
@@ -150,7 +191,7 @@ TEST_F(variable_table_info_test, create_block_variables_definition1) {
     auto meta = infos[0].meta();
     ASSERT_EQ(2, meta->field_count());
 
-    auto& map = infos[0].value_map();
+    auto& map = infos[0];
     EXPECT_TRUE(map.exists(c0));
     EXPECT_TRUE(map.exists(c1));
 

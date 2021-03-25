@@ -266,7 +266,7 @@ TEST_F(find_test, simple) {
     find_context ctx(&task_ctx, variables, std::move(stg), t, &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
 
     auto c0_offset = map.at(c0).value_offset();

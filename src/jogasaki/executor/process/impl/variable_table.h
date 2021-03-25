@@ -19,7 +19,6 @@
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/executor/process/impl/variable_value_map.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 
 namespace jogasaki::executor::process::impl {
@@ -49,15 +48,14 @@ public:
     [[nodiscard]] data::small_record_store& store() const noexcept;
 
     /**
-     * @brief accessor to variable value map
-     */
-    [[nodiscard]] variable_value_map const& value_map() const noexcept;
-
-    /**
      * @brief accessor to metadata of variable store
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
+    /**
+     * @brief accessor to variable table info
+     */
+    [[nodiscard]] variable_table_info const& info() const noexcept;
 private:
     variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};

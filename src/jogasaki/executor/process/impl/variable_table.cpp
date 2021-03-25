@@ -28,12 +28,12 @@ data::small_record_store& variable_table::store() const noexcept {
     return *store_;
 }
 
-variable_value_map const& variable_table::value_map() const noexcept {
-    return info_->value_map();
-}
-
 maybe_shared_ptr<meta::record_meta> const& variable_table::meta() const noexcept {
     return info_->meta();
+}
+
+variable_table_info const& variable_table::info() const noexcept {
+    return *info_;
 }
 
 }

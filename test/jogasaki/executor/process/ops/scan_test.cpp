@@ -254,7 +254,7 @@ TEST_F(scan_test, simple) {
     scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
 
     auto c0_offset = map.at(c0).value_offset();
@@ -450,7 +450,7 @@ TEST_F(scan_test, nullable_fields) {
     scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
 
     auto c0_offset = map.at(c0).value_offset();
@@ -697,7 +697,7 @@ TEST_F(scan_test, scan_info) {
     scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
 
     auto c0_offset = map.at(c0).value_offset();

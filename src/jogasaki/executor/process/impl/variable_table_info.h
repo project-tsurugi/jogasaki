@@ -16,6 +16,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/relation/expression.h>
@@ -23,7 +24,6 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>
-#include "variable_value_map.h"
 
 namespace jogasaki::executor::process::impl {
 
@@ -31,11 +31,52 @@ using takatori::util::maybe_shared_ptr;
 namespace relation = takatori::relation;
 
 /**
+ * @brief value location information
+ */
+class value_info {
+public:
+    /**
+     * @brief create empty info
+     */
+    constexpr value_info() = default;
+
+    /**
+     * @brief create new object
+     * @param value_offset offset of the value
+     * @param nullity_offset nullity offset of the value
+     */
+    constexpr value_info(
+        std::size_t value_offset,
+        std::size_t nullity_offset
+    ) noexcept :
+        value_offset_(value_offset),
+        nullity_offset_(nullity_offset)
+    {}
+
+    /**
+     * @brief value offset getter for the value
+     * @return value offset
+     */
+    [[nodiscard]] std::size_t value_offset() const noexcept;
+
+    /**
+     * @brief nullity offset getter for the value
+     * @return nullity offset
+     */
+    [[nodiscard]] std::size_t nullity_offset() const noexcept;
+
+private:
+    std::size_t value_offset_{};
+    std::size_t nullity_offset_{};
+};
+
+/**
  * @brief information on variable table
  */
 class variable_table_info {
 public:
     using variable = takatori::descriptor::variable;
+    using entity_type = std::unordered_map<variable, value_info>;
     using variable_indices = std::unordered_map<variable, std::size_t>;
 
     /**
@@ -51,7 +92,7 @@ public:
      * Constructor below is more convenient if meta and variable indices are available.
      */
     variable_table_info(
-        variable_value_map value_map,
+        entity_type map,
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
 
@@ -66,9 +107,19 @@ public:
     ) noexcept;
 
     /**
-     * @brief accessor to variable value map
+     * @brief getter for value location info. for the given variable
+     * @param var the variable descriptor
+     * @return value_info for the variable
      */
-    [[nodiscard]] variable_value_map const& value_map() const noexcept;
+    [[nodiscard]] value_info const& at(variable const& var) const;
+
+    /**
+     * @brief returns if the value exists for the given variable
+     * @param var the variable descriptor
+     * @return true if this object contains the variable
+     * @return false otherwise
+     */
+    [[nodiscard]] bool exists(variable const& var) const;
 
     /**
      * @brief accessor to metadata of variable store
@@ -76,7 +127,7 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
-    variable_value_map value_map_{};
+    entity_type map_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
 };
 

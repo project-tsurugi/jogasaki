@@ -319,7 +319,7 @@ public:
         stack_type& stack,
         memory_resource*
     ) {
-        auto& info = variables_.value_map().at(arg.variable());
+        auto& info = variables_.info().at(arg.variable());
         auto ref = variables_.store().ref();
         using t = takatori::type::type_kind;
         auto& type = info_.type_of(arg);

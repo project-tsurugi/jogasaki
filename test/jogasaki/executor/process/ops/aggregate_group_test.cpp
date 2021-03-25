@@ -252,7 +252,7 @@ TEST_F(aggregate_group_test, simple) {
     };
 
     auto vars_ref = variables.store().ref();
-    auto map = variables.value_map();
+    auto& map = variables.info();
     auto vars_meta = variables.meta();
     std::size_t called = 0;
     downstream->body([&](){

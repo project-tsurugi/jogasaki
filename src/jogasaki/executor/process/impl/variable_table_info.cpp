@@ -24,51 +24,62 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/validation.h>
-#include "variable_value_map.h"
 
 namespace jogasaki::executor::process::impl {
 
 using takatori::util::fail;
 
+std::size_t value_info::value_offset() const noexcept {
+    return value_offset_;
+}
+
+std::size_t value_info::nullity_offset() const noexcept {
+    return nullity_offset_;
+}
+
 variable_table_info::variable_table_info(
-    variable_value_map value_map,
+    variable_table_info::entity_type map,
     maybe_shared_ptr<meta::record_meta> meta
 ) noexcept :
-    value_map_(std::move(value_map)),
+    map_(std::move(map)),
     meta_(std::move(meta))
 {
     // currently assuming any stream variables are nullable for now
     utils::assert_all_fields_nullable(*meta_);
 }
 
-variable_value_map from_indices(
+variable_table_info::entity_type from_indices(
     variable_table_info::variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> const& meta
 ) {
-    variable_value_map::entity_type map{};
+    variable_table_info::entity_type map{};
     for(auto&& [v, i] : indices) {
         map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
     }
-    return variable_value_map{std::move(map)};
+    return map;
 }
 
 variable_table_info::variable_table_info(
     variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> meta
 ) noexcept :
-    value_map_(from_indices(indices, meta)),
+    map_(from_indices(indices, meta)),
     meta_(std::move(meta))
 {
     // currently assuming any stream variables are nullable for now
     utils::assert_all_fields_nullable(*meta_);
 }
 
-variable_value_map const& variable_table_info::value_map() const noexcept {
-    return value_map_;
-}
-
 maybe_shared_ptr<meta::record_meta> const& variable_table_info::meta() const noexcept {
     return meta_;
+}
+
+value_info const& variable_table_info::at(variable_table_info::variable const& var) const {
+    return map_.at(var);
+}
+
+bool variable_table_info::exists(variable_table_info::variable const& var) const {
+    return map_.count(var) != 0;
 }
 
 std::pair<variables_info_list, block_indices> create_block_variables_definition(

@@ -220,16 +220,16 @@ std::vector<details::write_partial_field> write_partial::create_fields(
                 fail(); // TODO update by non-unique keys
             }
             auto&& var = key_dest_to_src.at(kc);
-            std::size_t source_offset{block.value_map().at(var).value_offset()};
-            std::size_t source_nullity_offset{block.value_map().at(var).nullity_offset()};
+            std::size_t source_offset{block.at(var).value_offset()};
+            std::size_t source_nullity_offset{block.at(var).nullity_offset()};
             bool updated = false;
             std::size_t update_source_offset{npos};
             std::size_t update_source_nullity_offset{npos};
             if (column_dest_to_src.count(kc) != 0) {
                 updated = true;
                 auto&& src = column_dest_to_src.at(kc);
-                update_source_offset = block.value_map().at(src).value_offset();
-                update_source_nullity_offset = block.value_map().at(src).nullity_offset();
+                update_source_offset = block.at(src).value_offset();
+                update_source_nullity_offset = block.at(src).nullity_offset();
             }
             ret.emplace_back(
                 t,
@@ -259,8 +259,8 @@ std::vector<details::write_partial_field> write_partial::create_fields(
         if (column_dest_to_src.count(b) != 0) {
             updated = true;
             auto&& src = column_dest_to_src.at(b);
-            update_source_offset = block.value_map().at(src).value_offset();
-            update_source_nullity_offset = block.value_map().at(src).nullity_offset();
+            update_source_offset = block.at(src).value_offset();
+            update_source_nullity_offset = block.at(src).nullity_offset();
         }
         ret.emplace_back(
             t,

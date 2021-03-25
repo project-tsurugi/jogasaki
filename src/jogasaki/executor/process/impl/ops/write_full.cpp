@@ -170,8 +170,8 @@ std::vector<details::write_full_field> write_full::create_fields(
             auto&& var = table_to_stream.at(kc);
             ret.emplace_back(
                 t,
-                block.value_map().at(var).value_offset(),
-                block.value_map().at(var).nullity_offset(),
+                block.at(var).value_offset(),
+                block.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -196,8 +196,8 @@ std::vector<details::write_full_field> write_full::create_fields(
         auto&& var = table_to_stream.at(b);
         ret.emplace_back(
             t,
-            block.value_map().at(var).value_offset(),
-            block.value_map().at(var).nullity_offset(),
+            block.at(var).value_offset(),
+            block.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );

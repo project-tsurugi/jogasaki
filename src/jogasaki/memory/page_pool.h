@@ -142,6 +142,9 @@ private:
             if (int node = numa_node_of_cpu(cpu); node >= 0) {
                 return node;
             }
+            // WSL2 uses kernel with no numa support and -1 is returned from numa_node_of_cpu()
+            // Treat as a single node.
+            return 0;
         }
         std::abort();
     }

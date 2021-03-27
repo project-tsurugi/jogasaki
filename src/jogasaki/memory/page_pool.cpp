@@ -18,7 +18,12 @@
 namespace jogasaki::memory {
 
 memory::page_pool::page_pool() {
-    free_pages_vector_.resize(numa_num_configured_nodes());
+    auto nodes = numa_num_configured_nodes();
+    if (nodes == 0) {
+        // WSL2 uses kernel with no numa support and 0 is returned. Treat as a single node.
+        nodes = 1;
+    }
+    free_pages_vector_.resize(nodes);
 }
 
 memory::page_pool::~page_pool() {

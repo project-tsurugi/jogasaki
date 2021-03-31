@@ -23,6 +23,7 @@
 #include <sched.h>
 
 #include <boost/container/pmr/memory_resource.hpp>
+#include <tbb/concurrent_queue.h>
 
 #include <jogasaki/utils/interference_size.h>
 
@@ -134,8 +135,8 @@ public:
     void release_page(page_info page) noexcept;
 
 private:
-    std::vector<std::vector<void *>> free_pages_vector_{};
-    std::mutex page_mtx_{};
+    using free_pages_type = tbb::concurrent_queue<void*>;
+    std::vector<free_pages_type> free_pages_vector_{};
 
     std::size_t node_num() {
         if(int cpu = sched_getcpu(); cpu >= 0) {
@@ -148,10 +149,10 @@ private:
         }
         std::abort();
     }
-    std::vector<void *>& get_free_pages() {
+    free_pages_type& get_free_pages() {
         return free_pages_vector_.at(node_num());
     }
-    std::vector<void *>& get_free_pages(std::size_t node) {
+    free_pages_type& get_free_pages(std::size_t node) {
         return free_pages_vector_.at(node);
     }
 

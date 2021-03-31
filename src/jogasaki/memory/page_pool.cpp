@@ -28,8 +28,8 @@ memory::page_pool::page_pool() {
 
 memory::page_pool::~page_pool() {
     for (const auto& free_pages_ : free_pages_vector_) {
-        for (const auto& c : free_pages_) {
-            if (munmap(c, page_size) < 0) {
+        for (auto b = free_pages_.unsafe_begin(), e = free_pages_.unsafe_end(); b != e; ++b) {
+            if (munmap(*b, page_size) < 0) {
                 std::abort();
             }
         }
@@ -40,11 +40,8 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
     void* page;
     std::size_t node = node_num();
     if (!brandnew) {
-        auto& free_pages_ = get_free_pages(node);
-        std::lock_guard<std::mutex> lock(page_mtx_);
-        if (!free_pages_.empty()) {
-            page = free_pages_.back();
-            free_pages_.pop_back();
+        auto& free_pages = get_free_pages(node);
+        if(free_pages.try_pop(page)) {
             return page_info(page, node);
         }
     }
@@ -61,11 +58,8 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
 }
 
 void page_pool::release_page(page_info page) noexcept {
-    auto& free_pages_ = get_free_pages(page.birth_place());
-    {
-        std::lock_guard<std::mutex> lock(page_mtx_);
-        free_pages_.emplace_back(page.address());
-    }
+    auto& free_pages = get_free_pages(page.birth_place());
+    free_pages.push(page.address());
 }
 
 }

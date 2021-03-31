@@ -26,10 +26,8 @@
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/plan/prepared_statement.h>
 #include <jogasaki/plan/parameter_set.h>
-
-#include "compiler_context.h"
+#include <jogasaki/plan/compiler_context.h>
 
 namespace jogasaki::plan {
 

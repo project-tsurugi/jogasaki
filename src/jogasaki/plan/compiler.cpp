@@ -23,7 +23,6 @@
 #include <shakujo/parser/Parser.h>
 #include <shakujo/common/core/Type.h>
 
-#include <yugawara/storage/configurable_provider.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/runtime_feature.h>
@@ -32,31 +31,18 @@
 
 #include <mizugaki/translator/shakujo_translator.h>
 
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/filter.h>
-#include <takatori/relation/project.h>
 #include <takatori/statement/write.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
 #include <takatori/plan/group.h>
 #include <takatori/plan/aggregate.h>
-#include <takatori/serializer/json_printer.h>
-#include <takatori/statement/statement_kind.h>
 #include <takatori/plan/graph.h>
 #include <takatori/plan/forward.h>
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
-#include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/exchange/group/step.h>
@@ -67,7 +53,6 @@
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
-#include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/plan/parameter_set.h>
@@ -101,7 +86,7 @@ std::shared_ptr<plan::prepared_statement> prepare(std::string_view sql) {
         LOG(ERROR) << "parse error:" << e.message() << " (" << e.region() << ")";
     }
     return std::make_shared<plan::prepared_statement>(std::move(program));
-};
+}
 
 executor::process::step create(
     takatori::plan::process const& process,

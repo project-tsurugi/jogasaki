@@ -270,13 +270,12 @@ public:
         if (current == new_state) {
             return;
         }
-        std::stringstream ss{};
-        ss << v;
-        ss << " state ";
-        ss << to_string_view(current);
-        ss << " -> ";
-        ss << to_string_view(new_state);
-        DVLOG(1) << ss.str();
+        DVLOG(1) <<
+            v <<
+            " state " <<
+            to_string_view(current) <<
+            " -> " <<
+            to_string_view(new_state);
 
         current = new_state;
         on_state_change(v);

@@ -49,6 +49,7 @@ using ::takatori::util::enum_tag_t;
         case t::time_point: takatori::util::fail();
         case t::datetime_interval: return meta::field_type(takatori::util::enum_tag<k::time_interval>);
 
+        case t::octet:
         case t::array:
         case t::record:
         case t::unknown:

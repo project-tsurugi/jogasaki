@@ -241,7 +241,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "WAREHOUSE0",
+            "WAREHOUSE",
             {
                 t->columns()[0],
             },
@@ -290,7 +290,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "DISTRICT0",
+            "DISTRICT",
             {
                 t->columns()[1],
                 t->columns()[0],
@@ -361,7 +361,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "CUSTOMER0",
+            "CUSTOMER",
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -410,7 +410,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "CUSTOMER_SECONDARY0",
+            "CUSTOMER_SECONDARY",
             {
                 t->columns()[1],
                 t->columns()[0],
@@ -439,7 +439,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "NEW_ORDER0",
+            "NEW_ORDER",
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -476,7 +476,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "ORDERS0",
+            "ORDERS",
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -510,7 +510,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "ORDERS_SECONDARY0",
+            "ORDERS_SECONDARY",
             {
                 t->columns()[1],
                 t->columns()[0],
@@ -551,7 +551,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "ORDER_LINE0",
+            "ORDER_LINE",
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -589,7 +589,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "ITEM0",
+            "ITEM",
             {
                 t->columns()[0],
             },
@@ -646,7 +646,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         });
         auto i = provider.add_index({
             t,
-            "STOCK0",
+            "STOCK",
             {
                 t->columns()[1],
                 t->columns()[0],

@@ -59,8 +59,8 @@ static int run(std::string_view sql) {
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER", 10, true, 5);
 
     std::unique_ptr<api::executable_statement> e{};
     if(auto rc = db->create_executable(sql, e); rc != status::ok) {

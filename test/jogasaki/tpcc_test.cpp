@@ -57,16 +57,16 @@ public:
         auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
         add_benchmark_tables(*db_impl->tables());
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM0", 3, true, 5);
-        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK0", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "DISTRICT", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER_SECONDARY", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "NEW_ORDER", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDERS_SECONDARY", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ORDER_LINE", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "ITEM", 3, true, 5);
+        utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "STOCK", 3, true, 5);
     }
 
     void TearDown() {

@@ -140,7 +140,7 @@ public:
             kvs::stream s{buf.data(), buf.size()};
             std::size_t i = 0;
             for(auto&& k : keys) {
-                expression::evaluator eval{k.value(), info.compiled_info()};
+                expression::evaluator eval{k.value(), info.compiled_info(), info.host_variables()};
                 auto res = eval(vars, &resource);
                 auto spec = index_keys[i].direction() == relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending: kvs::spec_key_descending;

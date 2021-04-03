@@ -36,6 +36,10 @@ variable_table_info const& variable_table::info() const noexcept {
     return *info_;
 }
 
+variable_table::operator bool() const noexcept {
+    return info_ != nullptr;
+}
+
 }
 
 

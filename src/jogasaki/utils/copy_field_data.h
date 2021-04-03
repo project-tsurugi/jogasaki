@@ -17,6 +17,7 @@
 
 #include <cstddef>
 
+#include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/memory/paged_memory_resource.h>
@@ -62,6 +63,42 @@ void copy_nullable_field(
     accessor::record_ref source,
     std::size_t source_offset,
     std::size_t source_nullity_offset,
+    memory::paged_memory_resource* resource = nullptr
+);
+
+/**
+ * @brief copy non-nullable record field data from any
+ * @param type type of the field being copied
+ * @param target target record reference
+ * @param target_offset byte offset of the target field in the target record
+ * @param source source field value contained in any
+ * @param resource memory resource optionally used to allocate varlen data on the target. Pass nullptr if no new
+ * allocation is needed and the target still references the same varlen buffer as source.
+ */
+void copy_field(
+    meta::field_type const& type,
+    accessor::record_ref target,
+    std::size_t target_offset,
+    executor::process::impl::expression::any const& source,
+    memory::paged_memory_resource* resource = nullptr
+);
+
+/**
+ * @brief copy nullable record field data with given type
+ * @param type type of the field being copied
+ * @param target target record reference
+ * @param target_offset byte offset of the target field in the target record
+ * @param target_nullity_offset nullity bit offset of the target field
+ * @param source source field value contained in any
+ * @param resource memory resource optionally used to allocate varlen data on the target. Pass nullptr if no new
+ * allocation is needed and the target still references the same varlen buffer as source.
+ */
+void copy_nullable_field(
+    meta::field_type const& type,
+    accessor::record_ref target,
+    std::size_t target_offset,
+    std::size_t target_nullity_offset,
+    executor::process::impl::expression::any const& source,
     memory::paged_memory_resource* resource = nullptr
 );
 

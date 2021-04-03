@@ -39,7 +39,7 @@ project::project(
     downstream_(std::move(downstream))
 {
     for(auto&& c: columns) {
-        evaluators_.emplace_back(c.value(), info.compiled_info());
+        evaluators_.emplace_back(c.value(), info.compiled_info(), info.host_variables());
         variables_.emplace_back(c.variable());
     }
 }

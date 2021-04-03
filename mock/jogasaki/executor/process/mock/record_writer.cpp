@@ -32,6 +32,7 @@ basic_record_writer::basic_record_writer(
     records_(resource),
     capacity_(capacity)
 {
+    BOOST_ASSERT(capacity_ > 0);  //NOLINT
     records_.reserve(capacity);
 }
 

@@ -15,6 +15,7 @@
  */
 #include "database.h"
 
+#include <takatori/util/fail.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -35,8 +36,9 @@
 #include <memory>
 #include <takatori/serializer/json_printer.h>
 
-
 namespace jogasaki::api::impl {
+
+using takatori::util::fail;
 
 std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
@@ -124,6 +126,18 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
+status database::register_variable(std::string_view name, field_type_kind kind) {
+    switch(kind) {
+        case field_type_kind::int4: host_variables_->add({name, takatori::type::int4{}}, true); break;
+        case field_type_kind::int8: host_variables_->add({name, takatori::type::int8{}}, true); break;
+        case field_type_kind::float4: host_variables_->add({name, takatori::type::float4{}}, true); break;
+        case field_type_kind::float8: host_variables_->add({name, takatori::type::float8{}}, true); break;
+        case field_type_kind::character: host_variables_->add({name, takatori::type::character{takatori::type::varying}}, true); break;
+        default: fail();
+    }
+    return status::ok;
+}
+
 status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
@@ -193,7 +207,7 @@ status database::resolve(
 status database::explain(api::executable_statement const& executable, std::ostream& out) {
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
     r->compiled_info().object_scanner()(
-        r->statement(),
+        *r->statement(),
         takatori::serializer::json_printer{ out }
     );
     return status::ok;

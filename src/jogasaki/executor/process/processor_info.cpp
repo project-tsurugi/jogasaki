@@ -55,11 +55,13 @@ bool processor_details::has_write_operations() const noexcept {
 
 processor_info::processor_info(
     relation::graph_type const& relations,
-    yugawara::compiled_info info
+    yugawara::compiled_info info,
+    variable_table const* host_variables
 ) :
     relations_(std::addressof(relations)),
     info_(std::move(info)),
-    details_(create_details())
+    details_(create_details()),
+    host_variables_(host_variables)
 {
     auto&& p = impl::create_block_variables_definition(*relations_, info_);
     vars_info_list_ = std::move(p.first);

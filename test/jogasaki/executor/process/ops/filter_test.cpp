@@ -201,6 +201,9 @@ TEST_F(filter_test, simple) {
     vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
     vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 11);
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 10);
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
+    vars_ref.set_null(map.at(c1).nullity_offset(), false);
+    vars_ref.set_null(map.at(c2).nullity_offset(), false);
 
     bool called = false;
     downstream->body([&]() {
@@ -213,6 +216,9 @@ TEST_F(filter_test, simple) {
     vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 2);
     vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 20);
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 22);
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
+    vars_ref.set_null(map.at(c1).nullity_offset(), false);
+    vars_ref.set_null(map.at(c2).nullity_offset(), false);
     s(ctx);
     ASSERT_FALSE(called);
 }

@@ -15,11 +15,16 @@
  */
 #pragma once
 
-#include <mizugaki/placeholder_map.h>
+#include <unordered_map>
+
+#include <takatori/util/optional_ptr.h>
 
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/plan/parameter_entry.h>
 
 namespace jogasaki::plan {
+
+using takatori::util::optional_ptr;
 
 /**
  * @brief parameters for place holders
@@ -27,6 +32,9 @@ namespace jogasaki::plan {
 class parameter_set {
 public:
     using kind = meta::field_type_kind;
+
+    /// @brief the entry type.
+    using entry_type = parameter_entry;
 
     /**
      * @brief create new object
@@ -61,13 +69,21 @@ public:
     void set_null(std::string_view name);
 
     /**
-     * @brief accessor to the placeholder map
-     * @return the placeholder map held by this object
+     * @brief return the number of entries held by this object
      */
-    [[nodiscard]] mizugaki::placeholder_map const& map() const noexcept;
+    [[nodiscard]] std::size_t size() const noexcept;
+
+    /**
+     * @brief find the entry by name
+     * @param name the name used to search
+     * @return the found entry, or null
+     */
+    [[nodiscard]] optional_ptr<entry_type const> find(std::string_view name) const;
 
 private:
-    mizugaki::placeholder_map map_{};
+    std::unordered_map<std::string, entry_type> map_{};
+
+    void add(std::string name, entry_type entry);
 };
 
 }

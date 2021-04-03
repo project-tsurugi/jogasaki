@@ -35,7 +35,7 @@ using yugawara::compiled_info;
 
 // for testing
 namespace impl {
-[[nodiscard]] executor::process::step create(takatori::plan::process const& process, compiled_info const& info);
+[[nodiscard]] executor::process::step create(takatori::plan::process const& process, compiled_info const& info, variable_table const* host_variables);
 [[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, compiled_info const& info);
 [[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, compiled_info const& info);
 [[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiled_info const& info);

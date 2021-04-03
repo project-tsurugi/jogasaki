@@ -197,7 +197,7 @@ public:
         condition_(std::move(condition)),
         downstream_(std::move(downstream)),
         evaluator_(condition_ ?
-            expression::evaluator{*condition_, info.compiled_info()} :
+            expression::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
             expression::evaluator{}
         )
     {}

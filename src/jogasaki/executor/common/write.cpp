@@ -25,6 +25,7 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/data/aligned_buffer.h>
 
@@ -55,13 +56,14 @@ write::write(
     sequence_view<column const> columns,
     takatori::tree::tree_fragment_vector<tuple> const& tuples,
     memory::lifo_paged_memory_resource& resource,
-    compiled_info const& info
+    compiled_info const& info,
+    executor::process::impl::variable_table const* host_variables
 ) noexcept:
     write(
         kind,
         storage_name,
-        create_tuples(idx, columns, tuples, info, resource, true),
-        create_tuples(idx, columns, tuples, info, resource, false)
+        create_tuples(idx, columns, tuples, info, resource, host_variables, true),
+        create_tuples(idx, columns, tuples, info, resource, host_variables, false)
     )
 {}
 
@@ -106,11 +108,11 @@ std::size_t encode_tuple(
     std::vector<details::write_field> const& fields,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
-    data::aligned_buffer& buf
+    data::aligned_buffer& buf,
+    executor::process::impl::variable_table const* host_variables
 ) {
     BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
     auto cp = resource.get_checkpoint();
-    executor::process::impl::variable_table variables{};
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
@@ -123,8 +125,9 @@ std::size_t encode_tuple(
                 }
                 kvs::encode_nullable({}, f.type_, f.spec_, s);
             } else {
-                evaluator eval{t.elements()[f.index_], info};
-                auto res = eval(variables, &resource);
+                evaluator eval{t.elements()[f.index_], info, host_variables};
+                process::impl::variable_table empty{};
+                auto res = eval(empty, &resource);
 
                 if (f.nullable_) {
                     kvs::encode_nullable(res, f.type_, f.spec_, s);
@@ -150,6 +153,7 @@ std::vector<details::write_tuple> write::create_tuples(
     takatori::tree::tree_fragment_vector<tuple> const& tuples,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
+    executor::process::impl::variable_table const* host_variables,
     bool key
 ) {
     std::vector<details::write_tuple> ret{};
@@ -196,7 +200,7 @@ std::vector<details::write_tuple> write::create_tuples(
     }
     data::aligned_buffer buf{};
     for(auto&& tuple: tuples) {
-        auto sz = encode_tuple(tuple, fields, info, resource, buf);
+        auto sz = encode_tuple(tuple, fields, info, resource, buf, host_variables);
         std::string_view sv{static_cast<char*>(buf.data()), sz};
         ret.emplace_back(sv);
     }

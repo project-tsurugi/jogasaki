@@ -36,7 +36,7 @@ filter::filter(
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
-    evaluator_(expression, info.compiled_info()),
+    evaluator_(expression, info.compiled_info(), info.host_variables()),
     downstream_(std::move(downstream))
 {}
 

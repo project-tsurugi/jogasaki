@@ -15,11 +15,13 @@
  */
 #pragma once
 
-#include <shakujo/model/program/Program.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/statement/statement.h>
+#include <yugawara/compiled_info.h>
 
 namespace jogasaki::plan {
 
-using ::shakujo::model::program::Program;
+using ::takatori::util::maybe_shared_ptr;
 
 /**
  * @brief prepared statement
@@ -43,18 +45,26 @@ public:
 
     /**
      * @brief create new object
-     * @param program the result from shakujo parser
      */
-    explicit prepared_statement(std::unique_ptr<Program> program) noexcept;
+    prepared_statement(
+        maybe_shared_ptr<::takatori::statement::statement> statement,
+        yugawara::compiled_info compiled_info
+    ) noexcept :
+        statement_(std::move(statement)),
+        compiled_info_(std::move(compiled_info))
+    {}
 
-    /**
-     * @brief accessor to the stored program
-     * @return the shakujo Program held by this object
-     */
-    [[nodiscard]] std::unique_ptr<Program> const& program() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept {
+        return statement_;
+    }
+
+    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept {
+        return compiled_info_;
+    }
 
 private:
-    std::unique_ptr<Program> program_{};
+    maybe_shared_ptr<::takatori::statement::statement> statement_{};
+    yugawara::compiled_info compiled_info_{};
 };
 
 }

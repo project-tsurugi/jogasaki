@@ -15,78 +15,78 @@
  */
 #include "parameter_set.h"
 
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/type/unknown.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
-#include <takatori/value/unknown.h>
-#include <takatori/value/unknown_kind.h>
-
-#include <jogasaki/accessor/text.h>
-
 namespace jogasaki::plan {
 
 using kind = meta::field_type_kind;
+using takatori::util::enum_tag;
 
 void parameter_set::set_int4(std::string_view name, runtime_t<kind::int4> value) {
-    map_.add(std::string(name),
+    add(std::string(name),
         {
-            takatori::type::int4(),
-            takatori::value::int4(value),
+            meta::field_type{enum_tag<kind::int4>},
+            any{std::in_place_type<runtime_t<kind::int4>>, value}
         }
     );
 }
 
 void parameter_set::set_int8(std::string_view name, runtime_t<kind::int8> value) {
-    map_.add(std::string(name),
+    add(std::string(name),
         {
-            takatori::type::int8(),
-            takatori::value::int8(value),
+            meta::field_type{enum_tag<kind::int8>},
+            any{std::in_place_type<runtime_t<kind::int8>>, value}
         }
     );
 }
 
 void parameter_set::set_float4(std::string_view name, runtime_t<kind::float4> value) {
-    map_.add(std::string(name),
+    add(std::string(name),
         {
-            takatori::type::float4(),
-            takatori::value::float4(value),
+            meta::field_type{enum_tag<kind::float4>},
+            any{std::in_place_type<runtime_t<kind::float4>>, value}
         }
     );
 }
 
 void parameter_set::set_float8(std::string_view name, runtime_t<kind::float8> value) {
-    map_.add(std::string(name),
+    add(std::string(name),
         {
-            takatori::type::float8(),
-            takatori::value::float8(value),
+            meta::field_type{enum_tag<kind::float8>},
+            any{std::in_place_type<runtime_t<kind::float8>>, value}
         }
     );
 }
 
 void parameter_set::set_character(std::string_view name, runtime_t<kind::character> value) {
-    map_.add(std::string(name),
+    add(std::string(name),
         {
-            takatori::type::character(takatori::type::varying),
-            takatori::value::character(static_cast<std::string_view>(value)),
+            meta::field_type{enum_tag<kind::character>},
+            any{std::in_place_type<runtime_t<kind::character>>, value}
         }
     );
 }
 
 void parameter_set::set_null(std::string_view name) {
-    map_.add(std::string(name),
+    add(std::string(name),
         {
-            takatori::type::unknown(),
-            takatori::value::unknown(takatori::value::unknown_kind::null),
+            meta::field_type{enum_tag<kind::undefined>},
+            any{}
         }
     );
 }
 
-mizugaki::placeholder_map const& parameter_set::map() const noexcept {
-    return map_;
+optional_ptr<parameter_set::entry_type const> parameter_set::find(std::string_view name) const {
+    if (map_.count(std::string(name)) != 0) {
+        return map_.at(std::string(name));
+    }
+    return {};
+}
+
+std::size_t parameter_set::size() const noexcept {
+    return map_.size();
+}
+
+void parameter_set::add(std::string name, parameter_set::entry_type entry) {
+    map_.insert_or_assign(std::move(name), std::move(entry));
 }
 
 }

@@ -20,6 +20,7 @@
 
 #include <jogasaki/test_utils.h>
 #include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/api/field_type_kind.h>
 
 namespace jogasaki::testing {
 
@@ -37,15 +38,16 @@ TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
     auto db = api::create_database();
     db->start();
+    db->register_variable("p0", api::field_type_kind::int8);
+    db->register_variable("p1", api::field_type_kind::float8);
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok, db->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
-
+    ASSERT_EQ(status::ok, db->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", prepared));
     {
         auto tx = db->create_transaction();
         for(std::size_t i=0; i < 2; ++i) {
             auto ps = api::create_parameter_set();
-            ps->set_int8("p1", i);
-            ps->set_float8("p2", 10.0*i);
+            ps->set_int8("p0", i);
+            ps->set_float8("p1", 10.0*i);
             std::unique_ptr<api::executable_statement> exec{};
             ASSERT_EQ(status::ok,db->resolve(*prepared, *ps, exec));
             ASSERT_EQ(status::ok,tx->execute(*exec));
@@ -56,7 +58,7 @@ TEST_F(database_test, simple) {
     {
         auto tx = db->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db->create_executable("select * from T0", exec));
+        ASSERT_EQ(status::ok,db->create_executable("select * from T0 order by C0", exec));
         db->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
@@ -71,6 +73,38 @@ TEST_F(database_test, simple) {
         }
         EXPECT_EQ(2, count);
         tx->commit();
+    }
+    {
+        // reuse prepared statement
+        std::unique_ptr<api::prepared_statement> prep{};
+        ASSERT_EQ(status::ok,db->prepare("select * from T0 where C0 = :p0", prep));
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 0);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db->resolve(*prep, *ps, exec));
+        db->explain(*exec, std::cout);
+        auto f = [&]() {
+            auto tx = db->create_transaction();
+            std::unique_ptr<api::result_set> rs{};
+            ASSERT_EQ(status::ok,tx->execute(*exec, rs));
+            auto it = rs->iterator();
+            std::size_t count = 0;
+            while(it->has_next()) {
+                std::stringstream ss{};
+                auto* record = it->next();
+                ss << *record;
+                LOG(INFO) << ss.str();
+                ++count;
+            }
+            EXPECT_EQ(1, count);
+            tx->commit();
+        };
+        f();
+        ps->set_int8("p0", 1);
+        ASSERT_EQ(status::ok,db->resolve(*prep, *ps, exec));
+        prep.reset();
+        ps.reset();
+        f();
     }
     db->stop();
 }

@@ -315,7 +315,7 @@ std::vector<details::join_find_key_field> join_find::create_key_fields(
             t,
             k.column().criteria().nullity().nullable(),
             spec,
-            expression::evaluator{*exp, info.compiled_info()}
+            expression::evaluator{*exp, info.compiled_info(), info.host_variables()}
         );
     }
     return ret;

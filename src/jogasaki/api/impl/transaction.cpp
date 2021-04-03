@@ -58,7 +58,7 @@ status transaction::execute(
         store.get()
     );
     if (e->is_execute()) {
-        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators());
+        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         g.context(*request_ctx);
         scheduler_.schedule(*stmt, *request_ctx);
@@ -69,7 +69,7 @@ status transaction::execute(
         request_ctx->channel()->close();
         return request_ctx->status_code();
     }
-    auto* stmt = unsafe_downcast<executor::common::write>(e->operators());
+    auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
     scheduler_.schedule(*stmt, *request_ctx);
     request_ctx->channel()->close();
     return request_ctx->status_code();

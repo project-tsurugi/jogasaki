@@ -15,42 +15,49 @@
  */
 #include "executable_statement.h"
 
-#include <cstddef>
-#include <functional>
-
-#include <takatori/util/object_creator.h>
 #include <yugawara/compiler_result.h>
 
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/model/graph.h>
 #include <jogasaki/model/statement.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::plan {
 
+bool executable_statement::is_execute() const noexcept {
+    return statement_ && statement_->kind() == takatori::statement::statement_kind::execute;
+}
+
 executable_statement::executable_statement(
-    takatori::util::unique_object_ptr<::takatori::statement::statement> statement,
-    yugawara::compiled_info compiled_info, std::shared_ptr<model::statement> operators
+    maybe_shared_ptr<::takatori::statement::statement> statement,
+    yugawara::compiled_info compiled_info,
+    maybe_shared_ptr<model::statement> operators,
+    std::shared_ptr<variable_table_info> host_variable_info,
+    std::shared_ptr<variable_table> host_variables
 ) noexcept:
     statement_(std::move(statement)),
     compiled_info_(std::move(compiled_info)),
-    operators_(std::move(operators))
+    operators_(std::move(operators)),
+    host_variable_info_(std::move(host_variable_info)),
+    host_variables_(std::move(host_variables))
 {}
 
-::takatori::statement::statement const& executable_statement::statement() const noexcept {
-    return *statement_;
+maybe_shared_ptr<model::statement> const& executable_statement::operators() const noexcept {
+    return operators_;
+}
+
+maybe_shared_ptr<::takatori::statement::statement> const& executable_statement::statement() const noexcept {
+    return statement_;
 }
 
 yugawara::compiled_info const& executable_statement::compiled_info() const noexcept {
     return compiled_info_;
 }
 
-model::statement const* executable_statement::operators() const noexcept {
-    return operators_.get();
+std::shared_ptr<variable_table> const& executable_statement::host_variables() const noexcept {
+    return host_variables_;
 }
 
-bool executable_statement::is_execute() const noexcept {
-    return statement_ && statement_->kind() == takatori::statement::statement_kind::execute;
+std::shared_ptr<variable_table_info> const& executable_statement::host_variable_info() const noexcept {
+    return host_variable_info_;
 }
 
 }

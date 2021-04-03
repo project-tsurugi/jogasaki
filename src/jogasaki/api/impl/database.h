@@ -49,6 +49,8 @@ public:
 
     [[nodiscard]] status stop() override;
 
+    status register_variable(std::string_view name, field_type_kind kind) override;
+
     [[nodiscard]] status prepare(
         std::string_view sql,
         std::unique_ptr<api::prepared_statement>& statement

@@ -70,9 +70,16 @@ public:
             std::cout << std::endl;
         }
     }
-    void execute_query(std::string_view query, std::vector<mock::basic_record>& out) {
+    void execute_query(
+        std::string_view query,
+        api::parameter_set const& params,
+        std::vector<mock::basic_record>& out
+    ) {
+        std::unique_ptr<api::prepared_statement> prepared{};
+        ASSERT_EQ(status::ok,db_->prepare(query, prepared));
+
         std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
+        ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
         explain(*stmt);
         auto tx = db_->create_transaction();
         std::unique_ptr<api::result_set> rs{};
@@ -92,6 +99,13 @@ public:
         tx->commit();
     }
 
+    void execute_query(
+        std::string_view query,
+        std::vector<mock::basic_record>& out
+    ) {
+        api::impl::parameter_set params{};
+        execute_query(query, params, out);
+    }
     void execute_statement(std::string_view query) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
@@ -148,6 +162,8 @@ TEST_F(api_test, primary_key_violation) {
 }
 
 TEST_F(api_test, resolve_place_holder_with_null) {
+    db_->register_variable("p1", api::field_type_kind::int8);
+    db_->register_variable("p2", api::field_type_kind::float8);
     std::unique_ptr<api::prepared_statement> prepared{};
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
     {
@@ -198,4 +214,22 @@ TEST_F(api_test, select_update_delete_for_missing_record) {
     execute_statement("UPDATE T0 SET C1=1.0 WHERE C0=1");
 }
 
+TEST_F(api_test, resolve_host_variable) {
+    db_->register_variable("p0", api::field_type_kind::int8);
+
+    execute_statement( "DELETE FROM T0");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
+    auto ps = api::create_parameter_set();
+    ps->set_int8("p0", 1);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0", *ps, result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    ps->set_int8("p0", 4);
+    std::vector<mock::basic_record> result2{};
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0", *ps, result2);
+    ASSERT_EQ(0, result2.size());
+}
 }

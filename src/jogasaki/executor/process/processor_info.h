@@ -18,11 +18,13 @@
 #include <takatori/graph/graph.h>
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
-#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/plan/parameter_set.h>
 
 namespace jogasaki::executor::process {
 
 namespace relation = takatori::relation;
+using executor::process::impl::variable_table;
 
 class processor_details {
 public:
@@ -60,7 +62,8 @@ public:
 
     processor_info(
         relation::graph_type const& relations,
-        yugawara::compiled_info info
+        yugawara::compiled_info info,
+        variable_table const* host_variables = nullptr
     );
 
     [[nodiscard]] relation::graph_type const& relations() const noexcept;
@@ -73,12 +76,17 @@ public:
 
     [[nodiscard]] processor_details const& details() const noexcept;
 
+    [[nodiscard]] variable_table const* host_variables() const noexcept {
+        return host_variables_;
+    }
+
 private:
     relation::graph_type const* relations_{};
     yugawara::compiled_info info_{};
     impl::variables_info_list vars_info_list_{};
     impl::block_indices block_indices_{};
     processor_details details_{};
+    variable_table const* host_variables_{};
 
     processor_details create_details();
 };

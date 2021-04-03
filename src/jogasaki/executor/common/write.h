@@ -22,6 +22,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/data/aligned_buffer.h>
 
 namespace jogasaki::executor::common {
@@ -108,12 +109,14 @@ public:
         sequence_view<column const> columns,
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
         memory::lifo_paged_memory_resource& resource,
-        compiled_info const& info
+        compiled_info const& info,
+        executor::process::impl::variable_table const* host_variables
     ) noexcept;
 
     [[nodiscard]] model::statement_kind kind() const noexcept override;
 
     bool operator()(request_context& context) const;
+
 private:
     write_kind kind_{};
     std::string storage_name_{};
@@ -126,6 +129,7 @@ private:
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource,
+        executor::process::impl::variable_table const* host_variables,
         bool key
     );
 

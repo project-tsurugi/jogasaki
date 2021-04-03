@@ -20,6 +20,7 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
+#include <jogasaki/api/field_type_kind.h>
 
 namespace jogasaki::api {
 
@@ -71,6 +72,17 @@ public:
      * @return other code when error
      */
     virtual status stop() = 0;
+
+    /**
+     * @brief register host variable
+     * @param name the name of the host variable without colon
+     * @param kind type kind of the host variable
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @attention This is interim support. Future enhancement obsoletes this API. //TODO
+     */
+    virtual status register_variable(std::string_view name, field_type_kind kind) = 0;
 
     /**
      * @brief prepare sql statement and create prepared statement

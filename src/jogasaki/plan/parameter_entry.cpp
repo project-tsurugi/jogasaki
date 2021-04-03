@@ -13,8 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "prepared_statement.h"
+#include "parameter_entry.h"
+
+#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::plan {
 
+using executor::process::impl::expression::any;
+
+parameter_entry::parameter_entry(meta::field_type type, any value) :
+    type_(std::move(type)),
+    value_(std::move(value))
+{}
+
+meta::field_type const& parameter_entry::type() const noexcept {
+    return type_;
+}
+
+any const& parameter_entry::value() const noexcept {
+    return value_;
+}
 }

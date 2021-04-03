@@ -56,6 +56,12 @@ public:
      * @brief accessor to variable table info
      */
     [[nodiscard]] variable_table_info const& info() const noexcept;
+
+    /**
+     * @brief return whether the object is non-empty
+     */
+    [[nodiscard]] explicit operator bool() const noexcept;
+
 private:
     variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};

@@ -70,7 +70,7 @@ public:
         std::unique_ptr<operator_base> downstream = nullptr
     ) : cogroup_operator<Iterator>(index, info, block_index),
         kind_(kind),
-        evaluator_(create_evaluator(expression, info.compiled_info())),
+        evaluator_(create_evaluator(expression, info.compiled_info(), info.host_variables())),
         has_condition_(expression.has_value()),
         downstream_(std::move(downstream))
     {}
@@ -190,10 +190,11 @@ private:
 
     expression::evaluator create_evaluator(
         takatori::util::optional_ptr<takatori::scalar::expression const> expression,  //NOLINT
-        yugawara::compiled_info const& compiled_info
+        yugawara::compiled_info const& compiled_info,
+        variable_table const* host_variables
     ) {
         if (expression) {
-            return expression::evaluator(*expression, compiled_info);
+            return expression::evaluator(*expression, compiled_info, host_variables);
         }
         return {};
     }

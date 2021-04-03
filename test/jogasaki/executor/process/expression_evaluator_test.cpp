@@ -151,7 +151,9 @@ TEST_F(expression_evaluator_test, add_int8) {
 
     auto&& ref = vars.store().ref();
     ref.set_value<std::int64_t>(meta->value_offset(0), 10);
+    ref.set_null(meta->nullity_offset(0), false);
     ref.set_value<std::int64_t>(meta->value_offset(1), 20);
+    ref.set_null(meta->nullity_offset(1), false);
 
     auto result = ev(vars).to<std::int64_t>();
     ASSERT_EQ(30, result);
@@ -193,6 +195,8 @@ TEST_F(expression_evaluator_test, add_int4) {
     auto&& ref = vars.store().ref();
     ref.set_value<std::int32_t>(meta->value_offset(0), 10);
     ref.set_value<std::int32_t>(meta->value_offset(1), 20);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
 
     auto result = ev(vars).to<std::int32_t>();
     ASSERT_EQ(30, result);
@@ -234,6 +238,8 @@ TEST_F(expression_evaluator_test, add_float4) {
     auto&& ref = vars.store().ref();
     ref.set_value<float>(meta->value_offset(0), 10);
     ref.set_value<float>(meta->value_offset(1), 20);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
 
     auto result = ev(vars).to<float>();
     ASSERT_EQ(30, result);
@@ -275,6 +281,8 @@ TEST_F(expression_evaluator_test, add_double) {
     auto&& ref = vars.store().ref();
     ref.set_value<double>(meta->value_offset(0), 10);
     ref.set_value<double>(meta->value_offset(1), 20);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
 
     auto result = ev(vars).to<double>();
     ASSERT_EQ(30, result);
@@ -319,6 +327,8 @@ TEST_F(expression_evaluator_test, concat_text) {
     auto&& ref = vars.store().ref();
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
     ref.set_value<accessor::text>(meta->value_offset(1), accessor::text{&resource, "B23456789012345678901234567890"});
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
 
     auto result = ev(vars, &resource).to<accessor::text>();
     accessor::text exp{&resource, "A23456789012345678901234567890B23456789012345678901234567890"};
@@ -382,6 +392,8 @@ TEST_F(expression_evaluator_test, binary_expression) {
     auto&& ref = vars.store().ref();
     ref.set_value<std::int64_t>(meta->value_offset(0), 10);
     ref.set_value<std::int64_t>(meta->value_offset(1), 20);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
 
     auto result = ev(vars).to<std::int64_t>();
     ASSERT_EQ(-40, result);
@@ -457,6 +469,7 @@ TEST_F(expression_evaluator_test, text_length) {
     auto cp = resource.get_checkpoint();
     auto&& ref = vars.store().ref();
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
+    ref.set_null(meta->nullity_offset(0), false);
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
     auto result = ev(vars, &resource).to<std::int32_t>();
@@ -500,50 +513,74 @@ TEST_F(expression_evaluator_test, compare_int4) {
     auto&& ref = vars.store().ref();
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::less_equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 2);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::greater);
     ref.set_value<std::int32_t>(meta->value_offset(0), 2);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::greater_equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 2);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(comparison_operator::equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     expr.operator_kind(comparison_operator::not_equal);
     ASSERT_FALSE(ev(vars).to<bool>());
     expr.operator_kind(comparison_operator::equal);
     ref.set_value<std::int32_t>(meta->value_offset(0), 1);
     ref.set_value<std::int32_t>(meta->value_offset(1), 2);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
     expr.operator_kind(comparison_operator::not_equal);
     ASSERT_TRUE(ev(vars).to<bool>());
@@ -586,23 +623,35 @@ TEST_F(expression_evaluator_test, conditional_and) {
     auto&& ref = vars.store().ref();
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 0);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
 
     expr.operator_kind(binary_operator::conditional_or);
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 1);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 1);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_TRUE(ev(vars).to<bool>());
     ref.set_value<std::int8_t>(meta->value_offset(0), 0);
     ref.set_value<std::int8_t>(meta->value_offset(1), 0);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_null(meta->nullity_offset(1), false);
     ASSERT_FALSE(ev(vars).to<bool>());
 }
 

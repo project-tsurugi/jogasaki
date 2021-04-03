@@ -113,10 +113,12 @@ public:
 
     callback(
         executor::process::impl::variable_table& variables,
-        yugawara::compiled_info const& info
+        yugawara::compiled_info const& info,
+        executor::process::impl::variable_table const* host_variables
     ) noexcept :
         variables_(variables),
-        info_(info)
+        info_(info),
+        host_variables_(host_variables)
     {}
 
     template <typename T, typename E = T>
@@ -319,8 +321,16 @@ public:
         stack_type& stack,
         memory_resource*
     ) {
-        auto& info = variables_.info().at(arg.variable());
-        auto ref = variables_.store().ref();
+        auto b = variables_ && variables_.info().exists(arg.variable());
+        auto h = host_variables_ != nullptr && *host_variables_ && host_variables_->info().exists(arg.variable());
+        BOOST_ASSERT(b || h); //NOLINT
+        auto& info = b ? variables_.info().at(arg.variable()) : host_variables_->info().at(arg.variable());
+        auto ref = b ? variables_.store().ref() : host_variables_->store().ref();
+        auto is_null = ref.is_null(info.nullity_offset());
+        if (is_null) {
+            push_null(stack);
+            return false;
+        }
         using t = takatori::type::type_kind;
         auto& type = info_.type_of(arg);
         switch(type.kind()) {
@@ -338,6 +348,7 @@ public:
 private:
     executor::process::impl::variable_table& variables_;
     yugawara::compiled_info const& info_{};
+    executor::process::impl::variable_table const* host_variables_{};
 };
 
 template <>
@@ -362,13 +373,19 @@ public:
 
     /**
      * @brief construct new object
+     * @param expression the expression to be evaluated
+     * @param info compiled info associated with the expression
+     * @param host_variables the host variable table to be used to resolve reference variable expression
+     * using host variable. Pass nullptr if the evaluator never evaluates variable reference.
      */
     explicit evaluator(
         takatori::scalar::expression const& expression,
-        yugawara::compiled_info const& info
+        yugawara::compiled_info const& info,
+        executor::process::impl::variable_table const* host_variables = nullptr
     ) noexcept :
         expression_(std::addressof(expression)),
-        info_(std::addressof(info))
+        info_(std::addressof(info)),
+        host_variables_(host_variables)
     {}
 
     /**
@@ -387,7 +404,7 @@ public:
         executor::process::impl::variable_table& variables,
         memory_resource* resource = nullptr
     ) const {
-        details::callback c{variables, *info_};
+        details::callback c{variables, *info_, host_variables_};
         details::callback::stack_type stack{};
         takatori::scalar::walk(c, *expression_, stack, resource);
         return stack.back();
@@ -396,6 +413,7 @@ public:
 private:
     takatori::scalar::expression const* expression_{};
     yugawara::compiled_info const* info_{};
+    executor::process::impl::variable_table const* host_variables_{};
 };
 
 } // namespace

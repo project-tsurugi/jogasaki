@@ -99,5 +99,76 @@ void copy_nullable_field(
     copy_field(type, target, target_offset, source, source_offset, resource);
 }
 
+void copy_field(
+    meta::field_type const& type,
+    accessor::record_ref target,
+    std::size_t target_offset,
+    executor::process::impl::expression::any const& source,
+    memory::paged_memory_resource* resource
+) {
+    using k = meta::field_type_kind;
+    switch(type.kind()) {
+        case k::undefined:
+            break;
+        case k::boolean: target.set_value(target_offset, source.to<runtime_t<k::boolean>>()); return;
+        case k::int1: target.set_value(target_offset, source.to<runtime_t<k::int1>>()); return;
+        case k::int2: target.set_value(target_offset, source.to<runtime_t<k::int2>>()); return;
+        case k::int4: target.set_value(target_offset, source.to<runtime_t<k::int4>>()); return;
+        case k::int8: target.set_value(target_offset, source.to<runtime_t<k::int8>>()); return;
+        case k::float4: target.set_value(target_offset, source.to<runtime_t<k::float4>>()); return;
+        case k::float8: target.set_value(target_offset, source.to<runtime_t<k::float8>>()); return;
+        case k::decimal:
+            break;
+        case k::character: {
+            auto text = source.to<runtime_t<k::character>>();
+            target.set_value(target_offset,
+                resource != nullptr ? accessor::text(resource, text) : text
+            );
+            return;
+        }
+        case k::bit:
+            break;
+        case k::date:
+            break;
+        case k::time_of_day:
+            break;
+        case k::time_point:
+            break;
+        case k::time_interval:
+            break;
+        case k::array:
+            break;
+        case k::record:
+            break;
+        case k::unknown:
+            break;
+        case k::row_reference:
+            break;
+        case k::row_id:
+            break;
+        case k::declared:
+            break;
+        case k::extension:
+            break;
+        case k::pointer:
+            fail();
+    }
+    fail();
+}
+
+void copy_nullable_field(
+    meta::field_type const& type,
+    accessor::record_ref target,
+    std::size_t target_offset,
+    std::size_t target_nullity_offset,
+    executor::process::impl::expression::any const& source,
+    memory::paged_memory_resource* resource
+) {
+    bool is_null = !source.has_value();
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
+    copy_field(type, target, target_offset, source, resource);
+}
+
 }
 

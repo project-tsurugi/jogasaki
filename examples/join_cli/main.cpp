@@ -335,9 +335,11 @@ public:
         object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
-                creator.create_unique<takatori::statement::execute>(std::move(p)),
+                std::make_shared<takatori::statement::execute>(std::move(p)),
                 c_info,
-                std::shared_ptr<model::statement>{}
+                std::shared_ptr<model::statement>{},
+                std::shared_ptr<variable_table_info>{},
+                std::shared_ptr<variable_table>{}
             )
         );
     }
@@ -385,10 +387,10 @@ public:
         auto& xch1 = g.emplace<exchange::group::step>(info, input_order, order0);
         auto& xch2 = g.emplace<exchange::group::step>(info, input_order, order1);
 
-        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
 
-        auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));
+        auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info(), nullptr));
         producer1 >> xch1;
         producer2 >> xch2;
         xch1 >> consumer;

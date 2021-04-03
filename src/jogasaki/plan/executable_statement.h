@@ -18,15 +18,21 @@
 #include <cstddef>
 #include <functional>
 
-#include <takatori/util/object_creator.h>
-#include <yugawara/compiler_result.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/statement/statement.h>
+#include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/model/graph.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 
 namespace jogasaki::plan {
+
+using takatori::util::maybe_shared_ptr;
+using executor::process::impl::variable_table;
+using executor::process::impl::variable_table_info;
 
 /**
  * @brief executable statement
@@ -46,23 +52,31 @@ public:
      * @param operators jogasaki graph or execute statement
      */
     executable_statement(
-        takatori::util::unique_object_ptr<::takatori::statement::statement> statement,
+        maybe_shared_ptr<::takatori::statement::statement> statement,
         yugawara::compiled_info compiled_info,
-        std::shared_ptr<model::statement> operators
+        maybe_shared_ptr<model::statement> operators,
+        std::shared_ptr<variable_table_info> host_variable_info,
+        std::shared_ptr<variable_table> host_variables
     ) noexcept;
 
-    [[nodiscard]] ::takatori::statement::statement const& statement() const noexcept;
-
-    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
-
-    [[nodiscard]] model::statement const* operators() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<model::statement> const& operators() const noexcept;
 
     [[nodiscard]] bool is_execute() const noexcept;
 
+    [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept;
+
+    [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;
+
+    [[nodiscard]] std::shared_ptr<variable_table> const& host_variables() const noexcept;
+
+    [[nodiscard]] std::shared_ptr<variable_table_info> const& host_variable_info() const noexcept;
+
 private:
-    takatori::util::unique_object_ptr<::takatori::statement::statement> statement_{};
+    maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
-    std::shared_ptr<model::statement> operators_{};
+    maybe_shared_ptr<model::statement> operators_{};
+    std::shared_ptr<variable_table_info> host_variable_info_{};
+    std::shared_ptr<variable_table> host_variables_{};
 };
 
 }

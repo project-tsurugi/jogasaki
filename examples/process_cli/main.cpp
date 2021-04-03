@@ -123,12 +123,12 @@ public:
         create_compiled_info(compiler_context);
 
         // create step graph with only process
-        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<event_channel>();
         auto context = std::make_shared<request_context>(channel, cfg);
         common::graph g{*context};
-        auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));
+        auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info(), nullptr));
         customize_process(
             param,
             process,
@@ -253,9 +253,11 @@ private:
         object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
-                creator.create_unique<takatori::statement::execute>(std::move(*p)),
+                std::make_shared<takatori::statement::execute>(std::move(*p)),
                 c_info,
-                std::shared_ptr<model::statement>{}
+                std::shared_ptr<model::statement>{},
+                std::shared_ptr<variable_table_info>{},
+                std::shared_ptr<variable_table>{}
             )
         );
     }

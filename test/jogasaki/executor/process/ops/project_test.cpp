@@ -227,6 +227,9 @@ TEST_F(project_test, simple) {
     vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
     vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 11);
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 10);
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
+    vars_ref.set_null(map.at(c1).nullity_offset(), false);
+    vars_ref.set_null(map.at(c2).nullity_offset(), false);
     s(ctx);
 
     ASSERT_EQ(100, vars_ref.get_value<std::int64_t>(map.at(c3).value_offset()));
@@ -368,6 +371,9 @@ TEST_F(project_test, text) {
     vars_ref.set_value<text>(map.at(c0).value_offset(), text{&res, "A23456789012345678901234567890"});
     vars_ref.set_value<text>(map.at(c1).value_offset(), text{&res, "B23456789012345678901234567890"});
     vars_ref.set_value<text>(map.at(c2).value_offset(), text{&res, "C23456789012345678901234567890"});
+    vars_ref.set_null(map.at(c0).nullity_offset(), false);
+    vars_ref.set_null(map.at(c1).nullity_offset(), false);
+    vars_ref.set_null(map.at(c2).nullity_offset(), false);
     s(ctx);
     text exp{&res, "B23456789012345678901234567890C23456789012345678901234567890Z23456789012345678901234567890"};
     ASSERT_EQ(exp, vars_ref.get_value<text>(map.at(c3).value_offset()));

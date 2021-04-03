@@ -169,7 +169,7 @@ TEST_F(compiler_test, DISABLED_insert) {
     compiler_context ctx{};
     ctx.storage_provider(tables());
     ASSERT_EQ(status::ok, compile(sql, ctx));
-    auto&& write = unsafe_downcast<statement::write>(ctx.executable_statement()->statement());
+    auto&& write = unsafe_downcast<statement::write>(*ctx.executable_statement()->statement());
 
     EXPECT_EQ(write.operator_kind(), relation::write_kind::insert);
 
@@ -185,7 +185,7 @@ TEST_F(compiler_test, DISABLED_insert) {
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
 
     auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    auto& stmt =*ctx.executable_statement()->statement();
     dump(info, stmt);
 }
 
@@ -196,7 +196,7 @@ TEST_F(compiler_test, simple_query) {
     ctx.storage_provider(tables());
     ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info = ctx.executable_statement()->compiled_info();
-    auto& stmt = ctx.executable_statement()->statement();
+    auto& stmt = *ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 1);
@@ -246,7 +246,7 @@ TEST_F(compiler_test, filter) {
    ASSERT_EQ(status::ok, compile(sql, ctx));
 
     auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
     ASSERT_EQ(c.execution_plan().size(), 1);
 
@@ -285,7 +285,7 @@ TEST_F(compiler_test, project_filter) {
     ctx.storage_provider(tables());
     ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
     dump(info, stmt);
 
@@ -329,7 +329,7 @@ TEST_F(compiler_test, join) {
     ctx.storage_provider(tables());
     ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
     dump(info, stmt);
 
@@ -358,7 +358,7 @@ TEST_F(compiler_test, join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, info);
+    auto s = jogasaki::plan::impl::create(b, info, nullptr);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 }
@@ -369,7 +369,7 @@ TEST_F(compiler_test, left_outer_join) {
     ctx.storage_provider(tables());
     ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
     dump(info, stmt);
 
@@ -398,7 +398,7 @@ TEST_F(compiler_test, left_outer_join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, info);
+    auto s = jogasaki::plan::impl::create(b, info, nullptr);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 
@@ -430,7 +430,7 @@ TEST_F(compiler_test, aggregate) {
     ctx.aggregate_provider(aggregate_functions());
     ASSERT_EQ(status::ok, compile(sql, ctx));
     auto& info =ctx.executable_statement()->compiled_info();
-    auto& stmt =ctx.executable_statement()->statement();
+    auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
     dump(info, stmt);
 
@@ -448,7 +448,7 @@ TEST_F(compiler_test, aggregate) {
 
     auto& agg = b.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, info);
+    auto s = jogasaki::plan::impl::create(b, info, nullptr);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(agg)));
 

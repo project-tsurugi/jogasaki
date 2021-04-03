@@ -31,6 +31,7 @@
 
 #include <mizugaki/translator/shakujo_translator.h>
 
+#include <takatori/statement/statement_kind.h>
 #include <takatori/statement/write.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
@@ -56,6 +57,7 @@
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/plan/parameter_set.h>
+#include <jogasaki/model/statement_kind.h>
 
 namespace jogasaki::plan {
 
@@ -75,7 +77,29 @@ namespace relation = takatori::relation;
 
 using takatori::util::unsafe_downcast;
 
-std::shared_ptr<plan::prepared_statement> prepare(std::string_view sql) {
+template <result_kind Kind>
+status create_prepared_statement(
+    shakujo_translator::result_type& r,
+    yugawara::compiler_options& c_options,
+    std::shared_ptr<plan::prepared_statement>& out
+) {
+    auto ptr = r.release<Kind>();
+    auto result = yugawara::compiler()(c_options, std::move(*ptr));
+    if(!result.success()) {
+        for (auto&& d : result.diagnostics()) {
+            LOG(ERROR) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
+        }
+        return status::err_compiler_error;
+    }
+    auto stmt = result.release_statement();
+    out = std::make_shared<plan::prepared_statement>(
+        std::shared_ptr<::takatori::statement::statement>(stmt.release(), stmt.get_deleter()),
+        result.info()
+    );
+    return status::ok;
+}
+
+status prepare(std::string_view sql, compiler_context &ctx, std::shared_ptr<plan::prepared_statement>& out) {
     shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
     try {
@@ -84,17 +108,66 @@ std::shared_ptr<plan::prepared_statement> prepare(std::string_view sql) {
         // TODO analyze for error check
     } catch (shakujo::parser::Parser::Exception &e) {
         LOG(ERROR) << "parse error:" << e.message() << " (" << e.region() << ")";
+        return status::err_parse_error;
     }
-    return std::make_shared<plan::prepared_statement>(std::move(program));
+
+    shakujo_translator translator;
+    shakujo_translator_options options {
+        ctx.storage_provider(),
+        ctx.variable_provider(),
+        ctx.function_provider(),
+        ctx.aggregate_provider(),
+        ctx.variable_provider()
+    };
+
+    yugawara::runtime_feature_set runtime_features {
+        //TODO enable features
+//        yugawara::runtime_feature::broadcast_exchange,
+        yugawara::runtime_feature::aggregate_exchange,
+        yugawara::runtime_feature::index_join,
+//        yugawara::runtime_feature::broadcast_join_scan,
+    };
+    std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
+
+    yugawara::compiler_options c_options{
+        indices,
+        runtime_features,
+        options.get_object_creator(),
+    };
+
+    ::takatori::document::document_map documents;
+    auto r = translator(options, *program->main(), documents);
+    if (! r) {
+        auto errors = r.release<result_kind::diagnostics>();
+        for(auto&& e : errors) {
+            LOG(ERROR) << e.code() << " " << e.message();
+        }
+        return status::err_translator_error;
+    }
+    switch(r.kind()) {
+        case result_kind::execution_plan: {
+            return create_prepared_statement<result_kind::execution_plan>(r, c_options, out);
+            break;
+        }
+        case result_kind::statement: {
+            return create_prepared_statement<result_kind::statement>(r, c_options, out);
+            break;
+        }
+        default:
+            fail();
+    }
+    return status::ok;
 }
 
 executor::process::step create(
     takatori::plan::process const& process,
-    yugawara::compiled_info const& c_info
+    yugawara::compiled_info const& c_info,
+    variable_table const* host_variables
 ) {
     auto info = std::make_shared<executor::process::processor_info>(
         const_cast<relation::graph_type&>(process.operators()),
-        c_info
+        c_info,
+        host_variables
     );
 
     yugawara::binding::factory bindings{};
@@ -248,11 +321,66 @@ executor::exchange::aggregate::step create(
         std::move(output_order));
 }
 
+std::pair<
+    std::shared_ptr<executor::process::impl::variable_table>,
+    std::shared_ptr<executor::process::impl::variable_table_info>
+> create_host_variables(
+    parameter_set const* parameters,
+    std::shared_ptr<::yugawara::variable::configurable_provider> const& provider
+) {
+    if (parameters == nullptr || provider == nullptr) {
+        return {};
+    }
+    using ::yugawara::variable::declaration;
+    std::size_t count = 0;
+    std::unordered_map<takatori::descriptor::variable, std::size_t> map{};
+    std::vector<meta::field_type> fields{};
+    yugawara::binding::factory bindings{};
+    std::vector<parameter_entry const*> entries{};
+    provider->each([&](std::shared_ptr<declaration const> const& e){
+        if (auto c = parameters->find(e->name())) {
+            fields.emplace_back(utils::type_for(e->type()));
+            auto v = bindings(e);
+            map[v] = count;
+            entries.emplace_back(std::addressof(*c));
+            ++count;
+        }
+    });
+
+    BOOST_ASSERT(fields.size() == parameters->size()); //NOLINT
+    BOOST_ASSERT(fields.size() == count); //NOLINT
+    boost::dynamic_bitset<std::uint64_t> nullability{};
+    nullability.resize(count, true); // currently stream variables are all nullable
+    auto meta = std::make_shared<meta::record_meta>(std::move(fields), std::move(nullability));
+
+    auto info = std::make_shared<executor::process::impl::variable_table_info>(
+        std::move(map),
+        meta
+    );
+
+    auto vars = std::make_shared<executor::process::impl::variable_table>(*info);
+    auto target = vars->store().ref();
+    for(std::size_t i=0; i < count; ++i) {
+        auto* e = entries[i];
+        utils::copy_nullable_field(
+            e->type(),
+            target,
+            meta->value_offset(i),
+            meta->nullity_offset(i),
+            e->value()
+        );
+    }
+    return {std::move(vars), std::move(info)};
+}
+
+
 void create_mirror_for_write(
     compiler_context& ctx,
-    unique_object_ptr<statement::statement> statement,
-    yugawara::compiled_info info
+    maybe_shared_ptr<statement::statement> statement,
+    yugawara::compiled_info info,
+    parameter_set const* parameters
 ) {
+    auto [vars, vars_info] = create_host_variables(parameters, ctx.variable_provider());
     auto& node = unsafe_downcast<statement::write>(*statement);
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
     auto write = std::make_shared<executor::common::write>(
@@ -262,7 +390,8 @@ void create_mirror_for_write(
         node.columns(),
         node.tuples(),
         *ctx.resource(),
-        info
+        info,
+        vars.get()
     );
     BOOST_ASSERT( //NOLINT
         node.operator_kind() == relation::write_kind::insert ||
@@ -272,22 +401,28 @@ void create_mirror_for_write(
         std::make_shared<executable_statement>(
             std::move(statement),
             std::move(info),
-            std::move(write)
+            std::move(write),
+            std::move(vars_info),
+            std::move(vars)
         )
     );
 }
 
 void create_mirror_for_execute(
     compiler_context& ctx,
-    unique_object_ptr<statement::statement> statement,
-    yugawara::compiled_info info
+    maybe_shared_ptr<statement::statement> statement,
+    yugawara::compiled_info info,
+    parameter_set const* parameters
 ) {
+    auto p = create_host_variables(parameters, ctx.variable_provider());
+    auto& vars = p.first;
+    auto& vars_info = p.second;
     std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
     yugawara::binding::factory bindings{};
     auto mirror = std::make_shared<executor::common::graph>();
     takatori::plan::sort_from_upstream(
         unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
-        [&mirror, &info, &bindings, &steps](takatori::plan::step const& s){
+        [&mirror, &info, &bindings, &steps, &vars](takatori::plan::step const& s){
             switch(s.kind()) {
                 case takatori::plan::step_kind::forward: {
                     auto& forward = unsafe_downcast<takatori::plan::forward const>(s);  //NOLINT
@@ -319,7 +454,7 @@ void create_mirror_for_execute(
                     break;
                 case takatori::plan::step_kind::process: {
                     auto& process = unsafe_downcast<takatori::plan::process const>(s);  //NOLINT
-                    steps[&process] = &mirror->emplace<executor::process::step>(create(process, info));
+                    steps[&process] = &mirror->emplace<executor::process::step>(create(process, info, vars.get()));
                     break;
                 }
                 default:
@@ -359,8 +494,10 @@ void create_mirror_for_execute(
     ctx.executable_statement(std::make_shared<executable_statement>(
         std::move(statement),
         std::move(info),
-        std::make_shared<executor::common::execute>(mirror))
-    );
+        std::make_shared<executor::common::execute>(mirror),
+        std::move(vars_info),
+        std::move(vars)
+    ));
 }
 
 /**
@@ -368,81 +505,18 @@ void create_mirror_for_execute(
  * @pre storage provider exists and populated in the compiler context
  */
 status create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
+    using takatori::statement::statement_kind;
     auto p = ctx.prepared_statement();
     if (!p) {
         return status::err_invalid_argument;
     }
-
-    shakujo_translator translator;
-    shakujo_translator_options options {
-        ctx.storage_provider(),
-        ctx.variable_provider(),
-        ctx.function_provider(),
-        ctx.aggregate_provider(),
-        ctx.variable_provider()
-    };
-
-    yugawara::runtime_feature_set runtime_features {
-        //TODO enable features
-//        yugawara::runtime_feature::broadcast_exchange,
-        yugawara::runtime_feature::aggregate_exchange,
-        yugawara::runtime_feature::index_join,
-//        yugawara::runtime_feature::broadcast_join_scan,
-    };
-    std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
-
-    yugawara::compiler_options c_options{
-        indices,
-        runtime_features,
-        options.get_object_creator(),
-    };
-
-    auto& placeholders = parameters != nullptr ? parameters->map() : placeholder_map{};
-
-    ::takatori::document::document_map documents;
-    auto r = translator(options, *p->program()->main(), documents, placeholders);
-    if (! r) {
-        auto errors = r.release<result_kind::diagnostics>();
-        for(auto&& e : errors) {
-            LOG(ERROR) << e.code() << " " << e.message();
-        }
-        return status::err_translator_error;
-    }
-    switch(r.kind()) {
-        case result_kind::execution_plan: {
-            auto ptr = r.release<result_kind::execution_plan>();
-            auto&& graph = *ptr;
-            auto result = yugawara::compiler()(c_options, std::move(graph));
-            if(!result.success()) {
-                for (auto&& d : result.diagnostics()) {
-                    LOG(ERROR) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
-                }
-                return status::err_compiler_error;
-            }
-            create_mirror_for_execute(
-                ctx,
-                result.release_statement(),
-                result.info()
-            );
+    switch(p->statement()->kind()) {
+        case statement_kind::write:
+            create_mirror_for_write(ctx, p->statement(), p->compiled_info(), parameters);
             break;
-        }
-        case result_kind::statement: {
-            auto ptr = r.release<result_kind::statement>();
-            auto&& stmt = *ptr;
-            auto result = yugawara::compiler()(c_options, std::move(stmt));
-            if(! result.success()) {
-                for (auto&& d : result.diagnostics()) {
-                    LOG(ERROR) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
-                }
-                return status::err_compiler_error;
-            }
-            create_mirror_for_write(
-                ctx,
-                result.release_statement(),
-                result.info()
-            );
+        case statement_kind::execute:
+            create_mirror_for_execute(ctx, p->statement(), p->compiled_info(), parameters);
             break;
-        }
         default:
             fail();
     }
@@ -452,11 +526,12 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
 } // namespace impl
 
 status prepare(std::string_view sql, compiler_context &ctx) {
-    if(auto p = impl::prepare(sql); p != nullptr && p->program()) {
-        ctx.prepared_statement(std::move(p));
-        return status::ok;
+    std::shared_ptr<prepared_statement> stmt{};
+    auto rc = impl::prepare(sql, ctx, stmt);
+    if (rc == status::ok) {
+        ctx.prepared_statement(std::move(stmt));
     }
-    return status::err_parse_error;
+    return rc;
 }
 
 status compile(

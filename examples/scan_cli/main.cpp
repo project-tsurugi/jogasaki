@@ -480,7 +480,7 @@ public:
         utils::get_watch().set_point(time_point_start_creating_request, thread_id);
         LOG(INFO) << "thread " << thread_id << " create request start";
         // create step graph with only process
-        auto& p = unsafe_downcast<takatori::statement::execute>(compiler_context->executable_statement()->statement()).execution_plan();
+        auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto channel = std::make_shared<event_channel>();
         data::result_store result{};
@@ -494,7 +494,11 @@ public:
             &result
         );
         common::graph g{*context};
-        g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info()));
+        g.emplace<process::step>(jogasaki::plan::impl::create(
+            p0,
+            compiler_context->executable_statement()->compiled_info(),
+            nullptr
+        ));
 
         std::shared_ptr<configuration> thread_cfg = std::make_shared<configuration>(*cfg);
         if (cfg->core_affinity()) {
@@ -697,9 +701,11 @@ private:
         compiler_context->storage_provider(std::move(storages));
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
-                creator.create_unique<takatori::statement::execute>(std::move(*p)),
+                std::make_shared<takatori::statement::execute>(std::move(*p)),
                 c_info,
-                std::shared_ptr<model::statement>{}
+                std::shared_ptr<model::statement>{},
+                std::shared_ptr<variable_table_info>{},
+                std::shared_ptr<variable_table>{}
             )
         );
     }
@@ -867,9 +873,11 @@ private:
         object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
-                creator.create_unique<takatori::statement::execute>(std::move(*p)),
+                std::make_shared<takatori::statement::execute>(std::move(*p)),
                 c_info,
-                std::shared_ptr<model::statement>{}
+                std::shared_ptr<model::statement>{},
+                std::shared_ptr<variable_table_info>{},
+                std::shared_ptr<variable_table>{}
             )
         );
     }

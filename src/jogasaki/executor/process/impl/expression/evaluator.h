@@ -324,6 +324,7 @@ public:
         auto b = variables_ && variables_.info().exists(arg.variable());
         auto h = host_variables_ != nullptr && *host_variables_ && host_variables_->info().exists(arg.variable());
         BOOST_ASSERT(b || h); //NOLINT
+        (void)h;
         auto& info = b ? variables_.info().at(arg.variable()) : host_variables_->info().at(arg.variable());
         auto ref = b ? variables_.store().ref() : host_variables_->store().ref();
         auto is_null = ref.is_null(info.nullity_offset());

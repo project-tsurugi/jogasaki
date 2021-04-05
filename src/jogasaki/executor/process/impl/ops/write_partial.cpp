@@ -193,7 +193,7 @@ using variable = takatori::descriptor::variable;
 std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
     variable_table_info const& block_variables,
     variable_table_info const* host_variables,
-    variable src
+    variable const& src
 ) {
     if (block_variables.exists(src)) {
         return {

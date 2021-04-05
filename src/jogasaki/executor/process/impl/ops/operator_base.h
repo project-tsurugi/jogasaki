@@ -107,6 +107,11 @@ public:
     [[nodiscard]] operator_index_type index() const noexcept;
 
     /**
+     * @brief accessor to the host variables
+     */
+    [[nodiscard]] variable_table const* host_variables() const noexcept;
+
+    /**
      * @brief tell the operator to finish processing
      * @details This function notifies the operators the end of processing. This is typically called by top operator
      * in the process by propagating the notice to downstream. The operator can use function to clean-up work

@@ -109,4 +109,28 @@ TEST_F(database_test, simple) {
     db->stop();
 }
 
+TEST_F(database_test, update_with_host_variable) {
+    auto db = api::create_database();
+    db->start();
+    db->register_variable("p1", api::field_type_kind::float8);
+    std::unique_ptr<api::prepared_statement> prepared{};
+    ASSERT_EQ(status::ok, db->prepare("UPDATE T0 SET C1 = :p1 WHERE C0 = 0", prepared));
+    std::unique_ptr<api::executable_statement> insert{};
+    ASSERT_EQ(status::ok, db->create_executable("INSERT INTO T0 (C0, C1) VALUES(0, 10.0)", insert));
+    {
+        auto tx = db->create_transaction();
+        ASSERT_EQ(status::ok,tx->execute(*insert));
+        tx->commit();
+    }
+    {
+        auto tx = db->create_transaction();
+        auto ps = api::create_parameter_set();
+        ps->set_float8("p1", 0.0);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db->resolve(*prepared, *ps, exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+    }
+}
+
 }

@@ -42,7 +42,8 @@ details::write_partial_field::write_partial_field(
     kvs::coding_spec spec,
     bool updated,
     std::size_t update_variable_offset,
-    std::size_t update_variable_nullity_offset
+    std::size_t update_variable_nullity_offset,
+    bool update_variable_is_external
 ) :
     type_(std::move(type)),
     variable_offset_(variable_offset),
@@ -53,7 +54,8 @@ details::write_partial_field::write_partial_field(
     spec_(spec),
     updated_(updated),
     update_variable_offset_(update_variable_offset),
-    update_variable_nullity_offset_(update_variable_nullity_offset)
+    update_variable_nullity_offset_(update_variable_nullity_offset),
+    update_variable_is_external_(update_variable_is_external)
 {}
 
 std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) {
@@ -139,7 +141,7 @@ void write_partial::update_fields(
             target,
             f.target_offset_,
             f.target_nullity_offset_,
-            source,
+            f.update_variable_is_external_ ? host_variables()->store().ref() : source,
             f.update_variable_offset_,
             f.update_variable_nullity_offset_
         );
@@ -186,6 +188,29 @@ void write_partial::check_length_and_extend_buffer(
     }
 }
 
+using variable = takatori::descriptor::variable;
+
+std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
+    variable_table_info const& block_variables,
+    variable_table_info const* host_variables,
+    variable src
+) {
+    if (block_variables.exists(src)) {
+        return {
+            block_variables.at(src).value_offset(),
+            block_variables.at(src).nullity_offset(),
+            false
+        };
+    }
+    BOOST_ASSERT(host_variables != nullptr && host_variables->exists(src));  //NOLINT
+    return {
+        host_variables->at(src).value_offset(),
+        host_variables->at(src).nullity_offset(),
+        true
+    };
+}
+
+
 std::vector<details::write_partial_field> write_partial::create_fields(
     write_kind,
     yugawara::storage::index const& idx,
@@ -196,7 +221,6 @@ std::vector<details::write_partial_field> write_partial::create_fields(
     bool key
 ) {
     std::vector<details::write_partial_field> ret{};
-    using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     auto& block = info.vars_info_list()[block_index];
     std::unordered_map<variable, variable> key_dest_to_src{};
@@ -225,11 +249,15 @@ std::vector<details::write_partial_field> write_partial::create_fields(
             bool updated = false;
             std::size_t update_source_offset{npos};
             std::size_t update_source_nullity_offset{npos};
+            bool update_src_is_external{false};
             if (column_dest_to_src.count(kc) != 0) {
                 updated = true;
                 auto&& src = column_dest_to_src.at(kc);
-                update_source_offset = block.at(src).value_offset();
-                update_source_nullity_offset = block.at(src).nullity_offset();
+                auto* host_vars_info = info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr;
+                auto [os, nos, b] = resolve_variable_offsets(block, host_vars_info, src);
+                update_source_offset = os;
+                update_source_nullity_offset = nos;
+                update_src_is_external = b;
             }
             ret.emplace_back(
                 t,
@@ -241,7 +269,8 @@ std::vector<details::write_partial_field> write_partial::create_fields(
                 spec,
                 updated,
                 update_source_offset,
-                update_source_nullity_offset
+                update_source_nullity_offset,
+                update_src_is_external
             );
         }
         return ret;
@@ -256,11 +285,15 @@ std::vector<details::write_partial_field> write_partial::create_fields(
         bool updated = false;
         std::size_t update_source_offset{npos};
         std::size_t update_source_nullity_offset{npos};
+        bool update_src_is_external{false};
         if (column_dest_to_src.count(b) != 0) {
             updated = true;
             auto&& src = column_dest_to_src.at(b);
-            update_source_offset = block.at(src).value_offset();
-            update_source_nullity_offset = block.at(src).nullity_offset();
+            auto* host_vars_info = info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr;
+            auto [os, nos, b] = resolve_variable_offsets(block, host_vars_info, src);
+            update_source_offset = os;
+            update_source_nullity_offset = nos;
+            update_src_is_external = b;
         }
         ret.emplace_back(
             t,
@@ -272,7 +305,8 @@ std::vector<details::write_partial_field> write_partial::create_fields(
             kvs::spec_value,
             updated,
             update_source_offset,
-            update_source_nullity_offset
+            update_source_nullity_offset,
+            update_src_is_external
         );
     }
     return ret;

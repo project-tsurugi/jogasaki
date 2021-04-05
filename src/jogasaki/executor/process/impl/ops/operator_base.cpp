@@ -49,6 +49,10 @@ operator_base::operator_index_type operator_base::index() const noexcept {
     return index_;
 }
 
+variable_table const* operator_base::host_variables() const noexcept {
+    return processor_info_->host_variables();
+}
+
 record_operator::record_operator(
     operator_base::operator_index_type index,
     processor_info const&info,

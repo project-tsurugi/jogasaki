@@ -70,9 +70,16 @@ public:
             std::cout << std::endl;
         }
     }
-    void execute_query(std::string_view query, std::vector<mock::basic_record>& out) {
+    void execute_query(
+        std::string_view query,
+        api::parameter_set const& params,
+        std::vector<mock::basic_record>& out
+    ) {
+        std::unique_ptr<api::prepared_statement> prepared{};
+        ASSERT_EQ(status::ok,db_->prepare(query, prepared));
+
         std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
+        ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
         explain(*stmt);
         auto tx = db_->create_transaction();
         std::unique_ptr<api::result_set> rs{};
@@ -92,13 +99,30 @@ public:
         tx->commit();
     }
 
-    void execute_statement(std::string_view query) {
+    void execute_query(
+        std::string_view query,
+        std::vector<mock::basic_record>& out
+    ) {
+        api::impl::parameter_set params{};
+        execute_query(query, params, out);
+    }
+    void execute_statement(
+        std::string_view query,
+        api::parameter_set const& params
+    ) {
+        std::unique_ptr<api::prepared_statement> prepared{};
+        ASSERT_EQ(status::ok,db_->prepare(query, prepared));
+
         std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
+        ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
         explain(*stmt);
         auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok, tx->execute(*stmt));
         ASSERT_EQ(status::ok, tx->commit());
+    }
+    void execute_statement(std::string_view query) {
+        api::impl::parameter_set params{};
+        execute_statement(query, params);
     }
 
     std::unique_ptr<jogasaki::api::database> db_;
@@ -252,7 +276,53 @@ TEST_F(sql_test, avg_empty_table) {
 }
 
 TEST_F(sql_test, insert_host_variable) {
-//    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:i8, :f8)");
+    db_->register_variable("p0", api::field_type_kind::int8);
+    db_->register_variable("p1", api::field_type_kind::float8);
+    auto ps = api::create_parameter_set();
+    ps->set_int8("p0", 1);
+    ps->set_float8("p1", 10.0);
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+}
+
+TEST_F(sql_test, update_host_variable) {
+    db_->register_variable("p0", api::field_type_kind::int8);
+    db_->register_variable("p1", api::field_type_kind::float8);
+    db_->register_variable("i0", api::field_type_kind::int8);
+    db_->register_variable("i1", api::field_type_kind::int8);
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 1);
+        ps->set_float8("p1", 20.0);
+        execute_statement( "UPDATE T0 SET C1 = :p1 WHERE C0 = :p0", *ps);
+
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+        EXPECT_DOUBLE_EQ(20.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("i0", 1);
+        ps->set_int8("i1", 2);
+        execute_statement( "UPDATE T0 SET C0 = :i1 WHERE C0 = :i0", *ps);
+
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+        EXPECT_DOUBLE_EQ(20.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+    }
 }
 
 }

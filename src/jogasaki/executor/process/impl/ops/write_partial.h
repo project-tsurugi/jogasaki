@@ -59,6 +59,7 @@ struct cache_align write_partial_field {
      * Used to provide values only if `updated` is true.
      * @param update_variable_nullity_offset bit offset of the field nullity in the variable table.
      * Used to provide values nullity only if `updated` is true.
+     * @param update_variable_is_external indicates whether the update_variable source is from host variables
      */
     write_partial_field(
         meta::field_type type,
@@ -70,7 +71,8 @@ struct cache_align write_partial_field {
         kvs::coding_spec spec,
         bool updated,
         std::size_t update_variable_offset,
-        std::size_t update_variable_nullity_offset
+        std::size_t update_variable_nullity_offset,
+        bool update_variable_is_external
     );
 
     meta::field_type type_{}; //NOLINT
@@ -83,6 +85,7 @@ struct cache_align write_partial_field {
     bool updated_{}; //NOLINT
     std::size_t update_variable_offset_{}; //NOLINT
     std::size_t update_variable_nullity_offset_{}; //NOLINT
+    bool update_variable_is_external_{}; //NOLINT
 };
 
 }

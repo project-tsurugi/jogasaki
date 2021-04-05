@@ -111,13 +111,6 @@ database::database(
     if(cfg_->prepare_benchmark_tables()) {
         executor::add_benchmark_tables(*tables_);
     }
-
-    // built-in host variables (for testing)
-    host_variables_->add({"i4", takatori::type::int4{}});
-    host_variables_->add({"i8", takatori::type::int8{}});
-    host_variables_->add({"f4", takatori::type::float4{}});
-    host_variables_->add({"f8", takatori::type::float8{}});
-    host_variables_->add({"ch", takatori::type::character{takatori::type::varying}});
 }
 
 std::shared_ptr<class configuration> const& database::configuration() const noexcept {

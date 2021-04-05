@@ -92,6 +92,7 @@ public:
      * @return status::ok when successful
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned prepared statement can be shared by multiple threads.
      */
     virtual status prepare(std::string_view sql,
         std::unique_ptr<prepared_statement>& statement) = 0;
@@ -106,6 +107,7 @@ public:
      * @return status::ok when successful
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned executable statement should be used from single thread/transaction at a point in time.
      */
     virtual status resolve(
         prepared_statement const& prepared,
@@ -121,6 +123,7 @@ public:
      * @return status::ok when successful
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned executable statement should be used from single thread/transaction at a point in time.
      */
     virtual status create_executable(std::string_view sql,
         std::unique_ptr<executable_statement>& statement) = 0;

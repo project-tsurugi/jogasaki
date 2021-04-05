@@ -93,7 +93,7 @@ status create_prepared_statement(
     }
     auto stmt = result.release_statement();
     out = std::make_shared<plan::prepared_statement>(
-        std::shared_ptr<::takatori::statement::statement>(stmt.release(), stmt.get_deleter()),
+        std::shared_ptr<::takatori::statement::statement>(std::move(stmt)),
         result.info()
     );
     return status::ok;

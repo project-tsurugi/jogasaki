@@ -127,6 +127,10 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 database::database() : database(std::make_shared<class configuration>()) {}
 
 status database::register_variable(std::string_view name, field_type_kind kind) {
+    if (auto e = host_variables_->find(name)) {
+        // ignore if it's already exists
+        return status::ok;
+    }
     switch(kind) {
         case field_type_kind::int4: host_variables_->add({name, takatori::type::int4{}}, true); break;
         case field_type_kind::int8: host_variables_->add({name, takatori::type::int8{}}, true); break;

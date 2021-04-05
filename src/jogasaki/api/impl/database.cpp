@@ -132,11 +132,11 @@ status database::register_variable(std::string_view name, field_type_kind kind) 
         return status::ok;
     }
     switch(kind) {
-        case field_type_kind::int4: host_variables_->add({name, takatori::type::int4{}}, true); break;
-        case field_type_kind::int8: host_variables_->add({name, takatori::type::int8{}}, true); break;
-        case field_type_kind::float4: host_variables_->add({name, takatori::type::float4{}}, true); break;
-        case field_type_kind::float8: host_variables_->add({name, takatori::type::float8{}}, true); break;
-        case field_type_kind::character: host_variables_->add({name, takatori::type::character{takatori::type::varying}}, true); break;
+        case field_type_kind::int4: host_variables_->add({name, takatori::type::int4{}}, false); break;
+        case field_type_kind::int8: host_variables_->add({name, takatori::type::int8{}}, false); break;
+        case field_type_kind::float4: host_variables_->add({name, takatori::type::float4{}}, false); break;
+        case field_type_kind::float8: host_variables_->add({name, takatori::type::float8{}}, false); break;
+        case field_type_kind::character: host_variables_->add({name, takatori::type::character{takatori::type::varying}}, false); break;
         default: fail();
     }
     return status::ok;

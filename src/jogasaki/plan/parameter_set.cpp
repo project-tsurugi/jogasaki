@@ -89,4 +89,12 @@ void parameter_set::add(std::string name, parameter_set::entry_type entry) {
     map_.insert_or_assign(std::move(name), std::move(entry));
 }
 
+parameter_set::iterator parameter_set::begin() const noexcept {
+    return map_.begin();
+}
+
+parameter_set::iterator parameter_set::end() const noexcept {
+    return map_.end();
+}
+
 }

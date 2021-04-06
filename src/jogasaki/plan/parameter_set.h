@@ -36,6 +36,12 @@ public:
     /// @brief the entry type.
     using entry_type = parameter_entry;
 
+    /// @brief the entity type.
+    using entity_type = std::unordered_map<std::string, entry_type>;
+
+    /// @brief the iterator type.
+    using iterator = entity_type::const_iterator;
+
     /**
      * @brief create new object
      */
@@ -80,8 +86,18 @@ public:
      */
     [[nodiscard]] optional_ptr<entry_type const> find(std::string_view name) const;
 
+    /**
+     * @brief return begin iterator
+     */
+    [[nodiscard]] iterator begin() const noexcept;
+
+    /**
+     * @brief return end iterator
+     */
+    [[nodiscard]] iterator end() const noexcept;
+
 private:
-    std::unordered_map<std::string, entry_type> map_{};
+    entity_type map_{};
 
     void add(std::string name, entry_type entry);
 };

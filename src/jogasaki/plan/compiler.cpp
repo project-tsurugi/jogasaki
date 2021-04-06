@@ -337,15 +337,15 @@ std::pair<
     std::vector<meta::field_type> fields{};
     yugawara::binding::factory bindings{};
     std::vector<parameter_entry const*> entries{};
-    provider->each([&](std::shared_ptr<declaration const> const& e){
-        if (auto c = parameters->find(e->name())) {
-            fields.emplace_back(utils::type_for(e->type()));
-            auto v = bindings(e);
-            map[v] = count;
-            entries.emplace_back(std::addressof(*c));
-            ++count;
-        }
-    });
+    for(auto& [name, entry] : *parameters) {
+        auto e = provider->find(name);
+        BOOST_ASSERT(e != nullptr);  //NOLINT
+        fields.emplace_back(utils::type_for(e->type()));
+        auto v = bindings(e);
+        map[v] = count;
+        entries.emplace_back(std::addressof(entry));
+        ++count;
+    }
 
     BOOST_ASSERT(fields.size() == parameters->size()); //NOLINT
     BOOST_ASSERT(fields.size() == count); //NOLINT

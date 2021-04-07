@@ -50,15 +50,6 @@ public:
     void default_partitions(std::size_t arg) noexcept {
         default_process_partitions_ = arg;
     }
-
-    [[nodiscard]] std::size_t default_scan_process_partitions() const noexcept {
-        return default_scan_process_partitions_;
-    }
-
-    void default_scan_process_partitions(std::size_t arg) noexcept {
-        default_scan_process_partitions_ = arg;
-    }
-
     [[nodiscard]] bool core_affinity() const noexcept {
         return set_core_affinity_;
     }
@@ -122,11 +113,11 @@ public:
     void prepare_benchmark_tables(bool arg) noexcept {
         prepare_benchmark_tables_ = arg;
     }
+
 private:
     bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;
     std::size_t default_process_partitions_ = 5;
-    std::size_t default_scan_process_partitions_ = 5;
     bool set_core_affinity_ = false;
     std::size_t initial_core_ = 1;
     bool use_sorted_vector_reader_ = false;

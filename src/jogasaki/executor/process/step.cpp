@@ -100,7 +100,7 @@ std::size_t step::partitions() const noexcept {
         info_->details().has_find_operator()) {
         return 1;
     }
-    return partitions_;
+    return owner()->context()->configuration()->default_partitions();
 }
 
 void step::activate() {

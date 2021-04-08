@@ -185,7 +185,9 @@ TEST_F(variable_table_info_test, create_block_variables_definition1) {
     yugawara::compiled_info info{expression_mapping, variable_mapping};
 
     auto pinfo = std::make_shared<processor_info>(rg, info);
-    auto [infos, inds] = create_block_variables_definition(pinfo->relations(), pinfo->compiled_info());
+    auto p = create_block_variables_definition(pinfo->relations(), pinfo->compiled_info());
+    auto& infos = *p.first;
+    auto& inds = *p.second;
 
     ASSERT_EQ(1, infos.size());
     auto meta = infos[0].meta();

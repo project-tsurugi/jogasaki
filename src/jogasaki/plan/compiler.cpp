@@ -77,6 +77,39 @@ namespace relation = takatori::relation;
 
 using takatori::util::unsafe_downcast;
 
+void preprocess(
+    takatori::plan::process const& process,
+    yugawara::compiled_info const& c_info,
+    mirror_container& container
+) {
+    container.set(
+        std::addressof(process),
+        executor::process::impl::create_block_variables_definition(process.operators(), c_info)
+    );
+}
+
+mirror_container preprocess_mirror(
+    maybe_shared_ptr<statement::statement> statement,
+    yugawara::compiled_info info
+) {
+    mirror_container container{};
+    takatori::plan::sort_from_upstream(
+        unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
+        [&container, &info](takatori::plan::step const& s){
+            switch(s.kind()) {
+                case takatori::plan::step_kind::process: {
+                    auto& process = unsafe_downcast<takatori::plan::process const>(s);  //NOLINT
+                    preprocess(process, info, container);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    );
+    return container;
+}
+
 template <result_kind Kind>
 status create_prepared_statement(
     shakujo_translator::result_type& r,
@@ -92,10 +125,20 @@ status create_prepared_statement(
         return status::err_compiler_error;
     }
     auto stmt = result.release_statement();
-    out = std::make_shared<plan::prepared_statement>(
-        std::shared_ptr<::takatori::statement::statement>(std::move(stmt)),
-        result.info()
-    );
+    if constexpr (Kind == result_kind::execution_plan) {
+        auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
+        out = std::make_shared<plan::prepared_statement>(
+            s,
+            result.info(),
+            preprocess_mirror(s, result.info())
+        );
+    } else if (Kind == result_kind::statement) {
+        out = std::make_shared<plan::prepared_statement>(
+            std::shared_ptr<::takatori::statement::statement>(std::move(stmt)),
+            result.info(),
+            mirror_container{}
+        );
+    }
     return status::ok;
 }
 
@@ -162,11 +205,15 @@ status prepare(std::string_view sql, compiler_context &ctx, std::shared_ptr<plan
 executor::process::step create(
     takatori::plan::process const& process,
     yugawara::compiled_info const& c_info,
+    mirror_container const& mirrors,
     variable_table const* host_variables
 ) {
+    auto& mirror = mirrors.at(std::addressof(process));
     auto info = std::make_shared<executor::process::processor_info>(
         const_cast<relation::graph_type&>(process.operators()),
         c_info,
+        mirror.first,
+        mirror.second,
         host_variables
     );
 
@@ -412,6 +459,7 @@ void create_mirror_for_execute(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     yugawara::compiled_info info,
+    mirror_container const& mirrors,
     parameter_set const* parameters
 ) {
     auto p = create_host_variables(parameters, ctx.variable_provider());
@@ -422,7 +470,7 @@ void create_mirror_for_execute(
     auto mirror = std::make_shared<executor::common::graph>();
     takatori::plan::sort_from_upstream(
         unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
-        [&mirror, &info, &bindings, &steps, &vars](takatori::plan::step const& s){
+        [&mirror, &info, &bindings, &steps, &vars, &mirrors](takatori::plan::step const& s){
             switch(s.kind()) {
                 case takatori::plan::step_kind::forward: {
                     auto& forward = unsafe_downcast<takatori::plan::forward const>(s);  //NOLINT
@@ -454,7 +502,7 @@ void create_mirror_for_execute(
                     break;
                 case takatori::plan::step_kind::process: {
                     auto& process = unsafe_downcast<takatori::plan::process const>(s);  //NOLINT
-                    steps[&process] = &mirror->emplace<executor::process::step>(create(process, info, vars.get()));
+                    steps[&process] = &mirror->emplace<executor::process::step>(create(process, info, mirrors, vars.get()));
                     break;
                 }
                 default:
@@ -515,7 +563,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             create_mirror_for_write(ctx, p->statement(), p->compiled_info(), parameters);
             break;
         case statement_kind::execute:
-            create_mirror_for_execute(ctx, p->statement(), p->compiled_info(), parameters);
+            create_mirror_for_execute(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
             fail();

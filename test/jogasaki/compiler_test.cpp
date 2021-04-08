@@ -358,7 +358,9 @@ TEST_F(compiler_test, join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, info, nullptr);
+    mirror_container mirrors{};
+    jogasaki::plan::impl::preprocess(b, info, mirrors);
+    auto s = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 }
@@ -398,7 +400,9 @@ TEST_F(compiler_test, left_outer_join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, info, nullptr);
+    mirror_container mirrors{};
+    jogasaki::plan::impl::preprocess(b, info, mirrors);
+    auto s = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
 
@@ -448,7 +452,9 @@ TEST_F(compiler_test, aggregate) {
 
     auto& agg = b.downstreams()[0];
 
-    auto s = jogasaki::plan::impl::create(b, info, nullptr);
+    mirror_container mirrors{};
+    jogasaki::plan::impl::preprocess(b, info, mirrors);
+    auto s = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
     ASSERT_EQ(0, io_map->output_index(bindings(agg)));
 

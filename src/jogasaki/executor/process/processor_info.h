@@ -19,12 +19,15 @@
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/plan/parameter_set.h>
 
 namespace jogasaki::executor::process {
 
 namespace relation = takatori::relation;
 using executor::process::impl::variable_table;
+
+using takatori::util::maybe_shared_ptr;
 
 class processor_details {
 public:
@@ -63,6 +66,14 @@ public:
     processor_info(
         relation::graph_type const& relations,
         yugawara::compiled_info info,
+        maybe_shared_ptr<impl::variables_info_list const> vars_info_list,
+        maybe_shared_ptr<impl::block_indices const> block_inds,
+        variable_table const* host_variables = nullptr
+    );
+
+    processor_info(
+        relation::graph_type const& relations,
+        yugawara::compiled_info info,
         variable_table const* host_variables = nullptr
     );
 
@@ -83,8 +94,8 @@ public:
 private:
     relation::graph_type const* relations_{};
     yugawara::compiled_info info_{};
-    impl::variables_info_list vars_info_list_{};
-    impl::block_indices block_indices_{};
+    maybe_shared_ptr<impl::variables_info_list const> vars_info_list_{};
+    maybe_shared_ptr<impl::block_indices const> block_indices_{};
     processor_details details_{};
     variable_table const* host_variables_{};
 

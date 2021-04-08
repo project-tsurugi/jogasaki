@@ -141,7 +141,8 @@ using block_indices = std::unordered_map<relation::expression const*, std::size_
  * @return pair of info objects. First object is the list of variable table info object ordered
  * by block index, and second is the mapping from relational operator to the block index.
  */
-[[nodiscard]] std::pair<variables_info_list, block_indices> create_block_variables_definition(
+[[nodiscard]] std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>>
+create_block_variables_definition(
     relation::graph_type const& relations,
     yugawara::compiled_info const& info
 );

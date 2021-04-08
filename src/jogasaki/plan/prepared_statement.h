@@ -18,6 +18,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/statement/statement.h>
 #include <yugawara/compiled_info.h>
+#include <jogasaki/plan/mirror_container.h>
 
 namespace jogasaki::plan {
 
@@ -48,10 +49,12 @@ public:
      */
     prepared_statement(
         maybe_shared_ptr<::takatori::statement::statement> statement,
-        yugawara::compiled_info compiled_info
+        yugawara::compiled_info compiled_info,
+        mirror_container mirrors
     ) noexcept :
         statement_(std::move(statement)),
-        compiled_info_(std::move(compiled_info))
+        compiled_info_(std::move(compiled_info)),
+        mirrors_(std::move(mirrors))
     {}
 
     [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept {
@@ -62,9 +65,14 @@ public:
         return compiled_info_;
     }
 
+    [[nodiscard]] mirror_container const& mirrors() const noexcept {
+        return mirrors_;
+    }
+
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
+    mirror_container mirrors_{};
 };
 
 }

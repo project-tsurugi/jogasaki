@@ -390,7 +390,10 @@ public:
         auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
 
-        auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, compiler_context->executable_statement()->compiled_info(), nullptr));
+        plan::mirror_container mirrors{};
+        auto& c_info = compiler_context->executable_statement()->compiled_info();
+        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
+        auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, c_info, mirrors, nullptr));
         producer1 >> xch1;
         producer2 >> xch2;
         xch1 >> consumer;

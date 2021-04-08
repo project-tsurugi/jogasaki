@@ -494,9 +494,14 @@ public:
             &result
         );
         common::graph g{*context};
+
+        plan::mirror_container mirrors{};
+        auto& info = compiler_context->executable_statement()->compiled_info();
+        jogasaki::plan::impl::preprocess(p0, info, mirrors);
         g.emplace<process::step>(jogasaki::plan::impl::create(
             p0,
-            compiler_context->executable_statement()->compiled_info(),
+            info,
+            mirrors,
             nullptr
         ));
 

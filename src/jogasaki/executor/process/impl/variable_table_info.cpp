@@ -82,7 +82,7 @@ bool variable_table_info::exists(variable_table_info::variable const& var) const
     return map_.count(var) != 0;
 }
 
-std::pair<variables_info_list, block_indices> create_block_variables_definition(
+std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> create_block_variables_definition(
     relation::graph_type const& relations,
     yugawara::compiled_info const& info
 ) {
@@ -120,12 +120,11 @@ std::pair<variables_info_list, block_indices> create_block_variables_definition(
         map[v] = i;
     }
 
-    variables_info_list entity{};
-    block_indices indices{};
-
-    entity.emplace_back(std::move(map), meta);
+    auto entity = std::make_shared<variables_info_list>();
+    auto indices = std::make_shared<block_indices>();
+    entity->emplace_back(std::move(map), meta);
     for(auto&& e : *b0) {
-        indices[&e] = block_index;
+        indices->operator[](&e) = block_index;
     }
     ++block_index;
     return {std::move(entity), std::move(indices)};

@@ -52,6 +52,20 @@ bool processor_details::has_write_operations() const noexcept {
     return has_write_operations_;
 }
 
+processor_info::processor_info(
+    relation::graph_type const& relations,
+    yugawara::compiled_info info,
+    maybe_shared_ptr<impl::variables_info_list const> vars_info_list,
+    maybe_shared_ptr<impl::block_indices const> block_inds,
+    variable_table const* host_variables
+) :
+    relations_(std::addressof(relations)),
+    info_(std::move(info)),
+    vars_info_list_(std::move(vars_info_list)),
+    block_indices_(std::move(block_inds)),
+    details_(create_details()),
+    host_variables_(host_variables)
+{}
 
 processor_info::processor_info(
     relation::graph_type const& relations,
@@ -77,11 +91,11 @@ yugawara::compiled_info const& processor_info::compiled_info() const noexcept {
 }
 
 impl::variables_info_list const& processor_info::vars_info_list() const noexcept {
-    return vars_info_list_;
+    return *vars_info_list_;
 }
 
 impl::block_indices const& processor_info::block_indices() const noexcept {
-    return block_indices_;
+    return *block_indices_;
 }
 
 processor_details const& processor_info::details() const noexcept {

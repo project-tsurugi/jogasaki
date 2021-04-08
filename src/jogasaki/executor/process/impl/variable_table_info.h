@@ -78,6 +78,7 @@ public:
     using variable = takatori::descriptor::variable;
     using entity_type = std::unordered_map<variable, value_info>;
     using variable_indices = std::unordered_map<variable, std::size_t>;
+    using named_map_type = std::unordered_map<std::string, value_info>;
 
     /**
      * @brief construct empty instance
@@ -93,6 +94,18 @@ public:
      */
     variable_table_info(
         entity_type map,
+        maybe_shared_ptr<meta::record_meta> meta
+    ) noexcept;
+
+    /**
+     * @brief construct new instance with variable name support
+     * @param indices variable mapping to field index that can be used to retrieve offset from meta
+     * @param names the name to variable mapping which provide name mapping support with at(name) function.
+     * @param meta metadata of the block variable store
+     */
+    variable_table_info(
+        variable_indices const& indices,
+        std::unordered_map<std::string, takatori::descriptor::variable> const& names,
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept;
 
@@ -114,6 +127,20 @@ public:
     [[nodiscard]] value_info const& at(variable const& var) const;
 
     /**
+     * @brief getter for value location info. for the given variable
+     * @param var the variable descriptor
+     * @return value_info for the variable
+     */
+    [[nodiscard]] value_info const& at(std::string_view name) const;
+
+    /**
+     * @brief setter of the name to variable mapping
+     * @param name the name of the variable
+     * @param var the variable descriptor
+     */
+    void add(std::string_view name, variable const& var);
+
+    /**
      * @brief returns if the value exists for the given variable
      * @param var the variable descriptor
      * @return true if this object contains the variable
@@ -122,12 +149,21 @@ public:
     [[nodiscard]] bool exists(variable const& var) const;
 
     /**
+     * @brief returns if the value exists for the given variable
+     * @param var the variable descriptor
+     * @return true if this object contains the variable
+     * @return false otherwise
+     */
+    [[nodiscard]] bool exists(std::string_view name) const;
+
+    /**
      * @brief accessor to metadata of variable store
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
 private:
     entity_type map_{};
+    named_map_type named_map_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
 };
 

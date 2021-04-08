@@ -25,4 +25,15 @@ mirror_container::variable_definition const& mirror_container::at(mirror_contain
     return variable_definitions_.at(index);
 }
 
+void mirror_container::host_variable_info(
+    std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info
+) noexcept {
+    host_variable_info_ = std::move(host_variable_info);
+}
+
+std::shared_ptr<executor::process::impl::variable_table_info> const&
+mirror_container::host_variable_info() const noexcept {
+    return host_variable_info_;
+}
+
 }

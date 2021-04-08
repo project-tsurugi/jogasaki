@@ -82,6 +82,30 @@ bool variable_table_info::exists(variable_table_info::variable const& var) const
     return map_.count(var) != 0;
 }
 
+variable_table_info::variable_table_info(
+    variable_indices const& indices,
+    std::unordered_map<std::string, takatori::descriptor::variable> const& names,
+    maybe_shared_ptr<meta::record_meta> meta
+) noexcept:
+    variable_table_info(indices, std::move(meta))
+{
+    for(auto& [name, v] : names) {
+        add(name, v);
+    }
+}
+
+value_info const& variable_table_info::at(std::string_view name) const {
+    return named_map_.at(std::string(name));
+}
+
+void variable_table_info::add(std::string_view name, variable_table_info::variable const& var) {
+    named_map_[std::string(name)] = map_[var];
+}
+
+bool variable_table_info::exists(std::string_view name) const {
+    return named_map_.count(std::string(name)) != 0;
+}
+
 std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> create_block_variables_definition(
     relation::graph_type const& relations,
     yugawara::compiled_info const& info

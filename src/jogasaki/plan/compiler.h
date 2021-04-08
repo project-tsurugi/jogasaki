@@ -35,24 +35,39 @@ using yugawara::compiled_info;
 
 // for testing
 namespace impl {
+
 void preprocess(
     takatori::plan::process const& process,
     yugawara::compiled_info const& c_info,
     mirror_container& container
 );
+
 [[nodiscard]] mirror_container preprocess_mirror(
     maybe_shared_ptr<takatori::statement::statement> const& statement,
     yugawara::compiled_info info
 );
+
 [[nodiscard]] executor::process::step create(
     takatori::plan::process const& process,
     compiled_info const& info,
     mirror_container const& mirrors,
     variable_table const* host_variables
 );
+
 [[nodiscard]] executor::exchange::forward::step create(takatori::plan::forward const& forward, compiled_info const& info);
 [[nodiscard]] executor::exchange::group::step create(takatori::plan::group const& group, compiled_info const& info);
 [[nodiscard]] executor::exchange::aggregate::step create(takatori::plan::aggregate const& agg, compiled_info const& info);
+
+std::shared_ptr<executor::process::impl::variable_table_info> create_host_variable_info(
+    std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
+    yugawara::compiled_info const& info
+);
+
+std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
+    parameter_set const* parameters,
+    std::shared_ptr<executor::process::impl::variable_table_info> const& info
+);
+
 }
 
 /**

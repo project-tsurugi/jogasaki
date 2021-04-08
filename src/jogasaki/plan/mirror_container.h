@@ -62,8 +62,20 @@ public:
      */
     void set(step_index index, variable_definition def) noexcept;
 
+    /**
+     * @brief host variable info setter
+     * @param host_variable_info the host variable information to be stored in this container
+     */
+    void host_variable_info(std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info) noexcept;
+
+    /**
+     * @brief accessor to the host variable information
+     */
+    std::shared_ptr<executor::process::impl::variable_table_info> const& host_variable_info() const noexcept;
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
+    std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
 };
 
 }

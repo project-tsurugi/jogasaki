@@ -89,7 +89,7 @@ void preprocess(
 }
 
 mirror_container preprocess_mirror(
-    maybe_shared_ptr<statement::statement> statement,
+    maybe_shared_ptr<statement::statement> const& statement,
     yugawara::compiled_info info
 ) {
     mirror_container container{};
@@ -125,14 +125,14 @@ status create_prepared_statement(
         return status::err_compiler_error;
     }
     auto stmt = result.release_statement();
-    if constexpr (Kind == result_kind::execution_plan) {
+    if constexpr (Kind == result_kind::execution_plan) {  //NOLINT
         auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
         out = std::make_shared<plan::prepared_statement>(
             s,
             result.info(),
             preprocess_mirror(s, result.info())
         );
-    } else if (Kind == result_kind::statement) {
+    } else if (Kind == result_kind::statement) {  //NOLINT
         out = std::make_shared<plan::prepared_statement>(
             std::shared_ptr<::takatori::statement::statement>(std::move(stmt)),
             result.info(),

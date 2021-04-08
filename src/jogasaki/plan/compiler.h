@@ -41,7 +41,7 @@ void preprocess(
     mirror_container& container
 );
 [[nodiscard]] mirror_container preprocess_mirror(
-    maybe_shared_ptr<takatori::statement::statement> statement,
+    maybe_shared_ptr<takatori::statement::statement> const& statement,
     yugawara::compiled_info info
 );
 [[nodiscard]] executor::process::step create(

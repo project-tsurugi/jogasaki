@@ -60,10 +60,8 @@ public:
         utils::load_storage_data(*db_, db_impl->tables(), "WAREHOUSE", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "DISTRICT", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "CUSTOMER", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "CUSTOMER_SECONDARY", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "NEW_ORDER", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "ORDERS", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "ORDERS_SECONDARY", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "ORDER_LINE", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "ITEM", 3, true, 5);
         utils::load_storage_data(*db_, db_impl->tables(), "STOCK", 3, true, 5);
@@ -228,34 +226,6 @@ TEST_F(tpcc_test, new_order_insert1) {
     EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
 }
 
-TEST_F(tpcc_test, new_order_insert2) {
-    std::string query =
-        "INSERT INTO "
-        "ORDERS_SECONDARY (o_d_id, o_w_id, o_c_id, o_id) "
-        "VALUES (:o_d_id, :o_w_id, :o_c_id, :o_id)"
-    ;
-
-    resolve(query, ":o_d_id", "10");
-    resolve(query, ":o_w_id", "10");
-    resolve(query, ":o_c_id", "10");
-    resolve(query, ":o_id", "10");
-    execute_statement(query);
-
-    std::string verify =
-        "SELECT o_id FROM ORDERS_SECONDARY "
-        "WHERE "
-        "o_d_id = :o_d_id AND "
-        "o_w_id = :o_w_id AND "
-        "o_c_id = :o_c_id "
-    ;
-    resolve(verify, ":o_d_id", "10");
-    resolve(verify, ":o_w_id", "10");
-    resolve(verify, ":o_c_id", "10");
-    std::vector<mock::basic_record> result{};
-    execute_query(verify, result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
-}
 
 TEST_F(tpcc_test, new_order_insert3) {
     std::string query =
@@ -429,8 +399,9 @@ TEST_F(tpcc_test, payment2) {
 }
 
 TEST_F(tpcc_test, payment3) {
+    // secondary index is preferred
     std::string query =
-        "SELECT COUNT(c_id) FROM CUSTOMER_SECONDARY "
+        "SELECT COUNT(c_id) FROM CUSTOMER "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -447,8 +418,9 @@ TEST_F(tpcc_test, payment3) {
 }
 
 TEST_F(tpcc_test, payment4) {
+    // secondary index is preferred
     std::string query =
-        "SELECT c_id FROM CUSTOMER_SECONDARY "
+        "SELECT c_id FROM CUSTOMER "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -572,8 +544,9 @@ TEST_F(tpcc_test, payment_update4) {
 }
 
 TEST_F(tpcc_test, order_status1) {
+    // secondary index is preferred
     std::string query =
-        "SELECT COUNT(c_id) FROM CUSTOMER_SECONDARY "
+        "SELECT COUNT(c_id) FROM CUSTOMER "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -589,8 +562,9 @@ TEST_F(tpcc_test, order_status1) {
 }
 
 TEST_F(tpcc_test, order_status2) {
+    // secondary index is preferred
     std::string query =
-        "SELECT c_id FROM CUSTOMER_SECONDARY "
+        "SELECT c_id FROM CUSTOMER "
         "WHERE "
         "c_w_id = :c_w_id AND "
         "c_d_id = :c_d_id AND "
@@ -626,8 +600,9 @@ TEST_F(tpcc_test, order_status3) {
 }
 
 TEST_F(tpcc_test, order_status4) {
+    // secondary index is preferred
     std::string query =
-        "SELECT o_id FROM ORDERS_SECONDARY "
+        "SELECT o_id FROM ORDERS "
         "WHERE "
         "o_w_id = :o_w_id AND "
         "o_d_id = :o_d_id AND "

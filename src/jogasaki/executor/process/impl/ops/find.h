@@ -151,6 +151,7 @@ public:
      * @see operator_base::finish()
      */
     void finish(abstract::task_context*) override;;
+
 private:
     std::string storage_name_{};
     data::aligned_buffer key_{};

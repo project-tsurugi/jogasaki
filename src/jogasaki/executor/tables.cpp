@@ -389,37 +389,20 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-    }
-    {
-//        "CREATE TABLE CUSTOMER_SECONDARY ("
-//        "c_d_id INT NOT NULL, "
-//        "c_w_id INT NOT NULL, "
-//        "c_last CHAR(16) NOT NULL, "
-//        "c_first CHAR(16) NOT NULL, "
-//        "c_id INT NOT NULL, "
 //        "PRIMARY KEY(c_w_id, c_d_id, c_last, c_first))",
-        auto t = provider.add_table({
-            "CUSTOMER_SECONDARY",
-            {
-                { "c_d_id", int_type(), not_null },
-                { "c_w_id", int_type(), not_null },
-                { "c_last", type::character(16), not_null },
-                { "c_first", type::character(16), not_null },
-                { "c_id", int_type(), not_null },
-            },
-        });
-        auto i = provider.add_index({
+        auto i2 = provider.add_index({
             t,
             "CUSTOMER_SECONDARY",
             {
+                t->columns()[2],
+                t->columns()[1],
+                t->columns()[5],
+                t->columns()[3],
+                t->columns()[2],
                 t->columns()[1],
                 t->columns()[0],
-                t->columns()[2],
-                t->columns()[3],
             },
-            {
-                t->columns()[4],
-            },
+            {},
             index_features
         });
     }
@@ -491,31 +474,18 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-    }
-    {
-//        "CREATE TABLE ORDERS_SECONDARY ("
-//        "o_d_id INT NOT NULL, "
-//        "o_w_id INT NOT NULL, "
-//        "o_c_id INT NOT NULL, "
-//        "o_id INT NOT NULL, "
 //        "PRIMARY KEY(o_w_id, o_d_id, o_c_id, o_id))",
-        auto t = provider.add_table({
-            "ORDERS_SECONDARY",
-            {
-                { "o_d_id", int_type(), not_null },
-                { "o_w_id", int_type(), not_null },
-                { "o_c_id", int_type(), not_null },
-                { "o_id", int_type(), not_null },
-            },
-        });
-        auto i = provider.add_index({
+        auto i2 = provider.add_index({
             t,
             "ORDERS_SECONDARY",
             {
+                t->columns()[2],
                 t->columns()[1],
+                t->columns()[3],
                 t->columns()[0],
                 t->columns()[2],
-                t->columns()[3],
+                t->columns()[1],
+                t->columns()[0],
             },
             {},
             index_features

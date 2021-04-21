@@ -284,6 +284,9 @@ public:
     [[nodiscard]] char const* data() const noexcept {
         return base_;
     }
+    [[nodiscard]] std::string_view rest() const noexcept {
+        return {base_+pos_, capacity_-pos_};
+    }
 private:
     char* base_{};
     std::size_t pos_{};

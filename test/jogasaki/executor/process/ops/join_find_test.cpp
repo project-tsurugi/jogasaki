@@ -31,6 +31,7 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
+#include <jogasaki/kvs_test_utils.h>
 
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/mock/basic_record.h>
@@ -49,6 +50,7 @@ using namespace testing;
 using namespace executor;
 using namespace accessor;
 using namespace takatori::util;
+using namespace jogasaki::mock;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
@@ -60,11 +62,8 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class join_find_test : public test_root {
+class join_find_test : public test_root, public kvs_test_utils {
 public:
-    static constexpr kvs::coding_spec spec_asc = kvs::spec_key_ascending;
-    static constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
-    static constexpr kvs::coding_spec spec_val = kvs::spec_value;
 };
 
 using kind = field_type_kind;
@@ -89,9 +88,9 @@ TEST_F(join_find_test, simple) {
     storage::column const& t0c0 = t0->columns()[0];
     storage::column const& t0c1 = t0->columns()[1];
 
-    std::shared_ptr<::yugawara::storage::index> i0 = storages->add_index({
+    std::shared_ptr<::yugawara::storage::index> primary_idx_t0 = storages->add_index({
         t0,
-        "I0",
+        t0->simple_name(),
         {
             t0->columns()[0],
         },
@@ -115,9 +114,9 @@ TEST_F(join_find_test, simple) {
     storage::column const& t1c0 = t1->columns()[0];
     storage::column const& t1c1 = t1->columns()[1];
 
-    std::shared_ptr<::yugawara::storage::index> i1 = storages->add_index({
+    std::shared_ptr<::yugawara::storage::index> primary_idx_t1 = storages->add_index({
         t1,
-        "I1",
+        t1->simple_name(),
         {
             t1->columns()[0],
         },
@@ -138,7 +137,7 @@ TEST_F(join_find_test, simple) {
     auto c1 = bindings.stream_variable("c1");
 
     auto& scan = p0.operators().insert(relation::scan {
-        bindings(*i0),
+        bindings(*primary_idx_t0),
         {
             { bindings(t0c0), c0 },
             { bindings(t0c1), c1 },
@@ -150,7 +149,7 @@ TEST_F(join_find_test, simple) {
 
     auto& r0 = p0.operators().insert(relation::join_find {
         relation::join_kind::inner,
-        bindings(*i1),
+        bindings(*primary_idx_t1),
         {
             { bindings(t1c0), c2 },
             { bindings(t1c1), c3 },
@@ -208,8 +207,8 @@ TEST_F(join_find_test, simple) {
         0,
         p_info,
         0,
-        "I1"sv,
-        *i1,
+        primary_idx_t1->simple_name(),
+        *primary_idx_t1,
         r0.columns(),
         r0.keys(),
         r0.condition(),
@@ -228,45 +227,19 @@ TEST_F(join_find_test, simple) {
     };
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage("I1");
-
-    std::string key_buf(100, '\0');
-    std::string val_buf(100, '\0');
-    kvs::stream key_stream{key_buf};
-    kvs::stream val_stream{val_buf};
-
-    using key_record = jogasaki::mock::basic_record;
-    using value_record = jogasaki::mock::basic_record;
-    {
-        auto tx = db->create_transaction();
-        {
-            key_record key_rec{jogasaki::mock::create_record<kind::int8>(1)};
-            auto key_meta = key_rec.record_meta();
-            kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), spec_asc, key_stream);
-            value_record val_rec{jogasaki::mock::create_record<kind::int8>(100)};
-            auto val_meta = val_rec.record_meta();
-            kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), spec_val, val_stream);
-            ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
-            ));
-        }
-        key_stream.reset();
-        val_stream.reset();
-        {
-            key_record key_rec{jogasaki::mock::create_record<kind::int8>(2)};
-            auto key_meta = key_rec.record_meta();
-            kvs::encode(key_rec.ref(), key_meta->value_offset(0), key_meta->at(0), spec_asc, key_stream);
-            value_record val_rec{jogasaki::mock::create_record<kind::int8>(200)};
-            auto val_meta = val_rec.record_meta();
-            kvs::encode(val_rec.ref(), val_meta->value_offset(0), val_meta->at(0), spec_val, val_stream);
-            ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
-            ));
-        }
-        ASSERT_EQ(status::ok, tx->commit());
-    }
+    auto stg = db->create_storage(primary_idx_t1->simple_name());
+    put(
+        *db,
+        primary_idx_t1->simple_name(),
+        create_record<kind::int8>(1),
+        create_record<kind::int8>(100)
+    );
+    put(
+        *db,
+        primary_idx_t1->simple_name(),
+        create_record<kind::int8>(2),
+        create_record<kind::int8>(200)
+    );
     auto tx = db->create_transaction();
     join_find_context ctx(
         &task_ctx,

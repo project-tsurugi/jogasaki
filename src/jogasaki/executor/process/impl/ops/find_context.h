@@ -43,6 +43,7 @@ public:
         class abstract::task_context* ctx,
         variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
+        std::unique_ptr<kvs::storage> secondary_stg,
         kvs::transaction* tx,
         memory_resource* resource,
         memory_resource* varlen_resource
@@ -56,6 +57,7 @@ public:
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
+    std::unique_ptr<kvs::storage> secondary_stg_{};
     kvs::transaction* tx_{};
 };
 

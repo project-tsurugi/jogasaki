@@ -36,62 +36,51 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-namespace details {
-
-details::find_field::find_field(
-    meta::field_type type,
-    bool target_exists,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
-    bool source_nullable,
-    kvs::coding_spec spec
-) :
-    type_(std::move(type)),
-    target_exists_(target_exists),
-    target_offset_(target_offset),
-    target_nullity_offset_(target_nullity_offset),
-    source_nullable_(source_nullable),
-    spec_(spec)
-{}
-
-}
-
 find::find(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
     std::string_view storage_name,
+    std::string_view secondary_storage_name,
     std::string_view key,
-    std::vector<details::find_field> key_fields,
-    std::vector<details::find_field> value_fields,
+    std::vector<details::field_info> key_fields,
+    std::vector<details::field_info> value_fields,
+    std::vector<details::secondary_index_field_info> secondary_key_fields,
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
     storage_name_(storage_name),
+    secondary_storage_name_(secondary_storage_name),
     key_(key),
-    key_fields_(std::move(key_fields)),
-    value_fields_(std::move(value_fields)),
-    downstream_(std::move(downstream))
+    downstream_(std::move(downstream)),
+    field_mapper_(
+        ! secondary_storage_name.empty(),
+        std::move(key_fields),
+        std::move(value_fields),
+        std::move(secondary_key_fields)
+    )
 {}
 
 find::find(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
-    std::string_view storage_name,
     std::string_view key,
-    yugawara::storage::index const& idx,
+    yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
+    yugawara::storage::index const* secondary_idx,
     std::unique_ptr<operator_base> downstream
 ) :
     find(
         index,
         info,
         block_index,
-        storage_name,
+        primary_idx.simple_name(),
+        secondary_idx != nullptr ? secondary_idx->simple_name() : "",
         key,
-        create_fields(idx, columns, info, block_index, true),
-        create_fields(idx, columns, info, block_index, false),
+        create_fields(primary_idx, columns, info, block_index, true),
+        create_fields(primary_idx, columns, info, block_index, false),
+        create_secondary_key_fields(secondary_idx),
         std::move(downstream)
     )
 {}
@@ -104,6 +93,7 @@ operation_status find::process_record(abstract::task_context* context) {
         p = ctx.make_context<class find_context>(index(),
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
+            secondary_storage_name().empty() ? nullptr : ctx.database()->get_storage(secondary_storage_name()),
             ctx.transaction(),
             ctx.resource(),
             ctx.varlen_resource()
@@ -119,18 +109,40 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
     std::string_view v{};
-    if(auto res = ctx.stg_->get(*ctx.tx_, key_, v); res != status::ok) {
-        if (res == status::not_found) {
-            return {};
+    std::string_view k{key_};
+    std::unique_ptr<kvs::iterator> it{};
+    if (secondary_storage_name_.empty()) {
+        auto& stg = *ctx.stg_;
+        if(auto res = stg.get(*ctx.tx_, key_, v); res != status::ok) {
+            if (res == status::not_found) {
+                return {};
+            }
+            ctx.state(context_state::abort);
+            ctx.req_context()->status_code(res);
+            return {operation_status_kind::aborted};
         }
-        ctx.state(context_state::abort);
-        ctx.req_context()->status_code(res);
-        return {operation_status_kind::aborted};
+    } else {
+        auto& stg = *ctx.secondary_stg_;
+        if(auto res = stg.scan(*ctx.tx_,
+                key_, kvs::end_point_kind::prefixed_inclusive,
+                key_, kvs::end_point_kind::prefixed_inclusive,
+                it
+            ); res != status::ok) {
+            if (res == status::not_found) {
+                return {};
+            }
+            ctx.state(context_state::abort);
+            ctx.req_context()->status_code(res);
+            return {operation_status_kind::aborted};
+        }
+        if(auto res = it->next(); res != status::ok) {
+            fail();
+        }
+        if(auto res = it->key(k); ! res) {
+            fail();
+        }
     }
-    kvs::stream keys{key_.data(), key_.size()}; //TODO create read-only stream
-    kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
-    decode_fields(key_fields_, keys, target, resource);
-    decode_fields(value_fields_, values, target, resource);
+    field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource);
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
             ctx.abort();
@@ -149,53 +161,23 @@ std::string_view find::storage_name() const noexcept {
     return storage_name_;
 }
 
+std::string_view find::secondary_storage_name() const noexcept {
+    return secondary_storage_name_;
+}
+
 void find::finish(abstract::task_context*) {
     // top operators decide finish timing on their own
     fail();
 }
 
-void find::decode_fields(
-    std::vector<details::find_field> const& fields,
-    kvs::stream& stream,
-    accessor::record_ref target,
-    find::memory_resource* resource
-) {
-    for(auto&& f : fields) {
-        if (! f.target_exists_) {
-            if (f.source_nullable_) {
-                kvs::consume_stream_nullable(stream, f.type_, f.spec_);
-                continue;
-            }
-            kvs::consume_stream(stream, f.type_, f.spec_);
-            continue;
-        }
-        if (f.source_nullable_) {
-            kvs::decode_nullable(
-                stream,
-                f.type_,
-                f.spec_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                resource
-            );
-            continue;
-        }
-        kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are
-                                                                // nullable and f.target_nullity_offset_ is valid
-                                                                // even if f.source_nullable_ is false
-    }
-}
-
-std::vector<details::find_field> find::create_fields(
+std::vector<details::field_info> find::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     processor_info const& info,
     operator_base::block_index_type block_index,
     bool key
 ) {
-    std::vector<details::find_field> ret{};
+    std::vector<details::field_info> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};
@@ -262,6 +244,27 @@ std::vector<details::find_field> find::create_fields(
     return ret;
 }
 
+std::vector<details::secondary_index_field_info> find::create_secondary_key_fields(
+    yugawara::storage::index const* idx
+) {
+    if (idx == nullptr) {
+        return {};
+    }
+    std::vector<details::secondary_index_field_info> ret{};
+    ret.reserve(idx->keys().size());
+    yugawara::binding::factory bindings{};
+    for(auto&& k : idx->keys()) {
+        auto kc = bindings(k.column());
+        auto t = utils::type_for(k.column().type());
+        auto spec = k.direction() == relation::sort_direction::ascendant ?
+            kvs::spec_key_ascending : kvs::spec_key_descending;
+        ret.emplace_back(
+            t,
+            k.column().criteria().nullity().nullable(),
+            spec
+        );
+    }
+    return ret;
 }
 
-
+}

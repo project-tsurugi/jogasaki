@@ -80,16 +80,19 @@ relation::expression const& operator_builder::head() {
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::find& node) {
     auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
-    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
-    auto k = encode_key<relation::find::key>(node.keys(), index.keys(), *info_, *resource_);
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto k = encode_key<relation::find::key>(node.keys(), secondary_or_primary_index.keys(), *info_, *resource_);
+    auto& table = secondary_or_primary_index.table();
+    auto primary = table.owner()->find_primary_index(table);
+    BOOST_ASSERT(primary); //NOLINT
     return std::make_unique<find>(
         index_++,
         *info_,
         block_index,
-        index.simple_name(),
         k,
-        index,
+        *primary,
         node.columns(),
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
         std::move(downstream)
     );
 }

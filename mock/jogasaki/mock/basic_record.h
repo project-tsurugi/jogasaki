@@ -228,6 +228,13 @@ public:
         return accessor::record_ref(const_cast<char*>(std::addressof(entity_[0])), meta_->record_size());
     }
 
+    /**
+     * @brief returns whether the object is valid or not
+     */
+    [[nodiscard]] operator bool() const noexcept {
+        return static_cast<bool>(meta_);
+    }
+
     /// @brief equality comparison operator
     friend bool operator==(basic_record const& a, basic_record const& b) noexcept {
         if (a.meta_->field_count() != b.meta_->field_count()) {

@@ -26,12 +26,14 @@ find_context::find_context(
     class abstract::task_context* ctx,
     variable_table& variables,
     std::unique_ptr<kvs::storage> stg,
+    std::unique_ptr<kvs::storage> secondary_stg,
     kvs::transaction* tx,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     stg_(std::move(stg)),
+    secondary_stg_(std::move(secondary_stg)),
     tx_(tx)
 {}
 

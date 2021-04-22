@@ -100,19 +100,21 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::find
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan& node) {
     auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
-    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& table = secondary_or_primary_index.table();
+    auto primary = table.owner()->find_primary_index(table);
 
     // scan info is not passed to scan operator here, but passed back through task_context
     // in order to support parallel scan in the future
-    scan_info_ = create_scan_info(node, index.keys());
+    scan_info_ = create_scan_info(node, secondary_or_primary_index.keys());
 
     return std::make_unique<scan>(
         index_++,
         *info_,
         block_index,
-        index.simple_name(),
-        index,
+        *primary,
         node.columns(),
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
         std::move(downstream)
     );
 }

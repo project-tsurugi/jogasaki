@@ -38,58 +38,48 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-namespace details {
-
-details::scan_field::scan_field(
-    meta::field_type type,
-    bool target_exists,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
-    bool source_nullable,
-    kvs::coding_spec spec
-) :
-    type_(std::move(type)),
-    target_exists_(target_exists),
-    target_offset_(target_offset),
-    target_nullity_offset_(target_nullity_offset),
-    source_nullable_(source_nullable),
-    spec_(spec)
-{}
-
-}
-
 scan::scan(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
     std::string_view storage_name,
-    std::vector<details::scan_field> key_fields,
-    std::vector<details::scan_field> value_fields,
+    std::string_view secondary_storage_name,
+    std::vector<details::field_info> key_fields,
+    std::vector<details::field_info> value_fields,
+    std::vector<details::secondary_index_field_info> secondary_key_fields,
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
+    use_secondary_(! secondary_storage_name.empty()),
     storage_name_(storage_name),
-    key_fields_(std::move(key_fields)),
-    value_fields_(std::move(value_fields)),
-    downstream_(std::move(downstream))
+    secondary_storage_name_(secondary_storage_name),
+    downstream_(std::move(downstream)),
+    field_mapper_(
+        use_secondary_,
+        std::move(key_fields),
+        std::move(value_fields),
+        std::move(secondary_key_fields)
+    )
 {}
 
 scan::scan(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
-    std::string_view storage_name,
-    yugawara::storage::index const& idx,
+    yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
+    yugawara::storage::index const* secondary_idx,
     std::unique_ptr<operator_base> downstream
 ) :
     scan(
         index,
         info,
         block_index,
-        storage_name,
-        create_fields(idx, columns, info, block_index, true),
-        create_fields(idx, columns, info, block_index, false),
+        primary_idx.simple_name(),
+        secondary_idx != nullptr ? secondary_idx->simple_name() : "",
+        create_fields(primary_idx, columns, info, block_index, true),
+        create_fields(primary_idx, columns, info, block_index, false),
+        create_secondary_key_fields(secondary_idx),
         std::move(downstream)
     )
 {}
@@ -104,6 +94,7 @@ operation_status scan::process_record(abstract::task_context* context) {
         p = ctx.make_context<scan_context>(index(),
             ctx.variable_table(block_index()),
             std::move(stg),
+            use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             unsafe_downcast<impl::scan_info const>(ctx.task_context()->scan_info()),  //NOLINT
             ctx.resource(),
@@ -128,10 +119,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         if(!ctx.it_->key(k) || !ctx.it_->value(v)) {
             fail();
         }
-        kvs::stream keys{const_cast<char*>(k.data()), k.length()}; //TODO create read-only stream
-        kvs::stream values{const_cast<char*>(v.data()), v.length()}; //   and avoid using const_cast
-        decode_fields(key_fields_, keys, target, resource);
-        decode_fields(value_fields_, values, target, resource);
+        field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource);
         if (downstream_) {
             if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
                 ctx.abort();
@@ -161,24 +149,46 @@ std::string_view scan::storage_name() const noexcept {
     return storage_name_;
 }
 
+std::string_view scan::secondary_storage_name() const noexcept {
+    return secondary_storage_name_;
+}
+
 void scan::finish(abstract::task_context*) {
     // top operators decide finish timing on their own
     fail();
 }
 
 void scan::open(scan_context& ctx) {
-    if (ctx.stg_ && ctx.tx_ && !ctx.it_) {
-        if(auto res = ctx.stg_->scan(
-                *ctx.tx_,
-                ctx.scan_info_->begin_key(),
-                ctx.scan_info_->begin_endpoint(),
-                ctx.scan_info_->end_key(),
-                ctx.scan_info_->end_endpoint(),
-                ctx.it_
-            );
-            res != status::ok) {
-            fail();
+    auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
+    auto be = ctx.scan_info_->begin_endpoint();
+    auto ee = ctx.scan_info_->end_endpoint();
+    if (use_secondary_) {
+        // at storage layer, secondary index key contains primary key index as postfix
+        // so boundary condition needs promotion to be compatible
+        // TODO verify the promotion
+        if (be == kvs::end_point_kind::inclusive) {
+            be = kvs::end_point_kind::prefixed_inclusive;
         }
+        if (be == kvs::end_point_kind::exclusive) {
+            be = kvs::end_point_kind::prefixed_exclusive;
+        }
+        if (ee == kvs::end_point_kind::inclusive) {
+            ee = kvs::end_point_kind::prefixed_inclusive;
+        }
+        if (ee == kvs::end_point_kind::exclusive) {
+            ee = kvs::end_point_kind::prefixed_exclusive;
+        }
+    }
+    if(auto res = stg.scan(
+            *ctx.tx_,
+            ctx.scan_info_->begin_key(),
+            be,
+            ctx.scan_info_->end_key(),
+            ee,
+            ctx.it_
+        );
+        res != status::ok) {
+        fail();
     }
 }
 
@@ -186,45 +196,14 @@ void scan::close(scan_context& ctx) {
     ctx.it_.reset();
 }
 
-void
-scan::decode_fields(const std::vector<details::scan_field>& fields, kvs::stream& stream, accessor::record_ref target,
-    scan::memory_resource* resource) {
-    for(auto&& f : fields) {
-        if (! f.target_exists_) {
-            if (f.source_nullable_) {
-                kvs::consume_stream_nullable(stream, f.type_, f.spec_);
-                continue;
-            }
-            kvs::consume_stream(stream, f.type_, f.spec_);
-            continue;
-        }
-        if (f.source_nullable_) {
-            kvs::decode_nullable(
-                stream,
-                f.type_,
-                f.spec_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                resource
-            );
-            continue;
-        }
-        kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are
-                                                                // nullable and f.target_nullity_offset_ is valid
-                                                                // even if f.source_nullable_ is false
-    }
-}
-
-std::vector<details::scan_field> scan::create_fields(
+std::vector<details::field_info> scan::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     processor_info const& info,
     operator_base::block_index_type block_index,
     bool key
 ) {
-    std::vector<details::scan_field> ret{};
+    std::vector<details::field_info> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};
@@ -291,4 +270,26 @@ std::vector<details::scan_field> scan::create_fields(
     return ret;
 }
 
+std::vector<details::secondary_index_field_info> scan::create_secondary_key_fields(
+    yugawara::storage::index const* idx
+) {
+    if (idx == nullptr) {
+        return {};
+    }
+    std::vector<details::secondary_index_field_info> ret{};
+    ret.reserve(idx->keys().size());
+    yugawara::binding::factory bindings{};
+    for(auto&& k : idx->keys()) {
+        auto kc = bindings(k.column());
+        auto t = utils::type_for(k.column().type());
+        auto spec = k.direction() == relation::sort_direction::ascendant ?
+            kvs::spec_key_ascending : kvs::spec_key_descending;
+        ret.emplace_back(
+            t,
+            k.column().criteria().nullity().nullable(),
+            spec
+        );
+    }
+    return ret;
+}
 }

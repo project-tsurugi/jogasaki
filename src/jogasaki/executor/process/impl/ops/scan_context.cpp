@@ -27,6 +27,7 @@ scan_context::scan_context(
     class abstract::task_context* ctx,
     variable_table& variables,
     std::unique_ptr<kvs::storage> stg,
+    std::unique_ptr<kvs::storage> secondary_stg,
     kvs::transaction* tx,
     impl::scan_info const* scan_info,
     context_base::memory_resource* resource,
@@ -34,6 +35,7 @@ scan_context::scan_context(
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     stg_(std::move(stg)),
+    secondary_stg_(std::move(secondary_stg)),
     tx_(tx),
     scan_info_(scan_info)
 {}

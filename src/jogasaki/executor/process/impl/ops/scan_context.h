@@ -44,6 +44,7 @@ public:
         class abstract::task_context* ctx,
         variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
+        std::unique_ptr<kvs::storage> secondary_stg,
         kvs::transaction* tx,
         impl::scan_info const* scan_info,
         memory_resource* resource,
@@ -58,6 +59,7 @@ public:
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
+    std::unique_ptr<kvs::storage> secondary_stg_{};
     kvs::transaction* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     impl::scan_info const* scan_info_{};

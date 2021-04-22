@@ -147,11 +147,6 @@ TEST_F(scan_test, simple) {
 
     processor_info p_info{p0.operators(), c_info};
 
-    std::vector<scan::column, takatori::util::object_allocator<scan::column>> scan_columns{
-        {v0, c0},
-        {v1, c1},
-        {v2, c2},
-    };
     using kind = meta::field_type_kind;
     auto d = std::make_unique<verifier>();
     auto downstream = d.get();
@@ -159,9 +154,9 @@ TEST_F(scan_test, simple) {
         0,
         p_info,
         0,
-        primary_idx->simple_name(),
         *primary_idx,
-        scan_columns,
+        r0.columns(),
+        nullptr,
         std::move(d)
     };
 
@@ -197,7 +192,8 @@ TEST_F(scan_test, simple) {
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), nullptr, t,
+        sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto& map = variables.info();
@@ -317,11 +313,6 @@ TEST_F(scan_test, nullable_fields) {
 
     processor_info p_info{p0.operators(), c_info};
 
-    std::vector<scan::column, takatori::util::object_allocator<scan::column>> scan_columns{
-        {v0, c0},
-        {v1, c1},
-        {v2, c2},
-    };
     using kind = meta::field_type_kind;
     auto d = std::make_unique<verifier>();
     auto downstream = d.get();
@@ -329,9 +320,9 @@ TEST_F(scan_test, nullable_fields) {
         0,
         p_info,
         0,
-        primary_idx->simple_name(),
         *primary_idx,
-        scan_columns,
+        r0.columns(),
+        nullptr,
         std::move(d)
     };
 
@@ -367,7 +358,8 @@ TEST_F(scan_test, nullable_fields) {
 
     auto tx2 = db->create_transaction();
     auto t = tx2.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), nullptr, t,
+        sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto& map = variables.info();
@@ -520,11 +512,6 @@ TEST_F(scan_test, scan_info) {
 
     auto p_info = std::make_shared<processor_info>(p0.operators(), c_info);
 
-    std::vector<scan::column, takatori::util::object_allocator<scan::column>> scan_columns{
-        {v0, c0},
-        {v1, c1},
-        {v2, c2},
-    };
     using kind = meta::field_type_kind;
     auto d = std::make_unique<verifier>();
     auto downstream = d.get();
@@ -532,9 +519,9 @@ TEST_F(scan_test, scan_info) {
         0,
         *p_info,
         0,
-        primary_idx->simple_name(),
         *primary_idx,
-        scan_columns,
+        r0.columns(),
+        nullptr,
         std::move(d)
     };
 
@@ -579,7 +566,8 @@ TEST_F(scan_test, scan_info) {
 
     auto tx = db->create_transaction();
     auto t = tx.get();
-    scan_context ctx(&task_ctx, variables, std::move(stg), t, sinfo.get(), &resource, &varlen_resource);
+    scan_context ctx(&task_ctx, variables, std::move(stg), nullptr, t,
+        sinfo.get(), &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto& map = variables.info();
@@ -612,6 +600,227 @@ TEST_F(scan_test, scan_info) {
     s(ctx);
     ctx.release();
     ASSERT_EQ(2, count);
+    ASSERT_EQ(status::ok, t->commit());
+    (void)db->close();
+}
+
+TEST_F(scan_test, secondary_index) {
+    binding::factory bindings;
+    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
+    std::shared_ptr<storage::table> t0 = storages->add_table({
+        "T0",
+        {
+            { "C0", t::int4(), nullity{false} },
+            { "C1", t::float8(), nullity{false}  },
+            { "C2", t::int8(), nullity{false}  },
+        },
+    });
+    storage::column const& t0c0 = t0->columns()[0];
+    storage::column const& t0c1 = t0->columns()[1];
+    storage::column const& t0c2 = t0->columns()[2];
+
+    std::shared_ptr<::yugawara::storage::index> primary_idx = storages->add_index({
+        t0,
+        t0->simple_name(),
+        {
+            t0->columns()[0],
+        },
+        {
+            t0->columns()[1],
+            t0->columns()[2],
+        },
+        {
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        },
+    });
+    std::shared_ptr<::yugawara::storage::index> secondary_idx = storages->add_index({
+        t0,
+        "I1",
+        {
+            t0->columns()[2],
+        },
+        {},
+        {
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::primary,
+        },
+    });
+
+    takatori::plan::graph_type p;
+    auto&& p0 = p.insert(takatori::plan::process {});
+    auto c0 = bindings.stream_variable("c0");
+    auto c1 = bindings.stream_variable("c1");
+    auto c2 = bindings.stream_variable("c2");
+
+    auto v0 = bindings(t0c0);
+    auto v1 = bindings(t0c1);
+    auto v2 = bindings(t0c2);
+    auto& r0 = p0.operators().insert(relation::scan {
+        bindings(*secondary_idx),
+        {
+            { v0, c0 },
+            { v1, c1 },
+            { v2, c2 },
+        },
+        {
+            {
+                relation::scan::key {
+                    v2,
+                    scalar::immediate { takatori::value::int8(100), takatori::type::int8() }
+                },
+            },
+            relation::endpoint_kind::exclusive,
+        },
+        {
+            {
+                relation::scan::key {
+                    v2,
+                    scalar::immediate { takatori::value::int8(300), takatori::type::int8() }
+                },
+            },
+            relation::endpoint_kind::exclusive,
+        }
+    });
+
+    ::takatori::plan::forward f1 {
+        bindings.exchange_column(),
+        bindings.exchange_column(),
+        bindings.exchange_column(),
+    };
+    auto&& f1c0 = f1.columns()[0];
+    auto&& f1c1 = f1.columns()[1];
+    auto&& f1c2 = f1.columns()[2];
+    // without offer, the columns are not used and block variables become empty
+    auto&& r1 = p0.operators().insert(relation::step::offer {
+        bindings.exchange(f1),
+        {
+            { c0, f1c0 },
+            { c1, f1c1 },
+            { c2, f1c2 },
+        },
+    });
+    r0.output() >> r1.input(); // connection required by takatori
+
+    auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
+    vmap->bind(v0, t::int4{});
+    vmap->bind(v1, t::float8{});
+    vmap->bind(v2, t::int8{});
+    vmap->bind(c0, t::int4{});
+    vmap->bind(c1, t::float8{});
+    vmap->bind(c2, t::int8{});
+
+    auto emap = std::make_shared<yugawara::analyzer::expression_mapping>();
+    emap->bind(r0.lower().keys()[0].value(), t::int8{});
+    emap->bind(r0.upper().keys()[0].value(), t::int8{});
+    yugawara::compiled_info c_info{emap, vmap};
+
+    auto p_info = std::make_shared<processor_info>(p0.operators(), c_info);
+
+    using kind = meta::field_type_kind;
+    auto d = std::make_unique<verifier>();
+    auto downstream = d.get();
+    scan s{
+        0,
+        *p_info,
+        0,
+        *primary_idx,
+        r0.columns(),
+        secondary_idx.get(),
+        std::move(d)
+    };
+
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    memory::lifo_paged_memory_resource varlen_resource{&pool};
+
+    auto& block_info = p_info->vars_info_list()[s.block_index()];
+    variable_table variables{block_info};
+
+    io_exchange_map exchange_map{};
+    operator_builder builder{p_info, {}, {}, exchange_map, &resource};
+    auto sinfo = builder.create_scan_info(r0, primary_idx->keys());
+    mock::task_context task_ctx{
+        {},
+        {},
+        {},
+        {sinfo},
+    };
+
+    auto db = kvs::database::open();
+    auto stg = db->create_storage(primary_idx->simple_name());
+    auto secondary_stg = db->create_storage(secondary_idx->simple_name());
+    put(
+        *db,
+        primary_idx->simple_name(),
+        create_record<kind::int4>(10),
+        create_record<kind::float8, kind::int8>(1.0, 100)
+    );
+    put(
+        *db,
+        secondary_idx->simple_name(),
+        create_record<kind::int8, kind::int4>(100, 10),
+        {}
+    );
+    put(
+        *db,
+        primary_idx->simple_name(),
+        create_record<kind::int4>(20),
+        create_record<kind::float8, kind::int8>(2.0, 200)
+    );
+    put(
+        *db,
+        secondary_idx->simple_name(),
+        create_record<kind::int8, kind::int4>(200, 20),
+        {}
+    );
+    put(
+        *db,
+        primary_idx->simple_name(),
+        create_record<kind::int4>(30),
+        create_record<kind::float8, kind::int8>(3.0, 300)
+    );
+    put(
+        *db,
+        secondary_idx->simple_name(),
+        create_record<kind::int8, kind::int4>(300, 30),
+        {}
+    );
+
+    auto tx = db->create_transaction();
+    auto t = tx.get();
+    scan_context ctx(&task_ctx, variables, std::move(stg),
+        std::move(secondary_stg), t,
+        sinfo.get(), &resource, &varlen_resource);
+
+    auto vars_ref = variables.store().ref();
+    auto& map = variables.info();
+    auto vars_meta = variables.meta();
+
+    auto c0_offset = map.at(c0).value_offset();
+    auto c1_offset = map.at(c1).value_offset();
+    auto c2_offset = map.at(c2).value_offset();
+
+    std::size_t count = 0;
+    downstream->body([&]() {
+        switch(count) {
+            case 0: {
+                EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
+                EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
+                EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
+                break;
+            }
+            default:
+                ADD_FAILURE();
+        }
+        ++count;
+    });
+    s(ctx);
+    ctx.release();
+    ASSERT_EQ(1, count);
     ASSERT_EQ(status::ok, t->commit());
     (void)db->close();
 }

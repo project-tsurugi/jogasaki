@@ -24,46 +24,12 @@
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
 #include "scan_context.h"
+#include "index_field_mapper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
-
-namespace details {
-
-/**
- * @brief field info of the scan operation
- * @details scan operator uses these fields to know how the scanned key/value are mapped to variables
- */
-struct cache_align scan_field {
-    /**
-     * @brief create new scan field
-     * @param type type of the scanned field
-     * @param target_exists whether the target storage exists. If not, there is no room to copy the data to.
-     * @param target_offset byte offset of the target field in the target record reference
-     * @param target_nullity_offset bit offset of the target field nullity in the target record reference
-     * @param source_nullable whether the target field is nullable or not
-     * @param spec the spec of the target field used for encode/decode
-     */
-    scan_field(
-        meta::field_type type,
-        bool target_exists,
-        std::size_t target_offset,
-        std::size_t target_nullity_offset,
-        bool source_nullable,
-        kvs::coding_spec spec
-    );
-
-    meta::field_type type_{}; //NOLINT
-    bool target_exists_{}; //NOLINT
-    std::size_t target_offset_{}; //NOLINT
-    std::size_t target_nullity_offset_{}; //NOLINT
-    bool source_nullable_{}; //NOLINT
-    kvs::coding_spec spec_{}; //NOLINT
-};
-
-}
 
 /**
  * @brief scan operator
@@ -95,8 +61,10 @@ public:
         processor_info const& info,
         block_index_type block_index,
         std::string_view storage_name,
-        std::vector<details::scan_field> key_fields,
-        std::vector<details::scan_field> value_fields,
+        std::string_view secondary_storage_name,
+        std::vector<details::field_info> key_fields,
+        std::vector<details::field_info> value_fields,
+        std::vector<details::secondary_index_field_info> secondary_key_fields,
         std::unique_ptr<operator_base> downstream = nullptr
     );
 
@@ -105,17 +73,18 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param storage_name the storage name to scan
+     * @param primary_idx the primary index model used as the first step to find entry
      * @param columns takatori scan column information
+     * @param secondary_idx the secondary index used to find the primary key.
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     scan(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        std::string_view storage_name,
-        yugawara::storage::index const& idx,
+        yugawara::storage::index const& primary_idx,
         sequence_view<column const> columns,
+        yugawara::storage::index const* secondary_idx,
         std::unique_ptr<operator_base> downstream
     );
 
@@ -147,32 +116,36 @@ public:
     [[nodiscard]] std::string_view storage_name() const noexcept;
 
     /**
+     * @brief return secondary index storage name
+     * @return the secondary index storage name of the scan target
+     */
+    [[nodiscard]] std::string_view secondary_storage_name() const noexcept;
+
+    /**
      * @see operator_base::finish()
      */
     void finish(abstract::task_context*) override;;
+
 private:
+    bool use_secondary_{};
     std::string storage_name_{};
-    std::vector<details::scan_field> key_fields_{};
-    std::vector<details::scan_field> value_fields_{};
+    std::string secondary_storage_name_{};
     std::unique_ptr<operator_base> downstream_{};
+    index_field_mapper field_mapper_{};
 
     void open(scan_context& ctx);
 
     void close(scan_context& ctx);
 
-    void decode_fields(
-        std::vector<details::scan_field> const& fields,
-        kvs::stream& stream,
-        accessor::record_ref target,
-        memory_resource* resource
-    );
-
-    std::vector<details::scan_field> create_fields(
+    std::vector<details::field_info> create_fields(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         processor_info const& info,
         block_index_type block_index,
         bool key
+    );
+    std::vector<details::secondary_index_field_info> create_secondary_key_fields(
+        yugawara::storage::index const* idx
     );
 };
 

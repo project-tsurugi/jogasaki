@@ -63,11 +63,23 @@ public:
 
         auto& key_meta = key.record_meta();
         for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {
+            if (key_meta->nullable(i)) {
+                kvs::encode_nullable(
+                    key.ref(), key_meta->value_offset(i), key_meta->nullity_offset(i),
+                    key_meta->at(i), spec_asc, key_stream);
+                continue;
+            }
             kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, key_stream);
         }
         if (value) {
             auto& val_meta = value.record_meta();
             for(std::size_t i=0, n=val_meta->field_count(); i < n; ++i) {
+                if (val_meta->nullable(i)) {
+                    kvs::encode_nullable(
+                        value.ref(), val_meta->value_offset(i), val_meta->nullity_offset(i),
+                        val_meta->at(i), spec_val, val_stream);
+                    continue;
+                }
                 kvs::encode(value.ref(), val_meta->value_offset(i), val_meta->at(i), spec_val, val_stream);
             }
         }
@@ -79,7 +91,6 @@ public:
         }
         if(auto res = tx->commit(); res != status::ok) fail();
     }
-
 };
 
 }

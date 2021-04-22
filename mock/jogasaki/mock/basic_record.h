@@ -194,7 +194,9 @@ public:
         accessor::record_ref ref,
         maybe_shared_ptr<meta::record_meta> meta,
         memory::paged_memory_resource* resource = nullptr
-    ) : basic_record(std::move(meta)) {  // NOLINT(performance-unnecessary-value-param)
+    ) :
+        basic_record(std::move(meta)) // NOLINT(performance-unnecessary-value-param)
+    {
         details::create_entity(entity_, ref, resource, *meta_);
     }
 
@@ -231,7 +233,7 @@ public:
     /**
      * @brief returns whether the object is valid or not
      */
-    [[nodiscard]] operator bool() const noexcept {
+    [[nodiscard]] explicit operator bool() const noexcept {
         return static_cast<bool>(meta_);
     }
 
@@ -380,7 +382,11 @@ basic_record create_nullable_record(
     auto meta = create_meta<Kinds...>(true);
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
-    return basic_record(std::move(meta), buf);
+    auto ret = basic_record(std::move(meta), buf);
+    for(std::size_t i=0, n=ret.record_meta()->field_count(); i < n ; ++i) {
+        ret.ref().set_null(ret.record_meta()->nullity_offset(i), false);
+    }
+    return ret;
 }
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>

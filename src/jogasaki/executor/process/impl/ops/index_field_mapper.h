@@ -160,7 +160,7 @@ public:
         )
     {}
 
-    void operator()(
+    status operator()(
         std::string_view key,
         std::string_view value,
         accessor::record_ref target,
@@ -172,9 +172,12 @@ public:
         std::string_view v{value};
         if (use_secondary_) {
             k = extract_primary_key(key);
-            find_primary_index(k, stg, tx, v);
+            if (auto res = find_primary_index(k, stg, tx, v); res != status::ok) {
+                return res;
+            }
         }
         populate_field_variables(k, v, target, resource);
+        return status::ok;
     }
 
 private:
@@ -239,7 +242,7 @@ private:
         return keys.rest();
     }
 
-    void find_primary_index(
+    status find_primary_index(
         std::string_view key,
         kvs::storage& stg,
         kvs::transaction& tx,
@@ -247,9 +250,14 @@ private:
     ) {
         std::string_view v{};
         if(auto res = stg.get(tx, key, v); res != status::ok) {
-            fail();
+            if (res == status::not_found) {
+                // primary key not found. Inconsistency between primary/secondary indices.
+                res = status::err_inconsistent_index;
+            }
+            return res;
         }
         value_out = v;
+        return status::ok;
     }
 
     void populate_field_variables(

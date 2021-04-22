@@ -119,7 +119,10 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         if(!ctx.it_->key(k) || !ctx.it_->value(v)) {
             fail();
         }
-        field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource);
+        if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
+            st = res;
+            break;
+        }
         if (downstream_) {
             if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
                 ctx.abort();

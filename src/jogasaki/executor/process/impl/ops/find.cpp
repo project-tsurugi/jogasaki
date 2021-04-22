@@ -143,7 +143,11 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             fail();
         }
     }
-    field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource);
+    if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
+    }
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
             ctx.abort();

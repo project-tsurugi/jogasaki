@@ -132,6 +132,7 @@ public:
     void finish(abstract::task_context*) override;;
 
 private:
+    bool use_secondary_{};
     std::string storage_name_{};
     std::string secondary_storage_name_{};
     data::aligned_buffer key_{};

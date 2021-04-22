@@ -275,7 +275,9 @@ TEST_F(join_find_test, simple) {
     EXPECT_EQ(10, vars_ref.get_value<std::int64_t>(map.at(c1).value_offset()));
     EXPECT_EQ(1, vars_ref.get_value<std::int64_t>(map.at(c2).value_offset()));
     EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(map.at(c3).value_offset()));
+    ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
+    (void)db->close();
 }
 
 }

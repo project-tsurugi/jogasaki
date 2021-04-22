@@ -49,12 +49,13 @@ find::find(
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
+    use_secondary_(! secondary_storage_name.empty()),
     storage_name_(storage_name),
     secondary_storage_name_(secondary_storage_name),
     key_(key),
     downstream_(std::move(downstream)),
     field_mapper_(
-        ! secondary_storage_name.empty(),
+        use_secondary_,
         std::move(key_fields),
         std::move(value_fields),
         std::move(secondary_key_fields)
@@ -93,7 +94,7 @@ operation_status find::process_record(abstract::task_context* context) {
         p = ctx.make_context<class find_context>(index(),
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
-            secondary_storage_name().empty() ? nullptr : ctx.database()->get_storage(secondary_storage_name()),
+            use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             ctx.resource(),
             ctx.varlen_resource()
@@ -111,7 +112,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     std::string_view v{};
     std::string_view k{key_};
     std::unique_ptr<kvs::iterator> it{};
-    if (secondary_storage_name_.empty()) {
+    if (! use_secondary_) {
         auto& stg = *ctx.stg_;
         if(auto res = stg.get(*ctx.tx_, key_, v); res != status::ok) {
             if (res == status::not_found) {

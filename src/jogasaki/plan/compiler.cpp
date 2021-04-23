@@ -434,7 +434,6 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     return vars;
 }
 
-
 void create_mirror_for_write(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
@@ -447,7 +446,6 @@ void create_mirror_for_write(
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
     auto write = std::make_shared<executor::common::write>(
         executor::process::impl::ops::write_kind_from(node.operator_kind()),
-        index.simple_name(),
         index,
         node.columns(),
         node.tuples(),

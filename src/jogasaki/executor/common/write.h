@@ -37,6 +37,8 @@ namespace details {
  */
 class cache_align write_tuple {
 public:
+    write_tuple() = default;
+
     /**
      * @brief create new write field
      * @param size size in byte of the tuple to be written
@@ -46,6 +48,10 @@ public:
     [[nodiscard]] void* data() const noexcept;
 
     [[nodiscard]] std::size_t size() const noexcept;
+
+    [[nodiscard]] explicit operator std::string_view() const noexcept {
+        return {static_cast<char*>(buf_.data()), buf_.size()};
+    }
 
 private:
     data::aligned_buffer buf_{};
@@ -73,6 +79,22 @@ struct write_field {
     bool nullable_{};  //NOLINT
 };
 
+class write_target {
+public:
+    write_target(
+        std::string_view storage_name,
+        std::vector<details::write_tuple> keys,
+        std::vector<details::write_tuple> values
+    ) :
+        storage_name_(storage_name),
+        keys_(std::move(keys)),
+        values_(std::move(values))
+    {}
+
+    std::string storage_name_{};
+    std::vector<details::write_tuple> keys_{};
+    std::vector<details::write_tuple> values_{};
+};
 } // namespace
 
 /**
@@ -97,14 +119,11 @@ public:
      */
     write(
         write_kind kind,
-        std::string_view storage_name,
-        std::vector<details::write_tuple> keys,
-        std::vector<details::write_tuple> values
+        std::vector<details::write_target> targets
     ) noexcept;
 
     write(
         write_kind kind,
-        std::string_view storage_name,
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
@@ -119,9 +138,7 @@ public:
 
 private:
     write_kind kind_{};
-    std::string storage_name_{};
-    std::vector<details::write_tuple> keys_{};
-    std::vector<details::write_tuple> values_{};
+    std::vector<details::write_target> targets_{};
 
     std::vector<details::write_tuple> create_tuples(
         yugawara::storage::index const& idx,
@@ -130,9 +147,18 @@ private:
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource,
         executor::process::impl::variable_table const* host_variables,
-        bool key
+        bool key,
+        std::vector<details::write_tuple> const& primary_key_tuples = {}
     );
 
+    std::vector<details::write_target> create_targets(
+        yugawara::storage::index const& idx,
+        sequence_view<column const> columns,
+        takatori::tree::tree_fragment_vector<tuple> const& tuples,
+        compiled_info const& info,
+        memory::lifo_paged_memory_resource& resource,
+        executor::process::impl::variable_table const* host_variables
+    );
 };
 
 }

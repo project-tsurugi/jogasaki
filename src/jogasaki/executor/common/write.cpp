@@ -39,19 +39,14 @@ using takatori::util::fail;
 
 write::write(
     write_kind kind,
-    std::string_view storage_name,
-    std::vector<details::write_tuple> keys,
-    std::vector<details::write_tuple> values
+    std::vector<details::write_target> targets
 ) noexcept:
     kind_(kind),
-    storage_name_(storage_name),
-    keys_(std::move(keys)),
-    values_(std::move(values))
+    targets_(std::move(targets))
 {}
 
 write::write(
     write_kind kind,
-    std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     takatori::tree::tree_fragment_vector<tuple> const& tuples,
@@ -61,9 +56,7 @@ write::write(
 ) noexcept:
     write(
         kind,
-        storage_name,
-        create_tuples(idx, columns, tuples, info, resource, host_variables, true),
-        create_tuples(idx, columns, tuples, info, resource, host_variables, false)
+        create_targets(idx, columns, tuples, info, resource, host_variables)
     )
 {}
 
@@ -74,27 +67,31 @@ model::statement_kind write::kind() const noexcept {
 bool write::operator()(request_context& context) const {
     auto& tx = context.transaction();
     auto* db = tx->database();
-    auto stg = db->get_storage(storage_name_);
-    if(! stg) {
-        fail();
-    }
-
     // TODO is there the case insert_or_update?
     kvs::put_option opt = kind_ == write_kind::insert ?
         kvs::put_option::create :
         kvs::put_option::create_or_update;
-    BOOST_ASSERT(keys_.size() == values_.size());  //NOLINT
-    for(std::size_t i=0, n=keys_.size(); i<n; ++i) {
-        auto& key = keys_[i];
-        auto& value = values_[i];
-        if(auto res = stg->put(
-                *tx,
-                {static_cast<char*>(key.data()), key.size()},
-                {static_cast<char*>(value.data()), value.size()},
-                opt
-            ); ! is_ok(res)) {
-            context.status_code(res);
-            return false;
+    for(auto&& e : targets_) {
+        auto stg = db->get_storage(e.storage_name_);
+        if(! stg) {
+            stg = db->create_storage(e.storage_name_);
+        }
+        if(! stg) {
+            fail();
+        }
+        BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
+        for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
+            auto& key = e.keys_[i];
+            auto& value = e.values_.empty() ? details::write_tuple{} : e.values_[i];
+            if(auto res = stg->put(
+                    *tx,
+                    {static_cast<char*>(key.data()), key.size()},
+                    {static_cast<char*>(value.data()), value.size()},
+                    opt
+                ); ! is_ok(res)) {
+                context.status_code(res);
+                return false;
+            }
         }
     }
     return true;
@@ -109,7 +106,8 @@ std::size_t encode_tuple(
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& buf,
-    executor::process::impl::variable_table const* host_variables
+    executor::process::impl::variable_table const* host_variables,
+    details::write_tuple const* primary_key_tuple = nullptr
 ) {
     BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
     auto cp = resource.get_checkpoint();
@@ -134,11 +132,14 @@ std::size_t encode_tuple(
                 } else {
                     kvs::encode(res, f.type_, f.spec_, s);
                 }
+                if (primary_key_tuple != nullptr) {
+                    s.do_write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size(), kvs::order::ascending);
+                }
                 resource.deallocate_after(cp);
             }
         }
         if (loop == 0) {
-            length = s.length();
+            length = s.length() + (primary_key_tuple != nullptr ? primary_key_tuple->size() : 0);
             if (buf.size() < length) {
                 buf.resize(length);
             }
@@ -154,7 +155,8 @@ std::vector<details::write_tuple> write::create_tuples(
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
     executor::process::impl::variable_table const* host_variables,
-    bool key
+    bool key,
+    std::vector<details::write_tuple> const& primary_key_tuples
 ) {
     std::vector<details::write_tuple> ret{};
     using variable = takatori::descriptor::variable;
@@ -199,14 +201,49 @@ std::vector<details::write_tuple> write::create_tuples(
         }
     }
     data::aligned_buffer buf{};
+    std::size_t count = 0;
     for(auto&& tuple: tuples) {
-        auto sz = encode_tuple(tuple, fields, info, resource, buf, host_variables);
+        auto sz = encode_tuple(tuple, fields, info, resource, buf, host_variables, primary_key_tuples.empty() ? nullptr : &primary_key_tuples[count]);
         std::string_view sv{static_cast<char*>(buf.data()), sz};
         ret.emplace_back(sv);
+        ++count;
     }
     return ret;
 }
 
+std::vector<details::write_target> write::create_targets(
+    yugawara::storage::index const& idx,
+    sequence_view<column const> columns,
+    takatori::tree::tree_fragment_vector<tuple> const& tuples,
+    compiled_info const& info,
+    memory::lifo_paged_memory_resource& resource,
+    executor::process::impl::variable_table const* host_variables
+) {
+    std::vector<details::write_target> ret{};
+    auto& table = idx.table();
+    auto primary = table.owner()->find_primary_index(table);
+    BOOST_ASSERT(primary != nullptr); //NOLINT
+    // first entry is primary index
+    auto& t = ret.emplace_back(
+        primary->simple_name(),
+        create_tuples(*primary, columns, tuples, info, resource, host_variables, true),
+        create_tuples(*primary, columns, tuples, info, resource, host_variables, false)
+    );
+    auto& keys = t.keys_;
+    table.owner()->each_index(
+        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (entry->table() != table || entry == primary) {
+                return;
+            }
+            ret.emplace_back(
+                entry->simple_name(),
+                create_tuples(*entry, columns, tuples, info, resource, host_variables, true, keys),
+                std::vector<details::write_tuple>{}
+            );
+        }
+    );
+    return ret;
+}
 
 details::write_tuple::write_tuple(std::string_view data) :
     buf_(data.size())

@@ -48,7 +48,7 @@ using takatori::util::unsafe_downcast;
 class tpcc_test : public ::testing::Test {
 public:
     // change this flag to debug with explain
-    constexpr static bool to_explain = false;
+    constexpr static bool to_explain = true;
 
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
@@ -400,6 +400,47 @@ TEST_F(tpcc_test, payment2) {
 
 TEST_F(tpcc_test, payment3) {
     // secondary index is preferred
+    {
+    std::string stmt =
+        "INSERT INTO "
+        "CUSTOMER (c_id, c_d_id, c_w_id, "
+        "c_first, c_middle, c_last, "
+        "c_street_1, c_street_2, c_city, c_state, c_zip, "
+        "c_phone, c_since, c_credit, "
+        "c_credit_lim, c_discount, c_balance, c_data, "
+        "c_ytd_payment, c_payment_cnt, c_delivery_cnt) "
+        "VALUES (:c_id, :c_d_id, :c_w_id, "
+        ":c_first, :c_middle, :c_last, "
+        ":c_street_1, :c_street_2, :c_city, :c_state, :c_zip, "
+        ":c_phone, :c_since, :c_credit, "
+        ":c_credit_lim, :c_discount, :c_balance, :c_data, "
+        ":c_ytd_payment, :c_payment_cnt, :c_delivery_cnt)"
+    ;
+
+        resolve(stmt, ":c_id", "1");
+        resolve(stmt, ":c_d_id", "1");
+        resolve(stmt, ":c_w_id", "1");
+        resolve(stmt, ":c_first", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_middle", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_street_1", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_street_2", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_city", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_state", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_zip", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_phone", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_since", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_credit_lim", "1.0");
+        resolve(stmt, ":c_credit", "'BB'");
+        resolve(stmt, ":c_discount", "1.0");
+        resolve(stmt, ":c_balance", "1.0");
+        resolve(stmt, ":c_data", "'BBBBBBBBBBBBBBBBBBBBBB'");
+        resolve(stmt, ":c_ytd_payment", "1.0");
+        resolve(stmt, ":c_payment_cnt", "1");
+        resolve(stmt, ":c_delivery_cnt", "1");
+        execute_statement(stmt);
+    }
+
     std::string query =
         "SELECT COUNT(c_id) FROM CUSTOMER "
         "WHERE "

@@ -213,6 +213,10 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
         ::yugawara::storage::index_feature::unique,
         ::yugawara::storage::index_feature::primary,
     };
+    yugawara::storage::index_feature_set secondary_index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+    };
     {
 //        "CREATE TABLE WAREHOUSE ("
 //        "w_id INT NOT NULL, "
@@ -403,7 +407,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[0],
             },
             {},
-            index_features
+            secondary_index_features
         });
     }
     {
@@ -488,7 +492,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[0],
             },
             {},
-            index_features
+            secondary_index_features
         });
     }
     {

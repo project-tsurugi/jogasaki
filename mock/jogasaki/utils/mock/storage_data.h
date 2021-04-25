@@ -24,12 +24,14 @@
 
 #include <jogasaki/executor/process/impl/expression/any.h>
 
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/storage_dump.h>
 #include <jogasaki/error.h>
+#include <jogasaki/api.h>
 
 namespace jogasaki::utils {
 
@@ -198,6 +200,129 @@ inline void populate_storage_data(
             VLOG(2) << "committed after " << i << "-th record";
             tx.reset();
         }
+    }
+}
+
+inline std::string any_to_string(expression::any const& any, meta::field_type type) {
+    if (! any) {
+        return "NULL";
+    }
+    switch(type.kind()) {
+        case kind::int4: return std::to_string(any.to<std::int32_t>());
+        case kind::int8: return std::to_string(any.to<std::int64_t>());
+        case kind::float4: return std::to_string(any.to<float>());
+        case kind::float8: return std::to_string(any.to<double>());
+        case kind::character: return std::string(1, '\'') + std::string(static_cast<std::string_view>(any.to<accessor::text>())) + std::string(1, '\'');
+        default: break;
+    }
+    fail();
+}
+
+inline void load_storage_data(
+    api::database& db,
+    std::shared_ptr<configurable_provider> const& provider,
+    std::string_view table_name,
+    std::size_t records_per_partition,
+    bool sequential_data,
+    std::size_t modulo = -1
+) {
+    auto table = provider->find_table(table_name);
+    if (! table) {
+        fail();
+    }
+    static std::size_t record_per_transaction = 10000;
+    std::unique_ptr<api::transaction> tx{};
+    std::size_t record_count = 0;
+    utils::xorshift_random64 rnd{};
+    for(std::size_t i=0, n=records_per_partition; i < n; ++i) {
+        if (! tx) {
+            tx = db.create_transaction();
+        }
+        std::vector<std::string> colnames{};
+        std::vector<std::string> values{};
+        for(auto&& k : table->columns()) {
+            std::size_t val = (sequential_data ? record_count : rnd()) % modulo;
+            colnames.emplace_back(k.simple_name());
+            auto nullable = k.criteria().nullity().nullable();
+            auto type = utils::type_for(k.type());
+            switch(type.kind()) {
+                case kind::int4: {
+                    expression::any a{create_value<std::int32_t>(val, record_count, nullable)};
+                    values.emplace_back(any_to_string(a, type));
+                    break;
+                }
+                case kind::int8: {
+                    expression::any a{create_value<std::int64_t>(val, record_count, nullable)};
+                    values.emplace_back(any_to_string(a, type));
+                    break;
+                }
+                case kind::float4: {
+                    expression::any a{create_value<float>(val, record_count, nullable)};
+                    values.emplace_back(any_to_string(a, type));
+                    break;
+                }
+                case kind::float8: {
+                    expression::any a{create_value<double>(val, record_count, nullable)};
+                    values.emplace_back(any_to_string(a, type));
+                    break;
+                }
+                case kind::character: {
+                    char c = 'A' + val % 26;
+                    std::size_t len = 1 + (sequential_data ? record_count : rnd()) % 70;
+                    len = record_count % 2 == 1 ? len + 20 : len;
+                    std::string d(len, c);
+                    expression::any a{create_value<accessor::text>(
+                        accessor::text{d.data(), d.size()}, record_count, nullable)
+                    };
+                    values.emplace_back(any_to_string(a, type));
+                    break;
+                }
+                default:
+                    fail();
+                    break;
+            }
+        }
+
+        std::stringstream ss{};
+        ss << "INSERT INTO ";
+        ss << table_name;
+        ss << " (";
+        bool first = true;
+        for(auto&& cname : colnames) {
+            if (! first) {
+                ss << ", ";
+            }
+            first = false;
+            ss << cname;
+        }
+        ss << ") VALUES (";
+        first = true;
+        for(auto&& v: values) {
+            if (! first) {
+                ss << ", ";
+            }
+            first = false;
+            ss << v;
+        }
+        ss << ")";
+//        // uncomment when debugging
+//        LOG(INFO) << ss.str();
+
+        std::unique_ptr<api::executable_statement> stmt{};
+        if(auto res = db.create_executable(ss.str(), stmt); res != status::ok) {
+            fail();
+        }
+        if(auto res = tx->execute(*stmt); res != status::ok && res != status::err_already_exists) {
+            fail();
+        }
+        if (i == n-1 || (i != 0 && (i % record_per_transaction) == 0)) {
+            if (auto res = tx->commit(); res != status::ok) {
+                fail();
+            }
+            VLOG(2) << "committed after " << i << "-th record";
+            tx.reset();
+        }
+        ++record_count;
     }
 }
 

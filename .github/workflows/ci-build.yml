@@ -15,7 +15,7 @@ jobs:
       run:
         shell: bash
     env:
-      BISON_DIR: /opt/bison-3.6.2
+      BISON_DIR: /opt/bison-3.5.1
 
     steps:
       - id: Checkout

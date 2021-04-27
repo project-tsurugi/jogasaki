@@ -259,6 +259,50 @@ public:
         return do_drop_index(name, schema);
     }
 
+    /**
+     * @brief register sequence metadata
+     * @param sequence the sequence to register. Database-wide unique definition id must be assigned
+     * for the sequence beforehand.
+     * @param schema the schema where sequence belongs.
+     * @return status::ok if the sequence is successfully created/registered.
+     * @return status::err_already_exists if the table with same name already exists.
+     */
+    status create_sequence(
+        std::shared_ptr<yugawara::storage::sequence> sequence,
+        std::string_view schema = {}
+    ) {
+        return do_create_sequence(std::move(sequence), schema);
+    }
+
+    /**
+     * @brief find sequence metadata entry
+     * @param name the sequence name to find
+     * @param schema the schema where sequence belongs.
+     * @return the sequence if found
+     * @return nullptr otherwise
+     */
+    std::shared_ptr<yugawara::storage::sequence const> find_sequence(
+        std::string_view name,
+        std::string_view schema = {}
+    ) {
+        return do_find_sequence(name, schema);
+    }
+
+    /**
+     * @brief unregister sequence metadata
+     * @param name the sequence name to drop
+     * @param schema the schema where sequence belongs.
+     * @returns status::ok when the sequence is successfully dropped
+     * @returns status::not_found when the sequence is not found
+     * @attention this function is not thread-safe, and should be called from single thread at a time.
+     */
+    status drop_sequence(
+        std::string_view name,
+        std::string_view schema = {}
+    ) {
+        return do_drop_sequence(name, schema);
+    }
+
 protected:
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
 
@@ -288,6 +332,21 @@ protected:
     ) = 0;
 
     virtual status do_drop_index(
+        std::string_view name,
+        std::string_view schema
+    ) = 0;
+
+    virtual status do_create_sequence(
+        std::shared_ptr<yugawara::storage::sequence> sequence,
+        std::string_view schema
+    ) = 0;
+
+    virtual std::shared_ptr<yugawara::storage::sequence const> do_find_sequence(
+        std::string_view name,
+        std::string_view schema
+    ) = 0;
+
+    virtual status do_drop_sequence(
         std::string_view name,
         std::string_view schema
     ) = 0;

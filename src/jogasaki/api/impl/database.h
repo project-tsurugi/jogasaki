@@ -90,96 +90,47 @@ protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
         std::string_view schema
-    ) override {
-        (void)schema;
-        BOOST_ASSERT(table != nullptr);  //NOLINT
-        std::string name{table->simple_name()};
-        if (! kvs_db_) {
-            LOG(ERROR) << "db not started";
-            return status::err_invalid_state;
-        }
-        try {
-            tables_->add_table(std::move(table));
-        } catch(std::invalid_argument& e) {
-            LOG(ERROR) << "table " << name << " already exists";
-            return status::err_already_exists;
-        }
-        return status::ok;
-    }
+    ) override;
 
     std::shared_ptr<yugawara::storage::table const> do_find_table(
         std::string_view name,
         std::string_view schema
-    ) override {
-        (void)schema;
-        if(auto res = tables_->find_table(name)) {
-            return res;
-        }
-        return {};
-    }
+    ) override;
 
     status do_drop_table(
         std::string_view name,
         std::string_view schema
-    ) override {
-        (void)schema;
-        if(tables_->remove_relation(name)) {
-            return status::ok;
-        }
-        return status::not_found;
-    }
+    ) override;
 
     status do_create_index(
         std::shared_ptr<yugawara::storage::index> index,
         std::string_view schema
-    ) override {
-        (void)schema;
-        BOOST_ASSERT(index != nullptr);  //NOLINT
-        std::string name{index->simple_name()};
-        if (! kvs_db_) {
-            LOG(ERROR) << "db not started";
-            return status::err_invalid_state;
-        }
-        try {
-            tables_->add_index(std::move(index));
-        } catch(std::invalid_argument& e) {
-            LOG(ERROR) << "index " << name << " already exists";
-            return status::err_already_exists;
-        }
-        kvs_db_->create_storage(name);
-        return status::ok;
-    }
+    ) override;
 
     std::shared_ptr<yugawara::storage::index const> do_find_index(
         std::string_view name,
         std::string_view schema
-    ) override {
-        (void)schema;
-        if(auto res = tables_->find_index(name)) {
-            return res;
-        }
-        return {};
-    }
+    ) override;
 
     status do_drop_index(
         std::string_view name,
         std::string_view schema
-    ) override {
-        (void)schema;
-        if(tables_->remove_index(name)) {
-            // try to delete stroage on kvs.
-            auto stg = kvs_db_->get_storage(name);
-            if (! stg) {
-                LOG(INFO) << "kvs storage " << name << " not found.";
-                return status::ok;
-            }
-            if(auto res = stg->delete_storage(); res != status::ok) {
-                LOG(ERROR) << res << " error on deleting storage " << name;
-            }
-            return status::ok;
-        }
-        return status::not_found;
-    }
+    ) override;
+
+    status do_create_sequence(
+        std::shared_ptr<yugawara::storage::sequence> sequence,
+        std::string_view schema
+    ) override;
+
+    std::shared_ptr<yugawara::storage::sequence const> do_find_sequence(
+        std::string_view name,
+        std::string_view schema
+    ) override;
+
+    status do_drop_sequence(
+        std::string_view name,
+        std::string_view schema
+    ) override;
 
 private:
     std::shared_ptr<class configuration> cfg_{};

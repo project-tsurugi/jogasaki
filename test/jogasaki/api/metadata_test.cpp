@@ -21,8 +21,6 @@
 #include <takatori/type/int.h>
 #include <yugawara/variable/nullity.h>
 
-#include <jogasaki/test_utils.h>
-#include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/api/field_type_kind.h>
 
 namespace jogasaki::testing {
@@ -213,7 +211,35 @@ TEST_F(metadata_test, crud1) {
     ASSERT_EQ(status::ok, db->drop_table(t->simple_name()));
     ASSERT_EQ(status::not_found, db->drop_table(t->simple_name()));
 
+    auto seq = std::make_shared<sequence>(
+        100,
+        "SEQ"
+    );
+    ASSERT_EQ(status::ok, db->create_sequence(seq));
+    ASSERT_EQ(status::err_already_exists, db->create_sequence(seq));
+    EXPECT_EQ(seq, db->find_sequence(seq->simple_name()));
+    EXPECT_FALSE(db->find_sequence("dummy"));
+    ASSERT_EQ(status::ok, db->drop_sequence(seq->simple_name()));
+    ASSERT_EQ(status::not_found, db->drop_sequence(seq->simple_name()));
+
     db->stop();
 }
 
+TEST_F(metadata_test, use_sequence) {
+    auto db = api::create_database();
+    db->start();
+    auto seq = std::make_shared<sequence>(
+        100,
+        "SEQ"
+    );
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int8(), nullity{false}, column_value{seq}},
+            column{ "C1", type::float8 (), nullity{true} },
+        }
+    );
+    ASSERT_EQ(status::ok, db->create_table(t));
+    db->stop();
+}
 }

@@ -50,7 +50,7 @@ target_include_directories(${ENGINE}
 target_link_libraries(${ENGINE}
         PUBLIC api
         PUBLIC takatori
-        PRIVATE yugawara
+        PUBLIC yugawara
         PRIVATE mizugaki
         PRIVATE shakujo-model
         PRIVATE shakujo-parser

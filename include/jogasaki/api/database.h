@@ -18,6 +18,9 @@
 #include <string_view>
 #include <memory>
 
+#include <yugawara/storage/table.h>
+#include <yugawara/storage/index.h>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
 #include <jogasaki/api/field_type_kind.h>
@@ -169,8 +172,125 @@ public:
      */
     virtual void load(std::istream& input, std::string_view index_name, std::size_t batch_size) = 0;
 
+    /**
+     * @brief register table metadata
+     * @param table the table to register
+     * @param schema the schema where table belongs.
+     * @return status::ok if the table is successfully created/registered.
+     * @return status::err_already_exists if the table with same name already exists.
+     * No update is made to the existing metadata.
+     */
+    status create_table(
+        std::shared_ptr<yugawara::storage::table> table,
+        std::string_view schema = {}
+    ) {
+        return do_create_table(std::move(table), schema);
+    }
+
+    /**
+     * @brief find table metadata entry
+     * @param name the table name to find
+     * @param schema the schema where table belongs.
+     * @return the table if found
+     * @return nullptr otherwise
+     */
+    std::shared_ptr<yugawara::storage::table const> find_table(
+        std::string_view name,
+        std::string_view schema = {}
+    ) {
+        return do_find_table(name, schema);
+    }
+
+    /**
+     * @brief unregister table metadata
+     * @param name the table name to drop
+     * @param schema the schema where table belongs.
+     * @returns status::ok when the table is successfully dropped
+     * @returns status::not_found when the table is not found
+     * @note this doesn't modify the data stored in the table. Clean-up existing data needs to be done separately.
+     */
+    status drop_table(
+        std::string_view name,
+        std::string_view schema = {}
+    ) {
+        return do_drop_table(name, schema);
+    }
+
+    /**
+     * @brief register index metadata
+     * @param index the index to register
+     * @param schema the schema where index belongs.
+     * @return status::ok if the index is successfully created/registered.
+     * @return status::err_already_exists if the table with same name already exists.
+     */
+    status create_index(
+        std::shared_ptr<yugawara::storage::index> index,
+        std::string_view schema = {}
+    ) {
+        return do_create_index(std::move(index), schema);
+    }
+
+    /**
+     * @brief find index metadata entry
+     * @param name the index name to find
+     * @param schema the schema where index belongs.
+     * @return the index if found
+     * @return nullptr otherwise
+     */
+    std::shared_ptr<yugawara::storage::index const> find_index(
+        std::string_view name,
+        std::string_view schema = {}
+    ) {
+        return do_find_index(name, schema);
+    }
+
+    /**
+     * @brief unregister index metadata
+     * @param name the index name to drop
+     * @param schema the schema where index belongs.
+     * @returns status::ok when the index is successfully dropped
+     * @returns status::not_found when the index is not found
+     * @attention this function is not thread-safe, and should be called from single thread at a time.
+     */
+    status drop_index(
+        std::string_view name,
+        std::string_view schema = {}
+    ) {
+        return do_drop_index(name, schema);
+    }
+
 protected:
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
+
+    virtual status do_create_table(
+        std::shared_ptr<yugawara::storage::table> table,
+        std::string_view schema
+    ) = 0;
+
+    virtual std::shared_ptr<yugawara::storage::table const> do_find_table(
+        std::string_view name,
+        std::string_view schema
+    ) = 0;
+
+    virtual status do_drop_table(
+        std::string_view name,
+        std::string_view schema
+    ) = 0;
+
+    virtual status do_create_index(
+        std::shared_ptr<yugawara::storage::index> index,
+        std::string_view schema
+    ) = 0;
+
+    virtual std::shared_ptr<yugawara::storage::index const> do_find_index(
+        std::string_view name,
+        std::string_view schema
+    ) = 0;
+
+    virtual status do_drop_index(
+        std::string_view name,
+        std::string_view schema
+    ) = 0;
 };
 
 /**

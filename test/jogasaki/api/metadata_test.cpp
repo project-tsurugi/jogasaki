@@ -40,6 +40,66 @@ class metadata_test : public ::testing::Test {
 
 };
 
+TEST_F(metadata_test, create_table_with_primary_index_dynamic) {
+    auto db = api::create_database();
+    db->start();
+
+    takatori::util::reference_vector<yugawara::storage::column> columns;
+    columns.emplace_back(yugawara::storage::column("C0", takatori::type::int8(), yugawara::variable::nullity(false)));
+    columns.emplace_back(yugawara::storage::column("C1", takatori::type::float8(), yugawara::variable::nullity(true)));
+
+    auto t = std::make_shared<table>(
+        "TEST", columns);
+    ASSERT_EQ(status::ok, db->create_table(t));
+
+    std::vector<yugawara::storage::index::key> keys;
+    keys.emplace_back(yugawara::storage::index::key(columns[0], takatori::relation::sort_direction::ascendant));
+
+    std::vector<yugawara::storage::index::column_ref> values;
+    values.emplace_back(yugawara::storage::index::column_ref(columns[1]));
+
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        "TEST",
+        keys,
+        values,
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::ok, db->create_index(i));
+    {
+        std::unique_ptr<api::executable_statement> exec{};
+        auto tx = db->create_transaction();
+        ASSERT_EQ(status::ok,db->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+    }
+    {
+        auto tx = db->create_transaction();
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db->create_executable("select * from TEST order by C0", exec));
+        db->explain(*exec, std::cout);
+        std::unique_ptr<api::result_set> rs{};
+        ASSERT_EQ(status::ok,tx->execute(*exec, rs));
+        auto it = rs->iterator();
+        std::size_t count = 0;
+        while(it->has_next()) {
+            std::stringstream ss{};
+            auto* record = it->next();
+            ss << *record;
+            LOG(INFO) << ss.str();
+            ++count;
+        }
+        EXPECT_EQ(1, count);
+        tx->commit();
+    }
+    db->stop();
+}
+
 TEST_F(metadata_test, create_table_with_primary_index) {
     auto db = api::create_database();
     db->start();

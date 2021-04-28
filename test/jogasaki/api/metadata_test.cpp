@@ -61,8 +61,8 @@ TEST_F(metadata_test, create_table_with_primary_index_dynamic) {
     auto i = std::make_shared<yugawara::storage::index>(
         t,
         "TEST",
-        keys,
-        values,
+        std::move(keys),
+        std::move(values),
         index_feature_set{
             ::yugawara::storage::index_feature::find,
             ::yugawara::storage::index_feature::scan,

@@ -132,14 +132,14 @@ std::size_t encode_tuple(
                 } else {
                     kvs::encode(res, f.type_, f.spec_, s);
                 }
-                if (primary_key_tuple != nullptr) {
-                    s.do_write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size(), kvs::order::ascending);
-                }
                 resource.deallocate_after(cp);
             }
         }
+        if (primary_key_tuple != nullptr) {
+            s.do_write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size(), kvs::order::ascending);
+        }
         if (loop == 0) {
-            length = s.length() + (primary_key_tuple != nullptr ? primary_key_tuple->size() : 0);
+            length = s.length();
             if (buf.size() < length) {
                 buf.resize(length);
             }

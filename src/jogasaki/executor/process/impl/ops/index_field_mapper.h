@@ -181,7 +181,6 @@ public:
     }
 
 private:
-    std::string storage_name_{};
     bool use_secondary_{};
     std::vector<details::field_info> primary_key_fields_{};
     std::vector<details::field_info> primary_value_fields_{};

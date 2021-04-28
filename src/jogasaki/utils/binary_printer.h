@@ -28,7 +28,15 @@ using takatori::util::fail;
  */
 class binary_printer {
 public:
-    constexpr binary_printer(void* ptr, std::size_t size) noexcept : ptr_(ptr), size_(size) {}
+    constexpr binary_printer(
+        void const* ptr,
+        std::size_t size,
+        std::size_t bytes_per_line = 0
+    ) noexcept :
+        ptr_(ptr),
+        size_(size),
+        bytes_per_line_(bytes_per_line)
+    {}
 
     friend std::ostream& operator<<(std::ostream& out, binary_printer const& value) {
         std::ios init(nullptr);
@@ -36,17 +44,21 @@ public:
         for(std::size_t idx = 0; idx < value.size_; ++idx) {
             if (idx != 0) {
                 out << std::string_view("-");
+                if (value.bytes_per_line_ != 0 && idx % value.bytes_per_line_ == 0) {
+                    out << std::endl;
+                }
             }
             out << std::hex << std::setw(2) << std::setfill('0')
-                << static_cast<std::uint32_t>(*(static_cast<std::uint8_t*>(value.ptr_)+idx)); //NOLINT
+                << static_cast<std::uint32_t>(*(static_cast<std::uint8_t const*>(value.ptr_)+idx)); //NOLINT
         }
         out.copyfmt(init);
         return out;
     }
 
 private:
-    void* ptr_{};
+    void const* ptr_{};
     std::size_t size_{};
+    std::size_t bytes_per_line_{};
 };
 
 }

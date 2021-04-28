@@ -28,6 +28,10 @@ using takatori::util::fail;
  */
 class storage_dump {
 public:
+    using size_type = std::uint32_t;
+
+    static constexpr size_type EOF_MARK = std::numeric_limits<size_type>::max();
+
     /**
      * @brief creates a new instance.
      * @param dbh the database handle

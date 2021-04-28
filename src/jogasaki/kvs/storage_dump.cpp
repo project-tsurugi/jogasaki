@@ -25,9 +25,6 @@ namespace jogasaki::kvs {
 
 namespace {
 
-using size_type = std::uint32_t;
-inline constexpr size_type EOF_MARK = std::numeric_limits<size_type>::max();
-
 inline std::unique_ptr<storage> storage(database* db, std::string_view key) {
     auto stg = db->get_storage(key);
     if (! stg) {

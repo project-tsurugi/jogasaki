@@ -147,5 +147,13 @@ private:
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_{};
 };
 
+inline api::impl::database& get_impl(api::database& db) {
+    return unsafe_downcast<api::impl::database>(db);
+}
+
+inline std::shared_ptr<api::impl::database> get_impl(std::shared_ptr<api::database> db) {
+    return std::shared_ptr<api::impl::database>(unsafe_downcast<api::impl::database>(db.get()));
+}
+
 }
 

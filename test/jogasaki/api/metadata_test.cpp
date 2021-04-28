@@ -49,14 +49,14 @@ TEST_F(metadata_test, create_table_with_primary_index_dynamic) {
     columns.emplace_back(yugawara::storage::column("C1", takatori::type::float8(), yugawara::variable::nullity(true)));
 
     auto t = std::make_shared<table>(
-        "TEST", columns);
+        "TEST", std::move(columns));
     ASSERT_EQ(status::ok, db->create_table(t));
 
-    std::vector<yugawara::storage::index::key> keys;
-    keys.emplace_back(yugawara::storage::index::key(columns[0], takatori::relation::sort_direction::ascendant));
+    std::vector<yugawara::storage::index::key, takatori::util::object_allocator<yugawara::storage::index::key>> keys;
+    keys.emplace_back(yugawara::storage::index::key(t->columns()[0], takatori::relation::sort_direction::ascendant));
 
-    std::vector<yugawara::storage::index::column_ref> values;
-    values.emplace_back(yugawara::storage::index::column_ref(columns[1]));
+    std::vector<yugawara::storage::index::column_ref, takatori::util::object_allocator<yugawara::storage::index::column_ref>> values;
+    values.emplace_back(yugawara::storage::index::column_ref(t->columns()[1]));
 
     auto i = std::make_shared<yugawara::storage::index>(
         t,

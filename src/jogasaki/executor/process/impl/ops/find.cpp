@@ -111,7 +111,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     std::string_view k{key_};
-    std::unique_ptr<kvs::iterator> it{};
+    std::unique_ptr<kvs::iterator> it{}; // keep iterator here so that the key data is alive while mapper is operating
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
         if(auto res = stg.get(*ctx.tx_, key_, v); res != status::ok) {

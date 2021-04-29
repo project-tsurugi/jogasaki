@@ -24,6 +24,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "join_find_context.h"
+#include "index_field_mapper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -31,37 +32,6 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 
 namespace details {
-
-/**
- * @brief field info of the join_find operation
- * @details join_find operator uses these fields to know how the found key/value are mapped to variables
- */
-struct cache_align join_find_column {
-    /**
-     * @brief create new join_find column
-     * @param type type of the target column
-     * @param target_exists whether the target storage exists. If not, there is no room to copy the data to.
-     * @param offset byte offset of the target field in the target record reference (in variable table)
-     * @param nullity_offset bit offset of the target field nullity in the target record reference (in variable table)
-     * @param nullable whether the source field is nullable or not
-     * @param spec the spec of the target field used for encode/decode
-     */
-    join_find_column(
-        meta::field_type type,
-        bool target_exists,
-        std::size_t offset,
-        std::size_t nullity_offset,
-        bool nullable,
-        kvs::coding_spec spec
-    );
-
-    meta::field_type type_{}; //NOLINT
-    bool target_exists_{}; //NOLINT
-    std::size_t offset_{}; //NOLINT
-    std::size_t nullity_offset_{}; //NOLINT
-    bool nullable_{}; //NOLINT
-    kvs::coding_spec spec_{}; //NOLINT
-};
 
 /**
  * @brief key field info of the join_find operation
@@ -98,16 +68,10 @@ public:
     matcher() = default;
 
     matcher(
+        bool use_secondary,
         std::vector<details::join_find_key_field> const& key_fields,
-        std::vector<details::join_find_column> const& key_columns,
-        std::vector<details::join_find_column> const& value_columns
-    );
-
-    void read_stream(
-        executor::process::impl::variable_table& vars,
-        memory_resource* resource,
-        kvs::stream& src,
-        std::vector<details::join_find_column> const& columns
+        std::vector<details::field_info> key_columns,
+        std::vector<details::field_info> value_columns
     );
 
     /**
@@ -118,7 +82,8 @@ public:
      */
     [[nodiscard]] bool operator()(
         executor::process::impl::variable_table& vars,
-        kvs::storage& stg,
+        kvs::storage& primary_stg,
+        kvs::storage* secondary_stg,
         kvs::transaction& tx,
         memory_resource* resource = nullptr
     );
@@ -141,11 +106,11 @@ public:
     [[nodiscard]] status result() const noexcept;
 
 private:
+    bool use_secondary_{};
     std::vector<details::join_find_key_field> const& key_fields_{};
-    std::vector<details::join_find_column> const& key_columns_{};
-    std::vector<details::join_find_column> const& value_columns_{};
     data::aligned_buffer buf_{};
     status status_{status::ok};
+    index_field_mapper field_mapper_{};
 };
 
 }
@@ -171,7 +136,7 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param storage_name the storage name to find
+     * @param primary_storage_name the storage name to find
      * @param key_columns column information for key fields
      * @param value_columns column information for value fields
      * @param key_fields key_field information
@@ -182,25 +147,14 @@ public:
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        std::string_view storage_name,
-        std::vector<details::join_find_column> key_columns,
-        std::vector<details::join_find_column> value_columns,
+        std::string_view primary_storage_name,
+        std::string_view secondary_storage_name,
+        std::vector<details::field_info> key_columns,
+        std::vector<details::field_info> value_columns,
         std::vector<details::join_find_key_field> key_fields,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         std::unique_ptr<operator_base> downstream = nullptr
-    ) noexcept :
-        record_operator(index, info, block_index),
-        storage_name_(storage_name),
-        key_columns_(std::move(key_columns)),
-        value_columns_(std::move(value_columns)),
-        key_fields_(std::move(key_fields)),
-        condition_(std::move(condition)),
-        downstream_(std::move(downstream)),
-        evaluator_(condition_ ?
-            expression::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
-            expression::evaluator{}
-        )
-    {}
+    ) noexcept;
 
     /**
      * @brief create new object from takatori columns
@@ -217,11 +171,11 @@ public:
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        std::string_view storage_name,
-        yugawara::storage::index const& idx,
+        yugawara::storage::index const& primary_idx,
         sequence_view<column const> columns,
         takatori::tree::tree_fragment_vector<key> const& keys,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
+        yugawara::storage::index const* secondary_idx,
         std::unique_ptr<operator_base> downstream
     );
 
@@ -260,12 +214,12 @@ public:
     /**
      * @brief accessor to key columns
      */
-    [[nodiscard]] std::vector<details::join_find_column> const& key_columns() const noexcept;
+    [[nodiscard]] std::vector<details::field_info> const& key_columns() const noexcept;
 
     /**
      * @brief accessor to value columns
      */
-    [[nodiscard]] std::vector<details::join_find_column> const& value_columns() const noexcept;
+    [[nodiscard]] std::vector<details::field_info> const& value_columns() const noexcept;
 
     /**
      * @brief accessor to key fields
@@ -273,15 +227,17 @@ public:
     [[nodiscard]] std::vector<details::join_find_key_field> const& key_fields() const noexcept;
 
 private:
-    std::string storage_name_{};
-    std::vector<details::join_find_column> key_columns_{};
-    std::vector<details::join_find_column> value_columns_{};
+    bool use_secondary_{};
+    std::string primary_storage_name_{};
+    std::string secondary_storage_name_{};
+    std::vector<details::field_info> key_columns_{};
+    std::vector<details::field_info> value_columns_{};
     std::vector<details::join_find_key_field> key_fields_{};
     takatori::util::optional_ptr<takatori::scalar::expression const> condition_{};
     std::unique_ptr<operator_base> downstream_{};
     expression::evaluator evaluator_{};
 
-    std::vector<details::join_find_column> create_columns(
+    std::vector<details::field_info> create_columns(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         processor_info const& info,
@@ -290,7 +246,7 @@ private:
     );
 
     std::vector<details::join_find_key_field> create_key_fields(
-        yugawara::storage::index const& idx,
+        yugawara::storage::index const& primary_or_secondary_idx,
         takatori::tree::tree_fragment_vector<key> const& keys,
         processor_info const& info
     );

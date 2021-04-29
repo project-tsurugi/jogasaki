@@ -24,7 +24,6 @@
 
 #include "aggregate_group.h"
 #include "scan.h"
-#include "scan.h"
 #include "find.h"
 #include "join_find.h"
 #include "emit.h"
@@ -122,16 +121,18 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_find& node) {
     auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
-    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& table = secondary_or_primary_index.table();
+    auto primary = table.owner()->find_primary_index(table);
     return std::make_unique<join_find>(
         index_++,
         *info_,
         block_index,
-        index.simple_name(),
-        index,
+        *primary,
         node.columns(),
         node.keys(),
         node.condition(),
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
         std::move(downstream)
     );
 }

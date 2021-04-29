@@ -36,22 +36,6 @@ using takatori::util::unsafe_downcast;
 
 namespace details {
 
-join_find_column::join_find_column(
-    meta::field_type type,
-    bool target_exists,
-    std::size_t offset,
-    std::size_t nullity_offset,
-    bool nullable,
-    kvs::coding_spec spec
-) :
-    type_(std::move(type)),
-    target_exists_(target_exists),
-    offset_(offset),
-    nullity_offset_(nullity_offset),
-    nullable_(nullable),
-    spec_(spec)
-{}
-
 join_find_key_field::join_find_key_field(
     meta::field_type type,
     bool nullable,
@@ -64,47 +48,41 @@ join_find_key_field::join_find_key_field(
     evaluator_(evaluator)
 {}
 
+std::vector<details::secondary_index_field_info> create_secondary_key_fields(
+    std::vector<details::join_find_key_field> const& key_fields
+) {
+    std::vector<details::secondary_index_field_info> ret{};
+    ret.reserve(key_fields.size());
+    for(auto&& f : key_fields) {
+        ret.emplace_back(
+            f.type_,
+            f.nullable_,
+            f.spec_
+        );
+    }
+    return ret;
+}
 
 matcher::matcher(
+    bool use_secondary,
     std::vector<details::join_find_key_field> const& key_fields,
-    std::vector<details::join_find_column> const& key_columns,
-    std::vector<details::join_find_column> const& value_columns
+    std::vector<details::field_info> key_columns,
+    std::vector<details::field_info> value_columns
 ) :
+    use_secondary_(use_secondary),
     key_fields_(key_fields),
-    key_columns_(key_columns),
-    value_columns_(value_columns)
+    field_mapper_(
+        use_secondary_,
+        std::move(key_columns),
+        std::move(value_columns),
+        create_secondary_key_fields(key_fields_)
+    )
 {}
-
-void matcher::read_stream(
-    variable_table& vars,
-    matcher::memory_resource* resource,
-    kvs::stream& src,
-    std::vector<details::join_find_column> const& columns
-) {
-    auto ref = vars.store().ref();
-    for(auto& c : columns) {
-        if (c.target_exists_) {
-            if (c.nullable_) {
-                kvs::decode_nullable(src, c.type_, c.spec_, ref, c.offset_, c.nullity_offset_, resource);
-                continue;
-            }
-            kvs::decode(src, c.type_, c.spec_, ref, c.offset_, resource);
-            ref.set_null(c.nullity_offset_, false); // currently assuming target variable fields are nullable
-                                                          // and f.target_nullity_offset_ is valid even
-                                                          // if f.source_nullable_ is false
-            continue;
-        }
-        if (c.nullable_) {
-            kvs::consume_stream_nullable(src, c.type_, c.spec_);
-            continue;
-        }
-        kvs::consume_stream(src, c.type_, c.spec_);
-    }
-}
 
 bool matcher::operator()(
     variable_table& vars,
-    kvs::storage& stg,
+    kvs::storage& primary_stg,
+    kvs::storage* secondary_stg,
     kvs::transaction& tx,
     matcher::memory_resource* resource
 ) {
@@ -131,15 +109,38 @@ bool matcher::operator()(
     }
     std::string_view key{static_cast<char*>(buf_.data()), len};
     std::string_view value{};
-    auto res = stg.get(tx, key, value);
-    status_ = res;
-    if (res != status::ok) {
+    auto ref = vars.store().ref();
+
+    std::unique_ptr<kvs::iterator> it{}; // keep iterator here so that the key data is alive while mapper is operating
+    if (! use_secondary_) {
+        auto res = primary_stg.get(tx, key, value);
+        status_ = res;
+        if (res != status::ok) {
+            return false;
+        }
+    } else {
+        auto& stg = *secondary_stg;
+        if(auto res = stg.scan(tx,
+                key, kvs::end_point_kind::prefixed_inclusive,
+                key, kvs::end_point_kind::prefixed_inclusive,
+                it
+            ); res != status::ok) {
+            if (res == status::not_found) {
+                status_ = res;
+                return false;
+            }
+            fail();
+        }
+        if(auto res = it->next(); res != status::ok) {
+            fail();
+        }
+        if(auto res = it->key(key); ! res) {
+            fail();
+        }
+    }
+    if (auto r = field_mapper_(key, value, ref, primary_stg, tx, resource); r != status::ok) {
         return false;
     }
-    kvs::stream keys{const_cast<char*>(key.data()), key.size()};
-    kvs::stream values{const_cast<char*>(value.data()), value.size()};
-    read_stream(vars, resource, keys, key_columns_);
-    read_stream(vars, resource, values, value_columns_);
     return true;
 }
 
@@ -160,11 +161,18 @@ operation_status join_find::process_record(abstract::task_context* context) {
     context_helper ctx{*context};
     auto* p = find_context<class join_find_context>(index(), ctx.contexts());
     if (! p) {
-        p = ctx.make_context<class join_find_context>(index(),
+        p = ctx.make_context<class join_find_context>(
+            index(),
             ctx.variable_table(block_index()),
-            ctx.database()->get_storage(storage_name()),
+            ctx.database()->get_storage(primary_storage_name_),
+            use_secondary_ ? ctx.database()->get_storage(secondary_storage_name_) : nullptr,
             ctx.transaction(),
-            std::make_unique<details::matcher>(key_fields_, key_columns_, value_columns_),
+            std::make_unique<details::matcher>(
+                use_secondary_,
+                key_fields_,
+                key_columns_,
+                value_columns_
+            ),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -177,7 +185,8 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
         return {operation_status_kind::aborted};
     }
     auto resource = ctx.varlen_resource();
-    if((*ctx.matcher_)(ctx.variables(), *ctx.stg_, *ctx.tx_, resource)) {
+
+    if((*ctx.matcher_)(ctx.variables(), *ctx.primary_stg_, ctx.secondary_stg_.get(), *ctx.tx_, resource)) {
         if (condition_) {
             auto r = evaluator_(ctx.variables());
             if(r.has_value() && !r.to<bool>()) {
@@ -206,7 +215,7 @@ operator_kind join_find::kind() const noexcept {
 }
 
 std::string_view join_find::storage_name() const noexcept {
-    return storage_name_;
+    return primary_storage_name_;
 }
 
 void join_find::finish(abstract::task_context* context) {
@@ -215,14 +224,14 @@ void join_find::finish(abstract::task_context* context) {
     }
 }
 
-std::vector<details::join_find_column> join_find::create_columns(
+std::vector<details::field_info> join_find::create_columns(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     processor_info const& info,
     operator_base::block_index_type block_index,
     bool key
 ) {
-    std::vector<details::join_find_column> ret{};
+    std::vector<details::field_info> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};
@@ -290,11 +299,11 @@ std::vector<details::join_find_column> join_find::create_columns(
 }
 
 std::vector<details::join_find_key_field> join_find::create_key_fields(
-    yugawara::storage::index const& idx,
+    yugawara::storage::index const& primary_or_secondary_idx,
     takatori::tree::tree_fragment_vector<key> const& keys,
     processor_info const& info
 ) {
-    BOOST_ASSERT(idx.keys().size() == keys.size());  //NOLINT
+    BOOST_ASSERT(primary_or_secondary_idx.keys().size() == keys.size());  //NOLINT
     std::vector<details::join_find_key_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
@@ -304,8 +313,8 @@ std::vector<details::join_find_key_field> join_find::create_key_fields(
         var_to_expression.emplace(k.variable(), &k.value());
     }
 
-    ret.reserve(idx.keys().size());
-    for(auto&& k : idx.keys()) {
+    ret.reserve(primary_or_secondary_idx.keys().size());
+    for(auto&& k : primary_or_secondary_idx.keys()) {
         auto kc = bindings(k.column());
         auto t = utils::type_for(k.column().type());
         auto spec = k.direction() == relation::sort_direction::ascendant ?
@@ -325,34 +334,62 @@ join_find::join_find(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
-    std::string_view storage_name,
-    yugawara::storage::index const& idx,
+    std::string_view primary_storage_name,
+    std::string_view secondary_storage_name,
+    std::vector<details::field_info> key_columns,
+    std::vector<details::field_info> value_columns,
+    std::vector<details::join_find_key_field> key_fields,
+    takatori::util::optional_ptr<takatori::scalar::expression const> condition,
+    std::unique_ptr<operator_base> downstream
+) noexcept:
+    record_operator(index, info, block_index),
+    use_secondary_(! secondary_storage_name.empty()),
+    primary_storage_name_(primary_storage_name),
+    secondary_storage_name_(secondary_storage_name),
+    key_columns_(std::move(key_columns)),
+    value_columns_(std::move(value_columns)),
+    key_fields_(std::move(key_fields)),
+    condition_(std::move(condition)),
+    downstream_(std::move(downstream)),
+    evaluator_(condition_ ?
+        expression::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
+        expression::evaluator{}
+    )
+{}
+
+join_find::join_find(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
     takatori::tree::tree_fragment_vector<key> const& keys,
     takatori::util::optional_ptr<takatori::scalar::expression const> condition,
+    yugawara::storage::index const* secondary_idx,
     std::unique_ptr<operator_base> downstream
 ) :
     join_find(
         index,
         info,
         block_index,
-        storage_name,
+        primary_idx.simple_name(),
+        secondary_idx != nullptr ? secondary_idx->simple_name() : "",
         create_columns(
-            idx,
+            primary_idx,
             columns,
             info,
             block_index,
             true
         ),
         create_columns(
-            idx,
+            primary_idx,
             columns,
             info,
             block_index,
             false
         ),
         create_key_fields(
-            idx,
+            secondary_idx != nullptr ? *secondary_idx : primary_idx,
             keys,
             info
         ),
@@ -361,17 +398,18 @@ join_find::join_find(
     )
 {}
 
-std::vector<details::join_find_column> const& join_find::key_columns() const noexcept {
+std::vector<details::field_info> const& join_find::key_columns() const noexcept {
     return key_columns_;
 }
 
-std::vector<details::join_find_column> const& join_find::value_columns() const noexcept {
+std::vector<details::field_info> const& join_find::value_columns() const noexcept {
     return value_columns_;
 }
 
 std::vector<details::join_find_key_field> const& join_find::key_fields() const noexcept {
     return key_fields_;
 }
+
 
 }
 

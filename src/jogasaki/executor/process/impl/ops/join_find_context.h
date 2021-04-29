@@ -46,7 +46,8 @@ public:
     join_find_context(
         class abstract::task_context* ctx,
         variable_table& variables,
-        std::unique_ptr<kvs::storage> stg,
+        std::unique_ptr<kvs::storage> primary_stg,
+        std::unique_ptr<kvs::storage> secondary_stg,
         kvs::transaction* tx,
         std::unique_ptr<details::matcher> matcher,
         memory_resource* resource,
@@ -60,7 +61,8 @@ public:
     [[nodiscard]] kvs::transaction* transaction() const noexcept;
 
 private:
-    std::unique_ptr<kvs::storage> stg_{};
+    std::unique_ptr<kvs::storage> primary_stg_{};
+    std::unique_ptr<kvs::storage> secondary_stg_{};
     kvs::transaction* tx_{};
     std::unique_ptr<details::matcher> matcher_{};
 };

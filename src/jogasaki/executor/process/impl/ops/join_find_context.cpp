@@ -26,14 +26,16 @@ namespace jogasaki::executor::process::impl::ops {
 join_find_context::join_find_context(
     class abstract::task_context* ctx,
     variable_table& variables,
-    std::unique_ptr<kvs::storage> stg,
+    std::unique_ptr<kvs::storage> primary_stg,
+    std::unique_ptr<kvs::storage> secondary_stg,
     kvs::transaction* tx,
     std::unique_ptr<details::matcher> matcher,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
     context_base(ctx, variables, resource, varlen_resource),
-    stg_(std::move(stg)),
+    primary_stg_(std::move(primary_stg)),
+    secondary_stg_(std::move(secondary_stg)),
     tx_(tx),
     matcher_(std::move(matcher))
 {}

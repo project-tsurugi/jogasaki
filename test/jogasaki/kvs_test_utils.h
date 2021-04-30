@@ -23,6 +23,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/mock/basic_record.h>
@@ -59,8 +60,8 @@ public:
 
         std::string key_buf(1000, '\0');
         std::string val_buf(1000, '\0');
-        kvs::stream key_stream{key_buf};
-        kvs::stream val_stream{val_buf};
+        kvs::writable_stream key_stream{key_buf};
+        kvs::writable_stream val_stream{val_buf};
 
         auto& key_meta = key.record_meta();
         for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {

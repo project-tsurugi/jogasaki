@@ -21,6 +21,8 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/executor/process/impl/ops/find_context.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
@@ -67,9 +69,9 @@ TEST_F(index_field_mapper_test, simple) {
             std::string src(100, 0);
             std::string tgt_k(100, 0);
             std::string tgt_v(100, 0);
-            kvs::stream s{src};
-            kvs::stream t_k{tgt_k};
-            kvs::stream t_v{tgt_v};
+            kvs::writable_stream s{src};
+            kvs::writable_stream t_k{tgt_k};
+            kvs::writable_stream t_v{tgt_v};
 
             basic_record secondary_rec{create_nullable_record<k::int4, k::int4, k::int8>(1, 1, 10)};
             auto secondary_rec_meta = secondary_rec.record_meta();
@@ -153,8 +155,8 @@ TEST_F(index_field_mapper_test, without_secondary) {
             // primary index(t1)   int8, int4
             std::string tgt_k(100, 0);
             std::string tgt_v(100, 0);
-            kvs::stream t_k{tgt_k};
-            kvs::stream t_v{tgt_v};
+            kvs::writable_stream t_k{tgt_k};
+            kvs::writable_stream t_v{tgt_v};
 
             basic_record primary_rec{create_nullable_record<k::int8, k::int4>(10, 100)};
             auto primary_rec_meta = primary_rec.record_meta();

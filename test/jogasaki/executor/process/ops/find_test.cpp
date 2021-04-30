@@ -33,6 +33,8 @@
 #include <jogasaki/kvs_test_utils.h>
 #include <jogasaki/executor/process/impl/ops/find_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>

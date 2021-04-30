@@ -26,6 +26,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include "operator_base.h"
 #include "context_helper.h"
 #include "join_find_context.h"
@@ -88,7 +89,7 @@ bool matcher::operator()(
 ) {
     std::size_t len = 0;
     for(std::size_t loop=0; loop < 2; ++loop) {
-        kvs::stream s{buf_.data(), len};
+        kvs::writable_stream s{buf_.data(), len};
         auto cp = resource->get_checkpoint();
         for(auto&f : key_fields_) {
             auto any = f.evaluator_(vars, resource);

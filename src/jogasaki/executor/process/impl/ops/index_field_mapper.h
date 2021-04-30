@@ -148,12 +148,12 @@ private:
 
     void consume_secondary_key_fields(
         std::vector<details::secondary_index_field_info> const& fields,
-        kvs::stream& stream
+        kvs::readable_stream& stream
     );
 
     void decode_fields(
         std::vector<details::field_info> const& fields,
-        kvs::stream& stream,
+        kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* resource
     );

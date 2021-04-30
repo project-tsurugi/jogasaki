@@ -202,12 +202,12 @@ private:
     /**
      * @brief private encoding function
      * @param from_variable specify where the source comes from. True when encoding from variable table to
-     * internal buffer (key_buf_/value_buf_). False when encoding internal buffer to kvs::streams.
+     * internal buffer (key_buf_/value_buf_). False when encoding internal buffer to kvs::writable_streams.
      */
     void encode_fields(
         bool from_variable,
         std::vector<details::write_partial_field> const& fields,
-        kvs::stream& target,
+        kvs::writable_stream& target,
         accessor::record_ref source
     );
 
@@ -234,7 +234,7 @@ private:
 
     void decode_fields(
         std::vector<details::write_partial_field> const& fields,
-        kvs::stream& stream,
+        kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* varlen_resource
     );

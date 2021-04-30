@@ -29,6 +29,7 @@
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/storage_dump.h>
 #include <jogasaki/error.h>
 #include <jogasaki/api.h>
@@ -57,7 +58,7 @@ inline void encode_field(
     meta::field_type f,
     kvs::coding_spec spec,
     bool nullable,
-    kvs::stream& target
+    kvs::writable_stream& target
 ) {
     if (nullable) {
         kvs::encode_nullable(a, f, spec, target);
@@ -80,7 +81,7 @@ any create_value(
 
 static void fill_fields(
     meta::record_meta const& meta,
-    kvs::stream& target,
+    kvs::writable_stream& target,
     bool key,
     std::size_t record_count,
     bool sequential,
@@ -153,8 +154,8 @@ inline void populate_storage_data(
     static std::size_t buflen = 1024;
     std::string key_buf(buflen, '\0');
     std::string val_buf(buflen, '\0');
-    kvs::stream key_stream{key_buf};
-    kvs::stream val_stream{val_buf};
+    kvs::writable_stream key_stream{key_buf};
+    kvs::writable_stream val_stream{val_buf};
 
     auto idx = provider->find_index(storage_name);
 

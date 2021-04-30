@@ -15,6 +15,8 @@
  */
 #include "index_field_mapper.h"
 
+#include <jogasaki/kvs/readable_stream.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 details::field_info::field_info(
@@ -102,7 +104,7 @@ status index_field_mapper::operator()(
 
 void index_field_mapper::consume_secondary_key_fields(
     std::vector<details::secondary_index_field_info> const& fields,
-    kvs::stream& stream
+    kvs::readable_stream& stream
 ) {
     for(auto&& f : fields) {
         if (f.source_nullable_) {
@@ -114,7 +116,7 @@ void index_field_mapper::consume_secondary_key_fields(
 }
 
 void index_field_mapper::decode_fields(std::vector<details::field_info> const& fields,
-    kvs::stream& stream,
+    kvs::readable_stream& stream,
     accessor::record_ref target,
     index_field_mapper::memory_resource* resource
 ) {
@@ -147,7 +149,7 @@ void index_field_mapper::decode_fields(std::vector<details::field_info> const& f
 }
 
 std::string_view index_field_mapper::extract_primary_key(std::string_view key) {
-    kvs::stream keys{const_cast<char*>(key.data()), key.size()}; //TODO create read-only stream
+    kvs::readable_stream keys{key.data(), key.size()};
     // consume key fields, then the rest is primary key
     consume_secondary_key_fields(secondary_key_fields_, keys);
     return keys.rest();
@@ -177,8 +179,8 @@ void index_field_mapper::populate_field_variables(
     accessor::record_ref target,
     index_field_mapper::memory_resource* resource
 ) {
-    kvs::stream keys{const_cast<char*>(key.data()), key.size()}; //TODO create read-only stream
-    kvs::stream values{const_cast<char*>(value.data()), value.size()}; //   and avoid using const_cast
+    kvs::readable_stream keys{key.data(), key.size()};
+    kvs::readable_stream values{value.data(), value.size()};
     decode_fields(primary_key_fields_, keys, target, resource);
     decode_fields(primary_value_fields_, values, target, resource);
 }

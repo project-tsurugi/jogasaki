@@ -156,7 +156,7 @@ private:
 
     void encode_fields(
         std::vector<details::write_full_field> const& fields,
-        kvs::stream& stream,
+        kvs::writable_stream& stream,
         accessor::record_ref source
     );
 

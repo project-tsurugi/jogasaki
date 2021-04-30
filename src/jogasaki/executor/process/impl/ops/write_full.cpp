@@ -20,6 +20,7 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/error.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/field_types.h>
@@ -128,7 +129,7 @@ void write_full::finish(abstract::task_context*) {
 
 void write_full::encode_fields(
     std::vector<details::write_full_field> const& fields,
-    kvs::stream& stream,
+    kvs::writable_stream& stream,
     accessor::record_ref source
 ) {
     for(auto const& f : fields) {
@@ -210,8 +211,8 @@ operation_status write_full::do_insert(write_full_context& ctx) {
     // calculate length first, then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
     check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source);
-    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
-    kvs::stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
+    kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    kvs::writable_stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
     encode_fields(key_fields_, keys, source);
     encode_fields(value_fields_, values, source);
     kvs::put_option opt = kind_ == write_kind::insert ?
@@ -236,7 +237,7 @@ void write_full::check_length_and_extend_buffer(
     data::aligned_buffer& buffer,
     accessor::record_ref source
 ) {
-    kvs::stream null_stream{};
+    kvs::writable_stream null_stream{};
     encode_fields(fields, null_stream, source);
     if (null_stream.length() > buffer.size()) {
         buffer.resize(null_stream.length());
@@ -261,7 +262,7 @@ std::string_view write_full::prepare_key(write_full_context& ctx) {
     auto source = ctx.variables().store().ref();
     // calculate length first, and then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
-    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     encode_fields(key_fields_, keys, source);
     return {keys.data(), keys.length()};
 }

@@ -28,6 +28,8 @@
 #include <jogasaki/executor/process/impl/ops/write_partial_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/iterator.h>
 
 #include <jogasaki/mock/basic_record.h>
@@ -91,8 +93,8 @@ public:
 
         std::string key_buf(100, '\0');
         std::string val_buf(100, '\0');
-        kvs::stream key_stream{key_buf};
-        kvs::stream val_stream{val_buf};
+        kvs::writable_stream key_stream{key_buf};
+        kvs::writable_stream val_stream{val_buf};
         {
             key_record key_rec{create_key(10)};
             auto key_meta = key_rec.record_meta();
@@ -129,7 +131,7 @@ public:
         std::string_view data
     ) {
         std::string in{data};
-        kvs::stream key_stream{in};
+        kvs::readable_stream key_stream{in};
         std::string out(meta.record_size(), '\0');
         accessor::record_ref target{out.data(), out.capacity()};
         for(std::size_t i=0, n=meta.field_count(); i<n; ++i) {
@@ -154,8 +156,8 @@ public:
 
         std::string key_buf(100, '\0');
         std::string val_buf(100, '\0');
-        kvs::stream key_stream{key_buf};
-        kvs::stream val_stream{val_buf};
+        kvs::writable_stream key_stream{key_buf};
+        kvs::writable_stream val_stream{val_buf};
 
         std::unique_ptr<kvs::iterator> it{};
         std::string_view k{};
@@ -342,7 +344,7 @@ TEST_F(write_partial_test , simple_update) {
 
     {
         std::string str(100, '\0');
-        kvs::stream key{str};
+        kvs::writable_stream key{str};
         kvs::encode_nullable(
             expression::any{std::in_place_type<std::int32_t>, 10},
             meta::field_type{enum_tag<kind::int4>},
@@ -353,7 +355,7 @@ TEST_F(write_partial_test , simple_update) {
         std::string_view v{};
         ASSERT_EQ(status::ok, s->get(*tx, k, v));
         std::string buf{v};
-        kvs::stream value{buf};
+        kvs::readable_stream value{buf};
         expression::any res{};
         kvs::decode_nullable(
             value,
@@ -372,7 +374,7 @@ TEST_F(write_partial_test , simple_update) {
     }
     {
         std::string str(100, '\0');
-        kvs::stream key{str};
+        kvs::writable_stream key{str};
         kvs::encode_nullable(
             expression::any{std::in_place_type<std::int32_t>, 20},
             meta::field_type{enum_tag<kind::int4>},
@@ -383,7 +385,7 @@ TEST_F(write_partial_test , simple_update) {
         std::string_view v{};
         ASSERT_EQ(status::ok, s->get(*tx, k, v));
         std::string buf{v};
-        kvs::stream value{buf};
+        kvs::readable_stream value{buf};
         expression::any res{};
         kvs::decode_nullable(
             value,

@@ -28,6 +28,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/kvs/writable_stream.h>
 
 namespace jogasaki::executor::common {
 
@@ -114,7 +115,7 @@ std::size_t encode_tuple(
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
-        kvs::stream s{buf.data(), capacity};
+        kvs::writable_stream s{buf.data(), capacity};
         for(auto&& f : fields) {
             if (f.index_ == npos) {
                 // value not specified for the field
@@ -136,7 +137,7 @@ std::size_t encode_tuple(
             }
         }
         if (primary_key_tuple != nullptr) {
-            s.do_write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size(), kvs::order::ascending);
+            s.write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size());
         }
         if (loop == 0) {
             length = s.length();

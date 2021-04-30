@@ -24,6 +24,8 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/field_types.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -62,7 +64,7 @@ std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) 
     auto source = ctx.variables().store().ref();
     // calculate length first, and then put
     check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source);
-    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     encode_fields(true, key_fields_, keys, source);
     return {keys.data(), keys.length()};
 }
@@ -73,8 +75,8 @@ operation_status write_partial::encode_and_put(write_partial_context& ctx) {
     // calculate length first, then put
     check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source);
     check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source);
-    kvs::stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
-    kvs::stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
+    kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
+    kvs::writable_stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
     encode_fields(false, key_fields_, keys, key_source);
     encode_fields(false, value_fields_, values, val_source);
     if(auto res = ctx.stg_->put(
@@ -113,8 +115,8 @@ operation_status write_partial::find_record_and_extract(write_partial_context& c
         // so this lookup must be successful. If the control reaches here, it's internal error.
         fail();
     }
-    kvs::stream keys{const_cast<char*>(k.data()), k.size()};
-    kvs::stream values{const_cast<char*>(v.data()), v.size()};
+    kvs::readable_stream keys{k.data(), k.size()};
+    kvs::readable_stream values{v.data(), v.size()};
     decode_fields(key_fields_, keys, ctx.key_store_.ref(), varlen_resource);
     decode_fields(value_fields_, values, ctx.value_store_.ref(), varlen_resource);
     if(auto res = ctx.stg_->remove( *ctx.tx_, k ); ! is_ok(res)) {
@@ -150,7 +152,7 @@ void write_partial::update_fields(
 
 void write_partial::decode_fields(
     std::vector<details::write_partial_field> const& fields,
-    kvs::stream& stream,
+    kvs::readable_stream& stream,
     accessor::record_ref target,
     memory::lifo_paged_memory_resource* varlen_resource
 ) {
@@ -181,7 +183,7 @@ void write_partial::check_length_and_extend_buffer(
     data::aligned_buffer& buffer,
     accessor::record_ref source
 ) {
-    kvs::stream null_stream{};
+    kvs::writable_stream null_stream{};
     encode_fields(from_variables, fields, null_stream, source);
     if (null_stream.length() > buffer.size()) {
         buffer.resize(null_stream.length());
@@ -332,7 +334,7 @@ maybe_shared_ptr<meta::record_meta> write_partial::create_meta(yugawara::storage
 void write_partial::encode_fields(
     bool from_variable,
     std::vector<details::write_partial_field> const& fields,
-    kvs::stream& target,
+    kvs::writable_stream& target,
     accessor::record_ref source
 ) {
     for(auto const& f : fields) {

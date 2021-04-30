@@ -54,6 +54,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/plan/compiler_context.h>
 #include "operator_container.h"
 
@@ -137,7 +138,7 @@ public:
         executor::process::impl::variable_table vars{};
         data::aligned_buffer buf{};
         for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-            kvs::stream s{buf.data(), buf.size()};
+            kvs::writable_stream s{buf.data(), buf.size()};
             std::size_t i = 0;
             for(auto&& k : keys) {
                 expression::evaluator eval{k.value(), info.compiled_info(), info.host_variables()};

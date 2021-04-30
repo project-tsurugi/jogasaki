@@ -284,8 +284,9 @@ public:
     [[nodiscard]] char const* data() const noexcept {
         return base_;
     }
+
     [[nodiscard]] std::string_view rest() const noexcept {
-        return {base_+pos_, capacity_-pos_};
+        return {base_+pos_, capacity_-pos_};  //NOLINT
     }
 private:
     char* base_{};

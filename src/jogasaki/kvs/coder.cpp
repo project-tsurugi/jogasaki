@@ -26,7 +26,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/kvs/readable_stream.h>t st
+#include <jogasaki/kvs/readable_stream.h>
 
 namespace jogasaki::kvs {
 

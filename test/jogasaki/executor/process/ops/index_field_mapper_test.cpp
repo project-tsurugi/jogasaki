@@ -133,7 +133,7 @@ TEST_F(index_field_mapper_test, simple) {
                 std::string_view value{};
                 ASSERT_TRUE(it->key(key));
                 ASSERT_TRUE(it->value(value));
-                mapper(key, value, result.ref(), *t1, *tx, &resource);
+                ASSERT_EQ(status::ok, mapper(key, value, result.ref(), *t1, *tx, &resource));
                 ASSERT_EQ(status::ok, tx->commit());
                 ASSERT_EQ(10, result.ref().get_value<std::int64_t>(result.record_meta()->value_offset(0)));
                 ASSERT_EQ(100, result.ref().get_value<std::int32_t>(result.record_meta()->value_offset(1)));
@@ -199,7 +199,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
                 std::string_view value{};
                 ASSERT_TRUE(it->key(key));
                 ASSERT_TRUE(it->value(value));
-                mapper(key, value, result.ref(), *t1, *tx, &resource);
+                ASSERT_EQ(status::ok, mapper(key, value, result.ref(), *t1, *tx, &resource));
                 ASSERT_EQ(status::ok, tx->commit());
                 ASSERT_EQ(10, result.ref().get_value<std::int64_t>(result.record_meta()->value_offset(0)));
                 ASSERT_EQ(100, result.ref().get_value<std::int32_t>(result.record_meta()->value_offset(1)));

@@ -138,10 +138,7 @@ bool matcher::operator()(
             fail();
         }
     }
-    if (auto r = field_mapper_(key, value, ref, primary_stg, tx, resource); r != status::ok) {
-        return false;
-    }
-    return true;
+    return field_mapper_(key, value, ref, primary_stg, tx, resource) == status::ok;
 }
 
 bool matcher::next() {

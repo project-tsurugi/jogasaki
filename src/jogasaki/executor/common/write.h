@@ -91,9 +91,9 @@ public:
         values_(std::move(values))
     {}
 
-    std::string storage_name_{};
-    std::vector<details::write_tuple> keys_{};
-    std::vector<details::write_tuple> values_{};
+    std::string storage_name_{};  //NOLINT
+    std::vector<details::write_tuple> keys_{};  //NOLINT
+    std::vector<details::write_tuple> values_{};  //NOLINT
 };
 } // namespace
 

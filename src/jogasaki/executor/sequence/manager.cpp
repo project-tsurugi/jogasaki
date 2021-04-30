@@ -23,6 +23,8 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/data/aligned_buffer.h>
 
 #include <jogasaki/executor/sequence/sequence.h>
@@ -190,8 +192,8 @@ std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_p
     if (!it->key(k) || !it->value(v)) {
         fail();
     }
-    kvs::stream key{const_cast<char*>(k.data()), k.size()};
-    kvs::stream value{const_cast<char*>(v.data()), v.size()};
+    kvs::readable_stream key{k.data(), k.size()};
+    kvs::readable_stream value{v.data(), v.size()};
     executor::process::impl::expression::any dest{};
     kvs::decode(key, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
     sequence_definition_id def_id{};
@@ -209,16 +211,16 @@ void manager::save_id_map() {
     data::aligned_buffer val_buf{10};
     for(auto& [def_id, element] : sequences_) {
         auto id = element.id();
-        kvs::stream key{static_cast<char*>(key_buf.data()), key_buf.size()};
-        kvs::stream value{static_cast<char*>(val_buf.data()), val_buf.size()};
+        kvs::writable_stream key{key_buf.data(), key_buf.size()};
+        kvs::writable_stream value{val_buf.data(), val_buf.size()};
         executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
         executor::process::impl::expression::any v{std::in_place_type<std::int64_t>, id};
         kvs::encode(k, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
         kvs::encode(v, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_value, value);
         if (auto res = stg->put(
                 *tx,
-                {key.data(), key.length()},
-                {value.data(), value.length()}
+                {key.data(), key.size()},
+                {value.data(), value.size()}
             ); res != status::ok) {
             fail();
         }
@@ -240,12 +242,12 @@ void manager::remove_id_map(sequence_definition_id def_id) {
     auto tx = db_->create_transaction();
 
     data::aligned_buffer key_buf{10};
-    kvs::stream key{static_cast<char*>(key_buf.data()), key_buf.size()};
+    kvs::writable_stream key{key_buf.data(), key_buf.size()};
     executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
     kvs::encode(k, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
     if (auto res = stg->remove(
             *tx,
-            {key.data(), key.length()}
+            {key.data(), key.size()}
         ); res != status::ok && res != status::not_found) {
         fail();
     }

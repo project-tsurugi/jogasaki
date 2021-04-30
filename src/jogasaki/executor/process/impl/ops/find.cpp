@@ -103,6 +103,32 @@ operation_status find::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
+operation_status abort_return(class find_context& ctx, status res) {
+    ctx.state(context_state::abort);
+    ctx.req_context()->status_code(res);
+    return {operation_status_kind::aborted};
+}
+
+operation_status find::call_downstream(
+    class find_context& ctx,
+    std::string_view k,
+    std::string_view v,
+    accessor::record_ref target,
+    context_base::memory_resource* resource,
+    abstract::task_context* context
+) {
+    if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
+        return abort_return(ctx, res);
+    }
+    if (downstream_) {
+        if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+            ctx.abort();
+            return {operation_status_kind::aborted};
+        }
+    }
+    return {};
+}
+
 operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
@@ -111,48 +137,47 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     std::string_view k{key_};
-    std::unique_ptr<kvs::iterator> it{}; // keep iterator here so that the key data is alive while mapper is operating
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
         if(auto res = stg.get(*ctx.tx_, key_, v); res != status::ok) {
             if (res == status::not_found) {
                 return {};
             }
-            ctx.state(context_state::abort);
-            ctx.req_context()->status_code(res);
-            return {operation_status_kind::aborted};
+            return abort_return(ctx, res);
         }
-    } else {
-        auto& stg = *ctx.secondary_stg_;
-        if(auto res = stg.scan(*ctx.tx_,
-                key_, kvs::end_point_kind::prefixed_inclusive,
-                key_, kvs::end_point_kind::prefixed_inclusive,
-                it
-            ); res != status::ok) {
+        auto ret = call_downstream(ctx, k, v, target, resource, context);
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+        return ret;
+    }
+    auto& stg = *ctx.secondary_stg_;
+    std::unique_ptr<kvs::iterator> it{};
+    if(auto res = stg.scan(*ctx.tx_,
+            key_, kvs::end_point_kind::prefixed_inclusive,
+            key_, kvs::end_point_kind::prefixed_inclusive,
+            it
+        ); res != status::ok) {
+        if (res == status::not_found) {
+            return {};
+        }
+        return abort_return(ctx, res);
+    }
+    while(true) {
+        if(auto res = it->next(); res != status::ok) {
             if (res == status::not_found) {
                 return {};
             }
-            ctx.state(context_state::abort);
-            ctx.req_context()->status_code(res);
-            return {operation_status_kind::aborted};
+            return abort_return(ctx, res);
         }
-        if(auto res = it->next(); res != status::ok) {
-            fail();
+        if(auto success = it->key(k); ! success) {
+            return abort_return(ctx, status::err_unknown);
         }
-        if(auto res = it->key(k); ! res) {
-            fail();
+        if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {
+            return ret;
         }
-    }
-    if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
-        ctx.state(context_state::abort);
-        ctx.req_context()->status_code(res);
-        return {operation_status_kind::aborted};
     }
     if (downstream_) {
-        if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
-            ctx.abort();
-            return {operation_status_kind::aborted};
-        }
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
     return {};

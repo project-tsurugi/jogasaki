@@ -150,6 +150,14 @@ private:
     std::vector<details::secondary_index_field_info> create_secondary_key_fields(
         yugawara::storage::index const* idx
     );
+    operation_status call_downstream(
+        class find_context& ctx,
+        std::string_view k,
+        std::string_view v,
+        accessor::record_ref target,
+        context_base::memory_resource* resource,
+        abstract::task_context* context
+    );
 };
 
 

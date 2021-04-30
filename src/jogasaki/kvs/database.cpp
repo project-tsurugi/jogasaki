@@ -81,5 +81,51 @@ std::unique_ptr<storage> database::get_storage(std::string_view name) {
     return std::make_unique<storage>(stg);
 }
 
+sequence_id database::create_sequence() noexcept {
+    sequence_id id{};
+    if (auto res = sharksfin::sequence_create(handle_, &id); res != sharksfin::StatusCode::OK) {
+        fail();
+    }
+    return id;
+}
+
+bool database::update_sequence(transaction& tx, sequence_id id, sequence_version version, sequence_value value) noexcept {
+    if (auto res = sharksfin::sequence_put(
+            tx.handle(),
+            id,
+            version,
+            value
+        ); res != sharksfin::StatusCode::OK) {
+        fail();
+    }
+    return true;
+}
+
+sequence_versioned_value database::read_sequence(sequence_id id) noexcept {
+    sequence_versioned_value ret{};
+    if (auto res = sharksfin::sequence_get(
+            handle_,
+            id,
+            &ret.version_,
+            &ret.value_
+        ); res != sharksfin::StatusCode::OK) {
+        if (res == sharksfin::StatusCode::NOT_FOUND) {
+            return {version_invalid, 0};
+        }
+        fail();
+    }
+    return ret;
+}
+
+bool database::delete_sequence(sequence_id id) noexcept {
+    if (auto res = sharksfin::sequence_delete(
+            handle_,
+            id
+        ); res != sharksfin::StatusCode::OK) {
+        fail();
+    }
+    return true;
+}
+
 }
 

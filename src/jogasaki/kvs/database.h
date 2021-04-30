@@ -23,6 +23,7 @@
 #include <sharksfin/api.h>
 
 #include "storage.h"
+#include <jogasaki/common_types.h>
 
 namespace jogasaki::kvs {
 
@@ -30,6 +31,7 @@ using takatori::util::fail;
 
 using sharksfin::DatabaseHandle;
 class transaction;
+
 
 /**
  * @brief represent database in the transactional storage engine
@@ -110,6 +112,44 @@ public:
      * Accessing the storage object which is deleted by storage::delete_storage() causes undefined behavior.
      */
     std::unique_ptr<storage> get_storage(std::string_view name);
+
+    /**
+     * @brief create new sequence
+     * @returns the newly assigned sequence id
+     */
+    [[nodiscard]] sequence_id create_sequence() noexcept;
+
+    /**
+     * @brief update sequence value and version
+     * @details request the transaction engine to make the sequence value for the specified version durable together
+     * with the associated transaction.
+     * @param id the sequence id whose value/version will be updated
+     * @param version the version of the sequence value
+     * @param value the new sequence value
+     * @return true if successful, or false otherwise
+     * @warning multiple put calls to a sequence with same version number cause undefined behavior.
+     */
+    [[nodiscard]] bool update_sequence(
+        transaction& tx,
+        sequence_id id,
+        sequence_version version,
+        sequence_value value) noexcept;
+
+    /**
+     * @brief get sequence value
+     * @details retrieve sequence value of the "latest" version from the transaction engine.
+     * @param id the sequence id whose value/version are to be retrieved
+     * @returns versioned value that holds the sequence's latest version number and value
+     */
+    [[nodiscard]] sequence_versioned_value read_sequence(sequence_id id) noexcept;
+
+    /**
+     * @brief delete the sequence
+     * @param handle the database handle where the sequence exists
+     * @param id the sequence id that will be deleted
+     * @return true if successful, or false otherwise
+     */
+    [[nodiscard]] bool delete_sequence(sequence_id id) noexcept;
 
 private:
     sharksfin::DatabaseHandle handle_{};

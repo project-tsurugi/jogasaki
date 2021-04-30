@@ -19,14 +19,45 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 #include <yugawara/storage/configurable_provider.h>
+#include <jogasaki/common_types.h>
 
 namespace jogasaki::executor {
 
 namespace storage = yugawara::storage;
 
+// built-in sequences definition ids
+constexpr static sequence_definition_id h_id_sequence = 0;
+constexpr static sequence_definition_id tseq_c0_sequence = 1;
+
 void add_builtin_tables(storage::configurable_provider& provider) {
     namespace type = ::takatori::type;
     using ::yugawara::variable::nullity;
+    yugawara::storage::index_feature_set index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+        ::yugawara::storage::index_feature::unique,
+        ::yugawara::storage::index_feature::primary,
+    };
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "system_sequences",
+            {
+                { "definition_id", type::int8(), nullity{false} },
+                { "sequence_id", type::int8 (), nullity{true} },
+            },
+        });
+        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+            t,
+            "system_sequences0",
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
             "T0",
@@ -44,12 +75,7 @@ void add_builtin_tables(storage::configurable_provider& provider) {
             {
                 t->columns()[1],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -75,12 +101,7 @@ void add_builtin_tables(storage::configurable_provider& provider) {
                 t->columns()[3],
                 t->columns()[4],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -106,12 +127,7 @@ void add_builtin_tables(storage::configurable_provider& provider) {
                 t->columns()[3],
                 t->columns()[4],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -131,12 +147,7 @@ void add_builtin_tables(storage::configurable_provider& provider) {
             {
                 t->columns()[1],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -162,12 +173,7 @@ void add_builtin_tables(storage::configurable_provider& provider) {
                 t->columns()[3],
                 t->columns()[4],
             },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
+            index_features
         });
     }
     {
@@ -187,12 +193,32 @@ void add_builtin_tables(storage::configurable_provider& provider) {
             {
                 t->columns()[1],
             },
+            index_features
+        });
+    }
+    {
+        auto s1 = std::make_shared<storage::sequence>(
+            tseq_c0_sequence,
+            "tseq_c0_sequence"
+        );
+        provider.add_sequence(s1);
+        auto t = provider.add_table({
+            "TSEQ",
             {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
+                { "C0", type::int8(), nullity{false}, {s1} },
+                { "C1", type::int8(), nullity{true} },
             },
+        });
+        auto i = provider.add_index({
+            t,
+            "TSEQ0",
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
         });
     }
 }
@@ -635,6 +661,55 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 t->columns()[14],
                 t->columns()[15],
                 t->columns()[16],
+            },
+            index_features
+        });
+    }
+    {
+//        "CREATE TABLE HISTORY ("
+//        "h_c_id INT NOT NULL,"
+//        "h_c_d_id INT NOT NULL,"
+//        "h_c_w_id INT NOT NULL,"
+//        "h_d_id INT NOT NULL,"
+//        "h_w_id INT NOT NULL,"
+//        "h_date CHAR(25) NOT NULL, " // date
+//        "h_amount DOUBLE NOT NULL, "
+//        "h_data CHAR(24) NOT NULL, "
+//        ")",
+        auto s1 = std::make_shared<storage::sequence>(
+            h_id_sequence,
+            "h_id_sequence"
+        );
+        provider.add_sequence(s1);
+        auto t = provider.add_table({
+            "HISTORY",
+            {
+                { "h_id", int_type(), not_null, {s1} },  // generated by sequence
+                { "h_c_id", int_type(), not_null },
+                { "h_c_d_id", int_type(), not_null },
+                { "h_c_w_id", int_type(), not_null },
+                { "h_d_id", int_type(), not_null },
+                { "h_w_id", int_type(), not_null },
+                { "h_date", type::character(25), not_null },
+                { "h_amount", type::float8(), not_null },
+                { "h_data", type::character(24), not_null },
+            },
+        });
+        auto i = provider.add_index({
+            t,
+            "HISTORY0",
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+                t->columns()[5],
+                t->columns()[6],
+                t->columns()[7],
+                t->columns()[8],
             },
             index_features
         });

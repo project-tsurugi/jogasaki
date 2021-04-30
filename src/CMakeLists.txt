@@ -24,6 +24,7 @@ file(GLOB SOURCES
         "jogasaki/executor/exchange/shuffle/*.cpp"
         "jogasaki/executor/function/*.cpp"
         "jogasaki/executor/function/incremental/*.cpp"
+        "jogasaki/executor/sequence/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"
@@ -63,6 +64,7 @@ target_link_libraries(${ENGINE}
         PRIVATE Boost::thread
         PRIVATE Boost::container
         PRIVATE glog::glog
+        PRIVATE atomic
 )
 
 if (USE_BLOCKING_EVENT_QUEUE)

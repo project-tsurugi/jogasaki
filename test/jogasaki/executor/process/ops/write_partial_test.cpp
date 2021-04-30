@@ -104,8 +104,8 @@ public:
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
             ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
+                std::string_view{key_buf.data(), key_stream.size()},
+                std::string_view{val_buf.data(), val_stream.size()}
             ));
         }
         key_stream.reset();
@@ -119,8 +119,8 @@ public:
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
             kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
             ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
+                std::string_view{key_buf.data(), key_stream.size()},
+                std::string_view{val_buf.data(), val_stream.size()}
             ));
         }
         ASSERT_EQ(status::ok, tx->commit());
@@ -351,7 +351,7 @@ TEST_F(write_partial_test , simple_update) {
             kvs::coding_spec{true, kvs::order::ascending},
             key
         );
-        std::string_view k{str.data(), key.length()};
+        std::string_view k{str.data(), key.size()};
         std::string_view v{};
         ASSERT_EQ(status::ok, s->get(*tx, k, v));
         std::string buf{v};
@@ -381,7 +381,7 @@ TEST_F(write_partial_test , simple_update) {
             kvs::coding_spec{true, kvs::order::ascending},
             key
         );
-        std::string_view k{str.data(), key.length()};
+        std::string_view k{str.data(), key.size()};
         std::string_view v{};
         ASSERT_EQ(status::ok, s->get(*tx, k, v));
         std::string buf{v};

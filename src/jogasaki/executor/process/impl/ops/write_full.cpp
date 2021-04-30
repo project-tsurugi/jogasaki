@@ -220,8 +220,8 @@ operation_status write_full::do_insert(write_full_context& ctx) {
         kvs::put_option::create_or_update;
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
-            {keys.data(), keys.length()},
-            {values.data(), values.length()},
+            {keys.data(), keys.size()},
+            {values.data(), values.size()},
             opt
         ); ! is_ok(res)) {
         ctx.state(context_state::abort);
@@ -239,8 +239,8 @@ void write_full::check_length_and_extend_buffer(
 ) {
     kvs::writable_stream null_stream{};
     encode_fields(fields, null_stream, source);
-    if (null_stream.length() > buffer.size()) {
-        buffer.resize(null_stream.length());
+    if (null_stream.size() > buffer.size()) {
+        buffer.resize(null_stream.size());
     }
 }
 
@@ -264,7 +264,7 @@ std::string_view write_full::prepare_key(write_full_context& ctx) {
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     encode_fields(key_fields_, keys, source);
-    return {keys.data(), keys.length()};
+    return {keys.data(), keys.size()};
 }
 
 }

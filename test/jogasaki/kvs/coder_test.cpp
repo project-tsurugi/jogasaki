@@ -535,8 +535,8 @@ void test_ordering() {
         encode(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);
         encode(z0, meta::field_type{enum_tag<Kind>}, spec_asc, s2);
         encode(p1, meta::field_type{enum_tag<Kind>}, spec_asc, s3);
-        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
     s0.reset();
     s1.reset();
@@ -547,8 +547,8 @@ void test_ordering() {
         encode(n1, meta::field_type{enum_tag<Kind>}, spec_desc, s1);
         encode(z0, meta::field_type{enum_tag<Kind>}, spec_desc, s2);
         encode(p1, meta::field_type{enum_tag<Kind>}, spec_desc, s3);
-        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
     s0.reset();
     s1.reset();
@@ -560,9 +560,9 @@ void test_ordering() {
         encode_nullable(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);
         encode_nullable(z0, meta::field_type{enum_tag<Kind>}, spec_asc, s2);
         encode_nullable(p1, meta::field_type{enum_tag<Kind>}, spec_asc, s3);
-        EXPECT_LT(bin(src0.data(), s0.length()), bin(src1.data(), s1.length()));
-        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
     s0.reset();
     s1.reset();
@@ -574,9 +574,9 @@ void test_ordering() {
         encode_nullable(n1, meta::field_type{enum_tag<Kind>}, spec_desc, s1);
         encode_nullable(z0, meta::field_type{enum_tag<Kind>}, spec_desc, s2);
         encode_nullable(p1, meta::field_type{enum_tag<Kind>}, spec_desc, s3);
-        EXPECT_GT(bin(src0.data(), s0.length()), bin(src1.data(), s1.length()));
-        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
 }
 
@@ -625,9 +625,9 @@ TEST_F(coder_test, text_ordering) {
         encode(c2, meta::field_type{enum_tag<kind::character>}, spec_asc, s2);
         encode(c3a, meta::field_type{enum_tag<kind::character>}, spec_asc, s3);
         encode(c3b, meta::field_type{enum_tag<kind::character>}, spec_asc, s4);
-        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
-        EXPECT_LT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
     }
     s0.reset();
     s1.reset();
@@ -640,9 +640,9 @@ TEST_F(coder_test, text_ordering) {
         encode(c2, meta::field_type{enum_tag<kind::character>}, spec_desc, s2);
         encode(c3a, meta::field_type{enum_tag<kind::character>}, spec_desc, s3);
         encode(c3b, meta::field_type{enum_tag<kind::character>}, spec_desc, s4);
-        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
-        EXPECT_GT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
     }
     s0.reset();
     s1.reset();
@@ -655,9 +655,9 @@ TEST_F(coder_test, text_ordering) {
         encode_nullable(c2, meta::field_type{enum_tag<kind::character>}, spec_asc, s2);
         encode_nullable(c3a, meta::field_type{enum_tag<kind::character>}, spec_asc, s3);
         encode_nullable(c3b, meta::field_type{enum_tag<kind::character>}, spec_asc, s4);
-        EXPECT_LT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_LT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
-        EXPECT_LT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
     }
     s0.reset();
     s1.reset();
@@ -671,10 +671,10 @@ TEST_F(coder_test, text_ordering) {
         encode_nullable(c2, meta::field_type{enum_tag<kind::character>}, spec_desc, s2);
         encode_nullable(c3a, meta::field_type{enum_tag<kind::character>}, spec_desc, s3);
         encode_nullable(c3b, meta::field_type{enum_tag<kind::character>}, spec_desc, s4);
-        EXPECT_GT(bin(src0.data(), s0.length()), bin(src1.data(), s1.length()));
-        EXPECT_GT(bin(src1.data(), s1.length()), bin(src2.data(), s2.length()));
-        EXPECT_GT(bin(src2.data(), s2.length()), bin(src3.data(), s3.length()));
-        EXPECT_GT(bin(src3.data(), s3.length()), bin(src4.data(), s4.length()));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
     }
 }
 }

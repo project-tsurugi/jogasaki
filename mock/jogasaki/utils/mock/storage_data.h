@@ -187,8 +187,8 @@ inline void populate_storage_data(
         fill_fields(key_meta, key_stream, true, i, sequential_data, -1, rnd, key_order_asc);
         fill_fields(val_meta, val_stream, false, i, sequential_data, modulo, rnd);
         if(auto res = stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
+                std::string_view{key_buf.data(), key_stream.size()},
+                std::string_view{val_buf.data(), val_stream.size()}
             ); ! is_ok(res)) {
             fail();
         }

@@ -150,7 +150,7 @@ public:
                 ++i;
             }
             if (loop == 0) {
-                buf.resize(s.length());
+                buf.resize(s.size());
             }
         }
         return buf;

@@ -85,8 +85,8 @@ TEST_F(index_field_mapper_test, simple) {
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
 
             auto tx = db->create_transaction();
-            ASSERT_EQ(status::ok, i2->put(*tx, {s.data(), s.length()}, ""));
-            ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.length()}, {t_v.data(), t_v.length()}));
+            ASSERT_EQ(status::ok, i2->put(*tx, {s.data(), s.size()}, ""));
+            ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
             ASSERT_EQ(status::ok, tx->commit());
         }
         {
@@ -164,7 +164,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
 
             auto tx = db->create_transaction();
-            ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.length()}, {t_v.data(), t_v.length()}));
+            ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
             ASSERT_EQ(status::ok, tx->commit());
         }
         {

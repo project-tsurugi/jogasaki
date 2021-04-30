@@ -66,7 +66,7 @@ std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) 
     check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source);
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     encode_fields(true, key_fields_, keys, source);
-    return {keys.data(), keys.length()};
+    return {keys.data(), keys.size()};
 }
 
 operation_status write_partial::encode_and_put(write_partial_context& ctx) {
@@ -81,8 +81,8 @@ operation_status write_partial::encode_and_put(write_partial_context& ctx) {
     encode_fields(false, value_fields_, values, val_source);
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
-            {keys.data(), keys.length()},
-            {values.data(), values.length()}
+            {keys.data(), keys.size()},
+            {values.data(), values.size()}
         ); is_error(res)) {
         if(res == status::err_aborted_retryable) {
             ctx.state(context_state::abort);
@@ -185,8 +185,8 @@ void write_partial::check_length_and_extend_buffer(
 ) {
     kvs::writable_stream null_stream{};
     encode_fields(from_variables, fields, null_stream, source);
-    if (null_stream.length() > buffer.size()) {
-        buffer.resize(null_stream.length());
+    if (null_stream.size() > buffer.size()) {
+        buffer.resize(null_stream.size());
     }
 }
 

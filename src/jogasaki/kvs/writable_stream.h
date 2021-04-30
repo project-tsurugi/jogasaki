@@ -15,20 +15,12 @@
  */
 #pragma once
 
-#include <memory>
 #include <cmath>
-#include <glog/logging.h>
+#include <boost/endian/conversion.hpp>
 
-#include <takatori/util/fail.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
 #include "readable_stream.h"
 
 namespace jogasaki::kvs {
-
-using takatori::util::fail;
 
 namespace details {
 
@@ -74,16 +66,13 @@ public:
      * @param buffer pointer to buffer that this instance can use
      * @param capacity length of the buffer
      */
-    writable_stream(void* buffer, std::size_t capacity) :
-        base_(static_cast<char*>(buffer)),
-        capacity_(capacity)
-    {}
+    writable_stream(void* buffer, std::size_t capacity);
 
     /**
      * @brief construct stream using string as its buffer
      * @param s string to use stream buffer
      */
-    explicit writable_stream(std::string& s) : writable_stream(s.data(), s.capacity()) {}
+    explicit writable_stream(std::string& s);
 
     /**
      * @brief write the typed field data respecting order to the stream
@@ -119,52 +108,37 @@ public:
      * @details the raw data is written to the stream. Given binary sequence is used
      * and no ordering or type conversion occurs.
      */
-    void write(char const* dt, std::size_t sz) {
-        BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
-        if (sz > 0 && capacity_ > 0) {
-            std::memcpy(base_ + pos_, dt, sz);  // NOLINT
-        }
-        pos_ += sz;
-    }
+    void write(char const* dt, std::size_t sz);
 
     /**
      * @brief reset the current position
      */
-    void reset() {
-        pos_ = 0;
-    }
+    void reset();
 
     /**
      * @brief return current length of the stream (# of bytes already written)
      * @return the length of the stream
      */
-    [[nodiscard]] std::size_t length() const noexcept {
-        return pos_;
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
     /**
      * @brief return the capacity of the stream buffer
      * @return the backing buffer capacity
      */
-    [[nodiscard]] std::size_t capacity() const noexcept {
-        return capacity_;
-    }
+    [[nodiscard]] std::size_t capacity() const noexcept;
 
     /**
      * @brief return the beginning pointer to the stream buffer
      * @return the data pointer
      */
-    [[nodiscard]] char const* data() const noexcept {
-        return base_;
-    }
+    [[nodiscard]] char const* data() const noexcept;
 
     /**
      * @brief retrieve readable_stream for the buffer owned by this object
      * @return the readable stream
      */
-    [[nodiscard]] readable_stream readable() const noexcept {
-        return readable_stream{base_, capacity_};
-    }
+    [[nodiscard]] readable_stream readable() const noexcept;
+
 private:
     char* base_{};
     std::size_t pos_{};
@@ -180,19 +154,7 @@ private:
         pos_ += sz;
     }
 
-    void do_write(char const* dt, std::size_t sz, order odr) {
-        BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
-        if (sz > 0 && capacity_ > 0) {
-            if (odr == order::ascending) {
-                std::memcpy(base_ + pos_, dt, sz);  // NOLINT
-            } else {
-                for (std::size_t i = 0; i < sz; ++i) {
-                    *(base_ + pos_ + i) = ~(*(dt + i));  // NOLINT
-                }
-            }
-        }
-        pos_ += sz;
-    }
+    void do_write(char const* dt, std::size_t sz, order odr);
 
 };
 

@@ -86,8 +86,8 @@ public:
             }
         }
         if(auto res = stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.length()},
-                std::string_view{val_buf.data(), val_stream.length()}
+                std::string_view{key_buf.data(), key_stream.size()},
+                std::string_view{val_buf.data(), val_stream.size()}
             ); res != status::ok) {
             fail();
         }

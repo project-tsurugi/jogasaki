@@ -15,16 +15,7 @@
  */
 #include "coder.h"
 
-#include <memory>
-#include <cmath>
-#include <boost/endian/conversion.hpp>
-#include <glog/logging.h>
-
 #include <takatori/util/fail.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/readable_stream.h>
 

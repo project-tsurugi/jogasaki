@@ -140,7 +140,7 @@ std::size_t encode_tuple(
             s.write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size());
         }
         if (loop == 0) {
-            length = s.length();
+            length = s.size();
             if (buf.size() < length) {
                 buf.resize(length);
             }

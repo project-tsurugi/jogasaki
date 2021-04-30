@@ -15,21 +15,11 @@
  */
 #pragma once
 
-#include <memory>
-#include <cmath>
-#include <glog/logging.h>
-
-#include <takatori/util/fail.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <boost/endian/conversion.hpp>
 
 #include "coder.h"
 
 namespace jogasaki::kvs {
-
-using takatori::util::fail;
 
 namespace details {
 
@@ -74,18 +64,13 @@ public:
      * @param buffer pointer to buffer that this instance can use
      * @param capacity length of the buffer
      */
-    readable_stream(void const* buffer, std::size_t capacity) :
-        base_(static_cast<char const*>(buffer)),
-        capacity_(capacity)
-    {}
+    readable_stream(void const* buffer, std::size_t capacity);
 
     /**
      * @brief construct stream using string as its buffer
      * @param s string to use stream buffer
      */
-    explicit readable_stream(std::string& s) :
-        readable_stream(s.data(), s.capacity())
-    {}
+    explicit readable_stream(std::string& s);
 
     /**
      * @brief read next uint_t N bits integer in the buffer
@@ -151,41 +136,31 @@ public:
     /**
      * @brief reset the current position
      */
-    void reset() {
-        pos_ = 0;
-    }
+    void reset();
 
     /**
      * @brief return current length of the stream (# of bytes already written)
      * @return the length of the stream
      */
-    [[nodiscard]] std::size_t length() const noexcept {
-        return pos_;
-    }
+    [[nodiscard]] std::size_t size() const noexcept;
 
     /**
      * @brief return the capacity of the stream buffer
      * @return the backing buffer capacity
      */
-    [[nodiscard]] std::size_t capacity() const noexcept {
-        return capacity_;
-    }
+    [[nodiscard]] std::size_t capacity() const noexcept;
 
     /**
      * @brief return the beginning pointer to the stream buffer
      * @return the data pointer
      */
-    [[nodiscard]] char const* data() const noexcept {
-        return base_;
-    }
+    [[nodiscard]] char const* data() const noexcept;
 
     /**
      * @brief return the rest of the buffer (ranging from current position to end of the buffer)
      * @return the rest of the data
      */
-    [[nodiscard]] std::string_view rest() const noexcept {
-        return {base_+pos_, capacity_-pos_};  //NOLINT
-    }
+    [[nodiscard]] std::string_view rest() const noexcept;
 
 private:
     char const* base_{};

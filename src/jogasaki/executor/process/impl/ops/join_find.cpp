@@ -102,7 +102,7 @@ bool matcher::operator()(
         }
         resource->deallocate_after(cp);
         if (loop == 0) {
-            len = s.length();
+            len = s.size();
             if (buf_.size() < len) {
                 buf_.resize(len);
             }

@@ -129,7 +129,7 @@ public:
     /**
      * @see operator_base::finish()
      */
-    void finish(abstract::task_context*) override;;
+    void finish(abstract::task_context*) override;
 
 private:
     bool use_secondary_{};

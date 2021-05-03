@@ -57,50 +57,11 @@
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/plan/compiler_context.h>
 #include "operator_container.h"
-#include "search_key_field_info.h"
+#include "details/search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
-
-template<class Key>
-std::vector<details::search_key_field_info> create_search_key_fields(
-    yugawara::storage::index const& primary_or_secondary_idx,
-    takatori::tree::tree_fragment_vector<Key> const& keys,
-    processor_info const& info
-) {
-    if (keys.empty()) {
-        return {};
-    }
-    BOOST_ASSERT(keys.size() <= primary_or_secondary_idx.keys().size());  //NOLINT // possibly partial keys
-    using variable = takatori::descriptor::variable;
-    yugawara::binding::factory bindings{};
-
-    std::unordered_map<variable, takatori::scalar::expression const*> var_to_expression{};
-    for(auto&& k : keys) {
-        var_to_expression.emplace(k.variable(), &k.value());
-    }
-
-    std::vector<details::search_key_field_info> ret{};
-    ret.reserve(primary_or_secondary_idx.keys().size());
-    for(auto&& k : primary_or_secondary_idx.keys()) {
-        auto kc = bindings(k.column());
-        auto t = utils::type_for(k.column().type());
-        auto spec = k.direction() == relation::sort_direction::ascendant ?
-            kvs::spec_key_ascending : kvs::spec_key_descending;
-        if (var_to_expression.count(kc) == 0) {
-            continue;
-        }
-        auto* exp = var_to_expression.at(kc);
-        ret.emplace_back(
-            t,
-            k.column().criteria().nullity().nullable(),
-            spec,
-            expression::evaluator{*exp, info.compiled_info(), info.host_variables()}
-        );
-    }
-    return ret;
-}
 
 inline void encode_key(
     std::vector<details::search_key_field_info> const& keys,

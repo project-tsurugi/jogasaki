@@ -25,7 +25,7 @@
 #include "operator_base.h"
 #include "join_find_context.h"
 #include "index_field_mapper.h"
-#include "search_key_field_info.h"
+#include "details/search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

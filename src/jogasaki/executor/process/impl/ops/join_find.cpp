@@ -342,7 +342,7 @@ join_find::join_find(
             block_index,
             false
         ),
-        create_search_key_fields(
+        details::create_search_key_fields(
             secondary_idx != nullptr ? *secondary_idx : primary_idx,
             keys,
             info

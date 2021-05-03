@@ -335,13 +335,13 @@ operator_builder::create_scan_info(
     yugawara::storage::index const& index
 ) {
     return std::make_shared<impl::scan_info>(
-        create_search_key_fields(
+        details::create_search_key_fields(
             index,
             lower.keys(),
             *info_
         ),
         from(lower.kind()),
-        create_search_key_fields(
+        details::create_search_key_fields(
             index,
             upper.keys(),
             *info_

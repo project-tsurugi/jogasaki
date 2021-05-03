@@ -79,7 +79,7 @@ find::find(
         block_index,
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
-        create_search_key_fields((secondary_idx != nullptr ? *secondary_idx : primary_idx), keys, info),
+        details::create_search_key_fields((secondary_idx != nullptr ? *secondary_idx : primary_idx), keys, info),
         create_fields(primary_idx, columns, info, block_index, true),
         create_fields(primary_idx, columns, info, block_index, false),
         create_secondary_key_fields(secondary_idx),

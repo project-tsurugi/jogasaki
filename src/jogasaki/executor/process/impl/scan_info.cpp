@@ -18,23 +18,23 @@
 namespace jogasaki::executor::process::impl {
 
 scan_info::scan_info(
-    std::string_view begin_key,
+    std::vector<ops::details::search_key_field_info> begin_columns,
     kvs::end_point_kind begin_endpoint,
-    std::string_view end_key,
+    std::vector<ops::details::search_key_field_info> end_columns,
     kvs::end_point_kind end_endpoint
 ) :
-    begin_key_(begin_key),
+    begin_columns_(std::move(begin_columns)),
     begin_endpoint_(begin_endpoint),
-    end_key_(end_key),
+    end_columns_(std::move(end_columns)),
     end_endpoint_(end_endpoint)
 {}
 
-std::string_view scan_info::begin_key() const noexcept {
-    return begin_key_;
+std::vector<ops::details::search_key_field_info> const& scan_info::begin_columns() const noexcept {
+    return begin_columns_;
 }
 
-std::string_view scan_info::end_key() const noexcept {
-    return end_key_;
+std::vector<ops::details::search_key_field_info> const& scan_info::end_columns() const noexcept {
+    return end_columns_;
 }
 
 kvs::end_point_kind scan_info::begin_endpoint() const noexcept {

@@ -107,7 +107,7 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(sequence_test, generate_primary_key) {
+TEST_F(sequence_test, DISABLED_generate_primary_key) {
     execute_statement( "INSERT INTO TSEQ (C1) VALUES (10)");
     execute_statement( "INSERT INTO TSEQ (C1) VALUES (20)");
     execute_statement( "INSERT INTO TSEQ (C1) VALUES (30)");

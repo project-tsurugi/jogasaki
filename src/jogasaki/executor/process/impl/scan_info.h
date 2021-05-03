@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/kvs/storage.h>
+#include <jogasaki/executor/process/impl/ops/search_key_field_info.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -31,9 +31,9 @@ public:
      * @brief create new object
      */
     explicit scan_info(
-        std::string_view begin_key = {},
+        std::vector<ops::details::search_key_field_info> = {},
         kvs::end_point_kind begin_endpoint = kvs::end_point_kind::unbound,
-        std::string_view end_key = {},
+        std::vector<ops::details::search_key_field_info> = {},
         kvs::end_point_kind end_endpoint = kvs::end_point_kind::unbound
     );
 
@@ -44,15 +44,15 @@ public:
     scan_info(scan_info&& other) noexcept = default;
     scan_info& operator=(scan_info&& other) noexcept = default;
 
-    [[nodiscard]] std::string_view begin_key() const noexcept;
-    [[nodiscard]] std::string_view end_key() const noexcept;
+    [[nodiscard]] std::vector<ops::details::search_key_field_info> const& begin_columns() const noexcept;
+    [[nodiscard]] std::vector<ops::details::search_key_field_info> const& end_columns() const noexcept;
     [[nodiscard]] kvs::end_point_kind begin_endpoint() const noexcept;
     [[nodiscard]] kvs::end_point_kind end_endpoint() const noexcept;
 
 private:
-    data::aligned_buffer begin_key_{};
+    std::vector<ops::details::search_key_field_info> begin_columns_{};
     kvs::end_point_kind begin_endpoint_{};
-    data::aligned_buffer end_key_{};
+    std::vector<ops::details::search_key_field_info> end_columns_{};
     kvs::end_point_kind end_endpoint_{};
 };
 

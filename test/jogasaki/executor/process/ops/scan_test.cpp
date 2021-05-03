@@ -534,7 +534,7 @@ TEST_F(scan_test, scan_info) {
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
     operator_builder builder{p_info, {}, {}, exchange_map, &resource};
-    auto sinfo = builder.create_scan_info(r0, primary_idx->keys());
+    auto sinfo = builder.create_scan_info(r0, *primary_idx);
     mock::task_context task_ctx{
         {},
         {},
@@ -742,7 +742,7 @@ TEST_F(scan_test, secondary_index) {
 
     io_exchange_map exchange_map{};
     operator_builder builder{p_info, {}, {}, exchange_map, &resource};
-    auto sinfo = builder.create_scan_info(r0, primary_idx->keys());
+    auto sinfo = builder.create_scan_info(r0, *secondary_idx);
     mock::task_context task_ctx{
         {},
         {},

@@ -18,9 +18,6 @@
 #include <takatori/relation/expression.h>
 #include <takatori/util/fail.h>
 #include <takatori/relation/step/offer.h>
-#include <yugawara/compiled_info.h>
-
-#include <yugawara/compiler_result.h>
 #include <takatori/relation/graph.h>
 #include <takatori/relation/scan.h>
 #include <takatori/relation/emit.h>
@@ -43,6 +40,9 @@
 #include <takatori/relation/step/intersection.h>
 #include <takatori/relation/step/difference.h>
 #include <takatori/relation/expression.h>
+#include <yugawara/compiled_info.h>
+#include <yugawara/compiler_result.h>
+#include <yugawara/binding/factory.h>
 
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -57,10 +57,72 @@
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/plan/compiler_context.h>
 #include "operator_container.h"
+#include "search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
+
+template<class Key>
+std::vector<details::search_key_field_info> create_search_key_fields(
+    yugawara::storage::index const& primary_or_secondary_idx,
+    takatori::tree::tree_fragment_vector<Key> const& keys,
+    processor_info const& info
+) {
+    if (keys.empty()) {
+        return {};
+    }
+    BOOST_ASSERT(keys.size() <= primary_or_secondary_idx.keys().size());  //NOLINT // possibly partial keys
+    using variable = takatori::descriptor::variable;
+    yugawara::binding::factory bindings{};
+
+    std::unordered_map<variable, takatori::scalar::expression const*> var_to_expression{};
+    for(auto&& k : keys) {
+        var_to_expression.emplace(k.variable(), &k.value());
+    }
+
+    std::vector<details::search_key_field_info> ret{};
+    ret.reserve(primary_or_secondary_idx.keys().size());
+    for(auto&& k : primary_or_secondary_idx.keys()) {
+        auto kc = bindings(k.column());
+        auto t = utils::type_for(k.column().type());
+        auto spec = k.direction() == relation::sort_direction::ascendant ?
+            kvs::spec_key_ascending : kvs::spec_key_descending;
+        if (var_to_expression.count(kc) == 0) {
+            continue;
+        }
+        auto* exp = var_to_expression.at(kc);
+        ret.emplace_back(
+            t,
+            k.column().criteria().nullity().nullable(),
+            spec,
+            expression::evaluator{*exp, info.compiled_info(), info.host_variables()}
+        );
+    }
+    return ret;
+}
+
+inline void encode_key(
+    std::vector<details::search_key_field_info> const& keys,
+    executor::process::impl::variable_table& vars,
+    memory::lifo_paged_memory_resource& resource,
+    data::aligned_buffer& out
+) {
+    auto cp = resource.get_checkpoint();
+    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
+        kvs::writable_stream s{out.data(), loop == 0 ? 0 : out.size()};
+        std::size_t i = 0;
+        for(auto&& k : keys) {
+            auto res = k.evaluator_(vars, &resource);
+            kvs::encode(res, k.type_, k.spec_, s);
+            resource.deallocate_after(cp);
+            ++i;
+        }
+        if (loop == 0) {
+            out.resize(s.size());
+        }
+    }
+}
 
 /**
  * @brief generator for relational operators
@@ -119,42 +181,15 @@ public:
     std::shared_ptr<impl::scan_info> create_scan_info(
         endpoint const& lower,
         endpoint const& upper,
-        sequence_view<key const> index_keys
-    );
-    std::shared_ptr<impl::scan_info> create_scan_info(
-        relation::scan const& node,
-        sequence_view<key const> index_keys
+        yugawara::storage::index const& index
     );
 
-    template<class Key>
-    static data::aligned_buffer encode_key(
-        takatori::tree::tree_fragment_vector<Key> const& keys,
-        sequence_view<yugawara::storage::index::key const> index_keys,
-        processor_info const& info,
-        memory::lifo_paged_memory_resource& resource
-    ) {
-        BOOST_ASSERT(keys.size() <= index_keys.size());  //NOLINT
-        auto cp = resource.get_checkpoint();
-        executor::process::impl::variable_table vars{};
-        data::aligned_buffer buf{};
-        for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-            kvs::writable_stream s{buf.data(), buf.size()};
-            std::size_t i = 0;
-            for(auto&& k : keys) {
-                expression::evaluator eval{k.value(), info.compiled_info(), info.host_variables()};
-                auto res = eval(vars, &resource);
-                auto spec = index_keys[i].direction() == relation::sort_direction::ascendant ?
-                    kvs::spec_key_ascending: kvs::spec_key_descending;
-                kvs::encode(res, utils::type_for(info.compiled_info(), k.variable()), spec, s);
-                resource.deallocate_after(cp);
-                ++i;
-            }
-            if (loop == 0) {
-                buf.resize(s.size());
-            }
-        }
-        return buf;
-    }
+    std::shared_ptr<impl::scan_info> create_scan_info(
+        relation::scan const& node,
+        yugawara::storage::index const& index
+    );
+
+
 private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<io_info> io_info_{};

@@ -21,9 +21,11 @@
 
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "find_context.h"
 #include "index_field_mapper.h"
+#include "search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -36,6 +38,8 @@ using takatori::util::unsafe_downcast;
 class find : public record_operator {
 public:
     friend class find_context;
+
+    using key = takatori::relation::find::key;
 
     using column = takatori::relation::find::column;
 
@@ -52,7 +56,7 @@ public:
      * @param block_index the index of the block that this operation belongs to
      * @param storage_name the storage name to find
      * @param secondary_storage_name the storage name to find primary key, pass storage_name if secondary is not used
-     * @param key the key used to conduct find operation
+     * @param search_key_fields the search key field definition used to conduct find operation
      * @param key_fields field offset information for keys
      * @param value_fields field offset information for values
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
@@ -63,7 +67,7 @@ public:
         block_index_type block_index,
         std::string_view storage_name,
         std::string_view secondary_storage_name,
-        std::string_view key,
+        std::vector<details::search_key_field_info> search_key_fields,
         std::vector<details::field_info> key_fields,
         std::vector<details::field_info> value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
@@ -75,7 +79,7 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
-     * @param key the key used to conduct find operation
+     * @param keys the keys definition used to conduct find operation
      * @param primary_idx the primary index model used as the first step to find entry
      * @param columns takatori find column information
      * @param secondary_idx the secondary index used to find the primary key.
@@ -86,7 +90,7 @@ public:
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        std::string_view key,
+        takatori::tree::tree_fragment_vector<key> const& keys,
         yugawara::storage::index const& primary_idx,
         sequence_view<column const> columns,
         yugawara::storage::index const* secondary_idx,
@@ -135,7 +139,7 @@ private:
     bool use_secondary_{};
     std::string storage_name_{};
     std::string secondary_storage_name_{};
-    data::aligned_buffer key_{};
+    std::vector<details::search_key_field_info> search_key_fields_{};
     std::unique_ptr<operator_base> downstream_{};
     index_field_mapper field_mapper_{};
 

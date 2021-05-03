@@ -25,6 +25,7 @@
 #include "operator_base.h"
 #include "join_find_context.h"
 #include "index_field_mapper.h"
+#include "search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -32,31 +33,6 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 
 namespace details {
-
-/**
- * @brief key field info of the join_find operation
- * @details join_find operator uses these fields to know how to create search key sequence from the variables
- */
-struct cache_align join_find_key_field {
-    /**
-     * @brief create new join key field
-     * @param type type of the key field
-     * @param nullable whether the target field is nullable or not
-     * @param spec the spec of the target field used for encode/decode
-     * @param evaluator evaluator used to evaluate the key field value
-     */
-    join_find_key_field(
-        meta::field_type type,
-        bool nullable,
-        kvs::coding_spec spec,
-        expression::evaluator evaluator
-    );
-
-    meta::field_type type_{}; //NOLINT
-    bool nullable_{}; //NOLINT
-    kvs::coding_spec spec_{}; //NOLINT
-    expression::evaluator evaluator_{}; //NOLINT
-};
 
 /**
  * @brief matcher object to encapsulate difference between single result find and multiple result
@@ -69,7 +45,7 @@ public:
 
     matcher(
         bool use_secondary,
-        std::vector<details::join_find_key_field> const& key_fields,
+        std::vector<details::search_key_field_info> const& key_fields,
         std::vector<details::field_info> key_columns,
         std::vector<details::field_info> value_columns
     );
@@ -107,7 +83,7 @@ public:
 
 private:
     bool use_secondary_{};
-    std::vector<details::join_find_key_field> const& key_fields_{};
+    std::vector<details::search_key_field_info> const& key_fields_{};
     data::aligned_buffer buf_{};
     status status_{status::ok};
     index_field_mapper field_mapper_{};
@@ -139,7 +115,7 @@ public:
      * @param primary_storage_name the storage name to find
      * @param key_columns column information for key fields
      * @param value_columns column information for value fields
-     * @param key_fields key_field information
+     * @param search_key_fields key_field information
      * @param condition additional join condition
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
@@ -151,7 +127,7 @@ public:
         std::string_view secondary_storage_name,
         std::vector<details::field_info> key_columns,
         std::vector<details::field_info> value_columns,
-        std::vector<details::join_find_key_field> key_fields,
+        std::vector<details::search_key_field_info> search_key_fields,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         std::unique_ptr<operator_base> downstream = nullptr
     ) noexcept;
@@ -224,7 +200,7 @@ public:
     /**
      * @brief accessor to key fields
      */
-    [[nodiscard]] std::vector<details::join_find_key_field> const& key_fields() const noexcept;
+    [[nodiscard]] std::vector<details::search_key_field_info> const& search_key_fields() const noexcept;
 
 private:
     bool use_secondary_{};
@@ -232,7 +208,7 @@ private:
     std::string secondary_storage_name_{};
     std::vector<details::field_info> key_columns_{};
     std::vector<details::field_info> value_columns_{};
-    std::vector<details::join_find_key_field> key_fields_{};
+    std::vector<details::search_key_field_info> search_key_fields_{};
     takatori::util::optional_ptr<takatori::scalar::expression const> condition_{};
     std::unique_ptr<operator_base> downstream_{};
     expression::evaluator evaluator_{};
@@ -245,11 +221,6 @@ private:
         bool key
     );
 
-    std::vector<details::join_find_key_field> create_key_fields(
-        yugawara::storage::index const& primary_or_secondary_idx,
-        takatori::tree::tree_fragment_vector<key> const& keys,
-        processor_info const& info
-    );
 };
 
 

@@ -122,7 +122,7 @@ TEST_F(find_test, simple) {
         },
         {
             relation::find::key{
-                c0,
+                v0,
                 scalar::immediate{takatori::value::int4(20), takatori::type::int4()}
             }
         }
@@ -170,7 +170,7 @@ TEST_F(find_test, simple) {
         0,
         p_info,
         0,
-        operator_builder::encode_key<relation::find::key>(r0.keys(), primary_idx->keys(), p_info, resource),
+        r0.keys(),
         *primary_idx,
         r0.columns(),
         nullptr,
@@ -301,7 +301,7 @@ TEST_F(find_test, secondary_index) {
         },
         {
             relation::find::key{
-                c2,
+                v2,
                 scalar::immediate{takatori::value::int8(200), takatori::type::int8()}
             }
         }
@@ -349,7 +349,7 @@ TEST_F(find_test, secondary_index) {
         0,
         p_info,
         0,
-        operator_builder::encode_key<relation::find::key>(r0.keys(), primary_idx->keys(), p_info, resource),
+        r0.keys(),
         *primary_idx,
         r0.columns(),
         secondary_idx.get(),

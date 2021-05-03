@@ -249,7 +249,7 @@ TEST_F(join_find_test, simple) {
         tx.get(),
         std::make_unique<details::matcher>(
             false,
-            s.key_fields(),
+            s.search_key_fields(),
             s.key_columns(),
             s.value_columns()
         ),
@@ -481,7 +481,7 @@ TEST_F(join_find_test, secondary_index) {
         tx.get(),
         std::make_unique<details::matcher>(
             true,
-            s.key_fields(),
+            s.search_key_fields(),
             s.key_columns(),
             s.value_columns()
         ),

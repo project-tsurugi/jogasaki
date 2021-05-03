@@ -24,12 +24,12 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include "operator_base.h"
 #include "context_helper.h"
 #include "join_find_context.h"
+#include "operator_builder.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -37,20 +37,8 @@ using takatori::util::unsafe_downcast;
 
 namespace details {
 
-join_find_key_field::join_find_key_field(
-    meta::field_type type,
-    bool nullable,
-    kvs::coding_spec spec,
-    expression::evaluator evaluator
-) :
-    type_(std::move(type)),
-    nullable_(nullable),
-    spec_(spec),
-    evaluator_(evaluator)
-{}
-
 std::vector<details::secondary_index_field_info> create_secondary_key_fields(
-    std::vector<details::join_find_key_field> const& key_fields
+    std::vector<details::search_key_field_info> const& key_fields
 ) {
     std::vector<details::secondary_index_field_info> ret{};
     ret.reserve(key_fields.size());
@@ -66,7 +54,7 @@ std::vector<details::secondary_index_field_info> create_secondary_key_fields(
 
 matcher::matcher(
     bool use_secondary,
-    std::vector<details::join_find_key_field> const& key_fields,
+    std::vector<details::search_key_field_info> const& key_fields,
     std::vector<details::field_info> key_columns,
     std::vector<details::field_info> value_columns
 ) :
@@ -167,7 +155,7 @@ operation_status join_find::process_record(abstract::task_context* context) {
             ctx.transaction(),
             std::make_unique<details::matcher>(
                 use_secondary_,
-                key_fields_,
+                search_key_fields_,
                 key_columns_,
                 value_columns_
             ),
@@ -296,38 +284,6 @@ std::vector<details::field_info> join_find::create_columns(
     return ret;
 }
 
-std::vector<details::join_find_key_field> join_find::create_key_fields(
-    yugawara::storage::index const& primary_or_secondary_idx,
-    takatori::tree::tree_fragment_vector<key> const& keys,
-    processor_info const& info
-) {
-    BOOST_ASSERT(primary_or_secondary_idx.keys().size() == keys.size());  //NOLINT
-    std::vector<details::join_find_key_field> ret{};
-    using variable = takatori::descriptor::variable;
-    yugawara::binding::factory bindings{};
-
-    std::unordered_map<variable, takatori::scalar::expression const*> var_to_expression{};
-    for(auto&& k : keys) {
-        var_to_expression.emplace(k.variable(), &k.value());
-    }
-
-    ret.reserve(primary_or_secondary_idx.keys().size());
-    for(auto&& k : primary_or_secondary_idx.keys()) {
-        auto kc = bindings(k.column());
-        auto t = utils::type_for(k.column().type());
-        auto spec = k.direction() == relation::sort_direction::ascendant ?
-            kvs::spec_key_ascending : kvs::spec_key_descending;
-        auto* exp = var_to_expression.at(kc);
-        ret.emplace_back(
-            t,
-            k.column().criteria().nullity().nullable(),
-            spec,
-            expression::evaluator{*exp, info.compiled_info(), info.host_variables()}
-        );
-    }
-    return ret;
-}
-
 join_find::join_find(
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -336,7 +292,7 @@ join_find::join_find(
     std::string_view secondary_storage_name,
     std::vector<details::field_info> key_columns,
     std::vector<details::field_info> value_columns,
-    std::vector<details::join_find_key_field> key_fields,
+    std::vector<details::search_key_field_info> search_key_fields,
     takatori::util::optional_ptr<takatori::scalar::expression const> condition,
     std::unique_ptr<operator_base> downstream
 ) noexcept:
@@ -346,7 +302,7 @@ join_find::join_find(
     secondary_storage_name_(secondary_storage_name),
     key_columns_(std::move(key_columns)),
     value_columns_(std::move(value_columns)),
-    key_fields_(std::move(key_fields)),
+    search_key_fields_(std::move(search_key_fields)),
     condition_(std::move(condition)),
     downstream_(std::move(downstream)),
     evaluator_(condition_ ?
@@ -386,7 +342,7 @@ join_find::join_find(
             block_index,
             false
         ),
-        create_key_fields(
+        create_search_key_fields(
             secondary_idx != nullptr ? *secondary_idx : primary_idx,
             keys,
             info
@@ -404,8 +360,8 @@ std::vector<details::field_info> const& join_find::value_columns() const noexcep
     return value_columns_;
 }
 
-std::vector<details::join_find_key_field> const& join_find::key_fields() const noexcept {
-    return key_fields_;
+std::vector<details::search_key_field_info> const& join_find::search_key_fields() const noexcept {
+    return search_key_fields_;
 }
 
 

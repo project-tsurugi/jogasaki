@@ -33,6 +33,7 @@
 #include "operator_base.h"
 #include "context_helper.h"
 #include "scan_context.h"
+#include "operator_builder.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -182,11 +183,14 @@ void scan::open(scan_context& ctx) {
             ee = kvs::end_point_kind::prefixed_exclusive;
         }
     }
+    executor::process::impl::variable_table vars{};
+    encode_key(ctx.scan_info_->begin_columns(), vars, *ctx.varlen_resource(), ctx.key_begin_);
+    encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_);
     if(auto res = stg.scan(
             *ctx.tx_,
-            ctx.scan_info_->begin_key(),
+            ctx.key_begin_,
             be,
-            ctx.scan_info_->end_key(),
+            ctx.key_end_,
             ee,
             ctx.it_
         );

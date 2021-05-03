@@ -59,6 +59,7 @@ private:
     std::unique_ptr<kvs::storage> stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};
     kvs::transaction* tx_{};
+    data::aligned_buffer key_{};
 };
 
 }

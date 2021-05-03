@@ -80,7 +80,6 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::find
     auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
-    auto k = encode_key<relation::find::key>(node.keys(), secondary_or_primary_index.keys(), *info_, *resource_);
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
     BOOST_ASSERT(primary); //NOLINT
@@ -88,7 +87,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::find
         index_++,
         *info_,
         block_index,
-        k,
+        node.keys(),
         *primary,
         node.columns(),
         *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
@@ -105,7 +104,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
 
     // scan info is not passed to scan operator here, but passed back through task_context
     // in order to support parallel scan in the future
-    scan_info_ = create_scan_info(node, secondary_or_primary_index.keys());
+    scan_info_ = create_scan_info(node, secondary_or_primary_index);
 
     return std::make_unique<scan>(
         index_++,
@@ -333,21 +332,29 @@ std::shared_ptr<impl::scan_info>
 operator_builder::create_scan_info(
     operator_builder::endpoint const& lower,
     operator_builder::endpoint const& upper,
-    sequence_view<key const> index_keys
+    yugawara::storage::index const& index
 ) {
     return std::make_shared<impl::scan_info>(
-        encode_key<relation::scan::key>(lower.keys(), index_keys, *info_, *resource_),
+        create_search_key_fields(
+            index,
+            lower.keys(),
+            *info_
+        ),
         from(lower.kind()),
-        encode_key<relation::scan::key>(upper.keys(), index_keys, *info_, *resource_),
+        create_search_key_fields(
+            index,
+            upper.keys(),
+            *info_
+        ),
         from(upper.kind())
     );
 }
 
 std::shared_ptr<impl::scan_info> operator_builder::create_scan_info(
     relation::scan const& node,
-    sequence_view<key const> index_keys
+    yugawara::storage::index const& index
 ) {
-    return create_scan_info(node.lower(), node.upper(), index_keys);
+    return create_scan_info(node.lower(), node.upper(), index);
 }
 
 kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type type) {

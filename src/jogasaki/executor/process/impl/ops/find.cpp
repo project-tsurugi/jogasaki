@@ -31,6 +31,7 @@
 #include "operator_base.h"
 #include "context_helper.h"
 #include "find_context.h"
+#include "operator_builder.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -42,7 +43,7 @@ find::find(
     operator_base::block_index_type block_index,
     std::string_view storage_name,
     std::string_view secondary_storage_name,
-    std::string_view key,
+    std::vector<details::search_key_field_info> search_key_fields,
     std::vector<details::field_info> key_fields,
     std::vector<details::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
@@ -52,7 +53,7 @@ find::find(
     use_secondary_(! secondary_storage_name.empty()),
     storage_name_(storage_name),
     secondary_storage_name_(secondary_storage_name),
-    key_(key),
+    search_key_fields_(std::move(search_key_fields)),
     downstream_(std::move(downstream)),
     field_mapper_(
         use_secondary_,
@@ -66,7 +67,7 @@ find::find(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
-    std::string_view key,
+    takatori::tree::tree_fragment_vector<key> const& keys,
     yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
     yugawara::storage::index const* secondary_idx,
@@ -78,7 +79,7 @@ find::find(
         block_index,
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
-        key,
+        create_search_key_fields((secondary_idx != nullptr ? *secondary_idx : primary_idx), keys, info),
         create_fields(primary_idx, columns, info, block_index, true),
         create_fields(primary_idx, columns, info, block_index, false),
         create_secondary_key_fields(secondary_idx),
@@ -136,10 +137,12 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto target = ctx.variables().store().ref();
     auto resource = ctx.varlen_resource();
     std::string_view v{};
-    std::string_view k{key_};
+    executor::process::impl::variable_table vars{};
+    encode_key(search_key_fields_, vars, *resource, ctx.key_);
+    std::string_view k{ctx.key_};
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
-        if(auto res = stg.get(*ctx.tx_, key_, v); res != status::ok) {
+        if(auto res = stg.get(*ctx.tx_, k, v); res != status::ok) {
             if (res == status::not_found) {
                 return {};
             }
@@ -154,8 +157,8 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto& stg = *ctx.secondary_stg_;
     std::unique_ptr<kvs::iterator> it{};
     if(auto res = stg.scan(*ctx.tx_,
-            key_, kvs::end_point_kind::prefixed_inclusive,
-            key_, kvs::end_point_kind::prefixed_inclusive,
+            k, kvs::end_point_kind::prefixed_inclusive,
+            k, kvs::end_point_kind::prefixed_inclusive,
             it
         ); res != status::ok) {
         if (res == status::not_found) {

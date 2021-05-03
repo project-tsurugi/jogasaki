@@ -63,6 +63,8 @@ private:
     kvs::transaction* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     impl::scan_info const* scan_info_{};
+    data::aligned_buffer key_begin_{};
+    data::aligned_buffer key_end_{};
 };
 
 }

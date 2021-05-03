@@ -325,4 +325,19 @@ TEST_F(sql_test, update_host_variable) {
     }
 }
 
+TEST_F(sql_test, query_host_variable) {
+    db_->register_variable("p0", api::field_type_kind::int8);
+    db_->register_variable("p1", api::field_type_kind::float8);
+    auto ps = api::create_parameter_set();
+    ps->set_int8("p0", 1);
+    ps->set_float8("p1", 10.0);
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0 AND C1 = :p1", *ps, result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+}
+
 }

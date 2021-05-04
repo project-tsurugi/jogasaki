@@ -23,6 +23,9 @@ namespace jogasaki::executor::process::impl::ops {
 class verifier : public record_operator {
 public:
     verifier() = default;
+    explicit verifier(std::function<void(void)> f) :
+        f_(std::move(f))
+    {}
     void body(std::function<void(void)> f) {
         f_ = std::move(f);
     }

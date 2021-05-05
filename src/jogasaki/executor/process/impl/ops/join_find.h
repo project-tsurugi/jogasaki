@@ -130,7 +130,9 @@ public:
         std::vector<details::field_info> value_columns,
         std::vector<details::search_key_field_info> search_key_fields,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
-        std::unique_ptr<operator_base> downstream = nullptr
+        std::unique_ptr<operator_base> downstream = nullptr,
+        variable_table_info const* input_variable_info = nullptr,
+        variable_table_info const* output_variable_info = nullptr
     ) noexcept;
 
     /**
@@ -153,7 +155,9 @@ public:
         takatori::tree::tree_fragment_vector<key> const& keys,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         yugawara::storage::index const* secondary_idx,
-        std::unique_ptr<operator_base> downstream
+        std::unique_ptr<operator_base> downstream,
+        variable_table_info const* input_variable_info = nullptr,
+        variable_table_info const* output_variable_info = nullptr
     );
 
     /**
@@ -217,8 +221,7 @@ private:
     std::vector<details::field_info> create_columns(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
-        processor_info const& info,
-        block_index_type block_index,
+        variable_table_info const& output_variables_info,
         bool key
     );
 

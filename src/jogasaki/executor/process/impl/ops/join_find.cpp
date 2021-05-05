@@ -150,6 +150,7 @@ operation_status join_find::process_record(abstract::task_context* context) {
         p = ctx.make_context<class join_find_context>(
             index(),
             ctx.variable_table(block_index()),
+            ctx.variable_table(block_index()),
             ctx.database()->get_storage(primary_storage_name_),
             use_secondary_ ? ctx.database()->get_storage(secondary_storage_name_) : nullptr,
             ctx.transaction(),
@@ -174,11 +175,12 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
 
     if((*ctx.matcher_)(
         ctx.input_variables(),
-        ctx.input_variables(),
+        ctx.output_variables(),
         *ctx.primary_stg_,
         ctx.secondary_stg_.get(),
-        *ctx.tx_, resource)
-        ) {
+        *ctx.tx_,
+        resource
+    )) {
         if (condition_) {
             auto r = evaluator_(ctx.input_variables());
             if(r.has_value() && !r.to<bool>()) {
@@ -219,8 +221,7 @@ void join_find::finish(abstract::task_context* context) {
 std::vector<details::field_info> join_find::create_columns(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
+    variable_table_info const& output_variables_info,
     bool key
 ) {
     std::vector<details::field_info> ret{};
@@ -230,7 +231,6 @@ std::vector<details::field_info> join_find::create_columns(
     for(auto&& c : columns) {
         table_to_stream.emplace(c.source(), c.destination());
     }
-    auto& block = info.vars_info_list()[block_index];
     if (key) {
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
@@ -253,8 +253,8 @@ std::vector<details::field_info> join_find::create_columns(
             ret.emplace_back(
                 t,
                 true,
-                block.at(var).value_offset(),
-                block.at(var).nullity_offset(),
+                output_variables_info.at(var).value_offset(),
+                output_variables_info.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -281,8 +281,8 @@ std::vector<details::field_info> join_find::create_columns(
         ret.emplace_back(
             t,
             true,
-            block.at(var).value_offset(),
-            block.at(var).nullity_offset(),
+            output_variables_info.at(var).value_offset(),
+            output_variables_info.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );
@@ -300,9 +300,11 @@ join_find::join_find(
     std::vector<details::field_info> value_columns,
     std::vector<details::search_key_field_info> search_key_fields,
     takatori::util::optional_ptr<takatori::scalar::expression const> condition,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) noexcept:
-    record_operator(index, info, block_index),
+    record_operator(index, info, block_index, input_variable_info, output_variable_info),
     use_secondary_(! secondary_storage_name.empty()),
     primary_storage_name_(primary_storage_name),
     secondary_storage_name_(secondary_storage_name),
@@ -326,7 +328,9 @@ join_find::join_find(
     takatori::tree::tree_fragment_vector<key> const& keys,
     takatori::util::optional_ptr<takatori::scalar::expression const> condition,
     yugawara::storage::index const* secondary_idx,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) :
     join_find(
         index,
@@ -337,15 +341,13 @@ join_find::join_find(
         create_columns(
             primary_idx,
             columns,
-            info,
-            block_index,
+            (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
             true
         ),
         create_columns(
             primary_idx,
             columns,
-            info,
-            block_index,
+            (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
             false
         ),
         details::create_search_key_fields(
@@ -354,7 +356,9 @@ join_find::join_find(
             info
         ),
         condition,
-        std::move(downstream)
+        std::move(downstream),
+        input_variable_info,
+        output_variable_info
     )
 {}
 

@@ -20,6 +20,7 @@
 
 #include <takatori/plan/forward.h>
 #include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_flat.h>
 #include <takatori/type/character.h>
 #include <takatori/value/character.h>
 #include <takatori/type/int.h>
@@ -58,6 +59,16 @@ using yugawara::variable::criteria;
 using yugawara::storage::table;
 using yugawara::storage::index;
 using yugawara::storage::index_feature_set;
+
+template <class Column>
+std::vector<variable> destinations(std::vector<Column, takatori::util::object_allocator<Column>>& columns) {
+    std::vector<variable> ret{};
+    ret.reserve(columns.size());
+    for(auto&& c : columns) {
+        ret.emplace_back(c.destination());
+    }
+    return ret;
+}
 
 class operator_test_utils {
 public:
@@ -141,7 +152,6 @@ public:
         varlen_resource_(&pool_)
     {}
     takatori::util::object_creator creator_{};  //NOLINT
-    relation::find* target_{};  //NOLINT
 
     std::shared_ptr<yugawara::analyzer::variable_mapping> variable_map_ =  //NOLINT
         std::make_shared<yugawara::analyzer::variable_mapping>();
@@ -151,7 +161,7 @@ public:
     std::shared_ptr<yugawara::compiled_info> compiler_info_{};  //NOLINT
     std::shared_ptr<processor_info> processor_info_;  //NOLINT
 
-    void add_downstream(
+    relation::step::offer& add_offer(
         std::vector<variable> stream_variables
     ) {
         std::vector<descriptor::variable, takatori::util::object_allocator<descriptor::variable>> xch_columns;
@@ -174,8 +184,33 @@ public:
             bindings_.exchange(f1),
             std::move(offer_columns),
         });
+        return r1;
 
-        target_->output() >> r1.input(); // connection required by takatori
+    }
+
+    relation::step::take_flat& add_take(
+        std::size_t variable_count
+    ) {
+        std::vector<descriptor::variable, takatori::util::object_allocator<descriptor::variable>> xch_columns;
+        for(std::size_t i=0; i < variable_count; ++i) {
+            xch_columns.emplace_back(
+                bindings_.exchange_column()
+            );
+        }
+        auto& f1 = plan_.insert(creator_.create_unique<takatori::plan::forward>(std::move(xch_columns)));
+        using take = relation::step::take_flat;
+        std::vector<take::column, takatori::util::object_allocator<take::column>> take_columns{};
+        for(std::size_t i=0; i < variable_count; ++i) {
+            take_columns.emplace_back(
+                f1.columns()[i], bindings_.stream_variable()
+            );
+        }
+
+        auto&& r1 = process_.operators().insert(take{
+            bindings_.exchange(f1),
+            std::move(take_columns),
+        });
+        return r1;
     }
 
     void create_processor_info() {

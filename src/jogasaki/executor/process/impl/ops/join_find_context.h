@@ -45,7 +45,8 @@ public:
      */
     join_find_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variable_table& input_variables,
+        variable_table& output_variables,
         std::unique_ptr<kvs::storage> primary_stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         kvs::transaction* tx,

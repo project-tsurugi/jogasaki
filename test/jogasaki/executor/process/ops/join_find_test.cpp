@@ -18,14 +18,10 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
-#include <takatori/plan/forward.h>
 #include <takatori/type/character.h>
 #include <takatori/value/character.h>
 #include <takatori/util/object_creator.h>
-#include <takatori/relation/step/take_cogroup.h>
-#include <takatori/relation/step/offer.h>
 #include <takatori/relation/join_find.h>
-#include <takatori/plan/group.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
@@ -35,11 +31,9 @@
 
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/process/impl/ops/join.h>
-#include <jogasaki/executor/process/impl/ops/take_cogroup.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/mock/iterable_group_store.h>
+#include <jogasaki/operator_test_utils.h>
 
 #include "verifier.h"
 
@@ -62,10 +56,6 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class join_find_test : public test_root, public kvs_test_utils {
-public:
-};
-
 using kind = field_type_kind;
 using group_reader = mock::basic_group_reader;
 using group_type = group_reader::group_type;
@@ -75,440 +65,223 @@ using values_type = group_type::value_type;
 using yugawara::variable::nullity;
 using yugawara::variable::criteria;
 
-TEST_F(join_find_test, simple) {
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table({
-        "T0",
-        {
-            { "C0", t::int8(), nullity{false} },
-            { "C1", t::int8(), nullity{false} },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
+class join_find_test :
+    public test_root,
+    public kvs_test_utils,
+    public operator_test_utils {
 
-    std::shared_ptr<::yugawara::storage::index> primary_idx_t0 = storages->add_index({
-        t0,
-        t0->simple_name(),
-        {
-            t0->columns()[0],
-        },
-        {
-            t0->columns()[1],
-        },
-        {
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-            ::yugawara::storage::index_feature::unique,
-            ::yugawara::storage::index_feature::primary,
-        },
-    });
-    std::shared_ptr<storage::table> t1 = storages->add_table({
+public:
+    template <class T, class ...Args>
+    void add_types(T& target, Args&&... types) {
+        std::vector<std::reference_wrapper<takatori::type::data>> v{types...};
+        std::size_t i=0;
+        for(auto&& type : v) {
+            yugawara::analyzer::variable_resolution r{std::move(static_cast<takatori::type::data&>(type))};
+            variable_map_->bind(target.columns()[i].source(), r);
+            variable_map_->bind(target.columns()[i].destination(), r);
+            ++i;
+        }
+    }
+};
+
+variable_table_info create_variable_table_info(
+    std::vector<variable> variables,
+    jogasaki::mock::basic_record const& rec
+) {
+    std::unordered_map<variable, value_info> map{};
+    variable_table_info ret{};
+    auto meta = rec.record_meta();
+    std::size_t i = 0;
+    for(auto&& v : variables) {
+        map.emplace(v, value_info{meta->value_offset(i), meta->nullity_offset(i)});
+        ++i;
+    }
+    return {std::move(map), meta};
+};
+
+
+TEST_F(join_find_test, simple) {
+    auto t1 = create_table({
         "T1",
         {
             { "C0", t::int8(), nullity{false} },
             { "C1", t::int8(), nullity{false} },
         },
     });
-    storage::column const& t1c0 = t1->columns()[0];
-    storage::column const& t1c1 = t1->columns()[1];
+    auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
 
-    std::shared_ptr<::yugawara::storage::index> primary_idx_t1 = storages->add_index({
-        t1,
-        t1->simple_name(),
-        {
-            t1->columns()[0],
-        },
-        {
-            t1->columns()[1],
-        },
-        {
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-            ::yugawara::storage::index_feature::unique,
-            ::yugawara::storage::index_feature::primary,
-        },
-    });
-
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process{});
-    auto c0 = bindings.stream_variable("c0");
-    auto c1 = bindings.stream_variable("c1");
-
-    auto& scan = p0.operators().insert(relation::scan {
-        bindings(*primary_idx_t0),
-        {
-            { bindings(t0c0), c0 },
-            { bindings(t0c1), c1 },
-        },
-    });
-
-    auto c2 = bindings.stream_variable("c2");
-    auto c3 = bindings.stream_variable("c3");
-
-    auto& r0 = p0.operators().insert(relation::join_find {
+    auto& take = add_take(2);
+    add_types(take, t::int8{}, t::int8{});
+    auto& target = process_.operators().insert(relation::join_find {
         relation::join_kind::inner,
-        bindings(*primary_idx_t1),
+        bindings_(*primary_idx_t1),
         {
-            { bindings(t1c0), c2 },
-            { bindings(t1c1), c3 },
+            { bindings_(t1->columns()[0]), bindings_.stream_variable("c2") },
+            { bindings_(t1->columns()[1]), bindings_.stream_variable("c3")  },
         },
         {
             relation::join_find::key{
-                bindings(t1c0),
-                varref{c0},
+                bindings_(t1->columns()[0]),
+                varref{take.columns()[0].destination()},
             }
         },
     });
 
-    ::takatori::plan::forward f1 {
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-    };
+    auto& offer = add_offer(destinations(target.columns()));
+    take.output() >> target.left();
+    target.output() >> offer.input();
 
-    auto&& f1c0 = f1.columns()[0];
-    auto&& f1c1 = f1.columns()[1];
-    auto&& f1c2 = f1.columns()[2];
-    auto&& f1c3 = f1.columns()[3];
-    // without offer, the columns are not used and block variables become empty
-    auto&& r1 = p0.operators().insert(relation::step::offer {
-        bindings.exchange(f1),
-        {
-            { c0, f1c0 },
-            { c1, f1c1 },
-            { c2, f1c2 },
-            { c3, f1c3 },
-        },
-    });
+    add_types(target, t::int8{}, t::int8{});
+    expression_map_->bind(target.keys()[0].value(), t::int8{});
+    create_processor_info();
 
-    scan.output() >> r0.left();
-    r0.output() >> r1.input(); // connection required by takatori
+    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 10);
+    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 100);
+    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
+    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), output)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+    variable_table output_variables{output_variable_info};
 
-    auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vmap->bind(c0, t::int8{});
-    vmap->bind(c1, t::int8{});
-    vmap->bind(c2, t::int8{});
-    vmap->bind(c3, t::int8{});
-    auto emap = std::make_shared<yugawara::analyzer::expression_mapping>();
-    emap->bind(r0.keys()[0].value(), t::int8{});
-    yugawara::compiled_info c_info{emap, vmap};
-
-    processor_info p_info{p0.operators(), c_info};
-
-    memory::page_pool pool{};
-    memory::lifo_paged_memory_resource resource{&pool};
-    memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
-    auto d = std::make_unique<verifier>();
-    auto downstream = d.get();
-    join_find s{
+    std::vector<jogasaki::mock::basic_record> result{};
+    join_find op{
         0,
-        p_info,
+        *processor_info_,
         0,
         *primary_idx_t1,
-        r0.columns(),
-        r0.keys(),
-        r0.condition(),
+        target.columns(),
+        target.keys(),
+        target.condition(),
         nullptr,
-        std::move(d)
-    };
-
-    variable_table_info block_info{p_info.vars_info_list()[0]};
-    variable_table variables{block_info};
-    auto tmeta = block_info.meta();
-
-    mock::task_context task_ctx{
-        {},
-        {},
-        {},
-        {},
+        std::make_unique<verifier>([&]() {
+            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), output.record_meta()));
+        }),
+        &input_variable_info,
+        &output_variable_info
     };
 
     auto db = kvs::database::open();
     auto stg = db->create_storage(primary_idx_t1->simple_name());
-    put(
-        *db,
-        primary_idx_t1->simple_name(),
-        create_record<kind::int8>(1),
-        create_record<kind::int8>(100)
-    );
-    put(
-        *db,
-        primary_idx_t1->simple_name(),
-        create_record<kind::int8>(2),
-        create_record<kind::int8>(200)
-    );
+    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
+    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     auto tx = db->create_transaction();
+    mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
-        variables,
+        input_variables,
+        output_variables,
         std::move(stg),
         nullptr,
         tx.get(),
         std::make_unique<details::matcher>(
             false,
-            s.search_key_fields(),
-            s.key_columns(),
-            s.value_columns()
+            op.search_key_fields(),
+            op.key_columns(),
+            op.value_columns()
         ),
-        &resource,
-        &varlen_resource
+        &resource_,
+        &varlen_resource_
     );
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 10);
-    vars_ref.set_null(map.at(c1).nullity_offset(), false);
-
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    downstream->body([&]() {
-        result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
-    });
-
-    s(ctx);
-
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, vars_ref.get_value<std::int64_t>(map.at(c0).value_offset()));
-    EXPECT_EQ(10, vars_ref.get_value<std::int64_t>(map.at(c1).value_offset()));
-    EXPECT_EQ(1, vars_ref.get_value<std::int64_t>(map.at(c2).value_offset()));
-    EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(map.at(c3).value_offset()));
+    EXPECT_EQ(output, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
     (void)db->close();
 }
 
 TEST_F(join_find_test, secondary_index) {
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table({
-        "T0",
-        {
-            { "C0", t::int8(), nullity{false} },
-            { "C1", t::int8(), nullity{false} },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
-
-    std::shared_ptr<::yugawara::storage::index> primary_idx_t0 = storages->add_index({
-        t0,
-        t0->simple_name(),
-        {
-            t0->columns()[0],
-        },
-        {
-            t0->columns()[1],
-        },
-        {
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-            ::yugawara::storage::index_feature::unique,
-            ::yugawara::storage::index_feature::primary,
-        },
-    });
-    std::shared_ptr<storage::table> t1 = storages->add_table({
+    auto t1 = create_table({
         "T1",
         {
             { "C0", t::int8(), nullity{false} },
             { "C1", t::int8(), nullity{false} },
         },
     });
-    storage::column const& t1c0 = t1->columns()[0];
-    storage::column const& t1c1 = t1->columns()[1];
+    auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
+    auto secondary_idx_t1 = create_secondary_index(t1, "T1_SECONDARY", {1}, {});
 
-    std::shared_ptr<::yugawara::storage::index> primary_idx_t1 = storages->add_index({
-        t1,
-        t1->simple_name(),
-        {
-            t1->columns()[0],
-        },
-        {
-            t1->columns()[1],
-        },
-        {
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-            ::yugawara::storage::index_feature::unique,
-            ::yugawara::storage::index_feature::primary,
-        },
-    });
-    std::shared_ptr<::yugawara::storage::index> secondary_idx_t1 = storages->add_index({
-        t1,
-        "T1_SECONDARY",
-        {
-            t1->columns()[1],
-        },
-        {},
-        {
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-        },
-    });
+    auto& take = add_take(2);
+    add_types(take, t::int8{}, t::int8{});
 
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process{});
-    auto c0 = bindings.stream_variable("c0");
-    auto c1 = bindings.stream_variable("c1");
-
-    auto& scan = p0.operators().insert(relation::scan {
-        bindings(*primary_idx_t0),
-        {
-            { bindings(t0c0), c0 },
-            { bindings(t0c1), c1 },
-        },
-    });
-
-    auto c2 = bindings.stream_variable("c2");
-    auto c3 = bindings.stream_variable("c3");
-
-    auto& r0 = p0.operators().insert(relation::join_find {
+    auto& target = process_.operators().insert(relation::join_find {
         relation::join_kind::inner,
-        bindings(*secondary_idx_t1),
+        bindings_(*secondary_idx_t1),
         {
-            { bindings(t1c0), c2 },
-            { bindings(t1c1), c3 },
+            { bindings_(t1->columns()[0]), bindings_.stream_variable("c2") },
+            { bindings_(t1->columns()[1]), bindings_.stream_variable("c3")  },
         },
         {
             relation::join_find::key{
-                bindings(t1c1),
-                varref{c1},
+                bindings_(t1->columns()[1]),
+                varref{take.columns()[1].destination()},
             }
         },
     });
+    auto& offer = add_offer(destinations(target.columns()));
+    take.output() >> target.left();
+    target.output() >> offer.input();
 
-    ::takatori::plan::forward f1 {
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-    };
+    add_types(target, t::int8{}, t::int8{});
+    expression_map_->bind(target.keys()[0].value(), t::int8{});
+    create_processor_info();
 
-    auto&& f1c0 = f1.columns()[0];
-    auto&& f1c1 = f1.columns()[1];
-    auto&& f1c2 = f1.columns()[2];
-    auto&& f1c3 = f1.columns()[3];
-    // without offer, the columns are not used and block variables become empty
-    auto&& r1 = p0.operators().insert(relation::step::offer {
-        bindings.exchange(f1),
-        {
-            { c0, f1c0 },
-            { c1, f1c1 },
-            { c2, f1c2 },
-            { c3, f1c3 },
-        },
-    });
+    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 10);
+    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(100, 10);
+    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
+    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), output)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+    variable_table output_variables{output_variable_info};
 
-    scan.output() >> r0.left();
-    r0.output() >> r1.input(); // connection required by takatori
-
-    auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vmap->bind(c0, t::int8{});
-    vmap->bind(c1, t::int8{});
-    vmap->bind(c2, t::int8{});
-    vmap->bind(c3, t::int8{});
-    auto emap = std::make_shared<yugawara::analyzer::expression_mapping>();
-    emap->bind(r0.keys()[0].value(), t::int8{});
-    yugawara::compiled_info c_info{emap, vmap};
-
-    processor_info p_info{p0.operators(), c_info};
-
-    memory::page_pool pool{};
-    memory::lifo_paged_memory_resource resource{&pool};
-    memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
-    auto d = std::make_unique<verifier>();
-    auto downstream = d.get();
-    join_find s{
+    std::vector<jogasaki::mock::basic_record> result{};
+    join_find op{
         0,
-        p_info,
+        *processor_info_,
         0,
         *primary_idx_t1,
-        r0.columns(),
-        r0.keys(),
-        r0.condition(),
+        target.columns(),
+        target.keys(),
+        target.condition(),
         secondary_idx_t1.get(),
-        std::move(d)
-    };
-
-    variable_table_info block_info{p_info.vars_info_list()[0]};
-    variable_table variables{block_info};
-    auto tmeta = block_info.meta();
-
-    mock::task_context task_ctx{
-        {},
-        {},
-        {},
-        {},
+        std::make_unique<verifier>([&]() {
+            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), output.record_meta()));
+        }),
+        &input_variable_info,
+        &output_variable_info
     };
 
     auto db = kvs::database::open();
     auto primary_stg = db->create_storage(primary_idx_t1->simple_name());
     auto secondary_stg = db->create_storage(secondary_idx_t1->simple_name());
-    put(
-        *db,
-        primary_idx_t1->simple_name(),
-        create_record<kind::int8>(100),
-        create_record<kind::int8>(10)
-    );
-    put(
-        *db,
-        secondary_idx_t1->simple_name(),
-        create_record<kind::int8, kind::int8>(10, 100),
-        {}
-    );
-    put(
-        *db,
-        primary_idx_t1->simple_name(),
-        create_record<kind::int8>(200),
-        create_record<kind::int8>(20)
-    );
-    put(
-        *db,
-        secondary_idx_t1->simple_name(),
-        create_record<kind::int8, kind::int8>(20, 200),
-        {}
-    );
+    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(100), create_record<kind::int8>(10));
+    put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(10, 100), {});
+    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(200), create_record<kind::int8>(20));
+    put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 200), {});
     auto tx = db->create_transaction();
+    mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
-        variables,
+        input_variables,
+        output_variables,
         std::move(primary_stg),
         std::move(secondary_stg),
         tx.get(),
         std::make_unique<details::matcher>(
             true,
-            s.search_key_fields(),
-            s.key_columns(),
-            s.value_columns()
+            op.search_key_fields(),
+            op.key_columns(),
+            op.value_columns()
         ),
-        &resource,
-        &varlen_resource
+        &resource_,
+        &varlen_resource_
     );
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 10);
-    vars_ref.set_null(map.at(c1).nullity_offset(), false);
-
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    downstream->body([&]() {
-        result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
-    });
-
-    s(ctx);
-
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, vars_ref.get_value<std::int64_t>(map.at(c0).value_offset()));
-    EXPECT_EQ(10, vars_ref.get_value<std::int64_t>(map.at(c1).value_offset()));
-    EXPECT_EQ(100, vars_ref.get_value<std::int64_t>(map.at(c2).value_offset()));
-    EXPECT_EQ(10, vars_ref.get_value<std::int64_t>(map.at(c3).value_offset()));
+    EXPECT_EQ(output, result[0]);
+
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
     (void)db->close();

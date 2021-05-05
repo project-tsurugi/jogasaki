@@ -85,6 +85,15 @@ public:
     }
 };
 
+std::vector<variable> destinations(std::vector<find::column, takatori::util::object_allocator<find::column>>& columns) {
+    std::vector<variable> ret{};
+    ret.reserve(columns.size());
+    for(auto&& c : columns) {
+        ret.emplace_back(c.destination());
+    }
+    return ret;
+}
+
 TEST_F(find_test, simple) {
     auto t0 = create_table({
         "T0",
@@ -95,7 +104,6 @@ TEST_F(find_test, simple) {
         },
     });
     auto primary_idx = create_primary_index(t0, {0}, {1,2});
-
     target_ = &process_.operators().insert(relation::find {
         bindings_(*primary_idx),
         {
@@ -110,26 +118,26 @@ TEST_F(find_test, simple) {
             }
         }
     });
-
-    add_downstream(3, target_->columns());
+    add_downstream(destinations(target_->columns()));
     add_types(t::int4{}, t::float8{}, t::int8{});
     expression_map_->bind(target_->keys()[0].value(), t::int4{});
     create_processor_info();
-//    variable_table variables{processor_info_->vars_info_list()[0]};
-    auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
-    auto tmeta = exp.record_meta();
-    variable_table_info block_info{
-        {
-            { target_->columns()[0].destination(), { tmeta->value_offset(0), tmeta->nullity_offset(0), } },
-            { target_->columns()[1].destination(), { tmeta->value_offset(1), tmeta->nullity_offset(1), } },
-            { target_->columns()[2].destination(), { tmeta->value_offset(2), tmeta->nullity_offset(2), } },
-        },
-        tmeta,
-    };
-    variable_table variables{block_info};
 
+    auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
+    auto variables_meta = exp.record_meta();
+    variable_table_info output_variable_info{
+        {
+            { target_->columns()[0].destination(), { variables_meta->value_offset(0), variables_meta->nullity_offset(0), } },
+            { target_->columns()[1].destination(), { variables_meta->value_offset(1), variables_meta->nullity_offset(1), } },
+            { target_->columns()[2].destination(), { variables_meta->value_offset(2), variables_meta->nullity_offset(2), } },
+        },
+        variables_meta,
+    };
+    variable_table_info input_variable_info{};
+    variable_table input_variables{input_variable_info};
+    variable_table output_variables{output_variable_info};
     std::vector<jogasaki::mock::basic_record> result{};
-    find s{
+    find op{
         0,
         *processor_info_,
         0,
@@ -138,8 +146,10 @@ TEST_F(find_test, simple) {
         target_->columns(),
         nullptr,
         std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
-        })
+            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), variables_meta));
+        }),
+        &input_variable_info,
+        &output_variable_info
     };
 
     auto db = kvs::database::open();
@@ -149,8 +159,8 @@ TEST_F(find_test, simple) {
     auto stg = db->get_storage(primary_idx->simple_name());
     auto tx = db->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, variables, std::move(stg), nullptr, tx.get(), &resource_, &varlen_resource_);
-    s(ctx);
+    find_context ctx(&task_ctx, input_variables, output_variables, std::move(stg), nullptr, tx.get(), &resource_, &varlen_resource_);
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(exp, result[0]);
@@ -184,15 +194,26 @@ TEST_F(find_test, secondary_index) {
         }
     });
 
-    add_downstream(3, target_->columns());
+    add_downstream(destinations(target_->columns()));
     add_types(t::int4{}, t::float8{}, t::int8{});
     expression_map_->bind(target_->keys()[0].value(), t::int8{});
     create_processor_info();
+    auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
+    auto variables_meta = exp.record_meta();
+    variable_table_info output_variable_info{
+        {
+            { target_->columns()[0].destination(), { variables_meta->value_offset(0), variables_meta->nullity_offset(0), } },
+            { target_->columns()[1].destination(), { variables_meta->value_offset(1), variables_meta->nullity_offset(1), } },
+            { target_->columns()[2].destination(), { variables_meta->value_offset(2), variables_meta->nullity_offset(2), } },
+        },
+        variables_meta,
+    };
+    variable_table_info input_variable_info{};
+    variable_table input_variables{input_variable_info};
+    variable_table output_variables{output_variable_info};
+    std::vector<jogasaki::mock::basic_record> result{};
 
-    using kind = meta::field_type_kind;
-    auto d = std::make_unique<verifier>();
-    auto downstream = d.get();
-    find s{
+    find op{
         0,
         *processor_info_,
         0,
@@ -200,15 +221,15 @@ TEST_F(find_test, secondary_index) {
         *primary_idx,
         target_->columns(),
         secondary_idx.get(),
-        std::move(d)
+        std::make_unique<verifier>([&]() {
+            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), variables_meta));
+        }),
+        &input_variable_info,
+        &output_variable_info
     };
 
-    auto& block_info = processor_info_->vars_info_list()[s.block_index()];
-    variable_table variables{block_info};
-
-    mock::task_context task_ctx{{}, {}, {}, {}};
-
     auto db = kvs::database::open();
+    using kind = meta::field_type_kind;
     auto p_stg = db->create_storage(primary_idx->simple_name());
     auto s_stg = db->create_storage(secondary_idx->simple_name());
 
@@ -216,37 +237,23 @@ TEST_F(find_test, secondary_index) {
     put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
     put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 20), {});
+    put( *db, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 200));
+    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 21), {});
 
     auto tx = db->create_transaction();
-    auto t = tx.get();
-    find_context ctx(&task_ctx, variables, std::move(p_stg), std::move(s_stg), t, &resource_, &varlen_resource_);
+    mock::task_context task_ctx{{}, {}, {}, {}};
+    find_context ctx(&task_ctx, input_variables, output_variables, std::move(p_stg), std::move(s_stg), tx.get(), &resource_, &varlen_resource_);
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    auto vars_meta = variables.meta();
-
-    auto c0_offset = map.at(target_->columns()[0].destination()).value_offset();
-    auto c1_offset = map.at(target_->columns()[1].destination()).value_offset();
-    auto c2_offset = map.at(target_->columns()[2].destination()).value_offset();
-
-    std::size_t count = 0;
-    downstream->body([&]() {
-        switch(count) {
-            case 0: {
-                EXPECT_EQ(20, vars_ref.get_value<std::int32_t>(c0_offset));
-                EXPECT_DOUBLE_EQ(2.0, vars_ref.get_value<double>(c1_offset));
-                EXPECT_EQ(200, vars_ref.get_value<std::int64_t>(c2_offset));
-                break;
-            }
-            default:
-                ADD_FAILURE();
-        }
-        ++count;
-    });
-    s(ctx);
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(status::ok, t->commit());
+
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    auto exp0 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
+    auto exp1 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(21, 2.1, 200);
+    EXPECT_EQ(exp0, result[0]);
+    EXPECT_EQ(exp1, result[1]);
+    ASSERT_EQ(status::ok, tx->commit());
     (void)db->close();
 }
 

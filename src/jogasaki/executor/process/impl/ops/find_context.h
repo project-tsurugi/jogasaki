@@ -38,10 +38,14 @@ public:
 
     /**
      * @brief create new object
+     * @param ctx the parent task context
+     * @param input_variables the input variable table
+     * @param output_variables the output variable table
      */
     find_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variable_table& input_variables,
+        variable_table& output_variables,
         std::unique_ptr<kvs::storage> stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         kvs::transaction* tx,

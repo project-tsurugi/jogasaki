@@ -22,23 +22,35 @@ namespace jogasaki::executor::process::impl::ops {
 operator_base::operator_base(
     operator_base::operator_index_type index,
     processor_info const&info,
-    operator_base::block_index_type block_index
+    operator_base::block_index_type block_index,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) noexcept:
     index_(index),
     processor_info_(std::addressof(info)),
-    block_index_(block_index)
+    block_index_(block_index),
+    input_variable_info_(
+        input_variable_info != nullptr ?
+            input_variable_info :
+            std::addressof(processor_info_->vars_info_list()[block_index_])
+    ),
+    output_variable_info_(
+        output_variable_info != nullptr ?
+            output_variable_info :
+            std::addressof(processor_info_->vars_info_list()[block_index_])
+    )
 {}
 
 variable_table_info const& operator_base::block_info() const noexcept {
-    return processor_info_->vars_info_list()[block_index_];
+    return *input_variable_info_;
+}
+
+variable_table_info const& operator_base::output_variable_info() const noexcept {
+    return *output_variable_info_;
 }
 
 operator_base::block_index_type operator_base::block_index() const noexcept {
     return block_index_;
-}
-
-std::vector<variable_table_info> const& operator_base::blocks() const noexcept {
-    return processor_info_->vars_info_list();
 }
 
 yugawara::compiled_info const& operator_base::compiled_info() const noexcept {
@@ -56,12 +68,16 @@ variable_table const* operator_base::host_variables() const noexcept {
 record_operator::record_operator(
     operator_base::operator_index_type index,
     processor_info const&info,
-    operator_base::block_index_type block_index
+    operator_base::block_index_type block_index,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) noexcept:
     operator_base(
         index,
         info,
-        block_index
+        block_index,
+        input_variable_info,
+        output_variable_info
     )
 {}
 

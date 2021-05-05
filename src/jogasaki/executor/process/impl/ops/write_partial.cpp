@@ -61,7 +61,7 @@ details::write_partial_field::write_partial_field(
 {}
 
 std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) {
-    auto source = ctx.variables().store().ref();
+    auto source = ctx.input_variables().store().ref();
     // calculate length first, and then put
     check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source);
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
@@ -96,7 +96,7 @@ operation_status write_partial::encode_and_put(write_partial_context& ctx) {
 }
 
 void write_partial::update_record(write_partial_context& ctx) {
-    auto variables = ctx.variables().store().ref();
+    auto variables = ctx.input_variables().store().ref();
     update_fields(key_fields_, ctx.key_store_.ref(), variables);
     update_fields(value_fields_, ctx.value_store_.ref(), variables);
 }

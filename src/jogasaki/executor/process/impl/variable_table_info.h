@@ -164,7 +164,7 @@ public:
 private:
     entity_type map_{};
     named_map_type named_map_{};
-    maybe_shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta> meta_{std::make_shared<meta::record_meta>()};
 };
 
 using variables_info_list = std::vector<variable_table_info>;

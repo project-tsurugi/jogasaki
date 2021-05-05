@@ -67,7 +67,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    auto target = ctx.variables().store().ref();
+    auto target = ctx.output_variables().store().ref();
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
         ctx.reader_ = r.reader<record_reader>();

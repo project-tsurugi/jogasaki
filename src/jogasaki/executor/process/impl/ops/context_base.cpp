@@ -21,22 +21,47 @@ namespace jogasaki::executor::process::impl::ops {
 
 context_base::context_base(
     abstract::task_context* context,
-    variable_table& variables,
+    variable_table& input_variables,
+    variable_table& output_variables,
     memory::lifo_paged_memory_resource* resource,
     memory::lifo_paged_memory_resource* varlen_resource
 ) :
     task_context_(context),
-    variables_(std::addressof(variables)),
+    input_variables_(std::addressof(input_variables)),
+    output_variables_(std::addressof(output_variables)),
     resource_(resource),
     varlen_resource_(varlen_resource)
 {}
 
-variable_table& context_base::variables() const noexcept {
-    return *variables_;
+context_base::context_base(
+    abstract::task_context* context,
+    variable_table& variables,
+    memory::lifo_paged_memory_resource* resource,
+    memory::lifo_paged_memory_resource* varlen_resource
+) :
+    context_base(
+        context,
+        variables,
+        variables,
+        resource,
+        varlen_resource
+    )
+{}
+
+variable_table& context_base::output_variables() const noexcept {
+    return *output_variables_;
 }
 
-void context_base::variables(variable_table& variables) noexcept {
-    variables_ = std::addressof(variables);
+void context_base::output_variables(variable_table& variables) noexcept {
+    output_variables_ = std::addressof(variables);
+}
+
+variable_table& context_base::input_variables() const noexcept {
+    return *input_variables_;
+}
+
+void context_base::input_variables(variable_table& variables) noexcept {
+    input_variables_ = std::addressof(variables);
 }
 
 class abstract::task_context& context_base::task_context() noexcept {

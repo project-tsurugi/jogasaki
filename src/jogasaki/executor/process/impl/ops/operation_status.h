@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& out, operation_status_kind value) 
 }
 
 /**
- * @brief relational operator base class
+ * @brief relational operator execution status
  */
 class operation_status {
 public:

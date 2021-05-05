@@ -64,11 +64,15 @@ public:
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
+     * @param input_variable_info the input variable table information optionally overriding the one in processor_info.
+     * @param output_variable_info the output variable table information optionally overriding the one in processor_info.
      */
     operator_base(
         operator_index_type index,
         processor_info const& info,
-        block_index_type block_index
+        block_index_type block_index,
+        variable_table_info const* input_variable_info = nullptr,
+        variable_table_info const* output_variable_info = nullptr
     ) noexcept;
 
     operator_base(operator_base const& other) = default;
@@ -87,14 +91,14 @@ public:
     [[nodiscard]] variable_table_info const& block_info() const noexcept;
 
     /**
+     * @brief return the block variables information, where the operator belongs
+     */
+    [[nodiscard]] variable_table_info const& output_variable_info() const noexcept;
+
+    /**
      * @brief return the block index where the operator belongs
      */
     [[nodiscard]] block_index_type block_index() const noexcept;
-
-    /**
-     * @brief return the variable table info array
-     */
-    [[nodiscard]] std::vector<variable_table_info> const& blocks() const noexcept;
 
     /**
      * @brief accessor to the compiled info
@@ -124,6 +128,8 @@ private:
     operator_index_type index_{};
     processor_info const* processor_info_{};
     block_index_type block_index_{};
+    variable_table_info const* input_variable_info_{};
+    variable_table_info const* output_variable_info_{};
 };
 
 /**
@@ -136,7 +142,9 @@ public:
     record_operator(
         operator_index_type index,
         processor_info const& info,
-        block_index_type block_index
+        block_index_type block_index,
+        variable_table_info const* input_variable_info = nullptr,
+        variable_table_info const* output_variable_info = nullptr
     ) noexcept;
 
     /**

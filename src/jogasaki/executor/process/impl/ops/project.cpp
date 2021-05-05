@@ -63,7 +63,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    auto& vars = ctx.variables();
+    auto& vars = ctx.output_variables();
     // fill scope variables
     auto ref = vars.store().ref();
     auto& cinfo = compiled_info();

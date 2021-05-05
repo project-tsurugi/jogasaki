@@ -62,7 +62,7 @@ operation_status emit::operator()(emit_context &ctx) {
         return {operation_status_kind::aborted};
     }
     auto target = ctx.buffer_.ref();
-    auto source = ctx.variables().store().ref();
+    auto source = ctx.input_variables().store().ref();
     for(auto &f : fields_) {
         utils::copy_nullable_field(
             f.type_,
@@ -106,14 +106,16 @@ std::shared_ptr<meta::record_meta> emit::create_meta(
     ); // assuming all fields nullable
 }
 
-std::vector<details::emit_field>
-emit::create_fields(const maybe_shared_ptr<meta::record_meta> &meta, sequence_view<const column> columns) {
+std::vector<details::emit_field> emit::create_fields(
+    maybe_shared_ptr<meta::record_meta> const& meta,
+    sequence_view<column const> columns
+) {
     std::vector<details::emit_field> fields{};
     std::size_t sz = meta->field_count();
     fields.reserve(sz);
     for(std::size_t ind = 0 ; ind < sz; ++ind) {
         auto&& c = columns[ind];
-        auto& info = blocks().at(block_index()).at(c.source());
+        auto& info = block_info().at(c.source());
         fields.emplace_back(details::emit_field{
             meta_->at(ind),
             info.value_offset(),

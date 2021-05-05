@@ -204,7 +204,15 @@ public:
      */
     friend inline std::ostream& operator<<(std::ostream& out, record_meta const& value) {
         for(std::size_t i=0, n=value.field_count(); i < n; ++i) {
-            out << value[i] << "[" << value.value_offset(i) << "] ";
+            out << value[i];
+            if (value.nullable(i)) {
+                out << "*";
+            }
+            out << "[" << value.value_offset(i);
+            if (value.nullable(i)) {
+                out << ", " << value.nullity_offset(i);
+            }
+            out << "] ";
         }
         return out;
     }
@@ -215,7 +223,7 @@ private:
     std::size_t field_count_{};
     value_offset_table_type value_offset_table_{};
     nullity_offset_table_type nullity_offset_table_{};
-    std::size_t record_alignment_{};
+    std::size_t record_alignment_{1UL};
     std::size_t record_size_{};
 };
 

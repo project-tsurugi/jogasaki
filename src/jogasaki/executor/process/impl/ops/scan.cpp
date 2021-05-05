@@ -110,7 +110,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         return {operation_status_kind::aborted};
     }
     open(ctx);
-    auto target = ctx.variables().store().ref();
+    auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
     status st{};
     while((st = ctx.it_->next()) == status::ok) {

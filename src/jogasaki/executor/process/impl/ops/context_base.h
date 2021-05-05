@@ -51,6 +51,22 @@ public:
 
     /**
      * @brief create new object
+     * @param ctx the parent task context
+     * @param input_variables the input variable table
+     * @param output_variables the output variable table
+     */
+    context_base(
+        class abstract::task_context* context,
+        variable_table& input_variables,
+        variable_table& output_variables,
+        memory_resource* resource,
+        memory_resource* varlen_resource
+    );
+
+    /**
+     * @brief create new object
+     * @param ctx the parent task context
+     * @param variables the variable table used for both input/output
      */
     context_base(
         class abstract::task_context* context,
@@ -77,13 +93,24 @@ public:
     /**
      * @brief accessor to variables table for the scope where operator/context belongs
      */
-    [[nodiscard]] variable_table& variables() const noexcept;
+    [[nodiscard]] variable_table& input_variables() const noexcept;
 
     /**
      * @brief setter of variables table
      * @param variables reference to the variables table
      */
-    void variables(variable_table& variables) noexcept;
+    void input_variables(variable_table& variables) noexcept;
+
+    /**
+     * @brief accessor to variables table for the scope where operator/context belongs
+     */
+    [[nodiscard]] variable_table& output_variables() const noexcept;
+
+    /**
+     * @brief setter of variables table
+     * @param variables reference to the variables table
+     */
+    void output_variables(variable_table& variables) noexcept;
 
     /**
      * @brief accessor to task context
@@ -137,7 +164,8 @@ public:
 
 private:
     class abstract::task_context* task_context_{};
-    variable_table* variables_{};
+    variable_table* input_variables_{};
+    variable_table* output_variables_{};
     memory_resource* resource_{};
     memory_resource* varlen_resource_{};
     context_state state_{context_state::active};

@@ -47,9 +47,11 @@ find::find(
     std::vector<details::field_info> key_fields,
     std::vector<details::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) :
-    record_operator(index, info, block_index),
+    record_operator(index, info, block_index, input_variable_info, output_variable_info),
     use_secondary_(! secondary_storage_name.empty()),
     storage_name_(storage_name),
     secondary_storage_name_(secondary_storage_name),
@@ -71,7 +73,9 @@ find::find(
     yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
     yugawara::storage::index const* secondary_idx,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) :
     find(
         index,
@@ -80,10 +84,12 @@ find::find(
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
         details::create_search_key_fields((secondary_idx != nullptr ? *secondary_idx : primary_idx), keys, info),
-        create_fields(primary_idx, columns, info, block_index, true),
-        create_fields(primary_idx, columns, info, block_index, false),
+        create_fields(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), true),
+        create_fields(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), false),
         create_secondary_key_fields(secondary_idx),
-        std::move(downstream)
+        std::move(downstream),
+        input_variable_info,
+        output_variable_info
     )
 {}
 
@@ -93,6 +99,7 @@ operation_status find::process_record(abstract::task_context* context) {
     auto* p = find_context<class find_context>(index(), ctx.contexts());
     if (! p) {
         p = ctx.make_context<class find_context>(index(),
+            ctx.variable_table(block_index()),
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
@@ -134,7 +141,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    auto target = ctx.variables().store().ref();
+    auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     executor::process::impl::variable_table vars{};
@@ -206,8 +213,7 @@ void find::finish(abstract::task_context*) {
 std::vector<details::field_info> find::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
+    variable_table_info const& output_variable_info,
     bool key
 ) {
     std::vector<details::field_info> ret{};
@@ -217,7 +223,6 @@ std::vector<details::field_info> find::create_fields(
     for(auto&& c : columns) {
         table_to_stream.emplace(c.source(), c.destination());
     }
-    auto& block = info.vars_info_list()[block_index];
     if (key) {
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
@@ -240,8 +245,8 @@ std::vector<details::field_info> find::create_fields(
             ret.emplace_back(
                 t,
                 true,
-                block.at(var).value_offset(),
-                block.at(var).nullity_offset(),
+                output_variable_info.at(var).value_offset(),
+                output_variable_info.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -268,8 +273,8 @@ std::vector<details::field_info> find::create_fields(
         ret.emplace_back(
             t,
             true,
-            block.at(var).value_offset(),
-            block.at(var).nullity_offset(),
+            output_variable_info.at(var).value_offset(),
+            output_variable_info.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );

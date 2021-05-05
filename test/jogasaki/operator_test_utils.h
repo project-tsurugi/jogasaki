@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <takatori/plan/forward.h>
+#include <takatori/relation/step/offer.h>
 #include <takatori/type/character.h>
 #include <takatori/value/character.h>
 #include <takatori/type/int.h>
@@ -27,18 +28,11 @@
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
-#include <jogasaki/kvs_test_utils.h>
-#include <jogasaki/executor/process/impl/ops/find_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/executor/process/impl/ops/operator_builder.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -56,8 +50,6 @@ using namespace boost::container::pmr;
 
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
-using take = relation::step::take_flat;
-using buffer = relation::buffer;
 
 namespace storage = yugawara::storage;
 
@@ -159,14 +151,11 @@ public:
     std::shared_ptr<yugawara::compiled_info> compiler_info_{};  //NOLINT
     std::shared_ptr<processor_info> processor_info_;  //NOLINT
 
-    using column = relation::find::column;
-
     void add_downstream(
-        std::size_t column_count,
-        std::vector<column, takatori::util::object_allocator<column>>& columns
+        std::vector<variable> stream_variables
     ) {
         std::vector<descriptor::variable, takatori::util::object_allocator<descriptor::variable>> xch_columns;
-        for(std::size_t i=0; i < column_count; ++i) {
+        for(std::size_t i=0; i < stream_variables.size(); ++i) {
             xch_columns.emplace_back(
                 bindings_.exchange_column()
             );
@@ -175,9 +164,9 @@ public:
         // without offer, the columns are not used and block variables become empty
         using offer = relation::step::offer;
         std::vector<offer::column, takatori::util::object_allocator<offer::column>> offer_columns{};
-        for(std::size_t i=0; i < column_count; ++i) {
+        for(std::size_t i=0; i < stream_variables.size(); ++i) {
             offer_columns.emplace_back(
-                columns[i].destination(), f1.columns()[i]
+                stream_variables[i], f1.columns()[i]
             );
         }
 

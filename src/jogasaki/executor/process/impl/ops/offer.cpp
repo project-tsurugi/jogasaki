@@ -65,7 +65,7 @@ operation_status offer::operator()(offer_context& ctx) {
         return {operation_status_kind::aborted};
     }
     auto target = ctx.store_.ref();
-    auto source = ctx.variables().store().ref();
+    auto source = ctx.input_variables().store().ref();
     for(auto &f : fields_) {
         utils::copy_nullable_field(
             f.type_,

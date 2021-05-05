@@ -207,7 +207,7 @@ std::vector<details::write_full_field> write_full::create_fields(
 }
 
 operation_status write_full::do_insert(write_full_context& ctx) {
-    auto source = ctx.variables().store().ref();
+    auto source = ctx.input_variables().store().ref();
     // calculate length first, then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
     check_length_and_extend_buffer(ctx, value_fields_, ctx.value_buf_, source);
@@ -259,7 +259,7 @@ operation_status write_full::do_delete(write_full_context& ctx) {
 }
 
 std::string_view write_full::prepare_key(write_full_context& ctx) {
-    auto source = ctx.variables().store().ref();
+    auto source = ctx.input_variables().store().ref();
     // calculate length first, and then put
     check_length_and_extend_buffer(ctx, key_fields_, ctx.key_buf_, source);
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};

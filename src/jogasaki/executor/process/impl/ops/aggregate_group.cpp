@@ -127,7 +127,7 @@ operation_status aggregate_group::operator()(
         // append value store the values
         auto& store = ctx.stores_[i];
         auto& arg = arguments_[i];
-        auto src = ctx.variables().store().ref();
+        auto src = ctx.input_variables().store().ref();
         copy_value(
             src,
             arg.offset_,
@@ -142,7 +142,7 @@ operation_status aggregate_group::operator()(
         for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
             auto& c = columns_[i];
             auto& func = c.function_info_.aggregator();
-            auto target = ctx.variables().store().ref();
+            auto target = ctx.output_variables().store().ref();
             func(target,
                 function::field_locator{
                     c.type_,
@@ -184,7 +184,7 @@ void aggregate_group::finish(abstract::task_context* context) {
         // do aggregation from value store and create column values
         for(auto & c : columns_) {
             auto& func = c.function_info_.empty_value_generator();
-            auto target = ctx.variables().store().ref();
+            auto target = ctx.output_variables().store().ref();
             func(target,
                 function::field_locator{
                     c.type_,

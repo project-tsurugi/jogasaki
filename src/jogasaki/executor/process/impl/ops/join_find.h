@@ -57,7 +57,8 @@ public:
      * simply not-found or other error happened.
      */
     [[nodiscard]] bool operator()(
-        executor::process::impl::variable_table& vars,
+        variable_table& input_variables,
+        variable_table& output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
         kvs::transaction& tx,

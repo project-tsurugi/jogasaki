@@ -69,7 +69,8 @@ matcher::matcher(
 {}
 
 bool matcher::operator()(
-    variable_table& vars,
+    variable_table& input_variables,
+    variable_table& output_variables,
     kvs::storage& primary_stg,
     kvs::storage* secondary_stg,
     kvs::transaction& tx,
@@ -80,7 +81,7 @@ bool matcher::operator()(
         kvs::writable_stream s{buf_.data(), len};
         auto cp = resource->get_checkpoint();
         for(auto&f : key_fields_) {
-            auto any = f.evaluator_(vars, resource);
+            auto any = f.evaluator_(input_variables, resource);
             if (f.nullable_) {
                 kvs::encode_nullable(any, f.type_, f.spec_, s);
             } else {
@@ -98,7 +99,6 @@ bool matcher::operator()(
     }
     std::string_view key{static_cast<char*>(buf_.data()), len};
     std::string_view value{};
-    auto ref = vars.store().ref();
 
     std::unique_ptr<kvs::iterator> it{}; // keep iterator here so that the key data is alive while mapper is operating
     if (! use_secondary_) {
@@ -127,7 +127,7 @@ bool matcher::operator()(
             fail();
         }
     }
-    return field_mapper_(key, value, ref, primary_stg, tx, resource) == status::ok;
+    return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
 }
 
 bool matcher::next() {
@@ -172,9 +172,15 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
     }
     auto resource = ctx.varlen_resource();
 
-    if((*ctx.matcher_)(ctx.variables(), *ctx.primary_stg_, ctx.secondary_stg_.get(), *ctx.tx_, resource)) {
+    if((*ctx.matcher_)(
+        ctx.input_variables(),
+        ctx.input_variables(),
+        *ctx.primary_stg_,
+        ctx.secondary_stg_.get(),
+        *ctx.tx_, resource)
+        ) {
         if (condition_) {
-            auto r = evaluator_(ctx.variables());
+            auto r = evaluator_(ctx.input_variables());
             if(r.has_value() && !r.to<bool>()) {
                 return {};
             }

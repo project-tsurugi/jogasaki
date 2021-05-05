@@ -115,7 +115,7 @@ public:
         for(auto&& g : cgrp.groups()) {
             iterators.emplace_back(g.begin(), g.end());
         }
-        auto target = ctx.variables().store().ref();
+        auto target = ctx.output_variables().store().ref();
         bool cont = true;
         std::size_t n = iterators.size();
         utils::iterator_incrementer<iterator> incr{std::move(iterators)};
@@ -145,7 +145,7 @@ public:
             }
             if (all_groups_available) {
                 auto resource = ctx.varlen_resource();
-                auto& vars = ctx.variables();
+                auto& vars = ctx.input_variables();
                 bool res = true;
                 if (has_condition_) {
                     utils::checkpoint_holder cp{resource};

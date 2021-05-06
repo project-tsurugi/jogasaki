@@ -141,7 +141,6 @@ TEST_F(scan_test, simple) {
 }
 
 TEST_F(scan_test, nullable_fields) {
-
     auto t0 = create_table({
         "T0",
         {
@@ -409,6 +408,131 @@ TEST_F(scan_test, secondary_index) {
     auto exp1= jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(21, 2.1, 201);
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
+    ASSERT_EQ(status::ok, tx->commit());
+    (void)db->close();
+}
+
+TEST_F(scan_test, host_variables) {
+    auto t0 = create_table({
+        "T0",
+        {
+            { "C0", t::int4(), nullity{false} },
+            { "C1", t::int8(), nullity{false}  },
+            { "C2", t::int8(), nullity{false}  },
+        },
+    });
+    auto primary_idx = create_primary_index(t0, {0,1}, {2});
+
+    auto host_variable_record = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(100, 10, 100, 30);
+    auto p0 = bindings_(register_variable("p0", kind::int4));
+    auto p1 = bindings_(register_variable("p1", kind::int8));
+    auto p2 = bindings_(register_variable("p2", kind::int4));
+    auto p3 = bindings_(register_variable("p3", kind::int8));
+    variable_table_info host_variable_info{
+        std::unordered_map<variable, std::size_t>{
+            {p0, 0},
+            {p1, 1},
+            {p2, 2},
+            {p3, 3},
+        },
+        std::unordered_map<std::string, takatori::descriptor::variable>{
+            {"p0", p0},
+            {"p1", p1},
+            {"p2", p2},
+            {"p3", p3},
+        },
+        host_variable_record.record_meta()
+    };
+    variable_table host_variables{host_variable_info};
+    host_variables.store().set(host_variable_record.ref());
+
+    using key = relation::scan::key;
+    auto& target = process_.operators().insert(relation::scan {
+        bindings_(*primary_idx),
+        {
+            { bindings_(t0->columns()[0]), bindings_.stream_variable("c0") },
+            { bindings_(t0->columns()[1]), bindings_.stream_variable("c1") },
+            { bindings_(t0->columns()[2]), bindings_.stream_variable("c2") },
+        },
+        {
+            {
+                key {
+                    bindings_(t0->columns()[0]),
+                    scalar::variable_reference{ p0 }
+                },
+                key {
+                    bindings_(t0->columns()[1]),
+                    scalar::variable_reference{ p1 }
+                },
+            },
+            relation::endpoint_kind::exclusive,
+        },
+        {
+            {
+                key {
+                    bindings_(t0->columns()[0]),
+                    scalar::variable_reference{ p2 }
+                },
+                key {
+                    bindings_(t0->columns()[1]),
+                    scalar::variable_reference{ p3 }
+                },
+            },
+            relation::endpoint_kind::exclusive,
+        }
+    });
+
+    auto& offer = add_offer(destinations(target.columns()));
+    target.output() >> offer.input();
+
+    add_types(target, t::int4{}, t::int8{}, t::int8{});
+    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
+    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
+    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
+    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
+    create_processor_info(&host_variables);
+
+    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
+    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), out)};
+    variable_table_info input_variable_info{};
+    variable_table input_variables{input_variable_info};
+    variable_table output_variables{output_variable_info};
+    std::vector<jogasaki::mock::basic_record> result{};
+
+    scan op{
+        0,
+        *processor_info_,
+        0,
+        *primary_idx,
+        target.columns(),
+        nullptr,
+        std::make_unique<verifier>([&]() {
+            result.emplace_back(output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
+        }),
+        &input_variable_info,
+        &output_variable_info
+    };
+
+    jogasaki::plan::compiler_context compiler_ctx{};
+    io_exchange_map exchange_map{};
+    operator_builder builder{processor_info_, {}, {}, exchange_map, &resource_};
+    auto sinfo = builder.create_scan_info(target, *primary_idx);
+    mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
+
+    auto db = kvs::database::open();
+    auto stg = db->create_storage(primary_idx->simple_name());
+    put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));
+    put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 20), create_record<kind::int8>(2));
+    put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
+
+    auto tx = db->create_transaction();
+    scan_context ctx(&task_ctx, output_variables, std::move(stg), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+    ctx.release();
+    ASSERT_EQ(1, result.size());
+    auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>(100, 20, 2);
+    EXPECT_EQ(exp, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
     (void)db->close();
 }

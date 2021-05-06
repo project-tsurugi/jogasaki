@@ -53,6 +53,7 @@ namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
+namespace host_variable = yugawara::variable;
 
 using yugawara::variable::nullity;
 using yugawara::variable::criteria;
@@ -154,6 +155,7 @@ public:
     }
 
     std::shared_ptr<storage::configurable_provider> tables_ = std::make_shared<storage::configurable_provider>();  //NOLINT
+    std::shared_ptr<yugawara::variable::configurable_provider> variables_ = std::make_shared<yugawara::variable::configurable_provider>();  //NOLINT
     binding::factory bindings_{};  //NOLINT
     takatori::plan::graph_type plan_;  //NOLINT
     takatori::plan::process& process_;  //NOLINT
@@ -232,9 +234,9 @@ public:
         return r1;
     }
 
-    void create_processor_info() {
+    void create_processor_info(variable_table* host_variables = nullptr) {
         compiler_info_ = std::make_shared<yugawara::compiled_info>(expression_map_, variable_map_);
-        processor_info_ = std::make_shared<processor_info>(process_.operators(), *compiler_info_);
+        processor_info_ = std::make_shared<processor_info>(process_.operators(), *compiler_info_, host_variables);
     }
 
     template <class T, class ...Args>
@@ -248,6 +250,22 @@ public:
             ++i;
         }
     }
+    std::shared_ptr<yugawara::variable::declaration const> register_variable(std::string_view name, field_type_kind kind) {
+        if (auto e = variables_->find(name)) {
+            // ignore if it's already exists
+            return e;
+        }
+        switch(kind) {
+            case field_type_kind::int4: return variables_->add({name, takatori::type::int4{}}, false);
+            case field_type_kind::int8: return variables_->add({name, takatori::type::int8{}}, false);
+            case field_type_kind::float4: return variables_->add({name, takatori::type::float4{}}, false);
+            case field_type_kind::float8: return variables_->add({name, takatori::type::float8{}}, false);
+            case field_type_kind::character: return variables_->add({name, takatori::type::character{takatori::type::varying}}, false);
+            default: fail();
+        }
+        return {};
+    }
+
 };
 
 }

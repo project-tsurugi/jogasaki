@@ -100,40 +100,55 @@ bool matcher::operator()(
     std::string_view key{static_cast<char*>(buf_.data()), len};
     std::string_view value{};
 
-    std::unique_ptr<kvs::iterator> it{}; // keep iterator here so that the key data is alive while mapper is operating
     if (! use_secondary_) {
         auto res = primary_stg.get(tx, key, value);
         status_ = res;
         if (res != status::ok) {
             return false;
         }
-    } else {
-        auto& stg = *secondary_stg;
-        if(auto res = stg.scan(tx,
-                key, kvs::end_point_kind::prefixed_inclusive,
-                key, kvs::end_point_kind::prefixed_inclusive,
-                it
-            ); res != status::ok) {
-            if (res == status::not_found) {
-                status_ = res;
-                return false;
-            }
-            fail();
-        }
-        if(auto res = it->next(); res != status::ok) {
-            fail();
-        }
-        if(auto res = it->key(key); ! res) {
-            fail();
-        }
+        return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
     }
-    return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
+    auto& stg = *secondary_stg;
+    if(auto res = stg.scan(tx,
+            key, kvs::end_point_kind::prefixed_inclusive,
+            key, kvs::end_point_kind::prefixed_inclusive,
+            it_
+        ); res != status::ok) {
+        if (res == status::not_found) {
+            status_ = res;
+            return false;
+        }
+        fail();
+    }
+
+    // remember parameters for current scan
+    output_variables_ = std::addressof(output_variables);
+    primary_storage_ = std::addressof(primary_stg);
+    tx_ = std::addressof(tx);
+    resource_ = resource;
+    return next();
 }
 
 bool matcher::next() {
-    // this matcher supports at most one record
-    status_ = status::not_found;
-    return false;
+    if (it_ == nullptr) {
+        status_ = status::not_found;
+        return false;
+    }
+    auto res = it_->next();
+    if(res == status::not_found) {
+        status_ = status::not_found;
+        it_.reset();
+        return false;
+    }
+    std::string_view key{};
+    std::string_view value{};
+    if(auto r = it_->key(key); ! r) {
+        fail();
+    }
+    if(auto r = it_->value(value); ! r) {
+        fail();
+    }
+    return field_mapper_(key, value, output_variables_->store().ref(), *primary_storage_, *tx_, resource_) == status::ok;
 }
 
 status matcher::result() const noexcept {
@@ -172,7 +187,6 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
         return {operation_status_kind::aborted};
     }
     auto resource = ctx.varlen_resource();
-
     if((*ctx.matcher_)(
         ctx.input_variables(),
         ctx.output_variables(),
@@ -181,21 +195,22 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
         *ctx.tx_,
         resource
     )) {
-        if (condition_) {
-            auto r = evaluator_(ctx.input_variables());
-            if(r.has_value() && !r.to<bool>()) {
-                return {};
+        do {
+            if (condition_) {
+                auto r = evaluator_(ctx.input_variables());
+                if(r.has_value() && !r.to<bool>()) {
+                    continue;
+                }
             }
-        }
-        if (downstream_) {
-            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
-                ctx.abort();
-                return {operation_status_kind::aborted};
+            if (downstream_) {
+                if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                    ctx.abort();
+                    return {operation_status_kind::aborted};
+                }
             }
-            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-        }
-        return {};
+        } while(ctx.matcher_->next());
     }
+
     if(ctx.matcher_->result() != status::not_found) {
         ctx.state(context_state::abort);
         ctx.req_context()->status_code(ctx.matcher_->result());

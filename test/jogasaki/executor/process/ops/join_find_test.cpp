@@ -96,7 +96,7 @@ variable_table_info create_variable_table_info(
         map.emplace(v, value_info{meta->value_offset(i), meta->nullity_offset(i)});
         ++i;
     }
-    return {std::move(map), meta};
+    return {std::move(map), std::move(meta)};
 };
 
 
@@ -164,6 +164,7 @@ TEST_F(join_find_test, simple) {
     auto stg = db->create_storage(primary_idx_t1->simple_name());
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
+    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = db->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
@@ -227,8 +228,8 @@ TEST_F(join_find_test, secondary_index) {
     expression_map_->bind(target.keys()[0].value(), t::int8{});
     create_processor_info();
 
-    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 10);
-    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(100, 10);
+    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(2, 20);
+    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(200, 20);
     variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
     variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), output)};
     variable_table input_variables{input_variable_info};
@@ -259,6 +260,8 @@ TEST_F(join_find_test, secondary_index) {
     put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(10, 100), {});
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(200), create_record<kind::int8>(20));
     put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 200), {});
+    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(201), create_record<kind::int8>(20));
+    put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
     auto tx = db->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
@@ -279,8 +282,12 @@ TEST_F(join_find_test, secondary_index) {
     );
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ(output, result[0]);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    auto exp0 = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(200, 20);
+    auto exp1 = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(201, 20);
+    EXPECT_EQ(exp0, result[0]);
+    EXPECT_EQ(exp1, result[1]);
 
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();

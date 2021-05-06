@@ -88,6 +88,12 @@ private:
     data::aligned_buffer buf_{};
     status status_{status::ok};
     index_field_mapper field_mapper_{};
+
+    variable_table* output_variables_{};
+    kvs::storage* primary_storage_{};
+    kvs::transaction* tx_{};
+    matcher::memory_resource* resource_{};
+    std::unique_ptr<kvs::iterator> it_{};
 };
 
 }

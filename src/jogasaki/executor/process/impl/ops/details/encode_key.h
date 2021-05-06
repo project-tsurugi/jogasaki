@@ -17,16 +17,13 @@
 
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include "search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-namespace relation = takatori::relation;
-
-void encode_key(
+std::size_t encode_key(
     std::vector<details::search_key_field_info> const& keys,
-    executor::process::impl::variable_table& vars,
+    executor::process::impl::variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out
 );

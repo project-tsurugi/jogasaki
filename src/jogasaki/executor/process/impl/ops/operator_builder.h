@@ -63,28 +63,6 @@ namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
 
-inline void encode_key(
-    std::vector<details::search_key_field_info> const& keys,
-    executor::process::impl::variable_table& vars,
-    memory::lifo_paged_memory_resource& resource,
-    data::aligned_buffer& out
-) {
-    auto cp = resource.get_checkpoint();
-    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-        kvs::writable_stream s{out.data(), loop == 0 ? 0 : out.size()};
-        std::size_t i = 0;
-        for(auto&& k : keys) {
-            auto res = k.evaluator_(vars, &resource);
-            kvs::encode(res, k.type_, k.spec_, s);
-            resource.deallocate_after(cp);
-            ++i;
-        }
-        if (loop == 0) {
-            out.resize(s.size());
-        }
-    }
-}
-
 /**
  * @brief generator for relational operators
  */

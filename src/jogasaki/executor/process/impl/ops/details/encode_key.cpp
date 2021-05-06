@@ -20,28 +20,32 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-namespace relation = takatori::relation;
-
-void encode_key(
+std::size_t encode_key(
     std::vector<details::search_key_field_info> const& keys,
-    variable_table& vars,
+    variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out
 ) {
     auto cp = resource.get_checkpoint();
+    std::size_t len = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         kvs::writable_stream s{out.data(), loop == 0 ? 0 : out.size()};
-        std::size_t i = 0;
         for(auto&& k : keys) {
-            auto res = k.evaluator_(vars, &resource);
-            kvs::encode(res, k.type_, k.spec_, s);
+            auto a = k.evaluator_(input_variables, &resource);
+            if (k.nullable_) {
+                kvs::encode_nullable(a, k.type_, k.spec_, s);
+            } else {
+                BOOST_ASSERT(a.has_value());  //NOLINT
+                kvs::encode(a, k.type_, k.spec_, s);
+            }
             resource.deallocate_after(cp);
-            ++i;
         }
-        if (loop == 0) {
-            out.resize(s.size());
+        len = s.size();
+        if (loop == 0 && out.size() < len) {
+            out.resize(len);
         }
     }
+    return len;
 }
 
 }

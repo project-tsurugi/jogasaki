@@ -30,6 +30,7 @@
 #include "context_helper.h"
 #include "join_find_context.h"
 #include "operator_builder.h"
+#include "details/encode_key.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -76,27 +77,7 @@ bool matcher::operator()(
     kvs::transaction& tx,
     matcher::memory_resource* resource
 ) {
-    std::size_t len = 0;
-    for(std::size_t loop=0; loop < 2; ++loop) {
-        kvs::writable_stream s{buf_.data(), len};
-        auto cp = resource->get_checkpoint();
-        for(auto&f : key_fields_) {
-            auto any = f.evaluator_(input_variables, resource);
-            if (f.nullable_) {
-                kvs::encode_nullable(any, f.type_, f.spec_, s);
-            } else {
-                BOOST_ASSERT(any.has_value());  //NOLINT
-                kvs::encode(any, f.type_, f.spec_, s);
-            }
-        }
-        resource->deallocate_after(cp);
-        if (loop == 0) {
-            len = s.size();
-            if (buf_.size() < len) {
-                buf_.resize(len);
-            }
-        }
-    }
+    std::size_t len = details::encode_key(key_fields_, input_variables, *resource, buf_);
     std::string_view key{static_cast<char*>(buf_.data()), len};
     std::string_view value{};
 

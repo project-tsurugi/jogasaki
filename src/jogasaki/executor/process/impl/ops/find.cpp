@@ -32,6 +32,7 @@
 #include "context_helper.h"
 #include "find_context.h"
 #include "operator_builder.h"
+#include "details/encode_key.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -145,8 +146,8 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     executor::process::impl::variable_table vars{};
-    encode_key(search_key_fields_, vars, *resource, ctx.key_);
-    std::string_view k{ctx.key_};
+    auto len = details::encode_key(search_key_fields_, vars, *resource, ctx.key_);
+    std::string_view k{static_cast<char*>(ctx.key_.data()), len};
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
         if(auto res = stg.get(*ctx.tx_, k, v); res != status::ok) {

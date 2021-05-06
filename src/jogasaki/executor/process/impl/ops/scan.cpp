@@ -34,6 +34,7 @@
 #include "context_helper.h"
 #include "scan_context.h"
 #include "operator_builder.h"
+#include "details/encode_key.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -184,13 +185,13 @@ void scan::open(scan_context& ctx) {
         }
     }
     executor::process::impl::variable_table vars{};
-    encode_key(ctx.scan_info_->begin_columns(), vars, *ctx.varlen_resource(), ctx.key_begin_);
-    encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_);
+    auto blen = details::encode_key(ctx.scan_info_->begin_columns(), vars, *ctx.varlen_resource(), ctx.key_begin_);
+    auto elen = details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_);
     if(auto res = stg.scan(
             *ctx.tx_,
-            ctx.key_begin_,
+            {static_cast<char*>(ctx.key_begin_.data()), blen},
             be,
-            ctx.key_end_,
+            {static_cast<char*>(ctx.key_end_.data()), elen},
             ee,
             ctx.it_
         );

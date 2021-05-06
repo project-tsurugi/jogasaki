@@ -70,6 +70,22 @@ std::vector<variable> destinations(std::vector<Column, takatori::util::object_al
     return ret;
 }
 
+inline variable_table_info create_variable_table_info(
+    std::vector<variable> const& variables,
+    jogasaki::mock::basic_record const& rec
+) {
+    std::unordered_map<variable, value_info> map{};
+    variable_table_info ret{};
+    auto meta = rec.record_meta();
+    std::size_t i = 0;
+    map.reserve(variables.size());
+    for(auto&& v : variables) {
+        map.emplace(v, value_info{meta->value_offset(i), meta->nullity_offset(i)});
+        ++i;
+    }
+    return {std::move(map), std::move(meta)};
+};
+
 class operator_test_utils {
 public:
     std::shared_ptr<table> create_table(table&& element) {
@@ -217,6 +233,7 @@ public:
         compiler_info_ = std::make_shared<yugawara::compiled_info>(expression_map_, variable_map_);
         processor_info_ = std::make_shared<processor_info>(process_.operators(), *compiler_info_);
     }
+
 };
 
 }

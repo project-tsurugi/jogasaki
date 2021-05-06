@@ -84,22 +84,6 @@ public:
     }
 };
 
-variable_table_info create_variable_table_info(
-    std::vector<variable> variables,
-    jogasaki::mock::basic_record const& rec
-) {
-    std::unordered_map<variable, value_info> map{};
-    variable_table_info ret{};
-    auto meta = rec.record_meta();
-    std::size_t i = 0;
-    for(auto&& v : variables) {
-        map.emplace(v, value_info{meta->value_offset(i), meta->nullity_offset(i)});
-        ++i;
-    }
-    return {std::move(map), std::move(meta)};
-};
-
-
 TEST_F(join_find_test, simple) {
     auto t1 = create_table({
         "T1",

@@ -116,18 +116,11 @@ TEST_F(find_test, simple) {
     create_processor_info();
 
     auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
-    auto variables_meta = exp.record_meta();
-    variable_table_info output_variable_info{
-        {
-            { target.columns()[0].destination(), { variables_meta->value_offset(0), variables_meta->nullity_offset(0), } },
-            { target.columns()[1].destination(), { variables_meta->value_offset(1), variables_meta->nullity_offset(1), } },
-            { target.columns()[2].destination(), { variables_meta->value_offset(2), variables_meta->nullity_offset(2), } },
-        },
-        variables_meta,
-    };
+    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), exp)};
     variable_table_info input_variable_info{};
     variable_table input_variables{input_variable_info};
     variable_table output_variables{output_variable_info};
+
     std::vector<jogasaki::mock::basic_record> result{};
     find op{
         0,
@@ -138,7 +131,7 @@ TEST_F(find_test, simple) {
         target.columns(),
         nullptr,
         std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), variables_meta));
+            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), exp.record_meta()));
         }),
         &input_variable_info,
         &output_variable_info
@@ -192,15 +185,7 @@ TEST_F(find_test, secondary_index) {
     expression_map_->bind(target.keys()[0].value(), t::int8{});
     create_processor_info();
     auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
-    auto variables_meta = exp.record_meta();
-    variable_table_info output_variable_info{
-        {
-            { target.columns()[0].destination(), { variables_meta->value_offset(0), variables_meta->nullity_offset(0), } },
-            { target.columns()[1].destination(), { variables_meta->value_offset(1), variables_meta->nullity_offset(1), } },
-            { target.columns()[2].destination(), { variables_meta->value_offset(2), variables_meta->nullity_offset(2), } },
-        },
-        variables_meta,
-    };
+    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), exp)};
     variable_table_info input_variable_info{};
     variable_table input_variables{input_variable_info};
     variable_table output_variables{output_variable_info};
@@ -215,7 +200,7 @@ TEST_F(find_test, secondary_index) {
         target.columns(),
         secondary_idx.get(),
         std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), variables_meta));
+            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), exp.record_meta()));
         }),
         &input_variable_info,
         &output_variable_info

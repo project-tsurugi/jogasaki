@@ -150,5 +150,24 @@ TEST_F(basic_record_test, pointer_field) {
     EXPECT_FALSE(r1 > r2);
 }
 
+TEST_F(basic_record_test, text) {
+    {
+        std::string data("12345678901234567890");
+        basic_record rec{create_record<kind::character>(accessor::text(data.data(), data.size()))};
+        basic_record copy{rec.ref(), rec.record_meta()};
+        EXPECT_EQ(rec, copy);
+        data.front() = 'A';
+        EXPECT_EQ(rec, copy);
+    }
+    {
+        std::string data("12345678901234567890");
+        basic_record rec{create_record<kind::character>(accessor::text(data.data(), data.size()))};
+        memory::lifo_paged_memory_resource resource(&global::page_pool());
+        basic_record copy{rec.ref(), rec.record_meta(), &resource};
+        EXPECT_EQ(rec, copy);
+        data.front() = 'A';
+        EXPECT_NE(rec, copy);
+    }
+}
 
 }

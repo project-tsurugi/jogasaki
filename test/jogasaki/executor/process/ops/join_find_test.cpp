@@ -71,17 +71,6 @@ class join_find_test :
     public operator_test_utils {
 
 public:
-    template <class T, class ...Args>
-    void add_types(T& target, Args&&... types) {
-        std::vector<std::reference_wrapper<takatori::type::data>> v{types...};
-        std::size_t i=0;
-        for(auto&& type : v) {
-            yugawara::analyzer::variable_resolution r{std::move(static_cast<takatori::type::data&>(type))};
-            variable_map_->bind(target.columns()[i].source(), r);
-            variable_map_->bind(target.columns()[i].destination(), r);
-            ++i;
-        }
-    }
 };
 
 TEST_F(join_find_test, simple) {

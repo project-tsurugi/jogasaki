@@ -21,7 +21,6 @@
 #include <takatori/relation/join_find.h>
 #include <yugawara/binding/factory.h>
 
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/coder.h>
@@ -29,7 +28,6 @@
 #include "operator_base.h"
 #include "context_helper.h"
 #include "join_find_context.h"
-#include "operator_builder.h"
 #include "details/encode_key.h"
 
 namespace jogasaki::executor::process::impl::ops {

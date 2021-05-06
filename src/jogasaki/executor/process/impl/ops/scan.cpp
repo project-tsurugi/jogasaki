@@ -49,9 +49,11 @@ scan::scan(
     std::vector<details::field_info> key_fields,
     std::vector<details::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) :
-    record_operator(index, info, block_index),
+    record_operator(index, info, block_index, input_variable_info, output_variable_info),
     use_secondary_(! secondary_storage_name.empty()),
     storage_name_(storage_name),
     secondary_storage_name_(secondary_storage_name),
@@ -71,7 +73,9 @@ scan::scan(
     yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
     yugawara::storage::index const* secondary_idx,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    variable_table_info const* input_variable_info,
+    variable_table_info const* output_variable_info
 ) :
     scan(
         index,
@@ -79,10 +83,12 @@ scan::scan(
         block_index,
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
-        create_fields(primary_idx, columns, info, block_index, true),
-        create_fields(primary_idx, columns, info, block_index, false),
+        create_fields(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), true),
+        create_fields(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), false),
         create_secondary_key_fields(secondary_idx),
-        std::move(downstream)
+        std::move(downstream),
+        input_variable_info,
+        output_variable_info
     )
 {}
 
@@ -207,8 +213,7 @@ void scan::close(scan_context& ctx) {
 std::vector<details::field_info> scan::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
+    variable_table_info const& output_variable_info,
     bool key
 ) {
     std::vector<details::field_info> ret{};
@@ -218,7 +223,6 @@ std::vector<details::field_info> scan::create_fields(
     for(auto&& c : columns) {
         table_to_stream.emplace(c.source(), c.destination());
     }
-    auto& block = info.vars_info_list()[block_index];
     if (key) {
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
@@ -241,8 +245,8 @@ std::vector<details::field_info> scan::create_fields(
             ret.emplace_back(
                 t,
                 true,
-                block.at(var).value_offset(),
-                block.at(var).nullity_offset(),
+                output_variable_info.at(var).value_offset(),
+                output_variable_info.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -269,8 +273,8 @@ std::vector<details::field_info> scan::create_fields(
         ret.emplace_back(
             t,
             true,
-            block.at(var).value_offset(),
-            block.at(var).nullity_offset(),
+            output_variable_info.at(var).value_offset(),
+            output_variable_info.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );

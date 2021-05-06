@@ -161,12 +161,15 @@ public:
     memory::page_pool pool_{};  //NOLINT
     memory::lifo_paged_memory_resource resource_;  //NOLINT
     memory::lifo_paged_memory_resource varlen_resource_;  //NOLINT
+    memory::lifo_paged_memory_resource verifier_varlen_resource_;  //NOLINT
 
     operator_test_utils() :
         process_(plan_.insert(takatori::plan::process {})),
         resource_(&pool_),
-        varlen_resource_(&pool_)
+        varlen_resource_(&pool_),
+        verifier_varlen_resource_(&pool_)
     {}
+    
     takatori::util::object_creator creator_{};  //NOLINT
 
     std::shared_ptr<yugawara::analyzer::variable_mapping> variable_map_ =  //NOLINT
@@ -234,6 +237,17 @@ public:
         processor_info_ = std::make_shared<processor_info>(process_.operators(), *compiler_info_);
     }
 
+    template <class T, class ...Args>
+    void add_types(T& target, Args&&... types) {
+        std::vector<std::reference_wrapper<takatori::type::data>> v{types...};
+        std::size_t i=0;
+        for(auto&& type : v) {
+            yugawara::analyzer::variable_resolution r{std::move(static_cast<takatori::type::data&>(type))};
+            variable_map_->bind(target.columns()[i].source(), r);
+            variable_map_->bind(target.columns()[i].destination(), r);
+            ++i;
+        }
+    }
 };
 
 }

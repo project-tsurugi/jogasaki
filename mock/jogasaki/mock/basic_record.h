@@ -70,8 +70,8 @@ void create_entity(
     basic_record_entity_type& entity,
     memory::paged_memory_resource* resource,
     std::index_sequence<Is...>,
-        meta::record_meta& meta,
-        runtime_t<Kinds>...args
+    meta::record_meta& meta,
+    runtime_t<Kinds>...args
 ) {
     (void)resource;
     (void)meta;
@@ -94,9 +94,20 @@ inline void create_entity(
     memory::paged_memory_resource* resource,
     meta::record_meta& meta
 ) {
-    (void)resource;
     std::memset(&entity[0], 0, sizeof(entity));
     std::memcpy(&entity[0], record.data(), meta.record_size());
+    if (resource != nullptr) {
+        std::size_t i=0;
+        for(auto&& f : meta) {
+            if (f.kind() == kind::character) {
+                if (!meta.nullable(i) || !record.is_null(meta.nullity_offset(i))) {
+                    accessor::text copy(resource, record.get_value<accessor::text>(meta.value_offset(i)));
+                    std::memcpy(&entity[0]+i*basic_record_field_size, &copy, sizeof(accessor::text));  //NOLINT
+                }
+            }
+            ++i;
+        }
+    }
 }
 
 template <std::size_t ...Is>

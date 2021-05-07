@@ -40,7 +40,6 @@ file(GLOB SRCS
         "jogasaki/executor/process/ops/*.cpp"
         "jogasaki/executor/aggregate/*.cpp"
         "jogasaki/executor/shuffle/*.cpp"
-        "jogasaki/executor/sequence/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"
@@ -49,9 +48,16 @@ file(GLOB SRCS
         "jogasaki/utils/*.cpp"
         )
 
-if(SHARKSFIN_IMPLEMENTATION STREQUAL "kvs")
+if(SHARKSFIN_IMPLEMENTATION STREQUAL "shirakami")
     file(GLOB ADDED
             "jogasaki/shirakami/*.cpp"
+            )
+    foreach(file ${ADDED})
+        list(APPEND SRCS ${file})
+    endforeach()
+else()
+    file(GLOB ADDED
+            "jogasaki/executor/sequence/*.cpp"
             )
     foreach(file ${ADDED})
         list(APPEND SRCS ${file})

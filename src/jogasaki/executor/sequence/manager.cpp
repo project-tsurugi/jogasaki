@@ -44,9 +44,10 @@ manager::sequences_type create_sequences(manager::id_map_type const& id_map) {
     }
     return ret;
 }
+
 manager::manager(
     kvs::database& db,
-    id_map_type id_map
+    id_map_type const& id_map
 ) noexcept :
     db_(std::addressof(db)),
     sequences_(create_sequences(id_map))

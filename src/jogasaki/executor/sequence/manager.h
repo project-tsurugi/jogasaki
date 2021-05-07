@@ -42,14 +42,14 @@ public:
 
     explicit sequence_element(sequence_id id) : sequence_id_(id) {}
 
-    sequence_id id() const noexcept {
+    [[nodiscard]] sequence_id id() const noexcept {
         return sequence_id_;
     }
     std::unique_ptr<class info> const& info(std::unique_ptr<class info> info) noexcept {
         info_ = std::move(info);
         return info_;
     }
-    class info* info() const noexcept {
+    [[nodiscard]] class info* info() const noexcept {
         return info_.get();
     }
 
@@ -58,9 +58,10 @@ public:
         return sequence_;
     }
 
-    class sequence* sequence() const noexcept {
+    [[nodiscard]] class sequence* sequence() const noexcept {
         return sequence_.get();
     }
+
 private:
     sequence_id sequence_id_{undefined_id};
     std::unique_ptr<class info> info_{};
@@ -77,6 +78,7 @@ private:
  */
 class manager {
     friend class sequence;
+
 public:
     /**
      * @brief mapping between sequence definition id and sequence id
@@ -110,7 +112,7 @@ public:
      * @param db database where the sequences are stored/saved
      * @param id_map definition id to sequence id map
      */
-    explicit manager(kvs::database& db, id_map_type id_map = {}) noexcept;
+    explicit manager(kvs::database& db, id_map_type const& id_map = {}) noexcept;
 
     /**
      * @brief load sequence id mapping from system_sequences table and initialize in-memory sequence objects.

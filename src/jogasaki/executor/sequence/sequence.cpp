@@ -24,8 +24,6 @@
 
 namespace jogasaki::executor::sequence {
 
-using takatori::util::fail;
-using takatori::util::maybe_shared_ptr;
 
 class manager;
 

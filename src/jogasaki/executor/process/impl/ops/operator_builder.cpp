@@ -58,7 +58,9 @@ operator_builder::operator_builder(
     io_exchange_map_(std::addressof(io_exchange_map)),
     relation_io_map_(std::move(relation_io_map)),
     resource_(resource)
-{}
+{
+    (void)resource_;  //TODO remove if not necessary
+}
 
 operator_container operator_builder::operator()()&& {
     auto root = dispatch(*this, head());

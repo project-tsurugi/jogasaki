@@ -484,7 +484,7 @@ public:
         auto& p0 = find_process(p);
         auto channel = std::make_shared<event_channel>();
         data::result_store result{};
-        auto tx = db->create_transaction(true);
+        auto tx = db->create_transaction();
         auto context = std::make_shared<request_context>(
             channel,
             cfg,

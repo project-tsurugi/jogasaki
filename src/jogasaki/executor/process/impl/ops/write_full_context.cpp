@@ -24,13 +24,13 @@ namespace jogasaki::executor::process::impl::ops {
 
 write_full_context::write_full_context(
     class abstract::task_context* ctx,
-    variable_table& variables,
+    variable_table& input_variables,
     std::unique_ptr<kvs::storage> stg,
     kvs::transaction* tx,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
-    context_base(ctx, variables, resource, varlen_resource),
+    context_base(ctx, input_variables, resource, varlen_resource),
     stg_(std::move(stg)),
     tx_(tx)
 {}

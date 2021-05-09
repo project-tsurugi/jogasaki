@@ -93,7 +93,8 @@ public:
         write_kind kind,
         std::string_view storage_name,
         std::vector<details::write_full_field> key_fields,
-        std::vector<details::write_full_field> value_fields
+        std::vector<details::write_full_field> value_fields,
+        variable_table_info const* input_variable_info = nullptr
     );
 
     /**
@@ -102,7 +103,6 @@ public:
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param kind write operation kind
-     * @param storage_name the storage name to write
      * @param idx target index information
      * @param keys takatori write keys information
      * @param columns takatori write columns information
@@ -112,12 +112,11 @@ public:
         processor_info const& info,
         block_index_type block_index,
         write_kind kind,
-        std::string_view storage_name,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
-        sequence_view<column const> columns
+        sequence_view<column const> columns,
+        variable_table_info const* input_variable_info
     );
-
 
     /**
      * @brief create context (if needed) and process record
@@ -148,6 +147,7 @@ public:
      * @see operator_base::finish()
      */
     void finish(abstract::task_context* context) override;
+
 private:
     write_kind kind_{};
     std::string storage_name_{};
@@ -165,8 +165,7 @@ private:
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
         sequence_view<column const> columns,
-        processor_info const& info,
-        block_index_type block_index,
+        variable_table_info const& input_variable_info,
         bool key
     );
 

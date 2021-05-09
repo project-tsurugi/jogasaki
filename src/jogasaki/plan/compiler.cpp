@@ -200,11 +200,9 @@ status prepare(
     switch(r.kind()) {
         case result_kind::execution_plan: {
             return create_prepared_statement<result_kind::execution_plan>(r, ctx.variable_provider(), c_options, out);
-            break;
         }
         case result_kind::statement: {
             return create_prepared_statement<result_kind::statement>(r, ctx.variable_provider(), c_options, out);
-            break;
         }
         default:
             fail();

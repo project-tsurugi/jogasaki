@@ -86,7 +86,7 @@ TEST_F(join_find_test, simple) {
     auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
 
     auto& take = add_take(2);
-    add_types(take, t::int8{}, t::int8{});
+    add_column_types(take, t::int8{}, t::int8{});
     auto& target = process_.operators().insert(relation::join_find {
         relation::join_kind::inner,
         bindings_(*primary_idx_t1),
@@ -106,7 +106,7 @@ TEST_F(join_find_test, simple) {
     take.output() >> target.left();
     target.output() >> offer.input();
 
-    add_types(target, t::int8{}, t::int8{});
+    add_column_types(target, t::int8{}, t::int8{});
     expression_map_->bind(target.keys()[0].value(), t::int8{});
     create_processor_info();
 
@@ -136,7 +136,6 @@ TEST_F(join_find_test, simple) {
     };
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx_t1->simple_name());
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
@@ -146,7 +145,7 @@ TEST_F(join_find_test, simple) {
         &task_ctx,
         input_variables,
         output_variables,
-        std::move(stg),
+        get_storage(*db, primary_idx_t1->simple_name()),
         nullptr,
         tx.get(),
         std::make_unique<details::matcher>(
@@ -179,7 +178,7 @@ TEST_F(join_find_test, secondary_index) {
     auto secondary_idx_t1 = create_secondary_index(t1, "T1_SECONDARY", {1}, {});
 
     auto& take = add_take(2);
-    add_types(take, t::int8{}, t::int8{});
+    add_column_types(take, t::int8{}, t::int8{});
 
     auto& target = process_.operators().insert(relation::join_find {
         relation::join_kind::inner,
@@ -199,7 +198,7 @@ TEST_F(join_find_test, secondary_index) {
     take.output() >> target.left();
     target.output() >> offer.input();
 
-    add_types(target, t::int8{}, t::int8{});
+    add_column_types(target, t::int8{}, t::int8{});
     expression_map_->bind(target.keys()[0].value(), t::int8{});
     create_processor_info();
 
@@ -229,8 +228,6 @@ TEST_F(join_find_test, secondary_index) {
     };
 
     auto db = kvs::database::open();
-    auto primary_stg = db->create_storage(primary_idx_t1->simple_name());
-    auto secondary_stg = db->create_storage(secondary_idx_t1->simple_name());
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(100), create_record<kind::int8>(10));
     put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(10, 100), {});
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(200), create_record<kind::int8>(20));
@@ -243,8 +240,8 @@ TEST_F(join_find_test, secondary_index) {
         &task_ctx,
         input_variables,
         output_variables,
-        std::move(primary_stg),
-        std::move(secondary_stg),
+        get_storage(*db, primary_idx_t1->simple_name()),
+        get_storage(*db, secondary_idx_t1->simple_name()),
         tx.get(),
         std::make_unique<details::matcher>(
             true,
@@ -280,7 +277,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
 
     auto& take = add_take(2);
-    add_types(take, t::int8{}, t::int8{});
+    add_column_types(take, t::int8{}, t::int8{});
 
     auto host_variable_record = jogasaki::mock::create_nullable_record<kind::int8>(10);
     auto p0 = bindings_(register_variable("p0", kind::int8));
@@ -320,7 +317,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     take.output() >> target.left();
     target.output() >> offer.input();
 
-    add_types(target, t::int8{}, t::int8{});
+    add_column_types(target, t::int8{}, t::int8{});
     expression_map_->bind(target.keys()[0].value(), t::int8{});
     expression_map_->bind(*target.condition(), t::boolean{});
     auto& c = static_cast<scalar::compare&>(*target.condition());
@@ -354,7 +351,6 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     };
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx_t1->simple_name());
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
@@ -364,7 +360,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
         &task_ctx,
         input_variables,
         output_variables,
-        std::move(stg),
+        get_storage(*db, primary_idx_t1->simple_name()),
         nullptr,
         tx.get(),
         std::make_unique<details::matcher>(

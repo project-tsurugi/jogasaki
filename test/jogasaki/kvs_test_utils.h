@@ -24,10 +24,13 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_utils/record.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki {
 
@@ -50,49 +53,19 @@ public:
         std::string_view storage_name,
         mock::basic_record key,
         mock::basic_record value
-    ) {
-        BOOST_ASSERT(key);  //NOLINT
-        auto stg = db.create_storage(storage_name);
-        if (! stg) {
-            stg = db.get_storage(storage_name);
-        }
-        auto tx = db.create_transaction();
+    );
+    void get(
+        kvs::database& db,
+        std::string_view storage_name,
+        mock::basic_record key_model,
+        mock::basic_record value_model,
+        std::vector<std::pair<mock::basic_record, mock::basic_record>>& result
+    );
 
-        std::string key_buf(1000, '\0');
-        std::string val_buf(1000, '\0');
-        kvs::writable_stream key_stream{key_buf};
-        kvs::writable_stream val_stream{val_buf};
-
-        auto& key_meta = key.record_meta();
-        for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {
-            if (key_meta->nullable(i)) {
-                kvs::encode_nullable(
-                    key.ref(), key_meta->value_offset(i), key_meta->nullity_offset(i),
-                    key_meta->at(i), spec_asc, key_stream);
-                continue;
-            }
-            kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, key_stream);
-        }
-        if (value) {
-            auto& val_meta = value.record_meta();
-            for(std::size_t i=0, n=val_meta->field_count(); i < n; ++i) {
-                if (val_meta->nullable(i)) {
-                    kvs::encode_nullable(
-                        value.ref(), val_meta->value_offset(i), val_meta->nullity_offset(i),
-                        val_meta->at(i), spec_val, val_stream);
-                    continue;
-                }
-                kvs::encode(value.ref(), val_meta->value_offset(i), val_meta->at(i), spec_val, val_stream);
-            }
-        }
-        if(auto res = stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.size()},
-                std::string_view{val_buf.data(), val_stream.size()}
-            ); res != status::ok) {
-            fail();
-        }
-        if(auto res = tx->commit(); res != status::ok) fail();
-    }
+    std::unique_ptr<kvs::storage> get_storage(
+        kvs::database& db,
+        std::string_view name
+    );
 };
 
 }

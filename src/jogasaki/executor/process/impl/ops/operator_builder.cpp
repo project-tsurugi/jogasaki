@@ -191,10 +191,10 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
         *info_,
         block_index,
         write_kind_from(node.operator_kind()),
-        index.simple_name(),
         index,
         node.keys(),
-        node.columns()
+        node.columns(),
+        nullptr
     );
 }
 

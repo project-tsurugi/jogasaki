@@ -53,7 +53,6 @@ namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
-namespace host_variable = yugawara::variable;
 
 using yugawara::variable::nullity;
 using yugawara::variable::criteria;
@@ -62,8 +61,8 @@ using yugawara::storage::index;
 using yugawara::storage::index_feature_set;
 
 template <class Column>
-std::vector<variable> destinations(std::vector<Column, takatori::util::object_allocator<Column>>& columns) {
-    std::vector<variable> ret{};
+std::vector<descriptor::variable> destinations(std::vector<Column, takatori::util::object_allocator<Column>>& columns) {
+    std::vector<descriptor::variable> ret{};
     ret.reserve(columns.size());
     for(auto&& c : columns) {
         ret.emplace_back(c.destination());
@@ -72,10 +71,10 @@ std::vector<variable> destinations(std::vector<Column, takatori::util::object_al
 }
 
 inline variable_table_info create_variable_table_info(
-    std::vector<variable> const& variables,
+    std::vector<descriptor::variable> const& variables,
     jogasaki::mock::basic_record const& rec
 ) {
-    std::unordered_map<variable, value_info> map{};
+    std::unordered_map<descriptor::variable, value_info> map{};
     variable_table_info ret{};
     auto meta = rec.record_meta();
     std::size_t i = 0;
@@ -183,7 +182,7 @@ public:
     std::shared_ptr<processor_info> processor_info_;  //NOLINT
 
     relation::step::offer& add_offer(
-        std::vector<variable> stream_variables
+        std::vector<descriptor::variable> stream_variables
     ) {
         std::vector<descriptor::variable, takatori::util::object_allocator<descriptor::variable>> xch_columns;
         for(std::size_t i=0; i < stream_variables.size(); ++i) {
@@ -239,17 +238,31 @@ public:
         processor_info_ = std::make_shared<processor_info>(process_.operators(), *compiler_info_, host_variables);
     }
 
-    template <class T, class ...Args>
+    template <bool ForKey, class T, class ...Args>
     void add_types(T& target, Args&&... types) {
         std::vector<std::reference_wrapper<takatori::type::data>> v{types...};
         std::size_t i=0;
         for(auto&& type : v) {
             yugawara::analyzer::variable_resolution r{std::move(static_cast<takatori::type::data&>(type))};
-            variable_map_->bind(target.columns()[i].source(), r);
-            variable_map_->bind(target.columns()[i].destination(), r);
+            if constexpr (ForKey) {
+                variable_map_->bind(target.keys()[i].source(), r, true);
+                variable_map_->bind(target.keys()[i].destination(), r, true);
+            } else {
+                variable_map_->bind(target.columns()[i].source(), r, true);
+                variable_map_->bind(target.columns()[i].destination(), r, true);
+            }
             ++i;
         }
     }
+    template <class T, class ...Args>
+    void add_key_types(T& target, Args&&... types) {
+        add_types<true>(target, types...);
+    }
+    template <class T, class ...Args>
+    void add_column_types(T& target, Args&&... types) {
+        add_types<false>(target, types...);
+    }
+
     std::shared_ptr<yugawara::variable::declaration const> register_variable(std::string_view name, field_type_kind kind) {
         if (auto e = variables_->find(name)) {
             // ignore if it's already exists

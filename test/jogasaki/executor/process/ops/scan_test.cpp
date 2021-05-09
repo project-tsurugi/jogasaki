@@ -95,7 +95,7 @@ TEST_F(scan_test, simple) {
     auto& offer = add_offer(destinations(target.columns()));
     target.output() >> offer.input();
 
-    add_types(target, t::int4{}, t::float8{}, t::int8{});
+    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
     create_processor_info();
 
     auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>();
@@ -119,14 +119,13 @@ TEST_F(scan_test, simple) {
     };
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx->simple_name());
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
     auto tx = db->create_transaction();
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
-    scan_context ctx(&task_ctx, output_variables, std::move(stg), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -163,7 +162,7 @@ TEST_F(scan_test, nullable_fields) {
     auto& offer = add_offer(destinations(target.columns()));
     target.output() >> offer.input();
 
-    add_types(target, t::int4{}, t::float8{}, t::int8{});
+    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
     create_processor_info();
 
     auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>();
@@ -187,14 +186,13 @@ TEST_F(scan_test, nullable_fields) {
     };
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx->simple_name());
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(0.0, 0), {true, true}));
 
     auto tx = db->create_transaction();
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
-    scan_context ctx(&task_ctx, output_variables, std::move(stg), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -258,7 +256,7 @@ TEST_F(scan_test, scan_info) {
     auto& offer = add_offer(destinations(target.columns()));
     target.output() >> offer.input();
 
-    add_types(target, t::int8{}, t::character{t::varying, 100}, t::float8{});
+    add_column_types(target, t::int8{}, t::character{t::varying, 100}, t::float8{});
     expression_map_->bind(target.lower().keys()[0].value(), t::int8{});
     expression_map_->bind(target.lower().keys()[1].value(), t::character{t::varying, 100});
     expression_map_->bind(target.upper().keys()[0].value(), t::int8{});
@@ -293,13 +291,12 @@ TEST_F(scan_test, scan_info) {
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx->simple_name());
     put( *db, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"}), create_record<kind::float8>(1.0));
     put( *db, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/C"}), create_record<kind::float8>(2.0));
     put( *db, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
 
     auto tx = db->create_transaction();
-    scan_context ctx(&task_ctx, output_variables, std::move(stg), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -355,7 +352,7 @@ TEST_F(scan_test, secondary_index) {
     auto& offer = add_offer(destinations(target.columns()));
     target.output() >> offer.input();
 
-    add_types(target, t::int4{}, t::float8{}, t::int8{});
+    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
     expression_map_->bind(target.lower().keys()[0].value(), t::int8{});
     expression_map_->bind(target.upper().keys()[0].value(), t::int8{});
     create_processor_info();
@@ -386,8 +383,6 @@ TEST_F(scan_test, secondary_index) {
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx->simple_name());
-    auto secondary_stg = db->create_storage(secondary_idx->simple_name());
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
@@ -398,7 +393,7 @@ TEST_F(scan_test, secondary_index) {
     put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
 
     auto tx = db->create_transaction();
-    scan_context ctx(&task_ctx, output_variables, std::move(stg), std::move(secondary_stg), tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), get_storage(*db, secondary_idx->simple_name()), tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -485,7 +480,7 @@ TEST_F(scan_test, host_variables) {
     auto& offer = add_offer(destinations(target.columns()));
     target.output() >> offer.input();
 
-    add_types(target, t::int4{}, t::int8{}, t::int8{});
+    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
     expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
     expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
     expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
@@ -520,13 +515,12 @@ TEST_F(scan_test, host_variables) {
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
     auto db = kvs::database::open();
-    auto stg = db->create_storage(primary_idx->simple_name());
     put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));
     put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 20), create_record<kind::int8>(2));
     put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
 
     auto tx = db->create_transaction();
-    scan_context ctx(&task_ctx, output_variables, std::move(stg), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();

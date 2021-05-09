@@ -50,9 +50,10 @@ write_full::write_full(
     write_kind kind,
     std::string_view storage_name,
     std::vector<details::write_full_field> key_fields,
-    std::vector<details::write_full_field> value_fields
+    std::vector<details::write_full_field> value_fields,
+    variable_table_info const* input_variable_info
 ) :
-    record_operator(index, info, block_index),
+    record_operator(index, info, block_index, input_variable_info, nullptr),
     kind_(kind),
     storage_name_(storage_name),
     key_fields_(std::move(key_fields)),
@@ -64,19 +65,24 @@ write_full::write_full(
     processor_info const& info,
     operator_base::block_index_type block_index,
     write_kind kind,
-    std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
-    sequence_view<column const> columns
+    sequence_view<column const> columns,
+    variable_table_info const* input_variable_info
 ) :
     write_full(
         index,
         info,
         block_index,
         kind,
-        storage_name,
-        create_fields(kind, idx, keys, columns, info, block_index, true),
-        create_fields(kind, idx, keys, columns, info, block_index, false)
+        idx.simple_name(),
+        create_fields(kind, idx, keys, columns,
+            (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]),
+            true),
+        create_fields(kind, idx, keys, columns,
+            (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]),
+            false),
+        input_variable_info
     )
 {}
 
@@ -103,13 +109,10 @@ operation_status write_full::operator()(write_full_context& ctx) {
     switch(kind_) {
         case write_kind::insert:
             return do_insert(ctx);
-            break;
         case write_kind::insert_or_update:
             return do_insert(ctx);
-            break;
         case write_kind::delete_:
             return do_delete(ctx);
-            break;
         default:
             fail();
     }
@@ -146,19 +149,21 @@ std::vector<details::write_full_field> write_full::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
     sequence_view<column const> columns,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
+    variable_table_info const& input_variable_info,
     bool key
 ) {
     std::vector<details::write_full_field> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
-    auto& block = info.vars_info_list()[block_index];
     std::unordered_map<variable, variable> table_to_stream{};
+    auto& map_source = kind == write_kind::insert ? columns :
+        (kind == write_kind::delete_ ? keys :
+            (key ? keys : columns)
+        );
+    for(auto&& c : map_source) {
+        table_to_stream.emplace(c.destination(), c.source());
+    }
     if (key) {
-        for(auto&& c : keys) {
-            table_to_stream.emplace(c.destination(), c.source());
-        }
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
             auto kc = bindings(k.column());
@@ -171,8 +176,8 @@ std::vector<details::write_full_field> write_full::create_fields(
             auto&& var = table_to_stream.at(kc);
             ret.emplace_back(
                 t,
-                block.at(var).value_offset(),
-                block.at(var).nullity_offset(),
+                input_variable_info.at(var).value_offset(),
+                input_variable_info.at(var).nullity_offset(),
                 k.column().criteria().nullity().nullable(),
                 spec
             );
@@ -182,9 +187,6 @@ std::vector<details::write_full_field> write_full::create_fields(
     if (kind == write_kind::delete_) {
         // delete requires only key fields
         return ret;
-    }
-    for(auto&& c : columns) {
-        table_to_stream.emplace(c.destination(), c.source());
     }
     ret.reserve(idx.values().size());
     for(auto&& v : idx.values()) {
@@ -197,8 +199,8 @@ std::vector<details::write_full_field> write_full::create_fields(
         auto&& var = table_to_stream.at(b);
         ret.emplace_back(
             t,
-            block.at(var).value_offset(),
-            block.at(var).nullity_offset(),
+            input_variable_info.at(var).value_offset(),
+            input_variable_info.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
             kvs::spec_value
         );

@@ -33,6 +33,8 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/kvs_test_utils.h>
+#include <jogasaki/operator_test_utils.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -54,504 +56,169 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class write_full_test : public test_root {
-public:
-    static constexpr kvs::order undef = kvs::order::undefined;
-    static constexpr kvs::order asc = kvs::order::ascending;
-    static constexpr kvs::order desc = kvs::order::descending;
+class write_full_test :
+    public test_root,
+    public kvs_test_utils,
+    public operator_test_utils {
 
-    static constexpr kvs::coding_spec spec_asc = kvs::spec_key_ascending;
-    static constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
-    static constexpr kvs::coding_spec spec_val = kvs::spec_value;
-    basic_record create_key(
-        std::int32_t arg0
-    ) {
-        return create_nullable_record<kind::int4>(arg0);
-    }
-
-    basic_record create_value(
-        double arg0,
-        std::int64_t arg1
-    ) {
-        return create_nullable_record<kind::float8, kind::int8>(arg0, arg1);
-    }
-
-    basic_record create_nullable_value(
-        double arg0,
-        std::int64_t arg1,
-        bool arg0_null,
-        bool arg1_null
-    ) {
-        return create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(arg0, arg1), {arg0_null, arg1_null});
-    }
-    using key_record = jogasaki::mock::basic_record;
-    using value_record = jogasaki::mock::basic_record;
-    void add_data(kvs::database& db) {
-        auto stg = db.create_storage("I1");
-        auto tx = db.create_transaction();
-
-        std::string key_buf(100, '\0');
-        std::string val_buf(100, '\0');
-        kvs::writable_stream key_stream{key_buf};
-        kvs::writable_stream val_stream{val_buf};
-        {
-            key_record key_rec{create_key(10)};
-            auto key_meta = key_rec.record_meta();
-            kvs::encode_nullable(key_rec.ref(), key_meta->value_offset(0), key_meta->nullity_offset(0), key_meta->at(0), spec_asc, key_stream);
-            value_record val_rec{create_value(1.0, 100)};
-            auto val_meta = val_rec.record_meta();
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
-            ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.size()},
-                std::string_view{val_buf.data(), val_stream.size()}
-            ));
-        }
-        key_stream.reset();
-        val_stream.reset();
-        {
-            key_record key_rec{create_key(20)};
-            auto key_meta = key_rec.record_meta();
-            kvs::encode_nullable(key_rec.ref(), key_meta->value_offset(0), key_meta->nullity_offset(0), key_meta->at(0), spec_asc, key_stream);
-            value_record val_rec{create_value(2.0, 200)};
-            auto val_meta = val_rec.record_meta();
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
-            ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.size()},
-                std::string_view{val_buf.data(), val_stream.size()}
-            ));
-        }
-        ASSERT_EQ(status::ok, tx->commit());
-    }
-
-    void show_record(
-        meta::record_meta const& meta,
-        std::string_view data
-    ) {
-        std::string in{data};
-        kvs::readable_stream key_stream{in};
-        std::string out(meta.record_size(), '\0');
-        accessor::record_ref target{out.data(), out.capacity()};
-        for(std::size_t i=0, n=meta.field_count(); i<n; ++i) {
-            kvs::decode_nullable(
-                key_stream,
-                meta.at(i),
-                spec_asc,
-                target,
-                meta.value_offset(i),
-                meta.nullity_offset(i)
-            );
-        }
-        std::cout << target << meta;
-    }
-    void check_data(
-        kvs::database& db,
-        meta::record_meta const& key_meta,
-        meta::record_meta const& value_meta
-    ) {
-        auto stg = db.get_storage("I1");
-        auto tx = db.create_transaction();
-
-        std::string key_buf(100, '\0');
-        std::string val_buf(100, '\0');
-        kvs::writable_stream key_stream{key_buf};
-        kvs::writable_stream val_stream{val_buf};
-
-        std::unique_ptr<kvs::iterator> it{};
-        std::string_view k{};
-        std::string_view v{};
-        ASSERT_EQ(status::ok, stg->scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
-        while(it->next() == status::ok) {
-            (void)it->key(k);
-            (void)it->value(v);
-            show_record(key_meta, k);
-            show_record(value_meta, v);
-        }
-    }
 };
 
 TEST_F(write_full_test, simple) {
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table({
-        "T0",
-        {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
-    storage::column const& t0c2 = t0->columns()[2];
-
-    std::shared_ptr<storage::index> i0 = storages->add_index(
-        { t0, "I0",
-            {
-                t0->columns()[0],
-            },
-            {
-                t0->columns()[1],
-                t0->columns()[2],
-            },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        }
-    );
-    std::shared_ptr<storage::table> t1 = storages->add_table({
+    auto t1 = create_table({
         "T1",
         {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
+            { "C0", t::int4(), nullity{false} },
+            { "C1", t::float8(), nullity{false} },
+            { "C2", t::int8(), nullity{false} },
         },
     });
-    storage::column const& t1c0 = t1->columns()[0];
-    storage::column const& t1c1 = t1->columns()[1];
-    storage::column const& t1c2 = t1->columns()[2];
+    auto i1 = create_primary_index(t1, {0}, {1,2});
 
-    std::shared_ptr<storage::index> i1 = storages->add_index(
-        { t1, "I1",
-            {
-                t1->columns()[0],
-            },
-            {
-                t1->columns()[1],
-                t1->columns()[2],
-            },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        }
-    );
+    auto& take = add_take(3);
+    add_column_types(take, t::int4{}, t::float8{}, t::int8{});
 
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process {});
-    auto c0 = bindings.stream_variable("c0");
-    auto c1 = bindings.stream_variable("c1");
-    auto c2 = bindings.stream_variable("c2");
-    auto& r0 = p0.operators().insert(relation::scan {
-        bindings(*i0),
-        {
-            { bindings(t0c0), c0 },
-            { bindings(t0c1), c1 },
-            { bindings(t0c2), c2 },
-        },
-    });
-
-    auto&& r1 = p0.operators().insert(relation::write {
+    auto& target = process_.operators().insert(relation::write {
         relation::write_kind::insert,
-        bindings(*i1),
+        bindings_(*i1),
         {
-            { c0, bindings(t1c0) },
+            // TODO verify no key for insert
         },
         {
-            { c1, bindings(t1c1) },
-            { c2, bindings(t1c2) },
+            { take.columns()[0].destination(), bindings_(t1->columns()[0]) },
+            { take.columns()[1].destination(), bindings_(t1->columns()[1]) },
+            { take.columns()[2].destination(), bindings_(t1->columns()[2]) },
         },
     });
 
-    r0.output() >> r1.input();
+    take.output() >> target.input();
+    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
+    create_processor_info();
 
-    auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vm->bind(c0, t::int4{});
-    vm->bind(c1, t::float8{});
-    vm->bind(c2, t::int8{});
-    vm->bind(bindings(t1c0), t::int4{});
-    vm->bind(bindings(t1c1), t::float8{});
-    vm->bind(bindings(t1c2), t::int8{});
-    vm->bind(bindings(t0c0), t::int4{});
-    vm->bind(bindings(t0c1), t::float8{});
-    vm->bind(bindings(t0c2), t::int8{});
-    yugawara::compiled_info c_info{{}, vm};
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(0, 1.0, 2);
+    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
 
-    processor_info p_info{p0.operators(), c_info};
-
-    std::vector<write_full::column> write_columns{
-        {c0, bindings(t1c0)},
-        {c1, bindings(t1c1)},
-        {c2, bindings(t1c2)},
-    };
-
-    using kind = meta::field_type_kind;
-    auto meta = std::make_shared<record_meta>(
-        std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::float8>),
-            field_type(enum_tag<kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{3}.flip()
-    );
-    write_full wrt{
+    write_full op{
         0,
-        p_info,
+        *processor_info_,
         0,
         write_kind::insert,
-        "I1",
         *i1,
-        r1.keys(),
-        r1.columns()
-    };
-
-    ASSERT_EQ(1, p_info.vars_info_list().size());
-    auto& block_info = p_info.vars_info_list()[wrt.block_index()];
-    variable_table variables{block_info};
-
-    using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record;
-
-    mock::task_context task_ctx{
-        {},
-        {},
-        {},
-        {},
+        target.keys(),
+        target.columns(),
+        &input_variable_info
     };
 
     auto db = kvs::database::open();
     auto tx = db->create_transaction();
-    auto stg = db->create_storage("I1");
-    auto s = stg.get();
-
-    lifo_paged_memory_resource resource{&global::page_pool()};
-    lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+    mock::task_context task_ctx{ {}, {}, {}, {}};
     write_full_context ctx{
         &task_ctx,
-        variables,
-        std::move(stg),
+        input_variables,
+        get_storage(*db, i1->simple_name()),
         tx.get(),
-        &resource,
-        &varlen_resource
+        &resource_,
+        &varlen_resource_
     };
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    (void)tx->commit();
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    vars_ref.set_value<double>(map.at(c1).value_offset(), 1.0);
-    vars_ref.set_null(map.at(c1).nullity_offset(), false);
-    vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 2);
-    vars_ref.set_null(map.at(c2).nullity_offset(), false);
-    wrt(ctx);
-
-    std::string str(100, '\0');
-    kvs::writable_stream key{str};
-    kvs::encode_nullable(
-        expression::any{std::in_place_type<std::int32_t>, 0},
-        meta::field_type{enum_tag<kind::int4>},
-        kvs::coding_spec{true, kvs::order::ascending},
-        key
+    get(
+        *db,
+        i1->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(0),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
+        result
     );
-    std::string_view k{str.data(), key.size()};
-    std::string_view v{};
-    ASSERT_EQ(status::ok, s->get(*tx, k, v));
-    std::string buf{v};
-    kvs::readable_stream value{buf};
-    expression::any res{};
-    kvs::decode_nullable(
-        value,
-        meta::field_type{enum_tag<kind::float8>},
-        kvs::coding_spec{false, kvs::order::undefined},
-        res
-    );
-    EXPECT_EQ(1.0, res.to<double>());
-    kvs::decode_nullable(
-        value,
-        meta::field_type{enum_tag<kind::int8>},
-        kvs::coding_spec{false, kvs::order::undefined},
-        res
-    );
-    EXPECT_EQ(2, res.to<std::int64_t>());
+    ASSERT_EQ(1, result.size());
+    auto exp_k = jogasaki::mock::create_record<kind::int4>(0);
+    auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(1.0, 2);
+    EXPECT_EQ(exp_k, result[0].first);
+    EXPECT_EQ(exp_v, result[0].second);
 }
 
 TEST_F(write_full_test, delete) {
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table({
-        "T0",
-        {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
-    storage::column const& t0c2 = t0->columns()[2];
-
-    std::shared_ptr<storage::index> i0 = storages->add_index(
-        { t0, "I0",
-            {
-                t0->columns()[0],
-            },
-            {
-                t0->columns()[1],
-                t0->columns()[2],
-            },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        }
-    );
-    std::shared_ptr<storage::table> t1 = storages->add_table({
+    auto t1 = create_table({
         "T1",
         {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
+            { "C0", t::int4(), nullity{false} },
+            { "C1", t::float8(), nullity{false}  },
+            { "C2", t::int8(), nullity{false} },
         },
     });
-    storage::column const& t1c0 = t1->columns()[0];
-    storage::column const& t1c1 = t1->columns()[1];
-    storage::column const& t1c2 = t1->columns()[2];
+    auto i1 = create_primary_index(t1, {0}, {1,2});
 
-    std::shared_ptr<storage::index> i1 = storages->add_index(
-        { t1, "I1",
-            {
-                t1->columns()[0],
-            },
-            {
-                t1->columns()[1],
-                t1->columns()[2],
-            },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        }
-    );
+    auto& take = add_take(3);
+    add_column_types(take, t::int4{}, t::float8{}, t::int8{});
 
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process {});
-    auto c0 = bindings.stream_variable("c0");
-    auto c1 = bindings.stream_variable("c1");
-    auto c2 = bindings.stream_variable("c2");
-    auto& r0 = p0.operators().insert(relation::scan {
-        bindings(*i0),
+    auto& target = process_.operators().insert(relation::write {
+        relation::write_kind::insert,
+        bindings_(*i1),
         {
-            { bindings(t0c0), c0 },
-            { bindings(t0c1), c1 },
-            { bindings(t0c2), c2 },
-        },
-    });
-
-    auto&& r1 = p0.operators().insert(relation::write {
-        relation::write_kind::delete_,
-        bindings(*i1),
-        {
-            { c0, bindings(t1c0) },
+            { take.columns()[0].destination(), bindings_(t1->columns()[0]) },
         },
         {},
     });
 
-    r0.output() >> r1.input();
+    take.output() >> target.input();
+    add_key_types(target, t::int4{});
+    create_processor_info();
 
-    auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vm->bind(c0, t::int4{});
-    vm->bind(c1, t::float8{});
-    vm->bind(c2, t::int8{});
-    vm->bind(bindings(t1c0), t::int4{});
-    vm->bind(bindings(t1c1), t::float8{});
-    vm->bind(bindings(t1c2), t::int8{});
-    vm->bind(bindings(t0c0), t::int4{});
-    vm->bind(bindings(t0c1), t::float8{});
-    vm->bind(bindings(t0c2), t::int8{});
-    yugawara::compiled_info c_info{{}, vm};
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 0.0, 0);
+    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
 
-    processor_info p_info{p0.operators(), c_info};
-
-    std::vector<write_full::column> write_columns{
-        {c0, bindings(t1c0)},
-        {c1, bindings(t1c1)},
-        {c2, bindings(t1c2)},
-    };
-
-    using kind = meta::field_type_kind;
-    auto meta = std::make_shared<record_meta>(
-        std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::float8>),
-            field_type(enum_tag<kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{3}.flip()
-    );
-    write_full wrt{
+    write_full op{
         0,
-        p_info,
+        *processor_info_,
         0,
         write_kind::delete_,
-        "I1",
         *i1,
-        r1.keys(),
-        r1.columns()
-    };
-
-    ASSERT_EQ(1, p_info.vars_info_list().size());
-    auto& block_info = p_info.vars_info_list()[wrt.block_index()];
-    variable_table variables{block_info};
-
-    using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record;
-
-    mock::task_context task_ctx{
-        {},
-        {},
-        {},
-        {},
+        target.keys(),
+        target.columns(),
+        &input_variable_info
     };
 
     auto db = kvs::database::open();
-    add_data(*db);
-    auto key_meta = create_key(0).record_meta();
-    auto val_meta = create_value(0,0).record_meta();
-    //check_data(*db, *key_meta, *val_meta);
+    put( *db, i1->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db, i1->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    get(
+        *db,
+        i1->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(),
+        result
+    );
+    ASSERT_EQ(2, result.size());
 
     auto tx = db->create_transaction();
-    auto stg = db->get_storage("I1");
-    auto s = stg.get();
-
-    lifo_paged_memory_resource resource{&global::page_pool()};
-    lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+    mock::task_context task_ctx{ {}, {}, {}, {}};
     write_full_context ctx{
         &task_ctx,
-        variables,
-        std::move(stg),
+        input_variables,
+        get_storage(*db, i1->simple_name()),
         tx.get(),
-        &resource,
-        &varlen_resource
+        &resource_,
+        &varlen_resource_
     };
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 10);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    wrt(ctx);
-    (void)tx->commit();
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
 
-    std::string str(100, '\0');
-    kvs::writable_stream key{str};
-    kvs::encode_nullable(
-        expression::any{std::in_place_type<std::int32_t>, 10},
-        meta::field_type{enum_tag<kind::int4>},
-        kvs::coding_spec{true, kvs::order::ascending},
-        key
+    (void)tx->commit();
+    result.clear();
+    get(
+        *db,
+        i1->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(),
+        result
     );
-    std::string_view k{str.data(), key.size()};
-    std::string_view v{};
-    auto tx2 = db->create_transaction();
-    ASSERT_EQ(status::not_found, s->get(*tx2, k, v));
+    ASSERT_EQ(1, result.size());
 }
 
 }

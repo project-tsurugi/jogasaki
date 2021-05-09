@@ -140,10 +140,9 @@ TEST_F(find_test, simple) {
     using kind = meta::field_type_kind;
     put(*db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    auto stg = db->get_storage(primary_idx->simple_name());
     auto tx = db->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, input_variables, output_variables, std::move(stg), nullptr, tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());
@@ -207,8 +206,6 @@ TEST_F(find_test, secondary_index) {
 
     auto db = kvs::database::open();
     using kind = meta::field_type_kind;
-    auto p_stg = db->create_storage(primary_idx->simple_name());
-    auto s_stg = db->create_storage(secondary_idx->simple_name());
 
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
@@ -219,7 +216,7 @@ TEST_F(find_test, secondary_index) {
 
     auto tx = db->create_transaction();
     mock::task_context task_ctx{{}, {}, {}, {}};
-    find_context ctx(&task_ctx, input_variables, output_variables, std::move(p_stg), std::move(s_stg), tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db, primary_idx->simple_name()), get_storage(*db, secondary_idx->simple_name()), tx.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -305,10 +302,9 @@ TEST_F(find_test, host_variable) {
     using kind = meta::field_type_kind;
     put(*db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    auto stg = db->get_storage(primary_idx->simple_name());
     auto tx = db->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, input_variables, output_variables, std::move(stg), nullptr, tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());

@@ -191,6 +191,7 @@ public:
      * @brief accessor to value metadata
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept;
+
 private:
     write_kind kind_{};
     std::string storage_name_{};

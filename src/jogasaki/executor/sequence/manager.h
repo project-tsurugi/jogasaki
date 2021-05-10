@@ -152,7 +152,7 @@ public:
      * @details this function retrieves sequence definitions from provider and register one by one.
      * @param provider the config. provider that gives sequences definitions.
      */
-    void register_sequences(maybe_shared_ptr<yugawara::storage::configurable_provider> provider);
+    void register_sequences(maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider);
 
     /**
      * @brief find sequence

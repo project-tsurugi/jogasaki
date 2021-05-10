@@ -126,7 +126,9 @@ sequence* manager::register_sequence(
     return sequences_[def_id].sequence();
 }
 
-void manager::register_sequences(maybe_shared_ptr<yugawara::storage::configurable_provider> provider) {
+void manager::register_sequences(
+    maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider
+) {
     provider->each_sequence(
         [this](
             std::string_view,

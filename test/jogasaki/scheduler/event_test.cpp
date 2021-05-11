@@ -88,36 +88,4 @@ TEST_F(event_test, simple_shuffle) {
     ASSERT_TRUE(true);
 }
 
-TEST_F(event_test, DISABLED_prepare) {
-    auto ctx = std::make_shared<request_context>();
-    auto g = std::make_unique<common::graph>(*ctx);
-    auto scan1 = std::make_unique<simple_scan_process>();
-    auto scan2 = std::make_unique<simple_scan_process>();
-    auto transform = std::make_unique<simple_transform_process>();
-    auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
-    auto xch2 = std::make_unique<broadcast::step>();
-    auto xch3 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
-    auto emit = std::make_unique<simple_emit_process>();
-    auto dvr = std::make_unique<deliver::step>();
-    *scan1 >> *xch1;
-    *xch1 >> *transform;
-    *scan2 >> *xch2;
-    xch2->connect_to_sub(*transform, 0, 0);
-    *transform >> *xch3;
-    *xch3 >> *emit;
-    *emit >> *dvr;
-    // step id are assigned from 0 to 6
-    g->insert(std::move(scan1));
-    g->insert(std::move(xch1));
-    g->insert(std::move(scan2));
-    g->insert(std::move(xch2));
-    g->insert(std::move(transform));
-    g->insert(std::move(xch3));
-    g->insert(std::move(emit));
-    g->insert(std::move(dvr));
-    dag_controller dc{};
-    dc.schedule(*g);
-    ASSERT_TRUE(true);
-}
-
 }

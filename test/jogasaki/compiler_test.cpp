@@ -164,9 +164,12 @@ public:
     }
 };
 
-TEST_F(compiler_test, DISABLED_insert) {
+TEST_F(compiler_test, insert) {
     std::string sql = "insert into T0(C0, C1) values (1,1.0)";
+    memory::page_pool pool{};
+    auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&pool);
     compiler_context ctx{};
+    ctx.resource(resource);
     ctx.storage_provider(tables());
     ASSERT_EQ(status::ok, compile(sql, ctx));
     auto&& write = unsafe_downcast<statement::write>(*ctx.executable_statement()->statement());

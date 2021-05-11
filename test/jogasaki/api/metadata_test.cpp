@@ -97,8 +97,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
     db->stop();
 }
 
-// disable until secondary index is ready
-TEST_F(metadata_test, DISABLED_create_table_with_secondary_index) {
+TEST_F(metadata_test, create_table_with_secondary_index) {
     auto db = api::create_database();
     db->start();
     auto t = std::make_shared<table>(

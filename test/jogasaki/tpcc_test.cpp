@@ -109,6 +109,11 @@ public:
     }
 
     std::unique_ptr<jogasaki::api::database> db_;
+
+    void resolve(std::string& query, std::string_view place_holder, std::string value) {
+        query = std::regex_replace(query, std::regex(std::string(place_holder)), value);
+    }
+
 };
 
 using namespace std::string_view_literals;
@@ -125,10 +130,6 @@ TEST_F(tpcc_test, warehouse) {
     EXPECT_EQ(accessor::text("fogereb"), rec.ref().get_value<accessor::text>(rec.record_meta()->value_offset(1)));
 
     EXPECT_EQ(20, result[1].ref().get_value<std::int64_t>(result[1].record_meta()->value_offset(0)));
-}
-
-void resolve(std::string& query, std::string_view place_holder, std::string value) {
-    query = std::regex_replace(query, std::regex(std::string(place_holder)), value);
 }
 
 TEST_F(tpcc_test, new_order1) {

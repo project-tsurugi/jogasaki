@@ -176,7 +176,8 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
     )) {
         do {
             if (condition_) {
-                auto r = evaluator_(ctx.input_variables());
+                utils::checkpoint_holder cp{resource};
+                auto r = evaluator_(ctx.input_variables(), resource);
                 if(r.has_value() && !r.to<bool>()) {
                     continue;
                 }

@@ -78,6 +78,22 @@ void avg_post(
     sequence_view<field_locator const> args
 );
 
+void max(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+);
+
+void min(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+);
+
 void identity_post(
     accessor::record_ref target,
     field_locator const& target_loc,

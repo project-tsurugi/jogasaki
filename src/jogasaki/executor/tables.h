@@ -33,6 +33,12 @@ void add_builtin_tables(yugawara::storage::configurable_provider& provider);
 void add_benchmark_tables(yugawara::storage::configurable_provider& provider);
 
 /**
+ * @brief add analytics benchmark table definitions to the provider
+ * @param provider object to register the benchmark tables
+ */
+void add_analytics_benchmark_tables(yugawara::storage::configurable_provider& provider);
+
+/**
  * @brief create kvs storage based on the index definitions in the provider
  * @param db the database where the kvs storage will be created
  * @param provider object to provide index definition

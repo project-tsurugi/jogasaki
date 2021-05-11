@@ -199,6 +199,118 @@ void add_builtin_aggregate_functions(
             true,
         });
     }
+    /////////
+    // max
+    /////////
+    {
+        auto max = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::max>>();
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::int4(),
+            {
+                t::int4(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::int8(),
+            {
+                t::int8(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::float4(),
+            {
+                t::float4(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::float8(),
+            {
+                t::float8(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::character(t::varying),
+            {
+                t::character(t::varying),
+            },
+            true,
+        });
+    }
+    /////////
+    // min
+    /////////
+    {
+        auto min = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::min>>();
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::int4(),
+            {
+                t::int4(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::int8(),
+            {
+                t::int8(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::float4(),
+            {
+                t::float4(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::float8(),
+            {
+                t::float8(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::character(t::varying),
+            {
+                t::character(t::varying),
+            },
+            true,
+        });
+    }
 }
 
 namespace builtin {
@@ -338,6 +450,83 @@ void avg_post(
     }
 }
 
+void max(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+) {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    auto& arg_type = args[0].type();
+    auto arg_offset = args[0].value_offset();
+    BOOST_ASSERT(target_loc.type().kind() == arg_type.kind());  //NOLINT
+    auto src_nullity_offset = args[0].nullity_offset();
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    if (initial) {
+        utils::copy_nullable_field(
+            arg_type,
+            target,
+            target_offset,
+            target_nullity_offset,
+            source,
+            arg_offset,
+            src_nullity_offset
+        );
+        return;
+    }
+    auto is_null = source.is_null(src_nullity_offset);
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
+    switch(arg_type.kind()) {
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, std::max(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, std::max(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, std::max(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, std::max(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, std::max(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        default: fail();
+    }
+}
+
+void min(
+    accessor::record_ref target,
+    field_locator const& target_loc,
+    bool initial,
+    accessor::record_ref source,
+    sequence_view<field_locator const> args
+) {
+    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    auto& arg_type = args[0].type();
+    auto arg_offset = args[0].value_offset();
+    BOOST_ASSERT(target_loc.type().kind() == arg_type.kind());  //NOLINT
+    auto src_nullity_offset = args[0].nullity_offset();
+    auto target_offset = target_loc.value_offset();
+    auto target_nullity_offset = target_loc.nullity_offset();
+    if (initial) {
+        utils::copy_nullable_field(
+            arg_type,
+            target,
+            target_offset,
+            target_nullity_offset,
+            source,
+            arg_offset,
+            src_nullity_offset
+        );
+        return;
+    }
+    auto is_null = source.is_null(src_nullity_offset);
+    target.set_null(target_nullity_offset, is_null);
+    if (is_null) return;
+    switch(arg_type.kind()) {
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, std::min(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, std::min(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, std::min(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, std::min(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, std::min(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        default: fail();
+    }
+}
 void identity_post(
     accessor::record_ref target,
     field_locator const& target_loc,

@@ -147,4 +147,21 @@ public:
     ) const override;
 };
 
+template <>
+class aggregate_function_info_impl<aggregate_function_kind::max> : public aggregate_function_info {
+public:
+    aggregate_function_info_impl();
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(
+        sequence_view<meta::field_type const> args
+    ) const override;
+};
+
+template <>
+class aggregate_function_info_impl<aggregate_function_kind::min> : public aggregate_function_info {
+public:
+    aggregate_function_info_impl();
+    [[nodiscard]] std::vector<meta::field_type> intermediate_types(
+        sequence_view<meta::field_type const> args
+    ) const override;
+};
 }

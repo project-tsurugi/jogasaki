@@ -90,10 +90,10 @@ TEST_F(sql_test, update_by_part_of_primary_key) {
     execute_query("SELECT C0, C1, C2 FROM T20", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(1)));
-    EXPECT_DOUBLE_EQ(200.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(2)));
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(2)));
+    EXPECT_EQ(1, rec.get_value<std::int64_t>(0));
+    EXPECT_TRUE(rec.is_null(1));
+    EXPECT_DOUBLE_EQ(200.0, rec.get_value<double>(2));
+    EXPECT_FALSE(rec.is_null(2));
 }
 
 TEST_F(sql_test, update_primary_key) {
@@ -104,10 +104,10 @@ TEST_F(sql_test, update_primary_key) {
     execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());
     auto meta = result[0].record_meta();
-    EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(meta->value_offset(0)));
-    EXPECT_DOUBLE_EQ(20.0, result[0].ref().get_value<double>(meta->value_offset(1)));
-    EXPECT_EQ(3, result[1].ref().get_value<std::int64_t>(meta->value_offset(0)));
-    EXPECT_DOUBLE_EQ(30.0, result[1].ref().get_value<double>(meta->value_offset(1)));
+    EXPECT_EQ(2, result[0].get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(20.0, result[0].get_value<double>(1));
+    EXPECT_EQ(3, result[1].get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(30.0, result[1].get_value<double>(1));
 }
 
 TEST_F(sql_test, count_empty_records) {
@@ -115,8 +115,8 @@ TEST_F(sql_test, count_empty_records) {
     execute_query("SELECT COUNT(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, sum_empty_records) {
@@ -124,7 +124,7 @@ TEST_F(sql_test, sum_empty_records) {
     execute_query("SELECT SUM(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
+    EXPECT_TRUE(rec.is_null(0));
 }
 
 TEST_F(sql_test, count_null) {
@@ -134,8 +134,8 @@ TEST_F(sql_test, count_null) {
     execute_query("SELECT COUNT(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, sum_null) {
@@ -145,7 +145,7 @@ TEST_F(sql_test, sum_null) {
     execute_query("SELECT SUM(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
+    EXPECT_TRUE(rec.is_null(0));
 }
 
 TEST_F(sql_test, count_distinct) {
@@ -156,8 +156,8 @@ TEST_F(sql_test, count_distinct) {
     execute_query("SELECT COUNT(distinct C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(2, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, count_distinct_empty) {
@@ -165,8 +165,8 @@ TEST_F(sql_test, count_distinct_empty) {
     execute_query("SELECT COUNT(distinct C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, count_distinct_null) {
@@ -176,8 +176,8 @@ TEST_F(sql_test, count_distinct_null) {
     execute_query("SELECT COUNT(distinct C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, count_rows) {
@@ -187,8 +187,8 @@ TEST_F(sql_test, count_rows) {
     execute_query("SELECT COUNT(*) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(2, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, count_rows_empty_table) {
@@ -196,8 +196,8 @@ TEST_F(sql_test, count_rows_empty_table) {
     execute_query("SELECT COUNT(*) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_FALSE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
-    EXPECT_EQ(0, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, sum_empty_table) {
@@ -205,7 +205,7 @@ TEST_F(sql_test, sum_empty_table) {
     execute_query("SELECT SUM(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
+    EXPECT_TRUE(rec.is_null(0));
 }
 
 TEST_F(sql_test, avg_empty_table) {
@@ -213,7 +213,7 @@ TEST_F(sql_test, avg_empty_table) {
     execute_query("SELECT AVG(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
-    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(0)));
+    EXPECT_TRUE(rec.is_null(0));
 }
 
 }

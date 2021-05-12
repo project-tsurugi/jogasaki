@@ -83,9 +83,8 @@ TEST_F(host_variables_test, insert_host_variable) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0", result);
     ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
 }
 
 TEST_F(host_variables_test, update_host_variable) {
@@ -104,9 +103,8 @@ TEST_F(host_variables_test, update_host_variable) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-        EXPECT_DOUBLE_EQ(20.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+        EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
+        EXPECT_DOUBLE_EQ(20.0, result[0].get_value<double>(1));
     }
     {
         auto ps = api::create_parameter_set();
@@ -117,9 +115,8 @@ TEST_F(host_variables_test, update_host_variable) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-        EXPECT_DOUBLE_EQ(20.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+        EXPECT_EQ(2, result[0].get_value<std::int64_t>(0));
+        EXPECT_DOUBLE_EQ(20.0, result[0].get_value<double>(1));
     }
 }
 
@@ -133,9 +130,8 @@ TEST_F(host_variables_test, query_host_variable) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 WHERE C0 = :p0 AND C1 = :p1", *ps, result);
     ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
 }
 
 }

@@ -85,11 +85,10 @@ TEST_F(tpcc_test, warehouse) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM WAREHOUSE WHERE w_id >= 10 ORDER BY w_id", result);
     ASSERT_EQ(2, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(10, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    EXPECT_EQ(accessor::text("fogereb"), rec.ref().get_value<accessor::text>(rec.record_meta()->value_offset(1)));
+    EXPECT_EQ(10, result[0].get_value<std::int64_t>(0));
+    EXPECT_EQ(accessor::text("fogereb"), result[0].get_value<accessor::text>(1));
 
-    EXPECT_EQ(20, result[1].ref().get_value<std::int64_t>(result[1].record_meta()->value_offset(0)));
+    EXPECT_EQ(20, result[1].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, new_order1) {
@@ -108,7 +107,7 @@ TEST_F(tpcc_test, new_order1) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(1.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, new_order2) {
@@ -124,7 +123,7 @@ TEST_F(tpcc_test, new_order2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, new_order_update1) {
@@ -152,7 +151,7 @@ TEST_F(tpcc_test, new_order_update1) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(2, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, new_order_insert1) {
@@ -184,7 +183,7 @@ TEST_F(tpcc_test, new_order_insert1) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(10, result[0].get_value<std::int64_t>(0));
 }
 
 
@@ -213,7 +212,7 @@ TEST_F(tpcc_test, new_order_insert3) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(10, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, new_order3) {
@@ -227,7 +226,7 @@ TEST_F(tpcc_test, new_order3) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(1.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, new_order4) {
@@ -245,7 +244,7 @@ TEST_F(tpcc_test, new_order4) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, new_order_update2) {
@@ -273,7 +272,7 @@ TEST_F(tpcc_test, new_order_update2) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(2, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(2, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, payment_update1) {
@@ -297,7 +296,7 @@ TEST_F(tpcc_test, payment_update1) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(101.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(101.0, result[0].get_value<double>(0));
 }
 
 
@@ -312,7 +311,7 @@ TEST_F(tpcc_test, payment1) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment_update2) {
@@ -340,7 +339,7 @@ TEST_F(tpcc_test, payment_update2) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(101.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(101.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, payment2) {
@@ -356,7 +355,7 @@ TEST_F(tpcc_test, payment2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment3) {
@@ -375,7 +374,7 @@ TEST_F(tpcc_test, payment3) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, payment4) {
@@ -395,7 +394,7 @@ TEST_F(tpcc_test, payment4) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, payment5) {
@@ -416,7 +415,7 @@ TEST_F(tpcc_test, payment5) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment6) {
@@ -434,7 +433,7 @@ TEST_F(tpcc_test, payment6) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment_update3) {
@@ -468,8 +467,8 @@ TEST_F(tpcc_test, payment_update3) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(2.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
-    EXPECT_EQ(accessor::text("XX"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(1)));
+    EXPECT_DOUBLE_EQ(2.0, result[0].get_value<double>(0));
+    EXPECT_EQ(accessor::text("XX"), result[0].get_value<accessor::text>(1));
 }
 
 TEST_F(tpcc_test, payment_update4) {
@@ -501,7 +500,7 @@ TEST_F(tpcc_test, payment_update4) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(10.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, order_status1) {
@@ -539,7 +538,7 @@ TEST_F(tpcc_test, order_status2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, order_status3) {
@@ -557,7 +556,7 @@ TEST_F(tpcc_test, order_status3) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(1.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, order_status4) {
@@ -577,7 +576,7 @@ TEST_F(tpcc_test, order_status4) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, order_status5) {
@@ -595,7 +594,7 @@ TEST_F(tpcc_test, order_status5) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, order_status6) {
@@ -613,7 +612,7 @@ TEST_F(tpcc_test, order_status6) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, delivery1) {
@@ -630,7 +629,7 @@ TEST_F(tpcc_test, delivery1) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, delivery_delete1) {
@@ -677,7 +676,7 @@ TEST_F(tpcc_test, delivery2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, delivery_update1) {
@@ -709,7 +708,7 @@ TEST_F(tpcc_test, delivery_update1) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(10, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(10, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, delivery_update2) {
@@ -741,7 +740,7 @@ TEST_F(tpcc_test, delivery_update2) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("A"), result[0].ref().get_value<accessor::text>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(accessor::text("A"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, delivery3) {
@@ -758,7 +757,7 @@ TEST_F(tpcc_test, delivery3) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(1.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(1.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, delivery_update3) {
@@ -790,7 +789,7 @@ TEST_F(tpcc_test, delivery_update3) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_DOUBLE_EQ(101.0, result[0].ref().get_value<double>(result[0].record_meta()->value_offset(0)));
+    EXPECT_DOUBLE_EQ(101.0, result[0].get_value<double>(0));
 }
 
 TEST_F(tpcc_test, stock_level1) {
@@ -806,7 +805,7 @@ TEST_F(tpcc_test, stock_level1) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpcc_test, stock_level2) {
@@ -830,7 +829,7 @@ TEST_F(tpcc_test, stock_level2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 }

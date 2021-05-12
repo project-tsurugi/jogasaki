@@ -95,7 +95,7 @@ TEST_F(tpch_test, q2_1) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpch_test, q2_2) {
@@ -122,7 +122,7 @@ TEST_F(tpch_test, q2_2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpch_test, q6) {
@@ -144,7 +144,7 @@ TEST_F(tpch_test, q6) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(result[0].record_meta()->value_offset(0)));
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
 TEST_F(tpch_test, q14m) {

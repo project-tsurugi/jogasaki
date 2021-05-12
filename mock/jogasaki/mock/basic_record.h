@@ -248,6 +248,48 @@ public:
         return static_cast<bool>(meta_);
     }
 
+    /**
+     * @brief returns the field value
+     */
+    template <class T>
+    [[nodiscard]] T get_value(std::size_t field) const noexcept {
+        return ref().get_value<T>(record_meta()->value_offset(field));
+    }
+
+    /**
+     * @brief returns the field value or null
+     */
+    template <class T>
+    [[nodiscard]] std::optional<T> get_if(std::size_t field) const noexcept {
+        auto meta = record_meta();
+        if (! meta->nullable(field)) {
+            return {};
+        }
+        return ref().get_if<T>(
+            meta->nullity_offset(field),
+            meta->value_offset(field)
+        );
+    }
+
+    /**
+     * @brief returns if field is nullable
+     */
+    [[nodiscard]] bool is_nullable(std::size_t field) const noexcept {
+        auto meta = record_meta();
+        return meta->nullable(field);
+    }
+
+    /**
+     * @brief returns the field value
+     */
+    [[nodiscard]] bool is_null(std::size_t field) const noexcept {
+        auto meta = record_meta();
+        if (! meta->nullable(field)) {
+            return false;
+        }
+        return ref().is_null(meta->nullity_offset(field));
+    }
+
     /// @brief equality comparison operator
     friend bool operator==(basic_record const& a, basic_record const& b) noexcept {
         if (a.meta_->field_count() != b.meta_->field_count()) {

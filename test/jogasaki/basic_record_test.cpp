@@ -78,13 +78,17 @@ TEST_F(basic_record_test, nullable) {
         auto r = create_nullable_record<kind::float4, kind::int8>(1.0, 100);
         auto meta = r.record_meta();
         EXPECT_TRUE(meta->nullable(0));
-        EXPECT_TRUE(meta->nullable(0));
+        EXPECT_TRUE(meta->nullable(1));
+        EXPECT_TRUE(r.is_nullable(0));
+        EXPECT_TRUE(r.is_nullable(1));
     }
     {
         auto r = create_record<kind::float4, kind::int8>(1.0, 100);
         auto meta = r.record_meta();
         EXPECT_FALSE(meta->nullable(0));
-        EXPECT_FALSE(meta->nullable(0));
+        EXPECT_FALSE(meta->nullable(1));
+        EXPECT_FALSE(r.is_nullable(0));
+        EXPECT_FALSE(r.is_nullable(1));
     }
     {
         auto r1 = create_nullable_record<kind::float4, kind::int8>(1.0, 100);
@@ -106,37 +110,29 @@ TEST_F(basic_record_test, compare) {
 
 TEST_F(basic_record_test, nullity) {
     {
-        auto r = create_nullable_record<kind::float4, kind::int8>(1.0, 100);
-        auto meta = r.record_meta();
-        EXPECT_TRUE(meta->nullable(0));
-        EXPECT_TRUE(meta->nullable(0));
-    }
-    {
-        auto r = create_record<kind::float4, kind::int8>(1.0, 100);
-        auto meta = r.record_meta();
-        EXPECT_FALSE(meta->nullable(0));
-        EXPECT_FALSE(meta->nullable(0));
-    }
-    {
-        auto r1 = create_nullable_record<kind::float4, kind::int8>(1.0, 100);
-        auto r2 = create_record<kind::float4, kind::int8>(1.0, 100);
-        EXPECT_EQ(r1, r2);
-    }
-    {
         auto r = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
-        auto meta = r.record_meta();
-        EXPECT_TRUE(meta->nullable(0));
-        EXPECT_TRUE(meta->nullable(0));
+        EXPECT_TRUE(r.is_nullable(0));
+        EXPECT_TRUE(r.is_nullable(1));
         EXPECT_FALSE(r.ref().is_null(r.record_meta()->nullity_offset(0)));
         EXPECT_TRUE(r.ref().is_null(r.record_meta()->nullity_offset(1)));
+        EXPECT_FALSE(r.is_null(0));
+        EXPECT_TRUE(r.is_null(1));
+        EXPECT_DOUBLE_EQ(1.0, r.get_value<float>(0));
+        EXPECT_DOUBLE_EQ(1.0, *r.get_if<float>(0));
+        EXPECT_FALSE(r.get_if<std::int64_t>(1));
     }
     {
         auto r = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100));
-        auto meta = r.record_meta();
-        EXPECT_TRUE(meta->nullable(0));
-        EXPECT_TRUE(meta->nullable(0));
+        EXPECT_TRUE(r.is_nullable(0));
+        EXPECT_TRUE(r.is_nullable(1));
         EXPECT_FALSE(r.ref().is_null(r.record_meta()->nullity_offset(0)));
         EXPECT_FALSE(r.ref().is_null(r.record_meta()->nullity_offset(1)));
+        EXPECT_FALSE(r.is_null(0));
+        EXPECT_FALSE(r.is_null(1));
+        EXPECT_DOUBLE_EQ(1.0, r.get_value<float>(0));
+        EXPECT_DOUBLE_EQ(1.0, *r.get_if<float>(0));
+        EXPECT_EQ(100, *r.get_if<std::int64_t>(1));
+        EXPECT_EQ(100, r.get_value<std::int64_t>(1));
     }
 }
 

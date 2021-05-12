@@ -191,6 +191,34 @@ TEST_F(sql_test, count_rows) {
     EXPECT_EQ(2, rec.get_value<std::int64_t>(0));
 }
 
+TEST_F(sql_test, max) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MAX(C0), MAX(C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_FALSE(rec.is_null(1));
+    EXPECT_EQ(3, rec.get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(30.0, rec.get_value<double>(1));
+}
+
+TEST_F(sql_test, min) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MIN(C0), MIN(C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_FALSE(rec.is_null(1));
+    EXPECT_EQ(1, rec.get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(10.0, rec.get_value<double>(1));
+}
+
 TEST_F(sql_test, count_rows_empty_table) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT COUNT(*) FROM T0", result);
@@ -211,6 +239,22 @@ TEST_F(sql_test, sum_empty_table) {
 TEST_F(sql_test, avg_empty_table) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT AVG(C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_TRUE(rec.is_null(0));
+}
+
+TEST_F(sql_test, max_empty_table) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MAX(C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_TRUE(rec.is_null(0));
+}
+
+TEST_F(sql_test, min_empty_table) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MIN(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.is_null(0));

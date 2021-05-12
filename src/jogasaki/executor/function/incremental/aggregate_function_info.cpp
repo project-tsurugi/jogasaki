@@ -115,8 +115,8 @@ std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_ki
 aggregate_function_info_impl<aggregate_function_kind::min>::aggregate_function_info_impl() :
     aggregate_function_info(
         aggregate_function_kind::min,
-        { aggregator_info{ builtin::max, 1, null_generator } },
-        { aggregator_info{ builtin::max, 1 } },
+        { aggregator_info{ builtin::min, 1, null_generator } },
+        { aggregator_info{ builtin::min, 1 } },
         { aggregator_info{ builtin::identity_post, 1 } }
     )
 {}

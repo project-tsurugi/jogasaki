@@ -114,6 +114,13 @@ public:
         prepare_benchmark_tables_ = arg;
     }
 
+    [[nodiscard]] bool prepare_analytics_benchmark_tables() const noexcept {
+        return prepare_analytics_benchmark_tables_;
+    }
+
+    void prepare_analytics_benchmark_tables(bool arg) noexcept {
+        prepare_analytics_benchmark_tables_ = arg;
+    }
 private:
     bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;
@@ -126,6 +133,7 @@ private:
     std::size_t randomize_memory_usage_ = 0;
     std::size_t force_numa_node_ = numa_node_unspecified;
     bool prepare_benchmark_tables_ = false;
+    bool prepare_analytics_benchmark_tables_ = false;
 };
 
 }

@@ -720,7 +720,6 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
     namespace type = ::takatori::type;
     using ::yugawara::variable::nullity;
     const static nullity not_null = nullity{false};
-    const static nullity nullable = nullity{true};
 
     //use 64bit int to avoid implicit type conversion
     //TODO fix when implicit conversion is implemented
@@ -731,10 +730,6 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
         ::yugawara::storage::index_feature::scan,
         ::yugawara::storage::index_feature::unique,
         ::yugawara::storage::index_feature::primary,
-    };
-    yugawara::storage::index_feature_set secondary_index_features{
-        ::yugawara::storage::index_feature::find,
-        ::yugawara::storage::index_feature::scan,
     };
     {
 //        "CREATE TABLE PART ("

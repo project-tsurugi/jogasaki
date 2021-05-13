@@ -54,7 +54,7 @@ public:
         return false;
     }
 
-    void SetUp() {
+    void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
         db_->start();
@@ -71,7 +71,7 @@ public:
         utils::load_storage_data(*db_, db_impl->tables(), "STOCK", 3, true, 5);
     }
 
-    void TearDown() {
+    void TearDown() override {
         db_->stop();
     }
 };

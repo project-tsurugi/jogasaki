@@ -56,7 +56,7 @@ public:
         return false;
     }
 
-    void SetUp() {
+    void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
         cfg->single_thread(true);
@@ -66,7 +66,7 @@ public:
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
     }
 
-    void TearDown() {
+    void TearDown() override {
         db_->stop();
     }
 };

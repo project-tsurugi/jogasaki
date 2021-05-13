@@ -398,7 +398,6 @@ basic_record create_record(
 /**
  * @brief construct new object with given nullability offsets
  * @param nullability bitset that represents if each field is nullable or not
- * @param nullity_offset_table bit offset table that indicates the nullity offset of each nullable field
  * @param args values for each field
  * @warning new record_meta is created based on the template parameter. This constructor should not be used
  * when creating large number of (e.g. thousands of) records.
@@ -412,6 +411,37 @@ basic_record create_record(
     basic_record_entity_type buf{};
     details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
     return basic_record(std::move(meta), buf);
+}
+
+/**
+ * @brief construct new object with given nullability and null flags
+ * @param nullability bitset that represents if each field is nullable or not
+ * @param args values for each field
+ * @warning new record_meta is created based on the template parameter. This constructor should not be used
+ * when creating large number of (e.g. thousands of) records.
+ */
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
+basic_record create_record(
+    boost::dynamic_bitset<std::uint64_t> nullability,
+    std::tuple<runtime_t<Kinds>...> args,
+    std::initializer_list<bool> nullities = {}
+) {
+    BOOST_ASSERT(nullities.size() == 0 || nullities.size() == sizeof...(Kinds));
+    BOOST_ASSERT(nullability.size() == sizeof...(Kinds));
+    auto meta = create_meta<Kinds...>(nullability);
+    basic_record_entity_type buf{};
+    std::apply([&](runtime_t<Kinds>... values){
+        details::create_entity<Kinds...>(buf, nullptr, *meta, values...);
+    }, args);
+
+    auto ret = basic_record(std::move(meta), buf);
+    std::size_t i=0;
+    for(auto nullity : nullities) {
+        BOOST_ASSERT(!nullity || nullability[i]);  //NOLINT
+        ret.ref().set_null(ret.record_meta()->nullity_offset(i), nullity);
+        ++i;
+    }
+    return ret;
 }
 
 /**

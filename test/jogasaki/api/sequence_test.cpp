@@ -34,6 +34,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include "api_test_base.h"
 
 namespace jogasaki::testing {
 
@@ -45,12 +46,17 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
 
-class sequence_test : public ::testing::Test {
+class sequence_test :
+    public ::testing::Test,
+    public api_test_base {
+
 public:
     // change this flag to debug with explain
-    constexpr static bool to_explain = true;
+    bool to_explain() override {
+        return false;
+    }
 
-    void SetUp() {
+    void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
         cfg->single_thread(true);
@@ -60,49 +66,9 @@ public:
         register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
     }
 
-    void TearDown() {
+    void TearDown() override {
         db_->stop();
     }
-
-    void explain(api::executable_statement& stmt) {
-        if (to_explain) {
-            db_->explain(stmt, std::cout);
-            std::cout << std::endl;
-        }
-    }
-
-    void execute_query(std::string_view query, std::vector<mock::basic_record>& out) {
-        std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
-        explain(*stmt);
-        auto tx = db_->create_transaction();
-        std::unique_ptr<api::result_set> rs{};
-        ASSERT_EQ(status::ok, tx->execute(*stmt, rs));
-        ASSERT_TRUE(rs);
-        auto it = rs->iterator();
-        while(it->has_next()) {
-            auto* record = it->next();
-            std::stringstream ss{};
-            ss << *record;
-            auto* rec_impl = unsafe_downcast<api::impl::record>(record);
-            auto* meta_impl = unsafe_downcast<api::impl::record_meta>(rs->meta());
-            out.emplace_back(rec_impl->ref(), meta_impl->meta());
-            LOG(INFO) << ss.str();
-        }
-        rs->close();
-        tx->commit();
-    }
-
-    void execute_statement(std::string_view query) {
-        std::unique_ptr<api::executable_statement> stmt{};
-        ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
-        explain(*stmt);
-        auto tx = db_->create_transaction();
-        ASSERT_EQ(status::ok, tx->execute(*stmt));
-        ASSERT_EQ(status::ok, tx->commit());
-    }
-
-    std::unique_ptr<jogasaki::api::database> db_;
 };
 
 using namespace std::string_view_literals;

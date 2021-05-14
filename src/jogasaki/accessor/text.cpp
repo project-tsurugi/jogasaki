@@ -51,7 +51,7 @@ text:: text(memory::paged_memory_resource* resource, text src1, text src2) {  //
     l_ = long_text(p, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
 }
 
-text::text(char *data, text::size_type size) { //NOLINT
+text::text(char const* data, text::size_type size) { //NOLINT
     if (size <= short_text::max_size) {
         s_ = short_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
         return;
@@ -124,7 +124,9 @@ std::ostream& operator<<(std::ostream& out, text const& value) {
     return out;
 }
 
-text::long_text::long_text(char *allocated_data, text::size_type size) noexcept
+text::text(std::string_view str) : text(str.data(), str.size()) {}
+
+text::long_text::long_text(char const* allocated_data, text::size_type size) noexcept
         : data_(allocated_data)
         , size_(size & max_size)
 {
@@ -141,7 +143,7 @@ text::size_type text::long_text::size() const noexcept {
 
 
 
-text::short_text::short_text(const char *data, text::short_text::short_size_type size) noexcept // NOLINT
+text::short_text::short_text(char const* data, text::short_text::short_size_type size) noexcept // NOLINT
         : size_and_is_short_(size | is_short_mask)
 {
     assert(size <= max_size); // NOLINT

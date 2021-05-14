@@ -43,6 +43,8 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
+using accessor::text;
 
 class tpch_test :
     public ::testing::Test,
@@ -74,6 +76,50 @@ public:
     void TearDown() override {
         db_->stop();
     }
+
+    template <class T>
+    void set(api::parameter_set& ps, std::string_view place_holder, api::field_type_kind kind, T value) {
+        db_->register_variable(place_holder, kind);
+        switch(kind) {
+            case api::field_type_kind::int4:
+                if constexpr (std::is_convertible_v<T, std::int32_t>) {
+                    ps.set_int4(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::int8:
+                if constexpr (std::is_convertible_v<T, std::int64_t>) {
+                    ps.set_int8(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::float4:
+                if constexpr (std::is_convertible_v<T, float>) {
+                    ps.set_float4(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::float8:
+                if constexpr (std::is_convertible_v<T, double>) {
+                    ps.set_float8(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::character:
+                if constexpr (std::is_convertible_v<T, std::string_view>) {
+                    ps.set_character(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            default:
+                fail();
+        }
+    }
 };
 
 using namespace std::string_view_literals;
@@ -89,11 +135,12 @@ TEST_F(tpch_test, q2_1) {
         "AND R_NAME = :region "
         "AND PS_PARTKEY = :partkey ";
 
-    resolve(query, ":region", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":partkey", "1");
+    auto ps = api::create_parameter_set();
+    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "partkey", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, result);
+    execute_query(query, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
@@ -113,14 +160,15 @@ TEST_F(tpch_test, q2_2) {
         "AND PS_SUPPLYCOST = :mincost "
         "ORDER BY S_ACCTBAL DESC, N_NAME, S_NAME, P_PARTKEY";
 
-    resolve(query, ":partkey", "1");
-    resolve(query, ":size", "1");
-    resolve(query, ":type", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":region", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":mincost", "1");
+    auto ps = api::create_parameter_set();
+    set(*ps, "partkey", api::field_type_kind::int8, 1);
+    set(*ps, "size", api::field_type_kind::int8, 1);
+    set(*ps, "type", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "mincost", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, result);
+    execute_query(query, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
@@ -136,13 +184,14 @@ TEST_F(tpch_test, q6) {
         "AND L_DISCOUNT <= :discount + 1 "
         "AND L_QUANTITY < :quantity";
 
-    resolve(query, ":datefrom", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":dateto", "'CCCCCCCCCCCCCCCCCCCCCC'");
-    resolve(query, ":discount", "1");
-    resolve(query, ":quantity", "2");
+    auto ps = api::create_parameter_set();
+    set(*ps, "datefrom", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCCCCCCCCCCCCCC"sv);
+    set(*ps, "discount", api::field_type_kind::int8, 1);
+    set(*ps, "quantity", api::field_type_kind::int8, 2);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, result);
+    execute_query(query, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
@@ -158,11 +207,12 @@ TEST_F(tpch_test, q14m) {
         "AND L_SHIPDATE >= :datefrom "
         "AND L_SHIPDATE < :dateto";
 
-    resolve(query, ":datefrom", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":dateto", "'CCCCCCCCCCCCCCCCCCCCCC'");
+    auto ps = api::create_parameter_set();
+    set(*ps, "datefrom", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCCCCCCCCCCCCCC"sv);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, result);
+    execute_query(query, *ps, result);
     ASSERT_EQ(1, result.size());
 }
 
@@ -176,11 +226,12 @@ TEST_F(tpch_test, q14d) {
         "AND L_SHIPDATE >= :datefrom "
         "AND L_SHIPDATE < :dateto";
 
-    resolve(query, ":datefrom", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":dateto", "'CCCCCCCCCCCCCCCCCCCCCC'");
+    auto ps = api::create_parameter_set();
+    set(*ps, "datefrom", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCCCCCCCCCCCCCC"sv);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, result);
+    execute_query(query, *ps, result);
     ASSERT_EQ(1, result.size());
 }
 
@@ -222,15 +273,16 @@ TEST_F(tpch_test, q19) {
         "AND L_SHIPINSTRUCT = 'BBBBBBBBBBBBBBBBBBBBBB' "
         "))";
 
-    resolve(query, ":brand1", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":brand2", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":brand3", "'BBBBBBBBBBBBBBBBBBBBBB'");
-    resolve(query, ":quantity1", "1");
-    resolve(query, ":quantity2", "1");
-    resolve(query, ":quantity3", "1");
+    auto ps = api::create_parameter_set();
+    set(*ps, "brand1", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "brand2", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "brand3", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "quantity1", api::field_type_kind::int8, 1);
+    set(*ps, "quantity2", api::field_type_kind::int8, 1);
+    set(*ps, "quantity3", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, result);
+    execute_query(query, *ps, result);
     ASSERT_EQ(1, result.size());
 }
 

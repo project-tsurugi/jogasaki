@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-#include <regex>
 #include <gtest/gtest.h>
 
-#include <takatori/util/downcast.h>
-
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 
 #include <jogasaki/mock/basic_record.h>
@@ -77,49 +72,6 @@ public:
         db_->stop();
     }
 
-    template <class T>
-    void set(api::parameter_set& ps, std::string_view place_holder, api::field_type_kind kind, T value) {
-        db_->register_variable(place_holder, kind);
-        switch(kind) {
-            case api::field_type_kind::int4:
-                if constexpr (std::is_convertible_v<T, std::int32_t>) {
-                    ps.set_int4(place_holder, value);
-                } else {
-                    fail();
-                }
-                break;
-            case api::field_type_kind::int8:
-                if constexpr (std::is_convertible_v<T, std::int64_t>) {
-                    ps.set_int8(place_holder, value);
-                } else {
-                    fail();
-                }
-                break;
-            case api::field_type_kind::float4:
-                if constexpr (std::is_convertible_v<T, float>) {
-                    ps.set_float4(place_holder, value);
-                } else {
-                    fail();
-                }
-                break;
-            case api::field_type_kind::float8:
-                if constexpr (std::is_convertible_v<T, double>) {
-                    ps.set_float8(place_holder, value);
-                } else {
-                    fail();
-                }
-                break;
-            case api::field_type_kind::character:
-                if constexpr (std::is_convertible_v<T, std::string_view>) {
-                    ps.set_character(place_holder, value);
-                } else {
-                    fail();
-                }
-                break;
-            default:
-                fail();
-        }
-    }
 };
 
 using namespace std::string_view_literals;

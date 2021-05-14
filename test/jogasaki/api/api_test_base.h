@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/mock/storage_data.h>
@@ -38,6 +39,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
 
 class api_test_base  {
 protected:
@@ -142,6 +144,50 @@ public:
 
     void resolve(std::string& query, std::string_view place_holder, std::string value) {
         query = std::regex_replace(query, std::regex(std::string(place_holder)), value);
+    }
+
+    template <class T>
+    void set(api::parameter_set& ps, std::string_view place_holder, api::field_type_kind kind, T value) {
+        db_->register_variable(place_holder, kind);
+        switch(kind) {
+            case api::field_type_kind::int4:
+                if constexpr (std::is_convertible_v<T, std::int32_t>) {
+                    ps.set_int4(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::int8:
+                if constexpr (std::is_convertible_v<T, std::int64_t>) {
+                    ps.set_int8(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::float4:
+                if constexpr (std::is_convertible_v<T, float>) {
+                    ps.set_float4(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::float8:
+                if constexpr (std::is_convertible_v<T, double>) {
+                    ps.set_float8(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            case api::field_type_kind::character:
+                if constexpr (std::is_convertible_v<T, std::string_view>) {
+                    ps.set_character(place_holder, value);
+                } else {
+                    fail();
+                }
+                break;
+            default:
+                fail();
+        }
     }
 
     std::unique_ptr<jogasaki::api::database> db_;

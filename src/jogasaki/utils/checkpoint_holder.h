@@ -35,12 +35,26 @@ public:
     checkpoint_holder(checkpoint_holder&& other) noexcept = delete;
     checkpoint_holder& operator=(checkpoint_holder&& other) noexcept = delete;
 
+    /**
+     * @brief create new object
+     * @param resource the memory resource managed by this object
+     */
     explicit checkpoint_holder(memory_resource* resource) noexcept :
         resource_(resource),
         checkpoint_(resource_->get_checkpoint())
     {}
 
+    /**
+     * @brief destruct the object and deallocate the memory resource
+     */
     ~checkpoint_holder() {
+        reset();
+    }
+
+    /**
+     * @brief deallocate the memory resource to the point this holder is created
+     */
+    void reset() {
         resource_->deallocate_after(checkpoint_);
     }
 

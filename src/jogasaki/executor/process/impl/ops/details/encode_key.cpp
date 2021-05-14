@@ -17,6 +17,7 @@
 
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
@@ -26,7 +27,7 @@ std::size_t encode_key(
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out
 ) {
-    auto cp = resource.get_checkpoint();
+    utils::checkpoint_holder cph(std::addressof(resource));
     std::size_t len = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         kvs::writable_stream s{out.data(), loop == 0 ? 0 : out.size()};
@@ -38,7 +39,7 @@ std::size_t encode_key(
                 BOOST_ASSERT(a.has_value());  //NOLINT
                 kvs::encode(a, k.type_, k.spec_, s);
             }
-            resource.deallocate_after(cp);
+            cph.reset();
         }
         len = s.size();
         if (loop == 0 && out.size() < len) {

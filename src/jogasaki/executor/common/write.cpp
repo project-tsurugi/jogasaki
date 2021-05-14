@@ -27,6 +27,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
 
@@ -111,7 +112,7 @@ std::size_t encode_tuple(
     details::write_tuple const* primary_key_tuple = nullptr
 ) {
     BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
-    auto cp = resource.get_checkpoint();
+    utils::checkpoint_holder cph(std::addressof(resource));
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
@@ -133,7 +134,7 @@ std::size_t encode_tuple(
                 } else {
                     kvs::encode(res, f.type_, f.spec_, s);
                 }
-                resource.deallocate_after(cp);
+                cph.reset();
             }
         }
         if (primary_key_tuple != nullptr) {

@@ -38,12 +38,7 @@ using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
 class kvs_iterator_test : public test_root {
-public:
-    static void SetUpTestCase() {}
-    kvs_iterator_test() {}
-private:
 };
-
 TEST_F(kvs_iterator_test, compare_and_print) {
     std::map<std::string, std::string> options{};
     auto db = database::open(options);

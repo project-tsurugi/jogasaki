@@ -38,10 +38,6 @@ using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
 class kvs_storage_test : public test_root {
-public:
-    static void SetUpTestCase() {}
-    kvs_storage_test() {}
-private:
 };
 
 TEST_F(kvs_storage_test, delete_storage) {

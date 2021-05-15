@@ -37,12 +37,7 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class kvs_database_test : public test_root {
-public:
-    static void SetUpTestCase() {}
-    kvs_database_test() {}
-private:
-};
+class kvs_database_test : public test_root {};
 
 TEST_F(kvs_database_test, open_close) {
     std::map<std::string, std::string> options{};

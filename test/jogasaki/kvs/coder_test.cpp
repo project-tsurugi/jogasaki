@@ -46,9 +46,6 @@ using namespace kvs::details;
 class coder_test : public test_root {
 public:
     using kind = meta::field_type_kind;
-    static void SetUpTestCase() {}
-    coder_test() {}
-private:
 };
 
 constexpr kvs::order asc = kvs::order::ascending;

@@ -39,9 +39,6 @@ using namespace boost::container::pmr;
 
 class kvs_transaction_test : public test_root {
 public:
-    static void SetUpTestCase() {}
-    kvs_transaction_test() {}
-private:
 };
 
 TEST_F(kvs_transaction_test, compare_and_print) {

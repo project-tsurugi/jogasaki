@@ -60,6 +60,14 @@ write_full::write_full(
     value_fields_(std::move(value_fields))
 {}
 
+variable_table_info const& input_info(
+    processor_info const& info,
+    variable_table_info const* input_variable_info,
+    operator_base::block_index_type block_index
+) {
+    return input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index];
+}
+
 write_full::write_full(
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -76,12 +84,8 @@ write_full::write_full(
         block_index,
         kind,
         idx.simple_name(),
-        create_fields(kind, idx, keys, columns,
-            (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]),
-            true),
-        create_fields(kind, idx, keys, columns,
-            (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]),
-            false),
+        create_fields(kind, idx, keys, columns, input_info(info, input_variable_info, block_index), true),
+        create_fields(kind, idx, keys, columns, input_info(info, input_variable_info, block_index), false),
         input_variable_info
     )
 {}

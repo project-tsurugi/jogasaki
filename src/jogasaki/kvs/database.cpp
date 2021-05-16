@@ -81,6 +81,16 @@ std::unique_ptr<storage> database::get_storage(std::string_view name) {
     return std::make_unique<storage>(stg);
 }
 
+std::unique_ptr<storage> database::get_or_create_storage(std::string_view name) {
+    if(auto p = get_storage(name)) {
+        return p;
+    }
+    if(auto p = create_storage(name)) {
+        return p;
+    }
+    return {};
+}
+
 sequence_id database::create_sequence() noexcept {
     sequence_id id{};
     if (auto res = sharksfin::sequence_create(handle_, &id); res != sharksfin::StatusCode::OK) {

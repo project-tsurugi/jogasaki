@@ -54,10 +54,7 @@ manager::manager(
 {}
 
 std::size_t manager::load_id_map() {
-    auto stg = db_->get_storage("system_sequences0");
-    if (!stg) {
-        stg = db_->create_storage("system_sequences0");
-    }
+    auto stg = db_->get_or_create_storage("system_sequences0");
     auto tx = db_->create_transaction(true);
     std::unique_ptr<kvs::iterator> it{};
     if(auto res = stg->scan(
@@ -161,7 +158,7 @@ bool manager::notify_updates(kvs::transaction& tx) {
     if (used_sequences_.count(std::addressof(tx)) == 0) {
         return true;
     }
-    for(auto p : used_sequences_[std::addressof(tx)]) {
+    for(auto* p : used_sequences_[std::addressof(tx)]) {
         auto s = p->get();
         if (!db_->update_sequence(tx, p->info().id(), s.version_, s.value_)) {
             return false;
@@ -238,10 +235,7 @@ manager::sequences_type const& manager::sequences() const noexcept {
 }
 
 void manager::remove_id_map(sequence_definition_id def_id) {
-    auto stg = db_->get_storage("system_sequences0");
-    if (!stg) {
-        stg = db_->create_storage("system_sequences0");
-    }
+    auto stg = db_->get_or_create_storage("system_sequences0");
     auto tx = db_->create_transaction();
 
     data::aligned_buffer key_buf{10};

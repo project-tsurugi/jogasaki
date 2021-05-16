@@ -69,6 +69,28 @@ TEST_F(kvs_database_test, create_storage) {
     ASSERT_TRUE(db->close());
 }
 
+TEST_F(kvs_database_test,get_storage) {
+    std::map<std::string, std::string> options{};
+    auto db = database::open(options);
+    auto ng = db->get_storage("T");
+    ASSERT_FALSE(ng); // no storage exists
+    auto t1 = db->create_storage("T");
+    auto t2 = db->get_storage("T");
+    ASSERT_TRUE(t1);
+    ASSERT_TRUE(t2);
+    ASSERT_TRUE(db->close());
+}
+
+TEST_F(kvs_database_test, get_or_create_storage) {
+    std::map<std::string, std::string> options{};
+    auto db = database::open(options);
+    auto t1 = db->get_or_create_storage("T");
+    ASSERT_TRUE(t1);
+    auto t2 = db->get_or_create_storage("T");
+    ASSERT_TRUE(t2);
+    ASSERT_TRUE(db->close());
+}
+
 TEST_F(kvs_database_test, create_transaction) {
     std::map<std::string, std::string> options{};
     auto db = database::open(options);

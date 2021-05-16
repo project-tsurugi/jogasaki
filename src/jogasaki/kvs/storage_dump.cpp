@@ -25,14 +25,6 @@ namespace jogasaki::kvs {
 
 namespace {
 
-inline std::unique_ptr<storage> storage(database* db, std::string_view key) {
-    auto stg = db->get_storage(key);
-    if (! stg) {
-        stg = db->create_storage(key);
-    }
-    return stg;
-}
-
 class dump_step {
 public:
     dump_step(std::ostream& stream, std::string_view storage_key, std::size_t batch_size)
@@ -44,7 +36,7 @@ public:
 
     void operator()(transaction& tx) {
         auto* db = tx.database();
-        auto stg = storage(db, storage_key_);
+        auto stg = db->get_or_create_storage(storage_key_);
 
         std::unique_ptr<iterator> it{};
         if (!cont_) {
@@ -114,7 +106,7 @@ public:
 
     void operator()(transaction& tx) {
         auto* db = tx.database();
-        auto stg = storage(db, storage_key_);
+        auto stg = db->get_or_create_storage(storage_key_);
 
         for (std::size_t i = 1;; ++i) {
             if (!storage_dump::read_next(stream_, key_buffer_, value_buffer_)) {

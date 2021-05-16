@@ -74,10 +74,7 @@ bool write::operator()(request_context& context) const {
         kvs::put_option::create :
         kvs::put_option::create_or_update;
     for(auto&& e : targets_) {
-        auto stg = db->get_storage(e.storage_name_);
-        if(! stg) {
-            stg = db->create_storage(e.storage_name_);
-        }
+        auto stg = db->get_or_create_storage(e.storage_name_);
         if(! stg) {
             fail();
         }

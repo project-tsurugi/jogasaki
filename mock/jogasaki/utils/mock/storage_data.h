@@ -146,11 +146,7 @@ inline void populate_storage_data(
     bool sequential_data,
     std::size_t modulo = -1
 ) {
-    auto stg = db->get_storage(storage_name);
-    if (! stg) {
-        stg = db->create_storage(storage_name);
-    }
-
+    auto stg = db->get_or_create_storage(storage_name);
     static std::size_t buflen = 1024;
     std::string key_buf(buflen, '\0');
     std::string val_buf(buflen, '\0');

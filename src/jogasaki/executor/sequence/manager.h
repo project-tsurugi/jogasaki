@@ -34,6 +34,7 @@ using takatori::util::maybe_shared_ptr;
 class sequence;
 
 namespace details {
+
 class sequence_element {
 public:
     constexpr static sequence_id undefined_id = static_cast<sequence_id>(-1);

@@ -43,10 +43,7 @@ using kind = meta::field_type_kind;
 void
 kvs_test_utils::put(kvs::database& db, std::string_view storage_name, mock::basic_record key, mock::basic_record value) {
     BOOST_ASSERT(key);  //NOLINT
-    auto stg = db.create_storage(storage_name);
-    if (! stg) {
-        stg = db.get_storage(storage_name);
-    }
+    auto stg = db.get_or_create_storage(storage_name);
     auto tx = db.create_transaction();
 
     std::string key_buf(1000, '\0');
@@ -92,10 +89,7 @@ void kvs_test_utils::get(
     mock::basic_record value_model,
     std::vector<std::pair<mock::basic_record, mock::basic_record>>& result
 ) {
-    auto stg = db.create_storage(storage_name);
-    if (! stg) {
-        stg = db.get_storage(storage_name);
-    }
+    auto stg = db.get_or_create_storage(storage_name);
     auto tx = db.create_transaction();
 
     std::unique_ptr<kvs::iterator> it{};
@@ -172,12 +166,11 @@ std::unique_ptr<kvs::storage> kvs_test_utils::get_storage(
     kvs::database& db,
     std::string_view name
 ) {
-    if(auto stg = db.get_storage(name)) {
-        return stg;
-    }
-    if(auto stg = db.create_storage(name)) {
-        return stg;
+    if(auto ret = db.get_or_create_storage(name)) {
+        return ret;
     }
     fail();
 }
+
 }
+

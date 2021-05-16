@@ -1067,10 +1067,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
 
 void register_kvs_storage(kvs::database& db, yugawara::storage::configurable_provider& provider) {
     provider.each_index([&db](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& ){
-        auto stg = db.get_storage(id);
-        if (! stg) {
-            stg = db.create_storage(id);
-        }
+        auto stg = db.get_or_create_storage(id);
     });
 }
 

@@ -114,6 +114,19 @@ public:
     std::unique_ptr<storage> get_storage(std::string_view name);
 
     /**
+     * @brief retrieve the storage on the database or create if not found
+     * @param name name of the storage
+     * @return storage object for the given name
+     * @return nullptr if the any error occurs
+     * @attention Multiple threads can call this function simultaneously to get the storages and each thread can use one
+     * retrieved to update storage content. That can be done concurrently.
+     * But concurrent operations for adding/removing storage entries are not strictly controlled for safety.
+     * For the time being, storages are expected to be created sequentially before any transactions are started.
+     * Accessing the storage object which is deleted by storage::delete_storage() causes undefined behavior.
+     */
+    std::unique_ptr<storage> get_or_create_storage(std::string_view name);
+
+    /**
      * @brief create new sequence
      * @returns the newly assigned sequence id
      */

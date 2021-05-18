@@ -54,6 +54,7 @@ public:
     void execute_query(
         std::string_view query,
         api::parameter_set const& params,
+        api::transaction& tx,
         std::vector<mock::basic_record>& out
     ) {
         std::unique_ptr<api::prepared_statement> prepared{};
@@ -62,9 +63,8 @@ public:
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
         explain(*stmt);
-        auto tx = db_->create_transaction();
         std::unique_ptr<api::result_set> rs{};
-        ASSERT_EQ(status::ok, tx->execute(*stmt, rs));
+        ASSERT_EQ(status::ok, tx.execute(*stmt, rs));
         ASSERT_TRUE(rs);
         auto it = rs->iterator();
         while(it->has_next()) {
@@ -77,9 +77,25 @@ public:
             LOG(INFO) << ss.str();
         }
         rs->close();
-        tx->commit();
     }
 
+    void execute_query(
+        std::string_view query,
+        api::parameter_set const& params,
+        std::vector<mock::basic_record>& out
+    ) {
+        auto tx = db_->create_transaction();
+        execute_query(query, params, *tx, out);
+        tx->commit();
+    }
+    void execute_query(
+        std::string_view query,
+        api::transaction& tx,
+        std::vector<mock::basic_record>& out
+    ) {
+        api::impl::parameter_set params{};
+        execute_query(query, params, tx, out);
+    }
     void execute_query(
         std::string_view query,
         std::vector<mock::basic_record>& out
@@ -90,7 +106,8 @@ public:
 
     void execute_statement(
         std::string_view query,
-        api::parameter_set const& params
+        api::parameter_set const& params,
+        api::transaction& tx
     ) {
         std::unique_ptr<api::prepared_statement> prepared{};
         ASSERT_EQ(status::ok,db_->prepare(query, prepared));
@@ -98,9 +115,22 @@ public:
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
         explain(*stmt);
+        ASSERT_EQ(status::ok, tx.execute(*stmt));
+    }
+    void execute_statement(
+        std::string_view query,
+        api::parameter_set const& params
+    ) {
         auto tx = db_->create_transaction();
-        ASSERT_EQ(status::ok, tx->execute(*stmt));
-        ASSERT_EQ(status::ok, tx->commit());
+        execute_statement(query, params, *tx);
+        tx->commit();
+    }
+    void execute_statement(
+        std::string_view query,
+        api::transaction& tx
+    ) {
+        api::impl::parameter_set params{};
+        execute_statement(query, params, tx);
     }
 
     void execute_statement(

@@ -832,4 +832,47 @@ TEST_F(tpcc_test, stock_level2) {
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
+// enable when shirakami is ready
+TEST_F(tpcc_test, DISABLED_new_order_update_and_select) {
+    // test multiples statements in a transaction, though different tables
+    for(std::size_t i=0; i < 3; ++i) {
+        auto tx = db_->create_transaction();
+        {
+            std::string query =
+                "UPDATE "
+                "DISTRICT SET "
+                "d_next_o_id = :d_next_o_id WHERE "
+                "d_w_id = :d_w_id AND "
+                "d_id = :d_id"
+            ;
+
+            auto ps = api::create_parameter_set();
+            set(*ps, "d_next_o_id", api::field_type_kind::int8, i+1);
+            set(*ps, "d_w_id", api::field_type_kind::int8, i);
+            set(*ps, "d_id", api::field_type_kind::int8, i);
+            execute_statement(query, *ps, *tx);
+        }
+
+        for(std::size_t j=0; j < 3; ++j) {
+            std::string query =
+                "SELECT s_quantity, s_data, "
+                "s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05, "
+                "s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10 FROM STOCK "
+                "WHERE "
+                "s_i_id = :s_i_id AND "
+                "s_w_id = :s_w_id"
+            ;
+
+            auto ps = api::create_parameter_set();
+            set(*ps, "s_i_id", api::field_type_kind::int8, j);
+            set(*ps, "s_w_id", api::field_type_kind::int8, j);
+            std::vector<mock::basic_record> result{};
+            execute_query(query, *ps, *tx, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ(j, result[0].get_value<std::int64_t>(0));
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+}
+
 }

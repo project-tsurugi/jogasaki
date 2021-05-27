@@ -832,8 +832,7 @@ TEST_F(tpcc_test, stock_level2) {
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
-// enable when shirakami is ready
-TEST_F(tpcc_test, DISABLED_new_order_update_and_select) {
+TEST_F(tpcc_test, new_order_update_and_select) {
     // test multiples statements in a transaction, though different tables
     for(std::size_t i=0; i < 3; ++i) {
         auto tx = db_->create_transaction();

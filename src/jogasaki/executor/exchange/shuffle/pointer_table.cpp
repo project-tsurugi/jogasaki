@@ -15,8 +15,6 @@
  */
 #include "pointer_table.h"
 
-#include <takatori/util/object_creator.h>
-
 #include <array>
 #include <vector>
 #include <cstring>

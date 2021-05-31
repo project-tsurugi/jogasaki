@@ -185,7 +185,6 @@ status prepare(
     yugawara::compiler_options c_options{
         indices,
         runtime_features,
-        options.get_object_creator(),
     };
 
     ::takatori::document::document_map documents;

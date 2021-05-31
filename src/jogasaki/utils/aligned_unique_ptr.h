@@ -21,6 +21,8 @@
 #include <chrono>
 #include <memory>
 
+#include "round.h"
+
 namespace jogasaki::utils {
 
 template<class T>
@@ -35,7 +37,8 @@ template<class T> using aligned_array = std::unique_ptr<T[], delete_aligned<T>>;
 
 template<class T>
 [[nodiscard]] aligned_array<T> make_aligned_array(size_t alignment, size_t size) {
-    return aligned_array<T>( static_cast<T*>(std::aligned_alloc(alignment, size)), delete_aligned<T>{});
+    auto sz = utils::round_up_to_power_of_two((size < alignment) ? alignment : size);
+    return aligned_array<T>( static_cast<T*>(std::aligned_alloc(alignment, sz)), delete_aligned<T>{});
 }
 
 } // namespace

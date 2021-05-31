@@ -18,12 +18,11 @@
 #include <unordered_map>
 
 #include <takatori/descriptor/variable.h>
-#include <takatori/util/object_creator.h>
 
 namespace jogasaki {
 
 ///@brief short name for vector of variables
-using variable_vector = std::vector<takatori::descriptor::variable, takatori::util::object_allocator<takatori::descriptor::variable>>;
+using variable_vector = std::vector<takatori::descriptor::variable>;
 
 /**
  * @brief hash table whose elements may or may not be relocated

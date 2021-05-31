@@ -126,9 +126,7 @@ TEST_F(project_test, simple) {
             { bindings(t0c2), c2 },
         },
     });
-    object_creator creator{};
-
-    auto expr = creator.create_unique<binary>(
+    auto expr = std::make_unique<binary>(
         binary_operator::add,
         varref(c1),
         binary {
@@ -150,7 +148,7 @@ TEST_F(project_test, simple) {
     auto c3 = bindings.stream_variable("C3");
     auto c4 = bindings.stream_variable("C4");
 
-    std::vector<column, takatori::util::object_allocator<column>> v{};
+    std::vector<column> v{};
     v.emplace_back(
         relation::project::column {
             c3,
@@ -279,9 +277,7 @@ TEST_F(project_test, text) {
             { bindings(t0c2), c2 },
         },
     });
-    object_creator creator{};
-
-    auto expr1 = creator.create_unique<binary>(
+    auto expr1 = std::make_unique<binary>(
         binary_operator::concat,
         varref(c1),
         binary {
@@ -302,7 +298,7 @@ TEST_F(project_test, text) {
     using column = relation::project::column;
     auto c3 = bindings.stream_variable("C3");
 
-    std::vector<column, takatori::util::object_allocator<column>> v{};
+    std::vector<column> v{};
     v.emplace_back(
         relation::project::column {
             c3,

@@ -332,7 +332,6 @@ public:
 
         input_exchanges_.emplace_back(&g0);
         input_exchanges_.emplace_back(&g1);
-        object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
                 std::make_shared<takatori::statement::execute>(std::move(p)),

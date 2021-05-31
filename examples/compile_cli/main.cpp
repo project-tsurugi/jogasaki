@@ -89,7 +89,6 @@ std::unique_ptr<shakujo::model::program::Program> shakujo_program(std::string_vi
 std::shared_ptr<::yugawara::storage::configurable_provider> tables() {
     std::shared_ptr<::yugawara::storage::configurable_provider> storages
         = std::make_shared<::yugawara::storage::configurable_provider>();
-    static constexpr auto not_nullable = nullity{false};
     executor::add_builtin_tables(*storages);
     return storages;
 }
@@ -132,7 +131,6 @@ static int run(std::string_view sql) {
     yugawara::compiler_options c_options{
         indices,
         runtime_features,
-        options.get_object_creator(),
     };
 
     placeholder_map placeholders{};

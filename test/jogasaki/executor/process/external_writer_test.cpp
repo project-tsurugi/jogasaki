@@ -17,7 +17,6 @@
 
 #include <string>
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/scheduler/serial_task_scheduler.h>

@@ -100,8 +100,7 @@ using namespace ::yugawara;
 class compiler_test : public ::testing::Test {
 public:
     using kind = field_type_kind;
-    ::takatori::util::object_creator creator;
-    ::yugawara::binding::factory bindings { creator };
+    ::yugawara::binding::factory bindings{};
 
     std::shared_ptr<::yugawara::storage::configurable_provider> tables() {
 

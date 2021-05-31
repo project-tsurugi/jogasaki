@@ -62,7 +62,7 @@ public:
     using key_pointer = void*;
     using value_pointer = void*;
     using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<std::pair<key_pointer, value_pointer>, 62, false>;
-    using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
+    using hash_table_allocator = boost::container::pmr::polymorphic_allocator<std::pair<key_pointer, value_pointer>>;
     using hash_table = tsl::hopscotch_map<key_pointer, value_pointer, hash, impl::key_eq, hash_table_allocator>;
     using hash_tables = std::vector<hash_table>;
 

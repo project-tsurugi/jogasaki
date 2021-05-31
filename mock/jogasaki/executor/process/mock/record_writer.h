@@ -21,7 +21,6 @@
 #include <boost/container/pmr/vector.hpp>
 #include <boost/container/pmr/memory_resource.hpp>
 
-#include <takatori/util/standard_memory_resource.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/global.h>
@@ -69,7 +68,7 @@ public:
     basic_record_writer(
         maybe_shared_ptr<meta::record_meta> meta,
         std::size_t capacity,
-        memory_resource_type* resource = takatori::util::get_standard_memory_resource()
+        memory_resource_type* resource = boost::container::pmr::get_default_resource()
     );
 
     /**

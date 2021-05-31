@@ -19,7 +19,6 @@
 
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/configurable_provider.h>
-#include <takatori/util/object_creator.h>
 #include <takatori/plan/forward.h>
 #include <gtest/gtest.h>
 

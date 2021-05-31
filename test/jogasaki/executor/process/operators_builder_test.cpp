@@ -152,7 +152,7 @@ TEST_F(operators_builder_test, temp) {
     placeholder_map placeholders;
     ::takatori::document::document_map documents;
     ::shakujo::model::IRFactory ir;
-    ::yugawara::binding::factory bindings { options.get_object_creator() };
+    ::yugawara::binding::factory bindings {};
 
     auto r = translator(options, *p->main(), documents, placeholders);
     ASSERT_EQ(r.kind(), result_kind::execution_plan);
@@ -180,7 +180,6 @@ TEST_F(operators_builder_test, temp) {
     yugawara::compiler_options c_options{
         indices,
         runtime_features,
-        options.get_object_creator(),
     };
     auto result = yugawara::compiler()(c_options, std::move(graph)); //FIXME construct compiler info manually
     ASSERT_TRUE(result);

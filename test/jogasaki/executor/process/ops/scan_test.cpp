@@ -22,7 +22,6 @@
 #include <takatori/plan/forward.h>
 #include <takatori/type/character.h>
 #include <takatori/value/character.h>
-#include <takatori/util/object_creator.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 

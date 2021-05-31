@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <takatori/util/object_creator.h>
-
 #include <array>
 #include <vector>
 #include <cstring>

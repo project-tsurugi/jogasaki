@@ -46,7 +46,6 @@
 #include <takatori/plan/process.h>
 #include <takatori/plan/aggregate.h>
 #include <takatori/statement/execute.h>
-#include <takatori/util/object_creator.h>
 
 #include <performance-tools/synchronizer.h>
 
@@ -308,7 +307,6 @@ public:
 
         compiler_context->aggregate_provider(std::move(functions));
         input_exchanges_.emplace_back(&g0);
-        object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
                 std::make_shared<takatori::statement::execute>(std::move(p)),

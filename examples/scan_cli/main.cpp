@@ -639,12 +639,11 @@ private:
             },
         });
 
-        object_creator creator{};
         std::shared_ptr<yugawara::analyzer::expression_mapping> expressions = std::make_shared<yugawara::analyzer::expression_mapping>();
         relation::filter* f1{};
         if (param.filter_) {
             using namespace takatori::scalar;
-            auto expr = creator.create_unique<scalar::binary>(
+            auto expr = std::make_unique<scalar::binary>(
                 binary_operator::conditional_and,
                 scalar::compare {
                     comparison_operator::greater,
@@ -875,7 +874,6 @@ private:
         yugawara::compiled_info c_info{{}, vm};
 
         compiler_context->storage_provider(std::move(storages));
-        object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
                 std::make_shared<takatori::statement::execute>(std::move(*p)),

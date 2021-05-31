@@ -15,7 +15,6 @@
  */
 #include <jogasaki/request_context.h>
 
-#include <takatori/util/object_creator.h>
 #include <gtest/gtest.h>
 
 #include <jogasaki/scheduler/serial_task_scheduler.h>

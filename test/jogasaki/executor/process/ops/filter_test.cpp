@@ -121,9 +121,7 @@ TEST_F(filter_test, simple) {
             { bindings(t0c2), c2 },
         },
     });
-    object_creator creator{};
-
-    auto expr = creator.create_unique<compare>(
+    auto expr = std::make_unique<compare>(
         comparison_operator::equal,
         varref(c1),
         binary {

@@ -19,7 +19,6 @@
 
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/standard_memory_resource.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/record_reader.h>
@@ -70,7 +69,7 @@ public:
         std::size_t num_records,
         std::size_t repeats,
         record_generator generator,
-        memory_resource_type* resource = takatori::util::get_standard_memory_resource(),
+        memory_resource_type* resource = boost::container::pmr::get_default_resource(),
         maybe_shared_ptr<meta::record_meta> meta = {},
         std::unordered_map<std::size_t, std::size_t> map = {}
     ) noexcept :

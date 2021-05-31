@@ -23,7 +23,6 @@
 #include <takatori/value/character.h>
 #include <takatori/type/int.h>
 #include <takatori/value/int.h>
-#include <takatori/util/object_creator.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
 #include <jogasaki/test_root.h>

@@ -18,6 +18,7 @@
 #include <unordered_map>
 
 #include <glog/logging.h>
+#include <boost/container/pmr/memory_resource.hpp>
 
 #include <takatori/graph/graph.h>
 #include <takatori/plan/forward.h>
@@ -104,6 +105,8 @@ using ::takatori::util::downcast;
 using ::takatori::util::string_builder;
 using namespace ::yugawara;
 using namespace ::yugawara::variable;
+
+using namespace boost::container;
 
 using custom_memory_resource = jogasaki::memory::monotonic_paged_memory_resource;
 
@@ -254,7 +257,6 @@ private:
         input_exchanges_.emplace_back(&f0);
         output_exchanges_.emplace_back(&f1);
 
-        object_creator creator{};
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
                 std::make_shared<takatori::statement::execute>(std::move(*p)),
@@ -297,7 +299,7 @@ private:
         for(std::size_t i=0; i < partitions; ++i) {
             pmr::memory_resource* reader_resource =
                 param.std_allocator ?
-                    static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
+                    static_cast<pmr::memory_resource*>(pmr::get_default_resource()) :
                     resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
             std::size_t seq = 0;
             auto& reader = readers_.emplace_back(std::make_shared<reader_type>(
@@ -318,7 +320,7 @@ private:
             reader_container r{reader.get()};
             pmr::memory_resource* writer_resource =
                 param.std_allocator ?
-                    static_cast<pmr::memory_resource*>(takatori::util::get_standard_memory_resource()) :
+                    static_cast<pmr::memory_resource*>(pmr::get_default_resource()) :
                     resources_.emplace_back(std::make_shared<custom_memory_resource>(&pool_)).get();
             auto& writer = writers_.emplace_back(jogasaki::executor::process::mock::create_writer_shared<kind::float8, kind::int4, kind::int8>(
                 write_buffer_record_count,

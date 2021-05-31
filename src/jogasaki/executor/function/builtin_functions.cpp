@@ -17,6 +17,7 @@
 
 #include <sstream>
 
+#include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <tsl/hopscotch_set.h>
 
 #include <takatori/util/sequence_view.h>
@@ -122,7 +123,7 @@ namespace details {
 template<class T>
 std::int64_t count_distinct(data::value_store const& store) {
     using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<T, 62, false>;
-    using hash_table_allocator = boost::container::pmr::polymorphic_allocator<bucket_type>;
+    using hash_table_allocator = boost::container::pmr::polymorphic_allocator<T>;
     using hash_set = tsl::hopscotch_set<T, std::hash<T>, std::equal_to<>, hash_table_allocator>;
     // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two,
     // so round down here to avoid going over allocator limit

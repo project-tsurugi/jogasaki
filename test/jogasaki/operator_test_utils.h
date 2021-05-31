@@ -25,7 +25,6 @@
 #include <takatori/value/character.h>
 #include <takatori/type/int.h>
 #include <takatori/value/int.h>
-#include <takatori/util/object_creator.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
@@ -61,7 +60,7 @@ using yugawara::storage::index;
 using yugawara::storage::index_feature_set;
 
 template <class Column>
-std::vector<descriptor::variable> destinations(std::vector<Column, takatori::util::object_allocator<Column>>& columns) {
+std::vector<descriptor::variable> destinations(std::vector<Column>& columns) {
     std::vector<descriptor::variable> ret{};
     ret.reserve(columns.size());
     for(auto&& c : columns) {
@@ -92,21 +91,21 @@ public:
         return tables_->add_table(std::move(element));
     }
 
-    std::vector<index::key, takatori::util::object_allocator<index::key>> keys(
+    std::vector<index::key> keys(
         std::shared_ptr<table> const& t,
         std::initializer_list<std::size_t> key_indices
     ) {
-        std::vector<index::key, takatori::util::object_allocator<index::key>> ret{};
+        std::vector<index::key> ret{};
         for (auto i : key_indices) {
             ret.emplace_back(t->columns()[i]);
         }
         return ret;
     }
-    std::vector<index::column_ref, takatori::util::object_allocator<index::column_ref>> values(
+    std::vector<index::column_ref> values(
         std::shared_ptr<table> const& t,
         std::initializer_list<std::size_t> value_indices
     ) {
-        std::vector<index::column_ref, takatori::util::object_allocator<index::column_ref>> ret{};
+        std::vector<index::column_ref> ret{};
         for (auto i : value_indices) {
             ret.emplace_back(t->columns()[i]);
         }
@@ -171,8 +170,6 @@ public:
         verifier_varlen_resource_(&pool_)
     {}
     
-    takatori::util::object_creator creator_{};  //NOLINT
-
     std::shared_ptr<yugawara::analyzer::variable_mapping> variable_map_ =  //NOLINT
         std::make_shared<yugawara::analyzer::variable_mapping>();
     std::shared_ptr<yugawara::analyzer::expression_mapping> expression_map_ =  //NOLINT
@@ -184,16 +181,16 @@ public:
     relation::step::offer& add_offer(
         std::vector<descriptor::variable> stream_variables
     ) {
-        std::vector<descriptor::variable, takatori::util::object_allocator<descriptor::variable>> xch_columns;
+        std::vector<descriptor::variable> xch_columns;
         for(std::size_t i=0; i < stream_variables.size(); ++i) {
             xch_columns.emplace_back(
                 bindings_.exchange_column()
             );
         }
-        auto& f1 = plan_.insert(creator_.create_unique<takatori::plan::forward>(std::move(xch_columns)));
+        auto& f1 = plan_.insert(std::make_unique<takatori::plan::forward>(std::move(xch_columns)));
         // without offer, the columns are not used and block variables become empty
         using offer = relation::step::offer;
-        std::vector<offer::column, takatori::util::object_allocator<offer::column>> offer_columns{};
+        std::vector<offer::column> offer_columns{};
         for(std::size_t i=0; i < stream_variables.size(); ++i) {
             offer_columns.emplace_back(
                 stream_variables[i], f1.columns()[i]
@@ -211,15 +208,15 @@ public:
     relation::step::take_flat& add_take(
         std::size_t variable_count
     ) {
-        std::vector<descriptor::variable, takatori::util::object_allocator<descriptor::variable>> xch_columns;
+        std::vector<descriptor::variable> xch_columns;
         for(std::size_t i=0; i < variable_count; ++i) {
             xch_columns.emplace_back(
                 bindings_.exchange_column()
             );
         }
-        auto& f1 = plan_.insert(creator_.create_unique<takatori::plan::forward>(std::move(xch_columns)));
+        auto& f1 = plan_.insert(std::make_unique<takatori::plan::forward>(std::move(xch_columns)));
         using take = relation::step::take_flat;
-        std::vector<take::column, takatori::util::object_allocator<take::column>> take_columns{};
+        std::vector<take::column> take_columns{};
         for(std::size_t i=0; i < variable_count; ++i) {
             take_columns.emplace_back(
                 f1.columns()[i], bindings_.stream_variable()

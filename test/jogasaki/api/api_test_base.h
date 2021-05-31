@@ -29,6 +29,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/test_base.h>
 
 namespace jogasaki::testing {
 
@@ -41,7 +42,7 @@ using namespace jogasaki::scheduler;
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
-class api_test_base  {
+class api_test_base : public test_base {
 protected:
     virtual bool to_explain() = 0;
 
@@ -66,7 +67,10 @@ public:
         ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
         explain(*stmt);
         std::unique_ptr<api::result_set> rs{};
-        ASSERT_EQ(status::ok, tx.execute(*stmt, rs));
+        if(auto res = tx.execute(*stmt, rs);res != status::ok) {
+            LOG(ERROR) << "execute failed with rc : " << res;
+            fail();
+        }
         ASSERT_TRUE(rs);
         auto it = rs->iterator();
         while(it->has_next()) {

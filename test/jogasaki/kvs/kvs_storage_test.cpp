@@ -19,11 +19,11 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/environment.h>
+#include <jogasaki/test_base.h>
 
 namespace jogasaki::kvs {
 
@@ -36,7 +36,7 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class kvs_storage_test : public test_root {
+class kvs_storage_test : public ::testing::Test, public test_base {
 };
 
 TEST_F(kvs_storage_test, delete_storage) {
@@ -45,6 +45,7 @@ TEST_F(kvs_storage_test, delete_storage) {
     auto t = db->create_storage("T");
     ASSERT_TRUE(t);
     ASSERT_EQ(status::ok, t->delete_storage());
+    wait_epochs();
     auto t2 = db->get_storage("T");
     ASSERT_FALSE(t2);
     ASSERT_TRUE(db->close());
@@ -82,6 +83,7 @@ TEST_F(kvs_storage_test, put_get_remove) {
         ASSERT_EQ(status::ok, t1->remove(*tx, "k1"));
         ASSERT_EQ(status::ok, tx->commit());
     }
+    wait_epochs();
     {
         auto tx = db->create_transaction();
         std::string_view v;

@@ -645,6 +645,7 @@ TEST_F(tpcc_test, delivery_delete1) {
     resolve(query, ":no_w_id", "1");
     resolve(query, ":no_o_id", "1");
     execute_statement(query);
+    wait_epochs();
 
     std::string verify =
         "SELECT no_o_id FROM NEW_ORDER "

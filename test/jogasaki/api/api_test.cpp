@@ -144,6 +144,7 @@ TEST_F(api_test, dump_load) {
     std::stringstream ss{};
     db_->dump(ss, "I0", 0);
     execute_statement( "DELETE FROM T0");
+    wait_epochs();
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
     ASSERT_EQ(0, result.size());

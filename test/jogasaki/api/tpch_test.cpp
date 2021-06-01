@@ -76,7 +76,7 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(tpch_test, q2_1) {
+TEST_F(tpch_test, DISABLED_q2_1) {
     std::string query =
         "SELECT MIN(PS_SUPPLYCOST) "
         "FROM PARTSUPP, SUPPLIER, NATION, REGION "
@@ -97,7 +97,7 @@ TEST_F(tpch_test, q2_1) {
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
 
-TEST_F(tpch_test, q2_2) {
+TEST_F(tpch_test, DISABLED_q2_2) {
     std::string query =
         "SELECT S_ACCTBAL, S_NAME, N_NAME, P_MFGR, S_ADDRESS, S_PHONE, S_COMMENT "
         "FROM PART, SUPPLIER, PARTSUPP, NATION, REGION "

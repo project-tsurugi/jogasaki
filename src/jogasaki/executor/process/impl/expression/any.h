@@ -87,14 +87,13 @@ private:
     > body_{};
 };
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
   #include <features.h>
   #if __GNUC_PREREQ(8,3)
 static_assert(std::is_trivially_copyable_v<any>);
   #else
 static_assert(!std::is_trivially_copyable_v<any>); //P0602R4 is not available until gcc 8.3
   #endif
-#else
 #endif
 static_assert(std::is_trivially_destructible_v<any>);
 static_assert(std::alignment_of_v<any> == 8);

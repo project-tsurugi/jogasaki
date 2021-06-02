@@ -49,10 +49,10 @@ public:
     internal_event() = default;
     internal_event(internal_event_kind kind, identity_type target) : kind_(kind), target_(target) {}
 
-    [[nodiscard]] internal_event_kind kind() {
+    [[nodiscard]] internal_event_kind kind() const {
         return kind_;
     }
-    [[nodiscard]] identity_type target() {
+    [[nodiscard]] identity_type target() const {
         return target_;
     }
 

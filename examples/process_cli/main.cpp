@@ -92,17 +92,10 @@ using namespace meta;
 using namespace takatori::util;
 
 namespace t = ::takatori::type;
-namespace v = ::takatori::value;
-namespace descriptor = ::takatori::descriptor;
-namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
-//namespace plan = ::takatori::plan;
 namespace binding = ::yugawara::binding;
 
 using ::takatori::util::fail;
-using ::takatori::util::downcast;
-using ::takatori::util::string_builder;
 using namespace ::yugawara;
 using namespace ::yugawara::variable;
 
@@ -174,7 +167,7 @@ private:
 #endif
     }
 
-    void create_compiled_info(std::shared_ptr<plan::compiler_context> compiler_context) {
+    void create_compiled_info(std::shared_ptr<plan::compiler_context> const& compiler_context) {
         binding::factory bindings;
         std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
         std::shared_ptr<storage::table> t0 = storages->add_table({
@@ -370,12 +363,12 @@ private:
         process.executor_factory(f);
         process.partitions(partitions);
         process.will_create_tasks(
-            std::make_shared<callback_type>([](callback_arg*){
+            std::make_shared<callback_type>([](callback_arg* /* unused */){
                 utils::get_watch().set_point(time_point_create_task, 0);
             })
         );
         process.did_create_tasks(
-            std::make_shared<callback_type>([](callback_arg*){
+            std::make_shared<callback_type>([](callback_arg* /* unused */){
                 utils::get_watch().set_point(time_point_created_task, 0);
             })
         );

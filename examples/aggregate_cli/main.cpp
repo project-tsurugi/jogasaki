@@ -96,12 +96,6 @@ using namespace jogasaki::executor::exchange;
 using namespace jogasaki::executor::exchange::aggregate;
 using namespace jogasaki::scheduler;
 
-namespace type = ::takatori::type;
-namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
-
 using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
@@ -116,25 +110,14 @@ using namespace meta;
 using namespace takatori::util;
 
 namespace t = ::takatori::type;
-namespace v = ::takatori::value;
-namespace descriptor = ::takatori::descriptor;
-namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
 namespace binding = ::yugawara::binding;
 
 using ::takatori::util::fail;
-using ::takatori::util::downcast;
-using ::takatori::util::string_builder;
 using namespace ::yugawara;
 using namespace ::yugawara::variable;
 
 using kind = meta::field_type_kind;
-constexpr std::size_t max_char_len = 32;
-
-constexpr kvs::order asc = kvs::order::ascending;
-constexpr kvs::order desc = kvs::order::descending;
-constexpr kvs::order undef = kvs::order::undefined;
 
 bool fill_from_flags(
     jogasaki::aggregate_cli::params& s,
@@ -302,8 +285,6 @@ public:
         vmap->bind(g0v1, t::float8{});
 
         yugawara::compiled_info c_info{{}, vmap};
-
-        processor_info p_info{p0.operators(), c_info};
 
         compiler_context->aggregate_provider(std::move(functions));
         input_exchanges_.emplace_back(&g0);

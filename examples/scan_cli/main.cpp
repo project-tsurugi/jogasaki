@@ -90,9 +90,6 @@ using namespace takatori::util;
 
 namespace type = ::takatori::type;
 namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
 
 using namespace jogasaki;
 using namespace jogasaki::model;
@@ -108,25 +105,16 @@ using namespace meta;
 using namespace takatori::util;
 
 namespace t = ::takatori::type;
-namespace v = ::takatori::value;
-namespace descriptor = ::takatori::descriptor;
 namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
 namespace binding = ::yugawara::binding;
 
 using ::takatori::util::fail;
-using ::takatori::util::downcast;
-using ::takatori::util::string_builder;
 using namespace ::yugawara;
 using namespace ::yugawara::variable;
 
 using kind = meta::field_type_kind;
 constexpr std::size_t max_char_len = 100;
-
-constexpr kvs::order asc = kvs::order::ascending;
-constexpr kvs::order desc = kvs::order::descending;
-constexpr kvs::order undef = kvs::order::undefined;
 
 bool fill_from_flags(
     jogasaki::scan_cli::params& s,
@@ -334,7 +322,7 @@ public:
         }
     }
 
-    void prepare_pages(std::int32_t pages) {
+    void prepare_pages(std::int32_t pages) const {
         auto& pool = global::page_pool();
         std::vector<memory::page_pool::page_info> v{};
         v.reserve(pages);
@@ -374,7 +362,7 @@ public:
     void set_core_affinity(
         std::size_t thread_id,
         configuration const* cfg
-    ) {
+    ) const {
         if(cfg->core_affinity()) {
             auto cpu = thread_id+cfg->initial_core();
             if (cfg->assign_numa_nodes_uniformly()) {
@@ -403,7 +391,7 @@ public:
             create_compiled_info(compiler_context, table_name, index_name, param);
         }
 
-        compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+        compiler_context->storage_provider()->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& /* unused */) {
             db->create_storage(id);
         });
         if (param.load_) {
@@ -659,10 +647,10 @@ private:
             expressions->bind(*expr, t::boolean {});
             expressions->bind(expr->left(), t::boolean{});
             expressions->bind(expr->right(), t::boolean{});
-            auto& l = static_cast<scalar::compare&>(expr->left());
+            auto& l = static_cast<scalar::compare&>(expr->left());  //NOLINT
             expressions->bind(l.left(), t::int8 {});
             expressions->bind(l.right(), t::int8 {});
-            auto& r = static_cast<scalar::compare&>(expr->right());
+            auto& r = static_cast<scalar::compare&>(expr->right());  //NOLINT
             expressions->bind(r.left(), t::float8 {});
             expressions->bind(r.right(), t::float8 {});
 

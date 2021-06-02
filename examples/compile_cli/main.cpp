@@ -66,13 +66,6 @@ using result_kind = shakujo_translator::result_type::kind_type;
 
 namespace type = ::takatori::type;
 namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
-
-using ::yugawara::variable::criteria;
-using ::yugawara::variable::nullity;
-namespace tinfo = ::shakujo::common::core::type;
 
 std::unique_ptr<shakujo::model::program::Program> shakujo_program(std::string_view sql) {
     shakujo::parser::Parser parser;
@@ -140,7 +133,7 @@ static int run(std::string_view sql) {
     auto r = translator(options, *p->main(), documents, placeholders);
     if (!r.is_valid()) {
         auto error = r.release<result_kind::diagnostics>();
-        for(auto e : error) {
+        for(auto&& e : error) {
             std::cerr << e.message() << "; code " << e.code() << std::endl;
         }
         return -1;

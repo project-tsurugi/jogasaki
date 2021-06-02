@@ -37,18 +37,11 @@ namespace jogasaki::sql_cli {
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using kind = meta::field_type_kind;
-using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::process::impl::expression;
-using takatori::util::enum_tag_t;
-using takatori::util::enum_tag;
-
-constexpr kvs::order asc = kvs::order::ascending;
-constexpr kvs::order desc = kvs::order::descending;
-constexpr kvs::order undef = kvs::order::undefined;
 
 static int run(std::string_view sql) {
     if (sql.empty()) return 0;

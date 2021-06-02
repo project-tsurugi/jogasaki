@@ -45,8 +45,7 @@ public:
             executor::reader_container left_reader,
             executor::reader_container right_reader,
             maybe_shared_ptr<meta::group_meta> l_meta,
-            maybe_shared_ptr<meta::group_meta> r_meta,
-            params& c
+            maybe_shared_ptr<meta::group_meta> r_meta
     ) :
             task_base(context, src),
             l_meta_(std::move(l_meta)),
@@ -69,7 +68,6 @@ public:
             right_reader_(right_reader),  //NOLINT
             l_key_(l_meta_->key_shared()),
             r_key_(r_meta_->key_shared()),
-            params_(&c),
             key_offset_(l_meta_->key().value_offset(0)),
             value_offset_(l_meta_->value().value_offset(0)),
             compare_info_(l_meta_->key()),
@@ -104,7 +102,7 @@ public:
         return rec.get_value<std::int64_t>(offset);
     }
 
-    void consume(std::function<void(std::int64_t, double, double)> consumer) {
+    void consume(std::function<void(std::int64_t, double, double)> const& consumer) {
         auto r_value_offset = r_meta_->value().value_offset(0);
         auto l_value_offset = l_meta_->value().value_offset(0);
         if(l_store_->empty()) {
@@ -347,7 +345,6 @@ private:
     executor::reader_container right_reader_{};
     data::small_record_store l_key_;
     data::small_record_store r_key_;
-    params* params_{};
 
     std::size_t key_offset_;
     std::size_t value_offset_;

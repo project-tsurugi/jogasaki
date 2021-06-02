@@ -38,6 +38,7 @@ readability-*,\
 -readability-named-parameter,\
 -readability-magic-numbers,\
 -readability-qualified-auto,\
+-readability-convert-member-functions-to-static,\
 "
 CheckOptions:
   - key: readability-implicit-bool-conversion.AllowPointerConditions

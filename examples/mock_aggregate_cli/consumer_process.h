@@ -36,7 +36,7 @@ public:
 
     void activate() override {
         auto p = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<consumer_flow>(p, this, context(), meta_, *params_));
+        data_flow_object(std::make_unique<consumer_flow>(p, this, context(), meta_));
     }
 
     [[nodiscard]] std::size_t partitions() const noexcept override {

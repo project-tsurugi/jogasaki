@@ -45,8 +45,7 @@ public:
             executor::reader_container left_reader,
             executor::reader_container right_reader,
             maybe_shared_ptr<meta::group_meta> l_meta,
-            maybe_shared_ptr<meta::group_meta> r_meta,
-            params& c
+            maybe_shared_ptr<meta::group_meta> r_meta
     ) :
             task_base(context, src),
             l_meta_(std::move(l_meta)),
@@ -57,7 +56,6 @@ public:
             r_store_varlen_resource_(std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())),
             left_reader_(left_reader),  //NOLINT
             right_reader_(right_reader),  //NOLINT
-            params_(&c),
             key_offset_(l_meta_->key().value_offset(0)),
             value_offset_(l_meta_->value().value_offset(0)),
             compare_info_(l_meta_->key()),
@@ -165,7 +163,6 @@ private:
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_varlen_resource_{};
     executor::reader_container left_reader_{};
     executor::reader_container right_reader_{};
-    params* params_{};
 
     std::size_t key_offset_;
     std::size_t value_offset_;

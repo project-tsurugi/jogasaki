@@ -37,9 +37,8 @@ public:
             request_context* context,
             model::step* src,
             executor::reader_container reader,
-            maybe_shared_ptr<meta::group_meta> meta,
-            params& c
-    ) : task_base(context, src), meta_(std::move(meta)), reader_(reader), params_(&c) {}
+            maybe_shared_ptr<meta::group_meta> meta
+    ) : task_base(context, src), meta_(std::move(meta)), reader_(reader) {}
 
     void execute() override {
         VLOG(1) << *this << " consumer_task executed. count: " << count_;
@@ -69,7 +68,6 @@ public:
 private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     executor::reader_container reader_{};
-    params* params_{};
 };
 
 }

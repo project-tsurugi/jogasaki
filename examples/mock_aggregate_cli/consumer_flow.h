@@ -41,21 +41,19 @@ public:
             executor::exchange::step* upstream,
             model::step* step,
             request_context* context,
-            maybe_shared_ptr<meta::group_meta> meta,
-            params& c
+            maybe_shared_ptr<meta::group_meta> meta
     ) :
             upstream_(upstream),
             step_(step),
             context_(context),
-            meta_(std::move(meta)),
-            params_(&c)
+            meta_(std::move(meta))
     {}
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         auto srcs = dynamic_cast<executor::exchange::mock::aggregate::flow&>(upstream_->data_flow_object()).sources();
         tasks_.reserve(srcs.size());
         for(auto& s : srcs) {
-            tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, s.acquire_reader(), meta_, *params_));
+            tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, s.acquire_reader(), meta_));
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};
     }
@@ -74,7 +72,6 @@ private:
     model::step* step_{};
     request_context* context_{};
     maybe_shared_ptr<meta::group_meta> meta_{};
-    params* params_{};
 };
 
 }

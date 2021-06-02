@@ -103,23 +103,23 @@ public:
         source_port_index_(pindex)
     {}
 
-    [[nodiscard]] event_kind kind() {
+    [[nodiscard]] event_kind kind() const {
         return kind_;
     }
 
-    [[nodiscard]] identity_type target() {
+    [[nodiscard]] identity_type target() const {
         return target_;
     }
 
-    [[nodiscard]] model::task::identity_type task() {
+    [[nodiscard]] model::task::identity_type task() const {
         return task_;
     }
 
-    [[nodiscard]] port_kind source_port_kind() {
+    [[nodiscard]] port_kind source_port_kind() const {
         return source_port_kind_;
     }
 
-    [[nodiscard]] port_index_type source_port_index() {
+    [[nodiscard]] port_index_type source_port_index() const {
         return source_port_index_;
     }
 

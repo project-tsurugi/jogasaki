@@ -49,7 +49,7 @@ iterable_record_store::iterator::iterator(
     range_(range)
 {}
 
-iterable_record_store::value_type iterable_record_store::iterator::operator*() {
+iterable_record_store::value_type iterable_record_store::iterator::operator*() const {
     return ref();
 }
 

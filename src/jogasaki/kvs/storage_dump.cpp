@@ -81,7 +81,7 @@ public:
         }
     }
 
-    explicit operator bool() {
+    explicit operator bool() const {
         return !eof_;
     }
 
@@ -126,7 +126,7 @@ public:
         }
     }
 
-    explicit operator bool() {
+    explicit operator bool() const {
         return !eof_;
     }
 
@@ -183,13 +183,13 @@ void storage_dump::append_eof(std::ostream& stream) {
 }
 
 bool storage_dump::read_next(std::istream& stream, std::string& key, std::string& value) {
-    size_type key_size;
+    size_type key_size{};
     stream.read(reinterpret_cast<char*>(&key_size), sizeof(key_size));  // NOLINT
     if (key_size == EOF_MARK) {
         return false;
     }
 
-    size_type value_size;
+    size_type value_size{};
     stream.read(reinterpret_cast<char*>(&value_size), sizeof(value_size));  // NOLINT
 
     key.resize(key_size);

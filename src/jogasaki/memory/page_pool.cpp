@@ -37,7 +37,7 @@ memory::page_pool::~page_pool() {
 }
 
 page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
-    void* page;
+    void* page{};
     std::size_t node = node_num();
     if (!brandnew) {
         auto& free_pages = get_free_pages(node);

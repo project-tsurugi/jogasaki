@@ -36,7 +36,6 @@ public:
     parallel_task_scheduler& operator=(parallel_task_scheduler&& other) noexcept = delete;
     explicit parallel_task_scheduler(thread_params params);
 
-public:
     /**
      * @brief schedule the task
      * @param task the task to schedule

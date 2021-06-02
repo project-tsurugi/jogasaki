@@ -24,7 +24,7 @@ using executor::process::impl::expression::any;
 
 parameter_entry::parameter_entry(meta::field_type type, any value) :
     type_(std::move(type)),
-    value_(std::move(value))
+    value_(value)
 {}
 
 meta::field_type const& parameter_entry::type() const noexcept {

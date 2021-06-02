@@ -164,12 +164,12 @@ std::string_view scan::secondary_storage_name() const noexcept {
     return secondary_storage_name_;
 }
 
-void scan::finish(abstract::task_context*) {
+void scan::finish(abstract::task_context* /* unused */) {
     // top operators decide finish timing on their own
     fail();
 }
 
-void scan::open(scan_context& ctx) {
+void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
     auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
     auto be = ctx.scan_info_->begin_endpoint();
     auto ee = ctx.scan_info_->end_endpoint();

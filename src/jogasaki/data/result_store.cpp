@@ -146,7 +146,7 @@ result_store::iterator const result_store::iterator::operator++(int) {  //NOLINT
     return ret;
 }
 
-result_store::iterator::value_type result_store::iterator::operator*() {
+result_store::iterator::value_type result_store::iterator::operator*() const {
     return ref();
 }
 

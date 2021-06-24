@@ -35,6 +35,8 @@ file(GLOB SOURCES
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/kvs/*.cpp"
         "jogasaki/utils/*.cpp"
+        "tateyama/*.cpp"
+        "tateyama/impl/*.cpp"
 )
 
 add_library(${ENGINE}

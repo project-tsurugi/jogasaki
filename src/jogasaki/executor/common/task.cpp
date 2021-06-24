@@ -52,4 +52,3 @@ std::ostream& task::write_to(std::ostream& out) const {
 }
 
 
-

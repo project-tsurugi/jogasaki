@@ -68,6 +68,7 @@ target_link_libraries(${ENGINE}
         PRIVATE Boost::container
         PRIVATE glog::glog
         PRIVATE atomic
+        PRIVATE moodycamel
 )
 
 if (USE_BLOCKING_EVENT_QUEUE)
@@ -107,6 +108,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         INTERFACE tbb
         INTERFACE numa
+        INTERFACE moodycamel
         INTERFACE tsl::hopscotch_map
         INTERFACE Boost::boost
         INTERFACE Boost::filesystem

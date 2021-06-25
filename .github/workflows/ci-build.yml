@@ -126,7 +126,7 @@ jobs:
           cd build_debug
           rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
+          cmake --build . --target install --clean-first
 
       - id: CMake_Build_sharksfin_memory
         name: CMake_Build_sharksfin_memory

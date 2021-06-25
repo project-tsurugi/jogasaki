@@ -22,7 +22,7 @@
 
 #include <glog/logging.h>
 
-#include <concurrentqueue/moodycamel/concurrentqueue.h>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include "task_ref.h"
 #include "cache_align.h"

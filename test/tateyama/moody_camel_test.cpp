@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <concurrentqueue/moodycamel/concurrentqueue.h>
+#include <concurrentqueue/concurrentqueue.h>
 
 #include <regex>
 #include <gtest/gtest.h>

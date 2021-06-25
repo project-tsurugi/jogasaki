@@ -2,7 +2,7 @@ if(TARGET moodycamel)
     return()
 endif()
 
-find_path(moodycamel_INCLUDE_DIR NAMES concurrentqueue/moodycamel/concurrentqueue.h)
+find_path(moodycamel_INCLUDE_DIR NAMES concurrentqueue/concurrentqueue.h)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(moodycamel DEFAULT_MSG

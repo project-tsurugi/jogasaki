@@ -82,7 +82,6 @@ extern "C" int main(int argc, char* argv[]) {
         gflags::ShowUsageWithFlags(argv[0]); // NOLINT
         return -1;
     }
-    std::string_view source { argv[1] }; // NOLINT
     tateyama::task_scheduler_cfg cfg{};
     if(! tateyama::task_scheduler_cli::fill_from_flags(cfg)) return -1;
     try {

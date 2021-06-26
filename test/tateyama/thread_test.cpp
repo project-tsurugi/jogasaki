@@ -65,9 +65,9 @@ TEST_F(thread_test, active) {
     EXPECT_FALSE(t.active());
     t.activate();
     std::this_thread::sleep_for(100us);
-    EXPECT_TRUE(active);
     EXPECT_FALSE(t.active());
     t.join();
+    EXPECT_TRUE(active);
     EXPECT_FALSE(t.active());
 }
 

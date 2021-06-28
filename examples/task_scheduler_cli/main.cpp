@@ -40,7 +40,7 @@ using namespace tateyama::impl;
 
 using clock = std::chrono::high_resolution_clock;
 
-class test_task : public task {
+class cache_align test_task : public task {
 public:
     test_task(
         tateyama::task_scheduler_cfg const& cfg,

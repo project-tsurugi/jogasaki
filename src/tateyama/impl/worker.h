@@ -42,7 +42,7 @@ struct cache_align worker_stat {
  * @brief worker object
  * @details this represents the worker logic running on each thread that processes its local queue
  */
-class worker {
+class cache_align worker {
 public:
     /**
      * @brief create empty object

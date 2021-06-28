@@ -16,6 +16,7 @@
 #pragma once
 
 #include "context.h"
+#include <tateyama/impl/core_affinity.h>
 
 namespace tateyama {
 
@@ -24,7 +25,7 @@ namespace tateyama {
  * @details this object is abstraction of task logic and state, and is used to submit task to scheduler.
  * Caller needs to inherit and implement the task content in the subclass.
  */
-class task {
+class cache_align task {
 public:
     /**
      * @brief construct empty object

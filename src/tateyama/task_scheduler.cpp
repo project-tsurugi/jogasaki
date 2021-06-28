@@ -24,12 +24,12 @@ std::size_t increment(std::atomic_size_t& index, std::size_t mod) {
     return ret % mod;
 }
 
-void task_scheduler::schedule(task& t) {
+void task_scheduler::schedule(std::shared_ptr<task> t) {
     auto& q = queues_[increment(current_index_, size_)];
     q.push(impl::task_ref{t});
 }
 
-void task_scheduler::schedule_at(task& t, std::size_t index) {
+void task_scheduler::schedule_at(std::shared_ptr<task> t, std::size_t index) {
     BOOST_ASSERT(index < size_); //NOLINT
     auto& q = queues_[index];
     q.push(impl::task_ref{t});

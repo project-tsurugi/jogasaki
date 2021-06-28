@@ -39,16 +39,16 @@ public:
     task_ref(task_ref&& other) noexcept = default;
     task_ref& operator=(task_ref&& other) noexcept = default;
 
-    explicit task_ref(task& t) :
-        task_(std::addressof(t))
+    explicit task_ref(std::shared_ptr<task> t) :
+        task_(std::move(t))
     {}
 
-    [[nodiscard]] task* body() const noexcept {
+    [[nodiscard]] std::shared_ptr<task> const& body() const noexcept {
         return task_;
     }
 
 private:
-    task* task_{};
+    std::shared_ptr<task> task_{};
 };
 
 static_assert(std::is_copy_assignable_v<task_ref>);

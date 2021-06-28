@@ -45,9 +45,9 @@ TEST_F(scheduler_test, basic) {
     cfg.thread_count(1);
     task_scheduler sched{cfg};
     bool executed = false;
-    test_task t{[&](context& t) {
+    auto t{std::make_shared<test_task>([&](context& t) {
         executed = true;
-    }};
+    })};
     sched.start();
     std::this_thread::sleep_for(1ms);
     sched.schedule(t);

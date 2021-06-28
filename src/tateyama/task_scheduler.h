@@ -64,7 +64,7 @@ public:
      * @param t the task to be scheduled. Caller must ensure the task is alive until the end of the execution.
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    void schedule(task& t);
+    void schedule(std::shared_ptr<task> t);
 
     /**
      * @brief schedule task on the specified worker
@@ -73,7 +73,7 @@ public:
      * worker has, but doesn't ensure the task to be run by the worker if stealing happens.
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    void schedule_at(task& t, std::size_t index);
+    void schedule_at(std::shared_ptr<task> t, std::size_t index);
 
     /**
      * @brief start the scheduler

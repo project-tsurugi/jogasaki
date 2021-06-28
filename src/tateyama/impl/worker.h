@@ -57,6 +57,7 @@ public:
      */
     worker(
         std::vector<queue>& queues,
+        std::vector<std::vector<std::shared_ptr<task>>>& initial_tasks,
         worker_stat& stat,
         task_scheduler_cfg const* cfg = nullptr
     ) noexcept;
@@ -70,6 +71,7 @@ public:
 private:
     task_scheduler_cfg const* cfg_{};
     std::vector<queue>* queues_{};
+    std::vector<std::vector<std::shared_ptr<task>>>* initial_tasks_{};
     worker_stat* stat_{};
 
     std::size_t next(std::size_t current, std::size_t initial);

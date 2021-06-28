@@ -24,9 +24,15 @@
 
 namespace tateyama::impl {
 
-worker::worker(std::vector<queue>& queues, worker_stat& stat, task_scheduler_cfg const* cfg) noexcept:
+worker::worker(
+    std::vector<queue>& queues,
+    std::vector<std::vector<std::shared_ptr<task>>>& initial_tasks,
+    worker_stat& stat,
+    task_scheduler_cfg const* cfg
+) noexcept:
     cfg_(cfg),
     queues_(std::addressof(queues)),
+    initial_tasks_(std::addressof(initial_tasks)),
     stat_(std::addressof(stat))
 {
     (void)cfg_;
@@ -36,7 +42,12 @@ void worker::operator()(context& ctx) {
     auto index = ctx.index();
     (*queues_)[index].reconstruct();
     auto& q = (*queues_)[index];
-    std::size_t last_stolen = index;
+    auto& s = (*initial_tasks_)[index];
+    for(auto&& t : s) {
+        q.push(task_ref{std::move(t)});
+    }
+    s.clear();
+//    std::size_t last_stolen = index;
     while(q.active()) {
         task_ref t{};
         if (q.try_pop(t)) {
@@ -44,6 +55,7 @@ void worker::operator()(context& ctx) {
             ++stat_->count_;
             continue;
         }
+        /*
         bool stolen = false;
         std::size_t from = last_stolen;
         for(auto idx = next(from, from); idx != from; idx = next(idx, from)) {
@@ -61,6 +73,8 @@ void worker::operator()(context& ctx) {
         if (! stolen) {
             _mm_pause();
         }
+         */
+        _mm_pause();
     }
 }
 

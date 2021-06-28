@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstddef>
+#include <iomanip>
 
 namespace tateyama {
 
@@ -67,6 +68,15 @@ public:
         force_numa_node_ = arg;
     }
 
+    friend inline std::ostream& operator<<(std::ostream& out, task_scheduler_cfg const& cfg) {
+        return out << std::boolalpha <<
+            "thread_count:" << cfg.thread_count() << " " <<
+            "set_core_affinity:" << cfg.core_affinity() << " " <<
+            "initial_core:" << cfg.initial_core() << " " <<
+            "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
+            "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " ";
+    }
+    
 private:
     std::size_t thread_count_ = 5;
     bool set_core_affinity_ = true;

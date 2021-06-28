@@ -25,12 +25,22 @@ std::size_t increment(std::atomic_size_t& index, std::size_t mod) {
 }
 
 void task_scheduler::schedule(std::shared_ptr<task> t) {
+    if (! started_) {
+        auto& s = initial_tasks_[increment(current_index_, size_)];
+        s.emplace_back(std::move(t));
+        return;
+    }
     auto& q = queues_[increment(current_index_, size_)];
     q.push(impl::task_ref{t});
 }
 
 void task_scheduler::schedule_at(std::shared_ptr<task> t, std::size_t index) {
     BOOST_ASSERT(index < size_); //NOLINT
+    if (! started_) {
+        auto& s = initial_tasks_[index];
+        s.emplace_back(std::move(t));
+        return;
+    }
     auto& q = queues_[index];
     q.push(impl::task_ref{t});
 }
@@ -46,6 +56,7 @@ void task_scheduler::start() {
     for(auto&& t : threads_) {
         t.activate();
     }
+    started_ = true;
 }
 
 void task_scheduler::stop() {
@@ -55,6 +66,7 @@ void task_scheduler::stop() {
     for(auto&& t : threads_) {
         t.join();
     }
+    started_ = false;
 }
 
 std::size_t task_scheduler::size() const noexcept {
@@ -65,12 +77,13 @@ void task_scheduler::prepare() {
     auto sz = cfg_.thread_count();
     queues_.resize(sz);
     worker_stats_.resize(sz);
+    initial_tasks_.resize(sz);
     contexts_.reserve(sz);
     workers_.reserve(sz);
     threads_.reserve(sz);
     for(std::size_t i = 0; i < sz; ++i) {
         auto& ctx = contexts_.emplace_back(i);
-        auto& worker = workers_.emplace_back(queues_, worker_stats_[i], std::addressof(cfg_));
+        auto& worker = workers_.emplace_back(queues_, initial_tasks_, worker_stats_[i], std::addressof(cfg_));
         threads_.emplace_back(i, std::addressof(cfg_), worker, ctx);
     }
 }

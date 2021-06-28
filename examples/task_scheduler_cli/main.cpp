@@ -15,11 +15,13 @@
  */
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #include <glog/logging.h>
 
 #include <tateyama/task_scheduler.h>
 #include <tateyama/task_scheduler_cfg.h>
+#include "utils.h"
 
 DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int32(thread_count, 10, "Number of threads");  //NOLINT
@@ -33,6 +35,31 @@ namespace tateyama::task_scheduler_cli {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+
+using namespace tateyama::impl;
+
+using clock = std::chrono::high_resolution_clock;
+
+class test_task : public task {
+public:
+    test_task(
+        tateyama::task_scheduler_cfg const& cfg,
+        tateyama::task_scheduler& scheduler,
+        std::size_t generation
+    ) :
+        cfg_(cfg),
+        scheduler_(scheduler),
+        generation_(generation)
+    {}
+
+    void operator()(context& ctx) override {
+        scheduler_.schedule_at(std::make_shared<test_task>(cfg_, scheduler_, generation_+1), ctx.index());
+    }
+
+    tateyama::task_scheduler_cfg const& cfg_;
+    tateyama::task_scheduler& scheduler_;
+    std::size_t generation_{};
+};
 
 bool fill_from_flags(
     task_scheduler_cfg& cfg,
@@ -62,8 +89,60 @@ bool fill_from_flags(
     return true;
 }
 
-static int run() {
+void show_result(
+    std::vector<queue> const& queues,
+    std::size_t duration_ms,
+    std::vector<worker_stat> const& worker_stats,
+    bool debug
+) {
+    std::size_t total_executions = 0;
+    std::size_t index = 0;
+    if (debug) {
+        LOG(INFO) << "======= begin debug info =======";
+    }
+    for(auto&& q: const_cast<std::vector<queue>&>(queues)) {
+        task_ref t{};
+        std::size_t queue_total = 0;
+        while(q.try_pop(t)) {
+            auto& tsk = dynamic_cast<test_task&>(*t.body());
+            queue_total += tsk.generation_;
+            total_executions += tsk.generation_;
+        }
+        if (debug) {
+            LOG(INFO) << cwidth(2) << index << "-th queue executions " << format(queue_total) << " tasks";
+        }
+        ++index;
+    }
+    std::size_t idx = 0;
+    for(auto&& w : worker_stats) {
+        if (debug) {
+            LOG(INFO) << cwidth(2) << idx << "-th thread executions " << format(w.count_)<< " tasks";
+        }
+        ++idx;
+    }
+    if (debug) {
+        LOG(INFO) << "======= end debug info =======";
+    }
 
+    LOG(INFO) << "duration: " << format(duration_ms) << " ms";
+    LOG(INFO) << "total executions: " << format(total_executions) << " tasks";
+    LOG(INFO) << "total throughput: " << format((std::int64_t)((double)total_executions / duration_ms * 1000)) << " tasks/s";
+    LOG(INFO) << "avg throughput: " << format((std::int64_t)((double)total_executions / queues.size() / duration_ms * 1000)) << " tasks/s/thread";
+}
+
+static int run(tateyama::task_scheduler_cfg const& cfg, bool debug, std::size_t duration) {
+    LOG(INFO) << "configuration " << cfg;
+    tateyama::task_scheduler sched{cfg};
+    for(std::size_t i=0, n=cfg.thread_count(); i < n; ++i) {
+        sched.schedule_at(std::make_shared<test_task>(cfg, sched, 0), i);
+    }
+    sched.start();
+    auto begin = clock::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+    sched.stop();
+    auto end = clock::now();
+    auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
+    show_result(sched.queues(), duration_ms, sched.worker_stats(), debug);
     return 0;
 }
 
@@ -85,7 +164,7 @@ extern "C" int main(int argc, char* argv[]) {
     tateyama::task_scheduler_cfg cfg{};
     if(! tateyama::task_scheduler_cli::fill_from_flags(cfg)) return -1;
     try {
-        tateyama::task_scheduler_cli::run();  // NOLINT
+        tateyama::task_scheduler_cli::run(cfg, FLAGS_debug, FLAGS_duration);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

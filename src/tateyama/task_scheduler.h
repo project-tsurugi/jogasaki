@@ -96,6 +96,22 @@ public:
      */
     [[nodiscard]] std::size_t size() const noexcept;
 
+    /**
+     * @brief accessor to the worker statistics
+     * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
+     */
+    [[nodiscard]] std::vector<impl::worker_stat> const& worker_stats() const noexcept {
+        return worker_stats_;
+    }
+
+    /**
+     * @brief accessor to the local queue for testing purpose
+     * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
+     */
+    [[nodiscard]] std::vector<impl::queue> const& queues() const noexcept {
+        return queues_;
+    }
+
 private:
     task_scheduler_cfg cfg_{};
     std::size_t size_{};
@@ -105,6 +121,8 @@ private:
     std::vector<impl::worker_stat> worker_stats_{};
     std::vector<context> contexts_{};
     std::atomic_size_t current_index_{};
+    std::vector<std::vector<std::shared_ptr<task>>> initial_tasks_{};
+    bool started_{false};
 
     void prepare();
 };

@@ -47,7 +47,7 @@ void worker::operator()(context& ctx) {
         q.push(task_ref{std::move(t)});
     }
     s.clear();
-//    std::size_t last_stolen = index;
+    std::size_t last_stolen = index;
     while(q.active()) {
         task_ref t{};
         if (q.try_pop(t)) {
@@ -55,7 +55,6 @@ void worker::operator()(context& ctx) {
             ++stat_->count_;
             continue;
         }
-        /*
         bool stolen = false;
         std::size_t from = last_stolen;
         for(auto idx = next(from, from); idx != from; idx = next(idx, from)) {
@@ -73,8 +72,6 @@ void worker::operator()(context& ctx) {
         if (! stolen) {
             _mm_pause();
         }
-         */
-        _mm_pause();
     }
 }
 

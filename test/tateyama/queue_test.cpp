@@ -84,4 +84,35 @@ TEST_F(queue_test, clear) {
     ASSERT_FALSE(q.try_pop(popped));
 }
 
+class mo_task {
+public:
+    mo_task() = default;
+    ~mo_task() = default;
+    mo_task(mo_task const& other) = delete;
+    mo_task& operator=(mo_task const& other) = delete;
+    mo_task(mo_task&& other) noexcept = default;
+    mo_task& operator=(mo_task&& other) noexcept = default;
+
+    explicit mo_task(std::size_t value) : value_(value) {}
+    std::size_t value_{};
+};
+
+TEST_F(queue_test, move_only_type) {
+    basic_queue<mo_task> q{};
+    mo_task tsk{1};
+    q.push(std::move(tsk));
+    q.push(mo_task{2});
+    EXPECT_EQ(2, q.size());
+
+    mo_task popped{};
+    ASSERT_TRUE(q.try_pop(popped));
+    ASSERT_EQ(1, popped.value_);
+    EXPECT_EQ(1, q.size());
+    ASSERT_TRUE(q.try_pop(popped));
+    ASSERT_EQ(2, popped.value_);
+    EXPECT_EQ(0, q.size());
+    ASSERT_TRUE(q.empty());
+    ASSERT_FALSE(q.try_pop(popped));
+}
+
 }

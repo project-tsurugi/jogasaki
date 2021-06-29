@@ -34,8 +34,8 @@ class cache_align task_ref {
 public:
     task_ref() = default;
     ~task_ref() = default;
-    task_ref(task_ref const& other) = default;
-    task_ref& operator=(task_ref const& other) = default;
+    task_ref(task_ref const& other) = delete;
+    task_ref& operator=(task_ref const& other) = delete;
     task_ref(task_ref&& other) noexcept = default;
     task_ref& operator=(task_ref&& other) noexcept = default;
 
@@ -51,9 +51,9 @@ private:
     std::shared_ptr<task> task_{};
 };
 
-static_assert(std::is_copy_assignable_v<task_ref>);
+static_assert(! std::is_copy_assignable_v<task_ref>);
 static_assert(std::is_move_assignable_v<task_ref>);
-static_assert(std::is_copy_constructible_v<task_ref>);
+static_assert(! std::is_copy_constructible_v<task_ref>);
 static_assert(std::is_move_constructible_v<task_ref>);
 
 }

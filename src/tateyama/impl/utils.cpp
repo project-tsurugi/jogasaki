@@ -30,8 +30,7 @@ void spin_wait(std::size_t times, queue& wait) {
         task_ref d{};
         while(--count > 0) {
             if(wait.try_pop(d)) {
-                wait.push(d);  // never come here. Just to avoid optimization.
-                wait.push(d);
+                wait.push(std::move(d));  // never come here. Just to avoid optimization.
                 return;
             }
             _mm_pause();

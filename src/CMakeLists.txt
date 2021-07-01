@@ -75,6 +75,10 @@ if (USE_BLOCKING_EVENT_QUEUE)
     target_compile_definitions(${ENGINE} PUBLIC USE_BLOCKING_EVENT_QUEUE)
 endif ()
 
+if(MC_QUEUE)
+    target_compile_definitions(${ENGINE} PUBLIC MC_QUEUE)
+endif()
+
 if (PERFORMANCE_TOOLS)
     target_link_libraries(${ENGINE}
             PRIVATE performance-tools::api
@@ -120,6 +124,10 @@ target_link_libraries(jogasaki-impl
 if (USE_BLOCKING_EVENT_QUEUE)
     target_compile_definitions(jogasaki-impl INTERFACE USE_BLOCKING_EVENT_QUEUE)
 endif ()
+
+if(MC_QUEUE)
+    target_compile_definitions(jogasaki-impl INTERFACE MC_QUEUE)
+endif()
 
 if (PERFORMANCE_TOOLS)
     target_link_libraries(jogasaki-impl

@@ -44,17 +44,6 @@ public:
     std::function<void(context&)> body_{};
 };
 
-class test_task2 {
-public:
-    test_task2() = default;
-
-    explicit test_task2(std::function<void(context&)> body) : body_(std::move(body)) {}
-    void operator()(context& ctx) {
-        return body_(ctx);
-    }
-    std::function<void(context&)> body_{};
-};
-
 TEST_F(scheduler_test, basic) {
     task_scheduler_cfg cfg{};
     cfg.thread_count(1);
@@ -70,6 +59,17 @@ TEST_F(scheduler_test, basic) {
     sched.stop();
     ASSERT_TRUE(executed);
 }
+
+class test_task2 {
+public:
+    test_task2() = default;
+
+    explicit test_task2(std::function<void(context&)> body) : body_(std::move(body)) {}
+    void operator()(context& ctx) {
+        return body_(ctx);
+    }
+    std::function<void(context&)> body_{};
+};
 
 TEST_F(scheduler_test, multiple_task_impls) {
     using task = basic_task<test_task, test_task2>;

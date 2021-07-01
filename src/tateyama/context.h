@@ -34,8 +34,8 @@ class cache_align context {
 public:
     context() = default;
     ~context() = default;
-    context(context const& other) = default;
-    context& operator=(context const& other) = default;
+    context(context const& other) = delete;
+    context& operator=(context const& other) = delete;
     context(context&& other) noexcept = default;
     context& operator=(context&& other) noexcept = default;
 

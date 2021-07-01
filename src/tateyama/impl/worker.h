@@ -40,6 +40,7 @@ struct cache_align worker_stat {
 /**
  * @brief worker object
  * @details this represents the worker logic running on each thread that processes its local queue
+ * @note this object is just a logic object and doesn't hold dynamic state, so safely be copied into thread_control.
  */
 template <class T>
 class cache_align worker {

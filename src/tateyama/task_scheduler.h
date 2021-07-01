@@ -24,19 +24,29 @@ namespace tateyama {
 
 /**
  * @brief stealing based task scheduler
+ * @tparam T the task type. See comments for `task`.
  */
 template <class T>
 class task_scheduler {
 public:
+
+    /**
+     * @brief task type scheduled by this
+     * @details the task object must be default constructible, move constructible, and move assignable.
+     * Interaction with local task queues are done in move semantics.
+     */
     using task = T;
 
-    static_assert(std::is_default_constructible_v<task>);
-    static_assert(std::is_move_constructible_v<task>);
-    static_assert(std::is_move_assignable_v<task>);
-
+    /**
+     * @brief queue used by this scheduler implementation
+     */
     using queue = impl::basic_queue<task>;
 
+    /**
+     * @brief worker used by this scheduler implementation
+     */
     using worker = impl::worker<task>;
+
     /**
      * @brief copy construct
      */
@@ -74,7 +84,7 @@ public:
 
     /**
      * @brief schedule task
-     * @param t the task to be scheduled. Caller must ensure the task is alive until the end of the execution.
+     * @param t the task to be scheduled.
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
     void schedule(task&& t) {
@@ -89,7 +99,7 @@ public:
 
     /**
      * @brief schedule task on the specified worker
-     * @param t the task to be scheduled. Caller must ensure the task is alive until the end of the execution.
+     * @param t the task to be scheduled.
      * @param index the preferred worker index for the task to execute. This puts the task on the queue that the specified
      * worker has, but doesn't ensure the task to be run by the worker if stealing happens.
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
@@ -187,6 +197,10 @@ private:
         auto ret = index++;
         return ret % mod;
     }
+
+    static_assert(std::is_default_constructible_v<task>);
+    static_assert(std::is_move_constructible_v<task>);
+    static_assert(std::is_move_assignable_v<task>);
 };
 
 }

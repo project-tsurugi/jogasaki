@@ -41,6 +41,7 @@ public:
     }
     std::size_t id_{};
 };
+
 TEST_F(moody_camel_test, basic) {
     ::moodycamel::ConcurrentQueue<test_task> q;
     q.enqueue(test_task{100});

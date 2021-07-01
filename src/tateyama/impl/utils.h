@@ -24,11 +24,11 @@ namespace tateyama::impl {
 
 template<class T>
 class basic_queue;
-class task_ref;
+class task;
 
-void spin_wait(std::size_t times, basic_queue<task_ref>& wait);
+//void spin_wait(std::size_t times, basic_queue<task>& wait);
 
-void measure_spin_wait(std::size_t time, basic_queue<task_ref>& wait);
+//void measure_spin_wait(std::size_t time, basic_queue<task>& wait);
 
 }
 

@@ -18,7 +18,7 @@
 #include <regex>
 #include <gtest/gtest.h>
 
-#include <tateyama/impl/task_ref.h>
+#include <tateyama/context.h>
 
 namespace tateyama::impl {
 
@@ -30,22 +30,23 @@ class moody_camel_test : public ::testing::Test {
 
 using namespace std::string_view_literals;
 
-class test_task : public task {
+class test_task {
 public:
+    test_task() = default;
+
     explicit test_task(std::size_t id) : id_(id) {}
 
-    void operator()(context& ctx) override {
+    void operator()(context& ctx) {
         (void)ctx;
     }
     std::size_t id_{};
 };
 TEST_F(moody_camel_test, basic) {
-    auto t{std::make_shared<test_task>(100)};
-    ::moodycamel::ConcurrentQueue<task_ref> q;
-    q.enqueue(task_ref{t});
-    task_ref item;
+    ::moodycamel::ConcurrentQueue<test_task> q;
+    q.enqueue(test_task{100});
+    test_task item{};
     ASSERT_TRUE(q.try_dequeue(item));
-    ASSERT_EQ(t, item.body());
+    ASSERT_EQ(100, item.id_);
 }
 
 }

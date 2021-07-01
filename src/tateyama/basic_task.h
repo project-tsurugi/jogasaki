@@ -21,47 +21,61 @@
 namespace tateyama {
 
 /**
- * @brief task interface
+ * @brief basic task interface
  * @details this object is abstraction of task logic and state, and is used to submit task to scheduler.
  * Caller needs to inherit and implement the task content in the subclass.
  */
-class cache_align task {
+template<class...Impls>
+class cache_align basic_task {
 public:
     /**
      * @brief construct empty object
      */
-    task() = default;
+    basic_task() = default;
 
     /**
      * @brief copy construct
      */
-    task(task const&) = default;
+    basic_task(basic_task const&) = default;
 
     /**
      * @brief move construct
      */
-    task(task &&) = default;
+    basic_task(basic_task &&) = default;
 
     /**
      * @brief copy assign
      */
-    task& operator=(task const&) = default;
+    basic_task& operator=(basic_task const&) = default;
 
     /**
      * @brief move assign
      */
-    task& operator=(task &&) = default;
+    basic_task& operator=(basic_task &&) = default;
 
     /**
      * @brief destruct task
      */
-    virtual ~task() = default;
+    ~basic_task() = default;
+
+    /**
+     * @brief move construct by moving base object
+     */
+    template <class T>
+    explicit basic_task(T&& impl) : entity_(std::in_place_type<T>, std::move(impl)) {}
 
     /**
      * @brief execute the task
      * @param ctx the context information on the worker that is running the task
      */
-    virtual void operator()(context& ctx) = 0;
+    void operator()(context& ctx) {
+        std::visit([&](auto&& arg){
+            arg(ctx);
+        }, entity_);
+    }
+
+private:
+    std::variant<Impls...> entity_{};
 };
 
 }

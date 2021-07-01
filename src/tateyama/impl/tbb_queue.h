@@ -23,7 +23,6 @@
 #include <tbb/concurrent_queue.h>
 #include <glog/logging.h>
 
-#include "task_ref.h"
 #include "cache_align.h"
 
 namespace tateyama::impl {

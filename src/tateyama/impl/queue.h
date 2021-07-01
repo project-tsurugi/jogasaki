@@ -89,6 +89,4 @@ private:
     queue_type origin_{};
 };
 
-using queue = basic_queue<task_ref>;
-
 }

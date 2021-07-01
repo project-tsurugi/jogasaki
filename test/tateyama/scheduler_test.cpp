@@ -19,6 +19,8 @@
 #include <glog/logging.h>
 #include <boost/dynamic_bitset.hpp>
 
+#include <tateyama/basic_task.h>
+
 namespace tateyama::api {
 
 using namespace std::string_literals;
@@ -31,10 +33,23 @@ class scheduler_test : public ::testing::Test {
 public:
 };
 
-class test_task : public task {
+class test_task {
 public:
+    test_task() = default;
+
     explicit test_task(std::function<void(context&)> body) : body_(std::move(body)) {}
-    void operator()(context& ctx) override {
+    void operator()(context& ctx) {
+        return body_(ctx);
+    }
+    std::function<void(context&)> body_{};
+};
+
+class test_task2 {
+public:
+    test_task2() = default;
+
+    explicit test_task2(std::function<void(context&)> body) : body_(std::move(body)) {}
+    void operator()(context& ctx) {
         return body_(ctx);
     }
     std::function<void(context&)> body_{};
@@ -43,17 +58,40 @@ public:
 TEST_F(scheduler_test, basic) {
     task_scheduler_cfg cfg{};
     cfg.thread_count(1);
-    task_scheduler sched{cfg};
+    task_scheduler<test_task> sched{cfg};
     bool executed = false;
-    auto t{std::make_shared<test_task>([&](context& t) {
+    test_task t{[&](context& t) {
         executed = true;
-    })};
+    }};
     sched.start();
     std::this_thread::sleep_for(1ms);
-    sched.schedule(t);
+    sched.schedule(std::move(t));
     std::this_thread::sleep_for(1ms);
     sched.stop();
     ASSERT_TRUE(executed);
+}
+
+TEST_F(scheduler_test, multiple_task_impls) {
+    using task = basic_task<test_task, test_task2>;
+    task_scheduler_cfg cfg{};
+    cfg.thread_count(1);
+    task_scheduler<task> sched{cfg};
+    bool executed = false;
+    bool executed2 = false;
+    test_task t{[&](context& t) {
+        executed = true;
+    }};
+    test_task2 t2{[&](context& t) {
+        executed2 = true;
+    }};
+    sched.start();
+    std::this_thread::sleep_for(1ms);
+    sched.schedule(task{std::move(t)});
+    sched.schedule(task{std::move(t2)});
+    std::this_thread::sleep_for(1ms);
+    sched.stop();
+    ASSERT_TRUE(executed);
+    ASSERT_TRUE(executed2);
 }
 
 }

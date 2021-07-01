@@ -15,20 +15,28 @@
  */
 #pragma once
 
-#include "task.h"
 #include "task_scheduler_cfg.h"
 #include <tateyama/impl/worker.h>
 #include <tateyama/impl/queue.h>
 #include <tateyama/impl/thread_control.h>
-#include <tateyama/impl/task_ref.h>
 
 namespace tateyama {
 
 /**
  * @brief stealing based task scheduler
  */
+template <class T>
 class task_scheduler {
 public:
+    using task = T;
+
+    static_assert(std::is_default_constructible_v<task>);
+    static_assert(std::is_move_constructible_v<task>);
+    static_assert(std::is_move_assignable_v<task>);
+
+    using queue = impl::basic_queue<task>;
+
+    using worker = impl::worker<task>;
     /**
      * @brief copy construct
      */
@@ -57,14 +65,27 @@ public:
     /**
      * @brief construct new object
      */
-    explicit task_scheduler(task_scheduler_cfg cfg = {});
+    explicit task_scheduler(task_scheduler_cfg cfg = {}) :
+        cfg_(cfg),
+        size_(cfg_.thread_count())
+    {
+        prepare();
+    }
 
     /**
      * @brief schedule task
      * @param t the task to be scheduled. Caller must ensure the task is alive until the end of the execution.
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    void schedule(std::shared_ptr<task> t);
+    void schedule(task&& t) {
+        if (! started_) {
+            auto& s = initial_tasks_[increment(current_index_, size_)];
+            s.emplace_back(std::move(t));
+            return;
+        }
+        auto& q = queues_[increment(current_index_, size_)];
+        q.push(std::move(t));
+    }
 
     /**
      * @brief schedule task on the specified worker
@@ -73,29 +94,52 @@ public:
      * worker has, but doesn't ensure the task to be run by the worker if stealing happens.
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    void schedule_at(std::shared_ptr<task> t, std::size_t index);
+    void schedule_at(task&& t, std::size_t index) {
+        BOOST_ASSERT(index < size_); //NOLINT
+        if (! started_) {
+            auto& s = initial_tasks_[index];
+            s.emplace_back(std::move(t));
+            return;
+        }
+        auto& q = queues_[index];
+        q.push(std::move(t));
+    }
 
     /**
      * @brief start the scheduler
      * @details start the scheduler
      * @note this function is *NOT* thread-safe. Only a thread must call this before using the scheduler.
      */
-    void start();
+    void start() {
+        for(auto&& t : threads_) {
+            t.activate();
+        }
+        started_ = true;
+    }
 
     /**
      * @brief stop the scheduler
      * @details stop the scheduler and join the worker threads
      * @note this function is *NOT* thread-safe. Only a thread must call this when finishing using the scheduler.
      */
-    void stop();
+    void stop() {
+        for(auto&& q : queues_) {
+            q.deactivate();
+        }
+        for(auto&& t : threads_) {
+            t.join();
+        }
+        started_ = false;
+    }
 
     /**
      * @brief accessor to the worker count
      * @return the number of worker (threads and queues)
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    [[nodiscard]] std::size_t size() const noexcept;
-
+    [[nodiscard]] std::size_t size() const noexcept {
+        return size_;
+    }
     /**
      * @brief accessor to the worker statistics
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
@@ -108,23 +152,41 @@ public:
      * @brief accessor to the local queue for testing purpose
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    [[nodiscard]] std::vector<impl::queue> const& queues() const noexcept {
+    [[nodiscard]] std::vector<queue> const& queues() const noexcept {
         return queues_;
     }
 
 private:
     task_scheduler_cfg cfg_{};
     std::size_t size_{};
-    std::vector<impl::queue> queues_{};
-    std::vector<impl::worker> workers_{};
+    std::vector<queue> queues_{};
+    std::vector<worker> workers_{};
     std::vector<impl::thread_control> threads_{};
     std::vector<impl::worker_stat> worker_stats_{};
     std::vector<context> contexts_{};
     std::atomic_size_t current_index_{};
-    std::vector<std::vector<std::shared_ptr<task>>> initial_tasks_{};
+    std::vector<std::vector<task>> initial_tasks_{};
     bool started_{false};
 
-    void prepare();
+    void prepare() {
+        auto sz = cfg_.thread_count();
+        queues_.resize(sz);
+        worker_stats_.resize(sz);
+        initial_tasks_.resize(sz);
+        contexts_.reserve(sz);
+        workers_.reserve(sz);
+        threads_.reserve(sz);
+        for(std::size_t i = 0; i < sz; ++i) {
+            auto& ctx = contexts_.emplace_back(i);
+            auto& worker = workers_.emplace_back(queues_, initial_tasks_, worker_stats_[i], std::addressof(cfg_));
+            threads_.emplace_back(i, std::addressof(cfg_), worker, ctx);
+        }
+    }
+
+    std::size_t increment(std::atomic_size_t& index, std::size_t mod) {
+        auto ret = index++;
+        return ret % mod;
+    }
 };
 
 }

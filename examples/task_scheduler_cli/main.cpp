@@ -40,26 +40,31 @@ using namespace tateyama::impl;
 
 using clock = std::chrono::high_resolution_clock;
 
-class cache_align test_task : public task {
+class cache_align test_task {
 public:
+    test_task() = default;
+
     test_task(
         tateyama::task_scheduler_cfg const& cfg,
-        tateyama::task_scheduler& scheduler,
+        tateyama::task_scheduler<test_task>& scheduler,
         std::size_t generation
     ) :
-        cfg_(cfg),
-        scheduler_(scheduler),
+        cfg_(std::addressof(cfg)),
+        scheduler_(std::addressof(scheduler)),
         generation_(generation)
     {}
 
-    void operator()(context& ctx) override {
-        scheduler_.schedule_at(std::make_shared<test_task>(cfg_, scheduler_, generation_+1), ctx.index());
+    void operator()(context& ctx) {
+        scheduler_->schedule_at(test_task{*cfg_, *scheduler_, generation_+1}, ctx.index());
     }
 
-    tateyama::task_scheduler_cfg const& cfg_;
-    tateyama::task_scheduler& scheduler_;
+    tateyama::task_scheduler_cfg const* cfg_{};
+    tateyama::task_scheduler<test_task>* scheduler_{};
     std::size_t generation_{};
 };
+
+using queue = basic_queue<test_task>;
+
 
 bool fill_from_flags(
     task_scheduler_cfg& cfg,
@@ -101,12 +106,11 @@ void show_result(
         LOG(INFO) << "======= begin debug info =======";
     }
     for(auto&& q: const_cast<std::vector<queue>&>(queues)) {
-        task_ref t{};
+        test_task t{};
         std::size_t queue_total = 0;
         while(q.try_pop(t)) {
-            auto& tsk = dynamic_cast<test_task&>(*t.body());
-            queue_total += tsk.generation_;
-            total_executions += tsk.generation_;
+            queue_total += t.generation_;
+            total_executions += t.generation_;
         }
         if (debug) {
             LOG(INFO) << cwidth(2) << index << "-th queue executions " << format(queue_total) << " tasks";
@@ -132,9 +136,9 @@ void show_result(
 
 static int run(tateyama::task_scheduler_cfg const& cfg, bool debug, std::size_t duration) {
     LOG(INFO) << "configuration " << cfg;
-    tateyama::task_scheduler sched{cfg};
+    tateyama::task_scheduler<test_task> sched{cfg};
     for(std::size_t i=0, n=cfg.thread_count(); i < n; ++i) {
-        sched.schedule_at(std::make_shared<test_task>(cfg, sched, 0), i);
+        sched.schedule_at(test_task{cfg, sched, 0}, i);
     }
     sched.start();
     auto begin = clock::now();

@@ -62,7 +62,7 @@ public:
      * @brief move construct by moving base object
      */
     template <class T>
-    explicit basic_task(T&& impl) : entity_(std::in_place_type<T>, std::move(impl)) {}
+    explicit basic_task(T&& impl) : entity_(std::in_place_type<T>, std::forward<T>(impl)) {}
 
     /**
      * @brief execute the task
@@ -74,8 +74,8 @@ public:
         }, entity_);
     }
 
-private:
-    std::variant<Impls...> entity_{};
+    //temporarily keep this public for testing // FIXME
+    std::variant<Impls...> entity_{};  //NOLINT
 };
 
 }

@@ -19,6 +19,7 @@
 
 #include <glog/logging.h>
 
+#include <tateyama/basic_task.h>
 #include <tateyama/task_scheduler.h>
 #include <tateyama/task_scheduler_cfg.h>
 #include "utils.h"
@@ -40,13 +41,17 @@ using namespace tateyama::impl;
 
 using clock = std::chrono::high_resolution_clock;
 
-class cache_align test_task {
-public:
-    test_task() = default;
+class test_task;
+class test_task2;
+using task = basic_task<test_task, test_task2>;
 
-    test_task(
+class cache_align test_task2 {
+public:
+    test_task2() = default;
+
+    test_task2(
         tateyama::task_scheduler_cfg const& cfg,
-        tateyama::task_scheduler<test_task>& scheduler,
+        tateyama::task_scheduler<task>& scheduler,
         std::size_t generation
     ) :
         cfg_(std::addressof(cfg)),
@@ -55,16 +60,39 @@ public:
     {}
 
     void operator()(context& ctx) {
-        scheduler_->schedule_at(test_task{*cfg_, *scheduler_, generation_+1}, ctx.index());
+        // do nothing
+        (void)ctx;
     }
 
     tateyama::task_scheduler_cfg const* cfg_{};
-    tateyama::task_scheduler<test_task>* scheduler_{};
+    tateyama::task_scheduler<task>* scheduler_{};
     std::size_t generation_{};
 };
 
-using queue = basic_queue<test_task>;
+class cache_align test_task {
+public:
+    test_task() = default;
 
+    test_task(
+        tateyama::task_scheduler_cfg const& cfg,
+        tateyama::task_scheduler<task>& scheduler,
+        std::size_t generation
+    ) :
+        cfg_(std::addressof(cfg)),
+        scheduler_(std::addressof(scheduler)),
+        generation_(generation)
+    {}
+
+    void operator()(context& ctx) {
+        scheduler_->schedule_at(task{test_task{*cfg_, *scheduler_, generation_+1}}, ctx.index());
+    }
+
+    tateyama::task_scheduler_cfg const* cfg_{};
+    tateyama::task_scheduler<task>* scheduler_{};
+    std::size_t generation_{};
+};
+
+using queue = basic_queue<task>;
 
 bool fill_from_flags(
     task_scheduler_cfg& cfg,
@@ -106,11 +134,12 @@ void show_result(
         LOG(INFO) << "======= begin debug info =======";
     }
     for(auto&& q: const_cast<std::vector<queue>&>(queues)) {
-        test_task t{};
+        task t{};
         std::size_t queue_total = 0;
         while(q.try_pop(t)) {
-            queue_total += t.generation_;
-            total_executions += t.generation_;
+            auto& tsk = std::get<0>(t.entity_);
+            queue_total += tsk.generation_;
+            total_executions += tsk.generation_;
         }
         if (debug) {
             LOG(INFO) << cwidth(2) << index << "-th queue executions " << format(queue_total) << " tasks";
@@ -136,9 +165,9 @@ void show_result(
 
 static int run(tateyama::task_scheduler_cfg const& cfg, bool debug, std::size_t duration) {
     LOG(INFO) << "configuration " << cfg;
-    tateyama::task_scheduler<test_task> sched{cfg};
+    tateyama::task_scheduler<task> sched{cfg};
     for(std::size_t i=0, n=cfg.thread_count(); i < n; ++i) {
-        sched.schedule_at(test_task{cfg, sched, 0}, i);
+        sched.schedule_at(task{test_task{cfg, sched, 0}}, i);
     }
     sched.start();
     auto begin = clock::now();

@@ -87,8 +87,10 @@ public:
     }
 private:
     std::unique_ptr<cv> sleep_cv_{std::make_unique<cv>()};
-    boost::thread origin_{};
     bool active_{};
+
+    // thread must come last since the construction starts new thread, which accesses the member variables above.
+    boost::thread origin_{};
 
     template <class F, class ...Args, class = std::enable_if_t<std::is_invocable_v<F, Args...>>>
     auto create_thread_body(std::size_t thread_id, task_scheduler_cfg const* cfg, F&& callable, Args&&...args) {

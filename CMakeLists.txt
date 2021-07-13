@@ -38,6 +38,7 @@ option(PERFORMANCE_TOOLS "Enable tooling to measure engine performance" OFF)
 option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 option(USE_BLOCKING_EVENT_QUEUE "use blocking queue for event queue" OFF)
 option(MC_QUEUE "use moody-camel queue" OFF)
+option(TRACY_ENABLE "enable tracy profiler" OFF)
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")

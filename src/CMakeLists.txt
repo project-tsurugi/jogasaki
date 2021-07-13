@@ -39,6 +39,13 @@ file(GLOB SOURCES
         "tateyama/impl/*.cpp"
 )
 
+if(TRACY_ENABLE)
+    file(GLOB TRACY_CLIENT
+            "../third_party/tracy/TracyClient.cpp"
+            )
+    list(APPEND SOURCES ${TRACY_CLIENT})
+endif()
+
 add_library(${ENGINE}
         ${SOURCES}
 )

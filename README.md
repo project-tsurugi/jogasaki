@@ -59,6 +59,7 @@ available options:
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
   * `-DENABLE_COVERAGE=ON` - enable code coverage analysis (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DUSE_BLOCKING_EVENT_QUEUE=ON` - enable blocking queue for the event channel
+  * `-DTRACY_ENABLE=ON` - enable tracy profiler for multi-thread debugging. See section below.
 
 ### install 
 
@@ -84,6 +85,25 @@ You can customize logging in the same way as sharksfin. See sharksfin [README.md
 ```sh
 GLOG_minloglevel=0 ./group-cli --minimum 
 ```
+
+### Multi-thread debugging/profiling with Tracy
+
+You can use [Tracy Profiler](https://github.com/wolfpld/tracy) to graphically display the threads operations and improve printf debug by printing messages on the tooltips on the Tracy profiler UI.
+By setting cmake build option `-DTRACY_ENABLE=ON`, TracyClient.cpp file is added to the build and tracing macros are enabled.
+
+Prerequirement: 
+
+1. ensure tracy code is located under `third_party/tracy` directory.
+```
+git submodule update third_party/tracy
+```
+
+2. include common.h at the top of files that requires tracing.
+```
+#include <jogasaki/common.h>
+```
+
+3. Put `trace_scope` at the beginning of the scope to trace, or use other tracing functions defined in common.h.
 
 ## License
 

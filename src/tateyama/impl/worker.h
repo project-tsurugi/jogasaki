@@ -23,6 +23,7 @@
 
 #include <glog/logging.h>
 
+#include <tateyama/common.h>
 #include <tateyama/context.h>
 #include <tateyama/impl/queue.h>
 #include <tateyama/impl/thread_control.h>
@@ -93,6 +94,7 @@ public:
      * @param ctx the worker context information
      */
     void operator()(context& ctx) {
+        trace_scope;
         auto index = ctx.index();
         auto& q = (*queues_)[index];
         std::size_t last_stolen = index;

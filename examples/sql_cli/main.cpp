@@ -29,6 +29,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/executor/tables.h>
+#include <tateyama/common.h>
 
 #include "../common/load.h"
 
@@ -52,6 +53,7 @@ using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::process::impl::expression;
 
 static int run(std::string_view sql, std::shared_ptr<configuration> cfg) {
+    trace_scope;
     if (sql.empty()) return 0;
     auto db = api::create_database(cfg);
     db->start();

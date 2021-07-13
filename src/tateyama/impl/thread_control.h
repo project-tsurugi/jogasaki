@@ -27,6 +27,7 @@
 #include "core_affinity.h"
 #include "cache_align.h"
 #include "utils.h"
+#include <tateyama/common.h>
 
 namespace tateyama::impl {
 
@@ -100,6 +101,7 @@ private:
 
         // C++20 supports forwarding captured parameter packs. Use forward as tuple for now.
         return [=, args=std::tuple<Args...>(std::forward<Args>(args)...)]() mutable { // assuming args are copyable
+            trace_scope;
             setup_core_affinity(thread_id, cfg);
             if constexpr (has_init_v<F>) {
                 callable.init(thread_id);

@@ -76,8 +76,9 @@ public:
      * @brief the worker body
      * @param ctx the worker context information
      */
-    void operator()(context& ctx) {
-        auto index = ctx.index();
+    void init(std::size_t thread_id) {
+        // reconstruct the queues so that they are on each numa node
+        auto index = thread_id;
         (*queues_)[index].reconstruct();
         auto& q = (*queues_)[index];
         auto& s = (*initial_tasks_)[index];
@@ -85,6 +86,15 @@ public:
             q.push(std::move(t));
         }
         s.clear();
+    }
+
+    /**
+     * @brief the worker body
+     * @param ctx the worker context information
+     */
+    void operator()(context& ctx) {
+        auto index = ctx.index();
+        auto& q = (*queues_)[index];
         std::size_t last_stolen = index;
         while(q.active()) {
             task t{};

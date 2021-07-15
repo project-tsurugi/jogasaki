@@ -20,6 +20,8 @@
 #include <ostream>
 #include <sstream>
 
+#include <takatori/util/detect.h>
+
 namespace tateyama::impl {
 
 template<class T>
@@ -30,5 +32,20 @@ class task;
 
 //void measure_spin_wait(std::size_t time, basic_queue<task>& wait);
 
+namespace details {
+
+template<class T>
+using with_init_type = decltype( std::declval<T&>().init(static_cast<std::size_t>(0)) );
+
 }
+
+/**
+ * @brief utility to check if given type has the init(std::size_t) member function
+ * @tparam T
+ */
+template<class T>
+constexpr bool has_init_v = takatori::util::is_detected_v<details::with_init_type, T>;
+
+}
+
 

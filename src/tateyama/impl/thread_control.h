@@ -26,6 +26,7 @@
 #include <tateyama/task_scheduler_cfg.h>
 #include "core_affinity.h"
 #include "cache_align.h"
+#include "utils.h"
 
 namespace tateyama::impl {
 
@@ -100,6 +101,9 @@ private:
         // C++20 supports forwarding captured parameter packs. Use forward as tuple for now.
         return [=, args=std::tuple<Args...>(std::forward<Args>(args)...)]() mutable { // assuming args are copyable
             setup_core_affinity(thread_id, cfg);
+            if constexpr (has_init_v<F>) {
+                callable.init(thread_id);
+            }
             std::unique_lock lk{sleep_cv_->mutex_};
             sleep_cv_->cv_.wait(lk, [&]{
                 return active_;

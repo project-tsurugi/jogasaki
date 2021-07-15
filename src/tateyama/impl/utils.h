@@ -44,7 +44,7 @@ using with_init_type = decltype( std::declval<T&>().init(static_cast<std::size_t
  * @tparam T
  */
 template<class T>
-constexpr bool has_init_v = takatori::util::is_detected_v<details::with_init_type, T>;
+inline constexpr bool has_init_v = takatori::util::is_detected_v<details::with_init_type, T>;
 
 }
 

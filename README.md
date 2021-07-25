@@ -95,7 +95,7 @@ Prerequirement:
 
 1. ensure tracy code is located under `third_party/tracy` directory.
 ```
-git submodule update third_party/tracy
+git submodule update --init third_party/tracy
 ```
 
 2. include common.h at the top of files that requires tracing.

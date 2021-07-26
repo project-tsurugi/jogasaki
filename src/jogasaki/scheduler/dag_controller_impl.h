@@ -54,9 +54,9 @@ class cache_align dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
-    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
+    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler, dag_controller* parent);
 
-    explicit impl(std::shared_ptr<configuration> cfg);
+    explicit impl(std::shared_ptr<configuration> cfg, dag_controller* parent);
 
     /*
      * @brief handles providing event
@@ -112,6 +112,9 @@ public:
 
     void init(model::graph& g);
 
+    dag_controller* parent() const noexcept {
+        return parent_;
+    }
 private:
     std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};
@@ -120,6 +123,7 @@ private:
     bool graph_deactivated_{false};
     maybe_shared_ptr<task_scheduler> executor_{};
     std::mutex mutex_{};
+    dag_controller* parent_{};
 
     bool all_steps_deactivated(model::graph& g);
     // no upstreams or upstream equals or past st
@@ -137,6 +141,7 @@ private:
     void start_running(step& v);
     void start_pretask(step& v, step_state_table::slot_index index);
     void start_preparing(step& v);
+    job_context& job() noexcept;
 };
 
 } // namespace

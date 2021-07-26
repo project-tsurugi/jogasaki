@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/utils/latch.h>
@@ -43,14 +44,17 @@ public:
     /**
      * @brief create default context object
      */
-    job_context(
-        maybe_shared_ptr<scheduler::statement_scheduler> statement,
-        maybe_shared_ptr<task_scheduler> scheduler
+    explicit job_context(
+        maybe_shared_ptr<scheduler::statement_scheduler> statement
     ) noexcept :
-        dag_scheduler_(std::move(statement)),
-        task_scheduler_(std::move(scheduler))
+        dag_scheduler_(std::move(statement))
     {}
 
+    ~job_context() = default;
+    job_context(job_context const& other) = delete;
+    job_context& operator=(job_context const& other) = delete;
+    job_context(job_context&& other) noexcept = delete;
+    job_context& operator=(job_context&& other) noexcept = delete;
 
     /**
      * @brief setter for the dag scheduler
@@ -70,39 +74,16 @@ public:
     [[nodiscard]] utils::latch& completion_latch() noexcept;
 
     /**
-     * @brief setter for the dag scheduler
+     * @brief accessor for the completion latch used to notify client thread
+     * @return latch to notify the job completion (released at the end of job)
      */
-    void request(maybe_shared_ptr<request_context> arg) noexcept {
-        request_context_ = std::move(arg);
-    }
-
-    /**
-     * @brief accessor for the dag scheduler
-     * @return dag scheduler shared within this request
-     */
-    [[nodiscard]] maybe_shared_ptr<request_context> const& request() const noexcept {
-        return request_context_;
-    }
-
-    /**
-     * @brief setter for the dag scheduler
-     */
-    void scheduler(maybe_shared_ptr<task_scheduler> arg) noexcept {
-        task_scheduler_ = arg;
-    }
-
-    /**
-     * @brief accessor for the dag scheduler
-     * @return dag scheduler shared within this request
-     */
-    [[nodiscard]] maybe_shared_ptr<task_scheduler> const& scheduler() const noexcept {
-        return task_scheduler_;
+    [[nodiscard]] std::atomic_flag& completing() noexcept {
+        return completing_;
     }
 private:
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
-    maybe_shared_ptr<request_context> request_context_{};
-    maybe_shared_ptr<task_scheduler> task_scheduler_{};
     utils::latch completion_latch_{};
+    std::atomic_flag completing_{false};
 };
 
 }

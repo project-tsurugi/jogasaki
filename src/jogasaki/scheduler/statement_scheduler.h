@@ -73,6 +73,11 @@ public:
     explicit statement_scheduler(std::shared_ptr<configuration> cfg);
 
     /**
+     * @brief creates a new instance with given dag_controller
+     */
+    explicit statement_scheduler(maybe_shared_ptr<dag_controller> controller) noexcept;
+
+    /**
      * @brief schedule the statement to run
      */
     void schedule(

@@ -36,6 +36,7 @@
 #include "dag_controller.h"
 #include "thread_params.h"
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 
 namespace jogasaki::scheduler {
 
@@ -121,19 +122,21 @@ void dag_controller::impl::operator()(
     (void)ie;
 }
 
-dag_controller::impl::impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
+dag_controller::impl::impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler, dag_controller* parent) :
     cfg_(std::move(cfg)),
-    executor_(std::addressof(scheduler))
+    executor_(std::addressof(scheduler)),
+    parent_(parent)
 {}
 
-dag_controller::impl::impl(std::shared_ptr<configuration> cfg) :
+dag_controller::impl::impl(std::shared_ptr<configuration> cfg, dag_controller* parent) :
     cfg_(std::move(cfg)),
     executor_(cfg_->single_thread() ?
         std::shared_ptr<class task_scheduler>(std::make_shared<serial_task_scheduler>()) :
         std::shared_ptr<class task_scheduler>(
             std::make_shared<parallel_task_scheduler>(thread_params(cfg_))
         )
-    )
+    ),
+    parent_(parent)
 {}
 
 bool dag_controller::impl::all_steps_deactivated(model::graph& g) {
@@ -285,7 +288,12 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
             if(all_steps_deactivated(*graph_)) {
                 graph_deactivated_ = true;
                 graph_->context()->channel()->close();
-                executor_->schedule_task(flat_task{true, graph_->context()->job().get()});
+
+                // make sure teardown task is submitted only once
+                auto& completing = job().completing();
+                if (! completing.test_and_set()) {
+                    executor_->schedule_task(flat_task{true, std::addressof(job())});
+                }
             }
             break;
     }
@@ -328,20 +336,23 @@ void dag_controller::impl::process(bool channel_enabled) {
             check_internal_events();
         }
     }
-//    graph_deactivated_ = all_steps_deactivated(*graph_);
-//    if(graph_deactivated_) {
-//        graph_->context()->job()->completion_latch().open();
-//    }
 }
 
 void dag_controller::impl::init(model::graph& g) {
     // assuming one graph per scheduler
     graph_ = &g;
     steps_.clear();
+    while(! internal_events_.empty()) {
+        internal_events_.pop();
+    }
     for(auto&& v: g.steps()) {
         step_state(*v, step_state_kind::created);
     }
     graph_deactivated_ = false;
+}
+
+job_context& dag_controller::impl::job() noexcept {
+    return *graph_->context()->job();  //TODO avoid request context from graph
 }
 
 void dag_controller::impl::schedule(model::graph& g) {
@@ -350,14 +361,20 @@ void dag_controller::impl::schedule(model::graph& g) {
     if (channel_enabled) {  // TODO remove channel
         while(!graph_deactivated_) {
             process(channel_enabled);
-            executor_->wait_for_progress(*g.context()->job());
+            executor_->wait_for_progress(job());
         }
     } else {
-        // TODO
-        executor_->schedule_task(flat_task{g.context()->job().get()});
+        if (! graph_->context()->job()) {
+            g.context()->job(
+                std::make_shared<job_context>(
+                    std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()})
+                )
+            );
+        }
+        executor_->schedule_task(flat_task{std::addressof(job())});
         // For serial scheduler, give control here in order to
         // simulate tasks execution background so that state changes and proceeds
-        executor_->wait_for_progress(*g.context()->job());
+        executor_->wait_for_progress(job());
     }
 }
 
@@ -367,7 +384,7 @@ void dag_controller::impl::start_running(step& v) {
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;
     for(auto& t : task_list) {
-        executor_->schedule_task(flat_task{t, graph_->context()->job().get()});  //TODO avoid request context from graph
+        executor_->schedule_task(flat_task{t, std::addressof(job())});
         tasks.register_task(task_kind::main, slot, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
         ++slot;
@@ -383,7 +400,7 @@ void dag_controller::impl::start_pretask(step& v, step_state_table::slot_index i
     }
     if(auto view = v.create_pretask(index);!view.empty()) {
         auto& t = view.front();
-        executor_->schedule_task(flat_task{t, graph_->context()->job().get()});  //TODO avoid request context from graph
+        executor_->schedule_task(flat_task{t, std::addressof(job())});
         tasks.register_task(task_kind::pre, index, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
     }

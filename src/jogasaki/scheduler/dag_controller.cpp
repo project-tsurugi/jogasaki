@@ -49,11 +49,11 @@ dag_controller::dag_controller(
     std::shared_ptr<configuration> cfg,
     task_scheduler& scheduler
 ) :
-    impl_(std::make_unique<impl>(std::move(cfg), scheduler))
+    impl_(std::make_unique<impl>(std::move(cfg), scheduler, this))
 {}
 
 dag_controller::dag_controller(std::shared_ptr<configuration> cfg) :
-    impl_(std::make_unique<impl>(std::move(cfg)))
+    impl_(std::make_unique<impl>(std::move(cfg), this))
 {};
 
 dag_controller::~dag_controller() = default;

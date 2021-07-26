@@ -25,6 +25,8 @@ class cache_align statement_scheduler::impl {
 public:
     impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
 
+    explicit impl(maybe_shared_ptr<dag_controller> controller);
+
     explicit impl(std::shared_ptr<configuration> cfg);
 
     void schedule(
@@ -37,7 +39,7 @@ public:
     static statement_scheduler::impl& get_impl(statement_scheduler& arg);
 
 private:
-    dag_controller dag_controller_{};
+    maybe_shared_ptr<dag_controller> dag_controller_{};
     std::shared_ptr<configuration> cfg_{};
 };
 

@@ -27,12 +27,12 @@ namespace jogasaki::scheduler {
 using takatori::util::unsafe_downcast;
 
 statement_scheduler::impl::impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
-    dag_controller_(cfg, scheduler),
+    dag_controller_(std::make_shared<dag_controller>(cfg, scheduler)),
     cfg_(std::move(cfg))
 {}
 
 statement_scheduler::impl::impl(std::shared_ptr<configuration> cfg) :
-    dag_controller_(cfg),
+    dag_controller_(std::make_shared<dag_controller>(cfg)),
     cfg_(std::move(cfg))
 {}
 
@@ -41,7 +41,7 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
     switch(s.kind()) {
         case kind::execute: {
             auto& g = unsafe_downcast<executor::common::execute>(s).operators();
-            dag_controller_.schedule(g);
+            dag_controller_->schedule(g);
             break;
         }
         case kind::write: {
@@ -53,10 +53,14 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
 }
 
 dag_controller& statement_scheduler::impl::controller() noexcept {
-    return dag_controller_;
+    return *dag_controller_;
 }
 
 statement_scheduler::impl& statement_scheduler::impl::get_impl(statement_scheduler& arg) {
     return *arg.impl_;
 }
+
+statement_scheduler::impl::impl(maybe_shared_ptr<dag_controller> controller) :
+    dag_controller_(std::move(controller))
+{}
 } // namespace

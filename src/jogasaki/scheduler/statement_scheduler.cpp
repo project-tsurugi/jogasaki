@@ -29,6 +29,10 @@ statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg) :
     impl_(std::make_unique<impl>(std::move(cfg)))
 {};
 
+statement_scheduler::statement_scheduler(maybe_shared_ptr<dag_controller> controller) noexcept:
+    impl_(std::make_unique<impl>(std::move(controller)))
+{}
+
 statement_scheduler::~statement_scheduler() = default;
 
 void statement_scheduler::schedule(

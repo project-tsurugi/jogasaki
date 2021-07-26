@@ -38,14 +38,56 @@ public:
     flat_task(flat_task&& other) noexcept = default;
     flat_task& operator=(flat_task&& other) noexcept = default;
 
-    explicit flat_task(std::shared_ptr<model::task> origin) noexcept :
-        origin_(std::move(origin))
+    /**
+     * @brief construct new object wrapping jogasaki task
+     * @param origin
+     */
+    explicit flat_task(
+        std::shared_ptr<model::task> origin,
+        job_context* jctx
+    ) noexcept :
+        origin_(std::move(origin)),
+        job_context_(jctx)
     {}
 
-    explicit flat_task(maybe_shared_ptr<request_context> request_context) noexcept :
+    /**
+     * @brief construct new object to run dag scheduler
+     * @param jctx
+     */
+    explicit flat_task(
+        job_context* jctx
+    ) noexcept :
         dag_scheduling_(true),
-        request_context_(std::move(request_context))
+        job_context_(jctx)
     {}
+
+    /**
+     * @brief construct new object to bootstrap dag scheduling
+     * @param jctx
+     */
+    flat_task(
+        model::graph& g,
+        job_context* jctx
+    ) noexcept :
+        bootstrap_(true),
+        job_context_(jctx),
+        graph_(std::addressof(g))
+    {}
+
+    /**
+     * @brief construct new object to run dag scheduler
+     * @param jctx
+     */
+    explicit flat_task(
+        bool teardown,  //TODO
+        job_context* jctx
+    ) noexcept :
+        teardown_(true),
+        job_context_(jctx)
+    {
+        (void) teardown;
+
+    }
 
     [[nodiscard]] std::shared_ptr<model::task> const& origin() const noexcept {
         return origin_;
@@ -57,10 +99,34 @@ public:
      * @brief returns task id that uniquely identifies the task
      */
     [[nodiscard]] identity_type id() const;
+
+    /**
+     * @brief returns task id that uniquely identifies the task
+     */
+    [[nodiscard]] job_context* job() const {
+        return job_context_;
+    }
+
+    std::ostream& write_to(std::ostream& out) const {
+        using namespace std::string_view_literals;
+        return out << "task[id="sv << std::to_string(static_cast<identity_type>(id())) << "]"sv;
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, flat_task const& value) {
+        return value.write_to(out);
+    }
 private:
     std::shared_ptr<model::task> origin_{};
     bool dag_scheduling_{false};
-    maybe_shared_ptr<request_context> request_context_{};
+    bool bootstrap_{false};
+    bool teardown_{false};
+    request_context* request_context_{};
+    job_context* job_context_{};
+    model::graph* graph_{};
+
+    void bootstrap();
+    void dag_schedule();
+    void teardown();
 };
 
 }

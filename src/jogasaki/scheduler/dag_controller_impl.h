@@ -108,15 +108,18 @@ public:
 
     static dag_controller::impl& get_impl(dag_controller& arg);
 
+    bool all_deactivated() const noexcept;
+
+    void init(model::graph& g);
+
 private:
     std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};
     steps_status steps_{};
     std::queue<internal_event> internal_events_{};
     bool graph_deactivated_{false};
-    maybe_shared_ptr<class task_scheduler> executor_{};
+    maybe_shared_ptr<task_scheduler> executor_{};
     std::mutex mutex_{};
-    utils::latch latch_{};
 
     bool all_steps_deactivated(model::graph& g);
     // no upstreams or upstream equals or past st

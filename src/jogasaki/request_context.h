@@ -119,13 +119,13 @@ public:
     /**
      * @brief setter for the job context
      */
-    void job(std::shared_ptr<scheduler::job_context> arg) noexcept;
+    void job(maybe_shared_ptr<scheduler::job_context> arg) noexcept;
 
     /**
      * @brief accessor for the job context
      * @return job context
      */
-    [[nodiscard]] std::shared_ptr<scheduler::job_context> const& job() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<scheduler::job_context> const& job() const noexcept;
 
 private:
     std::shared_ptr<event_channel> channel_{};
@@ -135,7 +135,7 @@ private:
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};
     std::atomic<status> status_code_{status::ok};
-    std::shared_ptr<scheduler::job_context> job_context_{};
+    maybe_shared_ptr<scheduler::job_context> job_context_{};
 };
 
 }

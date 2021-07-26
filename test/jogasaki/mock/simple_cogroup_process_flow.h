@@ -22,6 +22,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/process/step.h>
 #include "simple_scan_process_task.h"
+#include "simple_cogroup_process_task.h"
 
 namespace jogasaki::executor {
 
@@ -35,7 +36,7 @@ public:
         auto initial_count = tasks_.size();
         if (tasks_.size() < partitions) {
             for(std::size_t i = 0; i < partitions; ++i) {
-                tasks_.emplace_back(std::make_unique<simple_transform_process_task>(context_, step_));
+                tasks_.emplace_back(std::make_unique<simple_cogroup_process_task>(context_, step_));
             }
         }
         return takatori::util::sequence_view{&*(tasks_.begin()+initial_count), &*(tasks_.end())};

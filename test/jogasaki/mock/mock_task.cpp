@@ -38,6 +38,10 @@ model::task_result mock_task::operator()() {
     if (!has_next) {
         common::send_event(*context_, event_enum_tag<event_kind::task_completed>, src_->id(), id());
     }
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*context()->job()->dag_scheduler());
+    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
+    auto& ts = dc.get_task_scheduler();
+    ts.schedule_task(scheduler::flat_task{context()->job().get()});
     return has_next ? model::task_result::proceed : model::task_result::complete;
 }
 

@@ -54,8 +54,8 @@ TEST_F(task_scheduler_test, single) {
         run = true;
         return task_result::complete;
     });
-    executor.schedule_task(flat_task{t});
     job_context jctx{};
+    executor.schedule_task(flat_task{t, &jctx});
     executor.wait_for_progress(jctx);
     ASSERT_TRUE(run);
 }
@@ -69,7 +69,7 @@ TEST_F(task_scheduler_test, multi) {
         jctx.completion_latch().open();
         return task_result::complete;
     });
-    executor.schedule_task(flat_task{t});
+    executor.schedule_task(flat_task{t, &jctx});
     executor.wait_for_progress(jctx);
     executor.stop();
     ASSERT_TRUE(run.test_and_set());

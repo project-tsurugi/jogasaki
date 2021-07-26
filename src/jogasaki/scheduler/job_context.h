@@ -19,11 +19,15 @@
 
 #include <jogasaki/utils/latch.h>
 
-namespace jogasaki::scheduler {
+namespace jogasaki {
+class request_context;
+
+namespace scheduler {
 
 using takatori::util::maybe_shared_ptr;
 
 class statement_scheduler;
+class task_scheduler;
 
 /**
  * @brief context object for the job
@@ -35,6 +39,18 @@ public:
      * @brief create default context object
      */
     job_context() = default;
+
+    /**
+     * @brief create default context object
+     */
+    job_context(
+        maybe_shared_ptr<scheduler::statement_scheduler> statement,
+        maybe_shared_ptr<task_scheduler> scheduler
+    ) noexcept :
+        dag_scheduler_(std::move(statement)),
+        task_scheduler_(std::move(scheduler))
+    {}
+
 
     /**
      * @brief setter for the dag scheduler
@@ -53,10 +69,43 @@ public:
      */
     [[nodiscard]] utils::latch& completion_latch() noexcept;
 
+    /**
+     * @brief setter for the dag scheduler
+     */
+    void request(maybe_shared_ptr<request_context> arg) noexcept {
+        request_context_ = std::move(arg);
+    }
+
+    /**
+     * @brief accessor for the dag scheduler
+     * @return dag scheduler shared within this request
+     */
+    [[nodiscard]] maybe_shared_ptr<request_context> const& request() const noexcept {
+        return request_context_;
+    }
+
+    /**
+     * @brief setter for the dag scheduler
+     */
+    void scheduler(maybe_shared_ptr<task_scheduler> arg) noexcept {
+        task_scheduler_ = arg;
+    }
+
+    /**
+     * @brief accessor for the dag scheduler
+     * @return dag scheduler shared within this request
+     */
+    [[nodiscard]] maybe_shared_ptr<task_scheduler> const& scheduler() const noexcept {
+        return task_scheduler_;
+    }
 private:
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
+    maybe_shared_ptr<request_context> request_context_{};
+    maybe_shared_ptr<task_scheduler> task_scheduler_{};
     utils::latch completion_latch_{};
 };
+
+}
 
 }
 

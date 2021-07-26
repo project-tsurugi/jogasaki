@@ -21,19 +21,42 @@
 
 namespace jogasaki::scheduler {
 
+void flat_task::bootstrap() {
+    VLOG(1) << *this << " bootstrap task executed.";
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
+    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
+    dc.init(*graph_);
+}
+
+void flat_task::dag_schedule() {
+    VLOG(1) << *this << " dag scheduling task executed.";
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
+    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
+    dc.process(false);
+}
+
+void flat_task::teardown() {
+    VLOG(1) << *this << " teardown task executed.";
+    job_context_->completion_latch().open();
+}
+
 void flat_task::operator()(tateyama::context& ctx) {
     (void)ctx;
     if (dag_scheduling_) {
-        auto& sc = scheduler::statement_scheduler::impl::get_impl(*request_context_->job()->dag_scheduler());
-        auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-        dc.process(false);
-        if(dc.all_deactivated()) {
-            request_context_->job()->completion_latch().open();
-        }
+        dag_schedule();
         return;
     }
-    auto res = (*origin_)();
-    (void)res;
+    if (bootstrap_) {
+        bootstrap();
+        return;
+    }
+    if (teardown_) {
+        teardown();
+        return;
+
+    }
+    model::task_result res{};
+    while((res = (*origin_)()) == model::task_result::proceed) {}
 }
 
 flat_task::identity_type flat_task::id() const {

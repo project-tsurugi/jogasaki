@@ -36,11 +36,17 @@ public:
     ~mock_task() override = default;
     mock_task(mock_task&& other) noexcept = default;
     mock_task& operator=(mock_task&& other) noexcept = default;
-    mock_task(request_context* context,
-            model::step* src,
-            bool is_pretask = false) : context_(context), src_(src), is_pretask_(is_pretask) {}
+    mock_task(
+        request_context* context,
+        model::step* src,
+        bool is_pretask = false
+    ) :
+        context_(context),
+        src_(src),
+        is_pretask_(is_pretask)
+    {}
 
-    model::task_result operator()() override;;
+    model::task_result operator()() override;
     virtual void execute() = 0;
 protected:
     request_context* context_{};

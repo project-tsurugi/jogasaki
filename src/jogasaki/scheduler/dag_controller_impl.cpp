@@ -35,6 +35,7 @@
 #include "step_state.h"
 #include "dag_controller.h"
 #include "thread_params.h"
+#include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::scheduler {
 
@@ -284,6 +285,7 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
             if(all_steps_deactivated(*graph_)) {
                 graph_deactivated_ = true;
                 graph_->context()->channel()->close();
+                executor_->schedule_task(flat_task{true, graph_->context()->job().get()});
             }
             break;
     }
@@ -326,31 +328,36 @@ void dag_controller::impl::process(bool channel_enabled) {
             check_internal_events();
         }
     }
-    graph_deactivated_ = all_steps_deactivated(*graph_);
-    if(graph_deactivated_) {
-        latch_.open();
-    }
-    // For serial scheduler, give control here in order to
-    // simulate tasks execution background so that state changes and proceeds
-    executor_->wait_for_progress();
+//    graph_deactivated_ = all_steps_deactivated(*graph_);
+//    if(graph_deactivated_) {
+//        graph_->context()->job()->completion_latch().open();
+//    }
 }
 
-void dag_controller::impl::schedule(model::graph& g) {
+void dag_controller::impl::init(model::graph& g) {
     // assuming one graph per scheduler
     graph_ = &g;
     steps_.clear();
     for(auto&& v: g.steps()) {
         step_state(*v, step_state_kind::created);
     }
-    graph_deactivated_ = all_steps_deactivated(g);
-    if (false) {
-        auto channel_enabled = g.context()->configuration()->use_event_channel();
+    graph_deactivated_ = false;
+}
+
+void dag_controller::impl::schedule(model::graph& g) {
+    init(g);
+    auto channel_enabled = g.context()->configuration()->use_event_channel();
+    if (channel_enabled) {  // TODO remove channel
         while(!graph_deactivated_) {
-            process(channel_enabled);  //TODO update
+            process(channel_enabled);
+            executor_->wait_for_progress(*g.context()->job());
         }
     } else {
-        process();
-        latch_.wait();
+        // TODO
+        executor_->schedule_task(flat_task{g.context()->job().get()});
+        // For serial scheduler, give control here in order to
+        // simulate tasks execution background so that state changes and proceeds
+        executor_->wait_for_progress(*g.context()->job());
     }
 }
 
@@ -360,7 +367,7 @@ void dag_controller::impl::start_running(step& v) {
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;
     for(auto& t : task_list) {
-        executor_->schedule_task(flat_task{t});
+        executor_->schedule_task(flat_task{t, graph_->context()->job().get()});  //TODO avoid request context from graph
         tasks.register_task(task_kind::main, slot, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
         ++slot;
@@ -376,7 +383,7 @@ void dag_controller::impl::start_pretask(step& v, step_state_table::slot_index i
     }
     if(auto view = v.create_pretask(index);!view.empty()) {
         auto& t = view.front();
-        executor_->schedule_task(flat_task{t});
+        executor_->schedule_task(flat_task{t, graph_->context()->job().get()});  //TODO avoid request context from graph
         tasks.register_task(task_kind::pre, index, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
     }
@@ -397,6 +404,10 @@ dag_controller::impl& dag_controller::impl::get_impl(dag_controller& arg) {
 
 class task_scheduler& dag_controller::impl::get_task_scheduler() {
     return *executor_;
+}
+
+bool dag_controller::impl::all_deactivated() const noexcept {
+    return graph_deactivated_;
 }
 
 } // namespace

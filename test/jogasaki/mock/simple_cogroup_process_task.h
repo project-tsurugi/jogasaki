@@ -32,7 +32,7 @@ public:
     simple_cogroup_process_task(simple_cogroup_process_task&& other) noexcept = default;
     simple_cogroup_process_task& operator=(simple_cogroup_process_task&& other) noexcept = default;
 
-    simple_cogroup_process_task(request_context* context, step* src) : mock_task(context,  src) {}
+    simple_cogroup_process_task(request_context* context, model::step* src) : mock_task(context,  src) {}
     void execute() override {
         LOG(INFO) << *this << " simple_cogroup_process_task executed. count: " << count_;
     }

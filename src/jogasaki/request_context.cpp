@@ -83,11 +83,11 @@ status request_context::status_code() const noexcept {
     return status_code_.load();
 }
 
-std::shared_ptr<scheduler::job_context> const& request_context::job() const noexcept {
+maybe_shared_ptr<scheduler::job_context> const& request_context::job() const noexcept {
     return job_context_;
 }
 
-void request_context::job(std::shared_ptr<scheduler::job_context> arg) noexcept {
+void request_context::job(maybe_shared_ptr<scheduler::job_context> arg) noexcept {
     job_context_ = std::move(arg);
 }
 

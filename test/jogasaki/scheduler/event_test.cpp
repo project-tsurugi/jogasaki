@@ -42,6 +42,7 @@ class event_test : public test_root {};
 
 TEST_F(event_test, basic) {
     auto ctx = std::make_shared<request_context>();
+    ctx->configuration()->use_event_channel(true);
     auto g = std::make_unique<common::graph>(*ctx);
     auto p = std::make_unique<test::test_process>();
     g->insert(std::move(p));
@@ -52,6 +53,7 @@ TEST_F(event_test, basic) {
 
 TEST_F(event_test, simple_forward) {
     auto ctx = std::make_shared<request_context>();
+    ctx->configuration()->use_event_channel(true);
     auto g = std::make_unique<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
@@ -71,6 +73,7 @@ TEST_F(event_test, simple_forward) {
 
 TEST_F(event_test, simple_shuffle) {
     auto ctx = std::make_shared<request_context>();
+    ctx->configuration()->use_event_channel(true);
     auto g = std::make_unique<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();

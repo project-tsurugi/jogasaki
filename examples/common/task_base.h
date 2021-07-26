@@ -21,6 +21,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/common/utils.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/event_channel.h>
 
@@ -34,7 +35,7 @@ public:
     model::task_result operator()() override {
         execute();
         ++count_;
-        common::send_event(*context_, event_enum_tag<event_kind::task_completed>, src_->id(), id());
+        executor::common::send_event(*context_, event_enum_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     };
 

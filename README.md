@@ -105,6 +105,21 @@ git submodule update --init third_party/tracy
 
 3. Put `trace_scope` at the beginning of the scope to trace, or use other tracing functions defined in common.h.
 
+### Recompile time saving with ccache
+
+You can save re-compile time using [ccache](https://ccache.dev), which caches the compiled output and reuse on recompilation if no change is detected.
+This works well with jogasaki build as jogasaki build has dependencies to many components and translation units are getting bigger. 
+
+1. Install ccache 
+```
+apt install ccache
+```
+2. add `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache` to cmake build option. 
+
+First time build does not change as it requires building and caching all artifacts into cache directory, e.g. `~/.ccache`. When you recompile, you will see it finishes very fast.
+
+
+
 ## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)

@@ -133,6 +133,7 @@ TEST_F(database_test, update_with_host_variable) {
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
+    db->stop();
 }
 
 }

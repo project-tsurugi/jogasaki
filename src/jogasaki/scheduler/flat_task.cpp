@@ -26,6 +26,7 @@ void flat_task::bootstrap() {
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_);
+    dc.process(false);
 }
 
 void flat_task::dag_schedule() {

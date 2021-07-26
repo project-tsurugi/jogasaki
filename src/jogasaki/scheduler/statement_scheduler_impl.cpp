@@ -63,4 +63,9 @@ statement_scheduler::impl& statement_scheduler::impl::get_impl(statement_schedul
 statement_scheduler::impl::impl(maybe_shared_ptr<dag_controller> controller) :
     dag_controller_(std::move(controller))
 {}
+
+task_scheduler& statement_scheduler::impl::get_task_scheduler() noexcept {
+    return dag_controller_->get_task_scheduler();
+}
+
 } // namespace

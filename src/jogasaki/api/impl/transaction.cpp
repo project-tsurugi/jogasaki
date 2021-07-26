@@ -23,6 +23,7 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/write.h>
+#include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::api::impl {
 
@@ -64,7 +65,15 @@ status transaction::execute(
         auto job = std::make_shared<scheduler::job_context>();
         job->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
         request_ctx->job(std::move(job));
-        scheduler_.schedule(*stmt, *request_ctx);
+
+        auto& ts = scheduler_.get_task_scheduler();
+        ts.schedule_task(scheduler::flat_task{
+            scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
+            g,
+            request_ctx->job().get()
+        });
+        ts.wait_for_progress(*request_ctx->job());
+
         // for now, assume only one result is returned
         result = std::make_unique<impl::result_set>(
             std::move(store)

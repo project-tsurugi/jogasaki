@@ -42,4 +42,8 @@ void statement_scheduler::schedule(
     return impl_->schedule(s, context);
 }
 
+task_scheduler& statement_scheduler::get_task_scheduler() noexcept {
+    return impl_->get_task_scheduler();
+}
+
 } // namespace

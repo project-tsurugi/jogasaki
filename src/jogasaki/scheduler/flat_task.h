@@ -166,10 +166,6 @@ public:
 private:
     flat_task_kind kind_{};
     std::shared_ptr<model::task> origin_{};
-    bool dag_scheduling_{false};
-    bool bootstrap_{false};
-    bool teardown_{false};
-    request_context* request_context_{};
     job_context* job_context_{};
     model::graph* graph_{};
 

@@ -36,6 +36,8 @@ public:
 
     [[nodiscard]] dag_controller& controller() noexcept;
 
+    task_scheduler& get_task_scheduler() noexcept;
+
     static statement_scheduler::impl& get_impl(statement_scheduler& arg);
 
 private:

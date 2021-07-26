@@ -85,6 +85,7 @@ public:
         request_context& context
     );
 
+    task_scheduler& get_task_scheduler() noexcept;
     class impl;
     friend impl;
 private:

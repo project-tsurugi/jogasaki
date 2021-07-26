@@ -20,7 +20,6 @@
 #include <variant>
 
 #include <fpdecimal/decimal.h>
-#include <takatori/util/enum_tag.h>
 #include <takatori/util/comparable_traits.h>
 
 #include <jogasaki/accessor/text.h>
@@ -29,6 +28,18 @@
 #include <jogasaki/meta/field_type_option.h>
 
 namespace jogasaki::meta {
+
+// gcc7 confuses when enum_tag_t is used with different kind, e.g. field_type_kind and event_kind,
+// and raises compile error.
+// For workaround, define local enum_tag_t like struct and use it for field_type constructor to avoid type conflict.
+// The problem doesn't happen on gcc 8 or newer. When moving to new gcc, remove these tags and recover
+// use of original enum_tag_t.
+template<auto Kind>
+struct field_enum_tag_t {
+    explicit field_enum_tag_t() = default;
+};
+template<auto Kind>
+inline constexpr field_enum_tag_t<Kind> field_enum_tag {};
 
 /**
  * @brief type information for a field
@@ -88,7 +99,7 @@ public:
      * @tparam Kind type kind for new object
      */
     template <field_type_kind Kind>
-    explicit field_type(takatori::util::enum_tag_t<Kind>) noexcept :
+    explicit field_type(field_enum_tag_t<Kind>) noexcept :
         entity_(std::in_place_index<static_cast<std::size_t>(Kind)>)
     {
         static_assert(std::is_same_v<

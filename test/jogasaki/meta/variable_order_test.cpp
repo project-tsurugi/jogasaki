@@ -51,7 +51,6 @@
 #include <takatori/plan/forward.h>
 #include <takatori/serializer/json_printer.h>
 
-#include <takatori/util/enum_tag.h>
 #include <jogasaki/utils/field_types.h>
 
 #include <jogasaki/test_utils.h>

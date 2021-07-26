@@ -40,7 +40,7 @@ TEST_F(value_store_test, simple) {
     mock_memory_resource resource{};
     mock_memory_resource varlen_resource{};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        meta::field_type{meta::field_enum_tag<kind::int4>},
         &resource,
         &varlen_resource
     };
@@ -53,7 +53,7 @@ TEST_F(value_store_test, simple) {
 
     ASSERT_EQ(3, store.count());
     ASSERT_FALSE(store.empty());
-    EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, store.type());
+    EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, store.type());
 
     store.reset();
     ASSERT_EQ(0, store.count());
@@ -84,7 +84,7 @@ TEST_F(value_store_test, type_int4) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        meta::field_type{meta::field_enum_tag<kind::int4>},
         &resource,
         &varlen_resource
     };
@@ -114,7 +114,7 @@ TEST_F(value_store_test, type_int8) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int8>},
+        meta::field_type{meta::field_enum_tag<kind::int8>},
         &resource,
         &varlen_resource
     };
@@ -144,7 +144,7 @@ TEST_F(value_store_test, type_float4) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::float4>},
+        meta::field_type{meta::field_enum_tag<kind::float4>},
         &resource,
         &varlen_resource
     };
@@ -174,7 +174,7 @@ TEST_F(value_store_test, type_float8) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::float8>},
+        meta::field_type{meta::field_enum_tag<kind::float8>},
         &resource,
         &varlen_resource
     };
@@ -205,7 +205,7 @@ TEST_F(value_store_test, type_character) {
     memory::monotonic_paged_memory_resource resource{&pool};
     mock_memory_resource varlen_resource{};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::character>},
+        meta::field_type{meta::field_enum_tag<kind::character>},
         &resource,
         &varlen_resource
     };
@@ -242,7 +242,7 @@ TEST_F(value_store_test, print_iterator) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        meta::field_type{meta::field_enum_tag<kind::int4>},
         &resource,
         &varlen_resource
     };
@@ -259,7 +259,7 @@ TEST_F(value_store_test, range) {
     mock_memory_resource resource{8, 0};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        meta::field_type{meta::field_enum_tag<kind::int4>},
         &resource,
         &varlen_resource
     };
@@ -312,7 +312,7 @@ TEST_F(value_store_test, nullable) {
     mock_memory_resource varlen_resource{};
     mock_memory_resource nulls_resource{};
     value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        meta::field_type{meta::field_enum_tag<kind::int4>},
         &resource,
         &varlen_resource,
         &nulls_resource
@@ -330,7 +330,7 @@ TEST_F(value_store_test, nullable) {
     store.append<std::int32_t>(30);
 
     ASSERT_EQ(6, store.count());
-    EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, store.type());
+    EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, store.type());
     store.reset();
     ASSERT_EQ(0, store.count());
     ASSERT_TRUE(store.empty());

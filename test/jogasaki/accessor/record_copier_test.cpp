@@ -75,10 +75,10 @@ TEST_F(record_copier_test, simple) {
 
     auto meta = std::make_shared<meta::record_meta>(
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int8>),
-                    field_type(enum_tag<kind::float4>),
-                    field_type(enum_tag<kind::float8>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::float4>),
+                    field_type(field_enum_tag<kind::float8>),
             },
             boost::dynamic_bitset<std::uint64_t>{"1111"s},
             offsets,
@@ -152,9 +152,9 @@ TEST_F(record_copier_test, text) {
 
     auto meta = std::make_shared<meta::record_meta>(
         std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::character>),
-            field_type(enum_tag<kind::character>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::character>),
+            field_type(field_enum_tag<kind::character>),
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s},
         std::vector<size_t>{

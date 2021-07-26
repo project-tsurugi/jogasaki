@@ -44,8 +44,6 @@ using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::process::impl::expression;
-using takatori::util::enum_tag_t;
-using takatori::util::enum_tag;
 
 constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
@@ -99,22 +97,22 @@ static void fill_fields(
         switch(f.kind()) {
             case kind::int4: {
                 expression::any a{create_value<std::int32_t>(val, record_count, nullable)};
-                encode_field(a, meta::field_type(enum_tag<kind::int4>), spec, nullable, target);
+                encode_field(a, meta::field_type(meta::field_enum_tag<kind::int4>), spec, nullable, target);
                 break;
             }
             case kind::int8: {
                 expression::any a{create_value<std::int64_t>(val, record_count, nullable)};
-                encode_field(a, meta::field_type(enum_tag<kind::int8>), spec, nullable, target);
+                encode_field(a, meta::field_type(meta::field_enum_tag<kind::int8>), spec, nullable, target);
                 break;
             }
             case kind::float4: {
                 expression::any a{create_value<float>(val, record_count, nullable)};
-                encode_field(a, meta::field_type(enum_tag<kind::float4>), spec, nullable, target);
+                encode_field(a, meta::field_type(meta::field_enum_tag<kind::float4>), spec, nullable, target);
                 break;
             }
             case kind::float8: {
                 expression::any a{create_value<double>(val, record_count, nullable)};
-                encode_field(a, meta::field_type(enum_tag<kind::float8>), spec, nullable, target);
+                encode_field(a, meta::field_type(meta::field_enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
             case kind::character: {
@@ -125,7 +123,7 @@ static void fill_fields(
                 expression::any a{create_value<accessor::text>(
                     accessor::text{d.data(), d.size()}, record_count, nullable)
                 };
-                encode_field(a, meta::field_type(enum_tag<kind::character>), spec, nullable, target);
+                encode_field(a, meta::field_type(meta::field_enum_tag<kind::character>), spec, nullable, target);
                 break;
             }
             default:

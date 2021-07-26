@@ -56,7 +56,6 @@
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
 
-#include <takatori/util/enum_tag.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_root.h>

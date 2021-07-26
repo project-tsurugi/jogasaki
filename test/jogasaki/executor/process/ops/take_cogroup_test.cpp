@@ -204,17 +204,17 @@ TEST_F(take_cogroup_test, simple) {
     };
     auto input_meta0 = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::float8>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::float8>),
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
     auto input_meta1 = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(enum_tag<kind::float4>),
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::float4>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );

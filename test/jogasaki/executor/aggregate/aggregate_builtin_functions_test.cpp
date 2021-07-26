@@ -46,7 +46,7 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_int4) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     data::value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::int4>},
+        meta::field_type{meta::field_enum_tag<kind::int4>},
         &resource,
         &varlen_resource
     };
@@ -80,7 +80,7 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_character) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     data::value_store store{
-        meta::field_type{takatori::util::enum_tag<kind::character>},
+        meta::field_type{meta::field_enum_tag<kind::character>},
         &resource,
         &varlen_resource
     };

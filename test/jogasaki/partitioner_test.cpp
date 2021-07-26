@@ -32,8 +32,8 @@ using kind = field_type_kind;
 TEST_F(partitioner_test, simple) {
     auto meta = std::make_shared<record_meta>(
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
             },
             boost::dynamic_bitset<std::uint64_t>{"00"s});
 

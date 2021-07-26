@@ -32,7 +32,7 @@ using kind = field_type_kind;
 TEST_F(record_layout_creator_test, single_field) {
     record_layout_creator c{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int1>),
             },
             boost::dynamic_bitset<std::uint64_t>{"1"s}};
 
@@ -45,10 +45,10 @@ TEST_F(record_layout_creator_test, single_field) {
 TEST_F(record_layout_creator_test, non_nullables) {
     record_layout_creator c{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int8>),
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::character>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::character>),
             },
             boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(8,  c.record_alignment());
@@ -62,10 +62,10 @@ TEST_F(record_layout_creator_test, non_nullables) {
 TEST_F(record_layout_creator_test, multiple_nullable_fields) {
     record_layout_creator c{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
-                    field_type(enum_tag<kind::int2>),
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int2>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
             },
             boost::dynamic_bitset<std::uint64_t>{"0101"s}};// right most one is bs[0]
     EXPECT_EQ(8,  c.record_alignment());
@@ -81,22 +81,22 @@ TEST_F(record_layout_creator_test, multiple_nullable_fields) {
 TEST_F(record_layout_creator_test, 16_nullable_fields) {
     record_layout_creator c{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
             },
             boost::dynamic_bitset<std::uint64_t>{16}.flip()};
     EXPECT_EQ(1,  c.record_alignment());
@@ -110,23 +110,23 @@ TEST_F(record_layout_creator_test, 16_nullable_fields) {
 TEST_F(record_layout_creator_test, 17_nullable_fields) {
     record_layout_creator c{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::boolean>),
             },
             boost::dynamic_bitset<std::uint64_t>{17}.flip()};
     EXPECT_EQ(1,  c.record_alignment());
@@ -140,15 +140,15 @@ TEST_F(record_layout_creator_test, 17_nullable_fields) {
 TEST_F(record_layout_creator_test, type_variaties) {
     record_layout_creator c{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int1>),
-                    field_type(enum_tag<kind::int2>),
-                    field_type(enum_tag<kind::int8>),
-                    field_type(enum_tag<kind::character>),
-                    field_type(enum_tag<kind::float4>),
-                    field_type(enum_tag<kind::float8>),
-                    field_type(enum_tag<kind::decimal>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int2>),
+                    field_type(field_enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::character>),
+                    field_type(field_enum_tag<kind::float4>),
+                    field_type(field_enum_tag<kind::float8>),
+                    field_type(field_enum_tag<kind::decimal>),
             },
             boost::dynamic_bitset<std::uint64_t>{"101010101"s}};
     EXPECT_EQ(8,  c.record_alignment());

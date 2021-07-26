@@ -55,7 +55,7 @@ aggregate_function_info_impl<aggregate_function_kind::count>::aggregate_function
 std::vector<meta::field_type>
 aggregate_function_info_impl<aggregate_function_kind::count>::intermediate_types(
     sequence_view<const meta::field_type>) const {
-    return {meta::field_type{enum_tag<meta::field_type_kind::int8>}};
+    return {meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}};
 }
 
 aggregate_function_info_impl<aggregate_function_kind::count_rows>::aggregate_function_info_impl() :
@@ -70,7 +70,7 @@ aggregate_function_info_impl<aggregate_function_kind::count_rows>::aggregate_fun
 std::vector<meta::field_type>
 aggregate_function_info_impl<aggregate_function_kind::count_rows>::intermediate_types(
     sequence_view<const meta::field_type>) const {
-    return {meta::field_type{enum_tag<meta::field_type_kind::int8>}};
+    return {meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}};
 }
 
 aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_info_impl() :
@@ -93,7 +93,7 @@ std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_ki
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     return {
         args[0],
-        meta::field_type{enum_tag<meta::field_type_kind::int8>}
+        meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}
     };
 }
 

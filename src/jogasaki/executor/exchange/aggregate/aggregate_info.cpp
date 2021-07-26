@@ -20,7 +20,6 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/enum_tag.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/record_meta.h>
@@ -33,7 +32,6 @@ namespace jogasaki::executor::exchange::aggregate {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
-using takatori::util::enum_tag;
 
 using kind = meta::field_type_kind;
 
@@ -134,7 +132,7 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
     }
     std::size_t record_size = meta::record_meta::npos;
     if (! post) {
-        fields.emplace_back(meta::field_type{enum_tag<kind::pointer>});
+        fields.emplace_back(meta::field_type{meta::field_enum_tag<kind::pointer>});
         nullables.push_back(true);
     } else {
         // post key doesn't have internal pointer field, but the record length is same as mid

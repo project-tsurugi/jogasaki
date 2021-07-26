@@ -21,7 +21,6 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/enum_tag.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/meta/field_type_kind.h>
@@ -31,7 +30,6 @@
 namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
-using takatori::util::enum_tag;
 using takatori::util::fail;
 
 /**

@@ -16,7 +16,6 @@
 #include <jogasaki/meta/field_type.h>
 
 #include <gtest/gtest.h>
-#include <takatori/util/enum_tag.h>
 
 namespace jogasaki::testing {
 
@@ -31,7 +30,7 @@ TEST_F(field_type_test, default_construct) {
 }
 
 TEST_F(field_type_test, simple_construct) {
-    field_type t{takatori::util::enum_tag<field_type_kind::int4>};
+    field_type t{field_enum_tag<field_type_kind::int4>};
     EXPECT_EQ(4, t.runtime_type_size());
     EXPECT_EQ(4, t.runtime_type_alignment());
     EXPECT_TRUE(t);
@@ -52,7 +51,7 @@ TEST_F(field_type_test, equality_complex_types) {
 }
 
 TEST_F(field_type_test, pointer_type) {
-    field_type t{takatori::util::enum_tag<field_type_kind::pointer>};
+    field_type t{field_enum_tag<field_type_kind::pointer>};
     EXPECT_EQ(8, t.runtime_type_size());
     EXPECT_EQ(8, t.runtime_type_alignment());
     EXPECT_TRUE(t);

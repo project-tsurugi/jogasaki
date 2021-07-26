@@ -54,7 +54,6 @@
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
 
-#include <takatori/util/enum_tag.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_root.h>
@@ -135,8 +134,8 @@ TEST_F(expression_evaluator_test, add_int8) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -178,8 +177,8 @@ TEST_F(expression_evaluator_test, add_int4) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -221,8 +220,8 @@ TEST_F(expression_evaluator_test, add_float4) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float4>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float4>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float4>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float4>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -264,8 +263,8 @@ TEST_F(expression_evaluator_test, add_double) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -307,8 +306,8 @@ TEST_F(expression_evaluator_test, concat_text) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -375,8 +374,8 @@ TEST_F(expression_evaluator_test, binary_expression) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -452,7 +451,7 @@ TEST_F(expression_evaluator_test, text_length) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::character>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
         },
         boost::dynamic_bitset<std::uint64_t>{1}.flip()
     );
@@ -496,8 +495,8 @@ TEST_F(expression_evaluator_test, compare_int4) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int4>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );
@@ -607,8 +606,8 @@ TEST_F(expression_evaluator_test, conditional_and) {
 
     maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::boolean>),
-            meta::field_type(takatori::util::enum_tag<meta::field_type_kind::boolean>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::boolean>),
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::boolean>),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip()
     );

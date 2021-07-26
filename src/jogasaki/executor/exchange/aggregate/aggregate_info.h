@@ -22,7 +22,6 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
@@ -37,7 +36,6 @@ namespace jogasaki::executor::exchange::aggregate {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::sequence_view;
 using takatori::util::fail;
-using takatori::util::enum_tag;
 
 using kind = meta::field_type_kind;
 using function::incremental::aggregate_function_info;

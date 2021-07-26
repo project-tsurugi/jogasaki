@@ -18,14 +18,12 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 
 #include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using takatori::util::enum_tag_t;
 
 /**
  * @brief field locator

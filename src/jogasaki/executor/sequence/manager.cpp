@@ -19,7 +19,6 @@
 #include <unordered_set>
 
 #include <takatori/util/fail.h>
-#include <takatori/util/enum_tag.h>
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/kvs/coder.h>
@@ -195,11 +194,11 @@ std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_p
     kvs::readable_stream key{k.data(), k.size()};
     kvs::readable_stream value{v.data(), v.size()};
     executor::process::impl::expression::any dest{};
-    kvs::decode(key, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
+    kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
     sequence_definition_id def_id{};
     sequence_id id{};
     def_id = dest.to<std::int64_t>();
-    kvs::decode(value, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_value, dest);
+    kvs::decode(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
     id = dest.to<std::int64_t>();
     return {def_id, id};
 }
@@ -215,8 +214,8 @@ void manager::save_id_map() {
         kvs::writable_stream value{val_buf.data(), val_buf.size()};
         executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
         executor::process::impl::expression::any v{std::in_place_type<std::int64_t>, id};
-        kvs::encode(k, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
-        kvs::encode(v, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_value, value);
+        kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
+        kvs::encode(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
         if (auto res = stg->put(
                 *tx,
                 {key.data(), key.size()},
@@ -241,7 +240,7 @@ void manager::remove_id_map(sequence_definition_id def_id) {
     data::aligned_buffer key_buf{10};
     kvs::writable_stream key{key_buf.data(), key_buf.size()};
     executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
-    kvs::encode(k, meta::field_type{takatori::util::enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
+    kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
     if (auto res = stg->remove(
             *tx,
             {key.data(), key.size()}

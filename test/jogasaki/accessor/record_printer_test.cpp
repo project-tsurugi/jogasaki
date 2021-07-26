@@ -16,7 +16,6 @@
 #include <jogasaki/accessor/record_printer.h>
 
 #include <gtest/gtest.h>
-#include <takatori/util/enum_tag.h>
 #include <takatori/util/string_builder.h>
 #include <jogasaki/mock_memory_resource.h>
 
@@ -41,7 +40,7 @@ TEST_F(record_printer_test, simple) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{1}};
     EXPECT_EQ(1, meta.field_count());
@@ -73,9 +72,9 @@ TEST_F(record_printer_test, basic) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::int8>)
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>)
         },
         boost::dynamic_bitset<std::uint64_t>{3}};
     EXPECT_EQ(3, meta.field_count());
@@ -106,10 +105,10 @@ TEST_F(record_printer_test, integers) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::int1>),
-            field_type(enum_tag<kind::int2>),
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int1>),
+            field_type(field_enum_tag<kind::int2>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(4, meta.field_count());
@@ -134,9 +133,9 @@ TEST_F(record_printer_test, floats) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::float4>),
-            field_type(enum_tag<kind::float8>),
-            field_type(enum_tag<kind::float4>),
+            field_type(field_enum_tag<kind::float4>),
+            field_type(field_enum_tag<kind::float8>),
+            field_type(field_enum_tag<kind::float4>),
         },
         boost::dynamic_bitset<std::uint64_t>{3}};
     EXPECT_EQ(3, meta.field_count());
@@ -168,10 +167,10 @@ TEST_F(record_printer_test, text) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::character>),
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::character>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::character>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::character>),
         },
         boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(4, meta.field_count());
@@ -198,9 +197,9 @@ TEST_F(record_printer_test, nullable) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::int8>)
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>)
         },
         boost::dynamic_bitset<std::uint64_t>{"101"s},
         std::vector<std::size_t>{

@@ -33,13 +33,13 @@ TEST_F(group_meta_test, single_field) {
     group_meta meta{
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::int8>),
+                            field_type(field_enum_tag<kind::int8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::float8>),
+                            field_type(field_enum_tag<kind::float8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
@@ -49,21 +49,21 @@ TEST_F(group_meta_test, single_field) {
     EXPECT_EQ(1, meta.value().field_count());
     EXPECT_TRUE(meta.key().nullable(0));
     EXPECT_TRUE(meta.value().nullable(0));
-    EXPECT_EQ(field_type(enum_tag<kind::int8>), meta.key()[0]);
-    EXPECT_EQ(field_type(enum_tag<kind::float8>), meta.value()[0]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int8>), meta.key()[0]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::float8>), meta.value()[0]);
 }
 
 TEST_F(group_meta_test, equality) {
     group_meta meta10{
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::int8>),
+                            field_type(field_enum_tag<kind::int8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::float8>),
+                            field_type(field_enum_tag<kind::float8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
@@ -71,13 +71,13 @@ TEST_F(group_meta_test, equality) {
     group_meta meta11{
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::int8>),
+                            field_type(field_enum_tag<kind::int8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::float8>),
+                            field_type(field_enum_tag<kind::float8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
@@ -85,15 +85,15 @@ TEST_F(group_meta_test, equality) {
     group_meta meta2{
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::int8>),
-                            field_type(enum_tag<kind::int8>),
+                            field_type(field_enum_tag<kind::int8>),
+                            field_type(field_enum_tag<kind::int8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"11"s}
             },
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::float8>),
-                            field_type(enum_tag<kind::float8>),
+                            field_type(field_enum_tag<kind::float8>),
+                            field_type(field_enum_tag<kind::float8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"11"s}
             },
@@ -108,13 +108,13 @@ TEST_F(group_meta_test, access_shared_ptr) {
     group_meta meta{
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::int8>),
+                            field_type(field_enum_tag<kind::int8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },
             record_meta{
                     std::vector<field_type>{
-                            field_type(enum_tag<kind::float8>),
+                            field_type(field_enum_tag<kind::float8>),
                     },
                     boost::dynamic_bitset<std::uint64_t>{"1"s}
             },

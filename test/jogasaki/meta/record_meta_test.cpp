@@ -32,38 +32,38 @@ using kind = field_type_kind;
 TEST_F(record_meta_test, single_field) {
     record_meta meta{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int1>),
             },
             boost::dynamic_bitset<std::uint64_t>{"1"s}};
 
     EXPECT_EQ(1, meta.field_count());
     EXPECT_TRUE(meta.nullable(0));
-    EXPECT_EQ(field_type(enum_tag<kind::int1>), meta[0]);
-    EXPECT_NE(field_type(enum_tag<kind::int4>), meta[0]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int1>), meta[0]);
+    EXPECT_NE(field_type(field_enum_tag<kind::int4>), meta[0]);
 }
 
 TEST_F(record_meta_test, non_nullables) {
     record_meta meta{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int8>),
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::character>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::character>),
             },
             boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(4, meta.field_count());
     EXPECT_FALSE(meta.nullable(0));
     EXPECT_FALSE(meta.nullable(1));
-    EXPECT_EQ(field_type(enum_tag<kind::int4>), meta[0]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int4>), meta[0]);
 }
 
 TEST_F(record_meta_test, multiple_nullable_fields) {
     record_meta meta{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
-                    field_type(enum_tag<kind::int2>),
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int2>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
             },
             boost::dynamic_bitset<std::uint64_t>{"0101"s}};// right most one is bs[0]
     EXPECT_EQ(4, meta.field_count());
@@ -71,24 +71,24 @@ TEST_F(record_meta_test, multiple_nullable_fields) {
     EXPECT_FALSE(meta.nullable(1));
     EXPECT_TRUE(meta.nullable(2));
     EXPECT_FALSE(meta.nullable(3));
-    EXPECT_EQ(field_type(enum_tag<kind::int1>), meta[0]);
-    EXPECT_EQ(field_type(enum_tag<kind::int2>), meta[1]);
-    EXPECT_EQ(field_type(enum_tag<kind::int4>), meta[2]);
-    EXPECT_EQ(field_type(enum_tag<kind::int8>), meta[3]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int1>), meta[0]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int2>), meta[1]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int4>), meta[2]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int8>), meta[3]);
 }
 
 TEST_F(record_meta_test, type_variaties) {
     record_meta meta{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::boolean>),
-                    field_type(enum_tag<kind::int4>),
-                    field_type(enum_tag<kind::int1>),
-                    field_type(enum_tag<kind::int2>),
-                    field_type(enum_tag<kind::int8>),
-                    field_type(enum_tag<kind::character>),
-                    field_type(enum_tag<kind::float4>),
-                    field_type(enum_tag<kind::float8>),
-                    field_type(enum_tag<kind::decimal>),
+                    field_type(field_enum_tag<kind::boolean>),
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int2>),
+                    field_type(field_enum_tag<kind::int8>),
+                    field_type(field_enum_tag<kind::character>),
+                    field_type(field_enum_tag<kind::float4>),
+                    field_type(field_enum_tag<kind::float8>),
+                    field_type(field_enum_tag<kind::decimal>),
             },
             boost::dynamic_bitset<std::uint64_t>{"101010101"s}};
     EXPECT_EQ(9, meta.field_count());
@@ -101,41 +101,41 @@ TEST_F(record_meta_test, type_variaties) {
     EXPECT_TRUE(meta.nullable(6));
     EXPECT_FALSE(meta.nullable(7));
     EXPECT_TRUE(meta.nullable(8));
-    EXPECT_EQ(field_type(enum_tag<kind::boolean>), meta[0]);
-    EXPECT_EQ(field_type(enum_tag<kind::int4>), meta[1]);
-    EXPECT_EQ(field_type(enum_tag<kind::int1>), meta[2]);
-    EXPECT_EQ(field_type(enum_tag<kind::int2>), meta[3]);
-    EXPECT_EQ(field_type(enum_tag<kind::int8>), meta[4]);
-    EXPECT_EQ(field_type(enum_tag<kind::character>), meta[5]);
-    EXPECT_EQ(field_type(enum_tag<kind::float4>), meta[6]);
-    EXPECT_EQ(field_type(enum_tag<kind::float8>), meta[7]);
-    EXPECT_EQ(field_type(enum_tag<kind::decimal>), meta[8]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::boolean>), meta[0]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int4>), meta[1]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int1>), meta[2]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int2>), meta[3]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int8>), meta[4]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::character>), meta[5]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::float4>), meta[6]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::float8>), meta[7]);
+    EXPECT_EQ(field_type(field_enum_tag<kind::decimal>), meta[8]);
 }
 
 TEST_F(record_meta_test, equality1) {
     record_meta r_int1{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int1>),
             },
             boost::dynamic_bitset<std::uint64_t>{"1"s}};
 
     record_meta r_int1_2{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
-                    field_type(enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int1>),
             },
             boost::dynamic_bitset<std::uint64_t>{"11"s}};
 
     record_meta r_int1_int2{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
-                    field_type(enum_tag<kind::int2>),
+                    field_type(field_enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int2>),
             },
             boost::dynamic_bitset<std::uint64_t>{"11"s}};
 
     record_meta r_int1_non_nullable{
             std::vector<field_type>{
-                    field_type(enum_tag<kind::int1>),
+                    field_type(field_enum_tag<kind::int1>),
             },
             boost::dynamic_bitset<std::uint64_t>{"0"s}};
 
@@ -171,18 +171,18 @@ TEST_F(record_meta_test, equality_with_options) {
 TEST_F(record_meta_test, iterate_fields) {
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::boolean>),
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::float4>),
+            field_type(field_enum_tag<kind::boolean>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::float4>),
         },
         boost::dynamic_bitset<std::uint64_t>{3}};
     EXPECT_EQ(3, meta.field_count());
     auto it = meta.begin();
-    EXPECT_EQ(field_type(enum_tag<kind::boolean>), *it);
+    EXPECT_EQ(field_type(field_enum_tag<kind::boolean>), *it);
     ++it;
-    EXPECT_EQ(field_type(enum_tag<kind::int8>), *it);
+    EXPECT_EQ(field_type(field_enum_tag<kind::int8>), *it);
     ++it;
-    EXPECT_EQ(field_type(enum_tag<kind::float4>), *it);
+    EXPECT_EQ(field_type(field_enum_tag<kind::float4>), *it);
     ++it;
     EXPECT_EQ(meta.end(), it);
 }
@@ -190,9 +190,9 @@ TEST_F(record_meta_test, iterate_fields) {
 TEST_F(record_meta_test, internal_pointer_field) {
     record_meta meta{
         std::vector<field_type>{
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::int8>),
-            field_type(enum_tag<kind::pointer>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::pointer>),
         },
         boost::dynamic_bitset<std::uint64_t>{3}};
     EXPECT_EQ(3, meta.field_count());

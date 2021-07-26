@@ -89,7 +89,7 @@ TEST_F(incremental_aggregate_input_partition_test, basic) {
                 {
                     1
                 },
-                meta::field_type(enum_tag<kind::float8>)
+                meta::field_type(field_enum_tag<kind::float8>)
             }
         }
     );
@@ -131,7 +131,7 @@ TEST_F(incremental_aggregate_input_partition_test, avg) {
                 {
                     1
                 },
-                meta::field_type(enum_tag<kind::float8>)
+                meta::field_type(field_enum_tag<kind::float8>)
             }
         }
     );

@@ -136,7 +136,7 @@ std::shared_ptr<meta::record_meta> create_meta(
     std::vector<std::size_t> offsets{details::offsets<Kinds...>()};
     auto nullity_offset_base = (offsets.back()+basic_record_field_size)*bits_per_byte;
     return std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{meta::field_type(takatori::util::enum_tag<Kinds>)...},
+        std::vector<meta::field_type>{meta::field_type(meta::field_enum_tag<Kinds>)...},
         std::move(nullability),
         std::move(offsets),
         details::index_vector(nullity_offset_base, std::make_index_sequence<sizeof...(Kinds)>()),

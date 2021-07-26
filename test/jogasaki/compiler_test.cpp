@@ -53,7 +53,6 @@
 #include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
 
-#include <takatori/util/enum_tag.h>
 #include <jogasaki/utils/field_types.h>
 #include <takatori/relation/step/offer.h>
 #include <jogasaki/plan/compiler_context.h>
@@ -236,8 +235,8 @@ TEST_F(compiler_test, simple_query) {
     dump(info, stmt);
 
     // test utils
-    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>), utils::type_for(info, c0p0));
-    EXPECT_EQ(meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>), utils::type_for(info, c1p0));
+    EXPECT_EQ(meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>), utils::type_for(info, c0p0));
+    EXPECT_EQ(meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>), utils::type_for(info, c1p0));
 
 }
 

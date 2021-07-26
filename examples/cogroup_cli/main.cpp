@@ -68,8 +68,8 @@ using namespace jogasaki::scheduler;
 std::shared_ptr<meta::record_meta> test_record_meta() {
     return std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{
-                    meta::field_type(takatori::util::enum_tag<meta::field_type_kind::int8>),
-                    meta::field_type(takatori::util::enum_tag<meta::field_type_kind::float8>),
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
             },
             boost::dynamic_bitset<std::uint64_t>{std::string("00")});
 }

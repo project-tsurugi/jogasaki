@@ -18,12 +18,11 @@
 namespace jogasaki::plan {
 
 using kind = meta::field_type_kind;
-using takatori::util::enum_tag;
 
 void parameter_set::set_int4(std::string_view name, runtime_t<kind::int4> value) {
     add(std::string(name),
         {
-            meta::field_type{enum_tag<kind::int4>},
+            meta::field_type{meta::field_enum_tag<kind::int4>},
             any{std::in_place_type<runtime_t<kind::int4>>, value}
         }
     );
@@ -32,7 +31,7 @@ void parameter_set::set_int4(std::string_view name, runtime_t<kind::int4> value)
 void parameter_set::set_int8(std::string_view name, runtime_t<kind::int8> value) {
     add(std::string(name),
         {
-            meta::field_type{enum_tag<kind::int8>},
+            meta::field_type{meta::field_enum_tag<kind::int8>},
             any{std::in_place_type<runtime_t<kind::int8>>, value}
         }
     );
@@ -41,7 +40,7 @@ void parameter_set::set_int8(std::string_view name, runtime_t<kind::int8> value)
 void parameter_set::set_float4(std::string_view name, runtime_t<kind::float4> value) {
     add(std::string(name),
         {
-            meta::field_type{enum_tag<kind::float4>},
+            meta::field_type{meta::field_enum_tag<kind::float4>},
             any{std::in_place_type<runtime_t<kind::float4>>, value}
         }
     );
@@ -50,7 +49,7 @@ void parameter_set::set_float4(std::string_view name, runtime_t<kind::float4> va
 void parameter_set::set_float8(std::string_view name, runtime_t<kind::float8> value) {
     add(std::string(name),
         {
-            meta::field_type{enum_tag<kind::float8>},
+            meta::field_type{meta::field_enum_tag<kind::float8>},
             any{std::in_place_type<runtime_t<kind::float8>>, value}
         }
     );
@@ -59,7 +58,7 @@ void parameter_set::set_float8(std::string_view name, runtime_t<kind::float8> va
 void parameter_set::set_character(std::string_view name, runtime_t<kind::character> value) {
     add(std::string(name),
         {
-            meta::field_type{enum_tag<kind::character>},
+            meta::field_type{meta::field_enum_tag<kind::character>},
             any{std::in_place_type<runtime_t<kind::character>>, value}
         }
     );
@@ -68,7 +67,7 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
 void parameter_set::set_null(std::string_view name) {
     add(std::string(name),
         {
-            meta::field_type{enum_tag<kind::undefined>},
+            meta::field_type{meta::field_enum_tag<kind::undefined>},
             any{}
         }
     );

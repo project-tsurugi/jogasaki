@@ -284,9 +284,9 @@ TEST_F(write_partial_test , simple_update) {
     using kind = meta::field_type_kind;
     auto meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::float8>),
-            field_type(enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::float8>),
+            field_type(field_enum_tag<kind::int8>),
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
@@ -347,7 +347,7 @@ TEST_F(write_partial_test , simple_update) {
         kvs::writable_stream key{str};
         kvs::encode_nullable(
             expression::any{std::in_place_type<std::int32_t>, 10},
-            meta::field_type{enum_tag<kind::int4>},
+            meta::field_type{field_enum_tag<kind::int4>},
             kvs::coding_spec{true, kvs::order::ascending},
             key
         );
@@ -359,14 +359,14 @@ TEST_F(write_partial_test , simple_update) {
         expression::any res{};
         kvs::decode_nullable(
             value,
-            meta::field_type{enum_tag<kind::float8>},
+            meta::field_type{field_enum_tag<kind::float8>},
             kvs::coding_spec{false, kvs::order::undefined},
             res
         );
         EXPECT_EQ(10.0, res.to<double>());
         kvs::decode_nullable(
             value,
-            meta::field_type{enum_tag<kind::int8>},
+            meta::field_type{field_enum_tag<kind::int8>},
             kvs::coding_spec{false, kvs::order::undefined},
             res
         );
@@ -377,7 +377,7 @@ TEST_F(write_partial_test , simple_update) {
         kvs::writable_stream key{str};
         kvs::encode_nullable(
             expression::any{std::in_place_type<std::int32_t>, 20},
-            meta::field_type{enum_tag<kind::int4>},
+            meta::field_type{field_enum_tag<kind::int4>},
             kvs::coding_spec{true, kvs::order::ascending},
             key
         );
@@ -389,14 +389,14 @@ TEST_F(write_partial_test , simple_update) {
         expression::any res{};
         kvs::decode_nullable(
             value,
-            meta::field_type{enum_tag<kind::float8>},
+            meta::field_type{field_enum_tag<kind::float8>},
             kvs::coding_spec{false, kvs::order::undefined},
             res
         );
         EXPECT_EQ(2.0, res.to<double>());
         kvs::decode_nullable(
             value,
-            meta::field_type{enum_tag<kind::int8>},
+            meta::field_type{field_enum_tag<kind::int8>},
             kvs::coding_spec{false, kvs::order::undefined},
             res
         );

@@ -37,8 +37,8 @@ using executor::function::incremental::aggregate_function_kind;
 
 TEST_F(incremental_aggregate_info_test, simple) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>(2).flip());
 
     auto func_sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
@@ -51,7 +51,7 @@ TEST_F(incremental_aggregate_info_test, simple) {
                 {
                     0
                 },
-                meta::field_type(enum_tag<kind::int4>)
+                meta::field_type(field_enum_tag<kind::int4>)
             }
         },
     };
@@ -65,8 +65,8 @@ TEST_F(incremental_aggregate_info_test, simple) {
 
 TEST_F(incremental_aggregate_info_test, avg_avg) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
-        field_type(enum_tag<kind::int4>),
-        field_type(enum_tag<kind::int8>),
+        field_type(field_enum_tag<kind::int4>),
+        field_type(field_enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>(2).flip());
 
     auto func_avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
@@ -79,14 +79,14 @@ TEST_F(incremental_aggregate_info_test, avg_avg) {
                 {
                     0
                 },
-                meta::field_type(enum_tag<kind::int4>)
+                meta::field_type(field_enum_tag<kind::int4>)
             },
             {
                 *func_avg,
                     {
                         0
                     },
-                    meta::field_type(enum_tag<kind::int4>)
+                    meta::field_type(field_enum_tag<kind::int4>)
             }
         },
     };
@@ -97,8 +97,8 @@ TEST_F(incremental_aggregate_info_test, avg_avg) {
     EXPECT_EQ(1, info.post().group_meta()->key_shared()->field_count());
     EXPECT_EQ(2, info.post().group_meta()->value_shared()->field_count());
 
-    meta::field_type i4{enum_tag<kind::int4>};
-    meta::field_type i8{enum_tag<kind::int8>};
+    meta::field_type i4{field_enum_tag<kind::int4>};
+    meta::field_type i8{field_enum_tag<kind::int8>};
     EXPECT_EQ(i4, info.pre().group_meta()->value_shared()->at(0));
     EXPECT_EQ(i8, info.pre().group_meta()->value_shared()->at(1));
     EXPECT_EQ(i4, info.pre().group_meta()->value_shared()->at(2));
@@ -114,8 +114,8 @@ TEST_F(incremental_aggregate_info_test, avg_avg) {
 
 TEST_F(incremental_aggregate_info_test, count_avg) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
-        field_type(enum_tag<kind::int4>),
-        field_type(enum_tag<kind::int8>),
+        field_type(field_enum_tag<kind::int4>),
+        field_type(field_enum_tag<kind::int8>),
     },boost::dynamic_bitset<std::uint64_t>(2).flip());
 
     auto func_count = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count>>();
@@ -129,14 +129,14 @@ TEST_F(incremental_aggregate_info_test, count_avg) {
                 {
                     0
                 },
-                meta::field_type(enum_tag<kind::int8>)
+                meta::field_type(field_enum_tag<kind::int8>)
             },
             {
                 *func_avg,
                 {
                     0
                 },
-                meta::field_type(enum_tag<kind::int4>)
+                meta::field_type(field_enum_tag<kind::int4>)
             }
         },
     };
@@ -147,8 +147,8 @@ TEST_F(incremental_aggregate_info_test, count_avg) {
     EXPECT_EQ(1, info.post().group_meta()->key_shared()->field_count());
     EXPECT_EQ(2, info.post().group_meta()->value_shared()->field_count());
 
-    meta::field_type i4{enum_tag<kind::int4>};
-    meta::field_type i8{enum_tag<kind::int8>};
+    meta::field_type i4{field_enum_tag<kind::int4>};
+    meta::field_type i8{field_enum_tag<kind::int8>};
     EXPECT_EQ(i8, info.pre().group_meta()->value_shared()->at(0));
     EXPECT_EQ(i4, info.pre().group_meta()->value_shared()->at(1));
     EXPECT_EQ(i8, info.pre().group_meta()->value_shared()->at(2));

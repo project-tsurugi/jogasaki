@@ -15,8 +15,6 @@
  */
 #include "task.h"
 
-#include <takatori/util/enum_tag.h>
-
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
 #include <jogasaki/callback.h>

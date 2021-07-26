@@ -43,14 +43,14 @@ TEST_F(basic_record_test, meta) {
         basic_record r{create_record<kind::int4>()};
         auto meta = r.record_meta();
         EXPECT_EQ(1, meta->field_count());
-        EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta->at(0));
+        EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, meta->at(0));
     }
     {
         basic_record r{create_record<kind::int4, kind::int8>()};
         auto meta = r.record_meta();
         EXPECT_EQ(2, meta->field_count());
-        EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta->at(0));
-        EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int8>}, meta->at(1));
+        EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, meta->at(0));
+        EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int8>}, meta->at(1));
     }
 }
 
@@ -69,7 +69,7 @@ TEST_F(basic_record_test, share_metadata) {
     basic_record r2{create_record<kind::int4>(meta, 2)};
     auto meta2 = r2.record_meta();
     EXPECT_EQ(1, meta2->field_count());
-    EXPECT_EQ(meta::field_type{takatori::util::enum_tag<kind::int4>}, meta2->at(0));
+    EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, meta2->at(0));
     EXPECT_EQ(meta, meta2);
 }
 

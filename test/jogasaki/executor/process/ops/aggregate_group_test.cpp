@@ -212,13 +212,13 @@ TEST_F(aggregate_group_test, simple) {
     nulls_resources.emplace_back(std::make_unique<memory::lifo_paged_memory_resource>(&pool));
     std::vector<data::value_store> stores{};
     stores.emplace_back(
-        meta::field_type{enum_tag<kind::int8>},
+        meta::field_type{field_enum_tag<kind::int8>},
         resources[0].get(),
         &varlen_resource,
         nulls_resources[0].get()
     );
     stores.emplace_back(
-        meta::field_type{enum_tag<kind::int8>},
+        meta::field_type{field_enum_tag<kind::int8>},
         resources[1].get(),
         &varlen_resource,
         nulls_resources[1].get()

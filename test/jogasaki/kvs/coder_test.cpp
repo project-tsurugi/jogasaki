@@ -528,9 +528,9 @@ void test_ordering() {
     executor::process::impl::expression::any p1{std::in_place_type<runtime_t<Kind>>, 1};
     {
         // ascending non nullable
-        encode(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);
-        encode(z0, meta::field_type{enum_tag<Kind>}, spec_asc, s2);
-        encode(p1, meta::field_type{enum_tag<Kind>}, spec_asc, s3);
+        encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1);
+        encode(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s2);
+        encode(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s3);
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
@@ -540,9 +540,9 @@ void test_ordering() {
     s3.reset();
     {
         // descending non nullable
-        encode(n1, meta::field_type{enum_tag<Kind>}, spec_desc, s1);
-        encode(z0, meta::field_type{enum_tag<Kind>}, spec_desc, s2);
-        encode(p1, meta::field_type{enum_tag<Kind>}, spec_desc, s3);
+        encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s1);
+        encode(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s2);
+        encode(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s3);
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
@@ -552,10 +552,10 @@ void test_ordering() {
     s3.reset();
     {
         // ascending nullable
-        encode_nullable({}, meta::field_type{enum_tag<Kind>}, spec_asc, s0);
-        encode_nullable(n1, meta::field_type{enum_tag<Kind>}, spec_asc, s1);
-        encode_nullable(z0, meta::field_type{enum_tag<Kind>}, spec_asc, s2);
-        encode_nullable(p1, meta::field_type{enum_tag<Kind>}, spec_asc, s3);
+        encode_nullable({}, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s0);
+        encode_nullable(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1);
+        encode_nullable(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s2);
+        encode_nullable(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s3);
         EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -566,10 +566,10 @@ void test_ordering() {
     s3.reset();
     {
         // descending nullable
-        encode_nullable({}, meta::field_type{enum_tag<Kind>}, spec_desc, s0);
-        encode_nullable(n1, meta::field_type{enum_tag<Kind>}, spec_desc, s1);
-        encode_nullable(z0, meta::field_type{enum_tag<Kind>}, spec_desc, s2);
-        encode_nullable(p1, meta::field_type{enum_tag<Kind>}, spec_desc, s3);
+        encode_nullable({}, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s0);
+        encode_nullable(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s1);
+        encode_nullable(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s2);
+        encode_nullable(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s3);
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -617,10 +617,10 @@ TEST_F(coder_test, text_ordering) {
     executor::process::impl::expression::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
     {
         // ascending non nullable
-        encode(c0, meta::field_type{enum_tag<kind::character>}, spec_asc, s1);
-        encode(c2, meta::field_type{enum_tag<kind::character>}, spec_asc, s2);
-        encode(c3a, meta::field_type{enum_tag<kind::character>}, spec_asc, s3);
-        encode(c3b, meta::field_type{enum_tag<kind::character>}, spec_asc, s4);
+        encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1);
+        encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2);
+        encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3);
+        encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4);
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
@@ -632,10 +632,10 @@ TEST_F(coder_test, text_ordering) {
     s4.reset();
     {
         // descending non nullable
-        encode(c0, meta::field_type{enum_tag<kind::character>}, spec_desc, s1);
-        encode(c2, meta::field_type{enum_tag<kind::character>}, spec_desc, s2);
-        encode(c3a, meta::field_type{enum_tag<kind::character>}, spec_desc, s3);
-        encode(c3b, meta::field_type{enum_tag<kind::character>}, spec_desc, s4);
+        encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1);
+        encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2);
+        encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3);
+        encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4);
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
@@ -647,10 +647,10 @@ TEST_F(coder_test, text_ordering) {
     s4.reset();
     {
         // ascending nullable
-        encode_nullable(c0, meta::field_type{enum_tag<kind::character>}, spec_asc, s1);
-        encode_nullable(c2, meta::field_type{enum_tag<kind::character>}, spec_asc, s2);
-        encode_nullable(c3a, meta::field_type{enum_tag<kind::character>}, spec_asc, s3);
-        encode_nullable(c3b, meta::field_type{enum_tag<kind::character>}, spec_asc, s4);
+        encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1);
+        encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2);
+        encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3);
+        encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4);
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
@@ -662,11 +662,11 @@ TEST_F(coder_test, text_ordering) {
     s4.reset();
     {
         // descending nullable
-        encode_nullable({}, meta::field_type{enum_tag<kind::character>}, spec_desc, s0);
-        encode_nullable(c0, meta::field_type{enum_tag<kind::character>}, spec_desc, s1);
-        encode_nullable(c2, meta::field_type{enum_tag<kind::character>}, spec_desc, s2);
-        encode_nullable(c3a, meta::field_type{enum_tag<kind::character>}, spec_desc, s3);
-        encode_nullable(c3b, meta::field_type{enum_tag<kind::character>}, spec_desc, s4);
+        encode_nullable({}, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s0);
+        encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1);
+        encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2);
+        encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3);
+        encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4);
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));

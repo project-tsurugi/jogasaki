@@ -37,8 +37,8 @@ using kind = field_type_kind;
 
 TEST_F(shuffle_sink_test, simple) {
     auto rec_meta = std::make_shared<record_meta>(std::vector<field_type>{
-            field_type(enum_tag<kind::int4>),
-            field_type(enum_tag<kind::float8>),
+            field_type(field_enum_tag<kind::int4>),
+            field_type(field_enum_tag<kind::float8>),
     },boost::dynamic_bitset<std::uint64_t>("00"s));
     auto info = std::make_shared<group_info>(rec_meta, std::vector<std::size_t>{0});
     auto context = std::make_shared<request_context>();

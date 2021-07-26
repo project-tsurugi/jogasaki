@@ -61,7 +61,7 @@ public:
                 {
                     1
                 },
-                meta::field_type(enum_tag<kind::float8>)
+                meta::field_type(field_enum_tag<kind::float8>)
             }
         }
     );
@@ -75,7 +75,7 @@ public:
                 {
                     1
                 },
-                meta::field_type(enum_tag<kind::float8>)
+                meta::field_type(field_enum_tag<kind::float8>)
             }
         }
     );
@@ -89,14 +89,14 @@ public:
                 {
                     1
                 },
-                meta::field_type(enum_tag<kind::float8>)
+                meta::field_type(field_enum_tag<kind::float8>)
             },
             {
                 *func_avg,
                 {
                     1
                 },
-                meta::field_type(enum_tag<kind::float8>)
+                meta::field_type(field_enum_tag<kind::float8>)
             }
         }
     );

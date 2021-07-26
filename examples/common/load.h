@@ -38,8 +38,6 @@ using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::process::impl::expression;
-using takatori::util::enum_tag_t;
-using takatori::util::enum_tag;
 
 constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;

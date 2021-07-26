@@ -28,26 +28,25 @@
 namespace jogasaki::utils {
 
 using ::takatori::util::fail;
-using ::takatori::util::enum_tag_t;
 
 [[nodiscard]] inline meta::field_type type_for(::takatori::type::data const& type) {
     using t = takatori::type::type_kind;
     using k = meta::field_type_kind;
     switch(type.kind()) {
-        case t::boolean: return meta::field_type(takatori::util::enum_tag<k::boolean>);
-        case t::int1: return meta::field_type(takatori::util::enum_tag<k::int1>);
-        case t::int2: return meta::field_type(takatori::util::enum_tag<k::int2>);
-        case t::int4: return meta::field_type(takatori::util::enum_tag<k::int4>);
-        case t::int8: return meta::field_type(takatori::util::enum_tag<k::int8>);
-        case t::float4: return meta::field_type(takatori::util::enum_tag<k::float4>);
-        case t::float8: return meta::field_type(takatori::util::enum_tag<k::float8>);
-        case t::decimal: return meta::field_type(takatori::util::enum_tag<k::decimal>);
-        case t::character: return meta::field_type(takatori::util::enum_tag<k::character>);
-        case t::bit: return meta::field_type(takatori::util::enum_tag<k::bit>);
+        case t::boolean: return meta::field_type(meta::field_enum_tag<k::boolean>);
+        case t::int1: return meta::field_type(meta::field_enum_tag<k::int1>);
+        case t::int2: return meta::field_type(meta::field_enum_tag<k::int2>);
+        case t::int4: return meta::field_type(meta::field_enum_tag<k::int4>);
+        case t::int8: return meta::field_type(meta::field_enum_tag<k::int8>);
+        case t::float4: return meta::field_type(meta::field_enum_tag<k::float4>);
+        case t::float8: return meta::field_type(meta::field_enum_tag<k::float8>);
+        case t::decimal: return meta::field_type(meta::field_enum_tag<k::decimal>);
+        case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
+        case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
         case t::date: takatori::util::fail();
-        case t::time_of_day: return meta::field_type(takatori::util::enum_tag<k::time_of_day>);
+        case t::time_of_day: return meta::field_type(meta::field_enum_tag<k::time_of_day>);
         case t::time_point: takatori::util::fail();
-        case t::datetime_interval: return meta::field_type(takatori::util::enum_tag<k::time_interval>);
+        case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
 
         case t::octet:
         case t::array:

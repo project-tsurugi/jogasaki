@@ -347,6 +347,10 @@ public:
         step_state(v, step_state_kind::preparing);
     }
 
+    static dag_controller::impl& get_impl(dag_controller& arg) {
+        return *arg.impl_;
+    }
+
 private:
     std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};

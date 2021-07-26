@@ -77,8 +77,9 @@ public:
      */
     void schedule(model::graph &g);
 
-private:
     class impl;
+    friend impl;
+private:
     std::unique_ptr<impl> impl_;
 };
 

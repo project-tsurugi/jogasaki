@@ -18,6 +18,7 @@
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
 #include <jogasaki/callback.h>
+#include <jogasaki/executor/common/utils.h>
 
 namespace jogasaki::executor::process {
 
@@ -53,7 +54,7 @@ model::task_result task::operator()() {
             takatori::util::fail();
     }
     // raise appropriate event if needed
-    context()->channel()->emplace(event_enum_tag<event_kind::task_completed>, step()->id(), id());
+    common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
     if(auto&& cb = step()->will_end_task(); cb) {
         callback_arg arg{ id() };
         (*cb)(&arg);

@@ -40,18 +40,7 @@ public:
             model::step* src,
             bool is_pretask = false) : context_(context), src_(src), is_pretask_(is_pretask) {}
 
-    model::task_result operator()() override {
-        execute();
-        if (count_ == 0) {
-            notify_downstream();
-        }
-        ++count_;
-        bool has_next = count_ < limit_;
-        if (!has_next) {
-            context_->channel()->emplace(event_enum_tag<event_kind::task_completed>, src_->id(), id());
-        }
-        return has_next ? model::task_result::proceed : model::task_result::complete;
-    };
+    model::task_result operator()() override;;
     virtual void execute() = 0;
 protected:
     request_context* context_{};
@@ -60,22 +49,7 @@ protected:
     std::size_t count_{0};
     std::size_t limit_{3};
 
-    void notify_downstream() {
-        if (!src_->output_ports().empty()) {
-            for(auto& oport : src_->output_ports()) {
-                for(auto& o : oport->opposites()) {
-                    auto* downstream = o->owner();
-                    if(dynamic_cast<exchange::group::step*>(downstream)) {
-                        // blocking exchange should not raise providing
-                        continue;
-                    }
-                    model::step::port_index_type index = o->kind() == port_kind::main ? utils::input_port_index(*o->owner(), *o) : utils::subinput_port_index(
-                            *o->owner(), *o);
-                    context_->channel()->emplace(event_enum_tag<event_kind::providing>, downstream->id(), o->kind(), index);
-                }
-            }
-        }
-    }
+    void notify_downstream();
 };
 
 }

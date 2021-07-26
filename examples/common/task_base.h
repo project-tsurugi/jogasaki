@@ -34,7 +34,7 @@ public:
     model::task_result operator()() override {
         execute();
         ++count_;
-        context_->channel()->emplace(event_enum_tag<event_kind::task_completed>, src_->id(), id());
+        common::send_event(*context_, event_enum_tag<event_kind::task_completed>, src_->id(), id());
         return model::task_result::complete;
     };
 

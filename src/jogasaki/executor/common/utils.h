@@ -15,31 +15,30 @@
  */
 #pragma once
 
-#include <memory>
+#include <atomic>
+#include <ostream>
+#include <string_view>
 
-#include <glog/logging.h>
-
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/executor/common/task.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/dag_controller_impl.h>
 
-namespace jogasaki::executor::exchange {
+namespace jogasaki::executor::common {
 
-class task : public common::task {
-public:
-    task() = default;
+// common utility functions
 
-    task(
-        request_context* context,
-        step_type* src
-    ) :
-        common::task(context, src)
-    {}
+template <class ...Args>
+void send_event(request_context& context, Args...args) {
+    if (context.configuration()->use_event_channel()) {
+        context.channel()->emplace(args...);
+    } else {
+        auto& dc = scheduler::dag_controller::impl::get_impl(*context.dag_scheduler());
+        event ev{args...};
+        dispatch(dc, ev.kind(), ev);
+    }
+}
 
-    [[nodiscard]] model::task_result operator()() override;
-};
+
 
 }
 

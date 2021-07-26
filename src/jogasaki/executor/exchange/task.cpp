@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "task.h"
 
 #include <memory>
 
@@ -22,25 +22,17 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/common/utils.h>
 #include <jogasaki/event_channel.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange {
 
-class task : public common::task {
-public:
-    task() = default;
-
-    task(
-        request_context* context,
-        step_type* src
-    ) :
-        common::task(context, src)
-    {}
-
-    [[nodiscard]] model::task_result operator()() override;
-};
-
+model::task_result task::operator()() {
+    VLOG(1) << *this << " exchange_task executed.";
+    common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
+    return model::task_result::complete;
+}
 }
 
 

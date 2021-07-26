@@ -129,6 +129,14 @@ public:
     void stealing_enabled(bool arg) noexcept {
         stealing_enabled_ = arg;
     }
+
+    [[nodiscard]] bool use_event_channel() const noexcept {
+        return use_event_channel_;
+    }
+
+    void use_event_channel(bool arg) noexcept {
+        use_event_channel_ = arg;
+    }
 private:
     bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;
@@ -143,6 +151,7 @@ private:
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
+    bool use_event_channel_ = false;
 };
 
 }

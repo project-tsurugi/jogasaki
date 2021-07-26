@@ -82,11 +82,11 @@ status request_context::status_code() const noexcept {
     return status_code_.load();
 }
 
-void request_context::dag_scheduler(maybe_shared_ptr<scheduler::dag_controller> arg) noexcept {
+void request_context::dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept {
     dag_scheduler_ = std::move(arg);
 }
 
-maybe_shared_ptr<scheduler::dag_controller> const& request_context::dag_scheduler() const noexcept {
+maybe_shared_ptr<scheduler::statement_scheduler> const& request_context::dag_scheduler() const noexcept {
     return dag_scheduler_;
 }
 

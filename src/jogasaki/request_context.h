@@ -26,6 +26,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/event_channel.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 
 namespace jogasaki {
 
@@ -117,23 +118,23 @@ public:
     /**
      * @brief setter for the dag scheduler
      */
-    void dag_scheduler(maybe_shared_ptr<scheduler::dag_controller> arg) noexcept;
+    void dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept;
 
     /**
      * @brief accessor for the dag scheduler
      * @return dag scheduler shared within this request
      */
-    [[nodiscard]] maybe_shared_ptr<scheduler::dag_controller> const& dag_scheduler() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& dag_scheduler() const noexcept;
 
 private:
     std::shared_ptr<event_channel> channel_{};
-    std::shared_ptr<class configuration> config_{};
+    std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};
     std::atomic<status> status_code_{status::ok};
-    maybe_shared_ptr<scheduler::dag_controller> dag_scheduler_{};
+    maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
 };
 
 }

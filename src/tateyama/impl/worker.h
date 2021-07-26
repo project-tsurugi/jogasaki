@@ -69,9 +69,7 @@ public:
         queues_(std::addressof(queues)),
         initial_tasks_(std::addressof(initial_tasks)),
         stat_(std::addressof(stat))
-    {
-        (void)cfg_;
-    }
+    {}
 
     /**
      * @brief the worker body
@@ -106,18 +104,8 @@ public:
                 continue;
             }
             bool stolen = false;
-            std::size_t from = last_stolen;
-            for(auto idx = next(from, from); idx != from; idx = next(idx, from)) {
-                auto& tgt = (*queues_)[idx];
-                if(tgt.try_pop(t)) {
-                    ++stat_->stolen_;
-                    stolen = true;
-                    last_stolen = idx;
-                    DLOG(INFO) << "task stolen from queue " << idx << " to " << index;
-                    t(ctx);
-                    ++stat_->count_;
-                    break;
-                }
+            if (cfg_ && cfg_->stealing_enabled()) {
+                stolen = steal_and_execute(ctx, last_stolen);
             }
             if (! stolen) {
                 _mm_pause();
@@ -139,6 +127,25 @@ private:
         }
         return current + 1;
     }
+
+    bool steal_and_execute(context& ctx, std::size_t& last_stolen) {
+        auto index = ctx.index();
+        std::size_t from = last_stolen;
+        task t{};
+        for(auto idx = next(from, from); idx != from; idx = next(idx, from)) {
+            auto& tgt = (*queues_)[idx];
+            if(tgt.try_pop(t)) {
+                ++stat_->stolen_;
+                last_stolen = idx;
+                DLOG(INFO) << "task stolen from queue " << idx << " to " << index;
+                t(ctx);
+                ++stat_->count_;
+                return true;
+            }
+        }
+        return false;
+    }
+
 };
 
 }

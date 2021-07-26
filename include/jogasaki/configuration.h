@@ -121,6 +121,14 @@ public:
     void prepare_analytics_benchmark_tables(bool arg) noexcept {
         prepare_analytics_benchmark_tables_ = arg;
     }
+
+    [[nodiscard]] bool stealing_enabled() const noexcept {
+        return stealing_enabled_;
+    }
+
+    void stealing_enabled(bool arg) noexcept {
+        stealing_enabled_ = arg;
+    }
 private:
     bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;
@@ -134,6 +142,7 @@ private:
     std::size_t force_numa_node_ = numa_node_unspecified;
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
+    bool stealing_enabled_ = false;
 };
 
 }

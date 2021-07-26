@@ -118,6 +118,7 @@ private:
         ret.core_affinity(params.is_set_core_affinity());
         ret.assign_numa_nodes_uniformly(params.assign_numa_nodes_uniformly());
         ret.initial_core(params.inititial_core());
+        ret.stealing_enabled(params.stealing_enabled());
         return ret;
     }
 };

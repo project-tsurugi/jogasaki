@@ -68,13 +68,22 @@ public:
         force_numa_node_ = arg;
     }
 
+    [[nodiscard]] bool stealing_enabled() const noexcept {
+        return stealing_enabled_;
+    }
+
+    void stealing_enabled(bool arg) noexcept {
+        stealing_enabled_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, task_scheduler_cfg const& cfg) {
         return out << std::boolalpha <<
             "thread_count:" << cfg.thread_count() << " " <<
             "set_core_affinity:" << cfg.core_affinity() << " " <<
             "initial_core:" << cfg.initial_core() << " " <<
             "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
-            "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " ";
+            "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " " <<
+            "stealing_enabled:" << cfg.stealing_enabled() << " ";
     }
     
 private:
@@ -83,6 +92,7 @@ private:
     std::size_t initial_core_ = 1;
     bool assign_numa_nodes_uniformly_ = true;
     std::size_t force_numa_node_ = numa_node_unspecified;
+    bool stealing_enabled_ = false;
 };
 
 }

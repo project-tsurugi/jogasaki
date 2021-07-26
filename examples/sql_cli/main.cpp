@@ -40,6 +40,8 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
+DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
+DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 
 namespace jogasaki::sql_cli {
 
@@ -107,12 +109,15 @@ bool fill_from_flags(
     cfg.core_affinity(FLAGS_core_affinity);
     cfg.initial_core(FLAGS_initial_core);
     cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+    cfg.default_partitions(FLAGS_partitions);
+    cfg.stealing_enabled(FLAGS_steal);
 
     if (FLAGS_minimum) {
         cfg.single_thread(true);
         cfg.thread_pool_size(1);
         cfg.initial_core(1);
         cfg.core_affinity(false);
+        cfg.default_partitions(1);
     }
 
     if (cfg.assign_numa_nodes_uniformly()) {

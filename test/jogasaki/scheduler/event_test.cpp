@@ -45,14 +45,6 @@ using namespace jogasaki::scheduler;
 
 class event_test : public test_root {};
 
-static void run_event_loop(statement_scheduler& ss) {
-    auto& ss_impl = scheduler::statement_scheduler::impl::get_impl(ss);
-    auto& impl = scheduler::dag_controller::impl::get_impl(ss_impl.controller());
-    if(! impl.all_deactivated()) {
-        impl.process(false);
-    }
-}
-
 TEST_F(event_test, basic) {
     auto ctx = std::make_shared<request_context>();
     auto g = std::make_shared<common::graph>(*ctx);
@@ -63,7 +55,7 @@ TEST_F(event_test, basic) {
     ASSERT_TRUE(true);
 }
 
-TEST_F(event_test, simple_forward) {
+TEST_F(event_test, DISABLED_simple_forward) {
     auto ctx = std::make_shared<request_context>();
     auto g = std::make_shared<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
@@ -82,7 +74,7 @@ TEST_F(event_test, simple_forward) {
     ASSERT_TRUE(true);
 }
 
-TEST_F(event_test, simple_shuffle) {
+TEST_F(event_test, DISABLED_simple_shuffle) {
     auto ctx = std::make_shared<request_context>();
     auto g = std::make_shared<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();

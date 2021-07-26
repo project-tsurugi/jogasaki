@@ -15,10 +15,15 @@
  */
 #pragma once
 
+#include <glog/logging.h>
+#include <takatori/util/fail.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::scheduler {
+
+using takatori::util::fail;
 
 class job_context;
 
@@ -60,6 +65,12 @@ public:
      * @pre scheduler is started
      */
     void schedule_task(flat_task&& t) {
+        if (t.job()->completing() && t.kind() != flat_task_kind::teardown) {
+            // if the job is already submitted teardown task, the number of task should never grow.
+            // teardown task is only the exception since it can reschedule itself.
+            LOG(ERROR) << "task submitted too late : " << t.kind();
+            return;
+        }
         ++t.job()->task_count();
         do_schedule_task(std::move(t));
     }

@@ -44,14 +44,6 @@ using namespace jogasaki::scheduler;
 
 class multithread_test : public test_root {};
 
-static void run_event_loop(statement_scheduler& ss) {
-    auto& ss_impl = scheduler::statement_scheduler::impl::get_impl(ss);
-    auto& impl = scheduler::dag_controller::impl::get_impl(ss_impl.controller());
-    while(! impl.all_deactivated()) {
-        impl.process(false);
-    }
-}
-
 TEST_F(multithread_test, DISABLED_simple_forward) {
     auto ctx = std::make_shared<request_context>();
     auto g = std::make_shared<common::graph>(*ctx);

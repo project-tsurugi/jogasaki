@@ -290,8 +290,8 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
                 graph_->context()->channel()->close();
 
                 // make sure teardown task is submitted only once
-                auto& completing = job().completing();
-                if (! completing.test_and_set()) {
+                auto completing = job().completing().load();
+                if (!completing && job().completing().compare_exchange_strong(completing, true)) {
                     executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(job())});
                 }
             }
@@ -371,6 +371,8 @@ void dag_controller::impl::schedule(model::graph& g) {
                     std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()})
                 )
             );
+        } else {
+            graph_->context()->job()->reset();
         }
         executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
         // For serial scheduler, give control here in order to

@@ -77,7 +77,7 @@ public:
      * @brief accessor for the completion flag used to issue teardown task only once
      * @return completion flag
      */
-    [[nodiscard]] std::atomic_flag& completing() noexcept {
+    [[nodiscard]] std::atomic_bool& completing() noexcept {
         return completing_;
     }
 
@@ -88,10 +88,16 @@ public:
     [[nodiscard]] std::atomic_size_t& task_count() noexcept {
         return job_tasks_;
     }
+
+    void reset() noexcept {
+        completion_latch_.open();
+        completing_.store(false);
+        job_tasks_.store(0);
+    }
 private:
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
     utils::latch completion_latch_{};
-    std::atomic_flag completing_{false};
+    std::atomic_bool completing_{false};
     std::atomic_size_t job_tasks_{};
 };
 

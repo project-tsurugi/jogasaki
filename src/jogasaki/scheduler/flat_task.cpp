@@ -15,11 +15,15 @@
  */
 #include "flat_task.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <tateyama/context.h>
 
 namespace jogasaki::scheduler {
+
+using takatori::util::fail;
 
 void flat_task::bootstrap() {
     DVLOG(1) << *this << " bootstrap task executed.";
@@ -36,33 +40,38 @@ void flat_task::dag_schedule() {
     dc.process(false);
 }
 
-void flat_task::teardown() {
+bool flat_task::teardown() {
     DVLOG(1) << *this << " teardown task executed.";
     if (job_context_->task_count() > 1) {
         DVLOG(1) << *this << " other tasks remain and teardown is rescheduled.";
         auto& ts = job_context_->dag_scheduler()->get_task_scheduler();
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
-        return;
+        return true;
     }
     job_context_->completion_latch().open();
+    return false;
 }
 
-void flat_task::execute(tateyama::context& ctx) {
+bool flat_task::execute(tateyama::context& ctx) {
     (void)ctx;
     switch(kind_) {
         using kind = flat_task_kind;
-        case kind::dag_events: dag_schedule(); return;
-        case kind::bootstrap: bootstrap(); return;
-        case kind::teardown: teardown(); return;
+        case kind::dag_events: dag_schedule(); return true;
+        case kind::bootstrap: bootstrap(); return true;
+        case kind::teardown: return teardown();
         case kind::wrapped: {
             while((*origin_)() == model::task_result::proceed) {}
-            return;
+            return true;
         }
     }
+    fail();
 }
 
 void flat_task::operator()(tateyama::context& ctx) {
-    execute(ctx);
+    if(! execute(ctx)) {
+        // job completed, and the latch is just released. Should not touch the job context any more.
+        return;
+    }
     --job_context_->task_count();
 }
 

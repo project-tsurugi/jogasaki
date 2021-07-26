@@ -36,6 +36,7 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
 }
 
 void stealing_task_scheduler::wait_for_progress(job_context& ctx) {
+    DVLOG(1) << "wait_for_progress";
     ctx.completion_latch().wait();
 }
 

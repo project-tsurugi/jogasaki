@@ -169,10 +169,10 @@ private:
     job_context* job_context_{};
     model::graph* graph_{};
 
-    void execute(tateyama::context& ctx);
+    bool execute(tateyama::context& ctx);
     void bootstrap();
     void dag_schedule();
-    void teardown();
+    bool teardown();
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

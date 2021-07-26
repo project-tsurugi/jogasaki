@@ -22,7 +22,7 @@
 namespace jogasaki::scheduler {
 
 void flat_task::bootstrap() {
-    VLOG(1) << *this << " bootstrap task executed.";
+    DVLOG(1) << *this << " bootstrap task executed.";
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_);
@@ -30,18 +30,24 @@ void flat_task::bootstrap() {
 }
 
 void flat_task::dag_schedule() {
-    VLOG(1) << *this << " dag scheduling task executed.";
+    DVLOG(1) << *this << " dag scheduling task executed.";
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.process(false);
 }
 
 void flat_task::teardown() {
-    VLOG(1) << *this << " teardown task executed.";
+    DVLOG(1) << *this << " teardown task executed.";
+    if (job_context_->task_count() > 1) {
+        DVLOG(1) << *this << " other tasks remain and teardown is rescheduled.";
+        auto& ts = job_context_->dag_scheduler()->get_task_scheduler();
+        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
+        return;
+    }
     job_context_->completion_latch().open();
 }
 
-void flat_task::operator()(tateyama::context& ctx) {
+void flat_task::execute(tateyama::context& ctx) {
     (void)ctx;
     switch(kind_) {
         using kind = flat_task_kind;
@@ -49,11 +55,15 @@ void flat_task::operator()(tateyama::context& ctx) {
         case kind::bootstrap: bootstrap(); return;
         case kind::teardown: teardown(); return;
         case kind::wrapped: {
-            model::task_result res{};
-            while((res = (*origin_)()) == model::task_result::proceed) {}
+            while((*origin_)() == model::task_result::proceed) {}
             return;
         }
     }
+}
+
+void flat_task::operator()(tateyama::context& ctx) {
+    execute(ctx);
+    --job_context_->task_count();
 }
 
 flat_task::identity_type flat_task::id() const {

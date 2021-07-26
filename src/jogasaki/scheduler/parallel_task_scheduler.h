@@ -42,7 +42,7 @@ public:
      * @param task the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(flat_task&& task) override;
+    void do_schedule_task(flat_task&& task) override;
 
     /**
      * @brief wait for the scheduler to proceed

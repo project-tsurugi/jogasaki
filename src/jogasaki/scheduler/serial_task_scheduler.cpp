@@ -26,7 +26,7 @@ namespace jogasaki::scheduler {
 
 thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};
 
-void serial_task_scheduler::schedule_task(
+void serial_task_scheduler::do_schedule_task(
     flat_task&& task
 ) {
     tasks_.emplace_back(std::move(task));

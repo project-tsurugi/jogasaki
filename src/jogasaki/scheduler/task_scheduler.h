@@ -49,11 +49,20 @@ public:
     task_scheduler& operator=(task_scheduler&& other) noexcept = delete;
 
     /**
+     * @brief schedule the task, the subclass needs to implement
+     * @param t the task to schedule
+     */
+    virtual void do_schedule_task(flat_task&& t) = 0;
+
+    /**
      * @brief schedule the task
      * @param t the task to schedule
      * @pre scheduler is started
      */
-    virtual void schedule_task(flat_task&& t) = 0;
+    void schedule_task(flat_task&& t) {
+        ++t.job()->task_count();
+        do_schedule_task(std::move(t));
+    }
 
     /**
      * @brief wait for the scheduler to proceed

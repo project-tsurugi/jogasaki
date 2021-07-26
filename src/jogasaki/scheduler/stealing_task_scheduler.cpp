@@ -31,7 +31,7 @@ stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_(scheduler_cfg_)
 {}
 
-void stealing_task_scheduler::schedule_task(flat_task&& t) {
+void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     scheduler_.schedule(std::move(t));
 }
 

@@ -74,16 +74,25 @@ public:
     [[nodiscard]] utils::latch& completion_latch() noexcept;
 
     /**
-     * @brief accessor for the completion latch used to notify client thread
-     * @return latch to notify the job completion (released at the end of job)
+     * @brief accessor for the completion flag used to issue teardown task only once
+     * @return completion flag
      */
     [[nodiscard]] std::atomic_flag& completing() noexcept {
         return completing_;
+    }
+
+    /**
+     * @brief accessor for the atomic task counter used to check the number of remaining tasks
+     * @return atomic task counter
+     */
+    [[nodiscard]] std::atomic_size_t& task_count() noexcept {
+        return job_tasks_;
     }
 private:
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
     utils::latch completion_latch_{};
     std::atomic_flag completing_{false};
+    std::atomic_size_t job_tasks_{};
 };
 
 }

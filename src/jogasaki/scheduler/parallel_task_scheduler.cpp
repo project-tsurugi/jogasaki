@@ -43,7 +43,7 @@ parallel_task_scheduler::parallel_task_scheduler(thread_params params) :
     threads_(params)
 {}
 
-void parallel_task_scheduler::schedule_task(flat_task&& task) {
+void parallel_task_scheduler::do_schedule_task(flat_task&& task) {
     threads_.submit(proceeding_task_wrapper(std::move(task)));
 }
 

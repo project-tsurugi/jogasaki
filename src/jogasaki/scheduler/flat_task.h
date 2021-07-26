@@ -169,6 +169,7 @@ private:
     job_context* job_context_{};
     model::graph* graph_{};
 
+    void execute(tateyama::context& ctx);
     void bootstrap();
     void dag_schedule();
     void teardown();

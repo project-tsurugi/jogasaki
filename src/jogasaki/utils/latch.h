@@ -54,6 +54,17 @@ public:
      */
     void wait();
 
+    /**
+     * @brief close the latch and wait for others to open it
+     * @note this function is thread-safe
+     */
+    template <class Rep, class Period>
+    bool wait(std::chrono::duration<Rep, Period> dur) {
+        std::unique_lock lock{guard_};
+        open_ = false;
+        return cv_.wait_for(lock, dur, [&](){ return open_; });
+    }
+
 private:
     std::mutex guard_{};
     std::condition_variable cv_{};

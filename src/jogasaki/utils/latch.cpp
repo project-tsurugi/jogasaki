@@ -33,6 +33,7 @@ void latch::open() {
 
 void latch::wait() {
     std::unique_lock lock{guard_};
+    open_ = false;
     cv_.wait(lock, [&](){ return open_; });
 }
 

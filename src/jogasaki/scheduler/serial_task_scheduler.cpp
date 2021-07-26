@@ -15,6 +15,7 @@
  */
 #include "serial_task_scheduler.h"
 
+#include <thread>
 #include <unordered_set>
 #include <memory>
 
@@ -26,19 +27,18 @@ namespace jogasaki::scheduler {
 thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};
 
 void serial_task_scheduler::schedule_task(
-    std::shared_ptr<model::task> const&task
+    flat_task&& task
 ) {
-    tasks_.emplace(task->id(), task);
+    auto id = task.id();
+    tasks_.emplace(id, std::move(task));
 }
 
 void serial_task_scheduler::wait_for_progress() {
     for(auto it = tasks_.begin(); it != tasks_.end(); ) {
-        auto s = it->second.lock();
-        if (s == nullptr || s->operator()() == model::task_result::complete) {
-            it = tasks_.erase(it);
-        } else {
-            ++it;
-        }
+        auto& s = it->second;
+        tateyama::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
+        s(ctx);
+        it = tasks_.erase(it);
     }
 }
 

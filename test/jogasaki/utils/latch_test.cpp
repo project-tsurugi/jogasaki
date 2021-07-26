@@ -29,18 +29,19 @@ class latch_test : public ::testing::Test {};
 TEST_F(latch_test, simple) {
     latch l{};
     std::atomic_bool opener_end = false;
-    std::async(std::launch::async, [&](){
+    auto f = std::async(std::launch::async, [&](){
         std::this_thread::sleep_for(10ms);
         l.open();
         opener_end = true;
     });
     l.wait();
+    f.get();
     EXPECT_TRUE(opener_end);
 }
 
-TEST_F(latch_test, wait_too_early) {
+TEST_F(latch_test, wait_time_out) {
     latch l{};
-    l.wait();
+    EXPECT_FALSE(l.wait(1ms));
     l.open();
 }
 }

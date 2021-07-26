@@ -24,19 +24,26 @@ namespace jogasaki::scheduler {
  */
 class proceeding_task_wrapper {
 public:
-    explicit proceeding_task_wrapper(std::weak_ptr<model::task> original);
+    proceeding_task_wrapper() = default;
+    ~proceeding_task_wrapper() = default;
+    proceeding_task_wrapper(proceeding_task_wrapper const& other) = default;
+    proceeding_task_wrapper& operator=(proceeding_task_wrapper const& other) = default;
+    proceeding_task_wrapper(proceeding_task_wrapper&& other) noexcept = default;
+    proceeding_task_wrapper& operator=(proceeding_task_wrapper&& other) noexcept = default;
+    explicit proceeding_task_wrapper(flat_task&& original);
 
     void operator()();
+
 private:
-    std::weak_ptr<model::task> original_{};
+    flat_task original_{};
 };
 
 parallel_task_scheduler::parallel_task_scheduler(thread_params params) :
     threads_(params)
 {}
 
-void parallel_task_scheduler::schedule_task(std::shared_ptr<model::task> const& task) {
-    threads_.submit(proceeding_task_wrapper(task));
+void parallel_task_scheduler::schedule_task(flat_task&& task) {
+    threads_.submit(proceeding_task_wrapper(std::move(task)));
 }
 
 void parallel_task_scheduler::wait_for_progress() {
@@ -55,14 +62,13 @@ task_scheduler_kind parallel_task_scheduler::kind() const noexcept {
     return task_scheduler_kind::parallel;
 }
 
-proceeding_task_wrapper::proceeding_task_wrapper(std::weak_ptr<model::task> original) :
+proceeding_task_wrapper::proceeding_task_wrapper(flat_task&& original) :
     original_(std::move(original))
 {}
 
 void proceeding_task_wrapper::operator()() {
-    auto s = original_.lock();
-    if (!s) return;
-    while(s->operator()() == model::task_result::proceed) {}
+    tateyama::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
+    original_(ctx);
 }
 
 }

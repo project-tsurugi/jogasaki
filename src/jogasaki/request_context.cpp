@@ -18,6 +18,7 @@
 #include <memory>
 
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 #include "event_channel.h"
 #include "error.h"
 

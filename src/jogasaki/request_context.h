@@ -26,7 +26,6 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/event_channel.h>
-#include <jogasaki/scheduler/statement_scheduler.h>
 
 namespace jogasaki {
 
@@ -34,6 +33,7 @@ using takatori::util::maybe_shared_ptr;
 
 namespace scheduler {
 class dag_controller;
+class statement_scheduler;
 }
 
 /**

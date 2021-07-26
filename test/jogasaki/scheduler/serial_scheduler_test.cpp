@@ -62,7 +62,7 @@ TEST_F(serial_task_scheduler_test, basic) {
     auto task = std::make_shared<test_task>([&]() {
         executed = true;
     });
-    s.schedule_task(task);
+    s.schedule_task(flat_task{task});
     s.wait_for_progress();
     ASSERT_TRUE(executed);
 }
@@ -79,8 +79,8 @@ TEST_F(serial_task_scheduler_test, multiple_tasks) {
     auto task1 = std::make_shared<test_task>([&]() {
         pt1 = true;
     });
-    s.schedule_task(task0);
-    s.schedule_task(task1);
+    s.schedule_task(flat_task{task0});
+    s.schedule_task(flat_task{task1});
     s.wait_for_progress();
     ASSERT_TRUE(pt0);
     ASSERT_TRUE(pt1);

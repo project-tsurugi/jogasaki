@@ -24,40 +24,12 @@
 #include <tateyama/context.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
+#include "flat_task.h"
 
 namespace jogasaki::scheduler {
 
 using takatori::util::maybe_shared_ptr;
 
-class flat_task {
-public:
-    flat_task() = default;
-    ~flat_task() = default;
-    flat_task(flat_task const& other) = default;
-    flat_task& operator=(flat_task const& other) = default;
-    flat_task(flat_task&& other) noexcept = default;
-    flat_task& operator=(flat_task&& other) noexcept = default;
-
-    explicit flat_task(std::shared_ptr<model::task> origin) noexcept :
-        origin_(std::move(origin))
-    {}
-
-    explicit flat_task(maybe_shared_ptr<request_context> request_context) noexcept :
-        dag_scheduling_(true),
-        request_context_(std::move(request_context))
-    {}
-
-    [[nodiscard]] std::shared_ptr<model::task> const& origin() const noexcept {
-        return origin_;
-    }
-
-    void operator()(tateyama::context& ctx);
-
-private:
-    std::shared_ptr<model::task> origin_{};
-    bool dag_scheduling_{false};
-    maybe_shared_ptr<request_context> request_context_{};
-};
 /**
  * @brief task scheduler using multiple threads
  */
@@ -78,14 +50,7 @@ public:
      * @param task the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(std::shared_ptr<model::task> const& task) override;
-
-    /**
-     * @brief schedule the task
-     * @param task the task to schedule
-     * @pre scheduler is started
-     */
-    void schedule_flat_task(flat_task task);
+    void schedule_task(flat_task&& t) override;
 
     /**
      * @brief wait for the scheduler to proceed

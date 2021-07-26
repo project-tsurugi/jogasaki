@@ -29,14 +29,14 @@ namespace jogasaki::scheduler {
  */
 class cache_align serial_task_scheduler : public task_scheduler {
 public:
-    using entity_type = std::unordered_map<model::task::identity_type, std::weak_ptr<model::task>>;
+    using entity_type = std::unordered_map<model::task::identity_type, flat_task>;
 
     /**
      * @brief schedule the task
      * @param task the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(std::shared_ptr<model::task> const& task) override;
+    void schedule_task(flat_task&& task) override;
 
     /**
      * @brief wait for the scheduler to proceed

@@ -13,35 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "flat_task.h"
 
-#include <atomic>
-#include <ostream>
-#include <string_view>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/model/task.h>
+#include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/scheduler/dag_controller_impl.h>
+#include <tateyama/task_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
+#include <jogasaki/scheduler/dag_controller_impl.h>
+#include <tateyama/context.h>
+#include "task_scheduler.h"
+#include "thread_params.h"
 
-namespace jogasaki::executor::common {
+namespace jogasaki::scheduler {
 
-// common utility functions
-
-template <class ...Args>
-void send_event(request_context& context, Args...args) {
-    if (context.configuration()->use_event_channel()) {
-        context.channel()->emplace(args...);
-    } else {
-        auto& sc = scheduler::statement_scheduler::impl::get_impl(*context.dag_scheduler());
+void flat_task::operator()(tateyama::context& ctx) {
+    (void)ctx;
+    if (dag_scheduling_) {
+        auto& sc = scheduler::statement_scheduler::impl::get_impl(*request_context_->dag_scheduler());
         auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-        dc.check_internal_events();  // let's handle internal event first
-        event ev{args...};
-        dispatch(dc, ev.kind(), ev);
+        dc.process(false);
+        return;
     }
+    auto res = (*origin_)();
+    (void)res;
 }
 
-
+flat_task::identity_type flat_task::id() const {
+    if (origin_) {
+        return origin_->id();
+    }
+    return undefined_id;
+}
 
 }
 

@@ -24,29 +24,14 @@
 
 namespace jogasaki::scheduler {
 
-void flat_task::operator()(tateyama::context& ctx) {
-    (void)ctx;
-    if (dag_scheduling_) {
-        auto& sc = scheduler::statement_scheduler::impl::get_impl(*request_context_->dag_scheduler());
-        auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-        dc.process(false);
-        return;
-    }
-    auto res = (*origin_)();
-    (void)res;
-}
 
 stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_cfg_(create_scheduler_cfg(params)),
     scheduler_(scheduler_cfg_)
 {}
 
-void stealing_task_scheduler::schedule_task(std::shared_ptr<model::task> const& task) {
-    scheduler_.schedule(flat_task{task});
-}
-
-void stealing_task_scheduler::schedule_flat_task(flat_task task) {
-    scheduler_.schedule(std::move(task));
+void stealing_task_scheduler::schedule_task(flat_task&& t) {
+    scheduler_.schedule(std::move(t));
 }
 
 void stealing_task_scheduler::wait_for_progress() {

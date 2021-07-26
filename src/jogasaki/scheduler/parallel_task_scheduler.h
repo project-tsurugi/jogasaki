@@ -19,6 +19,7 @@
 #include "details/thread_pool.h"
 #include "task_scheduler.h"
 #include "thread_params.h"
+#include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::scheduler {
 
@@ -41,7 +42,7 @@ public:
      * @param task the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(std::shared_ptr<model::task> const& task) override;
+    void schedule_task(flat_task&& task) override;
 
     /**
      * @brief wait for the scheduler to proceed

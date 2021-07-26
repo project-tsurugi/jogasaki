@@ -42,21 +42,17 @@ void flat_task::teardown() {
 
 void flat_task::operator()(tateyama::context& ctx) {
     (void)ctx;
-    if (dag_scheduling_) {
-        dag_schedule();
-        return;
+    switch(kind_) {
+        using kind = flat_task_kind;
+        case kind::dag_events: dag_schedule(); return;
+        case kind::bootstrap: bootstrap(); return;
+        case kind::teardown: teardown(); return;
+        case kind::wrapped: {
+            model::task_result res{};
+            while((res = (*origin_)()) == model::task_result::proceed) {}
+            return;
+        }
     }
-    if (bootstrap_) {
-        bootstrap();
-        return;
-    }
-    if (teardown_) {
-        teardown();
-        return;
-
-    }
-    model::task_result res{};
-    while((res = (*origin_)()) == model::task_result::proceed) {}
 }
 
 flat_task::identity_type flat_task::id() const {

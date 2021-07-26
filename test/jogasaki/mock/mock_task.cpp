@@ -41,7 +41,7 @@ model::task_result mock_task::operator()() {
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*context()->job()->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     auto& ts = dc.get_task_scheduler();
-    ts.schedule_task(scheduler::flat_task{context()->job().get()});
+    ts.schedule_task(scheduler::flat_task{scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>, context()->job().get()});
     return has_next ? model::task_result::proceed : model::task_result::complete;
 }
 

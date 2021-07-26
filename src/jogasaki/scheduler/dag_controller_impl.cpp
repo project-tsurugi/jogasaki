@@ -292,7 +292,7 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
                 // make sure teardown task is submitted only once
                 auto& completing = job().completing();
                 if (! completing.test_and_set()) {
-                    executor_->schedule_task(flat_task{true, std::addressof(job())});
+                    executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(job())});
                 }
             }
             break;
@@ -371,7 +371,7 @@ void dag_controller::impl::schedule(model::graph& g) {
                 )
             );
         }
-        executor_->schedule_task(flat_task{std::addressof(job())});
+        executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
         // For serial scheduler, give control here in order to
         // simulate tasks execution background so that state changes and proceeds
         executor_->wait_for_progress(job());
@@ -384,7 +384,7 @@ void dag_controller::impl::start_running(step& v) {
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;
     for(auto& t : task_list) {
-        executor_->schedule_task(flat_task{t, std::addressof(job())});
+        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, t, std::addressof(job())});
         tasks.register_task(task_kind::main, slot, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
         ++slot;
@@ -400,7 +400,7 @@ void dag_controller::impl::start_pretask(step& v, step_state_table::slot_index i
     }
     if(auto view = v.create_pretask(index);!view.empty()) {
         auto& t = view.front();
-        executor_->schedule_task(flat_task{t, std::addressof(job())});
+        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, t, std::addressof(job())});
         tasks.register_task(task_kind::pre, index, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
     }

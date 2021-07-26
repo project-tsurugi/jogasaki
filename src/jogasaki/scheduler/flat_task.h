@@ -26,6 +26,51 @@ namespace jogasaki::scheduler {
 
 using takatori::util::maybe_shared_ptr;
 
+/**
+ * @brief field type kind
+ */
+enum class flat_task_kind : std::size_t {
+    wrapped = 0,
+    dag_events,
+    bootstrap,
+    teardown
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(flat_task_kind value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = flat_task_kind;
+    switch (value) {
+        case kind::wrapped: return "wrapped"sv;
+        case kind::dag_events: return "dag_events"sv;
+        case kind::bootstrap: return "bootstrap"sv;
+        case kind::teardown: return "teardown"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, flat_task_kind value) {
+    return out << to_string_view(value);
+}
+
+template<auto Kind>
+struct task_enum_tag_t {
+    explicit task_enum_tag_t() = default;
+};
+
+template<auto Kind>
+inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
+
 class flat_task {
 public:
     using identity_type = std::size_t;
@@ -42,10 +87,12 @@ public:
      * @brief construct new object wrapping jogasaki task
      * @param origin
      */
-    explicit flat_task(
+    flat_task(
+        task_enum_tag_t<flat_task_kind::wrapped>,
         std::shared_ptr<model::task> origin,
         job_context* jctx
     ) noexcept :
+        kind_(flat_task_kind::wrapped),
         origin_(std::move(origin)),
         job_context_(jctx)
     {}
@@ -54,10 +101,11 @@ public:
      * @brief construct new object to run dag scheduler
      * @param jctx
      */
-    explicit flat_task(
+    flat_task(
+        task_enum_tag_t<flat_task_kind::dag_events>,
         job_context* jctx
     ) noexcept :
-        dag_scheduling_(true),
+        kind_(flat_task_kind::dag_events),
         job_context_(jctx)
     {}
 
@@ -66,10 +114,11 @@ public:
      * @param jctx
      */
     flat_task(
+        task_enum_tag_t<flat_task_kind::bootstrap>,
         model::graph& g,
         job_context* jctx
     ) noexcept :
-        bootstrap_(true),
+        kind_(flat_task_kind::bootstrap),
         job_context_(jctx),
         graph_(std::addressof(g))
     {}
@@ -78,15 +127,19 @@ public:
      * @brief construct new object to run dag scheduler
      * @param jctx
      */
-    explicit flat_task(
-        bool teardown,  //TODO
+    flat_task(
+        task_enum_tag_t<flat_task_kind::teardown>,
         job_context* jctx
     ) noexcept :
-        teardown_(true),
+        kind_(flat_task_kind::teardown),
         job_context_(jctx)
-    {
-        (void) teardown;
+    {}
 
+    /**
+     * @brief getter for type kind
+     */
+    [[nodiscard]] constexpr flat_task_kind kind() const noexcept {
+        return kind_;
     }
 
     [[nodiscard]] std::shared_ptr<model::task> const& origin() const noexcept {
@@ -107,15 +160,11 @@ public:
         return job_context_;
     }
 
-    std::ostream& write_to(std::ostream& out) const {
-        using namespace std::string_view_literals;
-        return out << "task[id="sv << std::to_string(static_cast<identity_type>(id())) << "]"sv;
-    }
-
     friend std::ostream& operator<<(std::ostream& out, flat_task const& value) {
         return value.write_to(out);
     }
 private:
+    flat_task_kind kind_{};
     std::shared_ptr<model::task> origin_{};
     bool dag_scheduling_{false};
     bool bootstrap_{false};
@@ -127,6 +176,12 @@ private:
     void bootstrap();
     void dag_schedule();
     void teardown();
+
+    std::ostream& write_to(std::ostream& out) const {
+        using namespace std::string_view_literals;
+        return out << "task[id="sv << std::to_string(static_cast<identity_type>(id())) << "]"sv;
+    }
+
 };
 
 }

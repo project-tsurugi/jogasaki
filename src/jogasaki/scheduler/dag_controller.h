@@ -77,6 +77,7 @@ public:
      */
     void schedule(model::graph &g);
 
+    task_scheduler& get_task_scheduler() noexcept;
     class impl;
     friend impl;
 private:

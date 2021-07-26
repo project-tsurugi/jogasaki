@@ -30,6 +30,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/latch.h>
 #include "serial_task_scheduler.h"
 #include "parallel_task_scheduler.h"
 #include "step_state.h"
@@ -53,20 +54,9 @@ class cache_align dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
-    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
-        cfg_(std::move(cfg)),
-        executor_(std::addressof(scheduler))
-    {}
+    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
 
-    explicit impl(std::shared_ptr<configuration> cfg) :
-        cfg_(std::move(cfg)),
-        executor_(cfg_->single_thread() ?
-            std::shared_ptr<task_scheduler>(std::make_shared<serial_task_scheduler>()) :
-            std::shared_ptr<task_scheduler>(
-                std::make_shared<parallel_task_scheduler>(thread_params(cfg_))
-            )
-        )
-    {}
+    explicit impl(std::shared_ptr<configuration> cfg);
 
     /*
      * @brief handles providing event
@@ -108,255 +98,15 @@ public:
      */
     void operator()(enum_tag_t<internal_event_kind::propagate_downstream_completing>, internal_event& ie, step* s);
 
-    bool all_steps_deactivated(model::graph& g) {
-        for(auto&& v: g.steps()) {
-            if (steps_[v->id()].state_ < step_state_kind::deactivated) {
-                return false;
-            }
-        }
-        return true;
-    }
+    void check_internal_events();
 
-    // no upstreams or upstream equals or past st
-    bool all_upstream_steps_past(step const& s, step_state_kind st) {
-        for(auto&& iport : s.input_ports()) {
-            for(auto&& opposite : iport->opposites()) {
-                auto o = opposite->owner();
-                if (steps_[o->id()].state_ < st) {
-                    return false;
-                }
-            }
-        }
-        for(auto&& iport : s.subinput_ports()) {
-            for(auto&& opposite : iport->opposites()) {
-                auto o = opposite->owner();
-                if (steps_[o->id()].state_ < st) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    bool all_downstream_steps_past(step const& s, step_state_kind st) {
-        for(auto&& oport : s.output_ports()) {
-            for(auto&& opposite : oport->opposites()) {
-                auto o = opposite->owner();
-                if (steps_[o->id()].state_ < st) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+    void process(bool channel_enabled = true);
 
-    bool ports_completed(takatori::util::sequence_view<std::unique_ptr<model::port> const> ports) {
-        // used only for input ports
-        for(auto&& iport : ports) {
-            for(auto&& opposite : iport->opposites()) {
-                auto o = opposite->owner();
-                if (steps_[o->id()].state_ < step_state_kind::completed) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+    void schedule(model::graph &g);
 
-    bool output_ports_activated(step const& s) {
-        for(auto&& oport : s.output_ports()) {
-            for(auto&& opposite : oport->opposites()) {
-                auto o = opposite->owner();
-                if (steps_[o->id()].state_ < step_state_kind::activated) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+    task_scheduler& get_task_scheduler();
 
-    bool main_input_completed(step const& s) {
-        return ports_completed(s.input_ports());
-    }
-
-    bool sub_input_completed(step const& s) {
-        return ports_completed(s.subinput_ports());
-    }
-
-    bool input_completed(step const& s) {
-        return main_input_completed(s) && sub_input_completed(s);
-    }
-
-    void on_state_change(step const& s) {
-        // first check neighborhood steps
-        for(auto&& iport : s.input_ports()) {
-            for(auto&& opposite : iport->opposites()) {
-                auto o = opposite->owner();
-                check_and_generate_internal_events(*o);
-            }
-        }
-        for(auto&& iport : s.subinput_ports()) {
-            for(auto&& opposite : iport->opposites()) {
-                auto o = opposite->owner();
-                check_and_generate_internal_events(*o);
-            }
-        }
-        for(auto&& iport : s.output_ports()) {
-            for(auto&& opposite : iport->opposites()) {
-                auto o = opposite->owner();
-                check_and_generate_internal_events(*o);
-            }
-        }
-        // check myself
-        check_and_generate_internal_events(s);
-    }
-
-    // generate internal events on step state change
-    void check_and_generate_internal_events(step const& s) {
-        auto& st = steps_[s.id()].state_;
-        switch(st) {
-            case step_state_kind::uninitialized:
-                // no-op
-                break;
-            case step_state_kind::created:
-                if(!all_upstream_steps_past(s, step_state_kind::activated)) {
-                    break;
-                }
-                internal_events_.emplace(internal_event_kind::activate, s.id());
-                break;
-            case step_state_kind::activated: {
-                if(!all_upstream_steps_past(s, step_state_kind::completed)) {
-                    break;
-                }
-                internal_events_.emplace(internal_event_kind::prepare, s.id());
-                break;
-            }
-            case step_state_kind::preparing:
-                // no-op
-                break;
-            case step_state_kind::prepared: {
-                // start work task
-                if(!output_ports_activated(s) || !all_upstream_steps_past(s, step_state_kind::completed)) {
-                    break;
-                }
-                internal_events_.emplace(internal_event_kind::consume, s.id());
-                break;
-            }
-            case step_state_kind::running:
-                // no-op
-                break;
-            case step_state_kind::completing:
-                // TODO propagate
-                break;
-            case step_state_kind::completed:
-                if(!all_upstream_steps_past(s, step_state_kind::completed) ||
-                    !all_downstream_steps_past(s, step_state_kind::completed)) {
-                    break;
-                }
-                internal_events_.emplace(internal_event_kind::deactivate, s.id());
-                break;
-            case step_state_kind::deactivated:
-                if(all_steps_deactivated(*graph_)) {
-                    graph_deactivated_ = true;
-                    graph_->context()->channel()->close();
-                }
-                break;
-        }
-    }
-
-    /*
-     * @brief transition state for the given step
-     */
-    void step_state(step const& v, step_state_kind new_state) {
-        auto& current = steps_[v.id()].state_;
-        if (current == new_state) {
-            return;
-        }
-        DVLOG(1) <<
-            v <<
-            " state " <<
-            to_string_view(current) <<
-            " -> " <<
-            to_string_view(new_state);
-
-        current = new_state;
-        on_state_change(v);
-    }
-
-    void process(bool channel_enabled = true) {
-        while(!internal_events_.empty()) {
-            auto& ie = internal_events_.front();
-            auto v = graph_->find_step(ie.target());
-            dispatch(*this, ie.kind(), ie, v.get());
-            internal_events_.pop();
-        }
-
-        if (channel_enabled) {
-            // watch external event channel after internal ones complete
-            event ev{};
-            auto& ch = *graph_->context()->channel();
-            if(ch.pop(ev)) {
-                dispatch(*this, ev.kind(), ev);
-            }
-        }
-
-        // For serial scheduler, give control here in order to
-        // simulate tasks execution background so that state changes and proceeds
-        executor_->wait_for_progress();
-    }
-
-    void schedule(model::graph &g) {
-        // assuming one graph per scheduler
-        graph_ = &g;
-        steps_.clear();
-        for(auto&& v: g.steps()) {
-            step_state(*v, step_state_kind::created);
-        }
-        graph_deactivated_ = all_steps_deactivated(g);
-        while(!graph_deactivated_) {
-            process(true);  //TODO update
-        }
-    }
-
-    void start_running(step& v) {
-        auto task_list = v.create_tasks();
-        auto& tasks = steps_[v.id()];
-        tasks.assign_slot(task_kind::main, task_list.size());
-        step_state_table::slot_index slot = 0;
-        for(auto& t : task_list) {
-            executor_->schedule_task(t);
-            tasks.register_task(task_kind::main, slot, t->id());
-            tasks.task_state(t->id(), task_state_kind::running);
-            ++slot;
-        }
-        step_state(v, step_state_kind::running);
-    }
-
-    void start_pretask(step& v, step_state_table::slot_index index) {
-        auto& tasks = steps_[v.id()];
-        if (!tasks.uninitialized_slot(task_kind::pre, index)) {
-            // task already started
-            return;
-        }
-        if(auto view = v.create_pretask(index);!view.empty()) {
-            auto& t = view.front();
-            executor_->schedule_task(t);
-            tasks.register_task(task_kind::pre, index, t->id());
-            tasks.task_state(t->id(), task_state_kind::running);
-        }
-    }
-
-    void start_preparing(step& v) {
-        auto& tasks = steps_[v.id()];
-        std::vector<step_state_table::slot_index> not_started{tasks.list_uninitialized(task_kind::pre)};
-        for(auto i : not_started) {
-            start_pretask(v, i);
-        }
-        step_state(v, step_state_kind::preparing);
-    }
-
-    static dag_controller::impl& get_impl(dag_controller& arg) {
-        return *arg.impl_;
-    }
+    static dag_controller::impl& get_impl(dag_controller& arg);
 
 private:
     std::shared_ptr<configuration> cfg_{};
@@ -364,7 +114,26 @@ private:
     steps_status steps_{};
     std::queue<internal_event> internal_events_{};
     bool graph_deactivated_{false};
-    maybe_shared_ptr<task_scheduler> executor_{};
+    maybe_shared_ptr<class task_scheduler> executor_{};
+    std::mutex mutex_{};
+    utils::latch latch_{};
+
+    bool all_steps_deactivated(model::graph& g);
+    // no upstreams or upstream equals or past st
+    bool all_upstream_steps_past(step const& s, step_state_kind st);
+    bool all_downstream_steps_past(step const& s, step_state_kind st);
+    bool ports_completed(takatori::util::sequence_view<std::unique_ptr<model::port> const> ports);
+    bool output_ports_activated(step const& s);
+    bool main_input_completed(step const& s);
+    bool sub_input_completed(step const& s);
+    bool input_completed(step const& s);
+    void on_state_change(step const& s);
+    // generate internal events on step state change
+    void check_and_generate_internal_events(step const& s);
+    void step_state(step const& v, step_state_kind new_state);
+    void start_running(step& v);
+    void start_pretask(step& v, step_state_table::slot_index index);
+    void start_preparing(step& v);
 };
 
 } // namespace

@@ -38,8 +38,6 @@
 
 namespace jogasaki::scheduler {
 
-using takatori::util::maybe_shared_ptr;
-
 using step = model::step;
 using task_kind = model::task_kind;
 
@@ -62,6 +60,10 @@ dag_controller::~dag_controller() = default;
 
 void dag_controller::schedule(model::graph &g) {
     return impl_->schedule(g);
+}
+
+task_scheduler& dag_controller::get_task_scheduler() noexcept {
+    return impl_->get_task_scheduler();
 }
 
 } // namespace

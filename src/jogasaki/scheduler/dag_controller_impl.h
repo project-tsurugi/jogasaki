@@ -282,6 +282,28 @@ public:
         on_state_change(v);
     }
 
+    void process(bool channel_enabled = true) {
+        while(!internal_events_.empty()) {
+            auto& ie = internal_events_.front();
+            auto v = graph_->find_step(ie.target());
+            dispatch(*this, ie.kind(), ie, v.get());
+            internal_events_.pop();
+        }
+
+        if (channel_enabled) {
+            // watch external event channel after internal ones complete
+            event ev{};
+            auto& ch = *graph_->context()->channel();
+            if(ch.pop(ev)) {
+                dispatch(*this, ev.kind(), ev);
+            }
+        }
+
+        // For serial scheduler, give control here in order to
+        // simulate tasks execution background so that state changes and proceeds
+        executor_->wait_for_progress();
+    }
+
     void schedule(model::graph &g) {
         // assuming one graph per scheduler
         graph_ = &g;
@@ -290,23 +312,8 @@ public:
             step_state(*v, step_state_kind::created);
         }
         graph_deactivated_ = all_steps_deactivated(g);
-        auto& ch = *g.context()->channel();
         while(!graph_deactivated_) {
-            while(!internal_events_.empty()) {
-                auto& ie = internal_events_.front();
-                auto v = g.find_step(ie.target());
-                dispatch(*this, ie.kind(), ie, v.get());
-                internal_events_.pop();
-            }
-            // watch external event channel after internal ones complete
-            event ev{};
-            if(ch.pop(ev)) {
-                dispatch(*this, ev.kind(), ev);
-            }
-
-            // For serial scheduler, give control here in order to
-            // simulate tasks execution background so that state changes and proceeds
-            executor_->wait_for_progress();
+            process(true);  //TODO update
         }
     }
 

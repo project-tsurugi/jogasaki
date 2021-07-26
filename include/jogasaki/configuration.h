@@ -137,6 +137,14 @@ public:
     void use_event_channel(bool arg) noexcept {
         use_event_channel_ = arg;
     }
+
+    [[nodiscard]] bool work_sharing() const noexcept {
+        return work_sharing_;
+    }
+
+    void work_sharing(bool arg) noexcept {
+        work_sharing_ = arg;
+    }
 private:
     bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;
@@ -152,6 +160,7 @@ private:
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
     bool use_event_channel_ = false;
+    bool work_sharing_ = false;
 };
 
 }

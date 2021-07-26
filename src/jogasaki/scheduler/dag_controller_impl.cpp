@@ -339,6 +339,7 @@ void dag_controller::impl::process(bool channel_enabled) {
 }
 
 void dag_controller::impl::init(model::graph& g) {
+    std::lock_guard guard{mutex_};
     // assuming one graph per scheduler
     graph_ = &g;
     steps_.clear();
@@ -423,8 +424,8 @@ class task_scheduler& dag_controller::impl::get_task_scheduler() {
     return *executor_;
 }
 
-bool dag_controller::impl::all_deactivated() const noexcept {
-    return graph_deactivated_;
+dag_controller* dag_controller::impl::parent() const noexcept {
+    return parent_;
 }
 
 } // namespace

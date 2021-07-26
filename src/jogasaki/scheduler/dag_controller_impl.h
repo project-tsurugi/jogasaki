@@ -108,13 +108,10 @@ public:
 
     static dag_controller::impl& get_impl(dag_controller& arg);
 
-    bool all_deactivated() const noexcept;
-
     void init(model::graph& g);
 
-    dag_controller* parent() const noexcept {
-        return parent_;
-    }
+    dag_controller* parent() const noexcept;
+
 private:
     std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};

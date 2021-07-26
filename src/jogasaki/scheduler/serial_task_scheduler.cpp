@@ -29,16 +29,15 @@ thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};
 void serial_task_scheduler::schedule_task(
     flat_task&& task
 ) {
-    auto id = task.id();
-    tasks_.emplace(id, std::move(task));
+    tasks_.emplace_back(std::move(task));
 }
 
-void serial_task_scheduler::wait_for_progress() {
-    for(auto it = tasks_.begin(); it != tasks_.end(); ) {
-        auto& s = it->second;
-        tateyama::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
+void serial_task_scheduler::wait_for_progress(job_context&) {
+    tateyama::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
+    while(! tasks_.empty()) {
+        auto& s = tasks_.front();
         s(ctx);
-        it = tasks_.erase(it);
+        tasks_.pop_front();
     }
 }
 

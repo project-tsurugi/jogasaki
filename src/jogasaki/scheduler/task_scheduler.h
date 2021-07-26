@@ -20,6 +20,8 @@
 
 namespace jogasaki::scheduler {
 
+class job_context;
+
 enum class task_scheduler_kind : std::int32_t {
     serial = 0,
     parallel,
@@ -55,9 +57,10 @@ public:
 
     /**
      * @brief wait for the scheduler to proceed
-     * @details serial scheduler requires this to be called periodically, no-op for multi thread scheduler
+     * @param ctx the context of the job whose completion is waited
+     * @details the caller blocks until the job completes
      */
-    virtual void wait_for_progress() = 0;
+    virtual void wait_for_progress(job_context& ctx) = 0;
 
     /**
      * @brief start the scheduler so that it's ready to accept request

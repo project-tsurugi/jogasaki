@@ -57,7 +57,7 @@ model::task_result task::operator()() {
     // raise appropriate event if needed
     common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
 
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*context()->dag_scheduler());
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*context()->job()->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     auto& ts = dc.get_task_scheduler();
     ts.schedule_task(scheduler::flat_task{maybe_shared_ptr{context()}});

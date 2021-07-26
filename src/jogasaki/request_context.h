@@ -26,6 +26,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/event_channel.h>
+#include <jogasaki/scheduler/job_context.h>
 
 namespace jogasaki {
 
@@ -116,15 +117,15 @@ public:
     [[nodiscard]] status status_code() const noexcept;
 
     /**
-     * @brief setter for the dag scheduler
+     * @brief setter for the job context
      */
-    void dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept;
+    void job(std::shared_ptr<scheduler::job_context> arg) noexcept;
 
     /**
-     * @brief accessor for the dag scheduler
-     * @return dag scheduler shared within this request
+     * @brief accessor for the job context
+     * @return job context
      */
-    [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& dag_scheduler() const noexcept;
+    [[nodiscard]] std::shared_ptr<scheduler::job_context> const& job() const noexcept;
 
 private:
     std::shared_ptr<event_channel> channel_{};
@@ -134,7 +135,7 @@ private:
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};
     std::atomic<status> status_code_{status::ok};
-    maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
+    std::shared_ptr<scheduler::job_context> job_context_{};
 };
 
 }

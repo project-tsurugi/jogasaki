@@ -15,26 +15,21 @@
  */
 #include "flat_task.h"
 
-#include <takatori/util/maybe_shared_ptr.h>
-
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/task.h>
-#include <jogasaki/request_context.h>
-#include <tateyama/task_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <tateyama/context.h>
-#include "task_scheduler.h"
-#include "thread_params.h"
 
 namespace jogasaki::scheduler {
 
 void flat_task::operator()(tateyama::context& ctx) {
     (void)ctx;
     if (dag_scheduling_) {
-        auto& sc = scheduler::statement_scheduler::impl::get_impl(*request_context_->dag_scheduler());
+        auto& sc = scheduler::statement_scheduler::impl::get_impl(*request_context_->job()->dag_scheduler());
         auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
         dc.process(false);
+        if(dc.all_deactivated()) {
+            request_context_->job()->completion_latch().open();
+        }
         return;
     }
     auto res = (*origin_)();

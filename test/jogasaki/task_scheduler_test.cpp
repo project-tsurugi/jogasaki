@@ -55,19 +55,22 @@ TEST_F(task_scheduler_test, single) {
         return task_result::complete;
     });
     executor.schedule_task(flat_task{t});
-    executor.wait_for_progress();
+    job_context jctx{};
+    executor.wait_for_progress(jctx);
     ASSERT_TRUE(run);
 }
 
 TEST_F(task_scheduler_test, multi) {
     parallel_task_scheduler executor{thread_params(1)};
     std::atomic_flag run = false;
+    job_context jctx{};
     auto t = std::make_shared<task_wrapper>([&]() {
         run.test_and_set() ;
+        jctx.completion_latch().open();
         return task_result::complete;
     });
     executor.schedule_task(flat_task{t});
-    executor.wait_for_progress();
+    executor.wait_for_progress(jctx);
     executor.stop();
     ASSERT_TRUE(run.test_and_set());
 }

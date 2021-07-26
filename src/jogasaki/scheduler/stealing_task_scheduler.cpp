@@ -18,6 +18,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
+#include <jogasaki/scheduler/job_context.h>
 #include "details/thread_pool.h"
 #include "task_scheduler.h"
 #include "thread_params.h"
@@ -34,8 +35,8 @@ void stealing_task_scheduler::schedule_task(flat_task&& t) {
     scheduler_.schedule(std::move(t));
 }
 
-void stealing_task_scheduler::wait_for_progress() {
-    // do nothing
+void stealing_task_scheduler::wait_for_progress(job_context& ctx) {
+    ctx.completion_latch().wait();
 }
 
 void stealing_task_scheduler::start() {

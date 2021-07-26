@@ -24,8 +24,6 @@
 
 namespace jogasaki::utils {
 
-using boost::latch;
-
 class cache_align latch_set {
 public:
     /**
@@ -41,9 +39,9 @@ public:
         enabled_.clear();
     }
 
-    latch& enable(latch_id loc, std::size_t count) {
+    boost::latch& enable(latch_id loc, std::size_t count) {
         std::unique_lock lock{guard_};
-        latches_[loc] = std::make_unique<latch>(count);
+        latches_[loc] = std::make_unique<boost::latch>(count);
         enabled_.emplace(loc);
         return *latches_[loc];
     }
@@ -54,7 +52,7 @@ public:
         return enabled_.erase(loc) > 0;
     }
 
-    latch* get(latch_id loc) {
+    boost::latch* get(latch_id loc) {
         std::unique_lock lock{guard_};
         if (latches_.count(loc) == 0 || enabled_.count(loc) == 0) {
             return {};
@@ -64,7 +62,7 @@ public:
 
 private:
     std::mutex guard_{};
-    std::unordered_map<latch_id, std::unique_ptr<latch>> latches_{};
+    std::unordered_map<latch_id, std::unique_ptr<boost::latch>> latches_{};
     std::unordered_set<latch_id> enabled_{}; // using flags because erasing a latch caused assert failure in boost::latch
 };
 

@@ -16,6 +16,7 @@
 #include "parallel_task_scheduler.h"
 
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/scheduler/job_context.h>
 
 namespace jogasaki::scheduler {
 
@@ -46,8 +47,8 @@ void parallel_task_scheduler::schedule_task(flat_task&& task) {
     threads_.submit(proceeding_task_wrapper(std::move(task)));
 }
 
-void parallel_task_scheduler::wait_for_progress() {
-    // no-op - tasks are already running on threads
+void parallel_task_scheduler::wait_for_progress(job_context& ctx) {
+    ctx.completion_latch().wait();
 }
 
 void parallel_task_scheduler::start() {

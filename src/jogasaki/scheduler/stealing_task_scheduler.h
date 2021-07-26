@@ -56,7 +56,7 @@ public:
      * @brief wait for the scheduler to proceed
      * @details this is no-op for multi-thread scheduler
      */
-    void wait_for_progress() override;
+    void wait_for_progress(job_context& ctx) override;
 
     /**
      * @brief start the scheduler so that it's ready to accept request

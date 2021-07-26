@@ -61,7 +61,9 @@ status transaction::execute(
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         g.context(*request_ctx);
-        request_ctx->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
+        auto job = std::make_shared<scheduler::job_context>();
+        job->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
+        request_ctx->job(std::move(job));
         scheduler_.schedule(*stmt, *request_ctx);
         // for now, assume only one result is returned
         result = std::make_unique<impl::result_set>(

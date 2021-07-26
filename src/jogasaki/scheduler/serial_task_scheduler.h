@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <unordered_map>
+#include <deque>
 #include <memory>
 
 #include <jogasaki/model/task.h>
@@ -29,7 +29,7 @@ namespace jogasaki::scheduler {
  */
 class cache_align serial_task_scheduler : public task_scheduler {
 public:
-    using entity_type = std::unordered_map<model::task::identity_type, flat_task>;
+    using entity_type = std::deque<flat_task>;
 
     /**
      * @brief schedule the task
@@ -41,7 +41,7 @@ public:
     /**
      * @brief wait for the scheduler to proceed
      */
-    void wait_for_progress() override;
+    void wait_for_progress(job_context& ctx) override;
 
     /**
      * @brief start the scheduler

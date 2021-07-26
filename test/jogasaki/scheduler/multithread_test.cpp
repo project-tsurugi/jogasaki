@@ -18,10 +18,14 @@
 
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/dag_controller_impl.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/common/execute.h>
 
 #include <jogasaki/mock/simple_scan_process.h>
 #include <jogasaki/mock/simple_cogroup_process.h>
@@ -35,13 +39,22 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::executor::exchange;
+using namespace jogasaki::executor::common;
 using namespace jogasaki::scheduler;
 
 class multithread_test : public test_root {};
 
-TEST_F(multithread_test, simple_forward) {
+static void run_event_loop(statement_scheduler& ss) {
+    auto& ss_impl = scheduler::statement_scheduler::impl::get_impl(ss);
+    auto& impl = scheduler::dag_controller::impl::get_impl(ss_impl.controller());
+    while(! impl.all_deactivated()) {
+        impl.process(false);
+    }
+}
+
+TEST_F(multithread_test, DISABLED_simple_forward) {
     auto ctx = std::make_shared<request_context>();
-    auto g = std::make_unique<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto fwd = std::make_unique<forward::step>();
@@ -56,14 +69,17 @@ TEST_F(multithread_test, simple_forward) {
     auto cfg = std::make_shared<configuration>();
     cfg->thread_pool_size(1);
     cfg->single_thread(false);
-    dag_controller dc{cfg};
-    dc.schedule(*g);
+    statement_scheduler dc{cfg};
+    job_context jctx{};
+    ctx->job(maybe_shared_ptr{&jctx});
+    jctx.dag_scheduler(maybe_shared_ptr{&dc});
+    dc.schedule(execute{g}, *ctx);
     ASSERT_TRUE(true);
 }
 
-TEST_F(multithread_test, simple_shuffle) {
+TEST_F(multithread_test, DISABLED_simple_shuffle) {
     auto ctx = std::make_shared<request_context>();
-    auto g = std::make_unique<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
@@ -78,14 +94,17 @@ TEST_F(multithread_test, simple_shuffle) {
     auto cfg = std::make_shared<configuration>();
     cfg->thread_pool_size(1);
     cfg->single_thread(false);
-    dag_controller dc{cfg};
-    dc.schedule(*g);
+    statement_scheduler dc{cfg};
+    job_context jctx{};
+    ctx->job(maybe_shared_ptr{&jctx});
+    jctx.dag_scheduler(maybe_shared_ptr{&dc});
+    dc.schedule(execute{g}, *ctx);
     ASSERT_TRUE(true);
 }
 
-TEST_F(multithread_test, cogroup) {
+TEST_F(multithread_test, DISABLED_cogroup) {
     auto ctx = std::make_shared<request_context>();
-    auto g = std::make_unique<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>(*ctx);
     auto scan1 = std::make_unique<simple_scan_process>();
     auto scan2 = std::make_unique<simple_scan_process>();
     auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
@@ -108,8 +127,11 @@ TEST_F(multithread_test, cogroup) {
     auto cfg = std::make_shared<configuration>();
     cfg->thread_pool_size(1);
     cfg->single_thread(false);
-    dag_controller dc{cfg};
-    dc.schedule(*g);
+    statement_scheduler dc{cfg};
+    job_context jctx{};
+    ctx->job(maybe_shared_ptr{&jctx});
+    jctx.dag_scheduler(maybe_shared_ptr{&dc});
+    dc.schedule(execute{g}, *ctx);
     ASSERT_TRUE(true);
 }
 

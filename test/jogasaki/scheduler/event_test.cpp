@@ -21,7 +21,11 @@
 #include <jogasaki/executor/exchange/broadcast/step.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/common/execute.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/dag_controller_impl.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/scheduler/statement_scheduler_impl.h>
 
 #include <jogasaki/mock/simple_scan_process.h>
 #include <jogasaki/mock/simple_emit_process.h>
@@ -36,14 +40,22 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::executor::exchange;
+using namespace jogasaki::executor::common;
 using namespace jogasaki::scheduler;
 
 class event_test : public test_root {};
 
+static void run_event_loop(statement_scheduler& ss) {
+    auto& ss_impl = scheduler::statement_scheduler::impl::get_impl(ss);
+    auto& impl = scheduler::dag_controller::impl::get_impl(ss_impl.controller());
+    if(! impl.all_deactivated()) {
+        impl.process(false);
+    }
+}
+
 TEST_F(event_test, basic) {
     auto ctx = std::make_shared<request_context>();
-    ctx->configuration()->use_event_channel(true);
-    auto g = std::make_unique<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>(*ctx);
     auto p = std::make_unique<test::test_process>();
     g->insert(std::move(p));
     dag_controller dc{};
@@ -53,8 +65,7 @@ TEST_F(event_test, basic) {
 
 TEST_F(event_test, simple_forward) {
     auto ctx = std::make_shared<request_context>();
-    ctx->configuration()->use_event_channel(true);
-    auto g = std::make_unique<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto fwd = std::make_unique<forward::step>();
@@ -73,8 +84,7 @@ TEST_F(event_test, simple_forward) {
 
 TEST_F(event_test, simple_shuffle) {
     auto ctx = std::make_shared<request_context>();
-    ctx->configuration()->use_event_channel(true);
-    auto g = std::make_unique<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>(*ctx);
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});

@@ -15,14 +15,19 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/task.h>
+#include <jogasaki/request_context.h>
 #include <tateyama/task_scheduler.h>
 #include <tateyama/context.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {
+
+using takatori::util::maybe_shared_ptr;
 
 class flat_task {
 public:
@@ -37,18 +42,21 @@ public:
         origin_(std::move(origin))
     {}
 
+    explicit flat_task(maybe_shared_ptr<request_context> request_context) noexcept :
+        dag_scheduling_(true),
+        request_context_(std::move(request_context))
+    {}
+
     [[nodiscard]] std::shared_ptr<model::task> const& origin() const noexcept {
         return origin_;
     }
 
-    void operator()(tateyama::context& ctx) {
-        (void)ctx;
-        auto res = (*origin_)();
-        (void)res;
-    }
+    void operator()(tateyama::context& ctx);
 
 private:
     std::shared_ptr<model::task> origin_{};
+    bool dag_scheduling_{false};
+    maybe_shared_ptr<request_context> request_context_{};
 };
 /**
  * @brief task scheduler using multiple threads
@@ -63,64 +71,49 @@ public:
     stealing_task_scheduler(stealing_task_scheduler&& other) noexcept = delete;
     stealing_task_scheduler& operator=(stealing_task_scheduler&& other) noexcept = delete;
 
-    explicit stealing_task_scheduler(thread_params params) :
-        scheduler_cfg_(create_scheduler_cfg(params)),
-        scheduler_(scheduler_cfg_)
-    {}
+    explicit stealing_task_scheduler(thread_params params);
 
     /**
      * @brief schedule the task
      * @param task the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(std::shared_ptr<model::task> const& task) override {
-        scheduler_.schedule(flat_task{task});
-    }
+    void schedule_task(std::shared_ptr<model::task> const& task) override;
+
+    /**
+     * @brief schedule the task
+     * @param task the task to schedule
+     * @pre scheduler is started
+     */
+    void schedule_flat_task(flat_task task);
 
     /**
      * @brief wait for the scheduler to proceed
      * @details this is no-op for multi-thread scheduler
      */
-    void wait_for_progress() override {
-        // do nothing
-    }
+    void wait_for_progress() override;
 
     /**
      * @brief start the scheduler so that it's ready to accept request
      */
-    void start() override {
-        scheduler_.start();
-    }
+    void start() override;
 
     /**
      * @brief stop the scheduler joining all the running tasks and
      * canceling ones that are submitted but not yet executed
      */
-    void stop() override {
-        scheduler_.stop();
-    }
+    void stop() override;
 
     /**
      * @return kind of the task scheduler
      */
-    [[nodiscard]] task_scheduler_kind kind() const noexcept override {
-        return task_scheduler_kind::stealing;
-    }
+    [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 
 private:
     tateyama::task_scheduler_cfg scheduler_cfg_{};
     tateyama::task_scheduler<flat_task> scheduler_;
 
-    tateyama::task_scheduler_cfg create_scheduler_cfg(thread_params params) {
-        tateyama::task_scheduler_cfg ret{};
-        ret.thread_count(params.threads());
-        ret.force_numa_node(params.force_numa_node());
-        ret.core_affinity(params.is_set_core_affinity());
-        ret.assign_numa_nodes_uniformly(params.assign_numa_nodes_uniformly());
-        ret.initial_core(params.inititial_core());
-        ret.stealing_enabled(params.stealing_enabled());
-        return ret;
-    }
+    tateyama::task_scheduler_cfg create_scheduler_cfg(thread_params params);
 };
 
 }

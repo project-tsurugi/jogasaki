@@ -29,7 +29,7 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
-#include <jogasaki/scheduler/parallel_task_scheduler.h>
+#include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
 
 #include <string_view>
@@ -72,7 +72,7 @@ status database::start() {
         if (cfg_->single_thread()) {
             task_scheduler_ = std::make_unique<scheduler::serial_task_scheduler>();
         } else {
-            task_scheduler_ = std::make_unique<scheduler::parallel_task_scheduler>(scheduler::thread_params(cfg_));
+            task_scheduler_ = std::make_unique<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
         }
     }
     task_scheduler_->start();

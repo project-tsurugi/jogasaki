@@ -39,4 +39,6 @@ static constexpr std::size_t hardware_destructive_interference_size = 64;
  * 1. the objects are created(allocated) on one thread and accessed from different threads.
  * 2. the objects are mutable and changes are made frequently.
  */
+#ifndef cache_align
 #define cache_align alignas(jogasaki::utils::hardware_destructive_interference_size)  //NOLINT
+#endif

@@ -15,6 +15,7 @@
  */
 #include <jogasaki/api.h>
 
+#include <thread>
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
@@ -26,6 +27,7 @@ namespace jogasaki::testing {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+using namespace std::chrono_literals;
 
 /**
  * @brief test database api

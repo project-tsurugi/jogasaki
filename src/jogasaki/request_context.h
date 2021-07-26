@@ -17,6 +17,8 @@
 
 #include <atomic>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/plan/compiler_context.h>
@@ -26,6 +28,12 @@
 #include <jogasaki/event_channel.h>
 
 namespace jogasaki {
+
+using takatori::util::maybe_shared_ptr;
+
+namespace scheduler {
+class dag_controller;
+}
 
 /**
  * @brief context object for the request scope
@@ -106,6 +114,17 @@ public:
      */
     [[nodiscard]] status status_code() const noexcept;
 
+    /**
+     * @brief setter for the dag scheduler
+     */
+    void dag_scheduler(maybe_shared_ptr<scheduler::dag_controller> arg) noexcept;
+
+    /**
+     * @brief accessor for the dag scheduler
+     * @return dag scheduler shared within this request
+     */
+    [[nodiscard]] maybe_shared_ptr<scheduler::dag_controller> const& dag_scheduler() const noexcept;
+
 private:
     std::shared_ptr<event_channel> channel_{};
     std::shared_ptr<class configuration> config_{};
@@ -114,6 +133,7 @@ private:
     std::shared_ptr<kvs::transaction> transaction_{};
     data::result_store* result_{};
     std::atomic<status> status_code_{status::ok};
+    maybe_shared_ptr<scheduler::dag_controller> dag_scheduler_{};
 };
 
 }

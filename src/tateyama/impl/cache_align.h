@@ -20,8 +20,11 @@
 #include <ostream>
 #include <sstream>
 
+namespace tateyama {
 // replace with std one when C++17 becomes available
 static constexpr std::size_t hardware_destructive_interference_size = 64;
+
+}
 
 /**
  * @brief non conditional shorter qualifier to align on cache lines
@@ -29,5 +32,7 @@ static constexpr std::size_t hardware_destructive_interference_size = 64;
  * 1. the objects are created(allocated) on one thread and accessed from different threads.
  * 2. the objects are mutable and changes are made frequently.
  */
-#define cache_align alignas(hardware_destructive_interference_size)  //NOLINT
+#ifndef cache_align
+#define cache_align alignas(tateyama::hardware_destructive_interference_size)  //NOLINT
+#endif
 

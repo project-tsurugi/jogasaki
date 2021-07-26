@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "request_context.h"
+
 #include <memory>
 
-#include "request_context.h"
+#include <jogasaki/scheduler/dag_controller.h>
 #include "event_channel.h"
 #include "error.h"
 
@@ -78,6 +80,14 @@ void request_context::status_code(status val) noexcept {
 
 status request_context::status_code() const noexcept {
     return status_code_.load();
+}
+
+void request_context::dag_scheduler(maybe_shared_ptr<scheduler::dag_controller> arg) noexcept {
+    dag_scheduler_ = std::move(arg);
+}
+
+maybe_shared_ptr<scheduler::dag_controller> const& request_context::dag_scheduler() const noexcept {
+    return dag_scheduler_;
 }
 
 }

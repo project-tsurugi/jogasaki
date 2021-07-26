@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <jogasaki/model/graph.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/configuration.h>
 #include "task_scheduler.h"
@@ -81,8 +80,9 @@ public:
         request_context& context
     );
 
-private:
     class impl;
+    friend impl;
+private:
     std::unique_ptr<impl> impl_;
 };
 

@@ -16,51 +16,9 @@
 #include "statement_scheduler.h"
 
 #include <takatori/util/downcast.h>
-
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/common/execute.h>
-#include <jogasaki/executor/common/write.h>
+#include "statement_scheduler_impl.h"
 
 namespace jogasaki::scheduler {
-
-using takatori::util::unsafe_downcast;
-
-class cache_align statement_scheduler::impl {
-public:
-    impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
-        dag_controller_(cfg, scheduler),
-        cfg_(std::move(cfg))
-    {}
-
-    explicit impl(std::shared_ptr<configuration> cfg) :
-        dag_controller_(cfg),
-        cfg_(std::move(cfg))
-    {}
-
-    void schedule(
-        model::statement const& s,
-        request_context& context
-    ) {
-        using kind = model::statement_kind;
-        switch(s.kind()) {
-            case kind::execute: {
-                auto& g = unsafe_downcast<executor::common::execute>(s).operators();
-                dag_controller_.schedule(g);
-                break;
-            }
-            case kind::write: {
-                auto& w = unsafe_downcast<executor::common::write>(s);
-                w(context);
-                break;
-            }
-        }
-    }
-
-private:
-    dag_controller dag_controller_{};
-    std::shared_ptr<configuration> cfg_{};
-};
 
 statement_scheduler::statement_scheduler() : statement_scheduler(std::make_shared<configuration>()) {}
 statement_scheduler::statement_scheduler(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :

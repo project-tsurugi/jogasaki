@@ -28,7 +28,6 @@ namespace scheduler {
 using takatori::util::maybe_shared_ptr;
 
 class statement_scheduler;
-class task_scheduler;
 
 /**
  * @brief context object for the job
@@ -48,9 +47,7 @@ public:
      */
     explicit job_context(
         maybe_shared_ptr<scheduler::statement_scheduler> statement
-    ) noexcept :
-        dag_scheduler_(std::move(statement))
-    {}
+    ) noexcept;
 
     ~job_context() = default;
     job_context(job_context const& other) = delete;
@@ -59,13 +56,13 @@ public:
     job_context& operator=(job_context&& other) noexcept = delete;
 
     /**
-     * @brief setter for the dag scheduler
+     * @brief setter for the statement scheduler
      */
     void dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept;
 
     /**
-     * @brief accessor for the dag scheduler
-     * @return dag scheduler shared within this request
+     * @brief accessor for the statement scheduler
+     * @return statement scheduler shared within this job
      */
     [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& dag_scheduler() const noexcept;
 
@@ -79,32 +76,25 @@ public:
      * @brief accessor for the completion flag used to issue teardown task only once
      * @return completion flag
      */
-    [[nodiscard]] std::atomic_bool& completing() noexcept {
-        return completing_;
-    }
+    [[nodiscard]] std::atomic_bool& completing() noexcept;
 
     /**
      * @brief accessor for the atomic task counter used to check the number of remaining tasks
      * @return atomic task counter
      */
-    [[nodiscard]] std::atomic_size_t& task_count() noexcept {
-        return job_tasks_;
-    }
+    [[nodiscard]] std::atomic_size_t& task_count() noexcept;
 
     /**
      * @brief accessor for the atomic task counter used to check the number of remaining tasks
      * @return atomic task counter
      */
-    [[nodiscard]] std::atomic_size_t& index() noexcept {
-        return index_;
-    }
+    [[nodiscard]] std::atomic_size_t& index() noexcept;
 
-    void reset() noexcept {
-        completion_latch_.open();
-        completing_.store(false);
-        job_tasks_.store(0);
-        index_.store(undefined_index);
-    }
+    /**
+     * @brief reset the job context mutable variables to re-use
+     */
+    void reset() noexcept;
+
 private:
 
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};

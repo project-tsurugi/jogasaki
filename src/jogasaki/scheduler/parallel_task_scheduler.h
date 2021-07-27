@@ -24,12 +24,16 @@
 namespace jogasaki::scheduler {
 
 /**
- * @brief task scheduler using multiple threads
+ * @brief task scheduler using work-sharing multiple threads
  */
 class cache_align parallel_task_scheduler : public task_scheduler {
 public:
 
+    /**
+     * @brief create new object
+     */
     parallel_task_scheduler() = default;
+
     ~parallel_task_scheduler() override = default;
     parallel_task_scheduler(parallel_task_scheduler const& other) = delete;
     parallel_task_scheduler& operator=(parallel_task_scheduler const& other) = delete;
@@ -46,7 +50,7 @@ public:
 
     /**
      * @brief wait for the scheduler to proceed
-     * @details this is no-op for multi-thread scheduler
+     * @details this block the caller and wait for the job to complete (i.e. teardown task execution)
      */
     void wait_for_progress(job_context& ctx) override;
 

@@ -25,7 +25,9 @@
 namespace jogasaki::scheduler {
 
 /**
- * @brief task scheduler using only single thread
+ * @brief serial task scheduler
+ * @details this task scheduler accumulate the submitted tasks and run them on single thread,
+ * which calls wait_for_progress()
  */
 class cache_align serial_task_scheduler : public task_scheduler {
 public:

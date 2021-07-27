@@ -82,6 +82,42 @@ flat_task::identity_type flat_task::id() const {
     return undefined_id;
 }
 
+flat_task::flat_task(
+    task_enum_tag_t<flat_task_kind::wrapped>,
+    std::shared_ptr<model::task> origin,
+    job_context* jctx
+) noexcept:
+    kind_(flat_task_kind::wrapped),
+    origin_(std::move(origin)),
+    job_context_(jctx)
+{}
+
+flat_task::flat_task(
+    task_enum_tag_t<flat_task_kind::dag_events>,
+    job_context* jctx
+) noexcept:
+    kind_(flat_task_kind::dag_events),
+    job_context_(jctx)
+{}
+
+flat_task::flat_task(
+    task_enum_tag_t<flat_task_kind::bootstrap>,
+    model::graph& g,
+    job_context* jctx
+) noexcept:
+    kind_(flat_task_kind::bootstrap),
+    job_context_(jctx),
+    graph_(std::addressof(g))
+{}
+
+std::shared_ptr<model::task> const& flat_task::origin() const noexcept {
+    return origin_;
+}
+
+job_context* flat_task::job() const {
+    return job_context_;
+}
+
 }
 
 

@@ -21,26 +21,53 @@
 
 namespace jogasaki::scheduler {
 
+/**
+ * @brief impl of the statement_scheduler
+ * @details the implementation is accessible from the code in the scheduler package scope
+ */
 class cache_align statement_scheduler::impl {
 public:
+    /**
+     * @brief create new object
+     */
     impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
 
-    explicit impl(maybe_shared_ptr<dag_controller> controller);
-
+    /**
+     * @brief create new object
+     */
     explicit impl(std::shared_ptr<configuration> cfg);
 
+    /**
+     * @brief create new object from dag_controller
+     */
+    explicit impl(maybe_shared_ptr<dag_controller> controller);
+
+    /**
+     * @brief schedule the statement to run
+     * @details this is deprecated and left for testing purpose. Scheduling should be done with task_scheduler.
+     */
     void schedule(
         model::statement const& s,
         request_context& context
     );
 
+    /**
+     * @brief accessor to the dag controller
+     */
     [[nodiscard]] dag_controller& controller() noexcept;
 
+    /**
+     * @brief accessor to the task scheduler
+     */
     task_scheduler& get_task_scheduler() noexcept;
 
+    /**
+     * @brief function to get the impl
+     */
     static statement_scheduler::impl& get_impl(statement_scheduler& arg);
 
 private:
+
     maybe_shared_ptr<dag_controller> dag_controller_{};
     std::shared_ptr<configuration> cfg_{};
 };

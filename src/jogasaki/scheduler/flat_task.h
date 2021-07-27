@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <takatori/util/maybe_shared_ptr.h>
-
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
 #include <tateyama/context.h>
@@ -24,10 +22,8 @@
 
 namespace jogasaki::scheduler {
 
-using takatori::util::maybe_shared_ptr;
-
 /**
- * @brief field type kind
+ * @brief task type kind
  */
 enum class flat_task_kind : std::size_t {
     wrapped = 0,
@@ -71,12 +67,23 @@ struct task_enum_tag_t {
 template<auto Kind>
 inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
 
+/**
+ * @brief common task object
+ * @details The task object used commonly for the jogasaki::scheduler::task_scheduler.
+ * To support granule multi-threading, this object works some portiton of job scheduling, such as
+ * bootstrapping the job, process dag scheduler internal events, and teardown the job.
+ * The wrapped task supports wrapping jogasaki executors tasks (e.g. ones of process and exchange)
+ */
 class flat_task {
 public:
     using identity_type = std::size_t;
     static constexpr identity_type undefined_id = static_cast<identity_type>(-1);
 
+    /**
+     * @brief create new object
+     */
     flat_task() = default;
+
     ~flat_task() = default;
     flat_task(flat_task const& other) = default;
     flat_task& operator=(flat_task const& other) = default;
@@ -85,47 +92,37 @@ public:
 
     /**
      * @brief construct new object wrapping jogasaki task
-     * @param origin
+     * @param origin the jogasaki executor task
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::wrapped>,
         std::shared_ptr<model::task> origin,
         job_context* jctx
-    ) noexcept :
-        kind_(flat_task_kind::wrapped),
-        origin_(std::move(origin)),
-        job_context_(jctx)
-    {}
+    ) noexcept;
 
     /**
-     * @brief construct new object to run dag scheduler
-     * @param jctx
+     * @brief construct new object to run dag scheduler internal events
+     * @param jctx the job context where the task belongs
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::dag_events>,
         job_context* jctx
-    ) noexcept :
-        kind_(flat_task_kind::dag_events),
-        job_context_(jctx)
-    {}
+    ) noexcept;
 
     /**
-     * @brief construct new object to bootstrap dag scheduling
-     * @param jctx
+     * @brief construct new object to bootstrap the job to run dag
+     * @param the dag object to run as the job
+     * @param jctx the job context where the task belongs
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::bootstrap>,
         model::graph& g,
         job_context* jctx
-    ) noexcept :
-        kind_(flat_task_kind::bootstrap),
-        job_context_(jctx),
-        graph_(std::addressof(g))
-    {}
+    ) noexcept;
 
     /**
-     * @brief construct new object to run dag scheduler
-     * @param jctx
+     * @brief construct new object to teardown (finish processing) the job
+     * @param jctx the job context where the task belongs
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::teardown>,
@@ -142,10 +139,16 @@ public:
         return kind_;
     }
 
-    [[nodiscard]] std::shared_ptr<model::task> const& origin() const noexcept {
-        return origin_;
-    }
+    /**
+     * @brief getter for wrapped jogasaki executor task
+     * @details this is only valid when the task kind is wrapped
+     */
+    [[nodiscard]] std::shared_ptr<model::task> const& origin() const noexcept;
 
+    /**
+     * @brief execute the task
+     * @param ctx the tateyama task context, which provides info. about thread/worker running the task
+     */
     void operator()(tateyama::context& ctx);
 
     /**
@@ -154,11 +157,9 @@ public:
     [[nodiscard]] identity_type id() const;
 
     /**
-     * @brief returns task id that uniquely identifies the task
+     * @brief accessor to the job context that the task belongs to.
      */
-    [[nodiscard]] job_context* job() const {
-        return job_context_;
-    }
+    [[nodiscard]] job_context* job() const;
 
     friend std::ostream& operator<<(std::ostream& out, flat_task const& value) {
         return value.write_to(out);

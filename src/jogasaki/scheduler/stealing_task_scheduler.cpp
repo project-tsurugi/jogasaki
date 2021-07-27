@@ -19,7 +19,6 @@
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/scheduler/job_context.h>
-#include "details/thread_pool.h"
 #include "task_scheduler.h"
 #include "thread_params.h"
 

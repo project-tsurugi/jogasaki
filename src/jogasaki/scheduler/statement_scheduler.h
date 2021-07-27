@@ -84,8 +84,12 @@ public:
         model::statement const& s,
         request_context& context
     );
-
+    
+    /**
+     * @brief accessor to task scheduler
+     */
     task_scheduler& get_task_scheduler() noexcept;
+    
     class impl;
     friend impl;
 private:

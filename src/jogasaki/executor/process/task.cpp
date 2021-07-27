@@ -19,7 +19,6 @@
 #include <jogasaki/executor/process/impl/process_executor.h>
 #include <jogasaki/callback.h>
 #include <jogasaki/executor/common/utils.h>
-#include <jogasaki/scheduler/stealing_task_scheduler.h>
 
 namespace jogasaki::executor::process {
 

@@ -54,62 +54,92 @@ class cache_align dag_controller::impl {
 public:
     using steps_status = std::unordered_map<step::identity_type, step_state_table>;
 
+    /**
+     * @brief create new object
+     */
     impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler, dag_controller* parent);
 
+    /**
+     * @brief create new object
+     */
     explicit impl(std::shared_ptr<configuration> cfg, dag_controller* parent);
 
-    /*
+    /**
      * @brief handles providing event
      */
     void operator()(enum_tag_t<event_kind::providing>, event& e);
 
-    /*
+    /**
      * @brief handles main_completed event
      */
     void operator()(enum_tag_t<event_kind::task_completed>, event& e);
 
-    /*
+    /**
      * @brief handles completion_instructed event
      */
     void operator()(enum_tag_t<event_kind::completion_instructed>, event& e);
 
-    /*
+    /**
      * @brief handles activate event
      */
     void operator()(enum_tag_t<internal_event_kind::activate>, internal_event& ie, step* s);
 
-    /*
+    /**
      * @brief handles prepare event
      */
     void operator()(enum_tag_t<internal_event_kind::prepare>, internal_event& ie, step* s);
 
-    /*
+    /**
      * @brief handles consume event
      */
     void operator()(enum_tag_t<internal_event_kind::consume>, internal_event& ie, step* s);
 
-    /*
+    /**
      * @brief handles deactivate event
      */
     void operator()(enum_tag_t<internal_event_kind::deactivate>, internal_event& ie, step* s);
 
-    /*
+    /**
      * @brief handles propagate_downstream_completing event
      */
     void operator()(enum_tag_t<internal_event_kind::propagate_downstream_completing>, internal_event& ie, step* s);
 
+    /**
+     * @brief check internal events and process all of them
+     */
     void check_internal_events();
 
+    /**
+     * @brief check internal events and process all of them
+     */
     void process(bool channel_enabled = true);
 
+    /**
+     * @brief schedule the dag
+     * @note this function is deprecated and will be used solely for testing
+     * @param g the dag to be processed
+     */
     void schedule(model::graph &g);
 
+    /**
+     * @brief accessor to the task scheduler
+     */
     task_scheduler& get_task_scheduler();
 
+    /**
+     * @brief accessor to the impl
+     */
     static dag_controller::impl& get_impl(dag_controller& arg);
 
+    /**
+     * @brief set the graph to run as the job
+     * @param g the dag object to process
+     */
     void init(model::graph& g);
 
+    /**
+     * @brief accessor to the owner object that holds this impl.
+     */
     dag_controller* parent() const noexcept;
 
 private:

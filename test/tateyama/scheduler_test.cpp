@@ -53,9 +53,9 @@ TEST_F(scheduler_test, basic) {
         executed = true;
     }};
     sched.start();
-    std::this_thread::sleep_for(1ms);
+    std::this_thread::sleep_for(100ms);
     sched.schedule(std::move(t));
-    std::this_thread::sleep_for(1ms);
+    std::this_thread::sleep_for(100ms);
     sched.stop();
     ASSERT_TRUE(executed);
 }
@@ -85,10 +85,10 @@ TEST_F(scheduler_test, multiple_task_impls) {
         executed2 = true;
     }};
     sched.start();
-    std::this_thread::sleep_for(1ms);
+    std::this_thread::sleep_for(100ms);
     sched.schedule(task{std::move(t)});
     sched.schedule(task{std::move(t2)});
-    std::this_thread::sleep_for(1ms);
+    std::this_thread::sleep_for(100ms);
     sched.stop();
     ASSERT_TRUE(executed);
     ASSERT_TRUE(executed2);

@@ -36,13 +36,21 @@ using takatori::util::maybe_shared_ptr;
 class cache_align stealing_task_scheduler : public task_scheduler {
 public:
 
+    /**
+     * @brief create new object
+     */
     stealing_task_scheduler() = default;
+
     ~stealing_task_scheduler() override = default;
     stealing_task_scheduler(stealing_task_scheduler const& other) = delete;
     stealing_task_scheduler& operator=(stealing_task_scheduler const& other) = delete;
     stealing_task_scheduler(stealing_task_scheduler&& other) noexcept = delete;
     stealing_task_scheduler& operator=(stealing_task_scheduler&& other) noexcept = delete;
 
+    /**
+     * @brief create new object with thread params
+     * @param params the parameters related with threading
+     */
     explicit stealing_task_scheduler(thread_params params);
 
     /**

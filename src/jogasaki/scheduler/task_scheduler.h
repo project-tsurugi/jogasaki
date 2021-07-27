@@ -16,14 +16,11 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::scheduler {
-
-using takatori::util::fail;
 
 class job_context;
 

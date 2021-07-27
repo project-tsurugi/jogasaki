@@ -35,5 +35,31 @@ maybe_shared_ptr<scheduler::statement_scheduler> const& job_context::dag_schedul
 utils::latch& job_context::completion_latch() noexcept {
     return completion_latch_;
 }
+
+std::atomic_bool& job_context::completing() noexcept {
+    return completing_;
+}
+
+std::atomic_size_t& job_context::task_count() noexcept {
+    return job_tasks_;
+}
+
+std::atomic_size_t& job_context::index() noexcept {
+    return index_;
+}
+
+void job_context::reset() noexcept {
+    completion_latch_.open();
+    completing_.store(false);
+    job_tasks_.store(0);
+    index_.store(undefined_index);
+}
+
+job_context::job_context(
+    maybe_shared_ptr<scheduler::statement_scheduler> statement
+) noexcept:
+    dag_scheduler_(std::move(statement))
+{}
+
 }
 

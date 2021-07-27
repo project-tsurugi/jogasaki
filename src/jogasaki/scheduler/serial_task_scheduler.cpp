@@ -17,14 +17,12 @@
 
 #include <thread>
 #include <unordered_set>
-#include <memory>
 
-#include <jogasaki/model/task.h>
 #include "task_scheduler.h"
 
 namespace jogasaki::scheduler {
 
-thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};
+thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};  //NOLINT
 
 void serial_task_scheduler::do_schedule_task(
     flat_task&& task

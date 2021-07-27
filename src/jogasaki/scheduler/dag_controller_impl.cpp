@@ -40,7 +40,7 @@
 
 namespace jogasaki::scheduler {
 
-using takatori::util::maybe_shared_ptr;
+using takatori::util::maybe_shared_ptr;  //NOLINT clang-tidy failed to find its usage
 
 using step = model::step;
 using task_kind = model::task_kind;

@@ -24,29 +24,5 @@
 
 namespace tateyama::impl {
 
-/*
-void spin_wait(std::size_t times, basic_queue<task>& wait) {
-    if (times > 0) {
-        auto count = times;
-        task d{};
-        while(--count > 0) {
-            if(wait.try_pop(d)) {
-                wait.push(std::move(d));  // never come here. Just to avoid optimization.
-                return;
-            }
-            _mm_pause();
-        }
-    }
-}
-
-void measure_spin_wait(std::size_t time, basic_queue<task>& wait) {
-    using clock = std::chrono::high_resolution_clock;
-    auto begin = clock::now();
-    spin_wait(time, wait);
-    auto end = clock::now();
-    auto duration_ns = std::chrono::duration_cast<clock::duration>(end-begin).count();
-    LOG(INFO) << "task_workload : " << time << " took " << duration_ns << "(ns)";
-}
- */
 }
 

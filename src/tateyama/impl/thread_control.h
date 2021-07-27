@@ -69,6 +69,7 @@ public:
     }
 
     [[nodiscard]] bool active() const noexcept {
+        std::unique_lock lk{sleep_cv_->mutex_};
         return active_;
     }
 
@@ -106,17 +107,22 @@ private:
             if constexpr (has_init_v<F>) {
                 callable.init(thread_id);
             }
-            std::unique_lock lk{sleep_cv_->mutex_};
-            sleep_cv_->cv_.wait(lk, [&]{
-                return active_;
-            });
+            {
+                std::unique_lock lk{sleep_cv_->mutex_};
+                sleep_cv_->cv_.wait(lk, [&] {
+                    return active_;
+                });
+            }
             DLOG(INFO) << "thread " << thread_id
                 << " runs on cpu:" << sched_getcpu()
                 << " node:" << numa_node_of_cpu(sched_getcpu());
             std::apply([&callable](auto&& ...args) {
                 callable(args...);
             }, std::move(args));
-            active_ = false;
+            {
+                std::unique_lock lk{sleep_cv_->mutex_};
+                active_ = false;
+            }
         };
     }
 };

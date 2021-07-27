@@ -59,16 +59,18 @@ TEST_F(thread_test, create_thread) {
 
 TEST_F(thread_test, active) {
     bool active = false;
+    std::atomic_bool thread_finished{false};
     thread_control t{[&](){
         active = t.active();
+        thread_finished.store(true);
     }};
     EXPECT_FALSE(t.active());
     t.activate();
-    std::this_thread::sleep_for(100us);
+    while(! thread_finished.load()) {}
     EXPECT_FALSE(t.active());
     t.join();
-    EXPECT_TRUE(active);
     EXPECT_FALSE(t.active());
+    EXPECT_TRUE(active);
 }
 
 TEST_F(thread_test, task_with_args) {

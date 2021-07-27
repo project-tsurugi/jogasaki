@@ -35,7 +35,7 @@ public:
         auto ret = count_ < limit_ ? model::task_result::proceed : model::task_result::complete;
         if (ret == model::task_result::complete) {
             auto& jctx = *src_->owner()->context()->job();
-            jctx.completion_latch().open();
+            jctx.completion_latch().release();
         }
         return ret;
     }

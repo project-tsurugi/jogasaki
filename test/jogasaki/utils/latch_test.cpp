@@ -31,18 +31,38 @@ TEST_F(latch_test, simple) {
     std::atomic_bool opener_end = false;
     auto f = std::async(std::launch::async, [&](){
         std::this_thread::sleep_for(10ms);
-        l.open();
+        l.release();
         opener_end = true;
     });
     l.wait();
     f.get();
     EXPECT_TRUE(opener_end);
+    EXPECT_TRUE(l.wait(1ms));
 }
 
 TEST_F(latch_test, wait_time_out) {
     latch l{};
     EXPECT_FALSE(l.wait(1ms));
-    l.open();
+    l.release();
+    EXPECT_TRUE(l.wait(1ms));
+}
+
+TEST_F(latch_test, already_opened) {
+    latch l{};
+    l.release();
+    EXPECT_TRUE(l.wait(1ms));
+    l.wait();
+}
+
+TEST_F(latch_test, reset) {
+    latch l{};
+    EXPECT_FALSE(l.wait(1ms));
+    l.release();
+    EXPECT_TRUE(l.wait(1ms));
+    l.reset();
+    EXPECT_FALSE(l.wait(1ms));
+    l.release();
+    EXPECT_TRUE(l.wait(1ms));
 }
 }
 

@@ -49,7 +49,7 @@ std::atomic_size_t& job_context::index() noexcept {
 }
 
 void job_context::reset() noexcept {
-    completion_latch_.open();
+    completion_latch_.reset();
     completing_.store(false);
     job_tasks_.store(0);
     index_.store(undefined_index);

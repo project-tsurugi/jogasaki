@@ -66,7 +66,7 @@ TEST_F(task_scheduler_test, multi) {
     job_context jctx{};
     auto t = std::make_shared<task_wrapper>([&]() {
         run.test_and_set() ;
-        jctx.completion_latch().open();
+        jctx.completion_latch().release();
         return task_result::complete;
     });
     executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, t, &jctx});

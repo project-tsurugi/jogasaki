@@ -23,18 +23,26 @@
 
 namespace jogasaki::utils {
 
-void latch::open() {
+void latch::release() {
     {
         std::unique_lock lock{guard_};
         open_ = true;
+        done_ = true;
     }
     cv_.notify_all();
 }
 
 void latch::wait() {
     std::unique_lock lock{guard_};
+    if (done_) return; // already opened, should not wait
     open_ = false;
     cv_.wait(lock, [&](){ return open_; });
+}
+
+void latch::reset() {
+    std::unique_lock lock{guard_};
+    open_ = true;
+    done_ = false;
 }
 
 } // namespace

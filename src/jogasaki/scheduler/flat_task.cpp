@@ -49,7 +49,7 @@ bool flat_task::teardown() {
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
         return true;
     }
-    job_context_->completion_latch().open();
+    job_context_->completion_latch().release();
     return false;
 }
 

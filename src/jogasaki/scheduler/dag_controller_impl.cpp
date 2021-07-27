@@ -372,11 +372,12 @@ void dag_controller::impl::schedule(model::graph& g) {
                 )
             );
         } else {
+            // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
             graph_->context()->job()->reset();
         }
         executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
-        // For serial scheduler, give control here in order to
-        // simulate tasks execution background so that state changes and proceeds
+
+        // pass serial scheduler the control, or block waiting for parallel schedulers to proceed
         executor_->wait_for_progress(job());
     }
 }

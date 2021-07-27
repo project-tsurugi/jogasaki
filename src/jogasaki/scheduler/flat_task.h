@@ -170,7 +170,7 @@ private:
     model::graph* graph_{};
 
     bool execute(tateyama::context& ctx);
-    void bootstrap();
+    void bootstrap(tateyama::context& ctx);
     void dag_schedule();
     bool teardown();
 

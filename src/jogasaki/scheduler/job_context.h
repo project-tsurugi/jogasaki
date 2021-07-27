@@ -89,6 +89,14 @@ public:
         return job_tasks_;
     }
 
+    /**
+     * @brief accessor for the atomic task counter used to check the number of remaining tasks
+     * @return atomic task counter
+     */
+    [[nodiscard]] std::atomic_size_t& index() noexcept {
+        return index_;
+    }
+
     void reset() noexcept {
         completion_latch_.open();
         completing_.store(false);
@@ -99,6 +107,7 @@ private:
     utils::latch completion_latch_{};
     std::atomic_bool completing_{false};
     std::atomic_size_t job_tasks_{};
+    std::atomic_size_t index_{};
 };
 
 }

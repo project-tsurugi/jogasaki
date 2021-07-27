@@ -25,8 +25,9 @@ namespace jogasaki::scheduler {
 
 using takatori::util::fail;
 
-void flat_task::bootstrap() {
+void flat_task::bootstrap(tateyama::context& ctx) {
     DVLOG(1) << *this << " bootstrap task executed.";
+    job_context_->index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_);
@@ -57,7 +58,7 @@ bool flat_task::execute(tateyama::context& ctx) {
     switch(kind_) {
         using kind = flat_task_kind;
         case kind::dag_events: dag_schedule(); return true;
-        case kind::bootstrap: bootstrap(); return true;
+        case kind::bootstrap: bootstrap(ctx); return true;
         case kind::teardown: return teardown();
         case kind::wrapped: {
             while((*origin_)() == model::task_result::proceed) {}

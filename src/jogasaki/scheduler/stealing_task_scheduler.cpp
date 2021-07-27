@@ -34,6 +34,10 @@ stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
 void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     auto& jctx = *t.job(); // TODO for now scheduling job tasks into the same thread
     auto idx = jctx.index().load();
+    if (idx == job_context::undefined_index) {
+        scheduler_.schedule(std::move(t));
+        return;
+    }
     scheduler_.schedule_at(std::move(t), idx);
 }
 

@@ -54,7 +54,6 @@ bool flat_task::teardown() {
 }
 
 bool flat_task::execute(tateyama::context& ctx) {
-    (void)ctx;
     switch(kind_) {
         using kind = flat_task_kind;
         case kind::dag_events: dag_schedule(); return true;

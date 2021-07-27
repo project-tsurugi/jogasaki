@@ -36,6 +36,8 @@ class task_scheduler;
  */
 class job_context {
 public:
+    constexpr static std::size_t undefined_index = static_cast<std::size_t>(-1);
+
     /**
      * @brief create default context object
      */
@@ -101,13 +103,15 @@ public:
         completion_latch_.open();
         completing_.store(false);
         job_tasks_.store(0);
+        index_.store(undefined_index);
     }
 private:
+
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
     utils::latch completion_latch_{};
     std::atomic_bool completing_{false};
     std::atomic_size_t job_tasks_{};
-    std::atomic_size_t index_{};
+    std::atomic_size_t index_{undefined_index};
 };
 
 }

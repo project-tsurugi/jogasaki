@@ -19,6 +19,7 @@
 #include <tateyama/impl/worker.h>
 #include <tateyama/impl/queue.h>
 #include <tateyama/impl/thread_control.h>
+#include <tateyama/impl/cache_align.h>
 
 namespace tateyama {
 
@@ -27,7 +28,7 @@ namespace tateyama {
  * @tparam T the task type. See comments for `task`.
  */
 template <class T>
-class task_scheduler {
+class cache_align task_scheduler {
 public:
 
     /**

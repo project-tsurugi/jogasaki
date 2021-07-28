@@ -18,6 +18,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
 #include <tateyama/context.h>
+#include <jogasaki/utils/interference_size.h>
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {
@@ -74,7 +75,7 @@ inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
  * bootstrapping the job, process dag scheduler internal events, and teardown the job.
  * The wrapped task supports wrapping jogasaki executors tasks (e.g. ones of process and exchange)
  */
-class flat_task {
+class cache_align flat_task {
 public:
     using identity_type = std::size_t;
     static constexpr identity_type undefined_id = static_cast<identity_type>(-1);

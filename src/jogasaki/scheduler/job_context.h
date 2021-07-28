@@ -19,6 +19,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/utils/latch.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki {
 class request_context;
@@ -33,7 +34,7 @@ class statement_scheduler;
  * @brief context object for the job
  * @details this class represents context information in the scope of the job scheduling
  */
-class job_context {
+class cache_align job_context {
 public:
     constexpr static std::size_t undefined_index = static_cast<std::size_t>(-1);
 
@@ -99,9 +100,9 @@ private:
 
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
     utils::latch completion_latch_{};
-    std::atomic_bool completing_{false};
-    std::atomic_size_t job_tasks_{};
-    std::atomic_size_t index_{undefined_index};
+    cache_align std::atomic_bool completing_{false};
+    cache_align std::atomic_size_t job_tasks_{};
+    cache_align std::atomic_size_t index_{undefined_index};
 };
 
 }

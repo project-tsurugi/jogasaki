@@ -19,6 +19,7 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 
@@ -33,7 +34,7 @@ enum class task_scheduler_kind : std::int32_t {
 /**
  * @brief task scheduler to run tasks efficiently
  */
-class task_scheduler {
+class cache_align task_scheduler {
 public:
     /**
      * @brief create new object

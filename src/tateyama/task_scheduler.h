@@ -89,13 +89,8 @@ public:
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
     void schedule(task&& t) {
-        if (! started_) {
-            auto& s = initial_tasks_[increment(current_index_, size_)];
-            s.emplace_back(std::move(t));
-            return;
-        }
-        auto& q = queues_[increment(current_index_, size_)];
-        q.push(std::move(t));
+        auto index = increment(current_index_, size_);
+        schedule_at(std::move(t), index);
     }
 
     /**

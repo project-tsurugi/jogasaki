@@ -56,7 +56,7 @@ public:
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
      * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
-    request_context(
+    explicit request_context(
         std::shared_ptr<class configuration> config,
         std::shared_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},

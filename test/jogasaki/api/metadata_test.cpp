@@ -88,7 +88,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
             std::stringstream ss{};
             auto* record = it->next();
             ss << *record;
-            LOG(INFO) << ss.str();
+//            LOG(INFO) << ss.str();
             ++count;
         }
         EXPECT_EQ(1, count);
@@ -159,7 +159,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
             std::stringstream ss{};
             auto* record = it->next();
             ss << *record;
-            LOG(INFO) << ss.str();
+//            LOG(INFO) << ss.str();
             ++count;
         }
         EXPECT_EQ(1, count);

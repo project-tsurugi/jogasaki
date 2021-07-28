@@ -187,7 +187,7 @@ TEST_F(compiler_test, insert) {
 
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =*ctx.executable_statement()->statement();
-    dump(info, stmt);
+//    dump(info, stmt);
 }
 
 TEST_F(compiler_test, simple_query) {
@@ -232,7 +232,7 @@ TEST_F(compiler_test, simple_query) {
     EXPECT_EQ(info.type_of(c0p0), type::int8());
     EXPECT_EQ(info.type_of(c1p0), type::float8());
 
-    dump(info, stmt);
+//    dump(info, stmt);
 
     // test utils
     EXPECT_EQ(meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>), utils::type_for(info, c0p0));
@@ -288,7 +288,7 @@ TEST_F(compiler_test, project_filter) {
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
-    dump(info, stmt);
+//    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 1);
 
@@ -332,7 +332,7 @@ TEST_F(compiler_test, join) {
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
-    dump(info, stmt);
+//    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 5);
 
@@ -374,7 +374,7 @@ TEST_F(compiler_test, left_outer_join) {
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
-    dump(info, stmt);
+//    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 5);
 
@@ -437,7 +437,7 @@ TEST_F(compiler_test, aggregate) {
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =*ctx.executable_statement()->statement();
     auto&& c = downcast<statement::execute>(stmt);
-    dump(info, stmt);
+//    dump(info, stmt);
 
     ASSERT_EQ(c.execution_plan().size(), 3);
 

@@ -61,7 +61,7 @@ TEST_F(database_test, simple) {
         auto tx = db->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db->create_executable("select * from T0 order by C0", exec));
-        db->explain(*exec, std::cout);
+//        db->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
@@ -84,7 +84,7 @@ TEST_F(database_test, simple) {
         ps->set_int8("p0", 0);
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db->resolve(*prep, *ps, exec));
-        db->explain(*exec, std::cout);
+//        db->explain(*exec, std::cout);
         auto f = [&]() {
             auto tx = db->create_transaction();
             std::unique_ptr<api::result_set> rs{};

@@ -58,7 +58,7 @@ watch::Clock::time_point watch::view_first(watch::point_in_code loc) {
             first = arr[loc]; //NOLINT
         }
     }
-    return first;
+    return first == Clock::time_point::max() ? Clock::time_point{} : first;  // time_point() returns epoch and is safer than max/min
 }
 
 watch::Clock::time_point watch::view_last(watch::point_in_code loc) {
@@ -72,7 +72,7 @@ watch::Clock::time_point watch::view_last(watch::point_in_code loc) {
             last = arr[loc]; //NOLINT
         }
     }
-    return last;
+    return last == Clock::time_point::min() ? Clock::time_point{} : last;  // time_point() returns epoch and is safer than max/min
 }
 
 std::size_t watch::duration(watch::point_in_code begin, watch::point_in_code end, bool complementary) {

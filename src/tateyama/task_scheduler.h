@@ -177,7 +177,7 @@ private:
     std::vector<context> contexts_{};
     std::atomic_size_t current_index_{};
     std::vector<std::vector<task>> initial_tasks_{};
-    bool started_{false};
+    std::atomic_bool started_{false};
 
     void prepare() {
         auto sz = cfg_.thread_count();

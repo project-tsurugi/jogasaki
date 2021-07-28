@@ -31,14 +31,14 @@ void flat_task::bootstrap(tateyama::context& ctx) {
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_);
-    dc.process(false);
+    dc.process_internal_events();
 }
 
 void flat_task::dag_schedule() {
     DVLOG(1) << *this << " dag scheduling task executed.";
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    dc.process(false);
+    dc.process_internal_events();
 }
 
 bool flat_task::teardown() {

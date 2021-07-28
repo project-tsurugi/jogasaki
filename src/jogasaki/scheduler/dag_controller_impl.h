@@ -25,7 +25,6 @@
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/internal_event.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
@@ -107,12 +106,7 @@ public:
     /**
      * @brief check internal events and process all of them
      */
-    void check_internal_events();
-
-    /**
-     * @brief check internal events and process all of them
-     */
-    void process(bool channel_enabled = true);
+    void process_internal_events();
 
     /**
      * @brief schedule the dag

@@ -25,7 +25,6 @@
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/internal_event.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>
@@ -287,7 +286,6 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
         case step_state_kind::deactivated:
             if(all_steps_deactivated(*graph_)) {
                 graph_deactivated_ = true;
-                graph_->context()->channel()->close();
 
                 // make sure teardown task is submitted only once
                 auto completing = job().completing().load();
@@ -315,26 +313,13 @@ void dag_controller::impl::step_state(step const& v, step_state_kind new_state) 
     on_state_change(v);
 }
 
-void dag_controller::impl::check_internal_events() {
+void dag_controller::impl::process_internal_events() {
     std::lock_guard guard{mutex_};
     while(!internal_events_.empty()) {
         auto& ie = internal_events_.front();
         auto v = graph_->find_step(ie.target());
         dispatch(*this, ie.kind(), ie, v.get());
         internal_events_.pop();
-    }
-}
-
-void dag_controller::impl::process(bool channel_enabled) {
-    check_internal_events();
-    if (channel_enabled) {
-        // watch external event channel after internal ones complete
-        event ev{};
-        auto& ch = *graph_->context()->channel();
-        if(ch.pop(ev)) {
-            dispatch(*this, ev.kind(), ev);
-            check_internal_events();
-        }
     }
 }
 
@@ -358,28 +343,20 @@ job_context& dag_controller::impl::job() noexcept {
 
 void dag_controller::impl::schedule(model::graph& g) {
     init(g);
-    auto channel_enabled = g.context()->configuration()->use_event_channel();
-    if (channel_enabled) {  // TODO remove channel
-        while(!graph_deactivated_) {
-            process(channel_enabled);
-            executor_->wait_for_progress(job());
-        }
+    if (! graph_->context()->job()) {
+        g.context()->job(
+            std::make_shared<job_context>(
+                std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()})
+            )
+        );
     } else {
-        if (! graph_->context()->job()) {
-            g.context()->job(
-                std::make_shared<job_context>(
-                    std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()})
-                )
-            );
-        } else {
-            // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
-            graph_->context()->job()->reset();
-        }
-        executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
-
-        // pass serial scheduler the control, or block waiting for parallel schedulers to proceed
-        executor_->wait_for_progress(job());
+        // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
+        graph_->context()->job()->reset();
     }
+    executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
+
+    // pass serial scheduler the control, or block waiting for parallel schedulers to proceed
+    executor_->wait_for_progress(job());
 }
 
 void dag_controller::impl::start_running(step& v) {

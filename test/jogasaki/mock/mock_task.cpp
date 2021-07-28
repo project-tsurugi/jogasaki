@@ -23,7 +23,6 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/common/utils.h>
 #include <jogasaki/executor/exchange/group/step.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/utils/port_indices.h>
 
 namespace jogasaki::executor {

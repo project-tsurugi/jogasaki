@@ -121,8 +121,7 @@ public:
         // create step graph with only process
         auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
-        auto channel = std::make_shared<event_channel>();
-        auto context = std::make_shared<request_context>(channel, cfg);
+        auto context = std::make_shared<request_context>(cfg);
         common::graph g{*context};
 
         plan::mirror_container mirrors{};

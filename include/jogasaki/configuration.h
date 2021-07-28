@@ -130,14 +130,6 @@ public:
         stealing_enabled_ = arg;
     }
 
-    [[nodiscard]] bool use_event_channel() const noexcept {
-        return use_event_channel_;
-    }
-
-    void use_event_channel(bool arg) noexcept {
-        use_event_channel_ = arg;
-    }
-
     [[nodiscard]] bool work_sharing() const noexcept {
         return work_sharing_;
     }
@@ -159,7 +151,6 @@ private:
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
-    bool use_event_channel_ = false;
     bool work_sharing_ = false;
 };
 

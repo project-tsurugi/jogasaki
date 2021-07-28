@@ -51,7 +51,6 @@ status transaction::execute(
     auto& c = database_->configuration();
     auto store = std::make_unique<data::result_store>();
     auto request_ctx = std::make_shared<request_context>(
-        std::make_shared<event_channel>(c->single_thread()),
         c,
         s.resource(),
         database_->kvs_db(),
@@ -78,12 +77,10 @@ status transaction::execute(
         result = std::make_unique<impl::result_set>(
             std::move(store)
         );
-        request_ctx->channel()->close();
         return request_ctx->status_code();
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
     scheduler_.schedule(*stmt, *request_ctx);
-    request_ctx->channel()->close();
     return request_ctx->status_code();
 }
 

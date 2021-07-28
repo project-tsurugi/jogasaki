@@ -30,18 +30,12 @@ namespace jogasaki::executor::common {
 
 template <class ...Args>
 void send_event(request_context& context, Args...args) {
-    if (context.configuration()->use_event_channel()) {
-        context.channel()->emplace(args...);
-    } else {
-        auto& sc = scheduler::statement_scheduler::impl::get_impl(*context.job()->dag_scheduler());
-        auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-        dc.check_internal_events();  // let's handle internal event first
-        event ev{args...};
-        dispatch(dc, ev.kind(), ev);
-    }
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*context.job()->dag_scheduler());
+    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
+    dc.process_internal_events();  // let's handle internal event first
+    event ev{args...};
+    dispatch(dc, ev.kind(), ev);
 }
-
-
 
 }
 

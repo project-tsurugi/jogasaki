@@ -329,13 +329,11 @@ public:
         auto meta = test_record_meta();
         auto info = std::make_shared<group_info>(meta, std::vector<std::size_t>{0,1});
 
-        auto channel = std::make_shared<event_channel>();
         auto compiler_context = std::make_shared<plan::compiler_context>();
         create_compiled_info(compiler_context, s);
 
         data::result_store result{};
         auto context = std::make_shared<request_context>(
-            channel,
             cfg,
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::shared_ptr<kvs::database>{},

@@ -301,11 +301,9 @@ public:
 
     int run(params& s, std::shared_ptr<configuration> cfg) {
         auto meta = test_record_meta();
-        auto channel = std::make_shared<event_channel>();
         auto compiler_context = std::make_shared<plan::compiler_context>();
         data::result_store result{};
         auto context = std::make_shared<request_context>(
-            channel,
             cfg,
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::shared_ptr<kvs::database>{},

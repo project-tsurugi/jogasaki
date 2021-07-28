@@ -24,7 +24,6 @@
 
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/internal_event.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/step_state_table.h>

@@ -24,7 +24,6 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/common/utils.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange {

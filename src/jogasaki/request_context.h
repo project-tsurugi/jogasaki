@@ -25,7 +25,6 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
-#include <jogasaki/event_channel.h>
 #include <jogasaki/scheduler/job_context.h>
 
 namespace jogasaki {
@@ -58,19 +57,12 @@ public:
      * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
      */
     request_context(
-        std::shared_ptr<event_channel> ch,
         std::shared_ptr<class configuration> config,
         std::shared_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<kvs::transaction> transaction = {},
         data::result_store* result = {}
     );
-
-    /**
-     * @brief accessor for the communication channel
-     * @return channel to communicate with the scheduler handling the request
-     */
-    [[nodiscard]] std::shared_ptr<event_channel> const& channel() const;
 
     /**
      * @brief accessor for the gloabl configuration
@@ -128,7 +120,6 @@ public:
     [[nodiscard]] maybe_shared_ptr<scheduler::job_context> const& job() const noexcept;
 
 private:
-    std::shared_ptr<event_channel> channel_{};
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};

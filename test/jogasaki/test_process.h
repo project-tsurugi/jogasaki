@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <jogasaki/executor/common/utils.h>
+
 namespace jogasaki::test {
 
 using namespace executor;
@@ -30,7 +32,7 @@ public:
             model::step* src) : context_(context), src_(src) {}
     model::task_result operator()() override {
         LOG(INFO) << "test_process_task executed. count: " << count_;
-        context_->channel()->emplace(event_enum_tag<event_kind::task_completed>, src_->id(), id());
+        executor::common::send_event(*context_, event_enum_tag<event_kind::task_completed>, src_->id(), id());
         ++count_;
         auto ret = count_ < limit_ ? model::task_result::proceed : model::task_result::complete;
         if (ret == model::task_result::complete) {

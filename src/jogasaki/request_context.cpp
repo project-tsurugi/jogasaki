@@ -19,35 +19,27 @@
 
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
-#include "event_channel.h"
 #include "error.h"
 
 namespace jogasaki {
 
 request_context::request_context() :
-    channel_(std::make_shared<event_channel>()),
     config_(std::make_shared<class configuration>())
 {}
 
 request_context::request_context(
-    std::shared_ptr<event_channel> ch,
     std::shared_ptr<class configuration> config,
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource,
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<kvs::transaction> transaction,
     data::result_store* result
 ) :
-    channel_(std::move(ch)),
     config_(std::move(config)),
     request_resource_(std::move(request_resource)),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
     result_(result)
 {}
-
-std::shared_ptr<event_channel> const& request_context::channel() const {
-    return channel_;
-}
 
 std::shared_ptr<class configuration> const& request_context::configuration() const {
     return config_;

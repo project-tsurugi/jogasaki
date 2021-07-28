@@ -96,8 +96,8 @@ public:
         auto index = ctx.index();
         auto& q = (*queues_)[index];
         std::size_t last_stolen = index;
+        task t{};
         while(q.active()) {
-            task t{};
             if (q.try_pop(t)) {
                 t(ctx);
                 ++stat_->count_;

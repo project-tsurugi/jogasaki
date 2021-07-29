@@ -116,8 +116,7 @@ apt install ccache
 2. add `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache` to cmake build option. 
 
 First time build does not change as it requires building and caching all artifacts into cache directory, e.g. `~/.ccache`. When you recompile, you will see it finishes very fast.
-
-
+Checking `ccache -s` shows the cache hit ratio and size of the cached files.
 
 ## License
 

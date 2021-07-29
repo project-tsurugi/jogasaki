@@ -24,6 +24,7 @@
 #include <jogasaki/api.h>
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/common.h>
 #include "utils.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
@@ -107,8 +108,11 @@ static bool query(api::database& db, api::prepared_statement const& stmt, std::s
 
     auto tx = db.create_transaction();
     std::unique_ptr<api::result_set> rs{};
-    if(auto rc = tx->execute(*e, rs); rc != status::ok) {
-        return false;
+    {
+        trace_scope_name("execute");  //NOLINT
+        if(auto rc = tx->execute(*e, rs); rc != status::ok) {
+            return false;
+        }
     }
 
     auto it = rs->iterator();

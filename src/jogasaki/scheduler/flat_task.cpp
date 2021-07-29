@@ -27,6 +27,7 @@ using takatori::util::fail;
 
 void flat_task::bootstrap(tateyama::context& ctx) {
     DVLOG(1) << *this << " bootstrap task executed.";
+    trace_scope_name("bootstrap");  //NOLINT
     job_context_->index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
@@ -36,6 +37,7 @@ void flat_task::bootstrap(tateyama::context& ctx) {
 
 void flat_task::dag_schedule() {
     DVLOG(1) << *this << " dag scheduling task executed.";
+    trace_scope_name("dag_schedule");  //NOLINT
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.process_internal_events();
@@ -43,6 +45,7 @@ void flat_task::dag_schedule() {
 
 bool flat_task::teardown() {
     DVLOG(1) << *this << " teardown task executed.";
+    trace_scope_name("teardown");  //NOLINT
     if (job_context_->task_count() > 1) {
         DVLOG(1) << *this << " other tasks remain and teardown is rescheduled.";
         auto& ts = job_context_->dag_scheduler()->get_task_scheduler();
@@ -60,6 +63,7 @@ bool flat_task::execute(tateyama::context& ctx) {
         case kind::bootstrap: bootstrap(ctx); return true;
         case kind::teardown: return teardown();
         case kind::wrapped: {
+            trace_scope_name("executor_task");  //NOLINT
             while((*origin_)() == model::task_result::proceed) {}
             return true;
         }

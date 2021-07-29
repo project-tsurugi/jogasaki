@@ -19,6 +19,7 @@
 #include <jogasaki/request_context.h>
 #include <tateyama/context.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/common.h>
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {

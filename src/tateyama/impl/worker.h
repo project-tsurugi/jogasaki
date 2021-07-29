@@ -92,7 +92,6 @@ public:
      * @param ctx the worker context information
      */
     void operator()(context& ctx) {
-        trace_scope;
         auto index = ctx.index();
         auto& q = (*queues_)[index];
         std::size_t last_stolen = index;

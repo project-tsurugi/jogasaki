@@ -183,10 +183,15 @@ static int run(
     std::int64_t queries,
     std::size_t clients
 ) {
-//    LOG(INFO) << "configuration " << *cfg;
     auto env = jogasaki::api::create_environment();
-    env->initialize();
     cfg->prepare_benchmark_tables(true);
+    env->initialize(); //init before logging
+    LOG(INFO) << "configuration " << *cfg
+        << "debug:" << debug << " "
+        << "duration:" << duration << " "
+        << "queries:" << queries << " "
+        << "clients:" << clients<< " "
+        << "";
     auto db = jogasaki::api::create_database(cfg);
     db->start();
 
@@ -250,8 +255,14 @@ extern "C" int main(int argc, char* argv[]) {
     }
     auto cfg = std::make_shared<jogasaki::configuration>();
     if(! jogasaki::query_bench_cli::fill_from_flags(*cfg)) return -1;
+    auto queries = FLAGS_queries;
+    auto clients = FLAGS_clients;
+    if (FLAGS_minimum) {
+        queries = 5;
+        clients = 1;
+    }
     try {
-        jogasaki::query_bench_cli::run(cfg, FLAGS_debug, FLAGS_duration, FLAGS_queries, FLAGS_clients);  // NOLINT
+        jogasaki::query_bench_cli::run(cfg, FLAGS_debug, FLAGS_duration, queries, clients);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

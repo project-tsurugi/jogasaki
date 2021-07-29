@@ -102,6 +102,8 @@ private:
 
         // C++20 supports forwarding captured parameter packs. Use forward as tuple for now.
         return [=, args=std::tuple<Args...>(std::forward<Args>(args)...)]() mutable { // assuming args are copyable
+            std::string name("Id"+std::to_string(thread_id));
+            pthread_setname_np(origin_.native_handle(), name.c_str());
             setup_core_affinity(thread_id, cfg);
             if constexpr (has_init_v<F>) {
                 callable.init(thread_id);

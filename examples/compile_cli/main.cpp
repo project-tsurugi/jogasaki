@@ -92,7 +92,7 @@ std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_function
     return ret;
 }
 
-static void dump(yugawara::compiler_result const& r) {
+[[maybe_unused]] static void dump(yugawara::compiler_result const& r) {
     r.object_scanner()(
         r.statement(),
         ::takatori::serializer::json_printer { std::cout });

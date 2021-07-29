@@ -104,8 +104,11 @@ static bool query(api::database& db, api::prepared_statement const& stmt, std::s
     ps->set_int8("c_id", 1);
 
     std::unique_ptr<api::executable_statement> e{};
-    if(auto rc = db.resolve(stmt, *ps, e); rc != status::ok) {
-        return false;
+    {
+        trace_scope_name("resolve");  //NOLINT
+        if(auto rc = db.resolve(stmt, *ps, e); rc != status::ok) {
+            return false;
+        }
     }
 
     auto tx = db.create_transaction();
@@ -116,16 +119,24 @@ static bool query(api::database& db, api::prepared_statement const& stmt, std::s
             return false;
         }
     }
-
-    auto it = rs->iterator();
-    while(it->has_next()) {
-        auto* record = it->next();
-        DVLOG(1) << *record;
-        (void)record;
-        result += record->get_int8(0);
+    {
+        trace_scope_name("iterate");  //NOLINT
+        auto it = rs->iterator();
+        while(it->has_next()) {
+            auto* record = it->next();
+            DVLOG(1) << *record;
+            (void)record;
+            result += record->get_int8(0);
+        }
     }
-    tx->commit();
-    rs->close();
+    {
+        trace_scope_name("commit");  //NOLINT
+        tx->commit();
+    }
+    {
+        trace_scope_name("rs_close");  //NOLINT
+        rs->close();
+    }
     return true;
 }
 

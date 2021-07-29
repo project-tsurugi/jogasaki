@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <iomanip>
 #include <cstddef>
 
 namespace jogasaki {
@@ -137,6 +138,22 @@ public:
     void work_sharing(bool arg) noexcept {
         work_sharing_ = arg;
     }
+
+    friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
+        return out << std::boolalpha <<
+            "single_thread:" << cfg.single_thread() <<
+            "thread_pool_size:" << cfg.thread_pool_size() << " " <<
+            "default_partitions:" << cfg.default_partitions() << " " <<
+            "core_affinity:" << cfg.core_affinity() << " " <<
+            "initial_core:" << cfg.initial_core() << " " <<
+            "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
+            "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " " <<
+            "stealing_enabled:" << cfg.stealing_enabled() << " " <<
+            "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
+            "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
+            "";
+    }
+
 private:
     bool single_thread_task_scheduler_ = false;
     std::size_t thread_pool_size_ = 5;

@@ -18,6 +18,8 @@
 #include <chrono>
 #include <future>
 
+#include <boost/thread/latch.hpp>
+
 #include <glog/logging.h>
 #include <takatori/util/fail.h>
 
@@ -207,12 +209,14 @@ static int run(
     std::vector<std::future<std::int64_t>> results{};
     results.reserve(clients);
     std::atomic_bool stop = false;
+    boost::latch start{clients};
     for(std::size_t i=0; i < clients; ++i) {
         results.emplace_back(
             std::async(std::launch::async, [&](){
                 std::int64_t count = 0;
                 std::size_t result = 0;
                 auto stmt = prepare(*db);
+                start.count_down_and_wait();
                 while((queries == -1 && !stop) || (queries != -1 && count < queries)) {
                     if(auto res = query(*db, *stmt, result); !res) {
                         LOG(ERROR) << "query error";
@@ -227,6 +231,7 @@ static int run(
             })
         );
     }
+    start.wait();
     auto begin = clock::now();
     if (queries == -1) {
         std::this_thread::sleep_for(std::chrono::milliseconds(duration));

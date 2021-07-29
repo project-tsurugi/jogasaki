@@ -24,6 +24,7 @@
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/environment.h>
+#include "kvs_test_base.h"
 
 namespace jogasaki::kvs {
 
@@ -36,13 +37,22 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class kvs_iterator_test : public test_root {
+class kvs_iterator_test :
+    public ::testing::Test,
+    public kvs_test_base {
+
+public:
+    void SetUp() override {
+        db_setup();
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
 };
 TEST_F(kvs_iterator_test, compare_and_print) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T1");
-    auto tx = db->create_transaction();
+    auto t1 = db_->create_storage("T1");
+    auto tx = db_->create_transaction();
     std::unique_ptr<iterator> it1{};
     std::unique_ptr<iterator> it2{};
     ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it1));
@@ -52,16 +62,13 @@ TEST_F(kvs_iterator_test, compare_and_print) {
     ASSERT_TRUE(*it1 == *it1);
     ASSERT_TRUE(*it1 != *it2);
     (void)tx->abort();
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_iterator_test, full_scan) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T1");
+    auto t1 = db_->create_storage("T1");
     ASSERT_TRUE(t1);
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         {
             ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
             ASSERT_EQ(status::ok, t1->put(*tx, "k2", "v2"));
@@ -70,7 +77,7 @@ TEST_F(kvs_iterator_test, full_scan) {
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
@@ -95,7 +102,6 @@ TEST_F(kvs_iterator_test, full_scan) {
         ASSERT_EQ(status::not_found, it->next());
         ASSERT_EQ(status::ok, tx->commit());
     }
-    ASSERT_TRUE(db->close());
 }
 
 }

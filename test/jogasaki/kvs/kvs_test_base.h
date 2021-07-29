@@ -13,20 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
 
-#include <thread>
-#include <chrono>
+#include <string_view>
+#include <string>
+#include <map>
+#include <memory>
+#include <gtest/gtest.h>
 
-namespace jogasaki {
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/test_base.h>
+#include <jogasaki/test_utils/temporary_folder.h>
 
-class test_base {
+namespace jogasaki::kvs {
+
+class kvs_test_base : public test_base {
 public:
+    static constexpr std::string_view KEY_LOCATION{"location"};
 
-    void wait_epochs() {
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(200ms);
-    }
+    void db_setup(std::map<std::string, std::string> opts = {});
+
+    void db_teardown();
+
+    [[nodiscard]] std::string path() const;
+
+    test::temporary_folder temporary_{};  //NOLINT
+    std::unique_ptr<database> db_{};  //NOLINT
+
 };
 
 }

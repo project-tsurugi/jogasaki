@@ -13,70 +13,68 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
 
 #include <string>
 
 #include <gtest/gtest.h>
 
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/environment.h>
-#include <jogasaki/test_base.h>
+#include "kvs_test_base.h"
 
 namespace jogasaki::kvs {
 
-using namespace executor;
-using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
-using namespace jogasaki::memory;
-using namespace boost::container::pmr;
+class kvs_storage_test :
+    public ::testing::Test,
+    public kvs_test_base {
 
-class kvs_storage_test : public ::testing::Test, public test_base {
+public:
+    void SetUp() override {
+        db_setup();
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
 };
 
 TEST_F(kvs_storage_test, delete_storage) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t = db->create_storage("T");
+    auto t = db_->create_storage("T");
     ASSERT_TRUE(t);
     ASSERT_EQ(status::ok, t->delete_storage());
     wait_epochs();
-    auto t2 = db->get_storage("T");
+    auto t2 = db_->get_storage("T");
     ASSERT_FALSE(t2);
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_storage_test, compare_and_print) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T1");
-    auto t2 = db->create_storage("T2");
+    auto t1 = db_->create_storage("T1");
+    auto t2 = db_->create_storage("T2");
     std::cout << *t1 << std::endl;
     std::cout << *t2 << std::endl;
     ASSERT_TRUE(*t1 == *t1);
     ASSERT_TRUE(*t1 != *t2);
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_storage_test, put_get_remove) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T1");
+    auto t1 = db_->create_storage("T1");
     ASSERT_TRUE(t1);
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         {
             ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
         }
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view v;
         ASSERT_EQ(status::ok, t1->get(*tx, "k1", v));
         EXPECT_EQ("v1", v);
@@ -85,33 +83,30 @@ TEST_F(kvs_storage_test, put_get_remove) {
     }
     wait_epochs();
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view v;
         ASSERT_EQ(status::not_found, t1->get(*tx, "k1", v));
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v2"));
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
         std::string_view v;
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok, t1->get(*tx, "k1", v));
         EXPECT_EQ("v2", v);
         ASSERT_EQ(status::ok, tx->commit());
     }
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T1");
+    auto t1 = db_->create_storage("T1");
     ASSERT_TRUE(t1);
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         {
             ASSERT_EQ(status::ok, t1->put(*tx, "k0", "v0"));
             ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
@@ -122,7 +117,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
@@ -142,7 +137,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         ASSERT_EQ(status::ok, tx->abort());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
@@ -161,16 +156,13 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         ASSERT_EQ(status::not_found, it->next());
         ASSERT_EQ(status::ok, tx->abort());
     }
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T1");
+    auto t1 = db_->create_storage("T1");
     ASSERT_TRUE(t1);
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         {
             ASSERT_EQ(status::ok, t1->put(*tx, "k0", "v0"));
             ASSERT_EQ(status::ok, t1->put(*tx, "k1/0", "v1/0"));
@@ -183,7 +175,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
@@ -208,7 +200,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         ASSERT_EQ(status::ok, tx->abort());
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
@@ -232,7 +224,6 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         ASSERT_EQ(status::not_found, it->next());
         ASSERT_EQ(status::ok, tx->abort());
     }
-    ASSERT_TRUE(db->close());
 }
 
 }

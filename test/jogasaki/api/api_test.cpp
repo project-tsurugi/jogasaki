@@ -35,6 +35,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
+#include "../test_utils/temporary_folder.h"
 
 namespace jogasaki::testing {
 
@@ -57,17 +58,17 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(true);
-        db_ = api::create_database(cfg);
-        db_->start();
-        auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
-        add_benchmark_tables(*db_impl->tables());
-        register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
+        db_setup(cfg);
+
+        auto* impl = db_impl();
+        add_benchmark_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
-        db_->stop();
+        db_teardown();
     }
+
 };
 
 using namespace std::string_view_literals;

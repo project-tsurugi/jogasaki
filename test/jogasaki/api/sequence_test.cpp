@@ -58,16 +58,14 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        db_ = api::create_database(cfg);
-        cfg->single_thread(true);
-        db_->start();
-        auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
-        add_benchmark_tables(*db_impl->tables());
-        register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
+        db_setup(cfg);
+        auto* impl = db_impl();
+        add_benchmark_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
-        db_->stop();
+        db_teardown();
     }
 };
 

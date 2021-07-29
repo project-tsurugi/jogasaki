@@ -139,6 +139,14 @@ public:
         work_sharing_ = arg;
     }
 
+    [[nodiscard]] std::string_view db_location() const noexcept {
+        return db_location_;
+    }
+
+    void db_location(std::string_view arg) noexcept {
+        db_location_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() <<
@@ -169,6 +177,7 @@ private:
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
     bool work_sharing_ = false;
+    std::string db_location_{};
 };
 
 }

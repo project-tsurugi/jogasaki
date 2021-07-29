@@ -53,19 +53,19 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        db_ = api::create_database(cfg);
-        db_->start();
-        auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
-        add_analytics_benchmark_tables(*db_impl->tables());
-        register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
-        utils::load_storage_data(*db_, db_impl->tables(), "PART", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "SUPPLIER", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "PARTSUPP", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "CUSTOMER", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "ORDERS", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "LINEITEM", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "NATION", 3, true, 5);
-        utils::load_storage_data(*db_, db_impl->tables(), "REGION", 3, true, 5);
+        db_setup(cfg);
+        auto* impl = db_impl();
+
+        add_analytics_benchmark_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        utils::load_storage_data(*db_, impl->tables(), "PART", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "SUPPLIER", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "PARTSUPP", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "CUSTOMER", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "ORDERS", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "LINEITEM", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "NATION", 3, true, 5);
+        utils::load_storage_data(*db_, impl->tables(), "REGION", 3, true, 5);
     }
 
     void TearDown() override {

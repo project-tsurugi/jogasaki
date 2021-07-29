@@ -19,33 +19,34 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/environment.h>
+#include "kvs_test_base.h"
 
 namespace jogasaki::kvs {
 
-using namespace executor;
-using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
-using namespace jogasaki::memory;
-using namespace boost::container::pmr;
+class kvs_database_test :
+    public ::testing::Test,
+    public kvs_test_base {
 
-class kvs_database_test : public test_root {};
+public:
+    void SetUp() override {
+        db_setup();
+    }
 
-TEST_F(kvs_database_test, open_close) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    ASSERT_TRUE(db);
-    ASSERT_TRUE(db->close());
-}
+    void TearDown() override {
+        db_teardown();
+    }
+};
 
-TEST_F(kvs_database_test, compare_and_print) {
+// cc layer doesn't always support having multiple DBs as it has shared resource such as epoch thread
+TEST_F(kvs_database_test, DISABLED_compare_and_print) {
     std::map<std::string, std::string> options{};
     auto db1 = database::open(options);
     std::cout << *db1 << std::endl;
@@ -57,47 +58,35 @@ TEST_F(kvs_database_test, compare_and_print) {
 }
 
 TEST_F(kvs_database_test, create_storage) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->create_storage("T");
+    auto t1 = db_->create_storage("T");
     ASSERT_TRUE(t1);
-    auto dup = db->create_storage("T");
+    auto dup = db_->create_storage("T");
     ASSERT_FALSE(dup); // already exists
-    auto t2 = db->get_storage("T");
+    auto t2 = db_->get_storage("T");
     ASSERT_TRUE(t2);
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_database_test,get_storage) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto ng = db->get_storage("T");
+    auto ng = db_->get_storage("T");
     ASSERT_FALSE(ng); // no storage exists
-    auto t1 = db->create_storage("T");
-    auto t2 = db->get_storage("T");
+    auto t1 = db_->create_storage("T");
+    auto t2 = db_->get_storage("T");
     ASSERT_TRUE(t1);
     ASSERT_TRUE(t2);
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_database_test, get_or_create_storage) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    auto t1 = db->get_or_create_storage("T");
+    auto t1 = db_->get_or_create_storage("T");
     ASSERT_TRUE(t1);
-    auto t2 = db->get_or_create_storage("T");
+    auto t2 = db_->get_or_create_storage("T");
     ASSERT_TRUE(t2);
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(kvs_database_test, create_transaction) {
-    std::map<std::string, std::string> options{};
-    auto db = database::open(options);
-    ASSERT_TRUE(db);
-    auto tx = db->create_transaction();
+    ASSERT_TRUE(db_);
+    auto tx = db_->create_transaction();
     ASSERT_TRUE(tx);
     ASSERT_EQ(status::ok, tx->abort());
-    ASSERT_TRUE(db->close());
 }
 
 }

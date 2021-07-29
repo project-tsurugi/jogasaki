@@ -21,7 +21,9 @@
 
 #include <jogasaki/test_utils.h>
 #include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/api/field_type_kind.h>
+#include "api_test_base.h"
 
 namespace jogasaki::testing {
 
@@ -32,36 +34,54 @@ using namespace std::chrono_literals;
 /**
  * @brief test database api
  */
-class database_test : public ::testing::Test {
+class database_test :
+    public ::testing::Test,
+    public api_test_base {
 
+public:
+    // change this flag to debug with explain
+    bool to_explain() override {
+        return false;
+    }
+
+    void SetUp() override {
+        auto cfg = std::make_shared<configuration>();
+        db_setup(cfg);
+
+        auto* impl = db_impl();
+        add_benchmark_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
 };
 
 TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
-    auto db = api::create_database();
-    db->start();
-    db->register_variable("p0", api::field_type_kind::int8);
-    db->register_variable("p1", api::field_type_kind::float8);
+    db_->register_variable("p0", api::field_type_kind::int8);
+    db_->register_variable("p1", api::field_type_kind::float8);
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok, db->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", prepared));
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", prepared));
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         for(std::size_t i=0; i < 2; ++i) {
             auto ps = api::create_parameter_set();
             ps->set_int8("p0", i);
             ps->set_float8("p1", 10.0*i);
             std::unique_ptr<api::executable_statement> exec{};
-            ASSERT_EQ(status::ok,db->resolve(*prepared, *ps, exec));
+            ASSERT_EQ(status::ok,db_->resolve(*prepared, *ps, exec));
             ASSERT_EQ(status::ok,tx->execute(*exec));
         }
         tx->commit();
     }
 
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db->create_executable("select * from T0 order by C0", exec));
-//        db->explain(*exec, std::cout);
+        ASSERT_EQ(status::ok,db_->create_executable("select * from T0 order by C0", exec));
+        explain(*exec);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
@@ -79,14 +99,14 @@ TEST_F(database_test, simple) {
     {
         // reuse prepared statement
         std::unique_ptr<api::prepared_statement> prep{};
-        ASSERT_EQ(status::ok,db->prepare("select * from T0 where C0 = :p0", prep));
+        ASSERT_EQ(status::ok,db_->prepare("select * from T0 where C0 = :p0", prep));
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 0);
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db->resolve(*prep, *ps, exec));
-//        db->explain(*exec, std::cout);
+        ASSERT_EQ(status::ok,db_->resolve(*prep, *ps, exec));
+        explain(*exec);
         auto f = [&]() {
-            auto tx = db->create_transaction();
+            auto tx = db_->create_transaction();
             std::unique_ptr<api::result_set> rs{};
             ASSERT_EQ(status::ok,tx->execute(*exec, rs));
             auto it = rs->iterator();
@@ -103,37 +123,33 @@ TEST_F(database_test, simple) {
         };
         f();
         ps->set_int8("p0", 1);
-        ASSERT_EQ(status::ok,db->resolve(*prep, *ps, exec));
+        ASSERT_EQ(status::ok,db_->resolve(*prep, *ps, exec));
         prep.reset();
         ps.reset();
         f();
     }
-    db->stop();
 }
 
 TEST_F(database_test, update_with_host_variable) {
-    auto db = api::create_database();
-    db->start();
-    db->register_variable("p1", api::field_type_kind::float8);
+    db_->register_variable("p1", api::field_type_kind::float8);
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok, db->prepare("UPDATE T0 SET C1 = :p1 WHERE C0 = 0", prepared));
+    ASSERT_EQ(status::ok, db_->prepare("UPDATE T0 SET C1 = :p1 WHERE C0 = 0", prepared));
     std::unique_ptr<api::executable_statement> insert{};
-    ASSERT_EQ(status::ok, db->create_executable("INSERT INTO T0 (C0, C1) VALUES(0, 10.0)", insert));
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES(0, 10.0)", insert));
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok,tx->execute(*insert));
         tx->commit();
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         auto ps = api::create_parameter_set();
         ps->set_float8("p1", 0.0);
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db->resolve(*prepared, *ps, exec));
+        ASSERT_EQ(status::ok,db_->resolve(*prepared, *ps, exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
-    db->stop();
 }
 
 }

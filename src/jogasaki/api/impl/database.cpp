@@ -55,7 +55,13 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 
 status database::start() {
     if (! kvs_db_) {
-        kvs_db_ = kvs::database::open();
+        static constexpr std::string_view KEY_LOCATION{"location"};
+        auto loc = cfg_->db_location();
+        std::map<std::string, std::string> opts{};
+        if (! loc.empty()) {
+            opts.emplace(KEY_LOCATION, loc);
+        }
+        kvs_db_ = kvs::database::open(opts);
     }
     if (! kvs_db_) {
         LOG(ERROR) << "opening db failed";

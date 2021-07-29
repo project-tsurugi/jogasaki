@@ -22,6 +22,7 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/api/field_type_kind.h>
+#include "api_test_base.h"
 
 namespace jogasaki::testing {
 
@@ -36,13 +37,27 @@ using nullity = yugawara::variable::nullity;
 /**
  * @brief test database api
  */
-class metadata_test : public ::testing::Test {
+class metadata_test :
+    public ::testing::Test,
+    public api_test_base {
 
+public:
+    // change this flag to debug with explain
+    bool to_explain() override {
+        return false;
+    }
+
+    void SetUp() override {
+        auto cfg = std::make_shared<configuration>();
+        db_setup(cfg);
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
 };
 
 TEST_F(metadata_test, create_table_with_primary_index) {
-    auto db = api::create_database();
-    db->start();
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -50,7 +65,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
             column{ "C1", type::float8 (), nullity{true} },
         }
     );
-    ASSERT_EQ(status::ok, db->create_table(t));
+    ASSERT_EQ(status::ok, db_->create_table(t));
     auto i = std::make_shared<yugawara::storage::index>(
         t,
         "TEST",
@@ -67,19 +82,19 @@ TEST_F(metadata_test, create_table_with_primary_index) {
             ::yugawara::storage::index_feature::primary,
         }
     );
-    ASSERT_EQ(status::ok, db->create_index(i));
+    ASSERT_EQ(status::ok, db_->create_index(i));
     {
         std::unique_ptr<api::executable_statement> exec{};
-        auto tx = db->create_transaction();
-        ASSERT_EQ(status::ok,db->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
+        auto tx = db_->create_transaction();
+        ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db->create_executable("select * from TEST order by C0", exec));
-//        db->explain(*exec, std::cout);
+        ASSERT_EQ(status::ok,db_->create_executable("select * from TEST order by C0", exec));
+//        db_->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
@@ -94,12 +109,9 @@ TEST_F(metadata_test, create_table_with_primary_index) {
         EXPECT_EQ(1, count);
         tx->commit();
     }
-    db->stop();
 }
 
 TEST_F(metadata_test, create_table_with_secondary_index) {
-    auto db = api::create_database();
-    db->start();
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -107,7 +119,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
             column{ "C1", type::float8 (), nullity{true} },
         }
     );
-    ASSERT_EQ(status::ok, db->create_table(t));
+    ASSERT_EQ(status::ok, db_->create_table(t));
     auto i = std::make_shared<yugawara::storage::index>(
         t,
         "TEST",
@@ -124,7 +136,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
             ::yugawara::storage::index_feature::primary,
         }
     );
-    ASSERT_EQ(status::ok, db->create_index(i));
+    ASSERT_EQ(status::ok, db_->create_index(i));
     auto i2 = std::make_shared<yugawara::storage::index>(
         t,
         "TEST_SECONDARY",
@@ -138,19 +150,19 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
             ::yugawara::storage::index_feature::scan,
         }
     );
-    ASSERT_EQ(status::ok, db->create_index(i2));
+    ASSERT_EQ(status::ok, db_->create_index(i2));
     {
         std::unique_ptr<api::executable_statement> exec{};
-        auto tx = db->create_transaction();
-        ASSERT_EQ(status::ok,db->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
+        auto tx = db_->create_transaction();
+        ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
     {
-        auto tx = db->create_transaction();
+        auto tx = db_->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db->create_executable("select * from TEST where C1=1.0", exec));
-//        db->explain(*exec, std::cout);
+        ASSERT_EQ(status::ok,db_->create_executable("select * from TEST where C1=1.0", exec));
+//        db_->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
@@ -165,12 +177,9 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
         EXPECT_EQ(1, count);
         tx->commit();
     }
-    db->stop();
 }
 
 TEST_F(metadata_test, crud1) {
-    auto db = api::create_database();
-    db->start();
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -178,10 +187,10 @@ TEST_F(metadata_test, crud1) {
             column{ "C1", type::float8 (), nullity{true} },
         }
     );
-    ASSERT_EQ(status::ok, db->create_table(t));
-    ASSERT_EQ(status::err_already_exists, db->create_table(t));
-    EXPECT_EQ(t, db->find_table(t->simple_name()));
-    EXPECT_FALSE(db->find_table("dummy"));
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    ASSERT_EQ(status::err_already_exists, db_->create_table(t));
+    EXPECT_EQ(t, db_->find_table(t->simple_name()));
+    EXPECT_FALSE(db_->find_table("dummy"));
 
     auto i = std::make_shared<yugawara::storage::index>(
         t,
@@ -199,34 +208,30 @@ TEST_F(metadata_test, crud1) {
             ::yugawara::storage::index_feature::primary,
         }
     );
-    ASSERT_EQ(status::ok, db->create_index(i));
-    ASSERT_EQ(status::err_already_exists, db->create_index(i));
-    EXPECT_EQ(i, db->find_index(i->simple_name()));
-    EXPECT_FALSE(db->find_index("dummy"));
+    ASSERT_EQ(status::ok, db_->create_index(i));
+    ASSERT_EQ(status::err_already_exists, db_->create_index(i));
+    EXPECT_EQ(i, db_->find_index(i->simple_name()));
+    EXPECT_FALSE(db_->find_index("dummy"));
 
-    ASSERT_EQ(status::ok, db->drop_index(i->simple_name()));
-    ASSERT_EQ(status::not_found, db->drop_index(i->simple_name()));
+    ASSERT_EQ(status::ok, db_->drop_index(i->simple_name()));
+    ASSERT_EQ(status::not_found, db_->drop_index(i->simple_name()));
 
-    ASSERT_EQ(status::ok, db->drop_table(t->simple_name()));
-    ASSERT_EQ(status::not_found, db->drop_table(t->simple_name()));
+    ASSERT_EQ(status::ok, db_->drop_table(t->simple_name()));
+    ASSERT_EQ(status::not_found, db_->drop_table(t->simple_name()));
 
     auto seq = std::make_shared<sequence>(
         100,
         "SEQ"
     );
-    ASSERT_EQ(status::ok, db->create_sequence(seq));
-    ASSERT_EQ(status::err_already_exists, db->create_sequence(seq));
-    EXPECT_EQ(seq, db->find_sequence(seq->simple_name()));
-    EXPECT_FALSE(db->find_sequence("dummy"));
-    ASSERT_EQ(status::ok, db->drop_sequence(seq->simple_name()));
-    ASSERT_EQ(status::not_found, db->drop_sequence(seq->simple_name()));
-
-    db->stop();
+    ASSERT_EQ(status::ok, db_->create_sequence(seq));
+    ASSERT_EQ(status::err_already_exists, db_->create_sequence(seq));
+    EXPECT_EQ(seq, db_->find_sequence(seq->simple_name()));
+    EXPECT_FALSE(db_->find_sequence("dummy"));
+    ASSERT_EQ(status::ok, db_->drop_sequence(seq->simple_name()));
+    ASSERT_EQ(status::not_found, db_->drop_sequence(seq->simple_name()));
 }
 
 TEST_F(metadata_test, use_sequence) {
-    auto db = api::create_database();
-    db->start();
     auto seq = std::make_shared<sequence>(
         100,
         "SEQ"
@@ -238,7 +243,6 @@ TEST_F(metadata_test, use_sequence) {
             column{ "C1", type::float8 (), nullity{true} },
         }
     );
-    ASSERT_EQ(status::ok, db->create_table(t));
-    db->stop();
+    ASSERT_EQ(status::ok, db_->create_table(t));
 }
 }

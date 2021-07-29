@@ -15,23 +15,27 @@
  */
 #include <jogasaki/kvs/storage_dump.h>
 
-#include <sstream>
 #include <memory>
+#include <gtest/gtest.h>
 
-#include "gtest/gtest.h"
-#include <jogasaki/test_root.h>
+#include "kvs_test_base.h"
 
 namespace jogasaki::kvs {
 
 using namespace std::literals::string_literals;
 
-class storage_dump_test : public test_root {
+class storage_dump_test :
+    public ::testing::Test,
+    public kvs_test_base {
+
 public:
     void SetUp() override {
-        db_ = kvs::database::open();
+        db_setup();
     }
 
-    std::unique_ptr<database> db_{};
+    void TearDown() override {
+        db_teardown();
+    }
 };
 
 TEST_F(storage_dump_test, dump_manual) {

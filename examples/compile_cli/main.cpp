@@ -153,7 +153,7 @@ static int run(std::string_view sql) {
         default:
             std::abort();
     }
-    dump(result);
+//    dump(result);
 
     // TODO display jogasaki graph info too.
 

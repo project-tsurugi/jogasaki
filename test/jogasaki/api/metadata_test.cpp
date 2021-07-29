@@ -79,7 +79,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
         auto tx = db->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db->create_executable("select * from TEST order by C0", exec));
-        db->explain(*exec, std::cout);
+//        db->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
@@ -88,7 +88,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
             std::stringstream ss{};
             auto* record = it->next();
             ss << *record;
-//            LOG(INFO) << ss.str();
+            LOG(INFO) << ss.str();
             ++count;
         }
         EXPECT_EQ(1, count);
@@ -150,7 +150,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
         auto tx = db->create_transaction();
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db->create_executable("select * from TEST where C1=1.0", exec));
-        db->explain(*exec, std::cout);
+//        db->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
         auto it = rs->iterator();
@@ -159,7 +159,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
             std::stringstream ss{};
             auto* record = it->next();
             ss << *record;
-//            LOG(INFO) << ss.str();
+            LOG(INFO) << ss.str();
             ++count;
         }
         EXPECT_EQ(1, count);

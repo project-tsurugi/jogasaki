@@ -27,6 +27,7 @@
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/common.h>
+#include <jogasaki/utils/random.h>
 #include "utils.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
@@ -42,6 +43,7 @@ DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all nu
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
+DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -52,35 +54,38 @@ using takatori::util::fail;
 
 using clock = std::chrono::high_resolution_clock;
 
-static bool prepare_data(api::database& db) {
-    std::string insert_warehouse{"INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)"};
-    std::string insert_customer{ "INSERT INTO CUSTOMER (c_id, c_d_id, c_w_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_data, c_ytd_payment, c_payment_cnt, c_delivery_cnt)  VALUES (1, 1, 1, 'pmdeqxrbgs', 'OE', 'BARBARBAR', 'zlaoknusaxfhasce', 'sagjvpdsyzbhsvnhwzxe', 'adftkgtros', 'qd', '827402212', '8700969702524002', '1973-12-12', 'BC', 50000.00, 0.05, -9.99, 'posxrsroejldsyoyirjofkqsycnbjoalxfkgipoogepnuwmagaxcopincpbfhwercrohqxygjjxhamineoraxkzrirkafmmjkcbkafvnqfzonsdcccijdzqlbywgcgbovpmmjcapfmfqbjnfejaqmhqqtxjayvowuujxqmzvisjghpjpynbamdhvvjncvgzstpvqeeakdpwkjmircrfysmwbbbkzbzefldktqfeubcbcjgdjsjtkcomuhqdazqmgpukiyawmqgyzkciwrxfswnegkrofklawoxypehzzztouvokzhshawbbdkasynuixskxmauxuapnkemytcrchqhvjqhntkvkmgezotza', 10.00, 1, 0)"};
+static bool prepare_data(api::database& db, std::size_t records) {
+    std::string insert_warehouse_fmt{"INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (%d, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)"};
+    std::string insert_customer_fmt{ "INSERT INTO CUSTOMER (c_id, c_d_id, c_w_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_data, c_ytd_payment, c_payment_cnt, c_delivery_cnt)  VALUES (%d, %d, %d, 'pmdeqxrbgs', 'OE', 'BARBARBAR', 'zlaoknusaxfhasce', 'sagjvpdsyzbhsvnhwzxe', 'adftkgtros', 'qd', '827402212', '8700969702524002', '1973-12-12', 'BC', 50000.00, 0.05, -9.99, 'posxrsroejldsyoyirjofkqsycnbjoalxfkgipoogepnuwmagaxcopincpbfhwercrohqxygjjxhamineoraxkzrirkafmmjkcbkafvnqfzonsdcccijdzqlbywgcgbovpmmjcapfmfqbjnfejaqmhqqtxjayvowuujxqmzvisjghpjpynbamdhvvjncvgzstpvqeeakdpwkjmircrfysmwbbbkzbzefldktqfeubcbcjgdjsjtkcomuhqdazqmgpukiyawmqgyzkciwrxfswnegkrofklawoxypehzzztouvokzhshawbbdkasynuixskxmauxuapnkemytcrchqhvjqhntkvkmgezotza', 10.00, 1, 0)"};
+    for(std::size_t i=0; i < records; ++i) {
+        auto insert_warehouse = format(insert_warehouse_fmt, i);
+        auto insert_customer = format(insert_customer_fmt, i, i, i);
+        std::unique_ptr<api::executable_statement> p1{};
+        std::unique_ptr<api::executable_statement> p2{};
+        if(auto rc = db.create_executable(insert_warehouse, p1); rc != status::ok) {
+            return false;
+        }
+        if(auto rc = db.create_executable(insert_customer, p2); rc != status::ok) {
+            return false;
+        }
 
-    std::unique_ptr<api::executable_statement> p1{};
-    std::unique_ptr<api::executable_statement> p2{};
-    if(auto rc = db.create_executable(insert_warehouse, p1); rc != status::ok) {
-        return false;
+        auto tx = db.create_transaction();
+        if(auto rc = tx->execute(*p1); rc != status::ok) {
+            tx->abort();
+            return false;
+        }
+        if(auto rc = tx->execute(*p2); rc != status::ok) {
+            tx->abort();
+            return false;
+        }
+        tx->commit();
     }
-    if(auto rc = db.create_executable(insert_customer, p2); rc != status::ok) {
-        return false;
-    }
-
-    auto tx = db.create_transaction();
-    if(auto rc = tx->execute(*p1); rc != status::ok) {
-        tx->abort();
-        return false;
-    }
-    if(auto rc = tx->execute(*p2); rc != status::ok) {
-        tx->abort();
-        return false;
-    }
-    tx->commit();
     return true;
 }
 
 static std::unique_ptr<api::prepared_statement> prepare(api::database& db) {
     std::string select{
-        "SELECT w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
+        "SELECT w_id, w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
         "WHERE w_id = :w_id "
         "AND c_w_id = w_id AND "
         "c_d_id = :c_d_id AND "
@@ -97,11 +102,18 @@ static std::unique_ptr<api::prepared_statement> prepare(api::database& db) {
     return p;
 }
 
-static bool query(api::database& db, api::prepared_statement const& stmt, std::size_t& result) {
+static bool query(
+    api::database& db,
+    api::prepared_statement const& stmt,
+    jogasaki::utils::xorshift_random32& rnd,
+    std::size_t records,
+    std::size_t& result
+) {
     auto ps = api::create_parameter_set();
-    ps->set_int8("w_id", 1);
-    ps->set_int8("c_d_id", 1);
-    ps->set_int8("c_id", 1);
+    auto id = rnd() % records;
+    ps->set_int8("w_id", id);
+    ps->set_int8("c_d_id", id);
+    ps->set_int8("c_id", id);
 
     std::unique_ptr<api::executable_statement> e{};
     {
@@ -198,7 +210,8 @@ static int run(
     bool debug,
     std::size_t duration,
     std::int64_t queries,
-    std::size_t clients
+    std::size_t clients,
+    std::size_t records
 ) {
     auto env = jogasaki::api::create_environment();
     cfg->prepare_benchmark_tables(true);
@@ -212,7 +225,7 @@ static int run(
     auto db = jogasaki::api::create_database(cfg);
     db->start();
 
-    if(auto res = prepare_data(*db); !res) {
+    if(auto res = prepare_data(*db, records); !res) {
         db->stop();
         return -1;
     }
@@ -223,13 +236,14 @@ static int run(
     boost::latch start{clients};
     for(std::size_t i=0; i < clients; ++i) {
         results.emplace_back(
-            std::async(std::launch::async, [&](){
+            std::async(std::launch::async, [&, i](){
                 std::int64_t count = 0;
                 std::size_t result = 0;
                 auto stmt = prepare(*db);
                 start.count_down_and_wait();
+                jogasaki::utils::xorshift_random32 rnd{static_cast<std::uint32_t>(123456+i)};
                 while((queries == -1 && !stop) || (queries != -1 && count < queries)) {
-                    if(auto res = query(*db, *stmt, result); !res) {
+                    if(auto res = query(*db, *stmt, rnd, records, result); !res) {
                         LOG(ERROR) << "query error";
                         std::abort();
                     }
@@ -282,7 +296,7 @@ extern "C" int main(int argc, char* argv[]) {
         clients = 1;
     }
     try {
-        jogasaki::query_bench_cli::run(cfg, FLAGS_debug, FLAGS_duration, queries, clients);  // NOLINT
+        jogasaki::query_bench_cli::run(cfg, FLAGS_debug, FLAGS_duration, queries, clients, FLAGS_records);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

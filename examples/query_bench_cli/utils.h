@@ -46,5 +46,14 @@ std::string format(T value){
     return ss.str();
 }
 
+template <typename ... Args>
+std::string format(std::string_view fmt, Args ... args)
+{
+    size_t len = std::snprintf(nullptr, 0, fmt.data(), args...); //NOLINT
+    std::string buf(len, '\0');
+    std::snprintf(buf.data(), len + 1, fmt.data(), args...);  //NOLINT
+    return buf;
+}
+
 }
 

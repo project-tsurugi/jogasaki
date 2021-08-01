@@ -30,7 +30,10 @@
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/scheduler/task_scheduler.h>
+
+namespace jogasaki::scheduler {
+class task_scheduler;
+}
 
 namespace jogasaki::api::impl {
 

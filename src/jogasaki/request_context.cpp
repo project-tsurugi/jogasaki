@@ -19,6 +19,7 @@
 
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/api/transaction.h>
 #include "error.h"
 
 namespace jogasaki {

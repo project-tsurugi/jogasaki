@@ -19,6 +19,9 @@
 #include <jogasaki/request_context.h>
 #include <tateyama/context.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/api/prepared_statement.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/common.h>
 #include "thread_params.h"
 
@@ -31,7 +34,8 @@ enum class flat_task_kind : std::size_t {
     wrapped = 0,
     dag_events,
     bootstrap,
-    teardown
+    teardown,
+    bootstrap_resolving,
 };
 
 /**
@@ -47,6 +51,7 @@ enum class flat_task_kind : std::size_t {
         case kind::dag_events: return "dag_events"sv;
         case kind::bootstrap: return "bootstrap"sv;
         case kind::teardown: return "teardown"sv;
+        case kind::bootstrap_resolving: return "bootstrap_resolving"sv;
     }
     std::abort();
 }
@@ -98,8 +103,8 @@ public:
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::wrapped>,
-        std::shared_ptr<model::task> origin,
-        job_context* jctx
+        job_context* jctx,
+        std::shared_ptr<model::task> origin
     ) noexcept;
 
     /**
@@ -113,13 +118,13 @@ public:
 
     /**
      * @brief construct new object to bootstrap the job to run dag
-     * @param the dag object to run as the job
      * @param jctx the job context where the task belongs
+     * @param g the dag object to run as the job
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::bootstrap>,
-        model::graph& g,
-        job_context* jctx
+        job_context* jctx,
+        model::graph& g
     ) noexcept;
 
     /**
@@ -129,10 +134,30 @@ public:
     flat_task(
         task_enum_tag_t<flat_task_kind::teardown>,
         job_context* jctx
-    ) noexcept :
-        kind_(flat_task_kind::teardown),
-        job_context_(jctx)
-    {}
+    ) noexcept;
+
+    /**
+     * @brief construct new object to resolve statement and bootstrap the job
+     * @param jctx the job context where the task belongs
+     * @param prepared the prepared statement used to resolve
+     * @param parameters the parameters used to resolve
+     * @param database the database used to resolve
+     * @param tx the transaction to pass to the newly created request context
+     * @param rctx [out] the shared ptr to keep the newly created object
+     * @param result_store_container [out] the shared ptr to keep the newly created object
+     * @param executable_statement_container [out] the shared ptr to keep the newly created object
+     */
+    flat_task(
+        task_enum_tag_t<flat_task_kind::bootstrap_resolving>,
+        job_context* jctx,
+        api::prepared_statement const& prepared,
+        api::parameter_set const& parameters,
+        api::impl::database& database,
+        std::shared_ptr<kvs::transaction> tx,
+        std::shared_ptr<request_context>& rctx,
+        std::unique_ptr<data::result_store>& result_store_container,
+        std::unique_ptr<api::executable_statement>& executable_statement_container
+    ) noexcept;
 
     /**
      * @brief getter for type kind
@@ -163,19 +188,36 @@ public:
      */
     [[nodiscard]] job_context* job() const;
 
+    /**
+     * @brief dump the text representation of the value to output stream
+     * @param out the target output stream
+     * @param value the value to be output
+     */
     friend std::ostream& operator<<(std::ostream& out, flat_task const& value) {
         return value.write_to(out);
     }
+
 private:
     flat_task_kind kind_{};
-    std::shared_ptr<model::task> origin_{};
     job_context* job_context_{};
+    std::shared_ptr<model::task> origin_{};
     model::graph* graph_{};
+
+    // members for resolve
+    api::prepared_statement const* prepared_{};
+    api::parameter_set const* parameters_{};
+    api::impl::database* database_{};
+    std::shared_ptr<kvs::transaction> tx_{};
+    std::shared_ptr<request_context>* request_context_container_{};
+    std::unique_ptr<data::result_store>* result_store_container_{};
+    std::unique_ptr<api::executable_statement>* executable_statement_container_{};
 
     bool execute(tateyama::context& ctx);
     void bootstrap(tateyama::context& ctx);
     void dag_schedule();
     bool teardown();
+    void bootstrap_resolving(tateyama::context& ctx);
+    void resolve(tateyama::context& ctx);
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

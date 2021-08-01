@@ -63,7 +63,7 @@ TEST_F(serial_task_scheduler_test, basic) {
         executed = true;
     });
     job_context jctx{};
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, task, &jctx});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, task});
     s.wait_for_progress(jctx);
     ASSERT_TRUE(executed);
 }
@@ -81,8 +81,8 @@ TEST_F(serial_task_scheduler_test, multiple_tasks) {
         pt1 = true;
     });
     job_context jctx{};
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, task0, &jctx});
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, task1, &jctx});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, task0});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, task1});
     s.wait_for_progress(jctx);
     ASSERT_TRUE(pt0);
     ASSERT_TRUE(pt1);

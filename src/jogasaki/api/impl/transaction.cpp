@@ -68,8 +68,8 @@ status transaction::execute(
         auto& ts = scheduler_.get_task_scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
-            g,
-            request_ctx->job().get()
+            request_ctx->job().get(),
+            g
         });
         ts.wait_for_progress(*request_ctx->job());
 
@@ -96,5 +96,43 @@ transaction::transaction(
     scheduler_(database_->configuration(), *database_->task_scheduler()),
     tx_(database_->kvs_db()->create_transaction(readonly))
 {}
+
+status transaction::execute(
+    api::prepared_statement const& prepared,
+    api::parameter_set const& parameters
+) {
+    std::unique_ptr<api::result_set> result{};
+    return execute(prepared, parameters, result);
+}
+
+status transaction::execute(
+    api::prepared_statement const& prepared,
+    api::parameter_set const& parameters,
+    std::unique_ptr<api::result_set>& result
+) {
+    auto& ts = scheduler_.get_task_scheduler();
+    auto job = std::make_shared<scheduler::job_context>();
+    job->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
+    std::shared_ptr<request_context> request_ctx{};
+    std::unique_ptr<data::result_store> store{};
+    std::unique_ptr<api::executable_statement> exec{};
+    ts.schedule_task(scheduler::flat_task{
+        scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap_resolving>,
+        job.get(),
+        prepared,
+        parameters,
+        *database_,
+        tx_,
+        request_ctx,
+        store,
+        exec
+    });
+    ts.wait_for_progress(*job);
+
+    result = std::make_unique<impl::result_set>(
+        std::move(store)
+    );
+    return request_ctx->status_code();
+}
 
 }

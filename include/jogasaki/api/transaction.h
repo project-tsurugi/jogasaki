@@ -18,6 +18,8 @@
 #include <memory>
 
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/prepared_statement.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/status.h>
 
@@ -76,6 +78,23 @@ public:
      * @return error code otherwise
      */
     virtual status execute(executable_statement& statement, std::unique_ptr<result_set>& result) = 0;
+
+    /**
+     * @brief resolve the placeholder and execute the prepared statement
+     */
+    virtual status execute(
+        prepared_statement const& prepared,
+        parameter_set const& parameters
+    ) = 0;
+
+    /**
+     * @brief resolve the placeholder and execute the prepared statement
+     */
+    virtual status execute(
+        prepared_statement const& prepared,
+        parameter_set const& parameters,
+        std::unique_ptr<result_set>& result
+    ) = 0;
 };
 
 }

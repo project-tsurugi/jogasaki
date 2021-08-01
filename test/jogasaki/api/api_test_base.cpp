@@ -31,6 +31,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/test_base.h>
 #include <jogasaki/test_utils/temporary_folder.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::testing {
 

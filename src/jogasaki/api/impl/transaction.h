@@ -17,6 +17,8 @@
 
 #include <jogasaki/api/transaction.h>
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/prepared_statement.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 
 #include <jogasaki/kvs/transaction.h>
@@ -42,6 +44,16 @@ public:
     ) override;
     impl::database& database();
 
+    status execute(
+        api::prepared_statement const& prepared,
+        api::parameter_set const& parameters
+    ) override;
+
+    status execute(
+        api::prepared_statement const& prepared,
+        api::parameter_set const& parameters,
+        std::unique_ptr<api::result_set>& result
+    ) override;
 private:
     impl::database* database_{};
     scheduler::statement_scheduler scheduler_{};

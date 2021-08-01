@@ -55,7 +55,7 @@ TEST_F(task_scheduler_test, single) {
         return task_result::complete;
     });
     job_context jctx{};
-    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, t, &jctx});
+    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, t});
     executor.wait_for_progress(jctx);
     ASSERT_TRUE(run);
 }
@@ -69,7 +69,7 @@ TEST_F(task_scheduler_test, multi) {
         jctx.completion_latch().release();
         return task_result::complete;
     });
-    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, t, &jctx});
+    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, t});
     executor.wait_for_progress(jctx);
     executor.stop();
     ASSERT_TRUE(run.test_and_set());

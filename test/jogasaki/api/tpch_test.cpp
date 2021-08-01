@@ -28,6 +28,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
+#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::testing {
 

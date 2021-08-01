@@ -30,6 +30,7 @@
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/executor/tables.h>
 #include <tateyama/common.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 
 #include "../common/load.h"
 

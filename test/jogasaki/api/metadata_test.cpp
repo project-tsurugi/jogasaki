@@ -22,6 +22,7 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include "api_test_base.h"
 
 namespace jogasaki::testing {

@@ -76,6 +76,14 @@ public:
         stealing_enabled_ = arg;
     }
 
+    [[nodiscard]] bool round_robbin() const noexcept {
+        return round_robbin_;
+    }
+
+    void round_robbin(bool arg) noexcept {
+        round_robbin_ = arg;
+    }
+    
     friend inline std::ostream& operator<<(std::ostream& out, task_scheduler_cfg const& cfg) {
         return out << std::boolalpha <<
             "thread_count:" << cfg.thread_count() << " " <<
@@ -83,7 +91,9 @@ public:
             "initial_core:" << cfg.initial_core() << " " <<
             "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
             "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " " <<
-            "stealing_enabled:" << cfg.stealing_enabled() << " ";
+            "stealing_enabled:" << cfg.stealing_enabled() << " " <<
+            "round_robbin:" << cfg.round_robbin() << " " <<
+            "";
     }
     
 private:
@@ -93,6 +103,7 @@ private:
     bool assign_numa_nodes_uniformly_ = true;
     std::size_t force_numa_node_ = numa_node_unspecified;
     bool stealing_enabled_ = false;
+    bool round_robbin_ = false;
 };
 
 }

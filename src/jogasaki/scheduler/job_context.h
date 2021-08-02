@@ -46,8 +46,9 @@ public:
     /**
      * @brief create default context object
      */
-    explicit job_context(
-        maybe_shared_ptr<scheduler::statement_scheduler> statement
+    job_context(
+        maybe_shared_ptr<scheduler::statement_scheduler> statement,
+        std::size_t invoker_thread_cpu_id
     ) noexcept;
 
     ~job_context() = default;
@@ -96,10 +97,25 @@ public:
      */
     void reset() noexcept;
 
+    /**
+     * @brief setter for the invoker thread cpu
+     */
+    void invoker_thread_cpu_id(std::size_t arg) noexcept {
+        invoker_thread_cpu_id_ = arg;
+    }
+
+    /**
+     * @brief accessor for the invoker thread cpu
+     * @return cpu id of the invoker thread
+     */
+    [[nodiscard]] std::size_t invoker_thread_cpu_id() const noexcept {
+        return invoker_thread_cpu_id_;
+    }
 private:
 
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
     utils::latch completion_latch_{};
+    std::size_t invoker_thread_cpu_id_{};
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};
     cache_align std::atomic_size_t index_{undefined_index};

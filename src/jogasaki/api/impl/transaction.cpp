@@ -61,9 +61,13 @@ status transaction::execute(
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         g.context(*request_ctx);
-        auto job = std::make_shared<scheduler::job_context>();
-        job->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
-        request_ctx->job(std::move(job));
+        std::size_t cpu = sched_getcpu();
+        request_ctx->job(
+            std::make_shared<scheduler::job_context>(
+                maybe_shared_ptr{std::addressof(scheduler_)},
+                cpu
+            )
+        );
 
         auto& ts = scheduler_.get_task_scheduler();
         ts.schedule_task(scheduler::flat_task{

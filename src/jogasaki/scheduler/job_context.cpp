@@ -56,9 +56,11 @@ void job_context::reset() noexcept {
 }
 
 job_context::job_context(
-    maybe_shared_ptr<scheduler::statement_scheduler> statement
+    maybe_shared_ptr<scheduler::statement_scheduler> statement,
+    std::size_t invoker_thread_cpu_id
 ) noexcept:
-    dag_scheduler_(std::move(statement))
+    dag_scheduler_(std::move(statement)),
+    invoker_thread_cpu_id_(invoker_thread_cpu_id)
 {}
 
 }

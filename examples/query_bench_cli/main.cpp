@@ -47,6 +47,7 @@ DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(consolidated_api, false, "Use consolidated execute() api that skips creating executable statement");  //NOLINT
 DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
+DEFINE_bool(respect_client_core, false, "Try to run worker on the same core as that of client thread");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -181,6 +182,7 @@ bool fill_from_flags(
     cfg.thread_pool_size(FLAGS_thread_count);
     cfg.default_partitions(FLAGS_partitions);
     cfg.stealing_enabled(FLAGS_steal);
+    cfg.respect_client_core(FLAGS_respect_client_core);
 
     if (FLAGS_minimum) {
         cfg.thread_pool_size(1);

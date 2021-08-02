@@ -89,7 +89,13 @@ public:
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
     void schedule(task&& t) {
-        auto index = increment(current_index_, size_);
+        std::size_t index{};
+        if (cfg_.round_robbin()) {
+            index = increment(current_index_, size_);
+        } else {
+            // try to assign index based on the current thread that is submitting the task
+            index = std::hash<std::thread::id>{}(std::this_thread::get_id()) % size_;  // TODO assuming thread id is distributed sufficiently
+        }
         schedule_at(std::move(t), index);
     }
 

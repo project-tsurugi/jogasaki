@@ -344,9 +344,11 @@ job_context& dag_controller::impl::job() noexcept {
 void dag_controller::impl::schedule(model::graph& g) {
     init(g);
     if (! graph_->context()->job()) {
+
+        std::size_t cpu = sched_getcpu();
         g.context()->job(
             std::make_shared<job_context>(
-                std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()})
+                std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()}), cpu
             )
         );
     } else {
@@ -406,6 +408,10 @@ class task_scheduler& dag_controller::impl::get_task_scheduler() {
 
 dag_controller* dag_controller::impl::parent() const noexcept {
     return parent_;
+}
+
+configuration const& dag_controller::impl::cfg() const noexcept {
+    return *cfg_;
 }
 
 } // namespace

@@ -136,6 +136,11 @@ public:
      */
     dag_controller* parent() const noexcept;
 
+    /**
+     * @brief accessor to the configuration
+     */
+    [[nodiscard]] configuration const& cfg() const noexcept;
+
 private:
     std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};

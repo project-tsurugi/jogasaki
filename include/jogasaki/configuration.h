@@ -147,6 +147,14 @@ public:
         db_location_ = arg;
     }
 
+    [[nodiscard]] bool respect_client_core() const noexcept {
+        return respect_client_core_;
+    }
+
+    void respect_client_core(bool arg) noexcept {
+        respect_client_core_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() <<
@@ -178,6 +186,7 @@ private:
     bool stealing_enabled_ = false;
     bool work_sharing_ = false;
     std::string db_location_{};
+    bool respect_client_core_ = false;
 };
 
 }

@@ -256,7 +256,7 @@ static int run(
                     jogasaki::utils::thread_core_affinity(FLAGS_client_initial_core+i, false);
                 } else {
                     // by default assign the on numa nodes uniformly
-                    jogasaki::utils::thread_core_affinity(FLAGS_client_initial_core+i, true);
+                    jogasaki::utils::thread_core_affinity(i, true);
                 }
                 std::int64_t count = 0;
                 std::size_t result = 0;

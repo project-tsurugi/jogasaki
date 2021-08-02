@@ -48,6 +48,7 @@ DEFINE_bool(consolidated_api, false, "Use consolidated execute() api that skips 
 DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 DEFINE_bool(respect_client_core, false, "Try to run worker on the same core as that of client thread");  //NOLINT
+DEFINE_bool(readonly, true, "Specify readonly option when creating transaction");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -112,6 +113,7 @@ static bool query(
     jogasaki::utils::xorshift_random32& rnd,
     std::size_t records,
     bool consolidated_api,
+    bool readonly,
     std::size_t& result
 ) {
     auto ps = api::create_parameter_set();
@@ -128,7 +130,7 @@ static bool query(
         }
     }
 
-    auto tx = db.create_transaction();
+    auto tx = db.create_transaction(readonly);
     std::unique_ptr<api::result_set> rs{};
     {
         trace_scope_name("execute");  //NOLINT
@@ -262,7 +264,7 @@ static int run(
                 start.count_down_and_wait();
                 jogasaki::utils::xorshift_random32 rnd{static_cast<std::uint32_t>(123456+i)};
                 while((queries == -1 && !stop) || (queries != -1 && count < queries)) {
-                    if(auto res = query(*db, *stmt, rnd, records, consolidated_api, result); !res) {
+                    if(auto res = query(*db, *stmt, rnd, records, consolidated_api, FLAGS_readonly, result); !res) {
                         LOG(ERROR) << "query error";
                         std::abort();
                     }

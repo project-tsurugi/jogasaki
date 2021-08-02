@@ -28,6 +28,7 @@
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/common.h>
 #include <jogasaki/utils/random.h>
+#include <jogasaki/utils/core_affinity.h>
 #include "utils.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
@@ -45,6 +46,7 @@ DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(consolidated_api, false, "Use consolidated execute() api that skips creating executable statement");  //NOLINT
 DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
+DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -246,6 +248,12 @@ static int run(
     for(std::size_t i=0; i < clients; ++i) {
         results.emplace_back(
             std::async(std::launch::async, [&, i](){
+                if (FLAGS_client_initial_core != -1) {
+                    jogasaki::utils::thread_core_affinity(FLAGS_client_initial_core+i, false);
+                } else {
+                    // by default assign the on numa nodes uniformly
+                    jogasaki::utils::thread_core_affinity(FLAGS_client_initial_core+i, true);
+                }
                 std::int64_t count = 0;
                 std::size_t result = 0;
                 auto stmt = prepare(*db);

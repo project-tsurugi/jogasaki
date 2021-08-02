@@ -93,8 +93,14 @@ public:
         if (cfg_.round_robbin()) {
             index = increment(current_index_, size_);
         } else {
-            // try to assign index based on the current thread that is submitting the task
-            index = std::hash<std::thread::id>{}(std::this_thread::get_id()) % size_;  // TODO assuming thread id is distributed sufficiently
+            constexpr static auto undefined = static_cast<std::size_t>(-1);
+            thread_local std::size_t index_for_this_thread = undefined;
+            if (index_for_this_thread == undefined) {
+                index = increment(current_index_, size_);
+                index_for_this_thread = index;
+            } else {
+                index = index_for_this_thread;
+            }
         }
         schedule_at(std::move(t), index);
     }

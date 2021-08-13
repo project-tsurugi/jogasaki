@@ -8,6 +8,7 @@
 2021-08-06 kurosawa 用語追加
 2021-08-11 kurosawa protobufによるpayload定義を追加
 2021-08-12 kurosawa data_channelとmanagement_channelを分離
+2021-08-13 kurosawa 
 
 ## この文書について
 
@@ -110,21 +111,16 @@ virtual class `response`によってIFが定義される
 - スレッドセーフ
 
 ```
-data_channel& new_channel(std::string_view name);
+std::shared_ptr<data_channel> const& channel(std::string_view name, bool ordered);
 ```
-
 - 新規の名前付きdata channelを取得する
+- `ordered`で所属するbuffer群を順序付きで扱うべきかを示すフラグをセットする。ordered=trueによって取得されたものを順序付きdata_channelと呼ぶ。
 
 ```
-status stage(std::string_view name);
+status stage(data_channel& ch);
 ```
-- nameで与えられたdata channelに属する出力バッファに対する書き込み完了を通知(各bufferはstageされる)
+- 与えられたdata channelに属する出力バッファに対する書き込み完了を通知(各bufferはstageされる)
 - これ以降はこのdata channelから新しくbufferがacquireされることもない事を宣言する
-
-```
-status release(std::string_view name);
-```
-- nameで与えられたdata channelに属する全バッファを開放する
 
 ### data_channel
 
@@ -139,24 +135,11 @@ buffer& acquire(std::size_t size);
 戻されるbufferは少なくとも指定したサイズのcapacityを持つ事が保証される。
 
 ```
-status stage(buffer_handle) 
+status stage(buffer& buf) 
 ```
 - バッファに対する書き込み完了を通知
-
-```
-status release(buffer_handle);
-```
-- data_channelに属するバッファを開放し、data_channelからbufferの登録を削除する
-
-```
-bool ordered();
-```
-- 所属するbuffer群を順序付きで扱うべきかを示すフラグを返す
-
-```
-channel_handle id();
-```
-- data_channelオブジェクトを識別するためのハンドルを返す
+- バッファに対するアクセス権を返却し、これ以降呼出側は`buf`に対してアクセス不可能になる
+- `buf`にはこの関数の実行前にset_sizeによって書き込み済みサイズがセットされている必要がある
 
 ### buffer
 
@@ -164,22 +147,16 @@ channel_handle id();
 スレッドセーフでない
 
 ```
-buffer_handle id();
+void set_index(std::size_t order_index);
 ```
-- bufferオブジェクトを識別するためのハンドルを返す
-
-```
-std::size_t index();
-```
-- 単一のdata_channelからacquireされたbufferに付けられる一連の通し番号。
-- data_channelにおいてordered()=trueが戻された場合は呼び出し側はこの順序でバッファを整列しデータ使用する必要がある。(e.g. ORDER BY句のあるSQL文)
-- ordered()=falseの場合は特に意味を持たない
+- 順序付きdata_channel(ordered=trueであるもの)からacquireされたbufferに付けられる0から開始する一連の通し番号。
+- data_channelが順序付きの場合AP基盤側はこれを呼び出してorder indexを設定する必要がある。Endpoint側はこの順序でバッファを整列しデータ使用する必要がある。(e.g. ORDER BY句のあるSQL文)
+- data_channelが順序付きでない場合は呼び出し不要
 
 ```
 unsigned char* data();
 ```
 - 書き込み可能な領域の先頭を指すポインタを返す
-- 現在のオフセットがsize()で取得できるので、追記する場合はdata() + size()の位置から行う
 - 書き込みフォーマットについては、serializer/deserializerをtsubakuro/jogasakiで共有する
 
 ```
@@ -187,6 +164,12 @@ std::size_t capacity();
 ```
 - 書き込み可能な領域の最大サイズを返す。
 
+```
+void set_size(std::size_t sz);
+```
+- バッファに書き込んだバイト数を通知する
+- data_channel::stage()実行前にこの関数呼び出しによって書き込みサイズを設定しておく必要がある
+
 ## その他・考慮点
 
-- 関数名等はもう少し変更する予定
+- 要求するbuffer sizeに制限が必要かどうか要確認

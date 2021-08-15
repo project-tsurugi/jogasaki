@@ -90,7 +90,7 @@ virtual class `response`によってIFが定義される
     コンソールメッセージ用のエラー出力文字列
   - headerが読み取り可能になるタイミングはoutput channelを持つケースとそうでない場合で異なる
     - output channelを持たない場合、response::complete()呼出し時点でheaderの値は確定する
-    - output channelを持つ場合、responseから取得されたdata channelの全てがcomplete()された時点でheaderの値が確定する。
+    - output channelを持つ場合、responseから取得されたdata_channelの全てがcomplete()された時点でheaderの値が確定する。
       - それまではエラーによってstatusコードが変わる可能性がある
 - body
   - tateyama上は不透明(opaque)なバイナリ列
@@ -99,19 +99,14 @@ virtual class `response`によってIFが定義される
   - jogasakiとtsubakuroはこのencoder/decoderを共有する
   - response::complete()の呼出し時点でresponse bodyは確定する。それ以前はbodyを読み出してはいけない。
 
-- output channel : management_channel
-  不確定な長さを持つAP出力を交換するためのインターフェース。AP出力がある場合
-  下記management_channelクラスを参照
-
-### management_channel
-
-- 出力チャネルを管理するためのクラス
-- アプリケーションが複数の出力を持つ場合のために、このオブジェクトから名前付きのdata_channelを作成できる
-  - APがjogasakiの場合は複数出力はなく、output 内のresponseで戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
-- スレッドセーフ
+- output channel : data_channelオブジェクト
+  - 不確定な長さを持つAP出力を交換するためのインターフェース。下記data_channelクラスを参照
+  - AP出力がある場合のみ、出力名を指定してresponseから取得可能
+    - APが複数出力を持つ場合のために名前付きとしている
+    - APがjogasakiの場合は複数出力はなく、出力名はbodyに戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
 
 ```
-std::shared_ptr<data_channel> const& channel(std::string_view name, bool ordered);
+std::shared_ptr<data_channel> const& channel(std::string_view name);
 ```
 - 新規の名前付きdata channelを取得する
 - `ordered`で所属するbuffer群を順序付きで扱うべきかを示すフラグをセットする。ordered=trueによって取得されたものを順序付きdata_channelと呼ぶ。
@@ -133,6 +128,7 @@ buffer& acquire(std::size_t size);
 ```
 書き込み領域のサイズを指定して、bufferオブジェクトを取得する。
 戻されるbufferは少なくとも指定したサイズのcapacityを持つ事が保証される。
+順序付きchannelの場合はこの関数の呼出順にbufferには内部的に通し番号が振られる。Endpoint側はこの順序でバッファを整列しデータ使用する必要がある。(e.g. ORDER BY句のあるSQL文)
 
 ```
 status stage(buffer& buf) 
@@ -145,13 +141,6 @@ status stage(buffer& buf)
 
 レスポンス構築時にデータを書き込むためのバッファを抽象化したクラス。
 スレッドセーフでない
-
-```
-void set_index(std::size_t order_index);
-```
-- 順序付きdata_channel(ordered=trueであるもの)からacquireされたbufferに付けられる0から開始する一連の通し番号。
-- data_channelが順序付きの場合AP基盤側はこれを呼び出してorder indexを設定する必要がある。Endpoint側はこの順序でバッファを整列しデータ使用する必要がある。(e.g. ORDER BY句のあるSQL文)
-- data_channelが順序付きでない場合は呼び出し不要
 
 ```
 unsigned char* data();

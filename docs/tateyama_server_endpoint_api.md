@@ -9,6 +9,7 @@
 2021-08-11 kurosawa protobufによるpayload定義を追加
 2021-08-12 kurosawa data_channelとmanagement_channelを分離
 2021-08-13 kurosawa 
+2021-08-13 kurosawa state変数を削除しcomplete()関数へ変更
 
 ## この文書について
 
@@ -52,12 +53,11 @@ status service(
 
 - Endpointがrequestとresponseを実装しservice関数を呼び出す
 - AP基盤はrequestのヘッダ情報をもとに適切なサーバーAPにこれらを転送する
-- `service`関数は通知後にすぐ戻る。呼出側はresponseオブジェクトのstate変数を監視して完了を待ち、戻された情報にアクセスする。
-- AP基盤とAP(実行エンジンなど)はrequest内のコマンドに応じた内容を実行し、responseのメンバ関数を呼出して結果を戻す
-- 呼出側は、response.stateがaccepted/completedになった時点で、response(またはその一部)のプロパティにアクセスして結果を取得する
+- `service`関数は通知後にすぐ戻る。呼出側はresponseオブジェクトのcomplete()関数による完了通知を待ち、戻された情報にアクセスする。どのタイミングでアクセス可能になるかについては下記responseセクションを参照。
+- AP基盤とAP(実行エンジンなど)はrequestのコマンドに応じた内容を実行し、responseのメンバ関数を呼出して結果を戻す
 - Endpoint/AP基盤間でownership管理の手間を軽減するためにrequest/responseはshared_ptrによって保持する
   - それぞれ適当なタイミングで不要になったshared_ptrを破棄してownershipを返却する。典型的なタイミングは：
-    - AP基盤側: serviceによって開始された非同期処理を終えた時点でresponse.stateをcompletedにしてshared_ptrを破棄
+    - AP基盤側: serviceによって開始された非同期処理を終えた時点でresponse::complete()を呼んでshared_ptrを破棄
     - Endpoint: responseはその内容をconsume完了した後。requestに関しては保持する必要がなければ`shared_ptr<request>`を作成してすぐにmoveでわたしてもよい。
 
 ### request
@@ -85,29 +85,29 @@ virtual class `response`によってIFが定義される
   - requester id : integer (TBD)
   - status code : integer
     - tateyamaのレイヤでのステータスを返す
-    - APのレイヤでエラーが発生した場合、ここにはAPでエラーが起きた事を示すステータスコードが戻され、エラー詳細を示す情報は下記output内に格納される
+    - APのレイヤでエラーが発生した場合、ここにはAPでエラーが起きた事を示すステータスコードが戻され、エラー詳細を示す情報はbodyに格納される
   - error message : string
     コンソールメッセージ用のエラー出力文字列
-- state : enum condition variable
-  - responseへの書き込み状態を示す状態変数
-  - これを監視することでresponseがreadyであるかどうかを知ることができる。保持する値は下記の3種類。initialized -> accepted -> completedの順に移行し、逆には戻らない。
-    - initialized : 初期状態
-    - accepted : 実行結果の一部が戻された状態。output valuesはこの時点で確定しアクセス可能になり、これ以降は値が変化しない。又この状態以降に初めてoutput channelが操作可能になる。
-    - completed : 実行結果の全てが戻された状態。
-- output values
+  - headerが読み取り可能になるタイミングはoutput channelを持つケースとそうでない場合で異なる
+    - output channelを持たない場合、response::complete()呼出し時点でheaderの値は確定する
+    - output channelを持つ場合、responseから取得されたdata channelの全てがcomplete()された時点でheaderの値が確定する。
+      - それまではエラーによってstatusコードが変わる可能性がある
+- body
   - tateyama上は不透明(opaque)なバイナリ列
   - tsubakuroのprotocol.responseメッセージをシリアライズしたもの
     https://github.com/project-tsurugi/tsubakuro/blob/master/modules/common/src/main/protos/response.proto
   - jogasakiとtsubakuroはこのencoder/decoderを共有する
+  - response::complete()の呼出し時点でresponse bodyは確定する。それ以前はbodyを読み出してはいけない。
 
 - output channel : management_channel
+  不確定な長さを持つAP出力を交換するためのインターフェース。AP出力がある場合
   下記management_channelクラスを参照
 
 ### management_channel
 
 - 出力チャネルを管理するためのクラス
 - アプリケーションが複数の出力を持つ場合のために、このオブジェクトから名前付きのdata_channelを作成できる
-  - APがjogasakiの場合は複数出力はなく、output values内のresponseで戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
+  - APがjogasakiの場合は複数出力はなく、output 内のresponseで戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
 - スレッドセーフ
 
 ```

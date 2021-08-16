@@ -5,6 +5,7 @@
 2021-08-13 kurosawa state変数を削除しcomplete()関数へ変更
 
 2021-08-16 kurosawa accessor詳細追加
+2021-08-16 kurosawa コメントを反映
 
 ## この文書について
 
@@ -169,22 +170,12 @@ status discard(buffer& buf)
 スレッドセーフでない
 
 ```
-std::byte* data();
+bool write(char const* data, std::size_t sz);
 ```
-- 書き込み可能な領域の先頭を指すポインタを返す
+- `data`から開始する`sz`バイトの内容をバッファへ追記する
 - 書き込みフォーマットについては、serializer/deserializerをtsubakuro/jogasakiで共有する
-
-```
-std::size_t capacity();
-```
-- 書き込み可能な領域の最大サイズを返す。
-
-```
-void size(std::size_t sz);
-```
-- バッファに書き込んだバイト数を設定する
-- data_channel::stage()実行前にこの関数呼び出しによって書き込みサイズを設定しておく必要がある
+- 書き込みが成功した場合はtrueを返す。バッファにスペースがなく書けない場合はfalseを返す。(この場合呼出側はbufferをstageして次のbufferを取得するなどして対応する)
 
 ## その他・考慮点
 
-- 要求するbuffer sizeに制限が必要かどうか要確認
+- 現状のprotocol.RecordMetaメッセージをprotocol.ExecuteQueryメッセージ内に移動する予定。クエリの実行時にresponse bodyとしてRecordMetaを入手可能とするため。

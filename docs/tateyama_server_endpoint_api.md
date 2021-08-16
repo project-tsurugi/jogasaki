@@ -1,15 +1,10 @@
 # Tateyama Server Endpoint API案
 
 2021-08-05 kurosawa
-2021-08-06 kurosawa 型の扱いを更新
-2021-08-06 kurosawa response.state変数を追加
-2021-08-06 kurosawa output channelの記述追加
-2021-08-06 kurosawa shared_ptrによる受け渡しに変更
-2021-08-06 kurosawa 用語追加
-2021-08-11 kurosawa protobufによるpayload定義を追加
-2021-08-12 kurosawa data_channelとmanagement_channelを分離
-2021-08-13 kurosawa 
+
 2021-08-13 kurosawa state変数を削除しcomplete()関数へ変更
+
+2021-08-16 kurosawa accessor詳細追加
 
 ## この文書について
 
@@ -122,10 +117,10 @@ virtual class `response`によってIFが定義される
   - bodyを設定するための領域は下記関数によって確保される
 
     ```
-    std::byte* allocate_body(std::size_t& sz);
+    std::string_view allocate_body(std::size_t sz);
     ```
     - bodyの内容を書き込むための領域を取得する
-    - `sz`によって必要な最小のバイトサイズを与える。また呼出完了時に`sz`に実際に確保された領域のキャパシティが戻される
+    - `sz`によって必要な最小のバイトサイズを与える。戻される領域はこれより大きい事もある
     - complete()呼出によって所有権が移管されて読出し可能になる。AP基盤はそれ以降変更を加えることはない。
 
 - output channelアクセサ

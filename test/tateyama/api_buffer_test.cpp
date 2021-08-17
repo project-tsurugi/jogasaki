@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tateyama/api/buffer.h>
+#include <tateyama/api/endpoint/buffer.h>
+#include "api_test_impls.h"
 
 #include <regex>
 #include <gtest/gtest.h>
 
-namespace tateyama::api {
+namespace tateyama::api::endpoint {
 
 using namespace std::literals::string_literals;
 
@@ -28,32 +29,13 @@ class api_buffer_test : public ::testing::Test {
 
 using namespace std::string_view_literals;
 
-class my_buffer : public buffer {
-public:
-    my_buffer(std::byte* data, std::size_t capacity) :
-        data_(data), capacity_(capacity)
-    {}
-
-    virtual std::byte* data() override {
-        return data_;
-    }
-
-    std::size_t capacity() override {
-        return capacity_;
-    }
-
-    void size(std::size_t sz) override {
-        size_ = sz;
-    }
-private:
-    std::byte* data_{};
-    std::size_t capacity_{};
-    std::size_t size_{};
-};
 
 TEST_F(api_buffer_test, basic) {
-    std::array<std::byte, 100> s{};
-    my_buffer buf{s.data(), s.size()};
+    std::array<char, 100> s{};
+    test_buffer buf{s.data(), s.size()};
 }
 
+TEST_F(api_buffer_test, simple) {
+    fixed_buffer<100> buf{};
+}
 }

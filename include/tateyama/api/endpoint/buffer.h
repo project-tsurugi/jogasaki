@@ -16,8 +16,9 @@
 #pragma once
 
 #include <cstddef>
+#include <tateyama/status.h>
 
-namespace tateyama::api {
+namespace tateyama::api::endpoint {
 
 /**
  * @brief buffer interface
@@ -43,19 +44,7 @@ public:
      * @brief return the pointer to the data area owned by this object
      * @return the pointer to the data area
      */
-    virtual std::byte* data() = 0;
-
-    /**
-     * @brief return the capacity of the data area owned by this object
-     * @return the capacity of the data area in bytes
-     */
-    virtual std::size_t capacity() = 0;
-
-    /**
-     * @brief setter of the size written to the buffer
-     * @param sz the size in bytes written to the buffer
-     */
-    virtual void size(std::size_t sz) = 0;
+    virtual status write(char const* data, std::size_t length) = 0;
 };
 
 }

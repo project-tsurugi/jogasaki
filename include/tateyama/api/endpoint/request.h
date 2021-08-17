@@ -17,7 +17,7 @@
 
 #include "buffer.h"
 
-namespace tateyama::api {
+namespace tateyama::api::endpoint {
 
 /**
  * @brief request interface
@@ -39,7 +39,14 @@ public:
     request(request&& other) noexcept = default;
     request& operator=(request&& other) noexcept = default;
 
+    /**
+     * @brief accessor to session identifier
+     */
 //    virtual std::size_t session_id() = 0;
+
+    /**
+     * @brief accessor to target application identifier
+     */
 //    virtual std::size_t application_id() = 0;
 
     /**

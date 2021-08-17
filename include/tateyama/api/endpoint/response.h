@@ -16,8 +16,9 @@
 #pragma once
 
 #include "data_channel.h"
+#include "response_code.h"
 
-namespace tateyama::api {
+namespace tateyama::api::endpoint {
 
 /**
  * @brief response interface
@@ -48,7 +49,9 @@ public:
      * @details This is the status code on the tateyama layer. If application error occurs, the details are stored in
      * the body.
      */
-    void status_code(status st) = 0;
+    void code(response_code code) {
+        response_code_ = code;
+    }
 
     /**
      * @brief setter of the tateyama error message
@@ -56,7 +59,9 @@ public:
      * @details This is the error message on the tateyama layer. If application error occurs, its detailed message is
      * stored in the body.
      */
-    void message(std::string_view msg) = 0;
+    void message(std::string_view msg) {
+        message_ = msg;
+    }
 
     /**
      * @brief notify completion of the response
@@ -67,19 +72,36 @@ public:
     virtual bool complete() = 0;
 
     /**
-     * @brief setter of the response body
-     * @param body the binary data of the response body
+     * @brief write data to the response body
+     * @param data the pointer to the data written to the response body
+     * @param sz the size of the data
+     * @return status::ok when successful
+     * @return other code when error occurs
      */
-    virtual std::string_view allocate_body(std::size_t sz) = 0;
+    virtual status write_body(char const* data, std::size_t sz) = 0;
 
     /**
      * @brief retrieve output data channel
      * @param name the name of the output
+     * @param ch [out] the data channel for the given name
      * @detail this function provides the named data channel for the application output
-     * @return the data_channel object when successful
-     * @return nullptr when error occurs
+     * @return status::ok when successful
+     * @return other code when error occurs
      */
-    virtual data_channel* output_channel(std::string_view name) = 0;
+    virtual status output_channel(std::string_view name, data_channel*& ch) = 0;
+
+protected:
+    [[nodiscard]] response_code code() const noexcept {
+        return response_code_;
+    }
+
+    [[nodiscard]] std::string_view message() const noexcept {
+        return message_;
+    }
+
+private:
+    response_code response_code_{};
+    std::string message_{};
 };
 
 }

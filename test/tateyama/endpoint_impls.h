@@ -18,6 +18,7 @@
 #include <tateyama/api/endpoint/response.h>
 #include <tateyama/api/endpoint/data_channel.h>
 
+#include <memory>
 #include <regex>
 
 namespace tateyama::api::endpoint {
@@ -65,11 +66,44 @@ public:
     }
 };
 
+class test_channel : public data_channel {
+public:
+    test_channel() = default;
+
+    status acquire(std::size_t size, buffer*& buf) override {
+        auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer<100>>());
+        buf = s.get();
+        return status::ok;
+    }
+
+    status stage(buffer& buf) override {
+        for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
+            if (it->get() == std::addressof(buf)) {
+                buffers_.erase(it);
+                break;
+            }
+        }
+        return status::ok;
+    }
+
+    status discard(buffer& buf) override {
+        for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
+            if (it->get() == std::addressof(buf)) {
+                buffers_.erase(it);
+                break;
+            }
+        }
+        return status::ok;
+    }
+private:
+    std::vector<std::shared_ptr<test_buffer>> buffers_{};
+};
+
 class test_response : public response {
 public:
 
-    bool complete() override {
-        return true;
+    status complete() override {
+        return status::ok;
     }
 
     status write_body(char const* data, std::size_t sz) override {
@@ -78,11 +112,22 @@ public:
     }
 
     status output_channel(std::string_view name, data_channel*& ch) override {
+        channel_ = std::make_unique<test_channel>();
+        ch = channel_.get();
         return status::ok;
     }
 
+    status stage(data_channel& ch) override {
+        return status::ok;
+    }
+
+    status discard (data_channel& ch) override {
+        channel_.reset();
+        return status::ok;
+    }
 private:
     std::stringstream body_{};
+    std::unique_ptr<data_channel> channel_{};
 };
 
 }

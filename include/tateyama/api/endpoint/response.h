@@ -66,15 +66,16 @@ public:
     /**
      * @brief notify completion of the response
      * @detail this function is called to notify the response body is filled and accessible.
-     * @return true when successful
-     * @return false otherwise
+     * @return status::ok when successful
+     * @return other code when error occurs
      */
-    virtual bool complete() = 0;
+    virtual status complete() = 0;
 
     /**
      * @brief write data to the response body
      * @param data the pointer to the data written to the response body
      * @param sz the size of the data
+     * @pre complete() function of this object is not yet called
      * @return status::ok when successful
      * @return other code when error occurs
      */
@@ -89,6 +90,30 @@ public:
      * @return other code when error occurs
      */
     virtual status output_channel(std::string_view name, data_channel*& ch) = 0;
+
+    /**
+     * @brief mark the data channel staged and return its ownership
+     * @param ch the data channel to stage
+     * @details staging the channel declares finishing using the channel and transfer the channel together with its
+     * buffers to the downstream components that read data from the buffers. This function automatically calls
+     * data_channel::stage() for all the buffers that belong to this channel.
+     * The caller must not call any of the `ch` member functions any more.
+     * @return status::ok when successful
+     * @return other status code when error occurs
+     */
+    virtual status stage(data_channel& ch) = 0;
+
+    /**
+     * @brief discard the buffer
+     * @param ch the data channel to discard
+     * @details by discarding the data channel, caller declares to stop writing to the buffer of the data channel and
+     * return the ownership of the channel and buffers. This function automatically calls
+     * data_channel::discard() for all the buffers that belong to this channel.
+     * The caller must not call any of the `ch` member functions any more.
+     * @return status::ok when successful
+     * @return other status code when error occurs
+     */
+    virtual status discard (data_channel& ch) = 0;
 
 protected:
     [[nodiscard]] response_code code() const noexcept {

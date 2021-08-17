@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <tateyama/api/endpoint/buffer.h>
-#include "api_test_impls.h"
+#include "endpoint_impls.h"
 
 #include <regex>
 #include <gtest/gtest.h>
@@ -23,19 +23,26 @@ namespace tateyama::api::endpoint {
 
 using namespace std::literals::string_literals;
 
-class api_buffer_test : public ::testing::Test {
+class endpoint_api_test : public ::testing::Test {
 
 };
 
 using namespace std::string_view_literals;
 
-
-TEST_F(api_buffer_test, basic) {
+TEST_F(endpoint_api_test, buffer) {
     std::array<char, 100> s{};
     test_buffer buf{s.data(), s.size()};
 }
 
-TEST_F(api_buffer_test, simple) {
+TEST_F(endpoint_api_test, fixed_buffer) {
     fixed_buffer<100> buf{};
+}
+
+TEST_F(endpoint_api_test, request) {
+    test_request req{};
+    test_response res{};
+
+    res.complete();
+
 }
 }

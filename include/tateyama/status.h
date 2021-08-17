@@ -25,12 +25,8 @@ namespace tateyama {
  */
 enum class status : std::int64_t {
     ok = 0,
-
-    // warnings
-    not_found = 1,
-
-    // errors
-    err_unknown = -1,
+    not_found,
+    unknown,
 };
 
 /**
@@ -42,10 +38,8 @@ enum class status : std::int64_t {
     using namespace std::string_view_literals;
     switch (value) {
         case status::ok: return "ok"sv;
-
         case status::not_found: return "not_found"sv;
-
-        case status::err_unknown: return "err_unknown"sv;
+        case status::unknown: return "unknown"sv;
     }
     std::abort();
 }

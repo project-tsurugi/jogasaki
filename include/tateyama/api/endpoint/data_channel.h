@@ -64,12 +64,22 @@ public:
     /**
      * @brief mark the buffer staged and return it to channel
      * @param buf the buffer to stage
-     * @details by staging the buffer, caller declares finishing writing to the buffer and passes it to comomponents
+     * @details by staging the buffer, caller declares finishing writing to the buffer and passes it to components
      * that subsequently read data from the buffer. The caller must not call any of the buffer function any more.
      * @return status::ok when successful
      * @return other status code when error occurs
      */
     virtual status stage(buffer& buf) = 0;
+
+    /**
+     * @brief discard the buffer
+     * @param buf the buffer to discard
+     * @details by discarding the buffer, caller declares to stop writing to the buffer and return it to channel.
+     * The content of the buffer will not be read and the caller must not call any of the buffer function any more.
+     * @return status::ok when successful
+     * @return other status code when error occurs
+     */
+    virtual status discard(buffer& buf) = 0;
 };
 
 }

@@ -102,7 +102,7 @@ virtual class `response`によってIFが定義される
   > void requester_id(std::size_t id);
   - セッションの識別子を設定する
 
-  > void status_code(status st);
+  > void code(response_code st);
     - tateyamaのレイヤでのステータスを設定する
     - APのレイヤでエラーが発生した場合、ここにはAPでエラーが起きた事を示すステータスコードが戻され、エラー詳細を示す情報はbodyに格納される
 
@@ -115,21 +115,19 @@ virtual class `response`によってIFが定義される
     https://github.com/project-tsurugi/tsubakuro/blob/master/modules/common/src/main/protos/response.proto
   - jogasakiとtsubakuroはこのencoder/decoderを共有する
   - response::complete()の呼出し時点でresponse bodyは確定する。それ以前は未確定であり、bodyを読み出してはいけない。
-  - bodyを設定するための領域は下記関数によって確保される
+  - bodyの内容は下記関数によって作成される：
 
     ```
-    std::string_view allocate_body(std::size_t sz);
+    status write_body(char const* data, std::size_t sz) = 0;
     ```
-    - bodyの内容を書き込むための領域を取得する
-    - `sz`によって必要な最小のバイトサイズを与える。戻される領域はこれより大きい事もある
-    - complete()呼出によって所有権が移管されて読出し可能になる。AP基盤はそれ以降変更を加えることはない。
+    - `data`, `sz`で指定された内容をbodyへ追記する
+    - bodyの内容はcomplete()呼出によって所有権が移管された後に読出し可能になる。AP基盤はそれ以降変更を加えることはない。
 
 - output channelアクセサ
   - AP出力がある場合のみ、data_channelインターフェースを下記関数によって取得可能
 
-    > std::shared_ptr<data_channel> const& channel(std::string_view name);
+    > status output_channel(std::string_view name, data_channel*& ch);
 
-    (function prototypeはTBD)
     - APが複数出力を持つ場合のために名前付きとしている
     - APがjogasakiで実行しているものがSQLステートメントの場合は複数出力はなく、出力名はbodyに戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
     - 所属するbuffer群を順序付きで扱うべき順序付きと順序なしの2種類がある
@@ -145,7 +143,7 @@ virtual class `response`によってIFが定義される
 - スレッドセーフ
 
 ```
-buffer& acquire(std::size_t size);
+status acquire(std::size_t size, buffer*& buf);
 ```
 - 書き込み領域のサイズを指定して、bufferオブジェクトを取得する。
 - 戻されるbufferは少なくとも指定したサイズのcapacityを持つ事が保証される。

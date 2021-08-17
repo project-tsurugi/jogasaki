@@ -2,10 +2,9 @@
 
 2021-08-05 kurosawa
 
-2021-08-13 kurosawa state変数を削除しcomplete()関数へ変更
-
-2021-08-16 kurosawa accessor詳細追加
 2021-08-16 kurosawa コメントを反映
+
+2021-08-17 kurosawa bufferからwriterベースに変更
 
 ## この文書について
 
@@ -91,10 +90,11 @@ virtual class `response`によってIFが定義される
 
   - headerはtateyamaのレイヤでAP基盤がrouting等に使用するためのプロパティ群をさす
   - status codeとerror message以外はQEX-4以降に使用予定でありQEX-3では未実装
-  - headerが読み取り可能になるタイミングはoutput channelを持つケースとそうでない場合で異なる
+  - headerが確定するタイミングはoutput channelを持つケースとそうでない場合で異なる
     - output channelを持たない場合、response::complete()呼出し時点でheaderの値は確定する
-    - output channelを持つ場合、responseから取得されたdata_channelの全てがcomplete()された時点でheaderの値が確定する。
+    - output channelを持つ場合、responseから取得されたdata_channelの全てがrelease_channel()された時点でheaderの値が確定する。
       - それまではエラーによってヘッダの内容が変更される可能性がある
+      - それまではstatus codeには一時的な状態を表すコード"running"が戻される
 
   > void session_id(std::size_t session);
   - セッションの識別子を設定する
@@ -118,7 +118,7 @@ virtual class `response`によってIFが定義される
   - bodyの内容は下記関数によって作成される：
 
     ```
-    status write_body(char const* data, std::size_t sz) = 0;
+    status write_body(char const* data, std::size_t sz);
     ```
     - `data`, `sz`で指定された内容をbodyへ追記する
     - bodyの内容はcomplete()呼出によって所有権が移管された後に読出し可能になる。AP基盤はそれ以降変更を加えることはない。
@@ -126,54 +126,52 @@ virtual class `response`によってIFが定義される
 - output channelアクセサ
   - AP出力がある場合のみ、data_channelインターフェースを下記関数によって取得可能
 
-    > status output_channel(std::string_view name, data_channel*& ch);
+    > status acquire_channel(std::string_view name, data_channel*& ch);
 
     - APが複数出力を持つ場合のために名前付きとしている
     - APがjogasakiで実行しているものがSQLステートメントの場合は複数出力はなく、出力名はbodyに戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
-    - 所属するbuffer群を順序付きで扱うべき順序付きと順序なしの2種類がある
 
-    > status stage(data_channel& ch);
-      - 与えられたdata channelに属する出力バッファに対する書き込み完了を通知(各bufferはstageされる)
-      - これ以降はこのdata channelから新しくbufferがacquireされることもない事を宣言する
+    > status release_channel(data_channel& ch);
+      - 与えられたdata channelに属する全ライタに対する書き込み完了を通知
+      - これ以降はこのdata channelから新しくwriterがacquireされることもない事を宣言する
 
 ### data_channel
 
-- 任意の長さを持つアプリケーションの出力を呼び出し側へ共有するためのバッファ群を提供するクラス
-- 順序付きor順序なしのbuffer群を管理するクラス
+- 任意の長さを持つアプリケーションの出力を呼び出し側へ共有するためのライタ群を提供するクラス
 - スレッドセーフ
 
 ```
-status acquire(std::size_t size, buffer*& buf);
+status acquire(writer*& w);
 ```
-- 書き込み領域のサイズを指定して、bufferオブジェクトを取得する。
-- 戻されるbufferは少なくとも指定したサイズのcapacityを持つ事が保証される。
-- 順序付きchannelの場合はこの関数の呼出順にbufferには内部的に通し番号が振られる。Endpoint側はこの順序でバッファを整列しデータ使用する必要がある。(e.g. ORDER BY句のあるSQL文)
+- writerオブジェクトを取得する。
 
 ```
-status stage(buffer& buf) 
+status release(writer& w) 
 ```
-- バッファに対する書き込み完了を通知
-- バッファに対するアクセス権を返却し、これ以降呼出側は`buf`に対してアクセス不可能になる
-- `buf`にはこの関数の実行前にset_sizeによって書き込み済みサイズがセットされている必要がある
+- ライタに対する書き込み完了を通知
+- ライタに対するアクセス権を返却し、これ以降呼出側は`w`に対してアクセス不可能になる
+- 処理途中でエラー等によりライタが不要になった際も呼出側はこの関数によって返却する
+- write後にcommitされていないデータがあった場合、そのデータが使用される保証はない。呼び出し側はrelease前に適切にcommitを呼んで置くこと。
 
-```
-status discard(buffer& buf) 
-```
-- バッファに対するアクセス権を返却し、バッファを削除する
-- 処理途中でエラー等によりバッファが不要になった際の手順を想定している
+### writer
 
-### buffer
-
-レスポンス構築時にデータを書き込むためのバッファを抽象化したクラス。
+レスポンス構築時にデータを書き込むためのクラス
 スレッドセーフでない
 
 ```
-bool write(char const* data, std::size_t sz);
+status write(char const* data, std::size_t sz);
 ```
-- `data`から開始する`sz`バイトの内容をバッファへ追記する
+- `data`から開始する`sz`バイトの内容をアプリ出力として追記する
 - 書き込みフォーマットについては、serializer/deserializerをtsubakuro/jogasakiで共有する
-- 書き込みが成功した場合はtrueを返す。バッファにスペースがなく書けない場合はfalseを返す。(この場合呼出側はbufferをstageして次のbufferを取得するなどして対応する)
+- 内部的なバッファにスペースがなくて書けない場合はブロックする。読出し側が進行して内部バッファが空くのを待つ。
+
+```
+status commit();
+```
+- 現時点までに書き込んだ内容を確定させ、読出し可能であることを通知する
+- 呼出側は適切な単位(レコード区切りなど呼び出し側が待つことなく処理可能な単位)およびタイミングでこの関数を呼び、読出し側を進行させることが期待される
 
 ## その他・考慮点
 
 - 現状のprotocol.RecordMetaメッセージをprotocol.ExecuteQueryメッセージ内に移動する予定。クエリの実行時にresponse bodyとしてRecordMetaを入手可能とするため。
+- ORDER BY句のように出力結果の順序が問題になるさいは単一writerによって結果が書かれることを想定している。複数writerの結果を順序付けるような機能は現時点ではない。

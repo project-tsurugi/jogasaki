@@ -26,6 +26,13 @@
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/transaction.h>
 
+#include <tateyama/status.h>
+
+namespace tateyama::api::endpoint {
+class request;
+class response;
+}
+
 namespace jogasaki::api {
 
 class result_set;
@@ -303,6 +310,29 @@ public:
     ) {
         return do_drop_sequence(name, schema);
     }
+
+    /**
+     * @brief tateyama endpoint service interface
+     * @param req the request
+     * @param res the response
+     * @details this function provides API for tateyama AP service (routing requests to server AP and
+     * returning response and application output through data channels.)
+     * Endpoint uses this function to transfer request to AP and receive its response and output.
+     * `request`, `response` and IF objects (such as data_channel) derived from them are expected to be implemented
+     * by the Endpoint so that it provides necessary information in request, and receive result or notification
+     * in response.
+     * This function is asynchronous, that is, it returns as soon as the request is submitted and scheduled.
+     * The caller monitors the response and data_channel to check the progress. See tateyama::api::endpoint::response
+     * for details. Once request is transferred and fulfilled by the server AP, the response and data_channel
+     * objects member functions are called back to transfer the result.
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @warning this function is temporarily implemented on top of jogasaki database for qex-3 implementation
+     * TODO separate tateyama AP layer from jogasaki
+     */
+    virtual tateyama::status service(
+        std::shared_ptr<tateyama::api::endpoint::request> req,
+        std::shared_ptr<tateyama::api::endpoint::response> res
+    ) = 0;
 
 protected:
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;

@@ -63,10 +63,17 @@ private:
 
 class test_request : public request {
 public:
+    test_request() = default;
+
+    explicit test_request(std::string_view payload) :
+        payload_(payload)
+    {}
 
     std::string_view payload() override {
-        return {};
+        return payload_;
     }
+
+    std::string payload_{};
 };
 
 class test_channel : public data_channel {

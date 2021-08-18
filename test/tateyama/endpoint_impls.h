@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tateyama/api/endpoint/buffer.h>
+#include <tateyama/api/endpoint/writer.h>
 #include <tateyama/api/endpoint/request.h>
 #include <tateyama/api/endpoint/response.h>
 #include <tateyama/api/endpoint/data_channel.h>
@@ -26,12 +26,12 @@ namespace tateyama::api::endpoint {
 using namespace std::literals::string_literals;
 using namespace std::string_view_literals;
 
-class test_buffer : public buffer {
+class test_writer : public writer {
 
 public:
-    test_buffer() = default;
+    test_writer() = default;
 
-    test_buffer(char* data, std::size_t capacity) :
+    test_writer(char* data, std::size_t capacity) :
         data_(data), capacity_(capacity)
     {}
 
@@ -40,6 +40,9 @@ public:
         return status::ok;
     }
 
+    status commit() override {
+        return status::ok;
+    }
 protected:
     char* data_{};
     std::size_t capacity_{};
@@ -47,9 +50,9 @@ protected:
 };
 
 template<std::size_t Size>
-class fixed_buffer : public test_buffer {
+class fixed_buffer_writer : public test_writer {
 public:
-    fixed_buffer() {
+    fixed_buffer_writer() {
         data_ = array_.data();
         capacity_ = array_.size();
     }
@@ -70,13 +73,13 @@ class test_channel : public data_channel {
 public:
     test_channel() = default;
 
-    status acquire(std::size_t size, buffer*& buf) override {
-        auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer<100>>());
+    status acquire(writer*& buf) override {
+        auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer_writer<100>>());
         buf = s.get();
         return status::ok;
     }
 
-    status stage(buffer& buf) override {
+    status release(writer& buf) override {
         for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
             if (it->get() == std::addressof(buf)) {
                 buffers_.erase(it);
@@ -86,17 +89,8 @@ public:
         return status::ok;
     }
 
-    status discard(buffer& buf) override {
-        for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
-            if (it->get() == std::addressof(buf)) {
-                buffers_.erase(it);
-                break;
-            }
-        }
-        return status::ok;
-    }
 private:
-    std::vector<std::shared_ptr<test_buffer>> buffers_{};
+    std::vector<std::shared_ptr<test_writer>> buffers_{};
 };
 
 class test_response : public response {
@@ -111,20 +105,16 @@ public:
         return status::ok;
     }
 
-    status output_channel(std::string_view name, data_channel*& ch) override {
+    status acquire_channel(std::string_view name, data_channel*& ch) override {
         channel_ = std::make_unique<test_channel>();
         ch = channel_.get();
         return status::ok;
     }
 
-    status stage(data_channel& ch) override {
+    status release_channel(data_channel& ch) override {
         return status::ok;
     }
 
-    status discard (data_channel& ch) override {
-        channel_.reset();
-        return status::ok;
-    }
 private:
     std::stringstream body_{};
     std::unique_ptr<data_channel> channel_{};

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tateyama/api/endpoint/buffer.h>
+#include <tateyama/api/endpoint/writer.h>
 #include "endpoint_impls.h"
 
 #include <regex>
@@ -31,11 +31,11 @@ using namespace std::string_view_literals;
 
 TEST_F(endpoint_api_test, buffer) {
     std::array<char, 100> s{};
-    test_buffer buf{s.data(), s.size()};
+    test_writer wrt{s.data(), s.size()};
 }
 
 TEST_F(endpoint_api_test, fixed_buffer) {
-    fixed_buffer<100> buf{};
+    fixed_buffer_writer<100> buf{};
 }
 
 TEST_F(endpoint_api_test, request) {

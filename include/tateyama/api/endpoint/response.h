@@ -89,31 +89,21 @@ public:
      * @return status::ok when successful
      * @return other code when error occurs
      */
-    virtual status output_channel(std::string_view name, data_channel*& ch) = 0;
+    virtual status acquire_channel(std::string_view name, data_channel*& ch) = 0;
 
     /**
-     * @brief mark the data channel staged and return its ownership
+     * @brief release the data channel
      * @param ch the data channel to stage
-     * @details staging the channel declares finishing using the channel and transfer the channel together with its
-     * buffers to the downstream components that read data from the buffers. This function automatically calls
-     * data_channel::stage() for all the buffers that belong to this channel.
+     * mark the data channel staged and return its ownership
+     * @details releasing the channel declares finishing using the channel and transfer the channel together with its
+     * writers. This function automatically calls data_channel::release() for all the writers that belong to this channel.
+     * Uncommitted data on each writer can possibly be discarded. To make release writers gracefully, it's recommended
+     * to call data_channel::release() for each writer rather than releasing in bulk with this function.
      * The caller must not call any of the `ch` member functions any more.
      * @return status::ok when successful
      * @return other status code when error occurs
      */
-    virtual status stage(data_channel& ch) = 0;
-
-    /**
-     * @brief discard the buffer
-     * @param ch the data channel to discard
-     * @details by discarding the data channel, caller declares to stop writing to the buffer of the data channel and
-     * return the ownership of the channel and buffers. This function automatically calls
-     * data_channel::discard() for all the buffers that belong to this channel.
-     * The caller must not call any of the `ch` member functions any more.
-     * @return status::ok when successful
-     * @return other status code when error occurs
-     */
-    virtual status discard (data_channel& ch) = 0;
+    virtual status release_channel(data_channel& ch) = 0;
 
 protected:
     [[nodiscard]] response_code code() const noexcept {

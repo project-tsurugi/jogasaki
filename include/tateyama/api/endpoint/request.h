@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "buffer.h"
+#include "writer.h"
 
 namespace tateyama::api::endpoint {
 

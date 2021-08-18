@@ -100,18 +100,6 @@ public:
      */
     virtual status release_channel(data_channel& ch) = 0;
 
-protected:
-    [[nodiscard]] response_code code() const noexcept {
-        return response_code_;
-    }
-
-    [[nodiscard]] std::string_view message() const noexcept {
-        return message_;
-    }
-
-private:
-    response_code response_code_{};
-    std::string message_{};
 };
 
 }

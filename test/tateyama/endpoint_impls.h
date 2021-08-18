@@ -110,7 +110,7 @@ public:
     void message(std::string_view msg) override {
         message_ = msg;
     }
-    
+
     status complete() override {
         return status::ok;
     }

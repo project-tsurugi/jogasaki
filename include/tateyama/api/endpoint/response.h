@@ -49,9 +49,7 @@ public:
      * @details This is the status code on the tateyama layer. If application error occurs, the details are stored in
      * the body.
      */
-    void code(response_code code) {
-        response_code_ = code;
-    }
+    virtual void code(response_code code) = 0;
 
     /**
      * @brief setter of the tateyama error message
@@ -59,9 +57,7 @@ public:
      * @details This is the error message on the tateyama layer. If application error occurs, its detailed message is
      * stored in the body.
      */
-    void message(std::string_view msg) {
-        message_ = msg;
-    }
+    virtual void message(std::string_view msg) = 0;
 
     /**
      * @brief notify completion of the response
@@ -72,14 +68,13 @@ public:
     virtual status complete() = 0;
 
     /**
-     * @brief write data to the response body
-     * @param data the pointer to the data written to the response body
-     * @param sz the size of the data
+     * @brief setter of the response body
+     * @param body the response body data
      * @pre complete() function of this object is not yet called
      * @return status::ok when successful
      * @return other code when error occurs
      */
-    virtual status write_body(char const* data, std::size_t sz) = 0;
+    virtual status body(std::string_view body) = 0;
 
     /**
      * @brief retrieve output data channel

@@ -103,12 +103,21 @@ private:
 class test_response : public response {
 public:
 
+    void code(response_code code) override {
+        code_ = code;
+    }
+
+    void message(std::string_view msg) override {
+        message_ = msg;
+    }
+    
     status complete() override {
         return status::ok;
     }
 
-    status write_body(char const* data, std::size_t sz) override {
-        body_.write(data, sz);
+    status body(std::string_view body) override {
+        body_.clear();
+        body_.write(body.data(), body.size());
         return status::ok;
     }
 
@@ -125,6 +134,8 @@ public:
 private:
     std::stringstream body_{};
     std::unique_ptr<data_channel> channel_{};
+    std::string message_{};
+    response_code code_{};
 };
 
 }

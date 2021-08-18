@@ -51,9 +51,6 @@ status service(
 - `service`関数は通知後にすぐ戻る。呼出側はresponseオブジェクトのcomplete()関数による完了通知を待ち、戻された情報にアクセスする。どのタイミングでアクセス可能になるかについては下記responseセクションを参照。
 - AP基盤とAP(実行エンジンなど)はrequestのコマンドに応じた内容を実行し、responseのメンバ関数を呼出して結果を戻す
 - Endpoint/AP基盤間でownership管理の手間を軽減するためにrequest/responseはshared_ptrによって保持する
-  - それぞれ適当なタイミングで不要になったshared_ptrを破棄してownershipを返却する。典型的なタイミングは：
-    - AP基盤側: serviceによって開始された非同期処理を終えた時点でresponse::complete()を呼んでshared_ptrを破棄
-    - Endpoint: responseはその内容をconsume完了した後。requestに関しては保持する必要がなければ`shared_ptr<request>`を作成してすぐにmoveでわたしてもよい。
 
 ### request
 
@@ -90,10 +87,10 @@ virtual class `response`によってIFが定義される
 
   - headerはtateyamaのレイヤでAP基盤がrouting等に使用するためのプロパティ群をさす
   - status codeとerror message以外はQEX-4以降に使用予定でありQEX-3では未実装
-  - headerが確定するタイミングはoutput channelを持つケースとそうでない場合で異なる
+  - header/bodyが確定するタイミングはoutput channelを持つケースとそうでない場合で異なる
     - output channelを持たない場合、response::complete()呼出し時点でheaderの値は確定する
     - output channelを持つ場合、responseから取得されたdata_channelの全てがrelease_channel()された時点でheaderの値が確定する。
-      - それまではエラーによってヘッダの内容が変更される可能性がある
+      - それまではエラーによってヘッダやボディの内容が変更される可能性がある
       - それまではstatus codeには一時的な状態を表すコード"running"が戻される
 
   > void session_id(std::size_t session);
@@ -114,14 +111,12 @@ virtual class `response`によってIFが定義される
   - jogasaki-tsubakuro間においては、tsubakuroのprotocol.responseメッセージをシリアライズしたものを使用する
     https://github.com/project-tsurugi/tsubakuro/blob/master/modules/common/src/main/protos/response.proto
   - jogasakiとtsubakuroはこのencoder/decoderを共有する
-  - response::complete()の呼出し時点でresponse bodyは確定する。それ以前は未確定であり、bodyを読み出してはいけない。
-  - bodyの内容は下記関数によって作成される：
+  - bodyの内容は下記関数によって設定される：
 
     ```
-    status write_body(char const* data, std::size_t sz);
+    status body(std::string_view body);
     ```
-    - `data`, `sz`で指定された内容をbodyへ追記する
-    - bodyの内容はcomplete()呼出によって所有権が移管された後に読出し可能になる。AP基盤はそれ以降変更を加えることはない。
+    - `body`で指定された内容をresponse bodyとして設定する
 
 - output channelアクセサ
   - AP出力がある場合のみ、data_channelインターフェースを下記関数によって取得可能
@@ -129,7 +124,7 @@ virtual class `response`によってIFが定義される
     > status acquire_channel(std::string_view name, data_channel*& ch);
 
     - APが複数出力を持つ場合のために名前付きとしている
-    - APがjogasakiで実行しているものがSQLステートメントの場合は複数出力はなく、出力名はbodyに戻されたchannel名(protocol.Response.ExecuteQuery.name)で取得されるdata_channelを使用する
+    - APがjogasakiで実行しているものがSQLステートメントの場合は複数出力はなく、出力名はこの関数の呼び出し側が決定し、bodyの一部として戻す(protocol.Response.ExecuteQuery.nameフィールドを使用)
 
     > status release_channel(data_channel& ch);
       - 与えられたdata channelに属する全ライタに対する書き込み完了を通知

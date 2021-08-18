@@ -361,8 +361,10 @@ status database::do_drop_sequence(std::string_view name, std::string_view schema
     return status::not_found;
 }
 
-tateyama::status database::service(std::shared_ptr<tateyama::api::endpoint::request> req,
-    std::shared_ptr<tateyama::api::endpoint::response> res) {
+tateyama::status database::service(
+    std::shared_ptr<tateyama::api::endpoint::request const> req,
+    std::shared_ptr<tateyama::api::endpoint::response> res
+) {
     // TODO implement
     (void) req;
     (void) res;

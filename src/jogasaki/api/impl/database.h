@@ -136,7 +136,7 @@ protected:
     ) override;
 
     tateyama::status service(
-        std::shared_ptr<tateyama::api::endpoint::request> req,
+        std::shared_ptr<tateyama::api::endpoint::request const> req,
         std::shared_ptr<tateyama::api::endpoint::response> res
     ) override;
 private:

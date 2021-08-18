@@ -100,7 +100,7 @@ virtual class `response`によってIFが定義される
   - セッションの識別子を設定する
 
   > void requester_id(std::size_t id);
-  - セッションの識別子を設定する
+  - リクエスタの識別子を設定する
 
   > void code(response_code st);
     - tateyamaのレイヤでのステータスを設定する

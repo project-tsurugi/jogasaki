@@ -138,7 +138,7 @@ protected:
     tateyama::status service(
         std::shared_ptr<tateyama::api::endpoint::request const> req,
         std::shared_ptr<tateyama::api::endpoint::response> res
-    ) override;
+    );
 private:
     std::shared_ptr<class configuration> cfg_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{

@@ -91,7 +91,7 @@ virtual class `response`によってIFが定義される
     - output channelを持たない場合、response::complete()呼出し時点でheaderの値は確定する
     - output channelを持つ場合、responseから取得されたdata_channelの全てがrelease_channel()された時点でheaderの値が確定する。
       - それまではエラーによってヘッダやボディの内容が変更される可能性がある
-      - それまではstatus codeには一時的な状態を表すコード"running"が戻される
+      - それまではstatus codeには一時的な状態を表すコード"started"が戻される
 
   > void session_id(std::size_t session);
   - セッションの識別子を設定する

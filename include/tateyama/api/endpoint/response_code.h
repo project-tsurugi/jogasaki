@@ -24,8 +24,18 @@ namespace tateyama::api::endpoint {
  * @brief response code
  */
 enum class response_code : std::int64_t {
+    /// @brief error occurred but the cause is unknown
+    unknown = -1,
+
+    /// @brief successful completion
     success = 0,
-    error_unknown = 100,
+
+    /// @brief temporary response notifying the request processing started
+    started = 1,
+
+    /// @brief error occurred in the application domain
+    application_error = 2,
+
 };
 
 /**
@@ -36,8 +46,10 @@ enum class response_code : std::int64_t {
 [[nodiscard]] constexpr inline std::string_view to_string_view(response_code value) noexcept {
     using namespace std::string_view_literals;
     switch (value) {
+        case response_code::unknown: return "unknown"sv;
         case response_code::success: return "success"sv;
-        case response_code::error_unknown: return "error_unknown"sv;
+        case response_code::started: return "started"sv;
+        case response_code::application_error: return "application_error"sv;
     }
     std::abort();
 }

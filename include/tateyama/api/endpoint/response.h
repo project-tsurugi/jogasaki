@@ -48,6 +48,7 @@ public:
      * @param st the status code of the response
      * @details This is the status code on the tateyama layer. If application error occurs, the details are stored in
      * the body.
+     * @attention this function is not thread-safe and should be called from single thread at a time.
      */
     virtual void code(response_code code) = 0;
 
@@ -56,14 +57,21 @@ public:
      * @param msg the error message
      * @details This is the error message on the tateyama layer. If application error occurs, its detailed message is
      * stored in the body.
+     * @attention this function is not thread-safe and should be called from single thread at a time.
      */
     virtual void message(std::string_view msg) = 0;
 
     /**
-     * @brief notify completion of the response
-     * @detail this function is called to notify the response body is filled and accessible.
+     * @brief notify completion of the initial response
+     * @detail this function is called to notify the header and response body are filled and accessible.
+     * If the response code that is set by code() function prior to this call is not response_code::started,
+     * the request is already completed (i.e. response header and body are finalized and will not change any more.)
+     * Otherwise, the application has output transferred by data channel, and the request gets completed only after
+     * all channels are released (until then, there are possible changes in headers and body, that are notified by
+     * setter functions, e.g. code()).
      * @return status::ok when successful
      * @return other code when error occurs
+     * @attention this function is not thread-safe and should be called from single thread at a time.
      */
     virtual status complete() = 0;
 
@@ -73,6 +81,7 @@ public:
      * @pre complete() function of this object is not yet called
      * @return status::ok when successful
      * @return other code when error occurs
+     * @attention this function is not thread-safe and should be called from single thread at a time.
      */
     virtual status body(std::string_view body) = 0;
 
@@ -81,6 +90,7 @@ public:
      * @param name the name of the output
      * @param ch [out] the data channel for the given name
      * @detail this function provides the named data channel for the application output
+     * @note this function is thread-safe and multiple threads can invoke simultaneously.
      * @return status::ok when successful
      * @return other code when error occurs
      */
@@ -95,6 +105,7 @@ public:
      * Uncommitted data on each writer can possibly be discarded. To make release writers gracefully, it's recommended
      * to call data_channel::release() for each writer rather than releasing in bulk with this function.
      * The caller must not call any of the `ch` member functions any more.
+     * @note this function is thread-safe and multiple threads can invoke simultaneously.
      * @return status::ok when successful
      * @return other status code when error occurs
      */

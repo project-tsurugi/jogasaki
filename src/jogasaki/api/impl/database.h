@@ -151,7 +151,7 @@ private:
         std::make_shared<yugawara::variable::configurable_provider>()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
-    std::unique_ptr<scheduler::task_scheduler> task_scheduler_{};
+    std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
 };
 
 inline api::impl::database& get_impl(api::database& db) {

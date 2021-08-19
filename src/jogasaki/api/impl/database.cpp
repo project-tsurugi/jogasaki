@@ -362,12 +362,12 @@ status database::do_drop_sequence(std::string_view name, std::string_view schema
 }
 
 tateyama::status database::service(
-    std::shared_ptr<tateyama::api::endpoint::request const> req,
-    std::shared_ptr<tateyama::api::endpoint::response> res
+    std::shared_ptr<tateyama::api::endpoint::request const> req,  // NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<tateyama::api::endpoint::response> res       // NOLINT(performance-unnecessary-value-param)
 ) {
     // TODO implement
-    (void) std::move(req);
-    (void) std::move(res);
+    (void) req;
+    (void) res;
     return tateyama::status::ok;
 }
 

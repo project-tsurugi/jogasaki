@@ -30,8 +30,6 @@
 
 namespace tateyama::api::endpoint::impl {
 
-using takatori::util::unsafe_downcast;
-
 }
 
 namespace tateyama::api::endpoint {

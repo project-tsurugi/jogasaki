@@ -37,6 +37,7 @@ file(GLOB SOURCES
         "jogasaki/utils/*.cpp"
         "tateyama/*.cpp"
         "tateyama/impl/*.cpp"
+        "tateyama/api/endpoint/impl/*.cpp"
 )
 
 if(TRACY_ENABLE)

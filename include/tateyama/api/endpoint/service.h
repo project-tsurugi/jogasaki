@@ -62,11 +62,11 @@ public:
 
 /**
  * @brief factory method for tateyama application service
- * @param cfg configuration for the underlying database
- * TODO Temporarily, AP context (jogaski) appears on tateyama layer. Separate tateyama and jogasaki.
+ * @param db the underlying database for the service
+ * TODO This function is temporarily. Assuming the jogasaki db is only the server application.
  * @return service api object
  * @return nullptr if error occurs on creation
  */
-std::unique_ptr<service> create_service(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
+std::unique_ptr<service> create_service(jogasaki::api::database& db);
 
 }

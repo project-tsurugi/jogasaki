@@ -366,8 +366,8 @@ tateyama::status database::service(
     std::shared_ptr<tateyama::api::endpoint::response> res
 ) {
     // TODO implement
-    (void) req;
-    (void) res;
+    (void) std::move(req);
+    (void) std::move(res);
     return tateyama::status::ok;
 }
 

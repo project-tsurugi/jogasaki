@@ -21,6 +21,11 @@
 #include <memory>
 #include <regex>
 
+#include "request.pb.h"
+#include "response.pb.h"
+#include "common.pb.h"
+#include "schema.pb.h"
+
 namespace tateyama::api::endpoint::mock {
 
 using namespace std::literals::string_literals;
@@ -70,7 +75,7 @@ public:
         payload_(payload)
     {}
 
-    std::string_view payload() override {
+    std::string_view payload() const override {
         return payload_;
     }
 
@@ -134,11 +139,35 @@ public:
         return status::ok;
     }
 
-private:
     std::stringstream body_{};
     std::unique_ptr<data_channel> channel_{};
     std::string message_{};
     response_code code_{};
 };
 
+class payload {
+public:
+    void begin() {
+        request_.set_allocated_begin(&begin_);
+        session_.set_handle(0);
+        request_.set_allocated_session_handle(&session_);
+    }
+
+    std::string_view build() {
+        if (!request_.SerializeToString(&str_)) {
+            std::abort();
+        }
+        request_.release_begin();
+        request_.release_session_handle();
+        return str_;
+    }
+
+
+
+    std::string str_{};
+    ::request::Request request_{};
+    ::request::Begin begin_{};
+    ::common::Session session_{};
+
+};
 }

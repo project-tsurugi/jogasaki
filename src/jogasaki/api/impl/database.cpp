@@ -361,16 +361,6 @@ status database::do_drop_sequence(std::string_view name, std::string_view schema
     return status::not_found;
 }
 
-tateyama::status database::service(
-    std::shared_ptr<tateyama::api::endpoint::request const> req,  // NOLINT(performance-unnecessary-value-param)
-    std::shared_ptr<tateyama::api::endpoint::response> res       // NOLINT(performance-unnecessary-value-param)
-) {
-    // TODO implement
-    (void) req;
-    (void) res;
-    return tateyama::status::ok;
-}
-
 }
 
 namespace jogasaki::api {

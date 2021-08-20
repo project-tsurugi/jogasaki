@@ -46,7 +46,6 @@ TEST_F(endpoint_api_test, request) {
     // do service
     auto s = req.payload();
     EXPECT_EQ("ABC", s);
-
     res.complete();
 }
 

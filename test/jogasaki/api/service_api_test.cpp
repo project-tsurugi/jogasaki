@@ -28,8 +28,10 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/utils/binary_printer.h>
 
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
+#include <tateyama/api/endpoint/service.h>
 #include "api_test_base.h"
 
 #include "request.pb.h"
@@ -60,6 +62,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->single_thread(true);
         db_setup(cfg);
         auto* impl = db_impl();
         add_benchmark_tables(*impl->tables());
@@ -73,31 +76,30 @@ public:
 
 using namespace std::string_view_literals;
 
-
 TEST_F(service_api_test, basic) {
-//    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
-//
-//    std::vector<mock::basic_record> result{};
-//    execute_query("SELECT * FROM T0, T10", result);
-//    ASSERT_EQ(6, result.size());
-
     ::request::Request r{};
-    auto b = r.begin();
-    std::stringstream ss{};
-    if (!r.SerializeToOstream(&ss)) { std::abort(); }
-    ss.flush();
+    ::request::Begin b;
+    r.set_allocated_begin(&b);
+    ::common::Session session;
+    session.set_handle(0);
+    r.set_allocated_session_handle(&session);
 
-    std::cout << ss.str() << std::endl;
+    std::string s{};
+    if (!r.SerializeToString(&s)) { std::abort(); }
+    std::cout << " debug : " << r.DebugString() << std::endl;
+    r.release_begin();
+    r.release_session_handle();
+    std::cout << " data: " << utils::binary_printer{s.data(), s.size()} << std::endl;
 
-    tateyama::api::endpoint::mock::test_request req{"ABC"};
-    tateyama::api::endpoint::mock::test_response res{};
-// do service
-    auto s = req.payload();
-    EXPECT_EQ("ABC", s);
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
-    res.complete();
+    auto svc = tateyama::api::endpoint::create_service(*db_);
 
+    auto st = (*svc)(req, res);
+    ASSERT_EQ(tateyama::status::ok, st);
 
+    ASSERT_EQ(response_code::success, res->code_);
 }
 
 }

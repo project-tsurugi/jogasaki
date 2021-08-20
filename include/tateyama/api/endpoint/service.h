@@ -15,6 +15,10 @@
  */
 #pragma once
 
+namespace jogasaki::api {
+class database;
+}
+
 namespace tateyama::api::endpoint {
 
 /**

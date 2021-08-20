@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include "writer.h"
-
 namespace tateyama::api::endpoint {
 
 /**
@@ -42,18 +40,18 @@ public:
     /**
      * @brief accessor to session identifier
      */
-//    virtual std::size_t session_id() = 0;
+//    virtual std::size_t session_id() const = 0;
 
     /**
      * @brief accessor to target application identifier
      */
-//    virtual std::size_t application_id() = 0;
+//    virtual std::size_t application_id() const = 0;
 
     /**
      * @brief accessor to the payload binary data
      * @return the view to the payload
      */
-    virtual std::string_view payload() = 0;
+    virtual std::string_view payload() const = 0;  //NOLINT(modernize-use-nodiscard)
 };
 
 }

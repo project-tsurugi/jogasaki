@@ -1,8 +1,9 @@
 syntax = "proto3";
 
-package protocol;
+package response;
 
 import "common.proto";
+import "schema.proto";
 
 option java_package = "com.nautilus_technologies.tsubakuro.protos";
 option java_outer_classname = "ResponseProtos";
@@ -18,6 +19,12 @@ message Success {
 /* For response of error containing a error message. */
 message Error {
   string detail = 1;
+}
+
+/* For record meta message sent back at the beginning of the result set. */
+message ResultSetInfo {
+  string name = 1;  /* The name of the channel to which the ResultSet set will be sent. */
+  schema.RecordMeta record_meta = 2;
 }
 
 
@@ -52,7 +59,7 @@ message Prepare {
 /* For response to ExecuteQuery and/or ExecutePreparedQuery. */
 message ExecuteQuery {
   oneof result {
-    string name = 1;  /* The name of the channel to which the ResultSet set will be sent. */
+    ResultSetInfo result_set_info = 1;
     Error error = 2;
   }
 }

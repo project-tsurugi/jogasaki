@@ -40,6 +40,19 @@ file(GLOB SOURCES
         "tateyama/api/endpoint/impl/*.cpp"
 )
 
+set(GENERATED_PROTO_SRCS
+        ${CMAKE_BINARY_DIR}/protos/request.pb.cc
+        ${CMAKE_BINARY_DIR}/protos/response.pb.cc
+        ${CMAKE_BINARY_DIR}/protos/common.pb.cc
+        ${CMAKE_BINARY_DIR}/protos/schema.pb.cc
+        )
+
+set_source_files_properties(
+        ${GENERATED_PROTO_SRCS}
+        PROPERTIES GENERATED TRUE
+        COMPILE_FLAGS -Wno-unused-parameter
+)
+
 if(TRACY_ENABLE)
     file(GLOB TRACY_CLIENT
             "../third_party/tracy/TracyClient.cpp"
@@ -49,13 +62,19 @@ endif()
 
 add_library(${ENGINE}
         ${SOURCES}
+        ${GENERATED_PROTO_SRCS}
 )
+
+add_dependencies(${ENGINE}
+        build_protos
+        )
 
 set_target_properties(${ENGINE} PROPERTIES
         OUTPUT_NAME ${export_name}
         )
 
 target_include_directories(${ENGINE}
+        PRIVATE ${CMAKE_BINARY_DIR}/protos
         PRIVATE .
 )
 
@@ -77,6 +96,7 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE moodycamel
+        PRIVATE protobuf::libprotobuf
 )
 
 if(MC_QUEUE)
@@ -103,6 +123,7 @@ install_custom(${ENGINE} ${export_name})
 add_library(jogasaki-impl INTERFACE)
 
 target_include_directories(jogasaki-impl
+        INTERFACE ${CMAKE_BINARY_DIR}/protos
         INTERFACE .
         )
 
@@ -123,6 +144,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::thread
         INTERFACE Boost::container
         INTERFACE glog::glog
+        INTERFACE protobuf::libprotobuf
         )
 
 if(MC_QUEUE)

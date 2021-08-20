@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package schema;
+
+import "common.proto";
+
+option java_package = "com.nautilus_technologies.tsubakuro.protos";
+option java_outer_classname = "SchemaProtos";
+
+/*
+ * Used in ResultSet connections.
+ */
+
+/* For record meta message sent back at the beginning of the result set. */
+message RecordMeta {
+  message Column {
+    string name = 1;
+    common.DataType type = 2;
+    bool nullable = 3;
+  }
+
+  repeated Column columns = 1;
+}

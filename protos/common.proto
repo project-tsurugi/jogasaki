@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package common;
+
+option java_package = "com.nautilus_technologies.tsubakuro.protos";
+option java_outer_classname = "CommonProtos";
+
+/*
+ * Common.
+ */
+
+/* For session handle. */
+message Session {
+  uint64 handle = 1;
+}
+
+/* For transaction handle. */
+message Transaction {
+  uint64 handle = 1;
+}
+
+/* For prepared statement handle. */
+message PreparedStatement {
+  uint64 handle = 1;
+}
+
+/* For data types that the 'tsurugi' supports. */
+enum DataType {
+  PADDING = 0;  /* The first enum value must be zero in proto3. */
+  INT4 = 1;
+  INT8 = 2;
+  FLOAT4 = 3;
+  FLOAT8 = 4;
+  STRING = 5;
+}

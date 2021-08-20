@@ -71,6 +71,8 @@ find_package(Boost
         )
 find_package(TBB REQUIRED)
 find_package(performance-tools REQUIRED)
+find_package(Protobuf REQUIRED)
+find_package(msgpack REQUIRED)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
@@ -125,6 +127,7 @@ install(
 
 add_subdirectory(src)
 add_subdirectory(mock)
+add_subdirectory(protos)
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()

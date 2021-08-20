@@ -1,11 +1,29 @@
 set(test_target jogasaki-test)
 
+set(GENERATED_PROTO_SRCS
+        ${CMAKE_BINARY_DIR}/protos/request.pb.cc
+        ${CMAKE_BINARY_DIR}/protos/response.pb.cc
+        ${CMAKE_BINARY_DIR}/protos/common.pb.cc
+        ${CMAKE_BINARY_DIR}/protos/schema.pb.cc
+        )
+
+set_source_files_properties(
+        ${GENERATED_PROTO_SRCS}
+        PROPERTIES GENERATED TRUE
+)
+
 add_executable(${test_target}
         main.cpp
+        ${GENERATED_PROTO_SRCS}
+        )
+
+add_dependencies(${test_target}
+        build_protos
         )
 
 target_include_directories(${test_target}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+        PRIVATE ${CMAKE_BINARY_DIR}/protos
         )
 
 target_link_libraries(${test_target}
@@ -17,6 +35,7 @@ target_link_libraries(${test_target}
         PRIVATE takatori
         PRIVATE atomic
         PRIVATE moodycamel
+        PRIVATE protobuf::libprotobuf
         )
 
 function (add_test_executable source_file)

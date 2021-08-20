@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 #include <tateyama/api/endpoint/writer.h>
-#include "endpoint_impls.h"
 
 #include <regex>
 #include <gtest/gtest.h>
+
+#include <tateyama/api/endpoint/mock/endpoint_impls.h>
 
 namespace tateyama::api::endpoint {
 
@@ -31,25 +32,22 @@ using namespace std::string_view_literals;
 
 TEST_F(endpoint_api_test, writer) {
     std::array<char, 100> s{};
-    test_writer wrt{s.data(), s.size()};
+    mock::test_writer wrt{s.data(), s.size()};
 }
 
 TEST_F(endpoint_api_test, fixed_buffer_writer) {
-    fixed_buffer_writer<100> buf{};
+    mock::fixed_buffer_writer<100> buf{};
 }
 
 TEST_F(endpoint_api_test, request) {
-    test_request req{"ABC"};
-    test_response res{};
+    mock::test_request req{"ABC"};
+    mock::test_response res{};
 
     // do service
-
     auto s = req.payload();
     EXPECT_EQ("ABC", s);
 
-
-
     res.complete();
-
 }
+
 }

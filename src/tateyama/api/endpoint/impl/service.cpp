@@ -278,6 +278,31 @@ tateyama::status service::operator()(
             break;
         case ::request::Request::RequestCase::kRollback:
             VLOG(1) << "rollback" << std::endl;
+            {
+                if (transaction_) {
+                    if(auto rc = transaction_->abort(); rc == jogasaki::status::ok) {
+                        auto eq = proto_req.mutable_rollback();
+                        VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << std::endl;
+
+                        ::response::Success s;
+                        ::response::ResultOnly ok;
+                        ::response::Response r;
+
+                        ok.set_allocated_success(&s);
+                        r.set_allocated_result_only(&ok);
+
+                        reply(*res, r);
+                        r.release_result_only();
+                        ok.release_success();
+
+                        transaction_ = nullptr;
+                    } else {
+                        error<::response::ResultOnly>(*res, "error in transaction_->abort()");
+                    }
+                } else {
+                    error<::response::ResultOnly>(*res, "transaction has not begun");
+                }
+            }
             break;
         case ::request::Request::RequestCase::kDisposePreparedStatement:
             VLOG(1) << "dispose_prepared_statement" << std::endl;

@@ -49,6 +49,8 @@ using namespace jogasaki::scheduler;
 using namespace tateyama::api::endpoint;
 
 using takatori::util::unsafe_downcast;
+std::string serialize(::request::Request& r);
+void deserialize(std::string_view s, ::response::Response& res);
 
 class service_api_test :
     public ::testing::Test,
@@ -67,11 +69,49 @@ public:
         auto* impl = db_impl();
         add_benchmark_tables(*impl->tables());
         register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        service_ = tateyama::api::endpoint::create_service(*db_);
     }
 
     void TearDown() override {
         db_teardown();
     }
+    void test_begin(std::uint64_t& handle);
+    void test_commit(std::uint64_t& handle);
+
+    template <class ...Args>
+    void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
+        std::vector<std::pair<std::string, common::DataType>> place_holders{args...};
+        ::request::Request r{};
+        auto* p = r.mutable_prepare();
+        p->mutable_sql()->assign(sql);
+        if (! place_holders.empty()) {
+            auto vars = p->mutable_host_variables();
+            for(auto&& [n, t] : place_holders) {
+                auto* v = vars->add_variables();
+                v->set_name(n);
+                v->set_type(t);
+            }
+        }
+        auto s = serialize(r);
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_prepare());
+        auto& prep = resp.prepare();
+        ASSERT_TRUE(prep.has_prepared_statement_handle());
+        auto& stmt = prep.prepared_statement_handle();
+        handle = stmt.handle();
+    }
+    void test_dispose_prepare(std::uint64_t& handle);
+
+    std::unique_ptr<tateyama::api::endpoint::service> service_{};
 };
 
 using namespace std::string_view_literals;
@@ -94,75 +134,52 @@ void deserialize(std::string_view s, ::response::Response& res) {
     std::cout << " DebugString : " << res.DebugString() << std::endl;
 }
 
+void service_api_test::test_begin(std::uint64_t& handle) {
+    ::request::Request r{};
+    r.mutable_begin()->set_read_only(false);
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    // TODO the operation can be asynchronous. Wait until response becomes ready.
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    ::response::Response resp{};
+    deserialize(res->body_, resp);
+    ASSERT_TRUE(resp.has_begin());
+    auto& begin = resp.begin();
+    ASSERT_TRUE(begin.has_transaction_handle());
+    auto& tx = begin.transaction_handle();
+    handle = tx.handle();
+}
+
+void service_api_test::test_commit(std::uint64_t& handle) {
+    ::request::Request r{};
+    r.mutable_commit()->mutable_transaction_handle()->set_handle(handle);
+    auto s = serialize(r);
+
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    // TODO the operation can be asynchronous. Wait until response becomes ready.
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::success, res->code_);
+}
+
 TEST_F(service_api_test, begin_and_commit) {
     std::uint64_t handle{};
-    {
-        ::request::Request r{};
-        r.mutable_begin()->set_read_only(true);
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
-
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_begin());
-        auto& begin = resp.begin();
-        ASSERT_TRUE(begin.has_transaction_handle());
-        auto& tx = begin.transaction_handle();
-        handle = tx.handle();
-    }
-    {
-        ::request::Request r{};
-        r.mutable_commit()->mutable_transaction_handle()->set_handle(handle);
-        auto s = serialize(r);
-
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-    }
+    test_begin(handle);
+    test_commit(handle);
 }
 
 TEST_F(service_api_test, rollback) {
     std::uint64_t handle{};
-    {
-        ::request::Request r{};
-        r.mutable_begin()->set_read_only(true);
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
-
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_begin());
-        auto& begin = resp.begin();
-        ASSERT_TRUE(begin.has_transaction_handle());
-        auto& tx = begin.transaction_handle();
-        handle = tx.handle();
-    }
+    test_begin(handle);
     {
         ::request::Request r{};
         r.mutable_rollback()->mutable_transaction_handle()->set_handle(handle);
@@ -171,53 +188,31 @@ TEST_F(service_api_test, rollback) {
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
+        auto st = (*service_)(req, res);
         // TODO the operation can be asynchronous. Wait until response becomes ready.
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
     }
 }
 
+void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
+    ::request::Request r{};
+    r.mutable_dispose_prepared_statement()->mutable_prepared_statement_handle()->set_handle(handle);
+    auto s = serialize(r);
+
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    // TODO the operation can be asynchronous. Wait until response becomes ready.
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::success, res->code_);
+}
+
 TEST_F(service_api_test, prepare_and_dispose) {
     std::uint64_t handle{};
-    {
-        ::request::Request r{};
-        r.mutable_prepare()->mutable_sql()->assign("select * from T1");
-        auto s = serialize(r);
-
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_prepare());
-        auto& prep = resp.prepare();
-        ASSERT_TRUE(prep.has_prepared_statement_handle());
-        auto& stmt = prep.prepared_statement_handle();
-        handle = stmt.handle();
-    }
-    {
-        ::request::Request r{};
-        r.mutable_dispose_prepared_statement()->mutable_prepared_statement_handle()->set_handle(handle);
-        auto s = serialize(r);
-
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-    }
+    test_prepare(handle, "select * from T1");
+    test_dispose_prepare(handle);
 }
 
 TEST_F(service_api_test, disconnect) {
@@ -231,9 +226,7 @@ TEST_F(service_api_test, disconnect) {
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
-        auto svc = tateyama::api::endpoint::create_service(*db_);
-
-        auto st = (*svc)(req, res);
+        auto st = (*service_)(req, res);
         // TODO the operation can be asynchronous. Wait until response becomes ready.
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -244,6 +237,158 @@ TEST_F(service_api_test, disconnect) {
         auto& ro = resp.result_only();
         ASSERT_TRUE(ro.has_success());
     }
+}
+
+TEST_F(service_api_test, execute_statement_and_query) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    {
+        ::request::Request r{};
+        auto* stmt = r.mutable_execute_statement();
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+        stmt->mutable_sql()->assign("insert into T0(C0, C1) values (1, 1.0)");
+        r.mutable_session_handle()->set_handle(1);
+        auto s = serialize(r);
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_result_only());
+        auto& ro = resp.result_only();
+        ASSERT_TRUE(ro.has_success());
+    }
+    test_commit(tx_handle);
+    test_begin(tx_handle);
+    {
+        ::request::Request r{};
+        auto* stmt = r.mutable_execute_query();
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+        stmt->mutable_sql()->assign("select * from T0");
+        r.mutable_session_handle()->set_handle(1);
+        auto s = serialize(r);
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_execute_query());
+        auto& eq = resp.execute_query();
+
+        ASSERT_FALSE(eq.has_error());
+        ASSERT_TRUE(eq.has_result_set_info());
+        auto& rsinfo = eq.result_set_info();
+        std::cout << "name : " << rsinfo.name() << std::endl;
+        ASSERT_TRUE(rsinfo.has_record_meta());
+        auto meta = rsinfo.record_meta();
+        ASSERT_EQ(2, meta.columns_size());
+        meta.columns(0).type();
+
+        EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
+        EXPECT_TRUE(meta.columns(0).nullable());
+        EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
+        EXPECT_TRUE(meta.columns(1).nullable());
+    }
+    test_commit(tx_handle);
+}
+
+TEST_F(service_api_test, execute_prepared_statement_and_query) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0(C0, C1) values (:c0, :c1)",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    {
+        ::request::Request r{};
+        auto* stmt = r.mutable_execute_prepared_statement();
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+        stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
+        r.mutable_session_handle()->set_handle(1);
+        auto s = serialize(r);
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_result_only());
+        auto& ro = resp.result_only();
+        ASSERT_TRUE(ro.has_success());
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select * from T0 where c0 = :c0 and c1 = :c1",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    test_begin(tx_handle);
+    {
+        ::request::Request r{};
+        auto* stmt = r.mutable_execute_prepared_query();
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+        stmt->mutable_prepared_statement_handle()->set_handle(query_handle);
+        auto* params = stmt->mutable_parameters();
+        auto* c0 = params->add_parameters();
+        c0->set_name("c0");
+        c0->set_l_value(0);
+        auto* c1 = params->add_parameters();
+        c1->set_name("c1");
+        c1->set_d_value(0.0);
+        r.mutable_session_handle()->set_handle(1);
+        auto s = serialize(r);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_execute_query());
+        auto& eq = resp.execute_query();
+
+        ASSERT_FALSE(eq.has_error());
+        ASSERT_TRUE(eq.has_result_set_info());
+        auto& rsinfo = eq.result_set_info();
+        std::cout << "name : " << rsinfo.name() << std::endl;
+        ASSERT_TRUE(rsinfo.has_record_meta());
+        auto meta = rsinfo.record_meta();
+        ASSERT_EQ(2, meta.columns_size());
+        meta.columns(0).type();
+
+        EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
+        EXPECT_TRUE(meta.columns(0).nullable());
+        EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
+        EXPECT_TRUE(meta.columns(1).nullable());
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
 }
 
 }

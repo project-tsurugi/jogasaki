@@ -43,11 +43,11 @@ public:
         iterator_ = nullptr;
         prepared_ = nullptr;
     }
-    std::unique_ptr<jogasaki::api::result_set> result_set_{};
-    std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};
-    std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};
-    std::string wire_name_;
-    tateyama::api::endpoint::writer* writer_{};
+    std::unique_ptr<jogasaki::api::result_set> result_set_{};  //NOLINT
+    std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};  //NOLINT
+    std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};  //NOLINT
+    std::string wire_name_;  //NOLINT
+    tateyama::api::endpoint::writer* writer_{};  //NOLINT
 };
 
 class service : public api::endpoint::service {
@@ -66,20 +66,18 @@ public:
 private:
     jogasaki::api::database* db_{};
 
-    std::size_t id_;
-    std::unique_ptr<jogasaki::api::transaction> transaction_;
+    std::size_t id_{};
+    std::unique_ptr<jogasaki::api::transaction> transaction_{};
     std::size_t transaction_id_{};
     std::size_t resultset_id_{};
-    std::vector<Cursor> cursors_;
+    std::vector<Cursor> cursors_{};
     std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
     std::size_t prepared_statements_index_{};
 
     tateyama::api::endpoint::data_channel* channel_{};
 
+//    friend int backend_main(int, char **);
 
-    friend int backend_main(int, char **);
-
-private:
     [[nodiscard]] const char* execute_statement(std::string_view);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
@@ -108,11 +106,11 @@ private:
     void reply(endpoint::response& res, ::response::Response &r);
 
     template<typename T>
-    void error(endpoint::response& res, std::string msg) {}
+    void error(endpoint::response&, std::string) {}
 };
 
 template<>
-inline void service::error<::response::Begin>(endpoint::response& res, std::string msg) {
+inline void service::error<::response::Begin>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
     ::response::Error e;
     ::response::Begin p;
     ::response::Response r;
@@ -125,7 +123,7 @@ inline void service::error<::response::Begin>(endpoint::response& res, std::stri
     p.release_error();
 }
 template<>
-inline void service::error<::response::Prepare>(endpoint::response& res, std::string msg) {
+inline void service::error<::response::Prepare>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
     ::response::Error e;
     ::response::Prepare p;
     ::response::Response r;
@@ -139,7 +137,7 @@ inline void service::error<::response::Prepare>(endpoint::response& res, std::st
 }
 
 template<>
-inline void service::error<::response::ResultOnly>(endpoint::response& res, std::string msg) {
+inline void service::error<::response::ResultOnly>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
     ::response::Error e;
     ::response::ResultOnly p;
     ::response::Response r;
@@ -153,7 +151,7 @@ inline void service::error<::response::ResultOnly>(endpoint::response& res, std:
 }
 
 template<>
-inline void service::error<::response::ExecuteQuery>(endpoint::response& res, std::string msg) {
+inline void service::error<::response::ExecuteQuery>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
     ::response::Error e;
     ::response::ExecuteQuery p;
     ::response::Response r;

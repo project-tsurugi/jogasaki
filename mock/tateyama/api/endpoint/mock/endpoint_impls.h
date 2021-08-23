@@ -122,8 +122,7 @@ public:
     }
 
     status body(std::string_view body) override {
-        body_.clear();
-        body_.write(body.data(), body.size());
+        body_.assign(body);
         return status::ok;
     }
 
@@ -139,7 +138,8 @@ public:
         return status::ok;
     }
 
-    std::stringstream body_{};
+
+    std::string body_{};
     std::unique_ptr<data_channel> channel_{};
     std::string message_{};
     response_code code_{};

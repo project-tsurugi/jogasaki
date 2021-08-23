@@ -117,7 +117,7 @@ tateyama::status service::operator()(
                     ::response::Response r;
 
                     ps.set_handle(sid);
-                    *p.mutable_prepared_statement_handle() = ps;
+                    p.set_allocated_prepared_statement_handle(&ps);
                     r.set_allocated_prepare(&p);
                     reply(*res, r);
                     r.release_prepare();

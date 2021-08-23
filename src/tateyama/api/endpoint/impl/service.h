@@ -56,7 +56,9 @@ public:
 
     explicit service(jogasaki::api::database& db) :
         db_(std::addressof(db))
-    {}
+    {
+        (void)id_;
+    }
 
     tateyama::status operator()(
         std::shared_ptr<tateyama::api::endpoint::request const> req,
@@ -106,7 +108,7 @@ private:
     void reply(endpoint::response& res, ::response::Response &r);
 
     template<typename T>
-    void error(endpoint::response&, std::string) {}
+    void error(endpoint::response&, std::string) {}  //NOLINT(performance-unnecessary-value-param)
 };
 
 template<>

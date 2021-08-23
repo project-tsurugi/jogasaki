@@ -355,7 +355,7 @@ void service::set_metadata(std::size_t rid, schema::RecordMeta& meta)
     std::size_t n = metadata->field_count();
 
     for (std::size_t i = 0; i < n; i++) {
-        auto* column = new schema::RecordMeta_Column;
+        auto column = std::make_unique<schema::RecordMeta_Column>();
         switch(metadata->at(i).kind()) {
             case jogasaki::api::field_type_kind::int4:
                 column->set_type(::common::DataType::INT4);

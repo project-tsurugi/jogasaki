@@ -26,11 +26,11 @@ message ParameterSet {
   message Parameter {
     string name = 1;
     oneof value {
-      int32 i_value = 2;
-      int64 l_value = 3;
-      float f_value = 4;
-      double d_value = 5;
-      string s_value = 6;
+      int32 int4_value = 2;
+      int64 int8_value = 3;
+      float float4_value = 4;
+      double float8_value = 5;
+      string character_value = 6;
     }
   }
 

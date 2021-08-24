@@ -101,7 +101,7 @@ jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto
             case ::common::DataType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
             case ::common::DataType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case ::common::DataType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case ::common::DataType::STRING: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+            case ::common::DataType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
         }
     }
     jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
@@ -448,10 +448,10 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto* params = stmt->mutable_parameters();
         auto* c0 = params->add_parameters();
         c0->set_name("c0");
-        c0->set_l_value(0);
+        c0->set_int8_value(0);
         auto* c1 = params->add_parameters();
         c1->set_name("c1");
-        c1->set_d_value(0.0);
+        c1->set_float8_value(0.0);
         r.mutable_session_handle()->set_handle(1);
         auto s = serialize(r);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);

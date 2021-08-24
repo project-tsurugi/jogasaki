@@ -31,5 +31,5 @@ enum DataType {
   INT8 = 2;
   FLOAT4 = 3;
   FLOAT8 = 4;
-  STRING = 5;
+  CHARACTER = 5;
 }

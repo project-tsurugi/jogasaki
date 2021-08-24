@@ -446,8 +446,7 @@ const char* service::execute_query(
     return nullptr;
 }
 
-void service::next(std::size_t rid)
-{
+void service::next(std::size_t rid) {
     auto& cursor = cursors_.at(rid);
 //    tsubakuro::common::wire::server_wire_container::resultset_wire_container& wire = *cursor.resultset_wire_container_;
     const jogasaki::api::record_meta* meta = cursor.result_set_->meta();

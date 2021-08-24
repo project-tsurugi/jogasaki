@@ -17,7 +17,9 @@
 #include <sstream>
 #include <gtest/gtest.h>
 
+#include <msgpack.hpp>
 #include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/mock/storage_data.h>
@@ -49,8 +51,88 @@ using namespace jogasaki::scheduler;
 using namespace tateyama::api::endpoint;
 
 using takatori::util::unsafe_downcast;
+using takatori::util::maybe_shared_ptr;
 std::string serialize(::request::Request& r);
 void deserialize(std::string_view s, ::response::Response& res);
+
+template <typename T>
+static inline bool extract(std::string_view data, T &v, std::size_t &offset) {
+    // msgpack::unpack() may throw msgpack::unpack_error with "parse error" or "insufficient bytes" message.
+    msgpack::unpacked result = msgpack::unpack(data.data(), data.size(), offset);
+    const msgpack::object obj(result.get());
+    if (obj.type == msgpack::type::NIL) {
+        return false;
+    }
+    v = obj.as<T>();
+    return true;
+}
+
+void set_null(accessor::record_ref ref, std::size_t index, meta::record_meta& meta) {
+    ref.set_null(meta.nullity_offset(index), true);
+}
+
+template <typename T>
+static inline void set_value(
+    std::string_view data,
+    std::size_t &offset,
+    accessor::record_ref ref,
+    std::size_t index,
+    meta::record_meta& meta
+) {
+    T v;
+    if (extract(data, v, offset)) {
+        ref.set_value(meta.value_offset(index), v);
+    } else {
+        set_null(ref, index, meta);
+    }
+}
+
+jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto) {
+    std::vector<meta::field_type> fields{};
+    boost::dynamic_bitset<std::uint64_t> nullities;
+    for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
+        auto& c = proto.columns(i);
+        bool nullable = c.nullable();
+        meta::field_type field{};
+        nullities.push_back(nullable);
+        switch(c.type()) {
+            using kind = meta::field_type_kind;
+            case ::common::DataType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
+            case ::common::DataType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
+            case ::common::DataType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
+            case ::common::DataType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
+            case ::common::DataType::STRING: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+        }
+    }
+    jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
+    return meta;
+}
+
+mock::basic_record deserialize_msg(std::string_view data, jogasaki::meta::record_meta& meta) {
+    mock::basic_record record{maybe_shared_ptr{&meta}};
+    auto ref = record.ref();
+    std::size_t offset{};
+    for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
+        switch (meta.at(index).kind()) {
+            case jogasaki::meta::field_type_kind::int4: set_value<std::int32_t>(data, offset, ref, index, meta); break;
+            case jogasaki::meta::field_type_kind::int8: set_value<std::int64_t>(data, offset, ref, index, meta); break;
+            case jogasaki::meta::field_type_kind::float4: set_value<float>(data, offset, ref, index, meta); break;
+            case jogasaki::meta::field_type_kind::float8: set_value<double>(data, offset, ref, index, meta); break;
+            case jogasaki::meta::field_type_kind::character: {
+                std::string v;
+                if (extract(data, v, offset)) {
+                    record.ref().set_value(meta.value_offset(index), accessor::text{v});
+                } else {
+                    set_null(record.ref(), index, meta);
+                }
+                break;
+            }
+            default:
+                std::abort();
+        }
+    }
+    return record;
+}
 
 class service_api_test :
     public ::testing::Test,
@@ -111,7 +193,7 @@ public:
     }
     void test_dispose_prepare(std::uint64_t& handle);
 
-    std::unique_ptr<tateyama::api::endpoint::service> service_{};
+    std::unique_ptr<tateyama::api::endpoint::service> service_{};  //NOLINT
 };
 
 using namespace std::string_view_literals;
@@ -133,6 +215,7 @@ void deserialize(std::string_view s, ::response::Response& res) {
     std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
     std::cout << " DebugString : " << res.DebugString() << std::endl;
 }
+
 
 void service_api_test::test_begin(std::uint64_t& handle) {
     ::request::Request r{};
@@ -246,7 +329,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
         ::request::Request r{};
         auto* stmt = r.mutable_execute_statement();
         stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_sql()->assign("insert into T0(C0, C1) values (1, 1.0)");
+        stmt->mutable_sql()->assign("insert into T0(C0, C1) values (1, 10.0)");
         r.mutable_session_handle()->set_handle(1);
         auto s = serialize(r);
 
@@ -300,6 +383,18 @@ TEST_F(service_api_test, execute_statement_and_query) {
         EXPECT_TRUE(meta.columns(0).nullable());
         EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
         EXPECT_TRUE(meta.columns(1).nullable());
+        {
+            ASSERT_TRUE(res->channel_);
+            auto& ch = *res->channel_;
+            ASSERT_EQ(1, ch.buffers_.size());
+            ASSERT_TRUE(ch.buffers_[0]);
+            auto& buf = *ch.buffers_[0];
+            jogasaki::api::record* rec{};
+            auto m = create_record_meta(meta);
+            auto r = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+            auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
+            EXPECT_EQ(exp, r);
+        }
     }
     test_commit(tx_handle);
 }
@@ -389,6 +484,33 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     test_commit(tx_handle);
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
+}
+TEST_F(service_api_test, msgpack1) {
+    // verify msgpack behavior
+    using namespace std::string_view_literals;
+    std::stringstream ss;
+    {
+        msgpack::pack(ss, msgpack::type::nil_t());
+        std::int32_t i32{1};
+        msgpack::pack(ss, i32);
+        std::int64_t i64{2};
+        msgpack::pack(ss, i64);
+        float f4{10.0};
+        msgpack::pack(ss, f4);
+        float f8{11.0};
+        msgpack::pack(ss, f8);
+        msgpack::pack(ss, "ABC"sv);
+    }
+
+    std::string str{ss.str()};
+    std::size_t offset{};
+    std::int32_t i32{};
+    std::int64_t i64{};
+    EXPECT_FALSE(extract(str, i32, offset));
+    EXPECT_TRUE(extract(str, i32, offset));
+    EXPECT_EQ(1, i32);
+    EXPECT_TRUE(extract(str, i64, offset));
+    EXPECT_EQ(2, i64);
 }
 
 }

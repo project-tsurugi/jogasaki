@@ -42,6 +42,7 @@ public:
 
     status write(char const* data, std::size_t length) override {
         std::memcpy(data_ + size_, data, length);
+        size_ += length;
         return status::ok;
     }
 
@@ -49,10 +50,9 @@ public:
         return status::ok;
     }
 
-protected:
-    char* data_{};
-    std::size_t capacity_{};
-    std::size_t size_{};
+    char* data_{};  //NOLINT
+    std::size_t capacity_{};  //NOLINT
+    std::size_t size_{};  //NOLINT
 };
 
 template<std::size_t Size>
@@ -75,11 +75,11 @@ public:
         payload_(payload)
     {}
 
-    std::string_view payload() const override {
+    [[nodiscard]] std::string_view payload() const override {
         return payload_;
     }
 
-    std::string payload_{};
+    std::string payload_{};  //NOLINT
 };
 
 class test_channel : public data_channel {
@@ -102,8 +102,7 @@ public:
         return status::ok;
     }
 
-private:
-    std::vector<std::shared_ptr<test_writer>> buffers_{};
+    std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
 };
 
 class test_response : public response {
@@ -138,11 +137,10 @@ public:
         return status::ok;
     }
 
-
-    std::string body_{};
-    std::unique_ptr<data_channel> channel_{};
-    std::string message_{};
-    response_code code_{};
+    std::string body_{};  //NOLINT
+    std::unique_ptr<test_channel> channel_{};  //NOLINT
+    std::string message_{};  //NOLINT
+    response_code code_{};  //NOLINT
 };
 
 class payload {
@@ -161,8 +159,6 @@ public:
         request_.release_session_handle();
         return str_;
     }
-
-
 
     std::string str_{};
     ::request::Request request_{};

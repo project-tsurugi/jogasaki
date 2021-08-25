@@ -108,30 +108,33 @@ jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto
     return meta;
 }
 
-mock::basic_record deserialize_msg(std::string_view data, jogasaki::meta::record_meta& meta) {
-    mock::basic_record record{maybe_shared_ptr{&meta}};
-    auto ref = record.ref();
+std::vector<mock::basic_record> deserialize_msg(std::string_view data, jogasaki::meta::record_meta& meta) {
+    std::vector<mock::basic_record> ret{};
     std::size_t offset{};
-    for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
-        switch (meta.at(index).kind()) {
-            case jogasaki::meta::field_type_kind::int4: set_value<std::int32_t>(data, offset, ref, index, meta); break;
-            case jogasaki::meta::field_type_kind::int8: set_value<std::int64_t>(data, offset, ref, index, meta); break;
-            case jogasaki::meta::field_type_kind::float4: set_value<float>(data, offset, ref, index, meta); break;
-            case jogasaki::meta::field_type_kind::float8: set_value<double>(data, offset, ref, index, meta); break;
-            case jogasaki::meta::field_type_kind::character: {
-                std::string v;
-                if (extract(data, v, offset)) {
-                    record.ref().set_value(meta.value_offset(index), accessor::text{v});
-                } else {
-                    set_null(record.ref(), index, meta);
+    while(offset < data.size()) {
+        auto& record = ret.emplace_back(maybe_shared_ptr{&meta});
+        auto ref = record.ref();
+        for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
+            switch (meta.at(index).kind()) {
+                case jogasaki::meta::field_type_kind::int4: set_value<std::int32_t>(data, offset, ref, index, meta); break;
+                case jogasaki::meta::field_type_kind::int8: set_value<std::int64_t>(data, offset, ref, index, meta); break;
+                case jogasaki::meta::field_type_kind::float4: set_value<float>(data, offset, ref, index, meta); break;
+                case jogasaki::meta::field_type_kind::float8: set_value<double>(data, offset, ref, index, meta); break;
+                case jogasaki::meta::field_type_kind::character: {
+                    std::string v;
+                    if (extract(data, v, offset)) {
+                        record.ref().set_value(meta.value_offset(index), accessor::text{v});
+                    } else {
+                        set_null(record.ref(), index, meta);
+                    }
+                    break;
                 }
-                break;
+                default:
+                    std::abort();
             }
-            default:
-                std::abort();
         }
     }
-    return record;
+    return ret;
 }
 
 class service_api_test :
@@ -203,8 +206,8 @@ std::string serialize(::request::Request& r) {
     if (!r.SerializeToString(&s)) {
         std::abort();
     }
-    std::cout << " DebugString : " << r.DebugString() << std::endl;
-    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
+//    std::cout << " DebugString : " << r.DebugString() << std::endl;
+//    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
     return s;
 }
 
@@ -212,10 +215,9 @@ void deserialize(std::string_view s, ::response::Response& res) {
     if (!res.ParseFromString(std::string(s))) {
         std::abort();
     }
-    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
-    std::cout << " DebugString : " << res.DebugString() << std::endl;
+//    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
+//    std::cout << " DebugString : " << res.DebugString() << std::endl;
 }
-
 
 void service_api_test::test_begin(std::uint64_t& handle) {
     ::request::Request r{};
@@ -389,11 +391,11 @@ TEST_F(service_api_test, execute_statement_and_query) {
             ASSERT_EQ(1, ch.buffers_.size());
             ASSERT_TRUE(ch.buffers_[0]);
             auto& buf = *ch.buffers_[0];
-            jogasaki::api::record* rec{};
             auto m = create_record_meta(meta);
-            auto r = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+            ASSERT_EQ(1, v.size());
             auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-            EXPECT_EQ(exp, r);
+            EXPECT_EQ(exp, v[0]);
         }
     }
     test_commit(tx_handle);
@@ -414,6 +416,13 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto* stmt = r.mutable_execute_prepared_statement();
         stmt->mutable_transaction_handle()->set_handle(tx_handle);
         stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
+        auto* params = stmt->mutable_parameters();
+        auto* c0 = params->add_parameters();
+        c0->set_name("c0");
+        c0->set_int8_value(1);
+        auto* c1 = params->add_parameters();
+        c1->set_name("c1");
+        c1->set_float8_value(10.0);
         r.mutable_session_handle()->set_handle(1);
         auto s = serialize(r);
 
@@ -435,7 +444,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     std::uint64_t query_handle{};
     test_prepare(
         query_handle,
-        "select * from T0 where c0 = :c0 and c1 = :c1",
+        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
         std::pair{"c0"s, ::common::DataType::INT8},
         std::pair{"c1"s, ::common::DataType::FLOAT8}
     );
@@ -448,10 +457,10 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto* params = stmt->mutable_parameters();
         auto* c0 = params->add_parameters();
         c0->set_name("c0");
-        c0->set_int8_value(0);
+        c0->set_int8_value(1);
         auto* c1 = params->add_parameters();
         c1->set_name("c1");
-        c1->set_float8_value(0.0);
+        c1->set_float8_value(10.0);
         r.mutable_session_handle()->set_handle(1);
         auto s = serialize(r);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
@@ -474,24 +483,39 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         ASSERT_TRUE(rsinfo.has_record_meta());
         auto meta = rsinfo.record_meta();
         ASSERT_EQ(2, meta.columns_size());
-        meta.columns(0).type();
 
         EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
         EXPECT_TRUE(meta.columns(0).nullable());
         EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
         EXPECT_TRUE(meta.columns(1).nullable());
+        {
+            ASSERT_TRUE(res->channel_);
+            auto& ch = *res->channel_;
+            ASSERT_EQ(1, ch.buffers_.size());
+            ASSERT_TRUE(ch.buffers_[0]);
+            auto& buf = *ch.buffers_[0];
+            ASSERT_LT(0, buf.size_);
+            auto m = create_record_meta(meta);
+            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+            ASSERT_EQ(1, v.size());
+            auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
+            EXPECT_EQ(exp, v[0]);
+        }
     }
     test_commit(tx_handle);
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
 }
+
 TEST_F(service_api_test, msgpack1) {
     // verify msgpack behavior
     using namespace std::string_view_literals;
     std::stringstream ss;
     {
-        msgpack::pack(ss, msgpack::type::nil_t());
+        msgpack::pack(ss, msgpack::type::nil_t()); // nil can be put without specifying the type
         std::int32_t i32{1};
+        msgpack::pack(ss, i32);
+        i32 = 100000;
         msgpack::pack(ss, i32);
         std::int64_t i64{2};
         msgpack::pack(ss, i64);
@@ -506,11 +530,149 @@ TEST_F(service_api_test, msgpack1) {
     std::size_t offset{};
     std::int32_t i32{};
     std::int64_t i64{};
-    EXPECT_FALSE(extract(str, i32, offset));
+    EXPECT_FALSE(extract(str, i32, offset));  // nil can be read as any type
+    ASSERT_EQ(1, offset);
     EXPECT_TRUE(extract(str, i32, offset));
     EXPECT_EQ(1, i32);
+    ASSERT_EQ(2, offset);
+    EXPECT_TRUE(extract(str, i32, offset));
+    EXPECT_EQ(100000, i32);
+    ASSERT_EQ(7, offset);
     EXPECT_TRUE(extract(str, i64, offset));
     EXPECT_EQ(2, i64);
+    ASSERT_EQ(8, offset);
 }
 
+TEST_F(service_api_test, data_types) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T1(C0, C1, C2, C3, C4) values (:c0, :c1, :c2, :c3, c4)",
+        std::pair{"c0"s, ::common::DataType::INT4},
+        std::pair{"c1"s, ::common::DataType::INT8},
+        std::pair{"c2"s, ::common::DataType::FLOAT8},
+        std::pair{"c3"s, ::common::DataType::FLOAT4},
+        std::pair{"c4"s, ::common::DataType::CHARACTER}
+    );
+    for(std::size_t i=0; i < 3; ++i) {
+        ::request::Request r{};
+        auto* stmt = r.mutable_execute_prepared_statement();
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+        stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
+        r.mutable_session_handle()->set_handle(1);
+
+        auto* params = stmt->mutable_parameters();
+        auto* c0 = params->add_parameters();
+        c0->set_name("c0");
+        c0->set_int4_value(i);
+        auto* c1 = params->add_parameters();
+        c1->set_name("c1");
+        c1->set_int8_value(i);
+        auto* c2 = params->add_parameters();
+        c2->set_name("c2");
+        c2->set_float8_value(i);
+        auto* c3 = params->add_parameters();
+        c3->set_name("c3");
+        c3->set_float4_value(i);
+        auto* c4 = params->add_parameters();
+        c4->set_name("c4");
+        c4->set_character_value(std::to_string(i));
+
+        auto s = serialize(r);
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_result_only());
+        auto& ro = resp.result_only();
+        ASSERT_TRUE(ro.has_success());
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select C0, C1, C2, C3, C4 from T1 where C1 > :c1 and C2 > :c2 and C4 > :c4 order by C0",
+        std::pair{"c1"s, ::common::DataType::INT8},
+        std::pair{"c2"s, ::common::DataType::FLOAT8},
+        std::pair{"c4"s, ::common::DataType::CHARACTER}
+    );
+    test_begin(tx_handle);
+    {
+        ::request::Request r{};
+        auto* stmt = r.mutable_execute_prepared_query();
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+        stmt->mutable_prepared_statement_handle()->set_handle(query_handle);
+        auto* params = stmt->mutable_parameters();
+        auto* c1 = params->add_parameters();
+        c1->set_name("c1");
+        c1->set_int8_value(0);
+        auto* c2 = params->add_parameters();
+        c2->set_name("c2");
+        c2->set_float8_value(0.0);
+        auto* c4 = params->add_parameters();
+        c4->set_name("c4");
+        c4->set_character_value("0");
+        r.mutable_session_handle()->set_handle(1);
+        auto s = serialize(r);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        ::response::Response resp{};
+        deserialize(res->body_, resp);
+        ASSERT_TRUE(resp.has_execute_query());
+        auto& eq = resp.execute_query();
+
+        ASSERT_FALSE(eq.has_error());
+        ASSERT_TRUE(eq.has_result_set_info());
+        auto& rsinfo = eq.result_set_info();
+        std::cout << "name : " << rsinfo.name() << std::endl;
+        ASSERT_TRUE(rsinfo.has_record_meta());
+        auto meta = rsinfo.record_meta();
+        ASSERT_EQ(5, meta.columns_size());
+
+        EXPECT_EQ(::common::DataType::INT4, meta.columns(0).type());
+        EXPECT_TRUE(meta.columns(0).nullable()); //TODO
+        EXPECT_EQ(::common::DataType::INT8, meta.columns(1).type());
+        EXPECT_TRUE(meta.columns(1).nullable());
+        EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(2).type());
+        EXPECT_TRUE(meta.columns(2).nullable());
+        EXPECT_EQ(::common::DataType::FLOAT4, meta.columns(3).type());
+        EXPECT_TRUE(meta.columns(3).nullable());
+        EXPECT_EQ(::common::DataType::CHARACTER, meta.columns(4).type());
+        EXPECT_TRUE(meta.columns(4).nullable());
+        {
+            ASSERT_TRUE(res->channel_);
+            auto& ch = *res->channel_;
+            ASSERT_EQ(1, ch.buffers_.size());
+            ASSERT_TRUE(ch.buffers_[0]);
+            auto& buf = *ch.buffers_[0];
+            ASSERT_LT(0, buf.size_);
+            std::cout << "buf size : " << buf.size_ << std::endl;
+            auto m = create_record_meta(meta);
+            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+            ASSERT_EQ(2, v.size());
+            auto exp1 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(1, 1, 1.0, 1.0, accessor::text{"1"sv});
+            auto exp2 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(2, 2, 2.0, 2.0, accessor::text{"2"sv});
+            EXPECT_EQ(exp1, v[0]);
+            EXPECT_EQ(exp2, v[1]);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
 }

@@ -59,8 +59,6 @@ add_library(${ENGINE}
         ${GENERATED_PROTO_SRCS}
 )
 
-message("generated proto : ${GENERATED_PROTO_SRCS}")
-
 add_dependencies(${ENGINE}
         build_protos
         )

@@ -33,9 +33,9 @@
 #include <tateyama/api/endpoint/response.h>
 #include <jogasaki/kvs/database.h>
 
+#include "schema.pb.h"
 #include "request.pb.h"
 #include "response.pb.h"
-#include "common.pb.h"
 #include "common.pb.h"
 
 namespace tateyama::api::endpoint::impl {
@@ -46,7 +46,7 @@ tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::endpoint::request const> req,
     std::shared_ptr<tateyama::api::endpoint::response> res
 ) {
-    ::request::Request proto_req;
+    ::request::Request proto_req{};
     if (!proto_req.ParseFromString(std::string(req->payload()))) {
         LOG(ERROR) << "parse error" << std::endl;
     } else {
@@ -59,10 +59,9 @@ tateyama::status service::operator()(
             {
                 if (!transaction_) {
                     if (transaction_ = db_->create_transaction(); transaction_ != nullptr) {
-                        ::common::Transaction t;
-                        ::response::Begin b;
-                        ::response::Response r;
-
+                        ::common::Transaction t{};
+                        ::response::Begin b{};
+                        ::response::Response r{};
                         t.set_handle(++transaction_id_);
                         b.set_allocated_transaction_handle(&t);
                         r.set_allocated_begin(&b);
@@ -81,43 +80,42 @@ tateyama::status service::operator()(
             VLOG(1) << "prepare" << std::endl;
             {
                 std::size_t sid = prepared_statements_index_;
-
-                auto pp = proto_req.mutable_prepare();
-                auto hvs = pp->mutable_host_variables();
-                auto sql = pp->mutable_sql();
-                VLOG(1)
-                    << *sql
-                    << std::endl;
+                if(! proto_req.has_prepare()) LOG(WARNING) << "missing prepare";
+                auto& pp = proto_req.prepare();
+                auto& hvs = pp.host_variables();
+                auto& sql = pp.sql();
+                if(sql.empty()) LOG(WARNING) << "missing sql";
+                VLOG(1) << sql << std::endl;
                 if (prepared_statements_.size() < (sid + 1)) {
                     prepared_statements_.resize(sid + 1);
                 }
 
-                for(std::size_t i = 0; i < static_cast<std::size_t>(hvs->variables_size()) ;i++) {
-                    auto hv = hvs->mutable_variables(i);
-                    switch(hv->type()) {
+                for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
+                    auto& hv = hvs.variables(i);
+                    switch(hv.type()) {
                         case ::common::DataType::INT4:
-                            db_->register_variable(hv->name(), jogasaki::api::field_type_kind::int4);
+                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int4);
                             break;
                         case ::common::DataType::INT8:
-                            db_->register_variable(hv->name(), jogasaki::api::field_type_kind::int8);
+                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int8);
                             break;
                         case ::common::DataType::FLOAT4:
-                            db_->register_variable(hv->name(), jogasaki::api::field_type_kind::float4);
+                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float4);
                             break;
                         case ::common::DataType::FLOAT8:
-                            db_->register_variable(hv->name(), jogasaki::api::field_type_kind::float8);
+                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float8);
                             break;
                         case ::common::DataType::CHARACTER:
-                            db_->register_variable(hv->name(), jogasaki::api::field_type_kind::character);
+                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::character);
                             break;
                         default:
                             std::abort();
                     }
                 }
-                if(auto rc = db_->prepare(*sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
-                    ::common::PreparedStatement ps;
-                    ::response::Prepare p;
-                    ::response::Response r;
+                if(auto rc = db_->prepare(sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
+                    ::common::PreparedStatement ps{};
+                    ::response::Prepare p{};
+                    ::response::Response r{};
 
                     ps.set_handle(sid);
                     p.set_allocated_prepared_statement_handle(&ps);
@@ -135,21 +133,21 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kExecuteStatement:
             VLOG(1) << "execute_statement" << std::endl;
             {
-                auto eq = proto_req.mutable_execute_statement();
-                VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle()
-                    << *(eq->mutable_sql())
-                    << std::endl;
-                if (auto err = execute_statement(*(eq->mutable_sql())); err == nullptr) {
-                    ::response::Success s;
-                    ::response::ResultOnly ok;
-                    ::response::Response r;
-
-                    ok.set_allocated_success(&s);
-                    r.set_allocated_result_only(&ok);
-
+                if(! proto_req.has_execute_statement()) LOG(WARNING) << "missing execute_statement";
+                auto& eq = proto_req.execute_statement();
+                if(! eq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+                auto& sql = eq.sql();
+                if(sql.empty()) LOG(WARNING) << "missing sql";
+                VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
+                if (auto err = execute_statement(sql); err == nullptr) {
+                    ::response::Success s{};
+                    ::response::ResultOnly ro{};
+                    ::response::Response r{};
+                    ro.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ro);
                     reply(*res, r);
                     r.release_result_only();
-                    ok.release_success();
+                    ro.release_success();
                 } else {
                     error<::response::ResultOnly>(*res, err);
                 }
@@ -158,28 +156,28 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kExecuteQuery:
             VLOG(1) << "execute_query" << std::endl;
             {
-                auto eq = proto_req.mutable_execute_query();
-                VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle()
-                    << *(eq->mutable_sql())
-                    << std::endl;
+                if(! proto_req.has_execute_query()) LOG(WARNING) << "missing execute_query";
+                auto& eq = proto_req.execute_query();
+                if(! eq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+                auto& sql = eq.sql();
+                if(sql.empty()) LOG(WARNING) << "missing sql";
+                VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
 
-                if (auto err = execute_query(*res, *(eq->mutable_sql()), ++resultset_id_); err == nullptr) {
-                    schema::RecordMeta meta;
-                    ::response::ResultSetInfo i;
-                    ::response::ExecuteQuery e;
-                    ::response::Response r;
+                if (auto err = execute_query(*res, sql, ++resultset_id_); err == nullptr) {
+                    ::schema::RecordMeta meta{};
+                    ::response::ResultSetInfo i{};
+                    ::response::ExecuteQuery e{};
+                    ::response::Response r{};
 
                     set_metadata(resultset_id_, meta);
                     i.set_name(cursors_.at(resultset_id_).wire_name_);
                     i.set_allocated_record_meta(&meta);
                     e.set_allocated_result_set_info(&i);
                     r.set_allocated_execute_query(&e);
-
                     reply(*res, r);
                     r.release_execute_query();
                     e.release_result_set_info();
                     i.release_record_meta();
-
                     next(resultset_id_);
                     release_writers(*res, cursors_.at(resultset_id_));
                 } else {
@@ -190,26 +188,26 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kExecutePreparedStatement:
             VLOG(1) << "execute_prepared_statement" << std::endl;
             {
-                auto pq = proto_req.mutable_execute_prepared_statement();
-                auto ph = pq->mutable_prepared_statement_handle();
-                auto sid = ph->handle();
-                VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle()
-                    << "sid:" << sid
-                    << std::endl;
+                if(! proto_req.has_execute_prepared_statement()) LOG(WARNING) << "missing execute_prepared_statement";
+                auto& pq = proto_req.execute_prepared_statement();
+                if(! pq.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
+                auto& ph = pq.prepared_statement_handle();
+                if(! pq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+                auto sid = ph.handle();
+                VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
 
                 auto params = jogasaki::api::create_parameter_set();
-                set_params(pq->mutable_parameters(), params);
+                set_params(pq.parameters(), params);
                 if (auto err = execute_prepared_statement(sid, *params); err == nullptr) {
-                    ::response::Success s;
-                    ::response::ResultOnly ok;
-                    ::response::Response r;
+                    ::response::Success s{};
+                    ::response::ResultOnly ro{};
+                    ::response::Response r{};
 
-                    ok.set_allocated_success(&s);
-                    r.set_allocated_result_only(&ok);
-
+                    ro.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ro);
                     reply(*res, r);
                     r.release_result_only();
-                    ok.release_success();
+                    ro.release_success();
                 } else {
                     error<::response::ResultOnly>(*res, err);
                 }
@@ -218,28 +216,28 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kExecutePreparedQuery:
             VLOG(1) << "execute_prepared_query" << std::endl;
             {
-                auto pq = proto_req.mutable_execute_prepared_query();
-                auto ph = pq->mutable_prepared_statement_handle();
-                auto sid = ph->handle();
-                VLOG(1) << "tx:" << pq->mutable_transaction_handle()->handle()
-                    << "sid:" << sid
-                    << std::endl;
+                if(! proto_req.has_execute_prepared_query()) LOG(WARNING) << "missing execute_prepared_query";
+                auto& pq = proto_req.execute_prepared_query();
+                if(! pq.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
+                auto& ph = pq.prepared_statement_handle();
+                if(! pq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+                auto sid = ph.handle();
+                VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
 
                 auto params = jogasaki::api::create_parameter_set();
-                set_params(pq->mutable_parameters(), params);
+                set_params(pq.parameters(), params);
 
                 if(auto err = execute_prepared_query(*res, sid, *params, ++resultset_id_); err == nullptr) {
-                    schema::RecordMeta meta;
-                    ::response::ResultSetInfo i;
-                    ::response::ExecuteQuery e;
-                    ::response::Response r;
+                    ::schema::RecordMeta meta{};
+                    ::response::ResultSetInfo i{};
+                    ::response::ExecuteQuery e{};
+                    ::response::Response r{};
 
                     set_metadata(resultset_id_, meta);
                     i.set_name(cursors_.at(resultset_id_).wire_name_);
                     i.set_allocated_record_meta(&meta);
                     e.set_allocated_result_set_info(&i);
                     r.set_allocated_execute_query(&e);
-
                     reply(*res, r);
                     r.release_execute_query();
                     e.release_result_set_info();
@@ -255,23 +253,22 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kCommit:
             VLOG(1) << "commit" << std::endl;
             {
+                if(! proto_req.has_commit()) LOG(WARNING) << "missing commit";
+                auto& cm = proto_req.commit();
+                if(! cm.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+                auto& th = cm.transaction_handle();
+                VLOG(1) << "tx:" << th.handle() << std::endl;
                 if (transaction_) {
                     if(auto rc = transaction_->commit(); rc == jogasaki::status::ok) {
-                        auto eq = proto_req.mutable_commit();
-                        VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle()
-                            << std::endl;
+                        ::response::Success s{};
+                        ::response::ResultOnly ro{};
+                        ::response::Response r{};
 
-                        ::response::Success s;
-                        ::response::ResultOnly ok;
-                        ::response::Response r;
-
-                        ok.set_allocated_success(&s);
-                        r.set_allocated_result_only(&ok);
-
+                        ro.set_allocated_success(&s);
+                        r.set_allocated_result_only(&ro);
                         reply(*res, r);
                         r.release_result_only();
-                        ok.release_success();
-
+                        ro.release_success();
                         transaction_ = nullptr;
                     } else {
                         error<::response::ResultOnly>(*res, "error in transaction_->commit()");
@@ -284,22 +281,22 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kRollback:
             VLOG(1) << "rollback" << std::endl;
             {
+                if(! proto_req.has_rollback()) LOG(WARNING) << "missing rollback";
+                auto& rb = proto_req.rollback();
+                if(! rb.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+                auto& th = rb.transaction_handle();
+                VLOG(1) << "tx:" << th.handle() << std::endl;
                 if (transaction_) {
                     if(auto rc = transaction_->abort(); rc == jogasaki::status::ok) {
-                        auto eq = proto_req.mutable_rollback();
-                        VLOG(1) << "tx:" << eq->mutable_transaction_handle()->handle() << std::endl;
+                        ::response::Success s{};
+                        ::response::ResultOnly ro{};
+                        ::response::Response r{};
 
-                        ::response::Success s;
-                        ::response::ResultOnly ok;
-                        ::response::Response r;
-
-                        ok.set_allocated_success(&s);
-                        r.set_allocated_result_only(&ok);
-
+                        ro.set_allocated_success(&s);
+                        r.set_allocated_result_only(&ro);
                         reply(*res, r);
                         r.release_result_only();
-                        ok.release_success();
-
+                        ro.release_success();
                         transaction_ = nullptr;
                     } else {
                         error<::response::ResultOnly>(*res, "error in transaction_->abort()");
@@ -312,28 +309,25 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kDisposePreparedStatement:
             VLOG(1) << "dispose_prepared_statement" << std::endl;
             {
-                auto dp = proto_req.mutable_dispose_prepared_statement();
-                auto ph = dp->mutable_prepared_statement_handle();
-                auto sid = ph->handle();
-
-                VLOG(1)
-                    << "ps:" << sid
-                    << std::endl;
+                if(! proto_req.has_dispose_prepared_statement()) LOG(WARNING) << "missing dispose_prepared_statement";
+                auto& ds = proto_req.dispose_prepared_statement();
+                if(! ds.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
+                auto& sh = ds.prepared_statement_handle();
+                auto sid = sh.handle();
+                VLOG(1) << "ps:" << sid << std::endl;
 
                 if(prepared_statements_.size() > sid) {
                     if(prepared_statements_.at(sid)) {
                         prepared_statements_.at(sid) = nullptr;
+                        ::response::Success s{};
+                        ::response::ResultOnly ro{};
+                        ::response::Response r{};
 
-                        ::response::Success s;
-                        ::response::ResultOnly ok;
-                        ::response::Response r;
-
-                        ok.set_allocated_success(&s);
-                        r.set_allocated_result_only(&ok);
-
+                        ro.set_allocated_success(&s);
+                        r.set_allocated_result_only(&ro);
                         reply(*res, r);
                         r.release_result_only();
-                        ok.release_success();
+                        ro.release_success();
                     } else {
                         error<::response::ResultOnly>(*res, "cannot find prepared statement with the index given");
                     }
@@ -345,20 +339,21 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kDisconnect:
             VLOG(1) << "disconnect" << std::endl;
             {
-                ::response::Success s;
-                ::response::ResultOnly ok;
-                ::response::Response r;
+                if(! proto_req.has_disconnect()) LOG(WARNING) << "missing disconnect";
+                ::response::Success s{};
+                ::response::ResultOnly ro{};
+                ::response::Response r{};
 
-                ok.set_allocated_success(&s);
-                r.set_allocated_result_only(&ok);
-
+                ro.set_allocated_success(&s);
+                r.set_allocated_result_only(&ro);
                 reply(*res, r);
                 r.release_result_only();
-                ok.release_success();
+                ro.release_success();
             }
             break;
         case ::request::Request::RequestCase::REQUEST_NOT_SET:
             VLOG(1) << "not used" << std::endl;
+            error<::response::ResultOnly>(*res, "cannot find prepared statement with the index given");
             break;
         default:
             LOG(ERROR) << "????" << std::endl;
@@ -500,25 +495,25 @@ void service::next(std::size_t rid) {
     }
 }
 
-void service::set_params(::request::ParameterSet* ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
+void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
 {
-    for (std::size_t i = 0; i < static_cast<std::size_t>(ps->parameters_size()) ;i++) {
-        auto p = ps->mutable_parameters(i);
-        switch (p->value_case()) {
+    for (std::size_t i = 0; i < static_cast<std::size_t>(ps.parameters_size()) ;i++) {
+        auto& p = ps.parameters(i);
+        switch (p.value_case()) {
             case ::request::ParameterSet::Parameter::ValueCase::kInt4Value:
-                params->set_int4(p->name(), p->int4_value());
+                params->set_int4(p.name(), p.int4_value());
                 break;
             case ::request::ParameterSet::Parameter::ValueCase::kInt8Value:
-                params->set_int8(p->name(), p->int8_value());
+                params->set_int8(p.name(), p.int8_value());
                 break;
             case ::request::ParameterSet::Parameter::ValueCase::kFloat4Value:
-                params->set_float4(p->name(), p->float4_value());
+                params->set_float4(p.name(), p.float4_value());
                 break;
             case ::request::ParameterSet::Parameter::ValueCase::kFloat8Value:
-                params->set_float8(p->name(), p->float8_value());
+                params->set_float8(p.name(), p.float8_value());
                 break;
             case ::request::ParameterSet::Parameter::ValueCase::kCharacterValue:
-                params->set_character(p->name(), p->character_value());
+                params->set_character(p.name(), p.character_value());
                 break;
             default:
                 std::cerr << "type undefined" << std::endl;

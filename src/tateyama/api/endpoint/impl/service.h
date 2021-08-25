@@ -91,7 +91,7 @@ private:
         std::size_t, jogasaki::api::parameter_set&, std::size_t
     );
     void set_metadata(std::size_t, schema::RecordMeta&);
-    void set_params(::request::ParameterSet*, std::unique_ptr<jogasaki::api::parameter_set>&);
+    void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {
         cursors_.clear();
         transaction_ = nullptr;

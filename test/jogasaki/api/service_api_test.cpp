@@ -675,4 +675,25 @@ TEST_F(service_api_test, data_types) {
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
 }
+
+TEST_F(service_api_test, protobuf1) {
+    // verify protobuf behavior
+    using namespace std::string_view_literals;
+    std::stringstream ss;
+    ::request::Request req{};
+    EXPECT_FALSE(req.has_begin());
+    EXPECT_FALSE(req.has_session_handle());
+    auto& h = req.session_handle();
+    EXPECT_EQ(0, h.handle());  // default object has zero handle, that means empty
+    auto* session = req.mutable_session_handle();
+    EXPECT_TRUE(req.has_session_handle());
+    req.clear_session_handle();
+    EXPECT_FALSE(req.has_session_handle());
+
+    ::common::Session s;
+    req.set_allocated_session_handle(&s);
+    EXPECT_TRUE(req.has_session_handle());
+    req.release_session_handle();
+    EXPECT_FALSE(req.has_session_handle());
+}
 }

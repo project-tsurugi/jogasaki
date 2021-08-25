@@ -11,6 +11,7 @@
   * mizugaki
   * shakujo (until dependency is removed)
   * fpdecimal
+  * tsubakuro (for proto definition)
   * performance-tools (optional)
 * and see *Dockerfile* section
 

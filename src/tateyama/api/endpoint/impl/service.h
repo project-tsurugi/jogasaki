@@ -105,6 +105,7 @@ private:
         prepared_statements_.clear();
     }
 
+    void release_writers(tateyama::api::endpoint::response& res, Cursor& cursor);
     void reply(endpoint::response& res, ::response::Response &r);
 
     template<typename T>

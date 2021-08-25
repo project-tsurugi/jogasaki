@@ -93,12 +93,12 @@ public:
     }
 
     status release(writer& buf) override {
-        for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
-            if (it->get() == std::addressof(buf)) {
-                buffers_.erase(it);
-                break;
-            }
-        }
+//        for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
+//            if (it->get() == std::addressof(buf)) {
+//                buffers_.erase(it);
+//                break;
+//            }
+//        }
         return status::ok;
     }
 

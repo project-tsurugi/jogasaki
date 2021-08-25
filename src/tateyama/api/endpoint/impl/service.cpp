@@ -54,292 +54,142 @@ tateyama::status service::operator()(
     }
 
     switch (proto_req.request_case()) {
-        case ::request::Request::RequestCase::kBegin:
+        case ::request::Request::RequestCase::kBegin: {
             VLOG(1) << "begin" << std::endl;
-            {
-                if (!transaction_) {
-                    if (transaction_ = db_->create_transaction(); transaction_ != nullptr) {
-                        ::common::Transaction t{};
-                        ::response::Begin b{};
-                        ::response::Response r{};
-                        t.set_handle(++transaction_id_);
-                        b.set_allocated_transaction_handle(&t);
-                        r.set_allocated_begin(&b);
-                        reply(*res, r);
-                        r.release_begin();
-                        b.release_transaction_handle();
-                    } else {
-                        error<::response::Begin>(*res, "error in db_->create_transaction()");
-                    }
+            if (!transaction_) {
+                if (transaction_ = db_->create_transaction(); transaction_ != nullptr) {
+                    ::common::Transaction t{};
+                    ::response::Begin b{};
+                    ::response::Response r{};
+                    t.set_handle(++transaction_id_);
+                    b.set_allocated_transaction_handle(&t);
+                    r.set_allocated_begin(&b);
+                    reply(*res, r);
+                    r.release_begin();
+                    b.release_transaction_handle();
                 } else {
-                    error<::response::Begin>(*res, "transaction has already begun");
+                    error<::response::Begin>(*res, "error in db_->create_transaction()");
                 }
+            } else {
+                error<::response::Begin>(*res, "transaction has already begun");
             }
             break;
-        case ::request::Request::RequestCase::kPrepare:
+        }
+        case ::request::Request::RequestCase::kPrepare: {
             VLOG(1) << "prepare" << std::endl;
-            {
-                std::size_t sid = prepared_statements_index_;
-                if(! proto_req.has_prepare()) LOG(WARNING) << "missing prepare";
-                auto& pp = proto_req.prepare();
-                auto& hvs = pp.host_variables();
-                auto& sql = pp.sql();
-                if(sql.empty()) LOG(WARNING) << "missing sql";
-                VLOG(1) << sql << std::endl;
-                if (prepared_statements_.size() < (sid + 1)) {
-                    prepared_statements_.resize(sid + 1);
-                }
+            std::size_t sid = prepared_statements_index_;
+            auto& pp = proto_req.prepare();
+            auto& hvs = pp.host_variables();
+            auto& sql = pp.sql();
+            if(sql.empty()) LOG(WARNING) << "missing sql";
+            VLOG(1) << sql << std::endl;
+            if (prepared_statements_.size() < (sid + 1)) {
+                prepared_statements_.resize(sid + 1);
+            }
 
-                for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
-                    auto& hv = hvs.variables(i);
-                    switch(hv.type()) {
-                        case ::common::DataType::INT4:
-                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int4);
-                            break;
-                        case ::common::DataType::INT8:
-                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int8);
-                            break;
-                        case ::common::DataType::FLOAT4:
-                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float4);
-                            break;
-                        case ::common::DataType::FLOAT8:
-                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float8);
-                            break;
-                        case ::common::DataType::CHARACTER:
-                            db_->register_variable(hv.name(), jogasaki::api::field_type_kind::character);
-                            break;
-                        default:
-                            std::abort();
-                    }
-                }
-                if(auto rc = db_->prepare(sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
-                    ::common::PreparedStatement ps{};
-                    ::response::Prepare p{};
-                    ::response::Response r{};
-
-                    ps.set_handle(sid);
-                    p.set_allocated_prepared_statement_handle(&ps);
-                    r.set_allocated_prepare(&p);
-                    reply(*res, r);
-                    r.release_prepare();
-                    p.release_prepared_statement_handle();
-
-                    prepared_statements_index_ = sid + 1;
-                } else {
-                    error<::response::Prepare>(*res, "error in db_->prepare()");
+            for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
+                auto& hv = hvs.variables(i);
+                switch(hv.type()) {
+                    case ::common::DataType::INT4:
+                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int4);
+                        break;
+                    case ::common::DataType::INT8:
+                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int8);
+                        break;
+                    case ::common::DataType::FLOAT4:
+                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float4);
+                        break;
+                    case ::common::DataType::FLOAT8:
+                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float8);
+                        break;
+                    case ::common::DataType::CHARACTER:
+                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::character);
+                        break;
+                    default:
+                        std::abort();
                 }
             }
+            if(auto rc = db_->prepare(sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
+                ::common::PreparedStatement ps{};
+                ::response::Prepare p{};
+                ::response::Response r{};
+
+                ps.set_handle(sid);
+                p.set_allocated_prepared_statement_handle(&ps);
+                r.set_allocated_prepare(&p);
+                reply(*res, r);
+                r.release_prepare();
+                p.release_prepared_statement_handle();
+
+                prepared_statements_index_ = sid + 1;
+            } else {
+                error<::response::Prepare>(*res, "error in db_->prepare()");
+            }
             break;
-        case ::request::Request::RequestCase::kExecuteStatement:
+        }
+        case ::request::Request::RequestCase::kExecuteStatement: {
             VLOG(1) << "execute_statement" << std::endl;
-            {
-                if(! proto_req.has_execute_statement()) LOG(WARNING) << "missing execute_statement";
-                auto& eq = proto_req.execute_statement();
-                if(! eq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-                auto& sql = eq.sql();
-                if(sql.empty()) LOG(WARNING) << "missing sql";
-                VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
-                if (auto err = execute_statement(sql); err == nullptr) {
-                    ::response::Success s{};
-                    ::response::ResultOnly ro{};
-                    ::response::Response r{};
-                    ro.set_allocated_success(&s);
-                    r.set_allocated_result_only(&ro);
-                    reply(*res, r);
-                    r.release_result_only();
-                    ro.release_success();
-                } else {
-                    error<::response::ResultOnly>(*res, err);
-                }
+            auto& eq = proto_req.execute_statement();
+            if(! eq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+            auto& sql = eq.sql();
+            if(sql.empty()) LOG(WARNING) << "missing sql";
+            VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
+            if (auto err = execute_statement(sql); err == nullptr) {
+                ::response::Success s{};
+                ::response::ResultOnly ro{};
+                ::response::Response r{};
+                ro.set_allocated_success(&s);
+                r.set_allocated_result_only(&ro);
+                reply(*res, r);
+                r.release_result_only();
+                ro.release_success();
+            } else {
+                error<::response::ResultOnly>(*res, err);
             }
             break;
-        case ::request::Request::RequestCase::kExecuteQuery:
+        }
+        case ::request::Request::RequestCase::kExecuteQuery: {
             VLOG(1) << "execute_query" << std::endl;
-            {
-                if(! proto_req.has_execute_query()) LOG(WARNING) << "missing execute_query";
-                auto& eq = proto_req.execute_query();
-                if(! eq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-                auto& sql = eq.sql();
-                if(sql.empty()) LOG(WARNING) << "missing sql";
-                VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
+            auto& eq = proto_req.execute_query();
+            if(! eq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+            auto& sql = eq.sql();
+            if(sql.empty()) LOG(WARNING) << "missing sql";
+            VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
 
-                if (auto err = execute_query(*res, sql, ++resultset_id_); err == nullptr) {
-                    ::schema::RecordMeta meta{};
-                    ::response::ResultSetInfo i{};
-                    ::response::ExecuteQuery e{};
-                    ::response::Response r{};
+            if (auto err = execute_query(*res, sql, ++resultset_id_); err == nullptr) {
+                ::schema::RecordMeta meta{};
+                ::response::ResultSetInfo i{};
+                ::response::ExecuteQuery e{};
+                ::response::Response r{};
 
-                    set_metadata(resultset_id_, meta);
-                    i.set_name(cursors_.at(resultset_id_).wire_name_);
-                    i.set_allocated_record_meta(&meta);
-                    e.set_allocated_result_set_info(&i);
-                    r.set_allocated_execute_query(&e);
-                    reply(*res, r);
-                    r.release_execute_query();
-                    e.release_result_set_info();
-                    i.release_record_meta();
-                    next(resultset_id_);
-                    release_writers(*res, cursors_.at(resultset_id_));
-                } else {
-                    error<::response::ExecuteQuery>(*res, err);
-                }
+                set_metadata(resultset_id_, meta);
+                i.set_name(cursors_.at(resultset_id_).wire_name_);
+                i.set_allocated_record_meta(&meta);
+                e.set_allocated_result_set_info(&i);
+                r.set_allocated_execute_query(&e);
+                reply(*res, r);
+                r.release_execute_query();
+                e.release_result_set_info();
+                i.release_record_meta();
+                next(resultset_id_);
+                release_writers(*res, cursors_.at(resultset_id_));
+            } else {
+                error<::response::ExecuteQuery>(*res, err);
             }
             break;
-        case ::request::Request::RequestCase::kExecutePreparedStatement:
+        }
+        case ::request::Request::RequestCase::kExecutePreparedStatement: {
             VLOG(1) << "execute_prepared_statement" << std::endl;
-            {
-                if(! proto_req.has_execute_prepared_statement()) LOG(WARNING) << "missing execute_prepared_statement";
-                auto& pq = proto_req.execute_prepared_statement();
-                if(! pq.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
-                auto& ph = pq.prepared_statement_handle();
-                if(! pq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-                auto sid = ph.handle();
-                VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
+            auto& pq = proto_req.execute_prepared_statement();
+            if(! pq.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
+            auto& ph = pq.prepared_statement_handle();
+            if(! pq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+            auto sid = ph.handle();
+            VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
 
-                auto params = jogasaki::api::create_parameter_set();
-                set_params(pq.parameters(), params);
-                if (auto err = execute_prepared_statement(sid, *params); err == nullptr) {
-                    ::response::Success s{};
-                    ::response::ResultOnly ro{};
-                    ::response::Response r{};
-
-                    ro.set_allocated_success(&s);
-                    r.set_allocated_result_only(&ro);
-                    reply(*res, r);
-                    r.release_result_only();
-                    ro.release_success();
-                } else {
-                    error<::response::ResultOnly>(*res, err);
-                }
-            }
-            break;
-        case ::request::Request::RequestCase::kExecutePreparedQuery:
-            VLOG(1) << "execute_prepared_query" << std::endl;
-            {
-                if(! proto_req.has_execute_prepared_query()) LOG(WARNING) << "missing execute_prepared_query";
-                auto& pq = proto_req.execute_prepared_query();
-                if(! pq.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
-                auto& ph = pq.prepared_statement_handle();
-                if(! pq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-                auto sid = ph.handle();
-                VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
-
-                auto params = jogasaki::api::create_parameter_set();
-                set_params(pq.parameters(), params);
-
-                if(auto err = execute_prepared_query(*res, sid, *params, ++resultset_id_); err == nullptr) {
-                    ::schema::RecordMeta meta{};
-                    ::response::ResultSetInfo i{};
-                    ::response::ExecuteQuery e{};
-                    ::response::Response r{};
-
-                    set_metadata(resultset_id_, meta);
-                    i.set_name(cursors_.at(resultset_id_).wire_name_);
-                    i.set_allocated_record_meta(&meta);
-                    e.set_allocated_result_set_info(&i);
-                    r.set_allocated_execute_query(&e);
-                    reply(*res, r);
-                    r.release_execute_query();
-                    e.release_result_set_info();
-                    i.release_record_meta();
-
-                    next(resultset_id_);
-                    release_writers(*res, cursors_.at(resultset_id_));
-                } else {
-                    error<::response::ExecuteQuery>(*res, err);
-                }
-            }
-            break;
-        case ::request::Request::RequestCase::kCommit:
-            VLOG(1) << "commit" << std::endl;
-            {
-                if(! proto_req.has_commit()) LOG(WARNING) << "missing commit";
-                auto& cm = proto_req.commit();
-                if(! cm.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-                auto& th = cm.transaction_handle();
-                VLOG(1) << "tx:" << th.handle() << std::endl;
-                if (transaction_) {
-                    if(auto rc = transaction_->commit(); rc == jogasaki::status::ok) {
-                        ::response::Success s{};
-                        ::response::ResultOnly ro{};
-                        ::response::Response r{};
-
-                        ro.set_allocated_success(&s);
-                        r.set_allocated_result_only(&ro);
-                        reply(*res, r);
-                        r.release_result_only();
-                        ro.release_success();
-                        transaction_ = nullptr;
-                    } else {
-                        error<::response::ResultOnly>(*res, "error in transaction_->commit()");
-                    }
-                } else {
-                    error<::response::ResultOnly>(*res, "transaction has not begun");
-                }
-            }
-            break;
-        case ::request::Request::RequestCase::kRollback:
-            VLOG(1) << "rollback" << std::endl;
-            {
-                if(! proto_req.has_rollback()) LOG(WARNING) << "missing rollback";
-                auto& rb = proto_req.rollback();
-                if(! rb.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-                auto& th = rb.transaction_handle();
-                VLOG(1) << "tx:" << th.handle() << std::endl;
-                if (transaction_) {
-                    if(auto rc = transaction_->abort(); rc == jogasaki::status::ok) {
-                        ::response::Success s{};
-                        ::response::ResultOnly ro{};
-                        ::response::Response r{};
-
-                        ro.set_allocated_success(&s);
-                        r.set_allocated_result_only(&ro);
-                        reply(*res, r);
-                        r.release_result_only();
-                        ro.release_success();
-                        transaction_ = nullptr;
-                    } else {
-                        error<::response::ResultOnly>(*res, "error in transaction_->abort()");
-                    }
-                } else {
-                    error<::response::ResultOnly>(*res, "transaction has not begun");
-                }
-            }
-            break;
-        case ::request::Request::RequestCase::kDisposePreparedStatement:
-            VLOG(1) << "dispose_prepared_statement" << std::endl;
-            {
-                if(! proto_req.has_dispose_prepared_statement()) LOG(WARNING) << "missing dispose_prepared_statement";
-                auto& ds = proto_req.dispose_prepared_statement();
-                if(! ds.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
-                auto& sh = ds.prepared_statement_handle();
-                auto sid = sh.handle();
-                VLOG(1) << "ps:" << sid << std::endl;
-
-                if(prepared_statements_.size() > sid) {
-                    if(prepared_statements_.at(sid)) {
-                        prepared_statements_.at(sid) = nullptr;
-                        ::response::Success s{};
-                        ::response::ResultOnly ro{};
-                        ::response::Response r{};
-
-                        ro.set_allocated_success(&s);
-                        r.set_allocated_result_only(&ro);
-                        reply(*res, r);
-                        r.release_result_only();
-                        ro.release_success();
-                    } else {
-                        error<::response::ResultOnly>(*res, "cannot find prepared statement with the index given");
-                    }
-                } else {
-                    error<::response::ResultOnly>(*res, "index is larger than the number of prepred statment registerd");
-                }
-            }
-            break;
-        case ::request::Request::RequestCase::kDisconnect:
-            VLOG(1) << "disconnect" << std::endl;
-            {
-                if(! proto_req.has_disconnect()) LOG(WARNING) << "missing disconnect";
+            auto params = jogasaki::api::create_parameter_set();
+            set_params(pq.parameters(), params);
+            if (auto err = execute_prepared_statement(sid, *params); err == nullptr) {
                 ::response::Success s{};
                 ::response::ResultOnly ro{};
                 ::response::Response r{};
@@ -349,12 +199,144 @@ tateyama::status service::operator()(
                 reply(*res, r);
                 r.release_result_only();
                 ro.release_success();
+            } else {
+                error<::response::ResultOnly>(*res, err);
             }
             break;
-        case ::request::Request::RequestCase::REQUEST_NOT_SET:
-            VLOG(1) << "not used" << std::endl;
-            error<::response::ResultOnly>(*res, "cannot find prepared statement with the index given");
+        }
+        case ::request::Request::RequestCase::kExecutePreparedQuery: {
+            VLOG(1) << "execute_prepared_query" << std::endl;
+            auto& pq = proto_req.execute_prepared_query();
+            if(! pq.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
+            auto& ph = pq.prepared_statement_handle();
+            if(! pq.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+            auto sid = ph.handle();
+            VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
+
+            auto params = jogasaki::api::create_parameter_set();
+            set_params(pq.parameters(), params);
+
+            if(auto err = execute_prepared_query(*res, sid, *params, ++resultset_id_); err == nullptr) {
+                ::schema::RecordMeta meta{};
+                ::response::ResultSetInfo i{};
+                ::response::ExecuteQuery e{};
+                ::response::Response r{};
+
+                set_metadata(resultset_id_, meta);
+                i.set_name(cursors_.at(resultset_id_).wire_name_);
+                i.set_allocated_record_meta(&meta);
+                e.set_allocated_result_set_info(&i);
+                r.set_allocated_execute_query(&e);
+                reply(*res, r);
+                r.release_execute_query();
+                e.release_result_set_info();
+                i.release_record_meta();
+
+                next(resultset_id_);
+                release_writers(*res, cursors_.at(resultset_id_));
+            } else {
+                error<::response::ExecuteQuery>(*res, err);
+            }
             break;
+        }
+        case ::request::Request::RequestCase::kCommit: {
+            VLOG(1) << "commit" << std::endl;
+            auto& cm = proto_req.commit();
+            if(! cm.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+            auto& th = cm.transaction_handle();
+            VLOG(1) << "tx:" << th.handle() << std::endl;
+            if (transaction_) {
+                if(auto rc = transaction_->commit(); rc == jogasaki::status::ok) {
+                    ::response::Success s{};
+                    ::response::ResultOnly ro{};
+                    ::response::Response r{};
+
+                    ro.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ro);
+                    reply(*res, r);
+                    r.release_result_only();
+                    ro.release_success();
+                    transaction_ = nullptr;
+                } else {
+                    error<::response::ResultOnly>(*res, "error in transaction_->commit()");
+                }
+            } else {
+                error<::response::ResultOnly>(*res, "transaction has not begun");
+            }
+            break;
+        }
+        case ::request::Request::RequestCase::kRollback: {
+            VLOG(1) << "rollback" << std::endl;
+            auto& rb = proto_req.rollback();
+            if(! rb.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
+            auto& th = rb.transaction_handle();
+            VLOG(1) << "tx:" << th.handle() << std::endl;
+            if (transaction_) {
+                if(auto rc = transaction_->abort(); rc == jogasaki::status::ok) {
+                    ::response::Success s{};
+                    ::response::ResultOnly ro{};
+                    ::response::Response r{};
+
+                    ro.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ro);
+                    reply(*res, r);
+                    r.release_result_only();
+                    ro.release_success();
+                    transaction_ = nullptr;
+                } else {
+                    error<::response::ResultOnly>(*res, "error in transaction_->abort()");
+                }
+            } else {
+                error<::response::ResultOnly>(*res, "transaction has not begun");
+            }
+            break;
+        }
+        case ::request::Request::RequestCase::kDisposePreparedStatement: {
+            VLOG(1) << "dispose_prepared_statement" << std::endl;
+            auto& ds = proto_req.dispose_prepared_statement();
+            if(! ds.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
+            auto& sh = ds.prepared_statement_handle();
+            auto sid = sh.handle();
+            VLOG(1) << "ps:" << sid << std::endl;
+
+            if(prepared_statements_.size() > sid) {
+                if(prepared_statements_.at(sid)) {
+                    prepared_statements_.at(sid) = nullptr;
+                    ::response::Success s{};
+                    ::response::ResultOnly ro{};
+                    ::response::Response r{};
+
+                    ro.set_allocated_success(&s);
+                    r.set_allocated_result_only(&ro);
+                    reply(*res, r);
+                    r.release_result_only();
+                    ro.release_success();
+                } else {
+                    error<::response::ResultOnly>(*res, "cannot find prepared statement with the index given");
+                }
+            } else {
+                error<::response::ResultOnly>(*res, "index is larger than the number of prepred statment registerd");
+            }
+            break;
+        }
+        case ::request::Request::RequestCase::kDisconnect: {
+            VLOG(1) << "disconnect" << std::endl;
+            ::response::Success s{};
+            ::response::ResultOnly ro{};
+            ::response::Response r{};
+
+            ro.set_allocated_success(&s);
+            r.set_allocated_result_only(&ro);
+            reply(*res, r);
+            r.release_result_only();
+            ro.release_success();
+            break;
+        }
+        case ::request::Request::RequestCase::REQUEST_NOT_SET: {
+            VLOG(1) << "not used" << std::endl;
+            error<::response::ResultOnly>(*res, "invalid request");
+            break;
+        }
         default:
             LOG(ERROR) << "????" << std::endl;
             break;

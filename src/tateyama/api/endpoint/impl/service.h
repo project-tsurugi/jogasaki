@@ -78,8 +78,6 @@ private:
 
     tateyama::api::endpoint::data_channel* channel_{};
 
-//    friend int backend_main(int, char **);
-
     [[nodiscard]] const char* execute_statement(std::string_view);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
@@ -92,8 +90,6 @@ private:
         tateyama::api::endpoint::response& res,
         std::size_t, jogasaki::api::parameter_set&, std::size_t
     );
-//    void deploy_metadata(std::size_t);
-
     void set_metadata(std::size_t, schema::RecordMeta&);
     void set_params(::request::ParameterSet*, std::unique_ptr<jogasaki::api::parameter_set>&);
     void clear_transaction() {

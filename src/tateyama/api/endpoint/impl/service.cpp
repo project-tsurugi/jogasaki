@@ -20,6 +20,7 @@
 
 #include <msgpack.hpp>
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/status.h>
 #include <jogasaki/api/database.h>
@@ -38,6 +39,8 @@
 #include "common.pb.h"
 
 namespace tateyama::api::endpoint::impl {
+
+using takatori::util::fail;
 
 tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::endpoint::request const> req,
@@ -463,35 +466,35 @@ const char* service::execute_query(
 
 void service::next(std::size_t rid) {
     auto& cursor = cursors_.at(rid);
-//    tsubakuro::common::wire::server_wire_container::resultset_wire_container& wire = *cursor.resultset_wire_container_;
     const jogasaki::api::record_meta* meta = cursor.result_set_->meta();
     auto iterator = cursor.result_set_->iterator();
     while(true) {
-        auto record = iterator->next();
-        if (record != nullptr) {
-            for (std::size_t cindex = 0; cindex < meta->field_count(); cindex++) {
-                if (record->is_null(cindex)) {
-                    msgpack::pack(*cursor.writer_, msgpack::type::nil_t());
+        auto* rec = iterator->next();
+        auto& wrt = *cursor.writer_;
+        if (rec != nullptr) {
+            for (std::size_t i=0, n=meta->field_count(); i < n; ++i) {
+                if (rec->is_null(i)) {
+                    msgpack::pack(wrt, msgpack::type::nil_t());
                 } else {
-                    switch (meta->at(cindex).kind()) {
+                    switch (meta->at(i).kind()) {
                         case jogasaki::api::field_type_kind::int4:
-                            msgpack::pack(*cursor.writer_, record->get_int4(cindex)); break;
+                            msgpack::pack(wrt, rec->get_int4(i)); break;
                         case jogasaki::api::field_type_kind::int8:
-                            msgpack::pack(*cursor.writer_, record->get_int8(cindex)); break;
+                            msgpack::pack(wrt, rec->get_int8(i)); break;
                         case jogasaki::api::field_type_kind::float4:
-                            msgpack::pack(*cursor.writer_, record->get_float4(cindex)); break;
+                            msgpack::pack(wrt, rec->get_float4(i)); break;
                         case jogasaki::api::field_type_kind::float8:
-                            msgpack::pack(*cursor.writer_, record->get_float8(cindex)); break;
+                            msgpack::pack(wrt, rec->get_float8(i)); break;
                         case jogasaki::api::field_type_kind::character:
-                            msgpack::pack(*cursor.writer_, record->get_character(cindex)); break;
+                            msgpack::pack(wrt, rec->get_character(i)); break;
                         default:
-                            std::cerr << "type undefined" << std::endl; break;
+                            fail();
                     }
                 }
             }
         } else {
             VLOG(1) << "detect eor" << std::endl;
-            cursor.writer_->commit();
+            wrt.commit();
             break;
         }
     }

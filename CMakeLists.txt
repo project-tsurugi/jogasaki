@@ -125,9 +125,9 @@ install(
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
+add_subdirectory(protos)
 add_subdirectory(src)
 add_subdirectory(mock)
-add_subdirectory(protos)
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()

@@ -40,19 +40,6 @@ file(GLOB SOURCES
         "tateyama/api/endpoint/impl/*.cpp"
 )
 
-set(GENERATED_PROTO_SRCS
-        ${CMAKE_BINARY_DIR}/protos/request.pb.cc
-        ${CMAKE_BINARY_DIR}/protos/response.pb.cc
-        ${CMAKE_BINARY_DIR}/protos/common.pb.cc
-        ${CMAKE_BINARY_DIR}/protos/schema.pb.cc
-        )
-
-set_source_files_properties(
-        ${GENERATED_PROTO_SRCS}
-        PROPERTIES GENERATED TRUE
-        COMPILE_FLAGS -Wno-unused-parameter
-)
-
 if(TRACY_ENABLE)
     file(GLOB TRACY_CLIENT
             "../third_party/tracy/TracyClient.cpp"
@@ -60,10 +47,19 @@ if(TRACY_ENABLE)
     list(APPEND SOURCES ${TRACY_CLIENT})
 endif()
 
+set_source_files_properties(
+        ${GENERATED_PROTO_SRCS}
+        PROPERTIES
+        GENERATED TRUE
+        COMPILE_FLAGS -Wno-unused-parameter
+)
+
 add_library(${ENGINE}
         ${SOURCES}
         ${GENERATED_PROTO_SRCS}
 )
+
+message("generated proto : ${GENERATED_PROTO_SRCS}")
 
 add_dependencies(${ENGINE}
         build_protos

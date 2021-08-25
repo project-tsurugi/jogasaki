@@ -1,15 +1,10 @@
 set(test_target jogasaki-test)
 
-set(GENERATED_PROTO_SRCS
-        ${CMAKE_BINARY_DIR}/protos/request.pb.cc
-        ${CMAKE_BINARY_DIR}/protos/response.pb.cc
-        ${CMAKE_BINARY_DIR}/protos/common.pb.cc
-        ${CMAKE_BINARY_DIR}/protos/schema.pb.cc
-        )
-
 set_source_files_properties(
         ${GENERATED_PROTO_SRCS}
-        PROPERTIES GENERATED TRUE
+        PROPERTIES
+        GENERATED TRUE
+        COMPILE_FLAGS -Wno-unused-parameter
 )
 
 add_executable(${test_target}

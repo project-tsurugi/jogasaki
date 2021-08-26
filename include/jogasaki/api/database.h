@@ -91,7 +91,8 @@ public:
      * @return status::ok when successful
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @attention This is interim support. Future enhancement obsoletes this API. //TODO
+     * @deprecated This api will be removed in the future. The host variables definition should be passed
+     * to prepare() function.
      */
     virtual status register_variable(std::string_view name, field_type_kind kind) = 0;
 
@@ -107,6 +108,22 @@ public:
      */
     virtual status prepare(std::string_view sql,
         std::unique_ptr<prepared_statement>& statement) = 0;
+
+    /**
+     * @brief prepare sql statement and create prepared statement
+     * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
+     * @param sql the sql text string to prepare
+     * @param variables the placeholder variable name/type mapping
+     * @param statement [out] the unique ptr to be filled with the created prepared statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned prepared statement can be shared by multiple threads.
+     */
+    virtual status prepare(std::string_view sql,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        std::unique_ptr<prepared_statement>& statement
+    ) = 0;
 
     /**
      * @brief resolve the placeholder and create executable statement

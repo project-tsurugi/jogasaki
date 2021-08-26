@@ -59,6 +59,12 @@ public:
         std::unique_ptr<api::prepared_statement>& statement
     ) override;
 
+    [[nodiscard]] status prepare(
+        std::string_view sql,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        std::unique_ptr<api::prepared_statement>& statement
+    ) override;
+
     [[nodiscard]] status create_executable(
         std::string_view sql,
         std::unique_ptr<api::executable_statement>& statement
@@ -148,6 +154,12 @@ private:
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
+
+    [[nodiscard]] status prepare_common(
+        std::string_view sql,
+        std::shared_ptr<yugawara::variable::configurable_provider> provider,
+        std::unique_ptr<api::prepared_statement>& statement
+    );
 };
 
 inline api::impl::database& get_impl(api::database& db) {

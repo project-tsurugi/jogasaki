@@ -58,6 +58,21 @@ public:
 
     void execute_query(
         std::string_view query,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::parameter_set const& params,
+        api::transaction& tx,
+        std::vector<mock::basic_record>& out
+    );
+
+    void execute_query(
+        std::string_view query,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::parameter_set const& params,
+        std::vector<mock::basic_record>& out
+    );
+
+    void execute_query(
+        std::string_view query,
         api::parameter_set const& params,
         std::vector<mock::basic_record>& out
     );
@@ -141,6 +156,14 @@ public:
 
     test::temporary_folder temporary_{};  //NOLINT
     std::unique_ptr<jogasaki::api::database> db_;  //NOLINT
+
+private:
+    void execute_query(
+        std::unique_ptr<api::prepared_statement>& prepared,
+        api::parameter_set const& params,
+        api::transaction& tx,
+        std::vector<mock::basic_record>& out
+    );
 
 };
 

@@ -133,36 +133,64 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
-status database::register_variable(std::string_view name, field_type_kind kind) {
+void add_variable(
+    yugawara::variable::configurable_provider& provider,
+    std::string_view name,
+    field_type_kind kind
+) {
     // TODO find and add are thread-safe, but we need to them atomically
-    if (auto e = host_variables_->find(name)) {
+    if (auto e = provider.find(name)) {
         // ignore if it's already exists
-        return status::ok;
+        return;
     }
     switch(kind) {
-        case field_type_kind::int4: host_variables_->add({name, takatori::type::int4{}}, true); break;
-        case field_type_kind::int8: host_variables_->add({name, takatori::type::int8{}}, true); break;
-        case field_type_kind::float4: host_variables_->add({name, takatori::type::float4{}}, true); break;
-        case field_type_kind::float8: host_variables_->add({name, takatori::type::float8{}}, true); break;
-        case field_type_kind::character: host_variables_->add({name, takatori::type::character{takatori::type::varying}}, true); break;
+        case field_type_kind::int4: provider.add({name, takatori::type::int4{}}, true); break;
+        case field_type_kind::int8: provider.add({name, takatori::type::int8{}}, true); break;
+        case field_type_kind::float4: provider.add({name, takatori::type::float4{}}, true); break;
+        case field_type_kind::float8: provider.add({name, takatori::type::float8{}}, true); break;
+        case field_type_kind::character: provider.add({name, takatori::type::character{takatori::type::varying}}, true); break;
         default: fail();
     }
+}
+
+status database::register_variable(std::string_view name, field_type_kind kind) {
+    add_variable(*host_variables_, name, kind);
     return status::ok;
 }
 
-status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
+status database::prepare_common(
+    std::string_view sql,
+    std::shared_ptr<yugawara::variable::configurable_provider> provider,
+    std::unique_ptr<api::prepared_statement>& statement
+) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    ctx->variable_provider(host_variables_);
+    ctx->variable_provider(std::move(provider));
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         LOG(ERROR) << "compilation failed.";
         return rc;
     }
     statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
     return status::ok;
+}
+
+status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
+    return prepare_common(sql, host_variables_, statement);
+}
+
+status database::prepare(
+    std::string_view sql,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    std::unique_ptr<api::prepared_statement>& statement
+) {
+    auto host_variables = std::make_shared<yugawara::variable::configurable_provider>();
+    for(auto&& [n, t] : variables) {
+        add_variable(*host_variables, n, t);
+    }
+    return prepare_common(sql, std::move(host_variables), statement);
 }
 
 status database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
@@ -200,10 +228,9 @@ status database::resolve(
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    ctx->variable_provider(host_variables_);
-    ctx->prepared_statement(
-        unsafe_downcast<impl::prepared_statement>(prepared).body()
-    );
+    auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
+    ctx->variable_provider(ps->host_variables() ? ps->host_variables() : host_variables_);
+    ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
         LOG(ERROR) << "compilation failed.";

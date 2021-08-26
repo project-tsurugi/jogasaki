@@ -187,4 +187,50 @@ TEST_F(api_test, resolve_host_variable) {
     ASSERT_EQ(0, result2.size());
 }
 
+TEST_F(api_test, host_variable_new_api) {
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    variables.emplace("p0", api::field_type_kind::int8);
+
+    execute_statement( "DELETE FROM T0");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
+    auto ps = api::create_parameter_set();
+    ps->set_int8("p0", 1);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    ps->set_int8("p0", 4);
+    std::vector<mock::basic_record> result2{};
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result2);
+    ASSERT_EQ(0, result2.size());
+}
+
+TEST_F(api_test, host_variable_same_name_different_type) {
+    std::unordered_map<std::string, api::field_type_kind> variables1{{"p0", api::field_type_kind::int8}};
+    std::unordered_map<std::string, api::field_type_kind> variables2{{"p0", api::field_type_kind::float8}};
+
+    execute_statement( "DELETE FROM T0");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 1);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables1, *ps, result);
+        ASSERT_EQ(1, result.size());
+        auto& rec= result[0];
+        EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_float8("p0", 20.0);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C1 = :p0", variables2, *ps, result);
+        ASSERT_EQ(1, result.size());
+        auto& rec= result[0];
+        EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    }
+}
 }

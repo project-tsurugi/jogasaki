@@ -143,6 +143,7 @@ status create_prepared_statement(
     out = std::make_shared<plan::prepared_statement>(
         s,
         result.info(),
+        provider,
         preprocess_mirror(s, provider, result.info())
     );
     return status::ok;

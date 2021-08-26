@@ -109,7 +109,7 @@ private:
     void error(endpoint::response&, std::string) {}  //NOLINT(performance-unnecessary-value-param)
 };
 
-void set_application_error(endpoint::response& res) {
+inline void set_application_error(endpoint::response& res) {
     res.code(response_code::application_error);
     res.message("error on application domain - check response body");
 }

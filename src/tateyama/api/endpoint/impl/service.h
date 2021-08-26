@@ -24,6 +24,7 @@
 
 #include <tateyama/status.h>
 #include <tateyama/api/endpoint/service.h>
+#include <tateyama/api/endpoint/response.h>
 #include <tateyama/api/endpoint/writer.h>
 #include <tateyama/api/endpoint/data_channel.h>
 
@@ -108,11 +109,16 @@ private:
     void error(endpoint::response&, std::string) {}  //NOLINT(performance-unnecessary-value-param)
 };
 
+void set_application_error(endpoint::response& res) {
+    res.code(response_code::application_error);
+    res.message("error on application domain - check response body");
+}
+
 template<>
 inline void service::error<::response::Begin>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e;
-    ::response::Begin p;
-    ::response::Response r;
+    ::response::Error e{};
+    ::response::Begin p{};
+    ::response::Response r{};
 
     e.set_detail(msg);
     p.set_allocated_error(&e);
@@ -120,12 +126,14 @@ inline void service::error<::response::Begin>(endpoint::response& res, std::stri
     reply(res, r);
     r.release_begin();
     p.release_error();
+    set_application_error(res);
 }
+
 template<>
 inline void service::error<::response::Prepare>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e;
-    ::response::Prepare p;
-    ::response::Response r;
+    ::response::Error e{};
+    ::response::Prepare p{};
+    ::response::Response r{};
 
     e.set_detail(msg);
     p.set_allocated_error(&e);
@@ -133,34 +141,37 @@ inline void service::error<::response::Prepare>(endpoint::response& res, std::st
     reply(res, r);
     r.release_prepare();
     p.release_error();
+    set_application_error(res);
 }
 
 template<>
 inline void service::error<::response::ResultOnly>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e;
-    ::response::ResultOnly p;
-    ::response::Response r;
+    ::response::Error e{};
+    ::response::ResultOnly ro{};
+    ::response::Response r{};
 
     e.set_detail(msg);
-    p.set_allocated_error(&e);
-    r.set_allocated_result_only(&p);
+    ro.set_allocated_error(&e);
+    r.set_allocated_result_only(&ro);
     reply(res, r);
     r.release_result_only();
-    p.release_error();
+    ro.release_error();
+    set_application_error(res);
 }
 
 template<>
 inline void service::error<::response::ExecuteQuery>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e;
-    ::response::ExecuteQuery p;
-    ::response::Response r;
+    ::response::Error e{};
+    ::response::ExecuteQuery eq{};
+    ::response::Response r{};
 
     e.set_detail(msg);
-    p.set_allocated_error(&e);
-    r.set_allocated_execute_query(&p);
+    eq.set_allocated_error(&e);
+    r.set_allocated_execute_query(&eq);
     reply(res, r);
     r.release_execute_query();
-    p.release_error();
+    eq.release_error();
+    set_application_error(res);
 }
 
 inline api::endpoint::impl::service& get_impl(api::endpoint::service& svc) {

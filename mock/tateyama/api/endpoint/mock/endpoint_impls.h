@@ -117,6 +117,7 @@ public:
     }
 
     status complete() override {
+        completed_ = true;
         return status::ok;
     }
 
@@ -137,10 +138,15 @@ public:
         return status::ok;
     }
 
+    bool completed() {
+        return completed_;
+    }
+
     std::string body_{};  //NOLINT
     std::unique_ptr<test_channel> channel_{};  //NOLINT
     std::string message_{};  //NOLINT
     response_code code_{};  //NOLINT
+    bool completed_{};
 };
 
 class payload {

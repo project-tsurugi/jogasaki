@@ -49,9 +49,12 @@ tateyama::status service::operator()(
     ::request::Request proto_req{};
     if (!proto_req.ParseFromString(std::string(req->payload()))) {
         LOG(ERROR) << "parse error" << std::endl;
-    } else {
-        VLOG(1) << "s:" << proto_req.session_handle().handle() << std::endl;
+        res->code(response_code::application_error);
+        res->message("parse error with request body");
+        res->complete();
+        return tateyama::status::ok;
     }
+    VLOG(1) << "s:" << proto_req.session_handle().handle() << std::endl;
 
     switch (proto_req.request_case()) {
         case ::request::Request::RequestCase::kBegin: {
@@ -332,15 +335,15 @@ tateyama::status service::operator()(
             ro.release_success();
             break;
         }
-        case ::request::Request::RequestCase::REQUEST_NOT_SET: {
-            VLOG(1) << "not used" << std::endl;
-            error<::response::ResultOnly>(*res, "invalid request");
-            break;
-        }
         default:
-            LOG(ERROR) << "????" << std::endl;
+            LOG(ERROR) << "invalid error case" << std::endl;
+            res->code(response_code::application_error);
+            res->message("invalid request code");
             break;
     }
+
+    //TODO make this function asynchronous
+    res->complete();
     return status::ok;
 }
 
@@ -356,13 +359,13 @@ const char* service::execute_statement(std::string_view sql)
     return nullptr;
 }
 
-void service::set_metadata(std::size_t rid, schema::RecordMeta& meta)
+void service::set_metadata(std::size_t rid, ::schema::RecordMeta& meta)
 {
     auto metadata = cursors_.at(rid).result_set_->meta();
     std::size_t n = metadata->field_count();
 
     for (std::size_t i = 0; i < n; i++) {
-        auto column = std::make_unique<schema::RecordMeta_Column>();
+        auto column = std::make_unique<::schema::RecordMeta_Column>();
         switch(metadata->at(i).kind()) {
             case jogasaki::api::field_type_kind::int4:
                 column->set_type(::common::DataType::INT4);

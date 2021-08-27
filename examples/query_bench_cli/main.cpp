@@ -96,12 +96,13 @@ static std::unique_ptr<api::prepared_statement> prepare(api::database& db) {
         "c_d_id = :c_d_id AND "
         "c_id = :c_id "
     };
-    db.register_variable("w_id", api::field_type_kind::int8);
-    db.register_variable("c_d_id", api::field_type_kind::int8);
-    db.register_variable("c_id", api::field_type_kind::int8);
-
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"w_id", api::field_type_kind::int8},
+        {"c_d_id", api::field_type_kind::int8},
+        {"c_id", api::field_type_kind::int8},
+    };
     std::unique_ptr<api::prepared_statement> p{};
-    if(auto rc = db.prepare(select, p); rc != status::ok) {
+    if(auto rc = db.prepare(select, variables, p); rc != status::ok) {
         std::abort();
     }
     return p;

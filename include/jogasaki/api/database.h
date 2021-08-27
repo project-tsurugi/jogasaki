@@ -38,6 +38,7 @@ namespace jogasaki::api {
 class result_set;
 class transaction;
 class prepared_statement;
+class statement_handle;
 class executable_statement;
 class parameter_set;
 
@@ -106,8 +107,27 @@ public:
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
      */
-    virtual status prepare(std::string_view sql,
-        std::unique_ptr<prepared_statement>& statement) = 0;
+    virtual status prepare(
+        std::string_view sql,
+        std::unique_ptr<prepared_statement>& statement
+    ) = 0;
+
+    /**
+     * @brief prepare sql statement and create prepared statement
+     * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
+     * This function stores the prepared statement internally and returns its handle, which must be released with
+     * destoroy_statement() function when caller finishes using the statement.
+     * @param sql the sql text string to prepare
+     * @param statement [out] the handle to be filled with one for the created prepared statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned prepared statement can be shared by multiple threads.
+     */
+    virtual status prepare(
+        std::string_view sql,
+        statement_handle& statement
+    ) = 0;
 
     /**
      * @brief prepare sql statement and create prepared statement
@@ -126,6 +146,37 @@ public:
     ) = 0;
 
     /**
+     * @brief prepare sql statement and store prepared statement internally
+     * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
+     * This function stores the prepared statement internally and returns its handle, which must be released with
+     * destoroy_statement() function when caller finishes using the statement.
+     * @param sql the sql text string to prepare
+     * @param variables the placeholder variable name/type mapping
+     * @param statement [out] the handle to be filled with one for the created prepared statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned prepared statement can be shared by multiple threads.
+     */
+    virtual status prepare(std::string_view sql,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        statement_handle& statement
+    ) = 0;
+
+    /**
+     * @brief destroy the prepared statement for the given handle
+     * @details The internally stored prepared statement is released by this function.
+     * After the success of this function, the handle becomes stale and it should not be used any more.
+     * @param prepared the handle for the prepared statement to be destroyed
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
+    virtual status destroy_statement(
+        api::statement_handle prepared
+    ) = 0;
+
+    /**
      * @brief resolve the placeholder and create executable statement
      * @details Executable statement is the form of statement ready to execute, placeholders are resolved and
      * compilation is completed.
@@ -139,6 +190,24 @@ public:
      */
     virtual status resolve(
         prepared_statement const& prepared,
+        parameter_set const& parameters,
+        std::unique_ptr<executable_statement>& statement
+    ) = 0;
+
+    /**
+     * @brief resolve the placeholder and create executable statement
+     * @details Executable statement is the form of statement ready to execute, placeholders are resolved and
+     * compilation is completed.
+     * @param prepared the prepared statement handle used to create executable statement
+     * @param parameters the parameters to assign value for each placeholder
+     * @param statement [out] the unique ptr to be filled with the created executable statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned executable statement should be used from single thread/transaction at a point in time.
+     */
+    virtual status resolve(
+        statement_handle prepared,
         parameter_set const& parameters,
         std::unique_ptr<executable_statement>& statement
     ) = 0;

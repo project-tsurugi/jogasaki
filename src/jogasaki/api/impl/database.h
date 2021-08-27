@@ -17,6 +17,7 @@
 
 #include <string_view>
 #include <memory>
+#include <tbb/concurrent_hash_map.h>
 
 #include <takatori/util/downcast.h>
 #include <yugawara/storage/configurable_provider.h>
@@ -26,6 +27,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
@@ -61,8 +63,19 @@ public:
 
     [[nodiscard]] status prepare(
         std::string_view sql,
+        api::statement_handle& statement
+    ) override;
+
+    [[nodiscard]] status prepare(
+        std::string_view sql,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         std::unique_ptr<api::prepared_statement>& statement
+    ) override;
+
+    [[nodiscard]] status prepare(
+        std::string_view sql,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::statement_handle& statement
     ) override;
 
     [[nodiscard]] status create_executable(
@@ -74,6 +87,16 @@ public:
         api::prepared_statement const& prepared,
         api::parameter_set const& parameters,
         std::unique_ptr<api::executable_statement>& statement
+    ) override;
+
+    [[nodiscard]] status resolve(
+        api::statement_handle prepared,
+        api::parameter_set const& parameters,
+        std::unique_ptr<api::executable_statement>& statement
+    ) override;
+
+    [[nodiscard]] status destroy_statement(
+        api::statement_handle prepared
     ) override;
 
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
@@ -154,11 +177,18 @@ private:
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
+    tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<api::prepared_statement>> prepared_statements_{};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
         std::unique_ptr<api::prepared_statement>& statement
+    );
+
+    [[nodiscard]] status prepare_common(
+        std::string_view sql,
+        std::shared_ptr<yugawara::variable::configurable_provider> provider,
+        api::statement_handle& statement
     );
 };
 

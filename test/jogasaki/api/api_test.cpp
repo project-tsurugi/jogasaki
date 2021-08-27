@@ -115,10 +115,12 @@ TEST_F(api_test, primary_key_violation) {
 }
 
 TEST_F(api_test, resolve_place_holder_with_null) {
-    db_->register_variable("p1", api::field_type_kind::int8);
-    db_->register_variable("p2", api::field_type_kind::float8);
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p1", api::field_type_kind::int8},
+        {"p2", api::field_type_kind::float8},
+    };
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", prepared));
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", variables, prepared));
     {
         auto tx = db_->create_transaction();
         auto ps = api::create_parameter_set();
@@ -169,21 +171,22 @@ TEST_F(api_test, select_update_delete_for_missing_record) {
 }
 
 TEST_F(api_test, resolve_host_variable) {
-    db_->register_variable("p0", api::field_type_kind::int8);
-
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+    };
     execute_statement( "DELETE FROM T0");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0", *ps, result);
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
     ps->set_int8("p0", 4);
     std::vector<mock::basic_record> result2{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0", *ps, result2);
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result2);
     ASSERT_EQ(0, result2.size());
 }
 

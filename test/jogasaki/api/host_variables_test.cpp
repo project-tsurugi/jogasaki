@@ -73,12 +73,14 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(host_variables_test, insert_host_variable) {
-    db_->register_variable("p0", api::field_type_kind::int8);
-    db_->register_variable("p1", api::field_type_kind::float8);
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+        {"p1", api::field_type_kind::float8},
+    };
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     ps->set_float8("p1", 10.0);
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", *ps);
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", variables, *ps);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0", result);
     ASSERT_EQ(1, result.size());
@@ -87,17 +89,19 @@ TEST_F(host_variables_test, insert_host_variable) {
 }
 
 TEST_F(host_variables_test, update_host_variable) {
-    db_->register_variable("p0", api::field_type_kind::int8);
-    db_->register_variable("p1", api::field_type_kind::float8);
-    db_->register_variable("i0", api::field_type_kind::int8);
-    db_->register_variable("i1", api::field_type_kind::int8);
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+        {"p1", api::field_type_kind::float8},
+        {"i0", api::field_type_kind::int8},
+        {"i1", api::field_type_kind::int8},
+    };
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
 
     {
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 1);
         ps->set_float8("p1", 20.0);
-        execute_statement( "UPDATE T0 SET C1 = :p1 WHERE C0 = :p0", *ps);
+        execute_statement( "UPDATE T0 SET C1 = :p1 WHERE C0 = :p0", variables, *ps);
 
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
@@ -109,7 +113,7 @@ TEST_F(host_variables_test, update_host_variable) {
         auto ps = api::create_parameter_set();
         ps->set_int8("i0", 1);
         ps->set_int8("i1", 2);
-        execute_statement( "UPDATE T0 SET C0 = :i1 WHERE C0 = :i0", *ps);
+        execute_statement( "UPDATE T0 SET C0 = :i1 WHERE C0 = :i0", variables, *ps);
 
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
@@ -120,14 +124,16 @@ TEST_F(host_variables_test, update_host_variable) {
 }
 
 TEST_F(host_variables_test, query_host_variable) {
-    db_->register_variable("p0", api::field_type_kind::int8);
-    db_->register_variable("p1", api::field_type_kind::float8);
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+        {"p1", api::field_type_kind::float8},
+    };
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     ps->set_float8("p1", 10.0);
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", *ps);
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0 AND C1 = :p1", *ps, result);
+    execute_query("SELECT * FROM T0 WHERE C0 = :p0 AND C1 = :p1", variables, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
     EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));

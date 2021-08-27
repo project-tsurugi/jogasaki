@@ -93,7 +93,7 @@ TEST_F(tpch_test, DISABLED_q2_1) {
     set(*ps, "partkey", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, *ps, result);
+    execute_query(query, host_variables_, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
@@ -121,7 +121,7 @@ TEST_F(tpch_test, DISABLED_q2_2) {
     set(*ps, "mincost", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, *ps, result);
+    execute_query(query, host_variables_, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
@@ -144,7 +144,7 @@ TEST_F(tpch_test, q6) {
     set(*ps, "quantity", api::field_type_kind::int8, 2);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, *ps, result);
+    execute_query(query, host_variables_, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
 }
@@ -165,7 +165,7 @@ TEST_F(tpch_test, q14m) {
     set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCCCCCCCCCCCCCC"sv);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, *ps, result);
+    execute_query(query, host_variables_, *ps, result);
     ASSERT_EQ(1, result.size());
 }
 
@@ -184,7 +184,7 @@ TEST_F(tpch_test, q14d) {
     set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCCCCCCCCCCCCCC"sv);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, *ps, result);
+    execute_query(query, host_variables_, *ps, result);
     ASSERT_EQ(1, result.size());
 }
 
@@ -235,7 +235,7 @@ TEST_F(tpch_test, q19) {
     set(*ps, "quantity3", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
-    execute_query(query, *ps, result);
+    execute_query(query, host_variables_, *ps, result);
     ASSERT_EQ(1, result.size());
 }
 

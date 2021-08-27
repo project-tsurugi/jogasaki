@@ -61,10 +61,12 @@ public:
 
 TEST_F(database_test, simple) {
     std::string sql = "select * from T0";
-    db_->register_variable("p0", api::field_type_kind::int8);
-    db_->register_variable("p1", api::field_type_kind::float8);
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+        {"p1", api::field_type_kind::float8},
+    };
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", prepared));
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", variables, prepared));
     {
         auto tx = db_->create_transaction();
         for(std::size_t i=0; i < 2; ++i) {
@@ -100,7 +102,7 @@ TEST_F(database_test, simple) {
     {
         // reuse prepared statement
         std::unique_ptr<api::prepared_statement> prep{};
-        ASSERT_EQ(status::ok,db_->prepare("select * from T0 where C0 = :p0", prep));
+        ASSERT_EQ(status::ok,db_->prepare("select * from T0 where C0 = :p0", variables, prep));
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 0);
         std::unique_ptr<api::executable_statement> exec{};
@@ -132,9 +134,11 @@ TEST_F(database_test, simple) {
 }
 
 TEST_F(database_test, update_with_host_variable) {
-    db_->register_variable("p1", api::field_type_kind::float8);
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p1", api::field_type_kind::float8},
+    };
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok, db_->prepare("UPDATE T0 SET C1 = :p1 WHERE C0 = 0", prepared));
+    ASSERT_EQ(status::ok, db_->prepare("UPDATE T0 SET C1 = :p1 WHERE C0 = 0", variables, prepared));
     std::unique_ptr<api::executable_statement> insert{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES(0, 10.0)", insert));
     {
@@ -151,6 +155,62 @@ TEST_F(database_test, update_with_host_variable) {
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
+}
+
+TEST_F(database_test, handle_based_prepare) {
+    std::string sql = "select * from T0";
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+        {"p1", api::field_type_kind::float8},
+    };
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", variables, prepared));
+    {
+        auto tx = db_->create_transaction();
+        for(std::size_t i=0; i < 2; ++i) {
+            auto ps = api::create_parameter_set();
+            ps->set_int8("p0", i);
+            ps->set_float8("p1", 10.0*i);
+            std::unique_ptr<api::executable_statement> exec{};
+            ASSERT_EQ(status::ok,db_->resolve(prepared, *ps, exec));
+            ASSERT_EQ(status::ok,tx->execute(*exec));
+        }
+        tx->commit();
+    }
+    {
+        // reuse prepared statement
+        api::statement_handle prep{};
+        ASSERT_EQ(status::ok,db_->prepare("select * from T0 where C0 = :p0", variables, prep));
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 0);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prep, *ps, exec));
+        explain(*exec);
+        auto f = [&]() {
+            auto tx = db_->create_transaction();
+            std::unique_ptr<api::result_set> rs{};
+            ASSERT_EQ(status::ok,tx->execute(*exec, rs));
+            auto it = rs->iterator();
+            std::size_t count = 0;
+            while(it->has_next()) {
+                std::stringstream ss{};
+                auto* record = it->next();
+                ss << *record;
+                LOG(INFO) << ss.str();
+                ++count;
+            }
+            EXPECT_EQ(1, count);
+            tx->commit();
+        };
+        f();
+        ps->set_int8("p0", 1);
+        ASSERT_EQ(status::ok,db_->resolve(prep, *ps, exec));
+        ASSERT_EQ(status::ok, db_->destroy_statement(prep));
+        ps.reset();
+        f();
+    }
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    ASSERT_EQ(status::not_found, db_->destroy_statement(prepared));
 }
 
 }

@@ -850,7 +850,7 @@ TEST_F(tpcc_test, new_order_update_and_select) {
             set(*ps, "d_next_o_id", api::field_type_kind::int8, i+1);
             set(*ps, "d_w_id", api::field_type_kind::int8, i);
             set(*ps, "d_id", api::field_type_kind::int8, i);
-            execute_statement(query, *ps, *tx);
+            execute_statement(query, host_variables_, *ps, *tx);
         }
 
         for(std::size_t j=0; j < 3; ++j) {
@@ -867,7 +867,7 @@ TEST_F(tpcc_test, new_order_update_and_select) {
             set(*ps, "s_i_id", api::field_type_kind::int8, j);
             set(*ps, "s_w_id", api::field_type_kind::int8, j);
             std::vector<mock::basic_record> result{};
-            execute_query(query, *ps, *tx, result);
+            execute_query(query, host_variables_, *ps, *tx, result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ(j, result[0].get_value<std::int64_t>(0));
         }

@@ -90,11 +90,13 @@ public:
 
     void execute_statement(
         std::string_view query,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params,
         api::transaction& tx
     );
     void execute_statement(
         std::string_view query,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params
     );
     void execute_statement(
@@ -110,7 +112,7 @@ public:
 
     template <class T>
     void set(api::parameter_set& ps, std::string_view place_holder, api::field_type_kind kind, T value) {
-        db_->register_variable(place_holder, kind);
+        host_variables_.emplace(place_holder, kind);
         switch(kind) {
             case api::field_type_kind::int4:
                 if constexpr (std::is_convertible_v<T, std::int32_t>) {
@@ -156,6 +158,7 @@ public:
 
     test::temporary_folder temporary_{};  //NOLINT
     std::unique_ptr<jogasaki::api::database> db_;  //NOLINT
+    std::unordered_map<std::string, api::field_type_kind> host_variables_{};  //NOLINT
 
 private:
     void execute_query(

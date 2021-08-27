@@ -142,9 +142,14 @@ void api_test_base::execute_query(std::string_view query, api::transaction& tx, 
     execute_query(query, params, tx, out);
 }
 
-void api_test_base::execute_statement(std::string_view query, api::parameter_set const& params, api::transaction& tx) {
+void api_test_base::execute_statement(
+    std::string_view query,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    api::parameter_set const& params,
+    api::transaction& tx
+) {
     std::unique_ptr<api::prepared_statement> prepared{};
-    ASSERT_EQ(status::ok,db_->prepare(query, prepared));
+    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
 
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
@@ -152,20 +157,26 @@ void api_test_base::execute_statement(std::string_view query, api::parameter_set
     ASSERT_EQ(status::ok, tx.execute(*stmt));
 }
 
-void api_test_base::execute_statement(std::string_view query, api::parameter_set const& params) {
+void api_test_base::execute_statement(
+    std::string_view query,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    api::parameter_set const& params
+) {
     auto tx = db_->create_transaction();
-    execute_statement(query, params, *tx);
+    execute_statement(query, variables, params, *tx);
     tx->commit();
 }
 
 void api_test_base::execute_statement(std::string_view query, api::transaction& tx) {
     api::impl::parameter_set params{};
-    execute_statement(query, params, tx);
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    execute_statement(query, variables, params, tx);
 }
 
 void api_test_base::execute_statement(std::string_view query) {
     api::impl::parameter_set params{};
-    execute_statement(query, params);
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    execute_statement(query, variables, params);
 }
 
 void api_test_base::resolve(std::string& query, std::string_view place_holder, std::string value) {

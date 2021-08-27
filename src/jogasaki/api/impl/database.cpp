@@ -177,7 +177,31 @@ status database::prepare_common(
     return status::ok;
 }
 
+status database::prepare_common(
+    std::string_view sql,
+    std::shared_ptr<yugawara::variable::configurable_provider> provider,
+    statement_handle& statement
+) {
+    std::unique_ptr<api::prepared_statement> ptr{};
+    auto st = prepare_common(sql, std::move(provider), ptr);
+    {
+        decltype(prepared_statements_)::accessor acc{};
+        api::statement_handle handle{ptr.get()};
+        if (prepared_statements_.insert(acc, handle)) {
+            acc->second = std::move(ptr);
+            statement = handle;
+        } else {
+            fail();
+        }
+    }
+    return st;
+}
+
 status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
+    return prepare_common(sql, host_variables_, statement);
+}
+
+status database::prepare(std::string_view sql, statement_handle& statement) {
     return prepare_common(sql, host_variables_, statement);
 }
 
@@ -185,6 +209,18 @@ status database::prepare(
     std::string_view sql,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     std::unique_ptr<api::prepared_statement>& statement
+) {
+    auto host_variables = std::make_shared<yugawara::variable::configurable_provider>();
+    for(auto&& [n, t] : variables) {
+        add_variable(*host_variables, n, t);
+    }
+    return prepare_common(sql, std::move(host_variables), statement);
+}
+
+status database::prepare(
+    std::string_view sql,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    statement_handle& statement
 ) {
     auto host_variables = std::make_shared<yugawara::variable::configurable_provider>();
     for(auto&& [n, t] : variables) {
@@ -243,6 +279,26 @@ status database::resolve(
     return status::ok;
 }
 
+status database::resolve(
+    api::statement_handle prepared,
+    api::parameter_set const& parameters,
+    std::unique_ptr<api::executable_statement>& statement
+) {
+    return resolve(*prepared.get(), parameters, statement);
+}
+
+status database::destroy_statement(
+    api::statement_handle prepared
+) {
+    decltype(prepared_statements_)::accessor acc{};
+    if (prepared_statements_.find(acc, prepared)) {
+        prepared_statements_.erase(acc);
+    } else {
+        LOG(WARNING) << "destroy_statement for invalid handle";
+        return status::not_found;
+    }
+    return status::ok;
+}
 status database::explain(api::executable_statement const& executable, std::ostream& out) {
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
     r->compiled_info().object_scanner()(

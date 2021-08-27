@@ -19,32 +19,59 @@ namespace jogasaki::api {
 
 /**
  * @brief prepared statement handle
+ * @details the handle is the trivially copyable object that references prepared statement stored in the database.
+ * Using the handle, caller can create, execute, and destroy the prepared statement keeping the ownership managed
+ * by the database. This makes api more flexible compared to handling the unique_ptr to prepared statement.
  */
 class statement_handle {
 public:
+
+    /**
+     * @brief create empty handle - null reference
+     */
     statement_handle() = default;
+
+    /**
+     * @brief destruct the object
+     */
     ~statement_handle() = default;
+
+
     statement_handle(statement_handle const& other) = default;
     statement_handle& operator=(statement_handle const& other) = default;
     statement_handle(statement_handle&& other) noexcept = default;
     statement_handle& operator=(statement_handle&& other) noexcept = default;
 
+    /**
+     * @brief create new object from pointer
+     * @param ptr the target prepared statement
+     */
     explicit statement_handle(prepared_statement* ptr) noexcept :
         ptr_(ptr)
     {}
 
+    /**
+     * @brief accessor to the referenced prepared statement
+     * @return the target prepared statement pointer
+     */
     [[nodiscard]] prepared_statement* get() const noexcept {
         return ptr_;
     }
 
+    /**
+     * @brief conversion operator to std::size_t
+     * @return the hash value that can be used for equality comparison
+     */
     explicit operator std::size_t() const noexcept {
-        return reinterpret_cast<std::size_t>(ptr_);
+        return reinterpret_cast<std::size_t>(ptr_);  //NOLINT
     }
 
 private:
     prepared_statement* ptr_{};
 
 };
+
+static_assert(std::is_trivially_copyable_v<statement_handle>);
 
 /**
  * @brief equality comparison operator

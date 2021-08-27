@@ -28,6 +28,7 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/utils/proto_field_types.h>
 
 #include <tateyama/api/endpoint/request.h>
 #include <tateyama/api/endpoint/response.h>
@@ -90,29 +91,12 @@ tateyama::status service::operator()(
                 prepared_statements_.resize(sid + 1);
             }
 
+            std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
             for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
                 auto& hv = hvs.variables(i);
-                switch(hv.type()) {
-                    case ::common::DataType::INT4:
-                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int4);
-                        break;
-                    case ::common::DataType::INT8:
-                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::int8);
-                        break;
-                    case ::common::DataType::FLOAT4:
-                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float4);
-                        break;
-                    case ::common::DataType::FLOAT8:
-                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::float8);
-                        break;
-                    case ::common::DataType::CHARACTER:
-                        db_->register_variable(hv.name(), jogasaki::api::field_type_kind::character);
-                        break;
-                    default:
-                        std::abort();
-                }
+                variables.emplace(hv.name(), jogasaki::utils::type_for(hv.type()));
             }
-            if(auto rc = db_->prepare(sql, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
+            if(auto rc = db_->prepare(sql, variables, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
                 ::common::PreparedStatement ps{};
                 ::response::Prepare p{};
                 ::response::Response r{};

@@ -362,7 +362,7 @@ const char* service::execute_prepared_statement(
 
 const char* service::execute_query(
     tateyama::api::endpoint::response& res,
-    details::query q,
+    details::query const& q,
     std::size_t rid,
     jogasaki::api::transaction_handle tx,
     std::unique_ptr<output>& out
@@ -374,9 +374,9 @@ const char* service::execute_query(
         }
     }
     out = std::make_unique<output>();
-    out->wire_name_ = std::string("resultset-");
-    out->wire_name_ += std::to_string(rid);
-    res.acquire_channel(out->wire_name_, out->data_channel_);
+    out->name_ = std::string("resultset-");
+    out->name_ += std::to_string(rid);
+    res.acquire_channel(out->name_, out->data_channel_);
     out->data_channel_->acquire(out->writer_);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -395,8 +395,6 @@ const char* service::execute_query(
     if(auto rc = tx->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         return "error in transaction_->execute()";
     }
-
-    out->iterator_ = rs->iterator();
     return nullptr;
 }
 

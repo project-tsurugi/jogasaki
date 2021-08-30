@@ -42,12 +42,10 @@ namespace tateyama::api::endpoint::impl {
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
-class output {
-public:
+struct output {
     std::unique_ptr<jogasaki::api::result_set> result_set_{};  //NOLINT
-    std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};  //NOLINT
     std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};  //NOLINT
-    std::string wire_name_;  //NOLINT
+    std::string name_;  //NOLINT
     tateyama::api::endpoint::writer* writer_{};  //NOLINT
     tateyama::api::endpoint::data_channel* data_channel_{};  //NOLINT
 };
@@ -203,7 +201,7 @@ inline void success<::response::ExecuteQuery>(endpoint::response& res, output* o
     ::response::Response r{};
 
     set_metadata(*out, meta);
-    i.set_name(out->wire_name_);
+    i.set_name(out->name_);
     i.set_allocated_record_meta(&meta);
     e.set_allocated_result_set_info(&i);
     r.set_allocated_execute_query(&e);
@@ -230,17 +228,17 @@ public:
 
     [[nodiscard]] std::string_view sql() const noexcept {
         if (! has_sql()) fail();
-        return std::get<std::string_view>(entity_);
+        return *std::get_if<std::string_view>(std::addressof(entity_));
     }
 
     [[nodiscard]] std::size_t sid() const noexcept {
         if (has_sql()) fail();
-        return std::get<handle_parameters>(entity_).first;
+        return std::get_if<handle_parameters>(std::addressof(entity_))->first;
     }
 
     [[nodiscard]] jogasaki::api::parameter_set* params() const noexcept {
         if (has_sql()) fail();
-        return std::get<handle_parameters>(entity_).second;
+        return std::get_if<handle_parameters>(std::addressof(entity_))->second;
     }
 private:
     std::variant<std::string_view, handle_parameters> entity_{};
@@ -273,7 +271,7 @@ private:
     void process_output(output& out);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
-        details::query q,
+        details::query const& q,
         std::size_t,
         jogasaki::api::transaction_handle tx,
         std::unique_ptr<output>& out

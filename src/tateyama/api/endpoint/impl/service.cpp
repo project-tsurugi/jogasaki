@@ -79,6 +79,7 @@ private:
 
 }
 
+//TODO make this function asynchronous
 tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::endpoint::request const> req,
     std::shared_ptr<tateyama::api::endpoint::response> res
@@ -102,6 +103,7 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::Begin>(*res, "error in db_->create_transaction()");
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kPrepare: {
@@ -123,6 +125,7 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::Prepare>(*res, "error in db_->prepare()");
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kExecuteStatement: {
@@ -135,6 +138,7 @@ tateyama::status service::operator()(
             VLOG(1) << tx << " " << sql << std::endl;
             if(! tx) {
                 details::error<::response::ResultOnly>(*res, "invalid transaction handle");
+                res->complete();
                 break;
             }
             if (auto err = execute_statement(sql, tx); err == nullptr) {
@@ -142,6 +146,7 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, err);
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kExecuteQuery: {
@@ -154,17 +159,20 @@ tateyama::status service::operator()(
             VLOG(1) << tx << " " << sql << std::endl;
             if(! tx) {
                 details::error<::response::ExecuteQuery>(*res, "invalid transaction handle");
+                res->complete();
                 break;
             }
 
             std::unique_ptr<output> out{};
             if (auto err = execute_query(*res, details::query_info{sql}, tx, out); err == nullptr) {
                 details::success<::response::ExecuteQuery>(*res, out.get()); // sending response_code = started
+                res->complete();
                 process_output(*out);
-                release_writers(*res, *out);
                 res->code(response_code::success);
+                release_writers(*res, *out);
             } else {
                 details::error<::response::ExecuteQuery>(*res, err);
+                res->complete();
             }
             break;
         }
@@ -179,6 +187,7 @@ tateyama::status service::operator()(
             VLOG(1) << tx << " sid:" << sid << std::endl;
             if(! tx) {
                 details::error<::response::ResultOnly>(*res, "invalid transaction handle");
+                res->complete();
                 break;
             }
 
@@ -189,6 +198,7 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, err);
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedQuery: {
@@ -202,6 +212,7 @@ tateyama::status service::operator()(
             VLOG(1) << tx << " sid:" << sid << std::endl;
             if(! tx) {
                 details::error<::response::ExecuteQuery>(*res, "invalid transaction handle");
+                res->complete();
                 break;
             }
             auto params = jogasaki::api::create_parameter_set();
@@ -211,11 +222,13 @@ tateyama::status service::operator()(
             if(auto err = execute_query(*res, details::query_info{sid, params.get()}, tx, out);
                 err == nullptr) {
                 details::success<::response::ExecuteQuery>(*res, out.get()); // sending response_code = started
+                res->complete();
                 process_output(*out);
-                release_writers(*res, *out);
                 res->code(response_code::success);
+                release_writers(*res, *out);
             } else {
                 details::error<::response::ExecuteQuery>(*res, err);
+                res->complete();
             }
             break;
         }
@@ -227,6 +240,7 @@ tateyama::status service::operator()(
             VLOG(1) << tx << std::endl;
             if(! tx) {
                 details::error<::response::ResultOnly>(*res, "invalid transaction handle");
+                res->complete();
                 break;
             }
             if(auto rc = tx->commit(); rc == jogasaki::status::ok) {
@@ -237,6 +251,7 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, "error in transaction_->commit()");
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kRollback: {
@@ -247,6 +262,7 @@ tateyama::status service::operator()(
             VLOG(1) << tx << std::endl;
             if(! tx) {
                 details::error<::response::ResultOnly>(*res, "invalid transaction handle");
+                res->complete();
                 break;
             }
             if(auto rc = tx->abort(); rc == jogasaki::status::ok) {
@@ -257,6 +273,7 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, "error in transaction_->abort()");
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kDisposePreparedStatement: {
@@ -270,22 +287,23 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, "error destroying statement");
             }
+            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kDisconnect: {
             VLOG(1) << "disconnect" << std::endl;
             details::success<::response::ResultOnly>(*res);
+            res->complete();
             break;
         }
         default:
             LOG(ERROR) << "invalid error case" << std::endl;
             res->code(response_code::io_error);
             res->message("invalid request code");
+            res->complete();
             break;
     }
 
-    //TODO make this function asynchronous
-    res->complete();
     return status::ok;
 }
 

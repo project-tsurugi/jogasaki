@@ -27,6 +27,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/utils/proto_field_types.h>
 
@@ -81,34 +82,29 @@ tateyama::status service::operator()(
         }
         case ::request::Request::RequestCase::kPrepare: {
             VLOG(1) << "prepare" << std::endl;
-            std::size_t sid = prepared_statements_index_;
             auto& pp = proto_req.prepare();
             auto& hvs = pp.host_variables();
             auto& sql = pp.sql();
             if(sql.empty()) LOG(WARNING) << "missing sql";
             VLOG(1) << sql << std::endl;
-            if (prepared_statements_.size() < (sid + 1)) {
-                prepared_statements_.resize(sid + 1);
-            }
 
             std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
             for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
                 auto& hv = hvs.variables(i);
                 variables.emplace(hv.name(), jogasaki::utils::type_for(hv.type()));
             }
-            if(auto rc = db_->prepare(sql, variables, prepared_statements_.at(sid)); rc == jogasaki::status::ok) {
+            jogasaki::api::statement_handle handle{};
+            if(auto rc = db_->prepare(sql, variables, handle); rc == jogasaki::status::ok) {
                 ::common::PreparedStatement ps{};
                 ::response::Prepare p{};
                 ::response::Response r{};
 
-                ps.set_handle(sid);
+                ps.set_handle(static_cast<std::size_t>(handle));
                 p.set_allocated_prepared_statement_handle(&ps);
                 r.set_allocated_prepare(&p);
                 reply(*res, r);
                 r.release_prepare();
                 p.release_prepared_statement_handle();
-
-                prepared_statements_index_ = sid + 1;
             } else {
                 error<::response::Prepare>(*res, "error in db_->prepare()");
             }
@@ -283,26 +279,22 @@ tateyama::status service::operator()(
             auto& ds = proto_req.dispose_prepared_statement();
             if(! ds.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
             auto& sh = ds.prepared_statement_handle();
-            auto sid = sh.handle();
-            VLOG(1) << "ps:" << sid << std::endl;
-
-            if(prepared_statements_.size() > sid) {
-                if(prepared_statements_.at(sid)) {
-                    prepared_statements_.at(sid) = nullptr;
-                    ::response::Success s{};
-                    ::response::ResultOnly ro{};
-                    ::response::Response r{};
-
-                    ro.set_allocated_success(&s);
-                    r.set_allocated_result_only(&ro);
-                    reply(*res, r);
-                    r.release_result_only();
-                    ro.release_success();
-                } else {
-                    error<::response::ResultOnly>(*res, "cannot find prepared statement with the index given");
+            if(auto st = db_->destroy_statement(
+                jogasaki::api::statement_handle{
+                    reinterpret_cast<jogasaki::api::prepared_statement*>(sh.handle()) //NOLINT
                 }
+            ); st == jogasaki::status::ok) {
+                ::response::Success s{};
+                ::response::ResultOnly ro{};
+                ::response::Response r{};
+
+                ro.set_allocated_success(&s);
+                r.set_allocated_result_only(&ro);
+                reply(*res, r);
+                r.release_result_only();
+                ro.release_success();
             } else {
-                error<::response::ResultOnly>(*res, "index is larger than the number of prepred statment registerd");
+                error<::response::ResultOnly>(*res, "error destroying statement");
             }
             break;
         }
@@ -497,9 +489,10 @@ const char* service::execute_prepared_statement(std::size_t sid, jogasaki::api::
     if (!transaction_) {
         transaction_ = db_->create_transaction();
     }
+    jogasaki::api::statement_handle handle{reinterpret_cast<jogasaki::api::prepared_statement*>(sid)}; //NOLINT
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->resolve(*prepared_statements_.at(sid), params, e); rc != jogasaki::status::ok) {
+    if(auto rc = db_->resolve(handle, params, e); rc != jogasaki::status::ok) {
         return "error in db_->resolve()";
     }
     if(auto rc = transaction_->execute(*e); rc != jogasaki::status::ok) {
@@ -528,8 +521,9 @@ const char* service::execute_prepared_query(
     res.acquire_channel(cursor.wire_name_, channel_);
     channel_->acquire(cursor.writer_);
 
+    jogasaki::api::statement_handle handle{reinterpret_cast<jogasaki::api::prepared_statement*>(sid)}; //NOLINT
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->resolve(*prepared_statements_.at(sid), params, e); rc != jogasaki::status::ok) {
+    if(auto rc = db_->resolve(handle, params, e); rc != jogasaki::status::ok) {
         return "error in db_->resolve()";
     }
 

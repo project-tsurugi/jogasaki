@@ -74,8 +74,6 @@ private:
     std::size_t transaction_id_{};
     std::size_t resultset_id_{};
     std::vector<Cursor> cursors_{};
-    std::vector<std::unique_ptr<jogasaki::api::prepared_statement>> prepared_statements_{};
-    std::size_t prepared_statements_index_{};
 
     tateyama::api::endpoint::data_channel* channel_{};
 
@@ -99,7 +97,6 @@ private:
     }
     void clear_all() {
         clear_transaction();
-        prepared_statements_.clear();
     }
 
     void release_writers(tateyama::api::endpoint::response& res, Cursor& cursor);

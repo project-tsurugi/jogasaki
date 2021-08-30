@@ -23,6 +23,7 @@
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/statement_handle.h>
 
 #include <tateyama/status.h>
 #include <tateyama/api/endpoint/service.h>
@@ -88,13 +89,15 @@ private:
         jogasaki::api::transaction_handle tx,
         std::unique_ptr<output>& out
     );
-    void set_metadata(output& out, schema::RecordMeta&);
+    void set_metadata(output const& out, schema::RecordMeta&);
     void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);
     void release_writers(tateyama::api::endpoint::response& res, output& out);
     void reply(endpoint::response& res, ::response::Response &r);
 
     template<typename T>
-    void error(endpoint::response&, std::string) {}  //NOLINT(performance-unnecessary-value-param)
+    void error(endpoint::response&, std::string) = delete; //NOLINT(performance-unnecessary-value-param)
+    template<typename T, typename... Args>
+    void success(endpoint::response& res, Args...args) = delete; //NOLINT(performance-unnecessary-value-param)
 };
 
 inline void set_application_error(endpoint::response& res) {
@@ -160,6 +163,65 @@ inline void service::error<::response::ExecuteQuery>(endpoint::response& res, st
     r.release_execute_query();
     eq.release_error();
     set_application_error(res);
+}
+
+template<>
+inline void service::success<::response::ResultOnly>(endpoint::response& res) {  //NOLINT(performance-unnecessary-value-param)
+    ::response::Success s{};
+    ::response::ResultOnly ro{};
+    ::response::Response r{};
+
+    ro.set_allocated_success(&s);
+    r.set_allocated_result_only(&ro);
+    reply(res, r);
+    r.release_result_only();
+    ro.release_success();
+}
+
+template<>
+inline void service::success<::response::Begin>(endpoint::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
+    ::common::Transaction t{};
+    ::response::Begin b{};
+    ::response::Response r{};
+
+    t.set_handle(static_cast<std::size_t>(tx));
+    b.set_allocated_transaction_handle(&t);
+    r.set_allocated_begin(&b);
+    reply(res, r);
+    r.release_begin();
+    b.release_transaction_handle();
+}
+
+template<>
+inline void service::success<::response::Prepare>(endpoint::response& res, jogasaki::api::statement_handle statement) {  //NOLINT(performance-unnecessary-value-param)
+    ::common::PreparedStatement ps{};
+    ::response::Prepare p{};
+    ::response::Response r{};
+
+    ps.set_handle(static_cast<std::size_t>(statement));
+    p.set_allocated_prepared_statement_handle(&ps);
+    r.set_allocated_prepare(&p);
+    reply(res, r);
+    r.release_prepare();
+    p.release_prepared_statement_handle();
+}
+
+template<>
+inline void service::success<::response::ExecuteQuery>(endpoint::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
+    ::schema::RecordMeta meta{};
+    ::response::ResultSetInfo i{};
+    ::response::ExecuteQuery e{};
+    ::response::Response r{};
+
+    set_metadata(*out, meta);
+    i.set_name(out->wire_name_);
+    i.set_allocated_record_meta(&meta);
+    e.set_allocated_result_set_info(&i);
+    r.set_allocated_execute_query(&e);
+    reply(res, r);
+    r.release_execute_query();
+    e.release_result_set_info();
+    i.release_record_meta();
 }
 
 inline api::endpoint::impl::service& get_impl(api::endpoint::service& svc) {

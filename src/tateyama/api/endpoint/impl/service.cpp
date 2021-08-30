@@ -63,16 +63,7 @@ tateyama::status service::operator()(
             VLOG(1) << "begin" << std::endl;
             jogasaki::api::transaction_handle tx{};
             if (auto st = db_->create_transaction(tx); st == jogasaki::status::ok) {
-                ::common::Transaction t{};
-                ::response::Begin b{};
-                ::response::Response r{};
-
-                t.set_handle(static_cast<std::size_t>(tx));
-                b.set_allocated_transaction_handle(&t);
-                r.set_allocated_begin(&b);
-                reply(*res, r);
-                r.release_begin();
-                b.release_transaction_handle();
+                success<::response::Begin>(*res, tx);
             } else {
                 error<::response::Begin>(*res, "error in db_->create_transaction()");
             }
@@ -93,16 +84,7 @@ tateyama::status service::operator()(
             }
             jogasaki::api::statement_handle statement{};
             if(auto rc = db_->prepare(sql, variables, statement); rc == jogasaki::status::ok) {
-                ::common::PreparedStatement ps{};
-                ::response::Prepare p{};
-                ::response::Response r{};
-
-                ps.set_handle(static_cast<std::size_t>(statement));
-                p.set_allocated_prepared_statement_handle(&ps);
-                r.set_allocated_prepare(&p);
-                reply(*res, r);
-                r.release_prepare();
-                p.release_prepared_statement_handle();
+                success<::response::Prepare>(*res, statement);
             } else {
                 error<::response::Prepare>(*res, "error in db_->prepare()");
             }
@@ -121,14 +103,7 @@ tateyama::status service::operator()(
                 break;
             }
             if (auto err = execute_statement(sql, tx); err == nullptr) {
-                ::response::Success s{};
-                ::response::ResultOnly ro{};
-                ::response::Response r{};
-                ro.set_allocated_success(&s);
-                r.set_allocated_result_only(&ro);
-                reply(*res, r);
-                r.release_result_only();
-                ro.release_success();
+                success<::response::ResultOnly>(*res);
             } else {
                 error<::response::ResultOnly>(*res, err);
             }
@@ -143,26 +118,13 @@ tateyama::status service::operator()(
             VLOG(1) << "tx:" << eq.transaction_handle().handle() << sql << std::endl;
             jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
             if(! tx) {
-                error<::response::ResultOnly>(*res, "invalid transaction handle");
+                error<::response::ExecuteQuery>(*res, "invalid transaction handle");
                 break;
             }
 
             std::unique_ptr<output> out{};
             if (auto err = execute_query(*res, sql, ++resultset_id_, tx, out); err == nullptr) {
-                ::schema::RecordMeta meta{};
-                ::response::ResultSetInfo i{};
-                ::response::ExecuteQuery e{};
-                ::response::Response r{};
-
-                set_metadata(*out, meta);
-                i.set_name(out->wire_name_);
-                i.set_allocated_record_meta(&meta);
-                e.set_allocated_result_set_info(&i);
-                r.set_allocated_execute_query(&e);
-                reply(*res, r);
-                r.release_execute_query();
-                e.release_result_set_info();
-                i.release_record_meta();
+                success<::response::ExecuteQuery>(*res, out.get());
                 process_output(*out);
                 release_writers(*res, *out);
             } else {
@@ -187,15 +149,7 @@ tateyama::status service::operator()(
             auto params = jogasaki::api::create_parameter_set();
             set_params(pq.parameters(), params);
             if (auto err = execute_prepared_statement(sid, *params, tx); err == nullptr) {
-                ::response::Success s{};
-                ::response::ResultOnly ro{};
-                ::response::Response r{};
-
-                ro.set_allocated_success(&s);
-                r.set_allocated_result_only(&ro);
-                reply(*res, r);
-                r.release_result_only();
-                ro.release_success();
+                success<::response::ResultOnly>(*res);
             } else {
                 error<::response::ResultOnly>(*res, err);
             }
@@ -211,7 +165,7 @@ tateyama::status service::operator()(
             VLOG(1) << "tx:" << pq.transaction_handle().handle() << "sid:" << sid << std::endl;
             jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
             if(! tx) {
-                error<::response::ResultOnly>(*res, "invalid transaction handle");
+                error<::response::ExecuteQuery>(*res, "invalid transaction handle");
                 break;
             }
             auto params = jogasaki::api::create_parameter_set();
@@ -219,20 +173,7 @@ tateyama::status service::operator()(
 
             std::unique_ptr<output> out{};
             if(auto err = execute_prepared_query(*res, sid, *params, ++resultset_id_, tx, out); err == nullptr) {
-                ::schema::RecordMeta meta{};
-                ::response::ResultSetInfo i{};
-                ::response::ExecuteQuery e{};
-                ::response::Response r{};
-
-                set_metadata(*out, meta);
-                i.set_name(out->wire_name_);
-                i.set_allocated_record_meta(&meta);
-                e.set_allocated_result_set_info(&i);
-                r.set_allocated_execute_query(&e);
-                reply(*res, r);
-                r.release_execute_query();
-                e.release_result_set_info();
-                i.release_record_meta();
+                success<::response::ExecuteQuery>(*res, out.get());
                 process_output(*out);
                 release_writers(*res, *out);
             } else {
@@ -251,15 +192,7 @@ tateyama::status service::operator()(
                 break;
             }
             if(auto rc = tx->commit(); rc == jogasaki::status::ok) {
-                ::response::Success s{};
-                ::response::ResultOnly ro{};
-                ::response::Response r{};
-
-                ro.set_allocated_success(&s);
-                r.set_allocated_result_only(&ro);
-                reply(*res, r);
-                r.release_result_only();
-                ro.release_success();
+                success<::response::ResultOnly>(*res);
                 if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
                     fail();
                 }
@@ -280,16 +213,7 @@ tateyama::status service::operator()(
                 break;
             }
             if(auto rc = tx->abort(); rc == jogasaki::status::ok) {
-                ::response::Success s{};
-                ::response::ResultOnly ro{};
-                ::response::Response r{};
-
-                ro.set_allocated_success(&s);
-                r.set_allocated_result_only(&ro);
-                reply(*res, r);
-                r.release_result_only();
-                ro.release_success();
-
+                success<::response::ResultOnly>(*res);
                 if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
                     fail();
                 }
@@ -305,15 +229,7 @@ tateyama::status service::operator()(
             auto& sh = ds.prepared_statement_handle();
             if(auto st = db_->destroy_statement(jogasaki::api::statement_handle{sh.handle()});
                 st == jogasaki::status::ok) {
-                ::response::Success s{};
-                ::response::ResultOnly ro{};
-                ::response::Response r{};
-
-                ro.set_allocated_success(&s);
-                r.set_allocated_result_only(&ro);
-                reply(*res, r);
-                r.release_result_only();
-                ro.release_success();
+                success<::response::ResultOnly>(*res);
             } else {
                 error<::response::ResultOnly>(*res, "error destroying statement");
             }
@@ -321,15 +237,7 @@ tateyama::status service::operator()(
         }
         case ::request::Request::RequestCase::kDisconnect: {
             VLOG(1) << "disconnect" << std::endl;
-            ::response::Success s{};
-            ::response::ResultOnly ro{};
-            ::response::Response r{};
-
-            ro.set_allocated_success(&s);
-            r.set_allocated_result_only(&ro);
-            reply(*res, r);
-            r.release_result_only();
-            ro.release_success();
+            success<::response::ResultOnly>(*res);
             break;
         }
         default:
@@ -356,7 +264,7 @@ const char* service::execute_statement(std::string_view sql, jogasaki::api::tran
     return nullptr;
 }
 
-void service::set_metadata(output& out, ::schema::RecordMeta& meta)
+void service::set_metadata(output const& out, ::schema::RecordMeta& meta)
 {
     auto* metadata = out.result_set_->meta();
     std::size_t n = metadata->field_count();

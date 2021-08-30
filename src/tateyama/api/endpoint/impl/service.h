@@ -39,13 +39,8 @@ namespace tateyama::api::endpoint::impl {
 
 using takatori::util::unsafe_downcast;
 
-class Cursor {
+class output {
 public:
-    void clear() {
-        result_set_ = nullptr;
-        iterator_ = nullptr;
-        prepared_ = nullptr;
-    }
     std::unique_ptr<jogasaki::api::result_set> result_set_{};  //NOLINT
     std::unique_ptr<jogasaki::api::result_set_iterator> iterator_{};  //NOLINT
     std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};  //NOLINT
@@ -72,28 +67,30 @@ private:
     std::atomic_size_t resultset_id_{};
 
     [[nodiscard]] const char* execute_statement(std::string_view, jogasaki::api::transaction_handle tx);
-    [[nodiscard]] const char* execute_query(
-        tateyama::api::endpoint::response& res,
-        std::string_view,
-        std::size_t,
-        jogasaki::api::transaction_handle tx,
-        std::unique_ptr<Cursor>& cursor
-    );
-    void process_output(Cursor& cursor);
     [[nodiscard]] const char* execute_prepared_statement(
         std::size_t,
         jogasaki::api::parameter_set&,
         jogasaki::api::transaction_handle tx
     );
+    void process_output(output& out);
+    [[nodiscard]] const char* execute_query(
+        tateyama::api::endpoint::response& res,
+        std::string_view,
+        std::size_t,
+        jogasaki::api::transaction_handle tx,
+        std::unique_ptr<output>& out
+    );
     [[nodiscard]] const char* execute_prepared_query(
         tateyama::api::endpoint::response& res,
-        std::size_t, jogasaki::api::parameter_set&, std::size_t,
+        std::size_t,
+        jogasaki::api::parameter_set&,
+        std::size_t,
         jogasaki::api::transaction_handle tx,
-        std::unique_ptr<Cursor>& cursor
+        std::unique_ptr<output>& out
     );
-    void set_metadata(Cursor& cursor, schema::RecordMeta&);
+    void set_metadata(output& out, schema::RecordMeta&);
     void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);
-    void release_writers(tateyama::api::endpoint::response& res, Cursor& cursor);
+    void release_writers(tateyama::api::endpoint::response& res, output& out);
     void reply(endpoint::response& res, ::response::Response &r);
 
     template<typename T>

@@ -97,6 +97,8 @@ void error(endpoint::response& res, std::string msg) { //NOLINT(performance-unne
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
     reply(res, r);
+    res.code(response_code::application_error);
+    res.message("application error - check message in the response body");
     release_object(r, p);
     p.release_error();
     set_application_error(res);
@@ -114,6 +116,7 @@ inline void success<::response::ResultOnly>(endpoint::response& res) {  //NOLINT
     ro.set_allocated_success(&s);
     r.set_allocated_result_only(&ro);
     reply(res, r);
+    res.code(response_code::success);
     r.release_result_only();
     ro.release_success();
 }
@@ -128,6 +131,7 @@ inline void success<::response::Begin>(endpoint::response& res, jogasaki::api::t
     b.set_allocated_transaction_handle(&t);
     r.set_allocated_begin(&b);
     reply(res, r);
+    res.code(response_code::success);
     r.release_begin();
     b.release_transaction_handle();
 }
@@ -142,6 +146,7 @@ inline void success<::response::Prepare>(endpoint::response& res, jogasaki::api:
     p.set_allocated_prepared_statement_handle(&ps);
     r.set_allocated_prepare(&p);
     reply(res, r);
+    res.code(response_code::success);
     r.release_prepare();
     p.release_prepared_statement_handle();
 }
@@ -159,6 +164,7 @@ inline void success<::response::ExecuteQuery>(endpoint::response& res, output* o
     e.set_allocated_result_set_info(&i);
     r.set_allocated_execute_query(&e);
     details::reply(res, r);
+    res.code(response_code::started);
     r.release_execute_query();
     e.release_result_set_info();
     i.release_record_meta();

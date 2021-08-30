@@ -145,7 +145,7 @@ public:
     std::string body_{};  //NOLINT
     std::unique_ptr<test_channel> channel_{};  //NOLINT
     std::string message_{};  //NOLINT
-    response_code code_{};  //NOLINT
+    response_code code_{response_code::unknown};  //NOLINT
     bool completed_{};
 };
 

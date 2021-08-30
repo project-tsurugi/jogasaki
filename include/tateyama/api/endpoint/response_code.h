@@ -36,6 +36,8 @@ enum class response_code : std::int64_t {
     /// @brief error occurred in the application domain
     application_error = 2,
 
+    /// @brief error occurred input/output processing on tateyama
+    io_error = 3,
 };
 
 /**
@@ -50,6 +52,7 @@ enum class response_code : std::int64_t {
         case response_code::success: return "success"sv;
         case response_code::started: return "started"sv;
         case response_code::application_error: return "application_error"sv;
+        case response_code::io_error: return "io_error"sv;
     }
     std::abort();
 }

@@ -86,7 +86,7 @@ tateyama::status service::operator()(
     ::request::Request proto_req{};
     if (!proto_req.ParseFromString(std::string(req->payload()))) {
         LOG(ERROR) << "parse error" << std::endl;
-        res->code(response_code::application_error);
+        res->code(response_code::io_error);
         res->message("parse error with request body");
         res->complete();
         return tateyama::status::ok;
@@ -159,9 +159,10 @@ tateyama::status service::operator()(
 
             std::unique_ptr<output> out{};
             if (auto err = execute_query(*res, details::query_info{sql}, tx, out); err == nullptr) {
-                details::success<::response::ExecuteQuery>(*res, out.get());
+                details::success<::response::ExecuteQuery>(*res, out.get()); // sending response_code = started
                 process_output(*out);
                 release_writers(*res, *out);
+                res->code(response_code::success);
             } else {
                 details::error<::response::ExecuteQuery>(*res, err);
             }
@@ -209,9 +210,10 @@ tateyama::status service::operator()(
             std::unique_ptr<output> out{};
             if(auto err = execute_query(*res, details::query_info{sid, params.get()}, tx, out);
                 err == nullptr) {
-                details::success<::response::ExecuteQuery>(*res, out.get());
+                details::success<::response::ExecuteQuery>(*res, out.get()); // sending response_code = started
                 process_output(*out);
                 release_writers(*res, *out);
+                res->code(response_code::success);
             } else {
                 details::error<::response::ExecuteQuery>(*res, err);
             }
@@ -228,10 +230,10 @@ tateyama::status service::operator()(
                 break;
             }
             if(auto rc = tx->commit(); rc == jogasaki::status::ok) {
-                details::success<::response::ResultOnly>(*res);
                 if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
                     fail();
                 }
+                details::success<::response::ResultOnly>(*res);
             } else {
                 details::error<::response::ResultOnly>(*res, "error in transaction_->commit()");
             }
@@ -248,10 +250,10 @@ tateyama::status service::operator()(
                 break;
             }
             if(auto rc = tx->abort(); rc == jogasaki::status::ok) {
-                details::success<::response::ResultOnly>(*res);
                 if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
                     fail();
                 }
+                details::success<::response::ResultOnly>(*res);
             } else {
                 details::error<::response::ResultOnly>(*res, "error in transaction_->abort()");
             }
@@ -277,7 +279,7 @@ tateyama::status service::operator()(
         }
         default:
             LOG(ERROR) << "invalid error case" << std::endl;
-            res->code(response_code::application_error);
+            res->code(response_code::io_error);
             res->message("invalid request code");
             break;
     }

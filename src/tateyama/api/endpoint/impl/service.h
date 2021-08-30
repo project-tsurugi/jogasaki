@@ -52,58 +52,11 @@ struct output {
 
 namespace details {
 
-inline void set_application_error(endpoint::response& res) {
-    res.code(response_code::application_error);
-    res.message("error on application domain - check response body");
-}
+class query_info;
 
-inline void reply(response& res, ::response::Response& r) {
-    std::stringstream ss{};
-    if (!r.SerializeToOstream(&ss)) {
-        std::abort();
-    }
-    res.body(ss.str());
-}
-
-inline void set_metadata(output const& out, ::schema::RecordMeta& meta) {
-    auto* metadata = out.result_set_->meta();
-    std::size_t n = metadata->field_count();
-
-    for (std::size_t i = 0; i < n; i++) {
-        auto column = std::make_unique<::schema::RecordMeta_Column>();
-        switch(metadata->at(i).kind()) {
-            case jogasaki::api::field_type_kind::int4:
-                column->set_type(::common::DataType::INT4);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
-                break;
-            case jogasaki::api::field_type_kind::int8:
-                column->set_type(::common::DataType::INT8);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
-                break;
-            case jogasaki::api::field_type_kind::float4:
-                column->set_type(::common::DataType::FLOAT4);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
-                break;
-            case jogasaki::api::field_type_kind::float8:
-                column->set_type(::common::DataType::FLOAT8);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
-                break;
-            case jogasaki::api::field_type_kind::character:
-                column->set_type(::common::DataType::CHARACTER);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
-                break;
-            default:
-                std::cout << __LINE__ << ":" << i << std::endl;
-                std::cerr << "unsupported data type: " << metadata->at(i).kind() << std::endl;
-                break;
-        }
-    }
-}
+void set_application_error(endpoint::response& res);
+void reply(response& res, ::response::Response& r);
+void set_metadata(output const& out, ::schema::RecordMeta& meta);
 
 template<typename T>
 void set_allocated_object(::response::Response& r, T& p) {
@@ -211,47 +164,13 @@ inline void success<::response::ExecuteQuery>(endpoint::response& res, output* o
     i.release_record_meta();
 }
 
-class query {
-public:
-    using handle_parameters = std::pair<std::size_t, jogasaki::api::parameter_set*>;
-    explicit query(std::string_view sql) :
-        entity_(std::in_place_type<std::string_view>, sql)
-    {}
-
-    explicit query(std::size_t sid, jogasaki::api::parameter_set* params) :
-        entity_(std::in_place_type<handle_parameters>, std::pair{sid, params})
-    {}
-
-    [[nodiscard]] bool has_sql() const noexcept {
-        return std::holds_alternative<std::string_view>(entity_);
-    }
-
-    [[nodiscard]] std::string_view sql() const noexcept {
-        if (! has_sql()) fail();
-        return *std::get_if<std::string_view>(std::addressof(entity_));
-    }
-
-    [[nodiscard]] std::size_t sid() const noexcept {
-        if (has_sql()) fail();
-        return std::get_if<handle_parameters>(std::addressof(entity_))->first;
-    }
-
-    [[nodiscard]] jogasaki::api::parameter_set* params() const noexcept {
-        if (has_sql()) fail();
-        return std::get_if<handle_parameters>(std::addressof(entity_))->second;
-    }
-private:
-    std::variant<std::string_view, handle_parameters> entity_{};
-};
 }
 
 class service : public api::endpoint::service {
 public:
     service() = default;
 
-    explicit service(jogasaki::api::database& db) :
-        db_(std::addressof(db))
-    {}
+    explicit service(jogasaki::api::database& db);
 
     tateyama::status operator()(
         std::shared_ptr<tateyama::api::endpoint::request const> req,
@@ -259,26 +178,25 @@ public:
     ) override;
 
 private:
-    jogasaki::api::database* db_{};
-    std::atomic_size_t resultset_id_{};
 
-    [[nodiscard]] const char* execute_statement(std::string_view, jogasaki::api::transaction_handle tx);
+    jogasaki::api::database* db_{};
+
+    [[nodiscard]] const char* execute_statement(std::string_view sql, jogasaki::api::transaction_handle tx);
     [[nodiscard]] const char* execute_prepared_statement(
-        std::size_t,
-        jogasaki::api::parameter_set&,
+        std::size_t sid,
+        jogasaki::api::parameter_set& params,
         jogasaki::api::transaction_handle tx
     );
     void process_output(output& out);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
-        details::query const& q,
-        std::size_t,
+        details::query_info const& q,
         jogasaki::api::transaction_handle tx,
         std::unique_ptr<output>& out
     );
-    void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);
+    void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
     void release_writers(tateyama::api::endpoint::response& res, output& out);
-
+    [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
 
 inline api::endpoint::impl::service& get_impl(api::endpoint::service& svc) {

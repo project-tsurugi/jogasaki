@@ -42,6 +42,43 @@ namespace tateyama::api::endpoint::impl {
 
 using takatori::util::fail;
 
+namespace details {
+
+class query_info {
+public:
+    using handle_parameters = std::pair<std::size_t, jogasaki::api::parameter_set*>;
+    explicit query_info(std::string_view sql) :
+        entity_(std::in_place_type<std::string_view>, sql)
+    {}
+
+    explicit query_info(std::size_t sid, jogasaki::api::parameter_set* params) :
+        entity_(std::in_place_type<handle_parameters>, std::pair{sid, params})
+    {}
+
+    [[nodiscard]] bool has_sql() const noexcept {
+        return std::holds_alternative<std::string_view>(entity_);
+    }
+
+    [[nodiscard]] std::string_view sql() const noexcept {
+        if (! has_sql()) fail();
+        return *std::get_if<std::string_view>(std::addressof(entity_));
+    }
+
+    [[nodiscard]] std::size_t sid() const noexcept {
+        if (has_sql()) fail();
+        return std::get_if<handle_parameters>(std::addressof(entity_))->first;
+    }
+
+    [[nodiscard]] jogasaki::api::parameter_set* params() const noexcept {
+        if (has_sql()) fail();
+        return std::get_if<handle_parameters>(std::addressof(entity_))->second;
+    }
+private:
+    std::variant<std::string_view, handle_parameters> entity_{};
+};
+
+}
+
 tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::endpoint::request const> req,
     std::shared_ptr<tateyama::api::endpoint::response> res
@@ -121,7 +158,7 @@ tateyama::status service::operator()(
             }
 
             std::unique_ptr<output> out{};
-            if (auto err = execute_query(*res, details::query{sql}, ++resultset_id_, tx, out); err == nullptr) {
+            if (auto err = execute_query(*res, details::query_info{sql}, tx, out); err == nullptr) {
                 details::success<::response::ExecuteQuery>(*res, out.get());
                 process_output(*out);
                 release_writers(*res, *out);
@@ -170,7 +207,7 @@ tateyama::status service::operator()(
             set_params(pq.parameters(), params);
 
             std::unique_ptr<output> out{};
-            if(auto err = execute_query(*res, details::query{sid, params.get()}, ++resultset_id_, tx, out);
+            if(auto err = execute_query(*res, details::query_info{sid, params.get()}, tx, out);
                 err == nullptr) {
                 details::success<::response::ExecuteQuery>(*res, out.get());
                 process_output(*out);
@@ -359,8 +396,7 @@ const char* service::execute_prepared_statement(
 
 const char* service::execute_query(
     tateyama::api::endpoint::response& res,
-    details::query const& q,
-    std::size_t rid,
+    details::query_info const& q,
     jogasaki::api::transaction_handle tx,
     std::unique_ptr<output>& out
 ) {
@@ -369,7 +405,7 @@ const char* service::execute_query(
     }
     out = std::make_unique<output>();
     out->name_ = std::string("resultset-");
-    out->name_ += std::to_string(rid);
+    out->name_ += std::to_string(new_resultset_id());
     res.acquire_channel(out->name_, out->data_channel_);
     out->data_channel_->acquire(out->writer_);
 
@@ -390,6 +426,68 @@ const char* service::execute_query(
         return "error in transaction_->execute()";
     }
     return nullptr;
+}
+
+service::service(jogasaki::api::database& db) :
+    db_(std::addressof(db))
+{}
+
+std::size_t service::new_resultset_id() const noexcept {
+    static std::atomic_size_t resultset_id{};
+    return ++resultset_id;
+}
+
+void details::set_application_error(response& res) {
+    res.code(response_code::application_error);
+    res.message("error on application domain - check response body");
+}
+
+void details::reply(response& res, ::response::Response& r) {
+    std::stringstream ss{};
+    if (!r.SerializeToOstream(&ss)) {
+        std::abort();
+    }
+    res.body(ss.str());
+}
+
+void details::set_metadata(output const& out, schema::RecordMeta& meta) {
+    auto* metadata = out.result_set_->meta();
+    std::size_t n = metadata->field_count();
+
+    for (std::size_t i = 0; i < n; i++) {
+        auto column = std::make_unique<::schema::RecordMeta_Column>();
+        switch(metadata->at(i).kind()) {
+            case jogasaki::api::field_type_kind::int4:
+                column->set_type(::common::DataType::INT4);
+                column->set_nullable(metadata->nullable(i));
+                *meta.add_columns() = *column;
+                break;
+            case jogasaki::api::field_type_kind::int8:
+                column->set_type(::common::DataType::INT8);
+                column->set_nullable(metadata->nullable(i));
+                *meta.add_columns() = *column;
+                break;
+            case jogasaki::api::field_type_kind::float4:
+                column->set_type(::common::DataType::FLOAT4);
+                column->set_nullable(metadata->nullable(i));
+                *meta.add_columns() = *column;
+                break;
+            case jogasaki::api::field_type_kind::float8:
+                column->set_type(::common::DataType::FLOAT8);
+                column->set_nullable(metadata->nullable(i));
+                *meta.add_columns() = *column;
+                break;
+            case jogasaki::api::field_type_kind::character:
+                column->set_type(::common::DataType::CHARACTER);
+                column->set_nullable(metadata->nullable(i));
+                *meta.add_columns() = *column;
+                break;
+            default:
+                std::cout << __LINE__ << ":" << i << std::endl;
+                std::cerr << "unsupported data type: " << metadata->at(i).kind() << std::endl;
+                break;
+        }
+    }
 }
 
 }

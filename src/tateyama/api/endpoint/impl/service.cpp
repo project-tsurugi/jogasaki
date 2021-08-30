@@ -94,13 +94,13 @@ tateyama::status service::operator()(
                 auto& hv = hvs.variables(i);
                 variables.emplace(hv.name(), jogasaki::utils::type_for(hv.type()));
             }
-            jogasaki::api::statement_handle handle{};
-            if(auto rc = db_->prepare(sql, variables, handle); rc == jogasaki::status::ok) {
+            jogasaki::api::statement_handle statement{};
+            if(auto rc = db_->prepare(sql, variables, statement); rc == jogasaki::status::ok) {
                 ::common::PreparedStatement ps{};
                 ::response::Prepare p{};
                 ::response::Response r{};
 
-                ps.set_handle(static_cast<std::size_t>(handle));
+                ps.set_handle(static_cast<std::size_t>(statement));
                 p.set_allocated_prepared_statement_handle(&ps);
                 r.set_allocated_prepare(&p);
                 reply(*res, r);
@@ -227,8 +227,8 @@ tateyama::status service::operator()(
             VLOG(1) << "commit" << std::endl;
             auto& cm = proto_req.commit();
             if(! cm.has_transaction_handle()) LOG(WARNING) << "missing transaction_handle";
-            auto& th = cm.transaction_handle();
-            VLOG(1) << "tx:" << th.handle() << std::endl;
+            jogasaki::api::transaction_handle tx{cm.transaction_handle().handle()};
+            VLOG(1) << tx << std::endl;
             if (transaction_) {
                 if(auto rc = transaction_->commit(); rc == jogasaki::status::ok) {
                     ::response::Success s{};
@@ -287,11 +287,8 @@ tateyama::status service::operator()(
             auto& ds = proto_req.dispose_prepared_statement();
             if(! ds.has_prepared_statement_handle()) LOG(WARNING) << "missing prepared_statement_handle";
             auto& sh = ds.prepared_statement_handle();
-            if(auto st = db_->destroy_statement(
-                jogasaki::api::statement_handle{
-                    reinterpret_cast<jogasaki::api::prepared_statement*>(sh.handle()) //NOLINT
-                }
-            ); st == jogasaki::status::ok) {
+            if(auto st = db_->destroy_statement(jogasaki::api::statement_handle{sh.handle()});
+                st == jogasaki::status::ok) {
                 ::response::Success s{};
                 ::response::ResultOnly ro{};
                 ::response::Response r{};
@@ -503,7 +500,7 @@ const char* service::execute_prepared_statement(std::size_t sid, jogasaki::api::
             fail();
         }
     }
-    jogasaki::api::statement_handle handle{reinterpret_cast<jogasaki::api::prepared_statement*>(sid)}; //NOLINT
+    jogasaki::api::statement_handle handle{sid};
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, params, e); rc != jogasaki::status::ok) {
@@ -538,7 +535,7 @@ const char* service::execute_prepared_query(
     res.acquire_channel(cursor.wire_name_, channel_);
     channel_->acquire(cursor.writer_);
 
-    jogasaki::api::statement_handle handle{reinterpret_cast<jogasaki::api::prepared_statement*>(sid)}; //NOLINT
+    jogasaki::api::statement_handle handle{sid};
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, params, e); rc != jogasaki::status::ok) {
         return "error in db_->resolve()";

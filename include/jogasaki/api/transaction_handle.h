@@ -51,6 +51,14 @@ public:
     {}
 
     /**
+     * @brief create new object from integer
+     * @param arg integer representing target pointer
+     */
+    explicit transaction_handle(std::uintptr_t arg) noexcept :
+        ptr_(reinterpret_cast<transaction*>(arg)) //NOLINT
+    {}
+
+    /**
      * @brief accessor to the referenced prepared statement
      * @return the target prepared statement pointer
      */
@@ -100,6 +108,16 @@ inline bool operator==(transaction_handle const& a, transaction_handle const& b)
  */
 inline bool operator!=(transaction_handle const& a, transaction_handle const& b) noexcept {
     return !(a == b);
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, transaction_handle value) {
+    return out << "transaction_handle[" << value.get() << "]";
 }
 
 }

@@ -51,6 +51,14 @@ public:
     {}
 
     /**
+     * @brief create new object from integer
+     * @param arg integer representing target pointer
+     */
+    explicit statement_handle(std::uintptr_t arg) noexcept :
+        ptr_(reinterpret_cast<prepared_statement*>(arg)) //NOLINT
+    {}
+
+    /**
      * @brief accessor to the referenced prepared statement
      * @return the target prepared statement pointer
      */
@@ -93,6 +101,16 @@ inline bool operator==(statement_handle const& a, statement_handle const& b) noe
  */
 inline bool operator!=(statement_handle const& a, statement_handle const& b) noexcept {
     return !(a == b);
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, statement_handle value) {
+    return out << "statement_handle[" << value.get() << "]";
 }
 
 }

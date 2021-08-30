@@ -102,6 +102,7 @@ static int run(std::string_view sql) {
     if (sql.empty()) return 0;
     auto p = shakujo_program(sql);
     auto storages = tables();
+    executor::add_test_tables(*storages);
     executor::add_benchmark_tables(*storages);
     auto agg_functions = aggregate_functions();
 

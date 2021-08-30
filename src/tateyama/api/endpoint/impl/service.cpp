@@ -344,10 +344,7 @@ const char* service::execute_prepared_statement(
     jogasaki::api::transaction_handle tx
 ) {
     if (!tx) {
-        LOG(WARNING) << "transaction begin implicitly";  //TODO stop proceed
-        if (auto st = db_->create_transaction(tx); st != jogasaki::status::ok) {
-            fail();
-        }
+        fail();
     }
     jogasaki::api::statement_handle handle{sid};
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -368,10 +365,7 @@ const char* service::execute_query(
     std::unique_ptr<output>& out
 ) {
     if (!tx) {
-        LOG(WARNING) << "transaction begin implicitly";  //TODO stop proceed
-        if (auto st = db_->create_transaction(tx); st != jogasaki::status::ok) {
-            fail();
-        }
+        fail();
     }
     out = std::make_unique<output>();
     out->name_ = std::string("resultset-");

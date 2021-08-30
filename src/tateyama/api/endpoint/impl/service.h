@@ -213,6 +213,38 @@ inline void success<::response::ExecuteQuery>(endpoint::response& res, output* o
     i.release_record_meta();
 }
 
+class query {
+public:
+    using handle_parameters = std::pair<std::size_t, jogasaki::api::parameter_set*>;
+    explicit query(std::string_view sql) :
+        entity_(std::in_place_type<std::string_view>, sql)
+    {}
+
+    explicit query(std::size_t sid, jogasaki::api::parameter_set* params) :
+        entity_(std::in_place_type<handle_parameters>, std::pair{sid, params})
+    {}
+
+    [[nodiscard]] bool has_sql() const noexcept {
+        return std::holds_alternative<std::string_view>(entity_);
+    }
+
+    [[nodiscard]] std::string_view sql() const noexcept {
+        if (! has_sql()) fail();
+        return std::get<std::string_view>(entity_);
+    }
+
+    [[nodiscard]] std::size_t sid() const noexcept {
+        if (has_sql()) fail();
+        return std::get<handle_parameters>(entity_).first;
+    }
+
+    [[nodiscard]] jogasaki::api::parameter_set* params() const noexcept {
+        if (has_sql()) fail();
+        return std::get<handle_parameters>(entity_).second;
+    }
+private:
+    std::variant<std::string_view, handle_parameters> entity_{};
+};
 }
 
 class service : public api::endpoint::service {
@@ -241,15 +273,7 @@ private:
     void process_output(output& out);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
-        std::string_view,
-        std::size_t,
-        jogasaki::api::transaction_handle tx,
-        std::unique_ptr<output>& out
-    );
-    [[nodiscard]] const char* execute_prepared_query(
-        tateyama::api::endpoint::response& res,
-        std::size_t,
-        jogasaki::api::parameter_set&,
+        details::query q,
         std::size_t,
         jogasaki::api::transaction_handle tx,
         std::unique_ptr<output>& out

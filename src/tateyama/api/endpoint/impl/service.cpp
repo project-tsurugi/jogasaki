@@ -147,14 +147,15 @@ tateyama::status service::operator()(
                 break;
             }
 
-            if (auto err = execute_query(*res, sql, ++resultset_id_, tx); err == nullptr) {
+            std::unique_ptr<Cursor> cursor{};
+            if (auto err = execute_query(*res, sql, ++resultset_id_, tx, cursor); err == nullptr) {
                 ::schema::RecordMeta meta{};
                 ::response::ResultSetInfo i{};
                 ::response::ExecuteQuery e{};
                 ::response::Response r{};
 
-                set_metadata(resultset_id_, meta);
-                i.set_name(cursors_.at(resultset_id_).wire_name_);
+                set_metadata(*cursor, meta);
+                i.set_name(cursor->wire_name_);
                 i.set_allocated_record_meta(&meta);
                 e.set_allocated_result_set_info(&i);
                 r.set_allocated_execute_query(&e);
@@ -162,8 +163,8 @@ tateyama::status service::operator()(
                 r.release_execute_query();
                 e.release_result_set_info();
                 i.release_record_meta();
-                next(resultset_id_);
-                release_writers(*res, cursors_.at(resultset_id_));
+                process_output(*cursor);
+                release_writers(*res, *cursor);
             } else {
                 error<::response::ExecuteQuery>(*res, err);
             }
@@ -216,14 +217,15 @@ tateyama::status service::operator()(
             auto params = jogasaki::api::create_parameter_set();
             set_params(pq.parameters(), params);
 
-            if(auto err = execute_prepared_query(*res, sid, *params, ++resultset_id_, tx); err == nullptr) {
+            std::unique_ptr<Cursor> cursor{};
+            if(auto err = execute_prepared_query(*res, sid, *params, ++resultset_id_, tx, cursor); err == nullptr) {
                 ::schema::RecordMeta meta{};
                 ::response::ResultSetInfo i{};
                 ::response::ExecuteQuery e{};
                 ::response::Response r{};
 
-                set_metadata(resultset_id_, meta);
-                i.set_name(cursors_.at(resultset_id_).wire_name_);
+                set_metadata(*cursor, meta);
+                i.set_name(cursor->wire_name_);
                 i.set_allocated_record_meta(&meta);
                 e.set_allocated_result_set_info(&i);
                 r.set_allocated_execute_query(&e);
@@ -231,9 +233,8 @@ tateyama::status service::operator()(
                 r.release_execute_query();
                 e.release_result_set_info();
                 i.release_record_meta();
-
-                next(resultset_id_);
-                release_writers(*res, cursors_.at(resultset_id_));
+                process_output(*cursor);
+                release_writers(*res, *cursor);
             } else {
                 error<::response::ExecuteQuery>(*res, err);
             }
@@ -355,9 +356,9 @@ const char* service::execute_statement(std::string_view sql, jogasaki::api::tran
     return nullptr;
 }
 
-void service::set_metadata(std::size_t rid, ::schema::RecordMeta& meta)
+void service::set_metadata(Cursor& cursor, ::schema::RecordMeta& meta)
 {
-    auto metadata = cursors_.at(rid).result_set_->meta();
+    auto* metadata = cursor.result_set_->meta();
     std::size_t n = metadata->field_count();
 
     for (std::size_t i = 0; i < n; i++) {
@@ -400,12 +401,12 @@ void service::release_writers(
     tateyama::api::endpoint::response& res,
     Cursor& cursor
 ) {
-    if (channel_ && cursor.writer_) {
-        channel_->release(*cursor.writer_);
+    if (cursor.data_channel_ && cursor.writer_) {
+        cursor.data_channel_->release(*cursor.writer_);
         cursor.writer_ = nullptr;
     }
-    if (channel_) {
-        res.release_channel(*channel_);
+    if (cursor.data_channel_) {
+        res.release_channel(*cursor.data_channel_);
     }
 }
 
@@ -413,7 +414,8 @@ const char* service::execute_query(
     tateyama::api::endpoint::response& res,
     std::string_view sql,
     std::size_t rid,
-    jogasaki::api::transaction_handle tx
+    jogasaki::api::transaction_handle tx,
+    std::unique_ptr<Cursor>& cursor
 ) {
     if (!tx) {
         LOG(WARNING) << "transaction begin implicitly";  //TODO stop proceed
@@ -421,31 +423,26 @@ const char* service::execute_query(
             fail();
         }
     }
-    if (cursors_.size() < (rid + 1)) {
-        cursors_.resize(rid + 1);
-    }
-
-    auto& cursor = cursors_.at(rid);
-    cursor.wire_name_ = std::string("resultset-");
-    cursor.wire_name_ += std::to_string(rid);
-    res.acquire_channel(cursor.wire_name_, channel_);
-    channel_->acquire(cursor.writer_);
+    cursor = std::make_unique<Cursor>();
+    cursor->wire_name_ = std::string("resultset-");
+    cursor->wire_name_ += std::to_string(rid);
+    res.acquire_channel(cursor->wire_name_, cursor->data_channel_);
+    cursor->data_channel_->acquire(cursor->writer_);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
         return "error in db_->create_executable()";
     }
-    auto& rs = cursor.result_set_;
+    auto& rs = cursor->result_set_;
     if(auto rc = tx->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         return "error in transaction_->execute()";
     }
 
-    cursor.iterator_ = rs->iterator();
+    cursor->iterator_ = rs->iterator();
     return nullptr;
 }
 
-void service::next(std::size_t rid) {
-    auto& cursor = cursors_.at(rid);
+void service::process_output(Cursor& cursor) {
     const jogasaki::api::record_meta* meta = cursor.result_set_->meta();
     auto iterator = cursor.result_set_->iterator();
     while(true) {
@@ -536,7 +533,8 @@ const char* service::execute_prepared_query(
     std::size_t sid,
     jogasaki::api::parameter_set& params,
     std::size_t rid,
-    jogasaki::api::transaction_handle tx
+    jogasaki::api::transaction_handle tx,
+    std::unique_ptr<Cursor>& cursor
 ) {
     if (!tx) {
         LOG(WARNING) << "transaction begin implicitly";  //TODO stop proceed
@@ -544,16 +542,11 @@ const char* service::execute_prepared_query(
             fail();
         }
     }
-    if (cursors_.size() < (rid + 1)) {
-        cursors_.resize(rid + 1);
-    }
-
-    auto& cursor = cursors_.at(rid);
-    cursor.wire_name_ = std::string("resultset-");
-    cursor.wire_name_ += std::to_string(rid);
-
-    res.acquire_channel(cursor.wire_name_, channel_);
-    channel_->acquire(cursor.writer_);
+    cursor = std::make_unique<Cursor>();
+    cursor->wire_name_ = std::string("resultset-");
+    cursor->wire_name_ += std::to_string(rid);
+    res.acquire_channel(cursor->wire_name_, cursor->data_channel_);
+    cursor->data_channel_->acquire(cursor->writer_);
 
     jogasaki::api::statement_handle handle{sid};
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -561,12 +554,12 @@ const char* service::execute_prepared_query(
         return "error in db_->resolve()";
     }
 
-    auto& rs = cursor.result_set_;
+    auto& rs = cursor->result_set_;
     if(auto rc = tx->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
         return "error in transaction_->execute()";
     }
 
-    cursor.iterator_ = rs->iterator();
+    cursor->iterator_ = rs->iterator();
     return nullptr;
 }
 

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <string_view>
+#include <atomic>
 #include <memory>
 
 #include <takatori/util/downcast.h>
@@ -50,6 +51,7 @@ public:
     std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};  //NOLINT
     std::string wire_name_;  //NOLINT
     tateyama::api::endpoint::writer* writer_{};  //NOLINT
+    tateyama::api::endpoint::data_channel* data_channel_{};  //NOLINT
 };
 
 class service : public api::endpoint::service {
@@ -67,18 +69,17 @@ public:
 
 private:
     jogasaki::api::database* db_{};
-    std::size_t resultset_id_{};
-    std::vector<Cursor> cursors_{};
-    tateyama::api::endpoint::data_channel* channel_{};
+    std::atomic_size_t resultset_id_{};
 
     [[nodiscard]] const char* execute_statement(std::string_view, jogasaki::api::transaction_handle tx);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
         std::string_view,
         std::size_t,
-        jogasaki::api::transaction_handle tx
+        jogasaki::api::transaction_handle tx,
+        std::unique_ptr<Cursor>& cursor
     );
-    void next(std::size_t);
+    void process_output(Cursor& cursor);
     [[nodiscard]] const char* execute_prepared_statement(
         std::size_t,
         jogasaki::api::parameter_set&,
@@ -87,9 +88,10 @@ private:
     [[nodiscard]] const char* execute_prepared_query(
         tateyama::api::endpoint::response& res,
         std::size_t, jogasaki::api::parameter_set&, std::size_t,
-        jogasaki::api::transaction_handle tx
+        jogasaki::api::transaction_handle tx,
+        std::unique_ptr<Cursor>& cursor
     );
-    void set_metadata(std::size_t, schema::RecordMeta&);
+    void set_metadata(Cursor& cursor, schema::RecordMeta&);
     void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);
     void release_writers(tateyama::api::endpoint::response& res, Cursor& cursor);
     void reply(endpoint::response& res, ::response::Response &r);

@@ -67,23 +67,27 @@ public:
 
 private:
     jogasaki::api::database* db_{};
-
-    jogasaki::api::transaction_handle transaction_{};
     std::size_t resultset_id_{};
     std::vector<Cursor> cursors_{};
     tateyama::api::endpoint::data_channel* channel_{};
 
-    [[nodiscard]] const char* execute_statement(std::string_view);
+    [[nodiscard]] const char* execute_statement(std::string_view, jogasaki::api::transaction_handle tx);
     [[nodiscard]] const char* execute_query(
         tateyama::api::endpoint::response& res,
         std::string_view,
-        std::size_t
+        std::size_t,
+        jogasaki::api::transaction_handle tx
     );
     void next(std::size_t);
-    [[nodiscard]] const char* execute_prepared_statement(std::size_t, jogasaki::api::parameter_set&);
+    [[nodiscard]] const char* execute_prepared_statement(
+        std::size_t,
+        jogasaki::api::parameter_set&,
+        jogasaki::api::transaction_handle tx
+    );
     [[nodiscard]] const char* execute_prepared_query(
         tateyama::api::endpoint::response& res,
-        std::size_t, jogasaki::api::parameter_set&, std::size_t
+        std::size_t, jogasaki::api::parameter_set&, std::size_t,
+        jogasaki::api::transaction_handle tx
     );
     void set_metadata(std::size_t, schema::RecordMeta&);
     void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);

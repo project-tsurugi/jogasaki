@@ -20,6 +20,7 @@
 #include <memory>
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/transaction_handle.h>
@@ -39,6 +40,7 @@
 namespace tateyama::api::endpoint::impl {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
 
 class output {
 public:
@@ -49,6 +51,11 @@ public:
     tateyama::api::endpoint::writer* writer_{};  //NOLINT
     tateyama::api::endpoint::data_channel* data_channel_{};  //NOLINT
 };
+
+inline void set_application_error(endpoint::response& res) {
+    res.code(response_code::application_error);
+    res.message("error on application domain - check response body");
+}
 
 class service : public api::endpoint::service {
 public:
@@ -95,75 +102,52 @@ private:
     void reply(endpoint::response& res, ::response::Response &r);
 
     template<typename T>
-    void error(endpoint::response&, std::string) = delete; //NOLINT(performance-unnecessary-value-param)
+    void set_allocated_object(::response::Response& r, T& p) {
+        if constexpr (std::is_same_v<T, ::response::Begin>) {
+            r.set_allocated_begin(&p);
+        } else if constexpr (std::is_same_v<T, ::response::Prepare>) {
+            r.set_allocated_prepare(&p);
+        } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {
+            r.set_allocated_result_only(&p);
+        } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {
+            r.set_allocated_execute_query(&p);
+        } else {
+            fail();
+        }
+    }
+
+    template<typename T>
+    void release_object(::response::Response& r, T&) {
+        if constexpr (std::is_same_v<T, ::response::Begin>) {
+            r.release_begin();
+        } else if constexpr (std::is_same_v<T, ::response::Prepare>) {
+            r.release_prepare();
+        } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {
+            r.release_result_only();
+        } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {
+            r.release_execute_query();
+        } else {
+            fail();
+        }
+    }
+
+    template<typename T>
+    void error(endpoint::response& res, std::string msg) { //NOLINT(performance-unnecessary-value-param)
+        ::response::Error e{};
+        T p{};
+        ::response::Response r{};
+        e.set_detail(msg);
+        p.set_allocated_error(&e);
+        set_allocated_object(r, p);
+        reply(res, r);
+        release_object(r, p);
+        p.release_error();
+        set_application_error(res);
+    }
+
     template<typename T, typename... Args>
     void success(endpoint::response& res, Args...args) = delete; //NOLINT(performance-unnecessary-value-param)
 };
-
-inline void set_application_error(endpoint::response& res) {
-    res.code(response_code::application_error);
-    res.message("error on application domain - check response body");
-}
-
-template<>
-inline void service::error<::response::Begin>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e{};
-    ::response::Begin p{};
-    ::response::Response r{};
-
-    e.set_detail(msg);
-    p.set_allocated_error(&e);
-    r.set_allocated_begin(&p);
-    reply(res, r);
-    r.release_begin();
-    p.release_error();
-    set_application_error(res);
-}
-
-template<>
-inline void service::error<::response::Prepare>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e{};
-    ::response::Prepare p{};
-    ::response::Response r{};
-
-    e.set_detail(msg);
-    p.set_allocated_error(&e);
-    r.set_allocated_prepare(&p);
-    reply(res, r);
-    r.release_prepare();
-    p.release_error();
-    set_application_error(res);
-}
-
-template<>
-inline void service::error<::response::ResultOnly>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e{};
-    ::response::ResultOnly ro{};
-    ::response::Response r{};
-
-    e.set_detail(msg);
-    ro.set_allocated_error(&e);
-    r.set_allocated_result_only(&ro);
-    reply(res, r);
-    r.release_result_only();
-    ro.release_error();
-    set_application_error(res);
-}
-
-template<>
-inline void service::error<::response::ExecuteQuery>(endpoint::response& res, std::string msg) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e{};
-    ::response::ExecuteQuery eq{};
-    ::response::Response r{};
-
-    e.set_detail(msg);
-    eq.set_allocated_error(&e);
-    r.set_allocated_execute_query(&eq);
-    reply(res, r);
-    r.release_execute_query();
-    eq.release_error();
-    set_application_error(res);
-}
 
 template<>
 inline void service::success<::response::ResultOnly>(endpoint::response& res) {  //NOLINT(performance-unnecessary-value-param)

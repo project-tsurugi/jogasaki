@@ -294,6 +294,7 @@ tateyama::status service::operator()(
             VLOG(1) << "disconnect" << std::endl;
             details::success<::response::ResultOnly>(*res);
             res->complete();
+            res->close_session(); //TODO re-visit when the notion of session is finalized
             break;
         }
         default:

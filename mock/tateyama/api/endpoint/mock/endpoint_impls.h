@@ -142,6 +142,9 @@ public:
         return completed_;
     }
 
+    status close_session() override {
+        return status::ok;
+    };
     std::string body_{};  //NOLINT
     std::unique_ptr<test_channel> channel_{};  //NOLINT
     std::string message_{};  //NOLINT

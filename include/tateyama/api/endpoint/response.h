@@ -111,6 +111,16 @@ public:
      */
     virtual status release_channel(data_channel& ch) = 0;
 
+    /**
+     * @brief notify endpoint to close the current session
+     * @detail this function is called only in response to `disconnect` message to close the session
+     * @warning this function is temporary because endpoint requires the notification to ending session while
+     * the notion of session is still evolving. This function can be changed, or completely remove in the future.
+     * @return status::ok when successful
+     * @return other code when error occurs
+     * @attention this function is not thread-safe and should be called from single thread at a time.
+     */
+    virtual status close_session() = 0;
 };
 
 }

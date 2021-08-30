@@ -20,6 +20,7 @@ namespace jogasaki::api {
 /**
  * @brief prepared statement interface
  * @details prepared statement represents pre-compiled sql statement with unresolved placeholders
+ * @deprecated use statement_handle instead
  */
 class prepared_statement {
 public:

@@ -39,6 +39,7 @@ class result_set;
 class transaction;
 class prepared_statement;
 class statement_handle;
+class transaction_handle;
 class executable_statement;
 class parameter_set;
 
@@ -106,6 +107,8 @@ public:
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
+     * @deprecated use `prepare(std::string_view, statement_handle&)` instead
+     * `
      */
     virtual status prepare(
         std::string_view sql,
@@ -139,6 +142,7 @@ public:
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
+     * @deprecated use `prepare(std::string_view, std::unordered_map<std::string, api::field_type_kind> const&, statement_handle&)` instead
      */
     virtual status prepare(std::string_view sql,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
@@ -187,6 +191,8 @@ public:
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned executable statement should be used from single thread/transaction at a point in time.
+     * @deprecated use `resolve(statement_handle, parameter_set const&, std::unique_ptr<executable_statement>&)`
+     * )
      */
     virtual status resolve(
         prepared_statement const& prepared,
@@ -241,10 +247,35 @@ public:
      * @return transaction object when success
      * @return nullptr when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @deprecated use `create_transaction(transaction_handle&, bool)` instead
      */
     std::unique_ptr<transaction> create_transaction(bool readonly = false) {
         return do_create_transaction(readonly);
     }
+
+    /**
+     * @brief begin the new transaction
+     * @param readonly specify whether the new transaction is read-only or not
+     * @return transaction object when success
+     * @return nullptr when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
+    status create_transaction(transaction_handle& handle, bool readonly = false) {
+        return do_create_transaction(handle, readonly);
+    }
+
+    /**
+     * @brief destroy the transaction for the given handle
+     * @details The internally stored transaction object is released by this function.
+     * After the success of this function, the handle becomes stale and it should not be used any more.
+     * @param handle the handle for the transaction to be destroyed
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
+    virtual status destroy_transaction(
+        api::transaction_handle handle
+    ) = 0;
 
     /**
      * @brief creates a table dump into the given output.
@@ -399,6 +430,8 @@ public:
 
 protected:
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
+
+    virtual status do_create_transaction(transaction_handle& handle, bool readonly) = 0;
 
     virtual status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

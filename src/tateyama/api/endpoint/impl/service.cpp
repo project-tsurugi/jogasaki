@@ -61,12 +61,13 @@ tateyama::status service::operator()(
     switch (proto_req.request_case()) {
         case ::request::Request::RequestCase::kBegin: {
             VLOG(1) << "begin" << std::endl;
-            if (!transaction_) {
-                if (transaction_ = db_->create_transaction(); transaction_ != nullptr) {
+            if (! transaction_) {
+                if (auto st = db_->create_transaction(transaction_); st == jogasaki::status::ok) {
                     ::common::Transaction t{};
                     ::response::Begin b{};
                     ::response::Response r{};
-                    t.set_handle(++transaction_id_);
+
+                    t.set_handle(static_cast<std::size_t>(transaction_));
                     b.set_allocated_transaction_handle(&t);
                     r.set_allocated_begin(&b);
                     reply(*res, r);
@@ -239,7 +240,10 @@ tateyama::status service::operator()(
                     reply(*res, r);
                     r.release_result_only();
                     ro.release_success();
-                    transaction_ = nullptr;
+                    if (auto st = db_->destroy_transaction(transaction_); st != jogasaki::status::ok) {
+                        fail();
+                    }
+                    transaction_ = jogasaki::api::transaction_handle{};
                 } else {
                     error<::response::ResultOnly>(*res, "error in transaction_->commit()");
                 }
@@ -265,7 +269,11 @@ tateyama::status service::operator()(
                     reply(*res, r);
                     r.release_result_only();
                     ro.release_success();
-                    transaction_ = nullptr;
+
+                    if (auto st = db_->destroy_transaction(transaction_); st != jogasaki::status::ok) {
+                        fail();
+                    }
+                    transaction_ = jogasaki::api::transaction_handle{};
                 } else {
                     error<::response::ResultOnly>(*res, "error in transaction_->abort()");
                 }
@@ -395,7 +403,10 @@ const char* service::execute_query(
     std::size_t rid
 ) {
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
+        LOG(WARNING) << "transaction begin implicitly";
+        if (auto st = db_->create_transaction(transaction_); st != jogasaki::status::ok) {
+            fail();
+        }
     }
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);
@@ -487,7 +498,10 @@ void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<joga
 const char* service::execute_prepared_statement(std::size_t sid, jogasaki::api::parameter_set& params)
 {
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
+        LOG(WARNING) << "transaction begin implicitly";
+        if (auto st = db_->create_transaction(transaction_); st != jogasaki::status::ok) {
+            fail();
+        }
     }
     jogasaki::api::statement_handle handle{reinterpret_cast<jogasaki::api::prepared_statement*>(sid)}; //NOLINT
 
@@ -508,7 +522,10 @@ const char* service::execute_prepared_query(
     std::size_t rid
 ) {
     if (!transaction_) {
-        transaction_ = db_->create_transaction();
+        LOG(WARNING) << "transaction begin implicitly";
+        if (auto st = db_->create_transaction(transaction_); st != jogasaki::status::ok) {
+            fail();
+        }
     }
     if (cursors_.size() < (rid + 1)) {
         cursors_.resize(rid + 1);

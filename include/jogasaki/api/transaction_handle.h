@@ -18,35 +18,35 @@
 namespace jogasaki::api {
 
 /**
- * @brief prepared statement handle
- * @details the handle is the trivially copyable object that references prepared statement stored in the database.
- * Using the handle, caller can create, execute, and destroy the prepared statement keeping the ownership managed
+ * @brief transaction handle
+ * @details the handle is the trivially copyable object that references transaction object stored in the database.
+ * Using the handle, caller can create, execute, and destroy the transaction keeping the ownership managed
  * by the database. This makes api more flexible compared to handling the unique_ptr to prepared statement.
  */
-class statement_handle {
+class transaction_handle {
 public:
 
     /**
      * @brief create empty handle - null reference
      */
-    statement_handle() = default;
+    transaction_handle() = default;
 
     /**
      * @brief destruct the object
      */
-    ~statement_handle() = default;
+    ~transaction_handle() = default;
 
 
-    statement_handle(statement_handle const& other) = default;
-    statement_handle& operator=(statement_handle const& other) = default;
-    statement_handle(statement_handle&& other) noexcept = default;
-    statement_handle& operator=(statement_handle&& other) noexcept = default;
+    transaction_handle(transaction_handle const& other) = default;
+    transaction_handle& operator=(transaction_handle const& other) = default;
+    transaction_handle(transaction_handle&& other) noexcept = default;
+    transaction_handle& operator=(transaction_handle&& other) noexcept = default;
 
     /**
      * @brief create new object from pointer
      * @param ptr the target prepared statement
      */
-    explicit statement_handle(prepared_statement* ptr) noexcept :
+    explicit transaction_handle(transaction* ptr) noexcept :
         ptr_(ptr)
     {}
 
@@ -54,7 +54,15 @@ public:
      * @brief accessor to the referenced prepared statement
      * @return the target prepared statement pointer
      */
-    [[nodiscard]] prepared_statement* get() const noexcept {
+    [[nodiscard]] api::transaction* get() const noexcept {
+        return ptr_;
+    }
+
+    /**
+     * @brief accessor to the referenced prepared statement
+     * @return the target prepared statement pointer
+     */
+    [[nodiscard]] api::transaction* operator->() const noexcept {
         return ptr_;
     }
 
@@ -68,30 +76,29 @@ public:
 
     /**
      * @brief conversion operator to bool
-     * @return whether the handle has body (i.e. referencing valid statement) or not
+     * @return whether the handle has body (i.e. referencing valid transaction) or not
      */
     explicit operator bool() const noexcept {
         return ptr_ != nullptr;
     }
-
 private:
-    prepared_statement* ptr_{};
+    api::transaction* ptr_{};
 
 };
 
-static_assert(std::is_trivially_copyable_v<statement_handle>);
+static_assert(std::is_trivially_copyable_v<transaction_handle>);
 
 /**
  * @brief equality comparison operator
  */
-inline bool operator==(statement_handle const& a, statement_handle const& b) noexcept {
+inline bool operator==(transaction_handle const& a, transaction_handle const& b) noexcept {
     return a.get() == b.get();
 }
 
 /**
  * @brief inequality comparison operator
  */
-inline bool operator!=(statement_handle const& a, statement_handle const& b) noexcept {
+inline bool operator!=(transaction_handle const& a, transaction_handle const& b) noexcept {
     return !(a == b);
 }
 
@@ -100,13 +107,13 @@ inline bool operator!=(statement_handle const& a, statement_handle const& b) noe
  * @brief std::hash specialization
  */
 template<>
-struct std::hash<jogasaki::api::statement_handle> {
+struct std::hash<jogasaki::api::transaction_handle> {
     /**
      * @brief compute hash of the given object.
      * @param value the target object
      * @return computed hash code
      */
-    std::size_t operator()(jogasaki::api::statement_handle const& value) const noexcept {
+    std::size_t operator()(jogasaki::api::transaction_handle const& value) const noexcept {
         return static_cast<std::size_t>(value);
     }
 };

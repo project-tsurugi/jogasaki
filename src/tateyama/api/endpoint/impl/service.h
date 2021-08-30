@@ -21,6 +21,7 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/transaction_handle.h>
 
 #include <tateyama/status.h>
 #include <tateyama/api/endpoint/service.h>
@@ -57,9 +58,7 @@ public:
 
     explicit service(jogasaki::api::database& db) :
         db_(std::addressof(db))
-    {
-        (void)id_;
-    }
+    {}
 
     tateyama::status operator()(
         std::shared_ptr<tateyama::api::endpoint::request const> req,
@@ -69,12 +68,9 @@ public:
 private:
     jogasaki::api::database* db_{};
 
-    std::size_t id_{};
-    std::unique_ptr<jogasaki::api::transaction> transaction_{};
-    std::size_t transaction_id_{};
+    jogasaki::api::transaction_handle transaction_{};
     std::size_t resultset_id_{};
     std::vector<Cursor> cursors_{};
-
     tateyama::api::endpoint::data_channel* channel_{};
 
     [[nodiscard]] const char* execute_statement(std::string_view);
@@ -91,14 +87,6 @@ private:
     );
     void set_metadata(std::size_t, schema::RecordMeta&);
     void set_params(::request::ParameterSet const&, std::unique_ptr<jogasaki::api::parameter_set>&);
-    void clear_transaction() {
-        cursors_.clear();
-        transaction_ = nullptr;
-    }
-    void clear_all() {
-        clear_transaction();
-    }
-
     void release_writers(tateyama::api::endpoint::response& res, Cursor& cursor);
     void reply(endpoint::response& res, ::response::Response &r);
 

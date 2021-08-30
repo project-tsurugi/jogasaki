@@ -28,6 +28,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
@@ -99,6 +100,10 @@ public:
         api::statement_handle prepared
     ) override;
 
+    [[nodiscard]] status destroy_transaction(
+        api::transaction_handle handle
+    ) override;
+
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
 
     void dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;
@@ -106,6 +111,8 @@ public:
     void load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;
 
     std::unique_ptr<api::transaction> do_create_transaction(bool readonly) override;
+
+    status do_create_transaction(transaction_handle& handle, bool readonly) override;
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
 
@@ -178,6 +185,7 @@ private:
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<api::prepared_statement>> prepared_statements_{};
+    tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<api::transaction>> transactions_{};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

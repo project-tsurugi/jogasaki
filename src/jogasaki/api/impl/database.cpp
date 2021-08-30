@@ -15,6 +15,8 @@
  */
 #include "database.h"
 
+#include <glog/logging.h>
+
 #include <takatori/util/fail.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -22,6 +24,8 @@
 
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
@@ -254,6 +258,23 @@ std::unique_ptr<api::transaction> database::do_create_transaction(bool readonly)
     return std::make_unique<impl::transaction>(*this, readonly);
 }
 
+status database::do_create_transaction(transaction_handle& handle, bool readonly) {
+    if (auto tx = do_create_transaction(readonly)) {
+        decltype(transactions_)::accessor acc{};
+        api::transaction_handle t{tx.get()};
+        if (transactions_.insert(acc, t)) {
+            acc->second = std::move(tx);
+            handle = t;
+        } else {
+            fail();
+        }
+    } else {
+        LOG(ERROR) << "create transaction failed";
+        return status::err_unknown;
+    }
+    return status::ok;
+}
+
 status database::resolve(
     api::prepared_statement const& prepared,
     api::parameter_set const& parameters,
@@ -299,6 +320,20 @@ status database::destroy_statement(
     }
     return status::ok;
 }
+
+status database::destroy_transaction(
+    api::transaction_handle handle
+) {
+    decltype(transactions_)::accessor acc{};
+    if (transactions_.find(acc, handle)) {
+        transactions_.erase(acc);
+    } else {
+        LOG(WARNING) << "destroy_statement for invalid handle";
+        return status::not_found;
+    }
+    return status::ok;
+}
+
 status database::explain(api::executable_statement const& executable, std::ostream& out) {
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
     r->compiled_info().object_scanner()(

@@ -102,10 +102,6 @@ status database::stop() {
         }
         kvs_db_ = nullptr;
     }
-
-    // destorying providers in destructor cause pure virtual function call, so reset here // FIXME
-    aggregate_functions_.reset();
-    tables_.reset();
     return status::ok;
 }
 

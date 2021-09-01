@@ -64,21 +64,13 @@ file(GLOB SRCS
         "tateyama/*.cpp"
         )
 
-if(SHARKSFIN_IMPLEMENTATION STREQUAL "shirakami")
-    file(GLOB ADDED
-            "jogasaki/shirakami/*.cpp"
-            )
-    foreach(file ${ADDED})
-        list(APPEND SRCS ${file})
-    endforeach()
-else()
-    file(GLOB ADDED
-            "jogasaki/executor/sequence/*.cpp"
-            )
-    foreach(file ${ADDED})
-        list(APPEND SRCS ${file})
-    endforeach()
-endif()
+# add implementation specific testcases
+file(GLOB ADDED
+        "jogasaki/targets/${SHARKSFIN_IMPLEMENTATION}/*.cpp"
+        )
+foreach(file ${ADDED})
+    list(APPEND SRCS ${file})
+endforeach()
 
 foreach(file ${SRCS})
     add_test_executable(${file})

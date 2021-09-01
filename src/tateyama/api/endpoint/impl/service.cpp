@@ -330,6 +330,7 @@ void service::release_writers(
     }
     if (out.data_channel_) {
         res.release_channel(*out.data_channel_);
+        out.data_channel_ = nullptr;
     }
 }
 

@@ -33,6 +33,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/utils/as_any.h>
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -40,71 +41,6 @@ using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
 namespace details {
-
-/**
- * @brief extract value from immediate scalar expression
- * @details this function supports different type values in immediate expression, e.g. value of kind int4 can be held
- * by immediate of type int8.
- * @tparam T the takatori value type of the scalar expression
- * @param expr the immediate scalar expression
- * @return the view type of the value
- */
-template<class T>
-inline static typename T::view_type value_of(takatori::scalar::expression const& expr) {
-    if (auto e = takatori::util::dynamic_pointer_cast<takatori::scalar::immediate>(expr)) {
-        switch(e.value().value().kind()) {
-            case takatori::value::value_kind::boolean: {
-                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::boolean>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::boolean>) {  //NOLINT
-                    return x;
-                }
-                break;
-            }
-            case takatori::value::value_kind::int4: {
-                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::int4>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::int4> ||
-                    std::is_same_v<T, takatori::value::int8>) {  //NOLINT
-                    return x;
-                }
-                break;
-            }
-            case takatori::value::value_kind::int8: {
-                [[maybe_unused]]auto x = unsafe_downcast<takatori::value::int8>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::int4> ||
-                    std::is_same_v<T, takatori::value::int8>) {  //NOLINT
-                    return x;
-                }
-                break;
-            }
-            case takatori::value::value_kind::float4: {
-                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float4>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::float4> ||
-                    std::is_same_v<T, takatori::value::float8>) {  //NOLINT
-                    return x;
-                }
-                break;
-            }
-            case takatori::value::value_kind::float8: {
-                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::float8>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::float4> ||
-                    std::is_same_v<T, takatori::value::float8>) {  //NOLINT
-                    return x;
-                }
-                break;
-            }
-            case takatori::value::value_kind::character: {
-                [[maybe_unused]] auto x = unsafe_downcast<takatori::value::character>(e->value()).get();
-                if constexpr (std::is_same_v<T, takatori::value::character>) {  //NOLINT
-                    return x;
-                }
-                break;
-            }
-            default: break;
-        }
-        throw std::domain_error("inconsistent value type");
-    }
-    throw std::domain_error("unsupported expression");
-}
 
 class callback {
 public:
@@ -129,6 +65,10 @@ public:
     template <typename T>
     void push(stack_type& stack, T val) {
         stack.emplace_back(std::in_place_type<T>, val);
+    }
+
+    void push(stack_type& stack, any val) {
+        stack.emplace_back(val);
     }
 
     void push_null(stack_type& stack) {
@@ -200,23 +140,8 @@ public:
     );
 
     bool operator()(takatori::scalar::immediate const& arg, stack_type& stack, memory_resource* resource) {
-        using t = takatori::type::type_kind;
         auto& type = info_.type_of(arg);
-        switch(type.kind()) {
-            // TODO create and use traits for types
-            case t::int4: push<std::int32_t>(stack, value_of<takatori::value::int4>(arg)); break;
-            case t::int8: push<std::int64_t>(stack, value_of<takatori::value::int8>(arg)); break;
-            case t::float4: push<float>(stack, value_of<takatori::value::float4>(arg)); break;
-            case t::float8: push<double>(stack, value_of<takatori::value::float8>(arg)); break;
-            case t::boolean: push<bool>(stack, value_of<takatori::value::boolean>(arg)); break;
-            case t::character: {
-                auto sv = value_of<takatori::value::character>(arg);
-                push<accessor::text>(stack, accessor::text{resource, sv});
-                break;
-            }
-            case t::unknown: push_null(stack); break;
-            default: fail();
-        }
+        push(stack, utils::as_any(arg.value(), type, resource));
         return false;
     }
 

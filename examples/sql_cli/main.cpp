@@ -42,6 +42,7 @@ DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assi
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
+DEFINE_bool(explain, false, "explain the execution plan");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 
@@ -73,6 +74,11 @@ static int run(std::string_view sql, std::shared_ptr<configuration> cfg) {
     if(auto rc = db->create_executable(sql, e); rc != status::ok) {
         db->stop();
         return -1;
+    }
+    if (FLAGS_explain) {
+        db->explain(*e, std::cout);
+        db->stop();
+        return 0;
     }
     std::unique_ptr<api::result_set> rs{};
     {

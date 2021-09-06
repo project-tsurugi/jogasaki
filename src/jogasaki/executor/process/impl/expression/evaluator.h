@@ -53,23 +53,23 @@ public:
         memory_resource* resource
     ) noexcept;
 
-    any add_any(any const& l, any const& r);
-    any subtract_any(any const& l, any const& r);
-    any concat_any(any const& l, any const& r);
-    any multiply_any(any const& l, any const& r);
-    any divide_any(any const& l, any const& r);
-    any remainder_any(any const& l, any const& r);
-    any conditional_and_any(any const& l, any const& r);
-    any conditional_or_any(any const& l, any const& r);
+    any add_any(any const& left, any const& right);
+    any subtract_any(any const& left, any const& right);
+    any concat_any(any const& left, any const& right);
+    any multiply_any(any const& left, any const& right);
+    any divide_any(any const& left, any const& right);
+    any remainder_any(any const& left, any const& right);
+    any conditional_and_any(any const& left, any const& right);
+    any conditional_or_any(any const& left, any const& right);
     any operator()(takatori::scalar::binary const& exp);
     any operator()(takatori::scalar::immediate const& exp);
     any operator()(takatori::scalar::variable_reference const& exp);
-    any sign_inversion_any(any const& l);
-    any conditional_not_any(any const& l);
-    any length_any(any const& l);
+    any sign_inversion_any(any const& exp);
+    any conditional_not_any(any const& exp);
+    any length_any(any const& exp);
     any operator()(takatori::scalar::unary const& exp);
     any operator()(takatori::scalar::cast const&);
-    any compare_any(takatori::scalar::comparison_operator optype, any const& l, any const& r);
+    any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right);
     any operator()(takatori::scalar::compare const& exp);
     any operator()(takatori::scalar::match const&);
     any operator()(takatori::scalar::conditional const&);
@@ -80,7 +80,7 @@ public:
 
 private:
     executor::process::impl::variable_table& variables_;
-    yugawara::compiled_info const& info_{};
+    yugawara::compiled_info const& info_;
     executor::process::impl::variable_table const* host_variables_{};
     memory_resource* resource_{};
 

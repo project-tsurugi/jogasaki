@@ -61,7 +61,7 @@ public:
     constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
     /// @brief max alignment required for record buffer
-    constexpr static std::size_t max_alignment = std::max({
+    constexpr static std::size_t max_alignment = std::max({  //NOLINT(cert-err58-cpp)
 //        field_type_traits<field_type_kind::undefined>::alignment,
         field_type_traits<field_type_kind::boolean>::alignment,
         field_type_traits<field_type_kind::int1>::alignment,
@@ -80,7 +80,7 @@ public:
 //        field_type_traits<field_type_kind::array>::alignment,
 //        field_type_traits<field_type_kind::record>::alignment,
 //        field_type_traits<field_type_kind::unknown>::alignment,
-//        field_type_traits<field_type_kind::row_reference>::alignment,,
+//        field_type_traits<field_type_kind::row_reference>::alignment,
 //        field_type_traits<field_type_kind::row_id>::alignment,
 //        field_type_traits<field_type_kind::declared>::alignment,
 //        field_type_traits<field_type_kind::extension>::alignment,

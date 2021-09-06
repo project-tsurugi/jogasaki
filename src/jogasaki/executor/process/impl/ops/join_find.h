@@ -29,9 +29,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::maybe_shared_ptr;
-using takatori::util::unsafe_downcast;
-
 namespace details {
 
 /**
@@ -40,8 +37,6 @@ namespace details {
 class matcher {
 public:
     using memory_resource = memory::lifo_paged_memory_resource;
-
-    matcher() = default;
 
     matcher(
         bool use_secondary,
@@ -84,7 +79,7 @@ public:
 
 private:
     bool use_secondary_{};
-    std::vector<details::search_key_field_info> const& key_fields_{};
+    std::vector<details::search_key_field_info> const& key_fields_;
     data::aligned_buffer buf_{};
     status status_{status::ok};
     index_field_mapper field_mapper_{};

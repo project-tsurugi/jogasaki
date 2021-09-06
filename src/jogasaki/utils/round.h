@@ -20,11 +20,11 @@
 
 namespace jogasaki::utils {
 
-[[nodiscard]] constexpr bool is_power_of_two(std::size_t value) {
+[[nodiscard]] constexpr bool is_power_of_two(std::size_t value) noexcept {
     return value != 0 && (value & (value - 1)) == 0;
 }
 
-[[nodiscard]] constexpr std::size_t round_down_to_power_of_two(std::size_t v) {
+[[nodiscard]] constexpr std::size_t round_down_to_power_of_two(std::size_t v) noexcept {
     if(is_power_of_two(v)) {
         return v;
     }
@@ -41,7 +41,7 @@ namespace jogasaki::utils {
     return static_cast<std::size_t>(v + 1) >> 1U;
 }
 
-[[nodiscard]] constexpr std::size_t round_up_to_power_of_two(std::size_t v) {
+[[nodiscard]] constexpr std::size_t round_up_to_power_of_two(std::size_t v) noexcept {
     if(is_power_of_two(v)) {
         return v;
     }

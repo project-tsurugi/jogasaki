@@ -60,13 +60,13 @@ void set_metadata(output const& out, ::schema::RecordMeta& meta);
 
 template<typename T>
 void set_allocated_object(::response::Response& r, T& p) {
-    if constexpr (std::is_same_v<T, ::response::Begin>) {
+    if constexpr (std::is_same_v<T, ::response::Begin>) {  //NOLINT
         r.set_allocated_begin(&p);
-    } else if constexpr (std::is_same_v<T, ::response::Prepare>) {
+    } else if constexpr (std::is_same_v<T, ::response::Prepare>) {  //NOLINT
         r.set_allocated_prepare(&p);
-    } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {
+    } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {  //NOLINT
         r.set_allocated_result_only(&p);
-    } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {
+    } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {  //NOLINT
         r.set_allocated_execute_query(&p);
     } else {
         fail();
@@ -75,13 +75,13 @@ void set_allocated_object(::response::Response& r, T& p) {
 
 template<typename T>
 void release_object(::response::Response& r, T&) {
-    if constexpr (std::is_same_v<T, ::response::Begin>) {
+    if constexpr (std::is_same_v<T, ::response::Begin>) {  //NOLINT
         r.release_begin();
-    } else if constexpr (std::is_same_v<T, ::response::Prepare>) {
+    } else if constexpr (std::is_same_v<T, ::response::Prepare>) {  //NOLINT
         r.release_prepare();
-    } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {
+    } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {  //NOLINT
         r.release_result_only();
-    } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {
+    } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {  //NOLINT
         r.release_execute_query();
     } else {
         fail();

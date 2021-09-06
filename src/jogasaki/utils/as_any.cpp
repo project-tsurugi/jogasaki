@@ -21,14 +21,12 @@
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
-#include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/executor/process/impl/expression/any.h>
 
 namespace jogasaki::utils {
 
-using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
 executor::process::impl::expression::any as_any(

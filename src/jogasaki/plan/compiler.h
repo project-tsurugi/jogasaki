@@ -38,13 +38,13 @@ namespace impl {
 
 void preprocess(
     takatori::plan::process const& process,
-    yugawara::compiled_info const& c_info,
+    compiled_info const& info,
     mirror_container& container
 );
 
 [[nodiscard]] mirror_container preprocess_mirror(
     maybe_shared_ptr<takatori::statement::statement> const& statement,
-    yugawara::compiled_info info
+    compiled_info info
 );
 
 [[nodiscard]] executor::process::step create(
@@ -60,7 +60,7 @@ void preprocess(
 
 std::shared_ptr<executor::process::impl::variable_table_info> create_host_variable_info(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    yugawara::compiled_info const& info
+    compiled_info const& info
 );
 
 std::shared_ptr<executor::process::impl::variable_table> create_host_variables(

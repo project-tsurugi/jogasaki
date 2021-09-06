@@ -51,7 +51,9 @@ public:
     /**
      * @brief create new coding spec
      */
-    constexpr coding_spec(bool is_key, order order) : is_key_(is_key), order_(order) {}
+    constexpr coding_spec(bool is_key, order order) noexcept :
+        is_key_(is_key), order_(order)
+    {}
 
     /**
      * @brief returns whether the key encoding rule should apply

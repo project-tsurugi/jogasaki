@@ -53,14 +53,13 @@ struct cache_align write_full_field : field_info, default_value_property {
         kvs::coding_spec spec
     ) :
         field_info(
-            type,
+            std::move(type),
             true,
             source_offset,
             source_nullity_offset,
             target_nullable,
             spec
-        ),
-        default_value_property()
+        )
     {}
 
     write_full_field(
@@ -74,7 +73,7 @@ struct cache_align write_full_field : field_info, default_value_property {
         sequence_definition_id def_id
     ) :
         field_info(
-            type,
+            std::move(type),
             false,
             source_offset,
             source_nullity_offset,

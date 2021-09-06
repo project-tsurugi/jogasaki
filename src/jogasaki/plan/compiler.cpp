@@ -82,19 +82,19 @@ using takatori::util::unsafe_downcast;
 
 void preprocess(
     takatori::plan::process const& process,
-    yugawara::compiled_info const& c_info,
+    compiled_info const& info,
     mirror_container& container
 ) {
     container.set(
         std::addressof(process),
-        executor::process::impl::create_block_variables_definition(process.operators(), c_info)
+        executor::process::impl::create_block_variables_definition(process.operators(), info)
     );
 }
 
 mirror_container preprocess_mirror(
     maybe_shared_ptr<statement::statement> const& statement,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    yugawara::compiled_info info
+    compiled_info info
 ) {
     mirror_container container{};
     switch(statement->kind()) {
@@ -212,14 +212,14 @@ status prepare(
 
 executor::process::step create(
     takatori::plan::process const& process,
-    yugawara::compiled_info const& c_info,
+    compiled_info const& info,
     mirror_container const& mirrors,
     variable_table const* host_variables
 ) {
     auto& mirror = mirrors.at(std::addressof(process));
-    auto info = std::make_shared<executor::process::processor_info>(
+    auto pinfo = std::make_shared<executor::process::processor_info>(
         const_cast<relation::graph_type&>(process.operators()),
-        c_info,
+        info,
         mirror.first,
         mirror.second,
         host_variables
@@ -237,14 +237,14 @@ executor::process::step create(
         outputs[bindings(downstreams[i])] = i;
     }
     return executor::process::step(
-        std::move(info),
+        std::move(pinfo),
         std::make_shared<executor::process::relation_io_map>(std::move(inputs), std::move(outputs))
     );
 }
 
 executor::exchange::forward::step create(
     takatori::plan::forward const& forward,
-    yugawara::compiled_info const& c_info
+    compiled_info const& info
 ) {
     meta::variable_order column_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
@@ -254,7 +254,7 @@ executor::exchange::forward::step create(
     auto cnt = forward.columns().size();
     fields.reserve(cnt);
     for(auto&& c: forward.columns()) {
-        fields.emplace_back(utils::type_for(c_info, c));
+        fields.emplace_back(utils::type_for(info, c));
     }
     auto meta = std::make_shared<meta::record_meta>(
         std::move(fields),
@@ -267,7 +267,7 @@ executor::exchange::forward::step create(
 
 executor::exchange::group::step create(
     takatori::plan::group const& group,
-    yugawara::compiled_info const& c_info
+    compiled_info const& info
 ) {
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
@@ -282,7 +282,7 @@ executor::exchange::group::step create(
     auto sz = group.columns().size();
     fields.reserve(sz);
     for(auto&& c: input_order) {
-        fields.emplace_back(utils::type_for(c_info, c));
+        fields.emplace_back(utils::type_for(info, c));
     }
     std::vector<std::size_t> key_indices{};
     key_indices.resize(group.group_keys().size());
@@ -320,7 +320,7 @@ executor::exchange::group::step create(
 
 executor::exchange::aggregate::step create(
     takatori::plan::aggregate const& agg,
-    yugawara::compiled_info const& c_info
+    compiled_info const& info
 ) {
     using executor::exchange::aggregate::aggregate_info;
     meta::variable_order input_order{
@@ -335,7 +335,7 @@ executor::exchange::aggregate::step create(
 
     std::vector<meta::field_type> fields{};
     for(auto&& c: agg.source_columns()) {
-        fields.emplace_back(utils::type_for(c_info, c));
+        fields.emplace_back(utils::type_for(info, c));
     }
     auto sz = fields.size();
     auto meta = std::make_shared<meta::record_meta>(
@@ -362,7 +362,7 @@ executor::exchange::aggregate::step create(
         specs.emplace_back(
             *f,
             argument_indices,
-            utils::type_for(c_info, e.destination())
+            utils::type_for(info, e.destination())
         );
     }
     return executor::exchange::aggregate::step(
@@ -378,7 +378,7 @@ executor::exchange::aggregate::step create(
 
 std::shared_ptr<executor::process::impl::variable_table_info> create_host_variable_info(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    yugawara::compiled_info const& info
+    compiled_info const& info
 ) {
     if (provider == nullptr) {
         return {};
@@ -435,7 +435,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
 void create_mirror_for_write(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
-    yugawara::compiled_info info,
+    compiled_info info,
     mirror_container const& mirrors,
     parameter_set const* parameters
 ) {
@@ -468,7 +468,7 @@ void create_mirror_for_write(
 void create_mirror_for_execute(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
-    yugawara::compiled_info info,
+    compiled_info info,
     mirror_container const& mirrors,
     parameter_set const* parameters
 ) {

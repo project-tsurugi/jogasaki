@@ -148,10 +148,10 @@ template <class T, class U>
 any engine::concat(T const& l, U const& r) {
     return any{std::in_place_type<T>, accessor::text{resource_, l, r}};
 }
-any engine::concat_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
-    switch(l.type_index()) {
-        case index<accessor::text>: return concat(l.to<accessor::text>(), r.to<accessor::text>());
+any engine::concat_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    switch(left.type_index()) {
+        case index<accessor::text>: return concat(left.to<accessor::text>(), right.to<accessor::text>());
         default: fail();
     }
 }
@@ -216,10 +216,10 @@ any conditional_and(T const& l, U const& r) {
     return any{std::in_place_type<T>, l && r};
 }
 
-any engine::conditional_and_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
-    switch(l.type_index()) {
-        case index<bool>: return conditional_and(l.to<bool>(), r.to<bool>());
+any engine::conditional_and_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    switch(left.type_index()) {
+        case index<bool>: return conditional_and(left.to<bool>(), right.to<bool>());
         default: fail();
     }
 }
@@ -229,10 +229,10 @@ any conditional_or(T const& l, U const& r) {
     return any{std::in_place_type<T>, l || r};
 }
 
-any engine::conditional_or_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
-    switch(l.type_index()) {
-        case index<bool>: return conditional_or(l.to<bool>(), r.to<bool>());
+any engine::conditional_or_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    switch(left.type_index()) {
+        case index<bool>: return conditional_or(left.to<bool>(), right.to<bool>());
         default: fail();
     }
 }
@@ -291,39 +291,39 @@ any sign_inversion(T const& l) {
     return any{std::in_place_type<T>, -l};
 }
 
-any engine::sign_inversion_any(any const& l) {
-    BOOST_ASSERT(l);  //NOLINT
-    switch(l.type_index()) {
-        case index<std::int32_t>: return sign_inversion(l.to<std::int32_t>());
-        case index<std::int64_t>: return sign_inversion(l.to<std::int64_t>());
-        case index<float>: return sign_inversion(l.to<float>());
-        case index<double>: return sign_inversion(l.to<double>());
+any engine::sign_inversion_any(any const& exp) {
+    BOOST_ASSERT(exp);  //NOLINT
+    switch(exp.type_index()) {
+        case index<std::int32_t>: return sign_inversion(exp.to<std::int32_t>());
+        case index<std::int64_t>: return sign_inversion(exp.to<std::int64_t>());
+        case index<float>: return sign_inversion(exp.to<float>());
+        case index<double>: return sign_inversion(exp.to<double>());
         default: fail();
     }
 }
 
 template <class T>
-any conditional_not(T const& l) {
-    return any{std::in_place_type<T>, ! l};
+any conditional_not(T const& e) {
+    return any{std::in_place_type<T>, ! e};
 }
 
-any engine::conditional_not_any(any const& l) {
-    BOOST_ASSERT(l);  //NOLINT
-    switch(l.type_index()) {
-        case index<bool>: return conditional_not(l.to<bool>());
+any engine::conditional_not_any(any const& exp) {
+    BOOST_ASSERT(exp);  //NOLINT
+    switch(exp.type_index()) {
+        case index<bool>: return conditional_not(exp.to<bool>());
         default: fail();
     }
 }
 
 template <class T>
-any length(T const& l) {
-    return any{std::in_place_type<std::int32_t>, static_cast<std::string_view>(l).size()};
+any length(T const& e) {
+    return any{std::in_place_type<std::int32_t>, static_cast<std::string_view>(e).size()};
 }
 
-any engine::length_any(any const& l) {
-    BOOST_ASSERT(l);  //NOLINT
-    switch(l.type_index()) {
-        case index<accessor::text>: return length(l.to<accessor::text>());
+any engine::length_any(any const& exp) {
+    BOOST_ASSERT(exp);  //NOLINT
+    switch(exp.type_index()) {
+        case index<accessor::text>: return length(exp.to<accessor::text>());
         default: fail();
     }
 }

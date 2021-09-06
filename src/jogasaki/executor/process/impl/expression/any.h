@@ -35,6 +35,19 @@ using takatori::util::fail;
  */
 class any {
 public:
+    using base_type = std::variant<
+        std::monostate,
+        class error,
+        bool,
+        std::int8_t,
+        std::int16_t,
+        std::int32_t,
+        std::int64_t,
+        float,
+        double,
+        accessor::text
+    >;
+
     /**
      * @brief construct empty instance
      */
@@ -72,19 +85,13 @@ public:
      */
     [[nodiscard]] bool error() const noexcept;
 
+    /**
+     * @brief return whether any value is assigned to this object
+     */
+    [[nodiscard]] std::size_t type_index() const noexcept;
+
 private:
-    std::variant<
-        std::monostate,
-        class error,
-        bool,
-        std::int8_t,
-        std::int16_t,
-        std::int32_t,
-        std::int64_t,
-        float,
-        double,
-        accessor::text
-    > body_{};
+    base_type body_{};
 };
 
 #if defined(__GNUC__) && !defined(__clang__)

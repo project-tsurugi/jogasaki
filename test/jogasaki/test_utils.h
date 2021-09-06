@@ -21,8 +21,10 @@
 
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
+#include <takatori/type/character.h>
 #include <takatori/value/int.h>
 #include <takatori/value/float.h>
+#include <takatori/value/character.h>
 #include <takatori/util/string_builder.h>
 #include <takatori/util/downcast.h>
 #include <takatori/relation/emit.h>

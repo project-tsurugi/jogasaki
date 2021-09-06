@@ -28,6 +28,10 @@ bool any::has_value() const noexcept {
 bool any::error() const noexcept {
     return body_.index() == 1;
 }
+
+std::size_t any::type_index() const noexcept {
+    return body_.index();
+}
 }
 
 

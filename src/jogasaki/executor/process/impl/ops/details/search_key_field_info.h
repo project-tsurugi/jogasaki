@@ -18,15 +18,14 @@
 #include <yugawara/storage/index.h>
 #include <yugawara/binding/factory.h>
 
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/processor_info.h>
 
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::maybe_shared_ptr;
-using takatori::util::unsafe_downcast;
 
 namespace details {
 

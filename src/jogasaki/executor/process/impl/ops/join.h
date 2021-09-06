@@ -146,11 +146,7 @@ public:
             if (all_groups_available) {
                 auto resource = ctx.varlen_resource();
                 auto& vars = ctx.input_variables();
-                bool res = true;
-                if (has_condition_) {
-                    utils::checkpoint_holder cp{resource};
-                    res = evaluator_(vars, resource).template to<bool>();
-                }
+                bool res = !has_condition_ || evaluate_bool(evaluator_, vars, resource);
                 if (res && downstream_) {
                     if(auto st = unsafe_downcast<record_operator>(
                             downstream_.get())->process_record(context); !st) {

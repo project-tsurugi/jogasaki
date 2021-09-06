@@ -366,4 +366,13 @@ any evaluator::operator()(
     return takatori::scalar::dispatch(c, *expression_);
 }
 
+bool evaluate_bool(
+    evaluator& eval,
+    variable_table& variables,
+    memory::lifo_paged_memory_resource* resource
+) {
+    utils::checkpoint_holder h{resource};
+    auto a = eval(variables, resource);
+    return a.has_value() && a.to<bool>();
+}
 } // namespace

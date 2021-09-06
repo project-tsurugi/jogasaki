@@ -36,6 +36,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -135,5 +136,22 @@ private:
     yugawara::compiled_info const* info_{};
     executor::process::impl::variable_table const* host_variables_{};
 };
+
+/**
+ * @brief utility function to evaluate the expression as bool
+ * @details This is same as evaluator::operator() except that this function also handles rewinding lifo memory
+ * resource used for evaluation.
+ * @param eval the evaluator to conduct the evaluation
+ * @param variables variables table used to evaluate the expression
+ * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
+ * never generate types whose values are stored via memory resource(e.g. accessor::text).
+ * Then UB if such type is processed.
+ * @return the result of evaluation. If the result is empty (i.e. null value), false is returned.
+ */
+[[nodiscard]] bool evaluate_bool(
+    evaluator& eval,
+    executor::process::impl::variable_table& variables,
+    memory::lifo_paged_memory_resource* resource = nullptr
+);
 
 } // namespace

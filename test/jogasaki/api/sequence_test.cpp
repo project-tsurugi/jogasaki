@@ -25,6 +25,7 @@
 
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -58,6 +59,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->single_thread(true);
         db_setup(cfg);
         auto* impl = db_impl();
         add_benchmark_tables(*impl->tables());
@@ -71,17 +73,64 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(sequence_test, DISABLED_generate_primary_key) {
-    execute_statement( "INSERT INTO TSEQ (C1) VALUES (10)");
-    execute_statement( "INSERT INTO TSEQ (C1) VALUES (20)");
-    execute_statement( "INSERT INTO TSEQ (C1) VALUES (30)");
+TEST_F(sequence_test, generate_primary_key) {
+    {
+        std::vector<mock::basic_record> entries{};
+        execute_query("SELECT * FROM system_sequences", entries);
+        ASSERT_LT(0, entries.size());
+    }
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
 
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM TSEQ", result);
+    execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
     ASSERT_EQ(3, result.size());
-    std::vector<mock::basic_record> entries{};
-    execute_query("SELECT * FROM system_sequences", entries);
-    ASSERT_EQ(1, entries.size());
+    auto meta = result[0].record_meta();
+    auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));
+    auto s1 = result[1].ref().get_value<std::int64_t>(meta->value_offset(0));
+    auto s2 = result[2].ref().get_value<std::int64_t>(meta->value_offset(0));
+    EXPECT_LT(s0, s1);
+    EXPECT_LT(s1, s2);
+    {
+        std::vector<mock::basic_record> entries{};
+        execute_query("SELECT * FROM system_sequences", entries);
+        ASSERT_LT(0, entries.size());
+    }
+}
+
+TEST_F(sequence_test, DISABLED_recovery) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TSEQ0", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> entries{};
+        execute_query("SELECT * FROM system_sequences", entries);
+        ASSERT_LT(0, entries.size());
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        std::vector<mock::basic_record> entries{};
+        execute_query("SELECT * FROM system_sequences", entries);
+        ASSERT_LT(0, entries.size());
+    }
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
+        ASSERT_EQ(2, result.size());
+        auto meta = result[0].record_meta();
+        auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));
+        auto s1 = result[1].ref().get_value<std::int64_t>(meta->value_offset(0));
+        EXPECT_LT(s0, s1);
+    }
 }
 
 }

@@ -41,27 +41,15 @@ public:
 
     sequence_element() = default;
 
-    explicit sequence_element(sequence_id id) : sequence_id_(id) {}
+    explicit sequence_element(sequence_id id);
 
-    [[nodiscard]] sequence_id id() const noexcept {
-        return sequence_id_;
-    }
-    std::unique_ptr<class info> const& info(std::unique_ptr<class info> info) noexcept {
-        info_ = std::move(info);
-        return info_;
-    }
-    [[nodiscard]] class info* info() const noexcept {
-        return info_.get();
-    }
+    [[nodiscard]] sequence_id id() const noexcept;
+    std::unique_ptr<class info> const& info(std::unique_ptr<class info> info) noexcept;
+    [[nodiscard]] class info* info() const noexcept;
 
-    std::unique_ptr<class sequence> const& sequence(std::unique_ptr<class sequence> sequence) noexcept {
-        sequence_ = std::move(sequence);
-        return sequence_;
-    }
+    std::unique_ptr<class sequence> const& sequence(std::unique_ptr<class sequence> sequence) noexcept;
 
-    [[nodiscard]] class sequence* sequence() const noexcept {
-        return sequence_.get();
-    }
+    [[nodiscard]] class sequence* sequence() const noexcept;
 
 private:
     sequence_id sequence_id_{undefined_id};

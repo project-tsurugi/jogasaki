@@ -20,6 +20,7 @@
 #include <takatori/type/character.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <jogasaki/common_types.h>
+#include <jogasaki/constants.h>
 
 namespace jogasaki::executor {
 
@@ -27,7 +28,8 @@ namespace storage = yugawara::storage;
 
 // built-in sequences definition ids
 constexpr static sequence_definition_id h_id_sequence = 0;
-constexpr static sequence_definition_id tseq_c0_sequence = 1;
+constexpr static sequence_definition_id tseq0_c0_sequence = 1;
+constexpr static sequence_definition_id tseq1_c0_sequence = 2;
 
 void add_builtin_tables(storage::configurable_provider& provider) {
     namespace type = ::takatori::type;
@@ -40,7 +42,7 @@ void add_builtin_tables(storage::configurable_provider& provider) {
     };
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
-            "system_sequences",
+            system_sequences_name,
             {
                 { "definition_id", type::int8(), nullity{false} },
                 { "sequence_id", type::int8 (), nullity{true} },
@@ -209,12 +211,12 @@ void add_test_tables(storage::configurable_provider& provider) {
     }
     {
         auto s1 = std::make_shared<storage::sequence>(
-            tseq_c0_sequence,
-            "tseq_c0_sequence"
+            tseq0_c0_sequence,
+            "tseq0_c0_sequence"
         );
         provider.add_sequence(s1);
         auto t = provider.add_table({
-            "TSEQ",
+            "TSEQ0",
             {
                 { "C0", type::int8(), nullity{false}, {s1} },
                 { "C1", type::int8(), nullity{true} },
@@ -223,6 +225,31 @@ void add_test_tables(storage::configurable_provider& provider) {
         provider.add_index({
             t,
             t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
+    {
+        auto s1 = std::make_shared<storage::sequence>(
+            tseq1_c0_sequence,
+            "tseq1_c0_sequence"
+        );
+        provider.add_sequence(s1);
+        auto t = provider.add_table({
+            "TSEQ1",
+            {
+                { "C0", type::int8(), nullity{false}, {s1} },
+                { "C1", type::int8(), nullity{true} },
+            },
+        });
+        auto i = provider.add_index({
+            t,
+            "TSEQ1",
             {
                 t->columns()[0],
             },

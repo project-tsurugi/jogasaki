@@ -28,9 +28,11 @@
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/utils/coder.h>
 
 namespace jogasaki::executor::common {
 
@@ -44,25 +46,18 @@ using executor::process::impl::expression::index;
 
 write::write(
     write_kind kind,
-    std::vector<details::write_target> targets
-) noexcept:
-    kind_(kind),
-    targets_(std::move(targets))
-{}
-
-write::write(
-    write_kind kind,
     yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
-    takatori::tree::tree_fragment_vector<tuple> const& tuples,
+    takatori::statement::write const& wrt,
     memory::lifo_paged_memory_resource& resource,
-    compiled_info const& info,
+    compiled_info info,
     executor::process::impl::variable_table const* host_variables
 ) noexcept:
-    write(
-        kind,
-        create_targets(idx, columns, tuples, info, resource, host_variables)
-    )
+    kind_(kind),
+    idx_(std::addressof(idx)),
+    wrt_(std::addressof(wrt)),
+    resource_(std::addressof(resource)),
+    info_(std::move(info)),
+    host_variables_(host_variables)
 {}
 
 model::statement_kind write::kind() const noexcept {
@@ -76,7 +71,8 @@ bool write::operator()(request_context& context) const {
     kvs::put_option opt = kind_ == write_kind::insert ?
         kvs::put_option::create :
         kvs::put_option::create_or_update;
-    for(auto&& e : targets_) {
+    auto targets = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(), info_, *resource_, host_variables_);
+    for(auto&& e : targets) {
         auto stg = db->get_or_create_storage(e.storage_name_);
         if(! stg) {
             fail();
@@ -84,7 +80,7 @@ bool write::operator()(request_context& context) const {
         BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
         for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
             auto& key = e.keys_[i];
-            auto& value = e.values_.empty() ? details::write_tuple{} : e.values_[i];
+            auto const& value = e.values_.empty() ? details::write_tuple{} : e.values_[i];
             if(auto res = stg->put(
                     *tx,
                     {static_cast<char*>(key.data()), key.size()},
@@ -151,8 +147,16 @@ void convert_any(any& a, meta::field_type const& type) {
     }
 }
 
+sequence_value next_sequence_value(request_context& ctx, sequence_definition_id def_id) {
+    BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
+    auto& mgr = *ctx.sequence_manager();
+    auto* seq = mgr.find_sequence(def_id);
+    return seq->next(*ctx.transaction());
+}
+
 // encode tuple into buf, and return result data length
 std::size_t encode_tuple(
+    request_context& ctx,
     write::tuple const& t,
     std::vector<details::write_field> const& fields,
     compiled_info const& info,
@@ -161,7 +165,6 @@ std::size_t encode_tuple(
     executor::process::impl::variable_table const* host_variables,
     details::write_tuple const* primary_key_tuple = nullptr
 ) {
-    BOOST_ASSERT(fields.size() <= t.elements().size());  //NOLINT
     utils::checkpoint_holder cph(std::addressof(resource));
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
@@ -169,11 +172,29 @@ std::size_t encode_tuple(
         kvs::writable_stream s{buf.data(), capacity};
         for(auto&& f : fields) {
             if (f.index_ == npos) {
-                // value not specified for the field
-                if (! f.nullable_) {
-                    fail();
+                // value not specified for the field use default value or null
+                switch(f.kind_) {
+                    case process::impl::ops::default_value_kind::nothing:
+                        if (! f.nullable_) {
+                            fail();
+                        }
+                        kvs::encode_nullable({}, f.type_, f.spec_, s);
+                        break;
+                    case process::impl::ops::default_value_kind::immediate: {
+                        auto d = f.default_value_;
+                        s.write(static_cast<char const*>(d.data()), d.size());
+                        break;
+                    }
+                    case process::impl::ops::default_value_kind::sequence:
+                        auto v = next_sequence_value(ctx, f.def_id_);
+                        executor::process::impl::expression::any a{std::in_place_type<std::int64_t>, v};
+                        if (f.nullable_) {
+                            kvs::encode_nullable(a, f.type_, f.spec_, s);
+                        } else {
+                            kvs::encode(a, f.type_, f.spec_, s);
+                        }
+                        break;
                 }
-                kvs::encode_nullable({}, f.type_, f.spec_, s);
             } else {
                 evaluator eval{t.elements()[f.index_], info, host_variables};
                 process::impl::variable_table empty{};
@@ -203,7 +224,115 @@ std::size_t encode_tuple(
     return length;
 }
 
+void create_generated_field(
+    std::vector<details::write_field>& ret,
+    std::size_t index,
+    yugawara::storage::column_value const& dv,
+    takatori::type::data const& type,
+    bool nullable,
+    kvs::coding_spec spec
+) {
+    using yugawara::storage::column_value_kind;
+    sequence_definition_id def_id{};
+    data::aligned_buffer buf{};
+    auto t = utils::type_for(type);
+    auto knd = process::impl::ops::default_value_kind::nothing;
+    switch(dv.kind()) {
+        case column_value_kind::nothing:
+            break;
+        case column_value_kind::immediate: {
+            knd = process::impl::ops::default_value_kind::immediate;
+            auto src = utils::as_any(
+                *dv.element<column_value_kind::immediate>(),
+                type,
+                nullptr
+            );
+            utils::encode_any( buf, t, nullable, spec, {src});
+            break;
+        }
+        case column_value_kind::sequence: {
+            knd = process::impl::ops::default_value_kind::sequence;
+            if (auto id = dv.element<column_value_kind::sequence>()->definition_id()) {
+                def_id = *id;
+            } else {
+                fail("sequence must be defined with definition_id");
+            }
+        }
+    }
+    ret.emplace_back(
+        index,
+        t,
+        spec,
+        nullable,
+        knd,
+        static_cast<std::string_view>(buf),
+        def_id
+    );
+}
+
+std::vector<details::write_field> write::create_fields(
+    yugawara::storage::index const& idx,
+    sequence_view<column const> columns,
+    bool key
+) const {
+    using variable = takatori::descriptor::variable;
+    yugawara::binding::factory bindings{};
+    std::vector<details::write_field> fields{};
+    std::unordered_map<variable, std::size_t> variable_indices{};
+    for(std::size_t i=0, n=columns.size(); i<n; ++i) {
+        auto&& c = columns[i];
+        variable_indices[c] = i;
+    }
+    if (key) {
+        fields.reserve(idx.keys().size());
+        for(auto&& k : idx.keys()) {
+            auto kc = bindings(k.column());
+            auto& type = k.column().type();
+            auto t = utils::type_for(type);
+            auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
+                kvs::spec_key_ascending : kvs::spec_key_descending;
+            bool nullable = k.column().criteria().nullity().nullable();
+            if(variable_indices.count(kc) == 0) {
+                // no column specified - use default value
+                auto& dv = k.column().default_value();
+                create_generated_field(fields, npos, dv, type, nullable, spec);
+                continue;
+            }
+            fields.emplace_back(
+                variable_indices[kc],
+                t,
+                spec,
+                nullable
+            );
+        }
+    } else {
+        fields.reserve(idx.values().size());
+        for(auto&& v : idx.values()) {
+            auto b = bindings(v);
+
+            auto& c = static_cast<yugawara::storage::column const&>(v);
+            auto& type = c.type();
+            auto t = utils::type_for(type);
+            bool nullable = c.criteria().nullity().nullable();
+            if(variable_indices.count(b) == 0) {
+                // no column specified - use default value
+                auto& dv = c.default_value();
+                create_generated_field(fields, npos, dv, type, nullable, kvs::spec_value);
+                continue;
+            }
+            fields.emplace_back(
+                variable_indices[b],
+                t,
+                kvs::spec_value,
+                nullable
+            );
+        }
+    }
+    return fields;
+}
+
 std::vector<details::write_tuple> write::create_tuples(
+    request_context& ctx,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     takatori::tree::tree_fragment_vector<tuple> const& tuples,
@@ -212,53 +341,13 @@ std::vector<details::write_tuple> write::create_tuples(
     executor::process::impl::variable_table const* host_variables,
     bool key,
     std::vector<details::write_tuple> const& primary_key_tuples
-) {
+) const {
     std::vector<details::write_tuple> ret{};
-    using variable = takatori::descriptor::variable;
-    yugawara::binding::factory bindings{};
-    std::unordered_map<variable, std::size_t> variable_indices{};
-    for(std::size_t i=0, n=columns.size(); i<n; ++i) {
-        auto&& c = columns[i];
-        variable_indices[c] = i;
-    }
-    std::vector<details::write_field> fields{};
-    if (key) {
-        fields.reserve(idx.keys().size());
-        for(auto&& k : idx.keys()) {
-            auto v = bindings(k.column());
-            std::size_t index{npos};
-            if(variable_indices.count(v) != 0) {
-                index = variable_indices[v];
-            }
-            fields.emplace_back(
-                index,
-                utils::type_for(k.column().type()),
-                k.direction() == takatori::relation::sort_direction::ascendant ?
-                    kvs::spec_key_ascending: kvs::spec_key_descending,
-                k.column().criteria().nullity().nullable()
-            );
-        }
-    } else {
-        fields.reserve(idx.values().size());
-        for(auto&& c : idx.values()) {
-            auto v = bindings(c);
-            std::size_t index{npos};
-            if(variable_indices.count(v) != 0) {
-                index = variable_indices[v];
-            }
-            auto& casted = static_cast<yugawara::storage::column const&>(c);
-            fields.emplace_back(
-                index,
-                utils::type_for(casted.type()),
-                kvs::spec_value,
-                casted.criteria().nullity().nullable()
-            );
-        }
-    }
+    auto fields = create_fields(idx, columns, key);
     data::aligned_buffer buf{};
     std::size_t count = 0;
     for(auto&& tuple: tuples) {
-        auto sz = encode_tuple(tuple, fields, info, resource, buf, host_variables, primary_key_tuples.empty() ? nullptr : &primary_key_tuples[count]);
+        auto sz = encode_tuple(ctx, tuple, fields, info, resource, buf, host_variables, primary_key_tuples.empty() ? nullptr : &primary_key_tuples[count]);
         std::string_view sv{static_cast<char*>(buf.data()), sz};
         ret.emplace_back(sv);
         ++count;
@@ -267,13 +356,14 @@ std::vector<details::write_tuple> write::create_tuples(
 }
 
 std::vector<details::write_target> write::create_targets(
+    request_context& ctx,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     takatori::tree::tree_fragment_vector<tuple> const& tuples,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
     executor::process::impl::variable_table const* host_variables
-) {
+) const {
     std::vector<details::write_target> ret{};
     auto& table = idx.table();
     auto primary = table.owner()->find_primary_index(table);
@@ -281,8 +371,8 @@ std::vector<details::write_target> write::create_targets(
     // first entry is primary index
     auto& t = ret.emplace_back(
         primary->simple_name(),
-        create_tuples(*primary, columns, tuples, info, resource, host_variables, true),
-        create_tuples(*primary, columns, tuples, info, resource, host_variables, false)
+        create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, true),
+        create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, false)
     );
     auto& keys = t.keys_;
     table.owner()->each_index(
@@ -292,7 +382,7 @@ std::vector<details::write_target> write::create_targets(
             }
             ret.emplace_back(
                 entry->simple_name(),
-                create_tuples(*entry, columns, tuples, info, resource, host_variables, true, keys),
+                create_tuples(ctx, *entry, columns, tuples, info, resource, host_variables, true, keys),
                 std::vector<details::write_tuple>{}
             );
         }

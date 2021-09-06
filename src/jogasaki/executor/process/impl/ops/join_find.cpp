@@ -25,6 +25,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include "operator_base.h"
 #include "context_helper.h"
 #include "join_find_context.h"

@@ -27,12 +27,14 @@ write_full_context::write_full_context(
     variable_table& input_variables,
     std::unique_ptr<kvs::storage> stg,
     kvs::transaction* tx,
+    sequence::manager* sequence_manager,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
     context_base(ctx, input_variables, resource, varlen_resource),
     stg_(std::move(stg)),
-    tx_(tx)
+    tx_(tx),
+    sequence_manager_(sequence_manager)
 {}
 
 operator_kind write_full_context::kind() const noexcept {

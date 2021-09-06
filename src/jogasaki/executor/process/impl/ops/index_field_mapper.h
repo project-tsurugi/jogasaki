@@ -17,48 +17,16 @@
 
 #include <vector>
 
-#include <takatori/relation/find.h>
-
-#include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/coder.h>
-#include "operator_base.h"
-#include "find_context.h"
+#include <jogasaki/status.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include "details/field_info.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
-
-/**
- * @brief primary index field info
- * @details mapper uses these fields to know how the key/values on the primary index are mapped to variables
- */
-struct cache_align field_info {
-
-    /**
-     * @brief create new field information
-     * @param type type of the field
-     * @param target_exists whether the target storage exists. If not, there is no room to copy the data to.
-     * @param target_offset byte offset of the target field in the target record reference
-     * @param target_nullity_offset bit offset of the target field nullity in the target record reference
-     * @param source_nullable whether the target field is nullable or not
-     * @param spec the spec of the target field used for encode/decode
-     */
-    field_info(
-        meta::field_type type,
-        bool target_exists,
-        std::size_t target_offset,
-        std::size_t target_nullity_offset,
-        bool source_nullable,
-        kvs::coding_spec spec
-    );
-
-    meta::field_type type_{}; //NOLINT
-    bool target_exists_{}; //NOLINT
-    std::size_t target_offset_{}; //NOLINT
-    std::size_t target_nullity_offset_{}; //NOLINT
-    bool source_nullable_{}; //NOLINT
-    kvs::coding_spec spec_{}; //NOLINT
-};
 
 /**
  * @brief secondary index field info
@@ -92,8 +60,6 @@ struct cache_align secondary_index_field_info {
  */
 class index_field_mapper {
 public:
-    using column = takatori::relation::find::column;
-
     using memory_resource = memory::lifo_paged_memory_resource;
 
     /**
@@ -177,7 +143,6 @@ private:
     );
 
 };
-
 
 }
 

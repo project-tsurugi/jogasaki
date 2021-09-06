@@ -24,6 +24,8 @@
 #include <jogasaki/kvs/coder.h>
 #include "write_full_context.h"
 #include "write_kind.h"
+#include "details/field_info.h"
+#include "default_value_kind.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -34,7 +36,7 @@ namespace details {
  * @details write operator uses these fields to know how the variables or input record fields are are mapped to
  * key/value fields.
  */
-struct cache_align write_full_field {
+struct cache_align write_full_field : field_info, default_value_property {
     /**
      * @brief create new write field
      * @param type type of the write field
@@ -49,13 +51,42 @@ struct cache_align write_full_field {
         std::size_t source_nullity_offset,
         bool target_nullable,
         kvs::coding_spec spec
-    );
+    ) :
+        field_info(
+            type,
+            true,
+            source_offset,
+            source_nullity_offset,
+            target_nullable,
+            spec
+        ),
+        default_value_property()
+    {}
 
-    meta::field_type type_{}; //NOLINT
-    std::size_t source_offset_{}; //NOLINT
-    std::size_t source_nullity_offset_{}; //NOLINT
-    bool target_nullable_{}; //NOLINT
-    kvs::coding_spec spec_{}; //NOLINT
+    write_full_field(
+        meta::field_type type,
+        std::size_t source_offset,
+        std::size_t source_nullity_offset,
+        bool target_nullable,
+        kvs::coding_spec spec,
+        default_value_kind kind,
+        std::string_view default_value,
+        sequence_definition_id def_id
+    ) :
+        field_info(
+            type,
+            false,
+            source_offset,
+            source_nullity_offset,
+            target_nullable,
+            spec
+        ),
+        default_value_property(
+            kind,
+            default_value,
+            def_id
+        )
+    {}
 };
 
 }

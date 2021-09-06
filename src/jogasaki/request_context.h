@@ -26,6 +26,8 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/sequence/sequence.h>
 
 namespace jogasaki {
 
@@ -61,6 +63,7 @@ public:
         std::shared_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<kvs::transaction> transaction = {},
+        executor::sequence::manager* sequence_manager = {},
         data::result_store* result = {}
     );
 
@@ -95,6 +98,12 @@ public:
     [[nodiscard]] std::shared_ptr<kvs::transaction> const& transaction() const;
 
     /**
+     * @brief accessor for the sequence manager
+     * @return sequence manager shared within this request
+     */
+    [[nodiscard]] executor::sequence::manager* sequence_manager() const noexcept;
+
+    /**
      * @brief setter for the result status
      * @details this overwrites the status code with more severe status code (e.g. warning is overwritten by an error)
      * If error code is already set to this object, this is no-op.
@@ -124,6 +133,7 @@ private:
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<kvs::transaction> transaction_{};
+    executor::sequence::manager* sequence_manager_{};
     data::result_store* result_{};
     std::atomic<status> status_code_{status::ok};
     maybe_shared_ptr<scheduler::job_context> job_context_{};

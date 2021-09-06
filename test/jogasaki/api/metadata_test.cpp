@@ -220,7 +220,7 @@ TEST_F(metadata_test, crud1) {
     ASSERT_EQ(status::ok, db_->drop_table(t->simple_name()));
     ASSERT_EQ(status::not_found, db_->drop_table(t->simple_name()));
 
-    auto seq = std::make_shared<sequence>(
+    auto seq = std::make_shared<yugawara::storage::sequence>(
         100,
         "SEQ"
     );
@@ -233,7 +233,7 @@ TEST_F(metadata_test, crud1) {
 }
 
 TEST_F(metadata_test, use_sequence) {
-    auto seq = std::make_shared<sequence>(
+    auto seq = std::make_shared<yugawara::storage::sequence>(
         100,
         "SEQ"
     );

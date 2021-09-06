@@ -477,6 +477,7 @@ public:
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::move(db),
             std::move(tx),
+            nullptr,
             &result
         );
         common::graph g{*context};

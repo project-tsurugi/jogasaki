@@ -445,8 +445,7 @@ void create_mirror_for_write(
     auto write = std::make_shared<executor::common::write>(
         executor::process::impl::ops::write_kind_from(node.operator_kind()),
         index,
-        node.columns(),
-        node.tuples(),
+        node,
         *ctx.resource(),
         info,
         vars.get()

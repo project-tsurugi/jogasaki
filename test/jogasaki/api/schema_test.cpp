@@ -21,6 +21,9 @@
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/value/int.h>
+#include <takatori/value/float.h>
+#include <takatori/value/character.h>
 
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
@@ -50,6 +53,7 @@ using takatori::util::unsafe_downcast;
 
 using namespace yugawara::storage;
 namespace type = takatori::type;
+namespace value = takatori::value;
 using nullity = yugawara::variable::nullity;
 using kind = meta::field_type_kind;
 using accessor::text;
@@ -312,4 +316,118 @@ TEST_F(schema_test, descending_keys) {
     EXPECT_EQ(exp, result[0]);
 }
 
+TEST_F(schema_test, default_value) {
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int8(), nullity{true}, {column_value{value::int8{0}}}},
+            column{ "K1", type::character(type::varying), nullity{true}, {column_value{value::character{"1"}}}},
+            column{ "K2", type::int8(), nullity{true}, {column_value{value::int8{2}}}},
+            column{ "K3", type::float8 (), nullity{true}, {column_value{value::float8{3.0}}}},
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        t->simple_name(),
+        std::initializer_list<index::key>{
+            t->columns()[0],
+        },
+        std::initializer_list<index::column_ref>{
+            t->columns()[1],
+            t->columns()[2],
+            t->columns()[3],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_index(i));
+
+    {
+        execute_statement( "INSERT INTO TEST (C0) VALUES (10)");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE C0=10", result);
+        ASSERT_EQ(1, result.size());
+        auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8>(
+            boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
+            std::forward_as_tuple(10, text("1"), 2, 3.0),
+            {false, false, false, false}
+        );
+        EXPECT_EQ(exp, result[0]);
+    }
+    {
+        execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE K2=20", result);
+        ASSERT_EQ(1, result.size());
+        auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8>(
+            boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
+            std::forward_as_tuple(0, text("1"), 20, 3.0),
+            {false, false, false, false}
+        );
+        EXPECT_EQ(exp, result[0]);
+    }
+}
+
+TEST_F(schema_test, null_value) {
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int8(), nullity{true}},
+            column{ "K1", type::character(type::varying), nullity{true}},
+            column{ "K2", type::int8(), nullity{true}},
+            column{ "K3", type::float8 (), nullity{true}},
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        t->simple_name(),
+        std::initializer_list<index::key>{
+            t->columns()[0],
+        },
+        std::initializer_list<index::column_ref>{
+            t->columns()[1],
+            t->columns()[2],
+            t->columns()[3],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_index(i));
+
+    {
+        execute_statement( "INSERT INTO TEST (C0) VALUES (10)");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, K1, K2, K3 FROM TEST", result);
+        ASSERT_EQ(1, result.size());
+        auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8>(
+            boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
+            std::forward_as_tuple(10, text("-"), 0, 0.0),
+            {false, true, true, true}
+        );
+        EXPECT_EQ(exp, result[0]);
+        execute_statement( "DELETE FROM TEST");
+    }
+    {
+        execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, K1, K2, K3 FROM TEST", result);
+        ASSERT_EQ(1, result.size());
+        auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8>(
+            boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
+            std::forward_as_tuple(0, text(""), 20, 0.0),
+            {true, true, false, true}
+        );
+        EXPECT_EQ(exp, result[0]);
+    }
+}
 }

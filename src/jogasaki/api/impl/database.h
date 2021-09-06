@@ -33,6 +33,7 @@
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/executor/sequence/manager.h>
 
 namespace jogasaki::scheduler {
 class task_scheduler;
@@ -125,6 +126,7 @@ public:
 
     [[nodiscard]] scheduler::task_scheduler* task_scheduler() const noexcept;
 
+    [[nodiscard]] executor::sequence::manager* sequence_manager() const noexcept;
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -184,6 +186,7 @@ private:
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
+    std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<api::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<api::transaction>> transactions_{};
 

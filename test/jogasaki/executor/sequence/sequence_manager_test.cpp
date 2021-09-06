@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/test_base.h>
 
 namespace jogasaki::executor::sequence {
 
@@ -30,10 +31,13 @@ using namespace takatori::util;
 using namespace yugawara;
 using namespace yugawara::storage;
 
-class sequence_manager_test : public ::testing::Test {
+class sequence_manager_test : public ::testing::Test, public test_base {
 public:
     void SetUp() override {
         db_ = kvs::database::open();
+    }
+    void TearDown() override {
+        (void)db_->close();
     }
     std::unique_ptr<kvs::database> db_{};
 };
@@ -111,11 +115,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequences(maybe_shared_ptr{&provider});
-
+    wait_epochs(10);
     provider.add_sequence(storage::sequence{2, "SEQ2"});
     manager mgr2{*db_};
     EXPECT_EQ(1, mgr2.load_id_map());
     mgr2.register_sequences(maybe_shared_ptr{&provider});
+    wait_epochs(10);
 
     ASSERT_EQ(2, mgr2.sequences().size());
     auto& info2_0 = *mgr2.sequences().at(1).info();
@@ -126,6 +131,7 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     manager mgr3{*db_};
     EXPECT_EQ(2, mgr3.load_id_map());
     mgr3.register_sequences(maybe_shared_ptr{&provider});
+    wait_epochs(10);
 
     ASSERT_EQ(2, mgr3.sequences().size());
     auto& info3_0 = *mgr3.sequences().at(1).info();
@@ -179,7 +185,6 @@ TEST_F(sequence_manager_test, sequence_manipulation) {
 TEST_F(sequence_manager_test, sequence_manipulation_varieties) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     mgr.register_sequence(
         111,
         "SEQ1",
@@ -222,7 +227,6 @@ TEST_F(sequence_manager_test, sequence_manipulation_varieties) {
 TEST_F(sequence_manager_test, cycle_positive_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     mgr.register_sequence(
         111,
         "SEQ1",
@@ -252,7 +256,6 @@ TEST_F(sequence_manager_test, cycle_positive_incr) {
 TEST_F(sequence_manager_test, cycle_negative_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     mgr.register_sequence(
         111,
         "SEQ1",
@@ -282,7 +285,6 @@ TEST_F(sequence_manager_test, cycle_negative_incr) {
 TEST_F(sequence_manager_test, no_cycle_positive_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     mgr.register_sequence(
         111,
         "SEQ1",
@@ -310,7 +312,6 @@ TEST_F(sequence_manager_test, no_cycle_positive_incr) {
 TEST_F(sequence_manager_test, no_cycle_negative_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     mgr.register_sequence(
         111,
         "SEQ1",
@@ -338,7 +339,6 @@ TEST_F(sequence_manager_test, no_cycle_negative_incr) {
 TEST_F(sequence_manager_test, cycle_positive_incr_around_intmax) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
     mgr.register_sequence(
         111,
@@ -367,7 +367,6 @@ TEST_F(sequence_manager_test, cycle_positive_incr_around_intmax) {
 TEST_F(sequence_manager_test, no_cycle_positive_incr_around_intmax) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
     mgr.register_sequence(
         111,
@@ -395,7 +394,6 @@ TEST_F(sequence_manager_test, no_cycle_positive_incr_around_intmax) {
 TEST_F(sequence_manager_test, cycle_negative_incr_around_intmin) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     constexpr static sequence_value mi = std::numeric_limits<sequence_value>::min();
     mgr.register_sequence(
         111,
@@ -424,7 +422,6 @@ TEST_F(sequence_manager_test, cycle_negative_incr_around_intmin) {
 TEST_F(sequence_manager_test, no_cycle_negative_incr_around_intmin) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.load_id_map();
     constexpr static sequence_value mi = std::numeric_limits<sequence_value>::min();
     mgr.register_sequence(
         111,
@@ -467,6 +464,7 @@ TEST_F(sequence_manager_test, drop_sequence) {
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
         mgr.remove_sequence(2);
+        wait_epochs(10);
     }
     {
         manager mgr{*db_};
@@ -504,6 +502,7 @@ TEST_F(sequence_manager_test, save_and_recover) {
         EXPECT_EQ(1, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
+        wait_epochs(10);
     }
     // expecting the transaction became durable and sequence is updated
     std::this_thread::sleep_for(std::chrono::milliseconds(1));

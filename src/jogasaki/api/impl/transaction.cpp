@@ -24,6 +24,7 @@
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/executor/sequence/sequence.h>
 
 namespace jogasaki::api::impl {
 
@@ -55,6 +56,7 @@ status transaction::execute(
         s.resource(),
         database_->kvs_db(),
         tx_,
+        database_->sequence_manager(),
         store.get()
     );
     if (e->is_execute()) {

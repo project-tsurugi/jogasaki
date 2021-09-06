@@ -24,24 +24,13 @@
 #include <jogasaki/error.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/as_any.h>
+#include <jogasaki/utils/coder.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
-
-details::write_full_field::write_full_field(
-    meta::field_type type,
-    std::size_t source_offset,
-    std::size_t source_nullity_offset,
-    bool target_nullable,
-    kvs::coding_spec spec
-) :
-    type_(std::move(type)),
-    source_offset_(source_offset),
-    source_nullity_offset_(source_nullity_offset),
-    target_nullable_(target_nullable),
-    spec_(spec)
-{}
 
 write_full::write_full(
     operator_base::operator_index_type index,
@@ -99,6 +88,7 @@ operation_status write_full::process_record(abstract::task_context* context) {
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
+            ctx.req_context()->sequence_manager(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -140,12 +130,58 @@ void write_full::encode_fields(
     accessor::record_ref source
 ) {
     for(auto const& f : fields) {
-        if(f.target_nullable_) {
-            kvs::encode_nullable(source, f.source_offset_, f.source_nullity_offset_, f.type_, f.spec_, stream);
+        if(f.nullable_) {
+            kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, stream);
         } else {
-            kvs::encode(source, f.source_offset_, f.type_, f.spec_, stream);
+            kvs::encode(source, f.offset_, f.type_, f.spec_, stream);
         }
     }
+}
+
+void create_generated_field(
+    std::vector<details::write_full_field>& ret,
+    yugawara::storage::column_value const& dv,
+    takatori::type::data const& type,
+    bool nullable,
+    kvs::coding_spec spec
+) {
+    using yugawara::storage::column_value_kind;
+    auto knd = default_value_kind::nothing;
+    sequence_definition_id def_id{};
+    data::aligned_buffer buf{};
+    auto t = utils::type_for(type);
+    switch(dv.kind()) {
+        case column_value_kind::nothing:
+            break;
+        case column_value_kind::immediate: {
+            knd = default_value_kind::immediate;
+            auto src = utils::as_any(
+                *dv.element<column_value_kind::immediate>(),
+                type,
+                nullptr
+            );
+            utils::encode_any( buf, t, nullable, spec, {src});
+            break;
+        }
+        case column_value_kind::sequence: {
+            knd = default_value_kind::sequence;
+            if (auto id = dv.element<column_value_kind::sequence>()->definition_id()) {
+                def_id = *id;
+            } else {
+                fail("sequence must be defined with definition_id");
+            }
+        }
+    }
+    ret.emplace_back(
+        t,
+        0,
+        0,
+        nullable,
+        spec,
+        knd,
+        static_cast<std::string_view>(buf),
+        def_id
+    );
 }
 
 std::vector<details::write_full_field> write_full::create_fields(
@@ -171,11 +207,19 @@ std::vector<details::write_full_field> write_full::create_fields(
         ret.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
             auto kc = bindings(k.column());
-            auto t = utils::type_for(k.column().type());
+            auto& type = k.column().type();
+            auto t = utils::type_for(type);
             auto spec = k.direction() == relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
             if (table_to_stream.count(kc) == 0) {
-                fail();
+                if (kind == write_kind::delete_) {
+                    fail();
+                }
+                // no column specified - use default value
+                auto& dv = k.column().default_value();
+                bool nullable = k.column().criteria().nullity().nullable();
+                create_generated_field(ret, dv, type, nullable, spec);
+                continue;
             }
             auto&& var = table_to_stream.at(kc);
             ret.emplace_back(
@@ -196,9 +240,14 @@ std::vector<details::write_full_field> write_full::create_fields(
     for(auto&& v : idx.values()) {
         auto b = bindings(v);
         auto& c = static_cast<yugawara::storage::column const&>(v);
-        auto t = utils::type_for(c.type());
+        auto& type = c.type();
+        auto t = utils::type_for(type);
         if (table_to_stream.count(b) == 0) {
-            fail();
+            // no column specified - use default value
+            auto& dv = c.default_value();
+            bool nullable = c.criteria().nullity().nullable();
+            create_generated_field(ret, dv, type, nullable, kvs::spec_value);
+            continue;
         }
         auto&& var = table_to_stream.at(b);
         ret.emplace_back(

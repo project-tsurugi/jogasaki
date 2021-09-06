@@ -13,29 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "field_info.h"
 
-#include <limits>
-#include <cstdint>
-#include <string_view>
+namespace jogasaki::executor::process::impl::ops::details {
 
-namespace jogasaki {
-
-/**
- * @brief default number of partitions
- */
-constexpr std::size_t default_partitions = 5;
-
-/**
- * @brief number of bits per byte
- * @details we assume byte and char are always 8 bits long
- */
-constexpr static std::size_t bits_per_byte = std::numeric_limits<std::uint8_t>::digits;
-
-/**
- * @brief system table name for sequences
- * @details the table name for the sequence id mapping
- */
-constexpr static std::string_view system_sequences_name = "system_sequences";
+field_info::field_info(
+    meta::field_type type,
+    bool exists,
+    std::size_t offset,
+    std::size_t nullity_offset,
+    bool nullable,
+    kvs::coding_spec spec
+) :
+    type_(std::move(type)),
+    exists_(exists),
+    offset_(offset),
+    nullity_offset_(nullity_offset),
+    nullable_(nullable),
+    spec_(spec)
+{}
 
 }
+
+

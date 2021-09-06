@@ -21,6 +21,7 @@
 #include <takatori/util/fail.h>
 #include <yugawara/storage/configurable_provider.h>
 
+#include <jogasaki/constants.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
@@ -53,7 +54,7 @@ manager::manager(
 {}
 
 std::size_t manager::load_id_map() {
-    auto stg = db_->get_or_create_storage("system_sequences0");
+    auto stg = db_->get_or_create_storage(system_sequences_name);
     auto tx = db_->create_transaction(true);
     std::unique_ptr<kvs::iterator> it{};
     if(auto res = stg->scan(
@@ -198,13 +199,13 @@ std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_p
     sequence_definition_id def_id{};
     sequence_id id{};
     def_id = dest.to<std::int64_t>();
-    kvs::decode(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
+    kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
     id = dest.to<std::int64_t>();
     return {def_id, id};
 }
 
 void manager::save_id_map() {
-    auto stg = db_->get_storage("system_sequences0");
+    auto stg = db_->get_storage(system_sequences_name);
     auto tx = db_->create_transaction();
     data::aligned_buffer key_buf{10};
     data::aligned_buffer val_buf{10};
@@ -215,7 +216,7 @@ void manager::save_id_map() {
         executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
         executor::process::impl::expression::any v{std::in_place_type<std::int64_t>, id};
         kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
-        kvs::encode(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
+        kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
         if (auto res = stg->put(
                 *tx,
                 {key.data(), key.size()},
@@ -234,7 +235,7 @@ manager::sequences_type const& manager::sequences() const noexcept {
 }
 
 void manager::remove_id_map(sequence_definition_id def_id) {
-    auto stg = db_->get_or_create_storage("system_sequences0");
+    auto stg = db_->get_or_create_storage(system_sequences_name);
     auto tx = db_->create_transaction();
 
     data::aligned_buffer key_buf{10};
@@ -250,6 +251,31 @@ void manager::remove_id_map(sequence_definition_id def_id) {
     if(tx->commit() != status::ok) {
         fail();
     }
+}
+
+details::sequence_element::sequence_element(sequence_id id) : sequence_id_(id) {}
+
+sequence_id details::sequence_element::id() const noexcept {
+    return sequence_id_;
+}
+
+std::unique_ptr<class info> const& details::sequence_element::info(std::unique_ptr<class info> info) noexcept {
+    info_ = std::move(info);
+    return info_;
+}
+
+class info* details::sequence_element::info() const noexcept {
+    return info_.get();
+}
+
+std::unique_ptr<class sequence> const&
+details::sequence_element::sequence(std::unique_ptr<class sequence> sequence) noexcept {
+    sequence_ = std::move(sequence);
+    return sequence_;
+}
+
+class sequence* details::sequence_element::sequence() const noexcept {
+    return sequence_.get();
 }
 
 }

@@ -43,7 +43,7 @@ inline void encode_any(
         auto capacity = loop == 0 ? 0 : target.size(); // capacity 0 makes stream empty write to calc. length
         kvs::writable_stream s{target.data(), capacity};
         for(auto&& f : sources) {
-            if (! f.has_value()) {
+            if (f.empty()) {
                 // value not specified for the field
                 if (! nullable) {
                     fail();

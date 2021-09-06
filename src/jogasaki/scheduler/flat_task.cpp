@@ -153,6 +153,7 @@ void flat_task::resolve(tateyama::context& ctx) {
         s.resource(),
         database_->kvs_db(),
         tx_,
+        database_->sequence_manager(),
         (*result_store_container_).get()
     );
     g.context(*request_ctx);

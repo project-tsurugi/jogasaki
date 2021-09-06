@@ -45,6 +45,7 @@ public:
         variable_table& input_variables,
         std::unique_ptr<kvs::storage> stg,
         kvs::transaction* tx,
+        sequence::manager* sequence_manager,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -61,6 +62,7 @@ public:
 private:
     std::unique_ptr<kvs::storage> stg_{};
     kvs::transaction* tx_{};
+    sequence::manager* sequence_manager_{};
     data::aligned_buffer key_buf_{};
     data::aligned_buffer value_buf_{};
 };

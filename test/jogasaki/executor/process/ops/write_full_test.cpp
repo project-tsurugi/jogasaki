@@ -112,12 +112,14 @@ TEST_F(write_full_test, simple) {
 
     auto db = kvs::database::open();
     auto tx = db->create_transaction();
+    auto mgr = sequence::manager{*db};
     mock::task_context task_ctx{ {}, {}, {}, {}};
     write_full_context ctx{
         &task_ctx,
         input_variables,
         get_storage(*db, i1->simple_name()),
         tx.get(),
+        &mgr,
         &resource_,
         &varlen_resource_
     };
@@ -197,12 +199,14 @@ TEST_F(write_full_test, delete) {
     ASSERT_EQ(2, result.size());
 
     auto tx = db->create_transaction();
+    auto mgr = sequence::manager{*db};
     mock::task_context task_ctx{ {}, {}, {}, {}};
     write_full_context ctx{
         &task_ctx,
         input_variables,
         get_storage(*db, i1->simple_name()),
         tx.get(),
+        &mgr,
         &resource_,
         &varlen_resource_
     };

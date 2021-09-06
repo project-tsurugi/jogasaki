@@ -33,12 +33,14 @@ request_context::request_context(
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource,
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<kvs::transaction> transaction,
+    executor::sequence::manager* sequence_manager,
     data::result_store* result
 ) :
     config_(std::move(config)),
     request_resource_(std::move(request_resource)),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
+    sequence_manager_(sequence_manager),
     result_(result)
 {}
 
@@ -82,6 +84,10 @@ maybe_shared_ptr<scheduler::job_context> const& request_context::job() const noe
 
 void request_context::job(maybe_shared_ptr<scheduler::job_context> arg) noexcept {
     job_context_ = std::move(arg);
+}
+
+executor::sequence::manager* request_context::sequence_manager() const noexcept {
+    return sequence_manager_;
 }
 
 }

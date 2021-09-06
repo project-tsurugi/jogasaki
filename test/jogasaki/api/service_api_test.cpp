@@ -30,6 +30,8 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/utils/binary_printer.h>
 
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>

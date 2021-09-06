@@ -19,22 +19,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-details::field_info::field_info(
-    meta::field_type type,
-    bool target_exists,
-    std::size_t target_offset,
-    std::size_t target_nullity_offset,
-    bool source_nullable,
-    kvs::coding_spec spec
-) :
-    type_(std::move(type)),
-    target_exists_(target_exists),
-    target_offset_(target_offset),
-    target_nullity_offset_(target_nullity_offset),
-    source_nullable_(source_nullable),
-    spec_(spec)
-{}
-
 details::secondary_index_field_info::secondary_index_field_info(
     meta::field_type type,
     bool source_nullable,
@@ -121,30 +105,30 @@ void index_field_mapper::decode_fields(std::vector<details::field_info> const& f
     index_field_mapper::memory_resource* resource
 ) {
     for(auto&& f : fields) {
-        if (! f.target_exists_) {
-            if (f.source_nullable_) {
+        if (! f.exists_) {
+            if (f.nullable_) {
                 kvs::consume_stream_nullable(stream, f.type_, f.spec_);
                 continue;
             }
             kvs::consume_stream(stream, f.type_, f.spec_);
             continue;
         }
-        if (f.source_nullable_) {
+        if (f.nullable_) {
             kvs::decode_nullable(
                 stream,
                 f.type_,
                 f.spec_,
                 target,
-                f.target_offset_,
-                f.target_nullity_offset_,
+                f.offset_,
+                f.nullity_offset_,
                 resource
             );
             continue;
         }
-        kvs::decode(stream, f.type_, f.spec_, target, f.target_offset_, resource);
-        target.set_null(f.target_nullity_offset_, false); // currently assuming target variable fields are
-        // nullable and f.target_nullity_offset_ is valid
-        // even if f.source_nullable_ is false
+        kvs::decode(stream, f.type_, f.spec_, target, f.offset_, resource);
+        target.set_null(f.nullity_offset_, false); // currently assuming target variable fields are
+        // nullable and f.nullity_offset_ is valid
+        // even if f.nullable_ is false
     }
 }
 

@@ -21,6 +21,7 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/executor/sequence/sequence.h>
 
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>

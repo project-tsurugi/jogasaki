@@ -23,9 +23,9 @@ namespace jogasaki {
 class test_base {
 public:
 
-    void wait_epochs() {
+    void wait_epochs(std::size_t unit = 1) {
         using namespace std::chrono_literals;
-        std::this_thread::sleep_for(200ms);
+        std::this_thread::sleep_for(unit * 200ms);
     }
 };
 

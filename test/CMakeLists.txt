@@ -55,6 +55,7 @@ file(GLOB SRCS
         "jogasaki/executor/process/ops/*.cpp"
         "jogasaki/executor/aggregate/*.cpp"
         "jogasaki/executor/shuffle/*.cpp"
+        "jogasaki/executor/sequence/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"

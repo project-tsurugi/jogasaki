@@ -23,6 +23,7 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/data/aligned_buffer.h>
 
 namespace jogasaki::executor::common {
@@ -60,13 +61,33 @@ private:
 /**
  * @brief field info. for write
  */
-struct write_field {
+struct write_field : process::impl::ops::default_value_property {
     write_field(
         std::size_t index,
         meta::field_type type,
         kvs::coding_spec spec,
         bool nullable
     ) :
+        index_(index),
+        type_(std::move(type)),
+        spec_(spec),
+        nullable_(nullable)
+    {}
+
+    write_field(
+        std::size_t index,
+        meta::field_type type,
+        kvs::coding_spec spec,
+        bool nullable,
+        process::impl::ops::default_value_kind kind,
+        std::string_view default_value,
+        sequence_definition_id def_id
+    ) :
+        default_value_property(
+            kind,
+            default_value,
+            def_id
+        ),
         index_(index),
         type_(std::move(type)),
         spec_(spec),
@@ -112,23 +133,13 @@ public:
 
     /**
      * @brief create new object
-     * @param kind
-     * @param storage_name
-     * @param keys
-     * @param values
      */
     write(
         write_kind kind,
-        std::vector<details::write_target> targets
-    ) noexcept;
-
-    write(
-        write_kind kind,
         yugawara::storage::index const& idx,
-        sequence_view<column const> columns,
-        takatori::tree::tree_fragment_vector<tuple> const& tuples,
+        takatori::statement::write const& wrt,
         memory::lifo_paged_memory_resource& resource,
-        compiled_info const& info,
+        compiled_info info,
         executor::process::impl::variable_table const* host_variables
     ) noexcept;
 
@@ -138,9 +149,14 @@ public:
 
 private:
     write_kind kind_{};
-    std::vector<details::write_target> targets_{};
+    yugawara::storage::index const* idx_{};
+    takatori::statement::write const* wrt_{};
+    memory::lifo_paged_memory_resource* resource_{};
+    compiled_info info_{};
+    executor::process::impl::variable_table const* host_variables_{};
 
     std::vector<details::write_tuple> create_tuples(
+        request_context& ctx,
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
@@ -149,16 +165,23 @@ private:
         executor::process::impl::variable_table const* host_variables,
         bool key,
         std::vector<details::write_tuple> const& primary_key_tuples = {}
-    );
+    ) const;
 
     std::vector<details::write_target> create_targets(
+        request_context& ctx,
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource,
         executor::process::impl::variable_table const* host_variables
-    );
+    ) const;
+
+    [[nodiscard]] std::vector<details::write_field> create_fields(
+        yugawara::storage::index const& idx,
+        sequence_view<column const> columns,
+        bool key
+    ) const;
 };
 
 }

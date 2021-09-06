@@ -52,11 +52,6 @@ engine::engine(
     resource_(resource)
 {}
 
-// variant index in any - treat bool as std::int8_t
-template <class T>
-static constexpr std::size_t index =
-    alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, any::base_type>();
-
 template <class T, class U = T>
 any add(T const& l, U const& r) {
     return any{std::in_place_type<T>, l+r};

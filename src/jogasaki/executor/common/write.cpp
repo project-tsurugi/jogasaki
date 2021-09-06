@@ -39,6 +39,8 @@ using jogasaki::executor::process::impl::expression::evaluator;
 using yugawara::compiled_info;
 
 using takatori::util::fail;
+using executor::process::impl::expression::any;
+using executor::process::impl::expression::index;
 
 write::write(
     write_kind kind,
@@ -99,6 +101,56 @@ bool write::operator()(request_context& context) const {
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
+// convert the value type contained in any if necessary
+void convert_any(any& a, meta::field_type const& type) {
+    //TODO validation about type compatibility is not strict for now
+    if (! a) return;
+    using k = meta::field_type_kind;
+    switch(type.kind()) {
+        case k::int4: {
+            switch(a.type_index()) {
+                case index<std::int32_t>: break;
+                case index<std::int64_t>: a = any{std::in_place_type<std::int32_t>, a.to<std::int64_t>()}; break;
+                case index<float>: a = any{std::in_place_type<std::int32_t>, a.to<float>()}; break;
+                case index<double>: a = any{std::in_place_type<std::int32_t>, a.to<double>()}; break;
+                default: fail();
+            }
+            break;
+        }
+        case k::int8: {
+            switch(a.type_index()) {
+                case index<std::int32_t>: a = any{std::in_place_type<std::int64_t>, a.to<std::int32_t>()}; break;
+                case index<std::int64_t>: break;
+                case index<float>: a = any{std::in_place_type<std::int64_t>, a.to<float>()}; break;
+                case index<double>: a = any{std::in_place_type<std::int64_t>, a.to<double>()}; break;
+                default: fail();
+            }
+            break;
+        }
+        case k::float4: {
+            switch(a.type_index()) {
+                case index<std::int32_t>: a = any{std::in_place_type<float>, a.to<std::int32_t>()}; break;
+                case index<std::int64_t>: a = any{std::in_place_type<float>, a.to<std::int64_t>()}; break;
+                case index<float>: break;
+                case index<double>: a = any{std::in_place_type<float>, a.to<double>()}; break;
+                default: fail();
+            }
+            break;
+        }
+        case k::float8: {
+            switch(a.type_index()) {
+                case index<std::int32_t>: a = any{std::in_place_type<double>, a.to<std::int32_t>()}; break;
+                case index<std::int64_t>: a = any{std::in_place_type<double>, a.to<std::int64_t>()}; break;
+                case index<float>: a = any{std::in_place_type<double>, a.to<float>()}; break;
+                case index<double>: break;
+                default: fail();
+            }
+            break;
+        }
+        default: break;  //TODO add more conversions
+    }
+}
+
 // encode tuple into buf, and return result data length
 std::size_t encode_tuple(
     write::tuple const& t,
@@ -129,6 +181,7 @@ std::size_t encode_tuple(
                 if (res.error()) {
                     LOG(ERROR) << "evaluation error: " << res.to<process::impl::expression::error>();
                 }
+                convert_any(res, f.type_);
                 if (f.nullable_) {
                     kvs::encode_nullable(res, f.type_, f.spec_, s);
                 } else {

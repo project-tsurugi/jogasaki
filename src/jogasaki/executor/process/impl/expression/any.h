@@ -25,6 +25,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/utils/variant.h>
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -112,4 +113,10 @@ inline any::any(std::in_place_type_t<bool>, bool arg) : body_(std::in_place_type
 
 template<>
 inline any::any(std::in_place_type_t<bool>, std::int8_t arg) : body_(std::in_place_type<std::int8_t>, arg != 0 ? 1 : 0) {}
+
+// variant index in any - treat bool as std::int8_t
+template <class T>
+static constexpr std::size_t index =
+    alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, any::base_type>();
+
 }

@@ -23,7 +23,7 @@ namespace jogasaki::plan {
 using executor::process::impl::expression::any;
 
 parameter_entry::parameter_entry(meta::field_type type, any value) :
-    type_(std::move(type)),
+    type_(std::move(type)),  //NOLINT(hicpp-move-const-arg,performance-move-const-arg)
     value_(std::move(value))
 {}
 

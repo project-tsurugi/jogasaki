@@ -36,7 +36,7 @@ namespace details {
  * @details write operator uses these fields to know how the variables or input record fields are are mapped to
  * key/value fields.
  */
-struct cache_align write_full_field : field_info, default_value_property {
+struct cache_align write_full_field : field_info, default_value_property {  //NOLINT(fuchsia-multiple-inheritance)
     /**
      * @brief create new write field
      * @param type type of the write field

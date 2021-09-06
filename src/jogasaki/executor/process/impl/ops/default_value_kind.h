@@ -72,9 +72,9 @@ struct cache_align default_value_property {
     {}
 
     // default value properties (valid if exists_ = false)
-    default_value_kind kind_{};
-    data::aligned_buffer default_value_{};
-    sequence_definition_id def_id_{};
+    default_value_kind kind_{};  //NOLINT
+    data::aligned_buffer default_value_{};  //NOLINT
+    sequence_definition_id def_id_{};  //NOLINT
 };
 
 }

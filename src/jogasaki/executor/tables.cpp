@@ -46,9 +46,9 @@ void add_builtin_tables(storage::configurable_provider& provider) {
                 { "sequence_id", type::int8 (), nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "system_sequences0",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -77,9 +77,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C1", type::float8 (), nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "I0",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -100,9 +100,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C4", type::character(type::varying, 100) , nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "I1",
+            t->simple_name(),
             {
                 t->columns()[0],
                 t->columns()[1],
@@ -126,9 +126,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C4", type::character(type::varying, 100) , nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "I2",
+            t->simple_name(),
             {
                 t->columns()[0],
                 t->columns()[1],
@@ -149,9 +149,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C1", type::float8 (), nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "I10",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -172,9 +172,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C4", type::character(type::varying, 100) , nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "I20",
+            t->simple_name(),
             {
                 t->columns()[0],
                 t->columns()[1],
@@ -195,9 +195,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C1", type::int4(), nullity{true} },
             },
         });
-        std::shared_ptr<::yugawara::storage::index> i = provider.add_index({
+        provider.add_index({
             t,
-            "INT4_TAB",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -220,9 +220,9 @@ void add_test_tables(storage::configurable_provider& provider) {
                 { "C1", type::int8(), nullity{true} },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "TSEQ0",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -280,9 +280,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "w_ytd", type::float8(), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "WAREHOUSE",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -329,9 +329,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "d_next_o_id", int_type(), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "DISTRICT",
+            t->simple_name(),
             {
                 t->columns()[1],
                 t->columns()[0],
@@ -400,9 +400,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "c_data", type::character(500), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "CUSTOMER",
+            t->simple_name(),
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -431,7 +431,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             index_features
         });
 //        "PRIMARY KEY(c_w_id, c_d_id, c_last, c_first))",
-        auto i2 = provider.add_index({
+        provider.add_index({
             t,
             "CUSTOMER_SECONDARY",
             {
@@ -458,9 +458,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "no_w_id", int_type(), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "NEW_ORDER",
+            t->simple_name(),
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -495,9 +495,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "o_all_local", int_type(), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "ORDERS",
+            t->simple_name(),
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -513,7 +513,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             index_features
         });
 //        "PRIMARY KEY(o_w_id, o_d_id, o_c_id, o_id))",
-        auto i2 = provider.add_index({
+        provider.add_index({
             t,
             "ORDERS_SECONDARY",
             {
@@ -554,9 +554,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "ol_dist_info", type::character(24), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "ORDER_LINE",
+            t->simple_name(),
             {
                 t->columns()[2],
                 t->columns()[1],
@@ -592,9 +592,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "i_data", type::character(50), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "ITEM",
+            t->simple_name(),
             {
                 t->columns()[0],
             },
@@ -649,9 +649,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "s_data", type::character(50), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "STOCK",
+            t->simple_name(),
             {
                 t->columns()[1],
                 t->columns()[0],
@@ -706,9 +706,9 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "h_data", type::character(24), not_null },
             },
         });
-        auto i = provider.add_index({
+        provider.add_index({
             t,
-            "HISTORY",
+            t->simple_name(),
             {
                 t->columns()[0],
             },

@@ -36,7 +36,7 @@
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
-DEFINE_int32(thread_count, 10, "Number of threads");  //NOLINT
+DEFINE_int32(thread_count, 1, "Number of threads");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
@@ -45,6 +45,8 @@ DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_bool(explain, false, "explain the execution plan");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
+DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.");  //NOLINT
+DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storages");  //NOLINT
 
 namespace jogasaki::sql_cli {
 
@@ -57,84 +59,145 @@ using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::process::impl::expression;
 
-static int run(std::string_view sql, std::shared_ptr<configuration> cfg) {
-    trace_scope;
-    if (sql.empty()) return 0;
-    auto db = api::create_database(cfg);
-    db->start();
-    auto db_impl = unsafe_downcast<api::impl::database>(db.get());
-    executor::add_benchmark_tables(*db_impl->tables());
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "T0", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "T1", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "T2", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER", 10, true, 5);
-
-    std::unique_ptr<api::executable_statement> e{};
-    if(auto rc = db->create_executable(sql, e); rc != status::ok) {
-        db->stop();
-        return -1;
-    }
-    if (FLAGS_explain) {
-        db->explain(*e, std::cout);
-        db->stop();
+class cli {
+    std::unique_ptr<api::database> db_{};
+    std::unique_ptr<api::transaction> tx_{};
+public:
+    int end_tx(bool abort = false) {
+        if (abort) {
+            if(auto rc = tx_->abort(); rc != status::ok) {
+                std::abort();
+            }
+            return 0;
+        }
+        if(auto rc = tx_->commit(); rc != status::ok) {
+            LOG(ERROR) << "commit: " << rc;
+            return static_cast<int>(rc);
+        }
         return 0;
     }
-    std::unique_ptr<api::result_set> rs{};
-    {
-        auto tx = db->create_transaction();
-        if(auto rc = tx->execute(*e, rs); rc != status::ok || !rs) {
-            tx->abort();
-            db->stop();
+    int execute_stmt(
+        std::string_view stmt
+    ) {
+        if (stmt.empty()) return 0;
+        std::unique_ptr<api::executable_statement> e{};
+        if(auto rc = db_->create_executable(stmt, e); rc != status::ok) {
+            LOG(ERROR) << rc;
             return -1;
         }
-        auto it = rs->iterator();
-        while(it->has_next()) {
-            auto* record = it->next();
-            std::stringstream ss{};
-            ss << *record;
-            LOG(INFO) << ss.str();
+        if (FLAGS_explain) {
+            db_->explain(*e, std::cout);
+            std::cout << std::endl;
+            return 1;
         }
-        rs->close();
-        tx->commit();
-    }
-    db->stop();
-    return 0;
-}
-
-bool fill_from_flags(
-    jogasaki::configuration& cfg,
-    std::string const& str = {}
-) {
-    gflags::FlagSaver saver{};
-    if (! str.empty()) {
-        if(! gflags::ReadFlagsFromString(str, "", false)) {
-            std::cerr << "parsing options failed" << std::endl;
+        std::unique_ptr<api::result_set> rs{};
+        {
+            if(auto rc = tx_->execute(*e, rs); rc != status::ok || !rs) {
+                LOG(ERROR) << rc;
+                return static_cast<int>(rc);
+            }
+            auto it = rs->iterator();
+            while(it->has_next()) {
+                auto* record = it->next();
+                std::stringstream ss{};
+                ss << *record;
+                LOG(INFO) << ss.str();
+            }
+            rs->close();
         }
-    }
-    cfg.single_thread(FLAGS_single_thread);
-    cfg.work_sharing(FLAGS_work_sharing);
-    cfg.thread_pool_size(FLAGS_thread_count);
-
-    cfg.core_affinity(FLAGS_core_affinity);
-    cfg.initial_core(FLAGS_initial_core);
-    cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
-    cfg.default_partitions(FLAGS_partitions);
-    cfg.stealing_enabled(FLAGS_steal);
-
-    if (FLAGS_minimum) {
-        cfg.single_thread(true);
-        cfg.thread_pool_size(1);
-        cfg.initial_core(1);
-        cfg.core_affinity(false);
-        cfg.default_partitions(1);
+        return 0;
     }
 
-    if (cfg.assign_numa_nodes_uniformly()) {
-        cfg.core_affinity(true);
+    void prepare_data(api::database& db) {
+        auto& db_impl = unsafe_downcast<api::impl::database&>(db);
+        executor::add_benchmark_tables(*db_impl.tables());
+        utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T0", 10, true, 5);
+        utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T1", 10, true, 5);
+        utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T2", 10, true, 5);
+        utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "WAREHOUSE", 10, true, 5);
+        utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "CUSTOMER", 10, true, 5);
     }
-    return true;
-}
+
+    std::vector<std::string> split(std::string_view sql) {
+        std::vector<std::string> stmts{};
+        std::stringstream ss{std::string(sql)};
+        std::string buf;
+        while (std::getline(ss, buf, ';')) {
+            stmts.push_back(buf);
+        }
+        return stmts;
+    }
+
+    int execute_statements(std::vector<std::string> const& stmts, bool auto_commit) {
+        if (FLAGS_prepare_data) {
+            prepare_data(*db_);
+        }
+        tx_ = db_->create_transaction();
+        int rc{};
+        for(auto&& s: stmts) {
+            rc = execute_stmt(s);
+            if (rc < 0) {
+                end_tx(true);
+                return rc;
+            }
+            if (auto_commit) {
+                if (auto rc2 = end_tx()) {
+                    return rc2;
+                }
+                tx_ = db_->create_transaction();
+            }
+        }
+        end_tx();
+        return rc;
+    }
+    int run(std::string_view sql, std::shared_ptr<configuration> cfg) {
+        trace_scope;
+        if (sql.empty()) return 0;
+        auto stmts = split(sql);
+        db_ = api::create_database(cfg);
+        db_->start();
+        auto rc = execute_statements(stmts, FLAGS_auto_commit);
+        db_->stop();
+        if (rc) {
+            LOG(ERROR) << "exit code: " << rc;
+        }
+        return rc;
+    }
+
+    bool fill_from_flags(
+        jogasaki::configuration& cfg,
+        std::string const& str = {}
+    ) {
+        gflags::FlagSaver saver{};
+        if (! str.empty()) {
+            if(! gflags::ReadFlagsFromString(str, "", false)) {
+                std::cerr << "parsing options failed" << std::endl;
+            }
+        }
+        cfg.single_thread(FLAGS_single_thread);
+        cfg.work_sharing(FLAGS_work_sharing);
+        cfg.thread_pool_size(FLAGS_thread_count);
+
+        cfg.core_affinity(FLAGS_core_affinity);
+        cfg.initial_core(FLAGS_initial_core);
+        cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+        cfg.default_partitions(FLAGS_partitions);
+        cfg.stealing_enabled(FLAGS_steal);
+
+        if (FLAGS_minimum) {
+            cfg.single_thread(true);
+            cfg.thread_pool_size(1);
+            cfg.initial_core(1);
+            cfg.core_affinity(false);
+            cfg.default_partitions(1);
+        }
+
+        if (cfg.assign_numa_nodes_uniformly()) {
+            cfg.core_affinity(true);
+        }
+        return true;
+    }
+};
 
 }  // namespace
 
@@ -151,11 +214,12 @@ extern "C" int main(int argc, char* argv[]) {
         gflags::ShowUsageWithFlags(argv[0]); // NOLINT
         return -1;
     }
+    jogasaki::sql_cli::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
-    jogasaki::sql_cli::fill_from_flags(*cfg);
+    e.fill_from_flags(*cfg);
     std::string_view source { argv[1] }; // NOLINT
     try {
-        jogasaki::sql_cli::run(source, cfg);  // NOLINT
+        e.run(source, cfg);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

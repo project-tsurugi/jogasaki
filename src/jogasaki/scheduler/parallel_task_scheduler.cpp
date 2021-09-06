@@ -69,7 +69,7 @@ proceeding_task_wrapper::proceeding_task_wrapper(flat_task&& original) :
 {}
 
 void proceeding_task_wrapper::operator()() {
-    tateyama::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
+    tateyama::api::task_scheduler::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
     original_(ctx);
 }
 

@@ -23,13 +23,15 @@
 #include <glog/logging.h>
 #include <numa.h>
 
-#include <tateyama/task_scheduler_cfg.h>
+#include <tateyama/api/task_scheduler/task_scheduler_cfg.h>
 #include "core_affinity.h"
 #include "cache_align.h"
 #include "utils.h"
 #include <tateyama/common.h>
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
+
+using tateyama::api::task_scheduler::task_scheduler_cfg;
 
 // separating mutex and cv from thread in order to make thread movable
 struct cache_align cv {

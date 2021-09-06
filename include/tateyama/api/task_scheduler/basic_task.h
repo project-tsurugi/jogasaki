@@ -16,9 +16,9 @@
 #pragma once
 
 #include "context.h"
-#include <tateyama/impl/core_affinity.h>
+#include <tateyama/task_scheduler/core_affinity.h>
 
-namespace tateyama {
+namespace tateyama::api::task_scheduler {
 
 /**
  * @brief basic task interface

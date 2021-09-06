@@ -24,14 +24,16 @@
 #include <glog/logging.h>
 
 #include <tateyama/common.h>
-#include <tateyama/context.h>
-#include <tateyama/impl/queue.h>
-#include <tateyama/impl/thread_control.h>
-#include <tateyama/task_scheduler_cfg.h>
-#include <tateyama/impl/core_affinity.h>
-#include <tateyama/impl/utils.h>
+#include <tateyama/api/task_scheduler/context.h>
+#include <tateyama/task_scheduler/queue.h>
+#include <tateyama/task_scheduler/thread_control.h>
+#include <tateyama/api/task_scheduler/task_scheduler_cfg.h>
+#include <tateyama/task_scheduler/core_affinity.h>
+#include <tateyama/task_scheduler/utils.h>
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
+
+using api::task_scheduler::task_scheduler_cfg;
 
 struct cache_align worker_stat {
     std::size_t count_{};
@@ -91,7 +93,7 @@ public:
      * @brief the worker body
      * @param ctx the worker context information
      */
-    void operator()(context& ctx) {
+    void operator()(api::task_scheduler::context& ctx) {
         auto index = ctx.index();
         auto& q = (*queues_)[index];
         std::size_t last_stolen = index;
@@ -127,7 +129,7 @@ private:
         return current + 1;
     }
 
-    bool steal_and_execute(context& ctx, std::size_t& last_stolen) {
+    bool steal_and_execute(api::task_scheduler::context& ctx, std::size_t& last_stolen) {
         auto index = ctx.index();
         std::size_t from = last_stolen;
         task t{};

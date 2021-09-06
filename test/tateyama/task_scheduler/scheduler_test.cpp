@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tateyama/task_scheduler.h>
+#include <tateyama/api/task_scheduler/scheduler.h>
+
+#include <chrono>
+#include <thread>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <tateyama/basic_task.h>
+#include <tateyama/api/task_scheduler/basic_task.h>
 
-namespace tateyama::api {
+namespace tateyama::api::task_scheduler {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -47,7 +50,7 @@ public:
 TEST_F(scheduler_test, basic) {
     task_scheduler_cfg cfg{};
     cfg.thread_count(1);
-    task_scheduler<test_task> sched{cfg};
+    scheduler<test_task> sched{cfg};
     bool executed = false;
     test_task t{[&](context& t) {
         executed = true;
@@ -75,7 +78,7 @@ TEST_F(scheduler_test, multiple_task_impls) {
     using task = basic_task<test_task, test_task2>;
     task_scheduler_cfg cfg{};
     cfg.thread_count(1);
-    task_scheduler<task> sched{cfg};
+    scheduler<task> sched{cfg};
     bool executed = false;
     bool executed2 = false;
     test_task t{[&](context& t) {

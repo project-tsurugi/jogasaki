@@ -24,7 +24,6 @@
 
 namespace jogasaki::scheduler {
 
-
 stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_cfg_(create_scheduler_cfg(params)),
     scheduler_(scheduler_cfg_)
@@ -58,8 +57,8 @@ task_scheduler_kind stealing_task_scheduler::kind() const noexcept {
     return task_scheduler_kind::stealing;
 }
 
-tateyama::task_scheduler_cfg stealing_task_scheduler::create_scheduler_cfg(thread_params params) {
-    tateyama::task_scheduler_cfg ret{};
+tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::create_scheduler_cfg(thread_params params) {
+    tateyama::api::task_scheduler::task_scheduler_cfg ret{};
     ret.thread_count(params.threads());
     ret.force_numa_node(params.force_numa_node());
     ret.core_affinity(params.is_set_core_affinity());

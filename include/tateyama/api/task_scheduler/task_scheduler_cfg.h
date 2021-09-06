@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <iomanip>
 
-namespace tateyama {
+namespace tateyama::api::task_scheduler {
 
 /**
  * @brief task scheduler configuration

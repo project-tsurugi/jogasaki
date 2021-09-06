@@ -23,7 +23,7 @@
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/utils/core_affinity.h>
-#include <tateyama/context.h>
+#include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
 
 namespace jogasaki::scheduler {
@@ -31,7 +31,7 @@ namespace jogasaki::scheduler {
 using takatori::util::fail;
 using takatori::util::unsafe_downcast;
 
-void flat_task::bootstrap(tateyama::context& ctx) {
+void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(1) << *this << " bootstrap task executed.";
     trace_scope_name("bootstrap");  //NOLINT
     job_context_->index().store(ctx.index());
@@ -65,7 +65,7 @@ bool flat_task::teardown() {
     return false;
 }
 
-bool flat_task::execute(tateyama::context& ctx) {
+bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
     switch(kind_) {
         using kind = flat_task_kind;
         case kind::dag_events: dag_schedule(); return true;
@@ -81,7 +81,7 @@ bool flat_task::execute(tateyama::context& ctx) {
     fail();
 }
 
-void flat_task::operator()(tateyama::context& ctx) {
+void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
     if(! execute(ctx)) {
         // job completed, and the latch is just released. Should not touch the job context any more.
         return;
@@ -132,7 +132,7 @@ job_context* flat_task::job() const {
     return job_context_;
 }
 
-void flat_task::resolve(tateyama::context& ctx) {
+void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
     (void)ctx;
     auto& e = *executable_statement_container_;
     if(auto res = database_->resolve(*prepared_, *parameters_, e); res != status::ok) {
@@ -160,7 +160,7 @@ void flat_task::resolve(tateyama::context& ctx) {
     request_ctx->job(maybe_shared_ptr<job_context>{job_context_});
 }
 
-void flat_task::bootstrap_resolving(tateyama::context& ctx) {
+void flat_task::bootstrap_resolving(tateyama::api::task_scheduler::context& ctx) {
     resolve(ctx);
     bootstrap(ctx);
 }

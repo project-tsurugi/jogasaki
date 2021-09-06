@@ -20,8 +20,9 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
-#include <tateyama/task_scheduler.h>
-#include <tateyama/context.h>
+#include <tateyama/api/task_scheduler/scheduler.h>
+#include <tateyama/api/task_scheduler/context.h>
+#include <tateyama/api/task_scheduler/task_scheduler_cfg.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
 #include "flat_task.h"
@@ -83,10 +84,10 @@ public:
     [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 
 private:
-    tateyama::task_scheduler_cfg scheduler_cfg_{};
-    tateyama::task_scheduler<flat_task> scheduler_;
+    tateyama::api::task_scheduler::task_scheduler_cfg scheduler_cfg_{};
+    tateyama::api::task_scheduler::scheduler<flat_task> scheduler_;
 
-    tateyama::task_scheduler_cfg create_scheduler_cfg(thread_params params);
+    tateyama::api::task_scheduler::task_scheduler_cfg create_scheduler_cfg(thread_params params);
 };
 
 }

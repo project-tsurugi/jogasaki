@@ -13,16 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "utils.h"
+#pragma once
 
+#include <iomanip>
+#include <locale>
 #include <ostream>
-#include <cassert>
+#include <sstream>
 
-#include <tateyama/impl/queue.h>
+#include <takatori/util/detect.h>
 
-#include <emmintrin.h>
+namespace tateyama::task_scheduler {
 
-namespace tateyama::impl {
+namespace details {
+
+template<class T>
+using with_init_type = decltype( std::declval<T&>().init(static_cast<std::size_t>(0)) );
 
 }
+
+/**
+ * @brief utility to check if given type has the init(std::size_t) member function
+ * @tparam T
+ */
+template<class T>
+inline constexpr bool has_init_v = takatori::util::is_detected_v<details::with_init_type, T>;
+
+}
+
 

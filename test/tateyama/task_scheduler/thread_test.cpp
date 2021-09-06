@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tateyama/impl/thread_control.h>
+#include <tateyama/task_scheduler/thread_control.h>
 
 #include <regex>
 #include <gtest/gtest.h>
 
 #include <thread>
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
 
 using namespace std::literals::string_literals;
 using namespace std::chrono_literals;

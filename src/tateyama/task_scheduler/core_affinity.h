@@ -17,11 +17,11 @@
 
 #include <boost/thread/thread.hpp>
 
-namespace tateyama {
+namespace tateyama::api::task_scheduler {
 class task_scheduler_cfg;
 }
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
 
 
 constexpr std::size_t numa_node_unspecified = static_cast<std::size_t>(-1); // same constant on configuration.h
@@ -38,7 +38,7 @@ constexpr std::size_t numa_node_unspecified = static_cast<std::size_t>(-1); // s
  */
 bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes = false, std::size_t force_numa_node = numa_node_unspecified);
 
-void setup_core_affinity(std::size_t id, task_scheduler_cfg const* cfg);
+void setup_core_affinity(std::size_t id, api::task_scheduler::task_scheduler_cfg const* cfg);
 
 /**
  * @return the number of numa nodes

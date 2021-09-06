@@ -17,7 +17,7 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
-#include <tateyama/context.h>
+#include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
@@ -176,7 +176,7 @@ public:
      * @brief execute the task
      * @param ctx the tateyama task context, which provides info. about thread/worker running the task
      */
-    void operator()(tateyama::context& ctx);
+    void operator()(tateyama::api::task_scheduler::context& ctx);
 
     /**
      * @brief returns task id that uniquely identifies the task
@@ -212,12 +212,12 @@ private:
     std::unique_ptr<data::result_store>* result_store_container_{};
     std::unique_ptr<api::executable_statement>* executable_statement_container_{};
 
-    bool execute(tateyama::context& ctx);
-    void bootstrap(tateyama::context& ctx);
+    bool execute(tateyama::api::task_scheduler::context& ctx);
+    void bootstrap(tateyama::api::task_scheduler::context& ctx);
     void dag_schedule();
     bool teardown();
-    void bootstrap_resolving(tateyama::context& ctx);
-    void resolve(tateyama::context& ctx);
+    void bootstrap_resolving(tateyama::api::task_scheduler::context& ctx);
+    void resolve(tateyama::api::task_scheduler::context& ctx);
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

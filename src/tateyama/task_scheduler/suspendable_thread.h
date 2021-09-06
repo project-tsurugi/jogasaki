@@ -27,7 +27,7 @@
 #include "core_affinity.h"
 #include "cache_align.h"
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
 
 // separating mutex and cv from thread in order to make thread movable
 struct cache_align suspendable_cv {

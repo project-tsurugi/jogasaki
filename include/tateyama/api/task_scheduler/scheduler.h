@@ -16,19 +16,19 @@
 #pragma once
 
 #include "task_scheduler_cfg.h"
-#include <tateyama/impl/worker.h>
-#include <tateyama/impl/queue.h>
-#include <tateyama/impl/thread_control.h>
-#include <tateyama/impl/cache_align.h>
+#include <tateyama/task_scheduler/worker.h>
+#include <tateyama/task_scheduler/queue.h>
+#include <tateyama/task_scheduler/thread_control.h>
+#include <tateyama/task_scheduler/cache_align.h>
 
-namespace tateyama {
+namespace tateyama::api::task_scheduler {
 
 /**
  * @brief stealing based task scheduler
  * @tparam T the task type. See comments for `task`.
  */
 template <class T>
-class cache_align task_scheduler {
+class cache_align scheduler {
 public:
 
     /**
@@ -41,42 +41,42 @@ public:
     /**
      * @brief queue used by this scheduler implementation
      */
-    using queue = impl::basic_queue<task>;
+    using queue = tateyama::task_scheduler::basic_queue<task>;
 
     /**
      * @brief worker used by this scheduler implementation
      */
-    using worker = impl::worker<task>;
+    using worker = tateyama::task_scheduler::worker<task>;
 
     /**
      * @brief copy construct
      */
-    task_scheduler(task_scheduler const&) = delete;
+    scheduler(scheduler const&) = delete;
 
     /**
      * @brief move construct
      */
-    task_scheduler(task_scheduler &&) = delete;
+    scheduler(scheduler &&) = delete;
 
     /**
      * @brief copy assign
      */
-    task_scheduler& operator=(task_scheduler const&) = delete;
+    scheduler& operator=(scheduler const&) = delete;
 
     /**
      * @brief move assign
      */
-    task_scheduler& operator=(task_scheduler &&) = delete;
+    scheduler& operator=(scheduler &&) = delete;
 
     /**
-     * @brief destruct task_scheduler
+     * @brief destruct scheduler
      */
-    ~task_scheduler() = default;
+    ~scheduler() = default;
 
     /**
      * @brief construct new object
      */
-    explicit task_scheduler(task_scheduler_cfg cfg = {}) :
+    explicit scheduler(task_scheduler_cfg cfg = {}) :
         cfg_(cfg),
         size_(cfg_.thread_count())
     {
@@ -162,7 +162,7 @@ public:
      * @brief accessor to the worker statistics
      * @note this function is thread-safe. Multiple threads can safely call this function concurrently.
      */
-    [[nodiscard]] std::vector<impl::worker_stat> const& worker_stats() const noexcept {
+    [[nodiscard]] std::vector<tateyama::task_scheduler::worker_stat> const& worker_stats() const noexcept {
         return worker_stats_;
     }
 
@@ -179,8 +179,8 @@ private:
     std::size_t size_{};
     std::vector<queue> queues_{};
     std::vector<worker> workers_{};
-    std::vector<impl::thread_control> threads_{};
-    std::vector<impl::worker_stat> worker_stats_{};
+    std::vector<tateyama::task_scheduler::thread_control> threads_{};
+    std::vector<tateyama::task_scheduler::worker_stat> worker_stats_{};
     std::vector<context> contexts_{};
     std::atomic_size_t current_index_{};
     std::vector<std::vector<task>> initial_tasks_{};

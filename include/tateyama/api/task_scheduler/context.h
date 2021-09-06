@@ -21,10 +21,10 @@
 #include <functional>
 
 #include <glog/logging.h>
-#include <tateyama/impl/thread_control.h>
-#include <tateyama/impl/cache_align.h>
+#include <tateyama/task_scheduler/thread_control.h>
+#include <tateyama/task_scheduler/cache_align.h>
 
-namespace tateyama {
+namespace tateyama::api::task_scheduler {
 
 /**
  * @brief worker context information

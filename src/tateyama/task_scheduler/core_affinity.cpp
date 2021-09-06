@@ -19,9 +19,9 @@
 
 #include <numa.h>
 
-#include <tateyama/task_scheduler_cfg.h>
+#include <tateyama/api/task_scheduler/task_scheduler_cfg.h>
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
 
 bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes, std::size_t force_numa_node) {
     if (force_numa_node != numa_node_unspecified) {
@@ -38,7 +38,7 @@ bool thread_core_affinity(std::size_t cpu, bool uniform_on_nodes, std::size_t fo
     return 0 == ::pthread_setaffinity_np(x, sizeof(cpu_set_t), &cpuset);
 }
 
-void setup_core_affinity(std::size_t id, task_scheduler_cfg const* cfg) {
+void setup_core_affinity(std::size_t id, api::task_scheduler::task_scheduler_cfg const* cfg) {
     if (! cfg) return;
     auto initial = cfg->initial_core();
     auto core = id+initial;

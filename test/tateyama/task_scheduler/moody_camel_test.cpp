@@ -18,9 +18,9 @@
 #include <regex>
 #include <gtest/gtest.h>
 
-#include <tateyama/context.h>
+#include <tateyama/api/task_scheduler/context.h>
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
 
 using namespace std::literals::string_literals;
 
@@ -36,7 +36,7 @@ public:
 
     explicit test_task(std::size_t id) : id_(id) {}
 
-    void operator()(context& ctx) {
+    void operator()(api::task_scheduler::context& ctx) {
         (void)ctx;
     }
     std::size_t id_{};

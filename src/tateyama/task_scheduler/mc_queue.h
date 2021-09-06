@@ -26,7 +26,7 @@
 
 #include "cache_align.h"
 
-namespace tateyama::impl {
+namespace tateyama::task_scheduler {
 
 template <class T>
 class cache_align mc_queue {

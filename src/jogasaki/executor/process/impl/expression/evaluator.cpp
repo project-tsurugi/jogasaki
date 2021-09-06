@@ -57,15 +57,73 @@ any add(T const& l, U const& r) {
     return any{std::in_place_type<T>, l+r};
 }
 
-any engine::add_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
+any promote_binary_numeric_left(any const& l, any const& r) {
+    switch(l.type_index()) {
+        case index<std::int32_t>: {
+            using L = std::int32_t;
+            switch(r.type_index()) {
+                case index<std::int32_t>: break; // unused
+                case index<std::int64_t>: return any{std::in_place_type<std::int64_t>, l.to<L>()};
+                case index<float>: return any{std::in_place_type<double>, l.to<L>()};
+                case index<double>: return any{std::in_place_type<double>, l.to<L>()};
+                default: fail();
+            }
+            break;
+        }
+        case index<std::int64_t>: {
+            using L = std::int64_t;
+            switch(r.type_index()) {
+                case index<std::int32_t>: return l;
+                case index<std::int64_t>: break; // unused
+                case index<float>: return any{std::in_place_type<double>, l.to<L>()};
+                case index<double>: return any{std::in_place_type<double>, l.to<L>()};
+                default: fail();
+            }
+            break;
+        }
+        case index<float>: {
+            using L = float;
+            switch(r.type_index()) {
+                case index<std::int32_t>: return any{std::in_place_type<double>, l.to<L>()};
+                case index<std::int64_t>: return any{std::in_place_type<double>, l.to<L>()};
+                case index<float>: break; // unused
+                case index<double>: return any{std::in_place_type<double>, l.to<L>()};
+                default: fail();
+            }
+            break;
+        }
+        case index<double>: {
+            switch(r.type_index()) {
+                case index<std::int32_t>: return l;
+                case index<std::int64_t>: return l;
+                case index<float>: return l;
+                case index<double>: break; // unused
+                default: fail();
+            }
+            break;
+        }
+        default: fail();
+    }
+    fail();
+}
+
+std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
+    if (l.type_index() == r.type_index()) return {l, r};
+    return {
+        promote_binary_numeric_left(l,r),
+        promote_binary_numeric_left(r,l)
+    };
+}
+
+any engine::add_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l,r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case index<std::int32_t>: return add(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return add(l.to<std::int64_t>(), r.to<std::int64_t>());
         case index<float>: return add(l.to<float>(), r.to<float>());
         case index<double>: return add(l.to<double>(), r.to<double>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -74,15 +132,15 @@ any subtract(T const& l, U const& r) {
     return any{std::in_place_type<T>, l-r};
 }
 
-any engine::subtract_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
+any engine::subtract_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case index<std::int32_t>: return subtract(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return subtract(l.to<std::int64_t>(), r.to<std::int64_t>());
         case index<float>: return subtract(l.to<float>(), r.to<float>());
         case index<double>: return subtract(l.to<double>(), r.to<double>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -94,8 +152,7 @@ any engine::concat_any(any const& l, any const& r) {
     BOOST_ASSERT(l && r);  //NOLINT
     switch(l.type_index()) {
         case index<accessor::text>: return concat(l.to<accessor::text>(), r.to<accessor::text>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -104,15 +161,15 @@ any multiply(T const& l, U const& r) {
     return any{std::in_place_type<T>, l*r};
 }
 
-any engine::multiply_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
+any engine::multiply_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case index<std::int32_t>: return multiply(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return multiply(l.to<std::int64_t>(), r.to<std::int64_t>());
         case index<float>: return multiply(l.to<float>(), r.to<float>());
         case index<double>: return multiply(l.to<double>(), r.to<double>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -124,15 +181,15 @@ any divide(T const& l, U const& r) {
     return any{std::in_place_type<T>, l/r};
 }
 
-any engine::divide_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
+any engine::divide_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case index<std::int32_t>: return divide(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return divide(l.to<std::int64_t>(), r.to<std::int64_t>());
         case index<float>: return divide(l.to<float>(), r.to<float>());
         case index<double>: return divide(l.to<double>(), r.to<double>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -144,13 +201,13 @@ any remainder(T const& l, U const& r) {
     return any{std::in_place_type<T>, l%r};
 }
 
-any engine::remainder_any(any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
+any engine::remainder_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case index<std::int32_t>: return remainder(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return remainder(l.to<std::int64_t>(), r.to<std::int64_t>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -163,8 +220,7 @@ any engine::conditional_and_any(any const& l, any const& r) {
     BOOST_ASSERT(l && r);  //NOLINT
     switch(l.type_index()) {
         case index<bool>: return conditional_and(l.to<bool>(), r.to<bool>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -177,8 +233,7 @@ any engine::conditional_or_any(any const& l, any const& r) {
     BOOST_ASSERT(l && r);  //NOLINT
     switch(l.type_index()) {
         case index<bool>: return conditional_or(l.to<bool>(), r.to<bool>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -197,8 +252,7 @@ any engine::operator()(takatori::scalar::binary const& exp) {
         case optype::remainder: return remainder_any(l, r);
         case optype::conditional_and: return conditional_and_any(l, r);
         case optype::conditional_or: return conditional_or_any(l, r);
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -244,8 +298,7 @@ any engine::sign_inversion_any(any const& l) {
         case index<std::int64_t>: return sign_inversion(l.to<std::int64_t>());
         case index<float>: return sign_inversion(l.to<float>());
         case index<double>: return sign_inversion(l.to<double>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -258,8 +311,7 @@ any engine::conditional_not_any(any const& l) {
     BOOST_ASSERT(l);  //NOLINT
     switch(l.type_index()) {
         case index<bool>: return conditional_not(l.to<bool>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -272,8 +324,7 @@ any engine::length_any(any const& l) {
     BOOST_ASSERT(l);  //NOLINT
     switch(l.type_index()) {
         case index<accessor::text>: return length(l.to<accessor::text>());
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -291,8 +342,7 @@ any engine::operator()(takatori::scalar::unary const& exp) {
             return conditional_not_any(v);
         case optype::length:
             return length_any(v);
-        default:
-            fail();
+        default: fail();
     }
 }
 
@@ -307,22 +357,21 @@ any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
         case optype::greater_equal: result = l >= r; break;
         case optype::less: result = l < r; break;
         case optype::less_equal: result = l <= r; break;
-        default:
-            fail();
+        default: fail();
     }
     return any{std::in_place_type<bool>, result};
 }
 
-any engine::compare_any(takatori::scalar::comparison_operator optype, any const& l, any const& r) {
-    BOOST_ASSERT(l && r);  //NOLINT
+any engine::compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case index<std::int32_t>: return compare(optype, l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return compare(optype, l.to<std::int64_t>(), r.to<std::int64_t>());
         case index<float>: return compare(optype, l.to<float>(), r.to<float>());
         case index<double>: return compare(optype, l.to<double>(), r.to<double>());
         case index<accessor::text>: return compare(optype, l.to<accessor::text>(), r.to<accessor::text>());
-        default:
-            fail();
+        default: fail();
     }
 }
 

@@ -76,9 +76,9 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept;
 
     /**
-     * @brief return whether any value is assigned to this object
+     * @brief return whether any non-error value is assigned to this object
      */
-    [[nodiscard]] bool has_value() const noexcept;
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
      * @brief return whether any value is assigned to this object

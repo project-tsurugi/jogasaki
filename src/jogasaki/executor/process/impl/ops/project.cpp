@@ -19,6 +19,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/downcast.h>
 #include <takatori/relation/project.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
 
 #include "operator_base.h"
 #include "project_context.h"
@@ -73,8 +74,11 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& ev = evaluators_[i];
         auto result = ev(vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
+        if (result.error()) {
+            LOG(ERROR) << "evaluation error: " << result.to<expression::error>();
+        }
         using t = takatori::type::type_kind;
-        ref.set_null(info.nullity_offset(), ! result.has_value());
+        ref.set_null(info.nullity_offset(), result.empty());
         switch(cinfo.type_of(v).kind()) {
             case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), result); break;
             case t::int8: copy_to<std::int64_t>(ref, info.value_offset(), result); break;

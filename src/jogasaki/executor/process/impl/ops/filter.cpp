@@ -61,11 +61,7 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     }
     auto& vars = ctx.input_variables();
     auto resource = ctx.varlen_resource();
-    bool res{};
-    {
-        utils::checkpoint_holder cp{resource};
-        res = evaluator_(vars, resource).to<bool>();
-    }
+    auto res = evaluate_bool(evaluator_, vars, resource);
     if (res) {
         if (downstream_) {
             if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {

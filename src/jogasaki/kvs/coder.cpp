@@ -70,7 +70,7 @@ void encode(
     writable_stream& dest
 ) {
     using kind = meta::field_type_kind;
-    BOOST_ASSERT(src.has_value());  //NOLINT
+    BOOST_ASSERT(! src.empty());  //NOLINT
     auto odr = spec.ordering();
     switch(type.kind()) {
         case kind::boolean: dest.write<runtime_t<kind::boolean>>(src.to<runtime_t<kind::boolean>>(), odr); break;
@@ -94,7 +94,7 @@ void encode_nullable(
 ) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
-    bool is_null = !src.has_value();
+    bool is_null = src.empty();
     dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr);
     if(! is_null) {
         encode(src, type, spec, dest);

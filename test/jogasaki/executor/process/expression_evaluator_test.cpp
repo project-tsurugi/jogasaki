@@ -62,10 +62,11 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
 
 #include <jogasaki/test_utils/to_field_type_kind.h>
 
-namespace jogasaki::executor::process::impl {
+namespace jogasaki::executor::process::impl::expression {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -209,14 +210,20 @@ public:
         {
             set_values<In1, In2>(c1, c2, true, false);
             utils::checkpoint_holder cph{&resource_};
-            ASSERT_FALSE(evaluator_(vars_, &resource_).has_value());
+            auto result = evaluator_(vars_, &resource_);
+            ASSERT_TRUE(result.empty());
+            ASSERT_FALSE(result.error());
         }
         {
             set_values<In1, In2>(c1, c2, false, true);
             utils::checkpoint_holder cph{&resource_};
-            ASSERT_FALSE(evaluator_(vars_, &resource_).has_value());
+            auto result = evaluator_(vars_, &resource_);
+            ASSERT_TRUE(result.empty());
+            ASSERT_FALSE(result.error());
         }
     }
+    template<class T>
+    void test_compare();
 };
 
 TEST_F(expression_evaluator_test, add_numeric) {
@@ -271,10 +278,8 @@ inline immediate constant_bool(bool v, type::data&& type = type::boolean()) {
 }
 
 TEST_F(expression_evaluator_test, binary_expression) {
-    factory f;
-
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
+    auto&& c1 = f_.stream_variable("c1");
+    auto&& c2 = f_.stream_variable("c2");
 
     binary expr {
         binary_operator::subtract,
@@ -297,9 +302,9 @@ TEST_F(expression_evaluator_test, binary_expression) {
         expressions_,
         variables_
     };
-    expression::evaluator ev{expr, c_info};
+    evaluator_ = expression::evaluator{expr, c_info};
 
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
+    meta_ = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
             meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
             meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
@@ -312,16 +317,12 @@ TEST_F(expression_evaluator_test, binary_expression) {
         {c2, 1},
     };
 
-    variable_table_info info{m, meta};
-    variable_table vars{info};
+    info_ = variable_table_info{m, meta_};
+    vars_ = variable_table{info_};
 
-    auto&& ref = vars.store().ref();
-    ref.set_value<std::int64_t>(meta->value_offset(0), 10);
-    ref.set_value<std::int64_t>(meta->value_offset(1), 20);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
+    set_values<t::int8, t::int8>(10, 20, false, false);
 
-    auto result = ev(vars).to<std::int64_t>();
+    auto result = evaluator_(vars_).to<std::int64_t>();
     ASSERT_EQ(-40, result);
 }
 
@@ -402,26 +403,45 @@ TEST_F(expression_evaluator_test, text_length) {
     ASSERT_EQ(30, ev(vars, &resource).to<std::int32_t>());
 }
 
-TEST_F(expression_evaluator_test, compare_int4) {
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less, 1, 2, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less, 1, 1, false);
+template<class T>
+void expression_evaluator_test::test_compare() {
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, 1, 2, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, 1, 1, false);
 
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less_equal, 1, 2, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less_equal, 1, 1, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less_equal, 2, 1, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 1, 2, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 1, 1, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 2, 1, false);
 
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater, 2, 1, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater, 1, 1, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 2, 1, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 1, 1, false);
 
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater_equal, 2, 1, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater_equal, 1, 1, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater, 1, 2, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, 2, 1, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, 1, 1, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 1, 2, false);
 
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::equal, 1, 1, true);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::equal, 1, 2, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, 1, 1, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, 1, 2, false);
 
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::not_equal, 1, 1, false);
-    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::not_equal, 1, 2, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 1, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 2, true);
+}
+TEST_F(expression_evaluator_test, compare_numeric) {
+    {
+        SCOPED_TRACE("int4");
+        test_compare<t::int4>();
+    }
+    {
+        SCOPED_TRACE("int8");
+        test_compare<t::int8>();
+    }
+    {
+        SCOPED_TRACE("float4");
+        test_compare<t::float4>();
+    }
+    {
+        SCOPED_TRACE("float8");
+        test_compare<t::float8>();
+    }
 }
 
 TEST_F(expression_evaluator_test, conditional_and_or) {
@@ -435,5 +455,18 @@ TEST_F(expression_evaluator_test, conditional_and_or) {
     test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 0, false);
 }
 
+TEST_F(expression_evaluator_test, arithmetic_error) {
+    auto expr = create_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::divide);
+    {
+        set_values<t::float8, t::float8>(10.0, 0.0, false, false);
+        utils::checkpoint_holder cph{&resource_};
+        auto result = evaluator_(vars_, &resource_);
+        ASSERT_FALSE(result);
+        ASSERT_FALSE(result.empty());
+        ASSERT_TRUE(result.error());
+        auto err = result.to<error>();
+        ASSERT_EQ(error_kind::arithmetic_error, err.kind());
+    }
+}
 }
 

@@ -45,6 +45,7 @@ enum class error_kind : std::size_t {
         case kind::arithmetic_error: return "arithmetic_error"sv;
         case kind::overflow: return "overflow"sv;
     }
+    std::abort();
 }
 
 /**
@@ -83,6 +84,15 @@ public:
      */
     [[nodiscard]] error_kind kind() const noexcept;
 
+    /**
+     * @brief appends string representation of the given value.
+     * @param out the target output
+     * @param value the target value
+     * @return the output stream
+     */
+    friend std::ostream& operator<<(std::ostream& out, error const& value) {
+        return out << value.kind();
+    }
 private:
     error_kind kind_{error_kind::undefined};
 };

@@ -15,11 +15,15 @@
  */
 #include "encode_key.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
+
+using takatori::util::fail;
 
 std::size_t encode_key(
     std::vector<details::search_key_field_info> const& keys,
@@ -33,10 +37,14 @@ std::size_t encode_key(
         kvs::writable_stream s{out.data(), loop == 0 ? 0 : out.size()};
         for(auto&& k : keys) {
             auto a = k.evaluator_(input_variables, &resource);
+            if (a.error()) {
+                LOG(ERROR) << "evaluation error: " << a.to<expression::error>();
+                fail();
+            }
             if (k.nullable_) {
                 kvs::encode_nullable(a, k.type_, k.spec_, s);
             } else {
-                BOOST_ASSERT(a.has_value());  //NOLINT
+                BOOST_ASSERT(! a.empty());  //NOLINT
                 kvs::encode(a, k.type_, k.spec_, s);
             }
             cph.reset();

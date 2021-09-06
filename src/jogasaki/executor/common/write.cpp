@@ -25,6 +25,7 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/checkpoint_holder.h>
@@ -125,7 +126,9 @@ std::size_t encode_tuple(
                 evaluator eval{t.elements()[f.index_], info, host_variables};
                 process::impl::variable_table empty{};
                 auto res = eval(empty, &resource);
-
+                if (res.error()) {
+                    LOG(ERROR) << "evaluation error: " << res.to<process::impl::expression::error>();
+                }
                 if (f.nullable_) {
                     kvs::encode_nullable(res, f.type_, f.spec_, s);
                 } else {

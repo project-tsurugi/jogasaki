@@ -164,7 +164,7 @@ void copy_nullable_field(
     executor::process::impl::expression::any const& source,
     memory::paged_memory_resource* resource
 ) {
-    bool is_null = !source.has_value();
+    bool is_null = source.empty();
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     copy_field(type, target, target_offset, source, resource);

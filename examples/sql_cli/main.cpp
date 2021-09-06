@@ -64,9 +64,9 @@ static int run(std::string_view sql, std::shared_ptr<configuration> cfg) {
     db->start();
     auto db_impl = unsafe_downcast<api::impl::database>(db.get());
     executor::add_benchmark_tables(*db_impl->tables());
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I0", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I1", 10, true, 5);
-    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "I2", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "T0", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "T1", 10, true, 5);
+    utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "T2", 10, true, 5);
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "WAREHOUSE", 10, true, 5);
     utils::populate_storage_data(db_impl->kvs_db().get(), db_impl->tables(), "CUSTOMER", 10, true, 5);
 

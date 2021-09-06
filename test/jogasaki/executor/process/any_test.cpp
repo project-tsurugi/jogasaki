@@ -109,11 +109,11 @@ using compiled_info = yugawara::compiled_info;
 TEST_F(any_test, simple) {
     any a{};
     ASSERT_FALSE(a);
-    ASSERT_FALSE(a.has_value());
+    ASSERT_TRUE(a.empty());
     ASSERT_FALSE(a.error());
     a = any{std::in_place_type<std::int32_t>, 1};
     ASSERT_TRUE(a);
-    ASSERT_TRUE(a.has_value());
+    ASSERT_FALSE(a.empty());
     ASSERT_FALSE(a.error());
     ASSERT_EQ(1, a.to<std::int32_t>());
 }
@@ -131,7 +131,7 @@ TEST_F(any_test, bool) {
     {
         auto a = any{std::in_place_type<std::int8_t>, 1};
         ASSERT_TRUE(a);
-        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.empty());
         ASSERT_FALSE(a.error());
         ASSERT_EQ(1, a.to<std::int8_t>());
         ASSERT_TRUE(a.to<bool>());
@@ -139,7 +139,7 @@ TEST_F(any_test, bool) {
     {
         auto a = any{std::in_place_type<std::int8_t>, 0};
         ASSERT_TRUE(a);
-        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.empty());
         ASSERT_FALSE(a.error());
         ASSERT_EQ(0, a.to<std::int8_t>());
         ASSERT_FALSE(a.to<bool>());
@@ -147,7 +147,7 @@ TEST_F(any_test, bool) {
     {
         auto a = any{std::in_place_type<bool>, true};
         ASSERT_TRUE(a);
-        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.empty());
         ASSERT_FALSE(a.error());
         ASSERT_EQ(1, a.to<std::int8_t>());
         ASSERT_TRUE(a.to<bool>());
@@ -155,7 +155,7 @@ TEST_F(any_test, bool) {
     {
         auto a = any{std::in_place_type<bool>, false};
         ASSERT_TRUE(a);
-        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.empty());
         ASSERT_FALSE(a.error());
         ASSERT_EQ(0, a.to<std::int8_t>());
         ASSERT_FALSE(a.to<bool>());

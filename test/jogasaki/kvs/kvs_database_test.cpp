@@ -19,6 +19,7 @@
 
 #include <gtest/gtest.h>
 
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
@@ -45,8 +46,11 @@ public:
     }
 };
 
-// cc layer doesn't always support having multiple DBs as it has shared resource such as epoch thread
-TEST_F(kvs_database_test, DISABLED_compare_and_print) {
+TEST_F(kvs_database_test, compare_and_print) {
+    // cc layer doesn't always support having multiple DBs as it has shared resource such as epoch thread
+    if(kvs::implementation_id() != "memory") {
+        GTEST_SKIP();
+    }
     std::map<std::string, std::string> options{};
     auto db1 = database::open(options);
     std::cout << *db1 << std::endl;

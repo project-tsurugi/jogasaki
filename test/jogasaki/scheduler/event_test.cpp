@@ -45,7 +45,7 @@ using namespace jogasaki::scheduler;
 
 class event_test : public test_root {};
 
-TEST_F(event_test, basic) {
+TEST_F(event_test, DISABLED_basic) {
     auto ctx = std::make_shared<request_context>();
     auto g = std::make_shared<common::graph>(*ctx);
     auto p = std::make_unique<test::test_process>();

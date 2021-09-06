@@ -38,7 +38,6 @@ public:
     using base_type = std::variant<
         std::monostate,
         class error,
-        bool,
         std::int8_t,
         std::int16_t,
         std::int32_t,
@@ -64,7 +63,8 @@ public:
      */
     template<typename T>
     [[nodiscard]] T to() const noexcept {
-        if(auto* p = std::get_if<T>(&body_); p != nullptr) {
+        using A = std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>;
+        if(auto* p = std::get_if<A>(&body_); p != nullptr) {
             return *p;
         }
         fail();
@@ -106,7 +106,10 @@ static_assert(std::is_trivially_destructible_v<any>);
 static_assert(std::alignment_of_v<any> == 8);
 static_assert(sizeof(any) == 24);
 
+// bool is the syntax sugar for std::int8_t
 template<>
-inline any::any(std::in_place_type_t<bool>, std::int8_t arg) : body_(std::in_place_type<bool>, arg != 0) {}
+inline any::any(std::in_place_type_t<bool>, bool arg) : body_(std::in_place_type<std::int8_t>, arg ? 1 : 0) {}
 
+template<>
+inline any::any(std::in_place_type_t<bool>, std::int8_t arg) : body_(std::in_place_type<std::int8_t>, arg != 0 ? 1 : 0) {}
 }

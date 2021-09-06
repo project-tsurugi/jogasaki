@@ -126,5 +126,40 @@ TEST_F(any_test, fail_on_type_mismatch) {
     ASSERT_DEATH({ (void)a.to<std::int32_t>(); }, "fail");
 }
 
+TEST_F(any_test, bool) {
+    // bool and std::int8_t can be used synonymously
+    {
+        auto a = any{std::in_place_type<std::int8_t>, 1};
+        ASSERT_TRUE(a);
+        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.error());
+        ASSERT_EQ(1, a.to<std::int8_t>());
+        ASSERT_TRUE(a.to<bool>());
+    }
+    {
+        auto a = any{std::in_place_type<std::int8_t>, 0};
+        ASSERT_TRUE(a);
+        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.error());
+        ASSERT_EQ(0, a.to<std::int8_t>());
+        ASSERT_FALSE(a.to<bool>());
+    }
+    {
+        auto a = any{std::in_place_type<bool>, true};
+        ASSERT_TRUE(a);
+        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.error());
+        ASSERT_EQ(1, a.to<std::int8_t>());
+        ASSERT_TRUE(a.to<bool>());
+    }
+    {
+        auto a = any{std::in_place_type<bool>, false};
+        ASSERT_TRUE(a);
+        ASSERT_TRUE(a.has_value());
+        ASSERT_FALSE(a.error());
+        ASSERT_EQ(0, a.to<std::int8_t>());
+        ASSERT_FALSE(a.to<bool>());
+    }
+}
 }
 

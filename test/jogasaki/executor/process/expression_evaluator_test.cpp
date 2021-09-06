@@ -55,12 +55,15 @@
 #include <takatori/scalar/comparison_operator.h>
 
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+
+#include <jogasaki/test_utils/to_field_type_kind.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -84,12 +87,20 @@ namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
 namespace statement = ::takatori::statement;
 
-
 using take = relation::step::take_flat;
 using offer = relation::step::offer;
 using buffer = relation::buffer;
 
 using rgraph = ::takatori::relation::graph_type;
+
+using binary = takatori::scalar::binary;
+using binary_operator = takatori::scalar::binary_operator;
+using compare = takatori::scalar::compare;
+using comparison_operator = takatori::scalar::comparison_operator;
+using unary = takatori::scalar::unary;
+using unary_operator = takatori::scalar::unary_operator;
+using immediate = takatori::scalar::immediate;
+using compiled_info = yugawara::compiled_info;
 
 class expression_evaluator_test : public test_root {
 public:
@@ -104,235 +115,151 @@ public:
 
     std::shared_ptr<yugawara::analyzer::variable_mapping> variables_ = std::make_shared<yugawara::analyzer::variable_mapping>();
     std::shared_ptr<yugawara::analyzer::expression_mapping> expressions_ = std::make_shared<yugawara::analyzer::expression_mapping>();
+
+    factory f_{};
+    maybe_shared_ptr<meta::record_meta> meta_{};
+    variable_table_info info_{};
+    variable_table vars_{};
+
+    compiled_info c_info_{};
+    expression::evaluator evaluator_{};
+    memory::page_pool pool_{};
+    memory::lifo_paged_memory_resource resource_{&pool_};
+
+    template <class T>
+    using from_operator_enum = typename std::conditional_t<
+        std::is_same_v<T, binary_operator>, binary,
+        std::conditional_t<
+            std::is_same_v<T, comparison_operator>, compare,
+            void
+        >
+    >;
+
+    template<class In1, class In2, class Out, class Optype, class ...Args>
+    std::unique_ptr<from_operator_enum<Optype>> create_two_arity_exp(Optype op, Args...args) {
+        using T = from_operator_enum<Optype>;
+        auto&& c1 = f_.stream_variable("c1");
+        auto&& c2 = f_.stream_variable("c2");
+        auto expr = std::make_unique<T>(
+            op,
+            varref(c1),
+            varref(c2)
+        );
+        expressions().bind(*expr, Out{args...});
+        expressions().bind(expr->left(), In1{args...});
+        expressions().bind(expr->right(), In2{args...});
+
+        meta_ = std::make_shared<meta::record_meta>(
+            std::vector<meta::field_type>{
+                utils::type_for(In1{args...}),
+                utils::type_for(In2{args...}),
+            },
+            boost::dynamic_bitset<std::uint64_t>{2}.flip()
+        );
+
+        std::unordered_map<variable, std::size_t> m{
+            {c1, 0},
+            {c2, 1},
+        };
+        info_ = variable_table_info{m, meta_};
+        vars_ = variable_table{info_};
+
+        c_info_ = compiled_info{expressions_, variables_};
+        evaluator_ = expression::evaluator{*expr, c_info_};
+        return expr;
+    }
+
+    template<class In1, class In2>
+    void set_values(
+        typename meta::field_type_traits<utils::to_field_type_kind<In1>()>::runtime_type c1,
+        typename meta::field_type_traits<utils::to_field_type_kind<In2>()>::runtime_type c2,
+        bool c1_null,
+        bool c2_null
+    ) {
+        auto&& ref = vars_.store().ref();
+        ref.set_value<decltype(c1)>(meta_->value_offset(0), c1);
+        ref.set_null(meta_->nullity_offset(0), c1_null);
+        ref.set_value<decltype(c2)>(meta_->value_offset(1), c2);
+        ref.set_null(meta_->nullity_offset(1), c2_null);
+    }
+
+    template <class In1, class In2, class Out, class Optype, class ... Args>
+    void test_two_arity_exp(
+        Optype op,
+        typename meta::field_type_traits<utils::to_field_type_kind<In1>()>::runtime_type c1,
+        typename meta::field_type_traits<utils::to_field_type_kind<In2>()>::runtime_type c2,
+        typename meta::field_type_traits<utils::to_field_type_kind<Out>()>::runtime_type exp,
+        Args...args
+    ) {
+        using T = from_operator_enum<Optype>;
+
+        // for compare operation, use bool instead of std::int8_t.
+        using out_type = std::conditional_t<
+            std::is_same_v<Optype, binary_operator>,
+            typename meta::field_type_traits<utils::to_field_type_kind<Out>()>::runtime_type,
+            bool
+        >;
+        auto expr = create_two_arity_exp<In1, In2, Out, Optype, Args...>(op, args...);
+        {
+            set_values<In1, In2>(c1, c2, false, false);
+            utils::checkpoint_holder cph{&resource_};
+            auto result = evaluator_(vars_, &resource_).to<out_type>();
+            ASSERT_EQ(exp, result);
+        }
+        {
+            set_values<In1, In2>(c1, c2, true, false);
+            utils::checkpoint_holder cph{&resource_};
+            ASSERT_FALSE(evaluator_(vars_, &resource_).has_value());
+        }
+        {
+            set_values<In1, In2>(c1, c2, false, true);
+            utils::checkpoint_holder cph{&resource_};
+            ASSERT_FALSE(evaluator_(vars_, &resource_).has_value());
+        }
+    }
 };
 
-using binary = takatori::scalar::binary;
-using binary_operator = takatori::scalar::binary_operator;
-using compare = takatori::scalar::compare;
-using comparison_operator = takatori::scalar::comparison_operator;
-using unary = takatori::scalar::unary;
-using unary_operator = takatori::scalar::unary_operator;
-using immediate = takatori::scalar::immediate;
-using compiled_info = yugawara::compiled_info;
-
-TEST_F(expression_evaluator_test, add_int8) {
-    factory f;
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
-
-    binary expr {
-        binary_operator::add,
-        varref(c1),
-        varref(c2)
-    };
-    expressions().bind(expr, t::int8 {});
-    expressions().bind(expr.left(), t::int8 {});
-    expressions().bind(expr.right(), t::int8 {});
-
-    compiled_info c_info{expressions_, variables_};
-    expression::evaluator ev{expr, c_info};
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    auto&& ref = vars.store().ref();
-    ref.set_value<std::int64_t>(meta->value_offset(0), 10);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_value<std::int64_t>(meta->value_offset(1), 20);
-    ref.set_null(meta->nullity_offset(1), false);
-
-    auto result = ev(vars).to<std::int64_t>();
-    ASSERT_EQ(30, result);
+TEST_F(expression_evaluator_test, add_numeric) {
+    test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::add, 10, 20, 30);
+    test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::add, 10, 20, 30);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::add, 10, 20, 30);
+    test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::add, 10, 20, 30);
 }
 
-TEST_F(expression_evaluator_test, add_int4) {
-    factory f;
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
-
-    binary expr {
-        binary_operator::add,
-        varref(c1),
-        varref(c2)
-    };
-    expressions().bind(expr, t::int4 {});
-    expressions().bind(expr.left(), t::int4 {});
-    expressions().bind(expr.right(), t::int4 {});
-
-    compiled_info c_info{expressions_, variables_};
-    expression::evaluator ev{expr, c_info};
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    auto&& ref = vars.store().ref();
-    ref.set_value<std::int32_t>(meta->value_offset(0), 10);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 20);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-
-    auto result = ev(vars).to<std::int32_t>();
-    ASSERT_EQ(30, result);
+TEST_F(expression_evaluator_test, subtract_numeric) {
+    test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::subtract, 20, 5, 15);
+    test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::subtract, 20, 5, 15);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::subtract, 20, 5, 15);
+    test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::subtract, 20, 5, 15);
 }
 
-TEST_F(expression_evaluator_test, add_float4) {
-    factory f;
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
-
-    binary expr {
-        binary_operator::add,
-        varref(c1),
-        varref(c2)
-    };
-    expressions().bind(expr, t::float4 {});
-    expressions().bind(expr.left(), t::float4 {});
-    expressions().bind(expr.right(), t::float4 {});
-
-    compiled_info c_info{expressions_, variables_};
-    expression::evaluator ev{expr, c_info};
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float4>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float4>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    auto&& ref = vars.store().ref();
-    ref.set_value<float>(meta->value_offset(0), 10);
-    ref.set_value<float>(meta->value_offset(1), 20);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-
-    auto result = ev(vars).to<float>();
-    ASSERT_EQ(30, result);
+TEST_F(expression_evaluator_test, multiply_numeric) {
+    test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::multiply, 2, 3, 6);
+    test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::multiply, 2, 3, 6);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::multiply, 2, 3, 6);
+    test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::multiply, 2, 3, 6);
 }
 
-TEST_F(expression_evaluator_test, add_double) {
-    factory f;
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
-
-    binary expr {
-        binary_operator::add,
-        varref(c1),
-        varref(c2)
-    };
-    expressions().bind(expr, t::float8 {});
-    expressions().bind(expr.left(), t::float8 {});
-    expressions().bind(expr.right(), t::float8 {});
-
-    compiled_info c_info{expressions_, variables_};
-    expression::evaluator ev{expr, c_info};
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    auto&& ref = vars.store().ref();
-    ref.set_value<double>(meta->value_offset(0), 10);
-    ref.set_value<double>(meta->value_offset(1), 20);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-
-    auto result = ev(vars).to<double>();
-    ASSERT_EQ(30, result);
+TEST_F(expression_evaluator_test, divide_numeric) {
+    test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::divide, 6, 3, 2);
+    test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::divide, 6, 3, 2);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::divide, 6, 3, 2);
+    test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::divide, 6, 3, 2);
 }
 
-TEST_F(expression_evaluator_test, concat_text) {
-    factory f;
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
+TEST_F(expression_evaluator_test, remainder_numeric) {
+    test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::remainder, 9, 4, 1);
+    test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::remainder, 9, 4, 1);
+}
 
-    binary expr {
+TEST_F(expression_evaluator_test, concat) {
+    test_two_arity_exp<t::character, t::character, t::character>(
         binary_operator::concat,
-        varref(c1),
-        varref(c2)
-    };
-    expressions().bind(expr, t::character{type::varying, 200});
-    expressions().bind(expr.left(), t::character{type::varying, 100});
-    expressions().bind(expr.right(), t::character {type::varying, 100});
-
-    compiled_info c_info{expressions_, variables_};
-    expression::evaluator ev{expr, c_info};
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
+        accessor::text{&resource_, "A23456789012345678901234567890"},
+        accessor::text{&resource_, "B23456789012345678901234567890"},
+        accessor::text{&resource_, "A23456789012345678901234567890B23456789012345678901234567890"},
+        type::varying, 200
     );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    memory::page_pool pool{};
-    memory::lifo_paged_memory_resource resource{&pool};
-    auto cp = resource.get_checkpoint();
-    auto&& ref = vars.store().ref();
-    ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
-    ref.set_value<accessor::text>(meta->value_offset(1), accessor::text{&resource, "B23456789012345678901234567890"});
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-
-    auto result = ev(vars, &resource).to<accessor::text>();
-    accessor::text exp{&resource, "A23456789012345678901234567890B23456789012345678901234567890"};
-    ASSERT_EQ(exp, result);
-    resource.deallocate_after(cp);
 }
 
 inline immediate constant(int v, type::data&& type = type::int8()) {
@@ -476,182 +403,36 @@ TEST_F(expression_evaluator_test, text_length) {
 }
 
 TEST_F(expression_evaluator_test, compare_int4) {
-    factory f;
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less, 1, 2, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less, 1, 1, false);
 
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less_equal, 1, 2, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less_equal, 1, 1, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::less_equal, 2, 1, false);
 
-    compare expr {
-        comparison_operator::less,
-        varref(c1),
-        varref(c2),
-    };
-    expressions().bind(expr, t::int4 {});
-    expressions().bind(expr.left(), t::int4 {});
-    expressions().bind(expr.right(), t::int4 {});
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater, 2, 1, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater, 1, 1, false);
 
-    compiled_info c_info{ expressions_, variables_ };
-    expression::evaluator ev{expr, c_info};
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater_equal, 2, 1, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater_equal, 1, 1, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::greater, 1, 2, false);
 
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int4>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::equal, 1, 1, true);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::equal, 1, 2, false);
 
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    auto&& ref = vars.store().ref();
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-
-    expr.operator_kind(comparison_operator::less_equal);
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int32_t>(meta->value_offset(0), 2);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-
-    expr.operator_kind(comparison_operator::greater);
-    ref.set_value<std::int32_t>(meta->value_offset(0), 2);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-
-    expr.operator_kind(comparison_operator::greater_equal);
-    ref.set_value<std::int32_t>(meta->value_offset(0), 2);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-
-    expr.operator_kind(comparison_operator::equal);
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    expr.operator_kind(comparison_operator::not_equal);
-    ASSERT_FALSE(ev(vars).to<bool>());
-    expr.operator_kind(comparison_operator::equal);
-    ref.set_value<std::int32_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int32_t>(meta->value_offset(1), 2);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-    expr.operator_kind(comparison_operator::not_equal);
-    ASSERT_TRUE(ev(vars).to<bool>());
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::not_equal, 1, 1, false);
+    test_two_arity_exp<t::int4, t::int4, t::boolean>(comparison_operator::not_equal, 1, 2, true);
 }
 
-TEST_F(expression_evaluator_test, conditional_and) {
-    factory f;
+TEST_F(expression_evaluator_test, conditional_and_or) {
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, 1, true);
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, 0, false);
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 0, 1, false);
 
-    auto&& c1 = f.stream_variable("c1");
-    auto&& c2 = f.stream_variable("c2");
-
-    binary expr {
-        binary_operator::conditional_and,
-        varref(c1),
-        varref(c2),
-    };
-
-    expressions().bind(expr, t::boolean {});
-    expressions().bind(expr.left(), t::boolean {});
-    expressions().bind(expr.right(), t::boolean {});
-
-    compiled_info c_info{ expressions_, variables_ };
-    expression::evaluator ev{expr, c_info};
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::boolean>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::boolean>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    auto&& ref = vars.store().ref();
-    ref.set_value<std::int8_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int8_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int8_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-    ref.set_value<std::int8_t>(meta->value_offset(0), 0);
-    ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
-
-    expr.operator_kind(binary_operator::conditional_or);
-    ref.set_value<std::int8_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int8_t>(meta->value_offset(1), 1);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int8_t>(meta->value_offset(0), 1);
-    ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_TRUE(ev(vars).to<bool>());
-    ref.set_value<std::int8_t>(meta->value_offset(0), 0);
-    ref.set_value<std::int8_t>(meta->value_offset(1), 0);
-    ref.set_null(meta->nullity_offset(0), false);
-    ref.set_null(meta->nullity_offset(1), false);
-    ASSERT_FALSE(ev(vars).to<bool>());
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, 1, true);
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, 0, true);
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 1, true);
+    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 0, false);
 }
 
 }

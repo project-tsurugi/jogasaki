@@ -36,7 +36,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 #include <jogasaki/memory/paged_memory_resource.h>
-#include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::executor::process::impl::expression {
 

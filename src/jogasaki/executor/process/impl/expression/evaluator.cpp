@@ -32,6 +32,7 @@
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/variant.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -51,8 +52,10 @@ engine::engine(
     resource_(resource)
 {}
 
+// variant index in any - treat bool as std::int8_t
 template <class T>
-static constexpr std::size_t index = alternative_index<T, any::base_type>();
+static constexpr std::size_t index =
+    alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, any::base_type>();
 
 template <class T, class U = T>
 any add(T const& l, U const& r) {
@@ -60,6 +63,7 @@ any add(T const& l, U const& r) {
 }
 
 any engine::add_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return add(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return add(l.to<std::int64_t>(), r.to<std::int64_t>());
@@ -76,6 +80,7 @@ any subtract(T const& l, U const& r) {
 }
 
 any engine::subtract_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return subtract(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return subtract(l.to<std::int64_t>(), r.to<std::int64_t>());
@@ -91,6 +96,7 @@ any engine::concat(T const& l, U const& r) {
     return any{std::in_place_type<T>, accessor::text{resource_, l, r}};
 }
 any engine::concat_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<accessor::text>: return concat(l.to<accessor::text>(), r.to<accessor::text>());
         default:
@@ -104,6 +110,7 @@ any multiply(T const& l, U const& r) {
 }
 
 any engine::multiply_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return multiply(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return multiply(l.to<std::int64_t>(), r.to<std::int64_t>());
@@ -120,6 +127,7 @@ any divide(T const& l, U const& r) {
 }
 
 any engine::divide_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return divide(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return divide(l.to<std::int64_t>(), r.to<std::int64_t>());
@@ -136,6 +144,7 @@ any remainder(T const& l, U const& r) {
 }
 
 any engine::remainder_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return remainder(l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return remainder(l.to<std::int64_t>(), r.to<std::int64_t>());
@@ -150,6 +159,7 @@ any conditional_and(T const& l, U const& r) {
 }
 
 any engine::conditional_and_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<bool>: return conditional_and(l.to<bool>(), r.to<bool>());
         default:
@@ -163,6 +173,7 @@ any conditional_or(T const& l, U const& r) {
 }
 
 any engine::conditional_or_any(any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<bool>: return conditional_or(l.to<bool>(), r.to<bool>());
         default:
@@ -174,6 +185,9 @@ any engine::operator()(takatori::scalar::binary const& exp) {
     using optype = takatori::scalar::binary_operator;
     auto l = dispatch(*this, exp.left());
     auto r = dispatch(*this, exp.right());
+    if (!l.has_value() || !r.has_value()) {
+        return {};
+    }
     switch(exp.operator_kind()) {
         case optype::add: return add_any(l, r);
         case optype::concat: return concat_any(l, r);
@@ -224,6 +238,7 @@ any sign_inversion(T const& l) {
 }
 
 any engine::sign_inversion_any(any const& l) {
+    BOOST_ASSERT(l.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return sign_inversion(l.to<std::int32_t>());
         case index<std::int64_t>: return sign_inversion(l.to<std::int64_t>());
@@ -240,6 +255,7 @@ any conditional_not(T const& l) {
 }
 
 any engine::conditional_not_any(any const& l) {
+    BOOST_ASSERT(l.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<bool>: return conditional_not(l.to<bool>());
         default:
@@ -253,6 +269,7 @@ any length(T const& l) {
 }
 
 any engine::length_any(any const& l) {
+    BOOST_ASSERT(l.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<accessor::text>: return length(l.to<accessor::text>());
         default:
@@ -263,6 +280,9 @@ any engine::length_any(any const& l) {
 any engine::operator()(takatori::scalar::unary const& exp) {
     using optype = takatori::scalar::unary::operator_kind_type;
     auto v = dispatch(*this, exp.operand());
+    if (!v.has_value()) {
+        return {};
+    }
     switch(exp.operator_kind()) {
         case optype::plus:
             // no-op - pass current value upward
@@ -296,6 +316,7 @@ any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
 }
 
 any engine::compare_any(takatori::scalar::comparison_operator optype, any const& l, any const& r) {
+    BOOST_ASSERT(l.has_value() && r.has_value());  //NOLINT
     switch(l.type_index()) {
         case index<std::int32_t>: return compare(optype, l.to<std::int32_t>(), r.to<std::int32_t>());
         case index<std::int64_t>: return compare(optype, l.to<std::int64_t>(), r.to<std::int64_t>());
@@ -319,6 +340,9 @@ any engine::operator()(takatori::scalar::cast const&) {
 any engine::operator()(takatori::scalar::compare const& exp) {
     auto l = dispatch(*this, exp.left());
     auto r = dispatch(*this, exp.right());
+    if (!l.has_value() || !r.has_value()) {
+        return {};
+    }
     return compare_any(exp.operator_kind(), l, r);
 }
 
@@ -362,8 +386,8 @@ any evaluator::operator()(
     variable_table& variables,
     evaluator::memory_resource* resource
 ) const {
-    details::engine c{variables, *info_, host_variables_, resource};
-    return takatori::scalar::dispatch(c, *expression_);
+    details::engine e{variables, *info_, host_variables_, resource};
+    return takatori::scalar::dispatch(e, *expression_);
 }
 
 bool evaluate_bool(
@@ -375,4 +399,5 @@ bool evaluate_bool(
     auto a = eval(variables, resource);
     return a.has_value() && a.to<bool>();
 }
+
 } // namespace

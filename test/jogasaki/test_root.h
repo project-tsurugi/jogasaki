@@ -41,16 +41,6 @@ public:
         return r1.record_meta();
     }
 
-    static inline maybe_shared_ptr<meta::record_meta> test_record_meta2() {
-        return std::make_shared<meta::record_meta>(
-                std::vector<meta::field_type>{
-                        meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-                        meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
-                        meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-                },
-                boost::dynamic_bitset<std::uint64_t>{std::string("000")});
-    }
-
     static inline maybe_shared_ptr<meta::group_meta> test_group_meta1() {
         return std::make_shared<meta::group_meta>(
                 std::make_shared<meta::record_meta>(

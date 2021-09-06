@@ -84,6 +84,7 @@ static int run(std::string_view sql, std::shared_ptr<configuration> cfg) {
     {
         auto tx = db->create_transaction();
         if(auto rc = tx->execute(*e, rs); rc != status::ok || !rs) {
+            tx->abort();
             db->stop();
             return -1;
         }

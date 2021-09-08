@@ -51,8 +51,13 @@ if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
             FORCE
     )
 endif()
+
+set(tateyama_package "tateyama-${SHARKSFIN_IMPLEMENTATION}")
+set(tateyama_engine "${tateyama_package}-engine")
+set(tateyama_mock "${tateyama_package}-mock")
 set(ENGINE "engine")
 
+find_package(${tateyama_package} REQUIRED)
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
 find_package(mizugaki REQUIRED)

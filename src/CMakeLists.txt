@@ -35,10 +35,7 @@ file(GLOB SOURCES
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/kvs/*.cpp"
         "jogasaki/utils/*.cpp"
-        "tateyama/*.cpp"
-        "tateyama/impl/*.cpp"
-        "tateyama/endpoint/impl/*.cpp"
-        "tateyama/task_scheduler/*.cpp"
+        "jogasaki/endpoint/*.cpp"
 )
 
 if(TRACY_ENABLE)
@@ -75,6 +72,7 @@ target_include_directories(${ENGINE}
 
 target_link_libraries(${ENGINE}
         PUBLIC api
+        PUBLIC ${tateyama_engine}
         PUBLIC takatori
         PUBLIC yugawara
         PRIVATE mizugaki
@@ -124,6 +122,8 @@ target_include_directories(jogasaki-impl
 
 target_link_libraries(jogasaki-impl
         INTERFACE ${ENGINE}
+        INTERFACE ${tateyama_engine}
+        INTERFACE ${tateyama_mock}
         INTERFACE takatori
         INTERFACE yugawara
         INTERFACE mizugaki

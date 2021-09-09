@@ -38,6 +38,7 @@ option(PERFORMANCE_TOOLS "Enable tooling to measure engine performance" OFF)
 option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 option(MC_QUEUE "use moody-camel queue" OFF)
 option(TRACY_ENABLE "enable tracy profiler" OFF)
+option(INSTALL_API_ONLY "configure cmake build dir. just to install public api files. No build runs. This is used to provide api files to components outside jogasaki" OFF)
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")
@@ -100,35 +101,7 @@ target_include_directories(api
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/jogasaki>
 )
 
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake
-    @ONLY
-)
-
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
-    COMPATIBILITY SameMajorVersion
-)
-
-install_custom(api ${export_name})
-
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake
-    DESTINATION
-        ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
-)
-
-install(
-    EXPORT ${package_name}
-    NAMESPACE ${package_name}-
-    FILE ${package_name}-targets.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
-    EXPORT_LINK_INTERFACE_LIBRARIES
-)
-
+if (NOT INSTALL_API_ONLY)
 add_subdirectory(protos)
 add_subdirectory(src)
 add_subdirectory(mock)
@@ -141,4 +114,34 @@ endif()
 if (BUILD_DOCUMENTS)
     add_subdirectory(doxygen)
 endif()
+endif()
+
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake
+        @ONLY
+)
+
+write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake"
+        COMPATIBILITY SameMajorVersion
+)
+
+install_custom(api ${export_name})
+
+install(
+        FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/${package_name}-config-version.cmake
+        DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+)
+
+install(
+        EXPORT ${package_name}
+        NAMESPACE ${package_name}-
+        FILE ${package_name}-targets.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${package_name}
+        EXPORT_LINK_INTERFACE_LIBRARIES
+)
 

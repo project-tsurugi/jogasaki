@@ -128,6 +128,14 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first
 
+      - id: Install_jogasaki_api
+        name: Install_jogasaki_api
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DINSTALL_API_ONLY=ON ..
+          cmake --build . --target install --clean-first -- -j
+
       - id: Install_tateyama_sharksfin_memory
         name: Install_tateyama_sharksfin_memory
         run: |

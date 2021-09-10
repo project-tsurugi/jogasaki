@@ -59,7 +59,6 @@ set(ENGINE "engine")
 
 if (NOT INSTALL_API_ONLY)
 find_package(${tateyama_package} REQUIRED)
-endif()
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
 find_package(mizugaki REQUIRED)
@@ -80,12 +79,14 @@ find_package(TBB REQUIRED)
 find_package(performance-tools REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(msgpack REQUIRED)
+
+add_subdirectory(third_party) # should be before enable_testing()
+endif()
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 include(InstallOptions)
-
-add_subdirectory(third_party) # should be before enable_testing()
 
 if (BUILD_TESTS OR BUILD_EXAMPLES)
     enable_testing()

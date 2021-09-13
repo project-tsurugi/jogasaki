@@ -31,4 +31,6 @@
 #include <jogasaki/api/record_meta.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_iterator.h>
+#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction.h>
+#include <jogasaki/api/transaction_handle.h>

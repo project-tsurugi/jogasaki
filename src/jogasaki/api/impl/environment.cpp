@@ -30,3 +30,11 @@ void impl::environment::initialize() {
     environment_.initialize();
 }
 }
+
+extern "C" jogasaki::api::environment* new_environment() {
+    return new jogasaki::api::impl::environment();
+}
+
+extern "C" void delete_environment(jogasaki::api::environment* env) {
+    delete env;
+}

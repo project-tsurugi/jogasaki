@@ -497,3 +497,11 @@ std::unique_ptr<database> create_database(std::shared_ptr<class configuration> c
 }
 
 }
+
+extern "C" jogasaki::api::database* new_database(jogasaki::configuration* cfg) {
+    return new jogasaki::api::impl::database(std::make_shared<jogasaki::configuration>(*cfg));
+}
+
+extern "C" void delete_database(jogasaki::api::database* db) {
+    delete db;
+}

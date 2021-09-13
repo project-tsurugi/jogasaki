@@ -494,3 +494,20 @@ protected:
 std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
 
 }
+
+/**
+ * @brief C-interface for database factory
+ * @details extern "C" version to create new database. Prefer create_database if C API is not necessary.
+ * This function passes ownership to caller, that must call `delete_database()` when finish using.
+ * @param cfg configuration for the database
+ * @return database api object
+ * @return nullptr if error occurs on creation
+ */
+extern "C" jogasaki::api::database* new_database(jogasaki::configuration* cfg);
+
+/**
+ * @brief C-interface to delete database object
+ * @details delete the object created by new_database().
+ * @param db the object to delete
+ */
+extern "C" void delete_database(jogasaki::api::database* db);

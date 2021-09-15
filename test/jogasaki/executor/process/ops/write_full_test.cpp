@@ -139,6 +139,7 @@ TEST_F(write_full_test, simple) {
     auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(1.0, 2);
     EXPECT_EQ(exp_k, result[0].first);
     EXPECT_EQ(exp_v, result[0].second);
+    EXPECT_TRUE(db->close());
 }
 
 TEST_F(write_full_test, delete) {
@@ -223,6 +224,7 @@ TEST_F(write_full_test, delete) {
         result
     );
     ASSERT_EQ(1, result.size());
+    EXPECT_TRUE(db->close());
 }
 
 }

@@ -361,6 +361,7 @@ void service::process_output(output& out) {
                     }
                 }
             }
+            wrt.commit();
         } else {
             VLOG(1) << "detect eor" << std::endl;
             wrt.commit();

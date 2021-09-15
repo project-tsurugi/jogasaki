@@ -221,6 +221,7 @@ public:
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
         }
+        expressions().clear();
     }
     template<class T>
     void test_compare();

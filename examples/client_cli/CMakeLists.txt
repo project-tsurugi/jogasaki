@@ -21,6 +21,7 @@ target_link_libraries(client-cli
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads
+        PRIVATE Boost::filesystem
 )
 
 if (ENABLE_GOOGLE_PERFTOOLS)
@@ -37,5 +38,5 @@ endif()
 
 add_test(
         NAME client-cli
-        COMMAND client-cli
+        COMMAND client-cli --location TMP
 )

@@ -79,7 +79,8 @@ kvs_test_utils::put(kvs::database& db, std::string_view storage_name, mock::basi
         ); res != status::ok) {
         fail();
     }
-    if(auto res = tx->commit(); res != status::ok) fail();
+    if(auto res = tx->commit(true); res != status::ok) fail();
+    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) fail();
 }
 
 void kvs_test_utils::get(
@@ -159,7 +160,8 @@ void kvs_test_utils::get(
         }
         result.emplace_back(key_model, value_model);
     }
-    if(auto res = tx->commit(); res != status::ok) fail();
+    if(auto res = tx->commit(true); res != status::ok) fail();
+    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) fail();
 }
 
 std::unique_ptr<kvs::storage> kvs_test_utils::get_storage(

@@ -22,6 +22,7 @@ target_link_libraries(sql-cli
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads
+        PRIVATE Boost::filesystem
 )
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(sql-cli
@@ -37,5 +38,5 @@ endif()
 
 add_test(
         NAME sql-cli
-        COMMAND sql-cli "SELECT C0,C1 FROM T0"
+        COMMAND sql-cli --location TMP "SELECT C0,C1 FROM T0"
 )

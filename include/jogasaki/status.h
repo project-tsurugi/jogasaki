@@ -46,6 +46,7 @@ enum class status : std::int64_t {
     err_not_found = -12,
     err_already_exists = -13,
     err_inconsistent_index = -14,
+    err_time_out = -15,
 };
 
 /**
@@ -76,6 +77,7 @@ enum class status : std::int64_t {
         case status::err_not_found: return "err_not_found"sv;
         case status::err_already_exists: return "err_already_exists"sv;
         case status::err_inconsistent_index: return "err_inconsistent_index"sv;
+        case status::err_time_out: return "err_time_out"sv;
     }
     std::abort();
 }

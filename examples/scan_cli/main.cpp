@@ -62,6 +62,7 @@
 #include <jogasaki/kvs/coder.h>
 
 #include "../common/load.h"
+#include "../common/temporary_folder.h"
 
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(partitions, 1, "Number of partitions");  //NOLINT
@@ -81,6 +82,7 @@ DEFINE_bool(interactive, false, "run on interactive mode. The other options spec
 DEFINE_bool(mutex_prepare_pages, false, "use mutex when preparing pages.");  //NOLINT
 DEFINE_bool(wait_prepare_pages, true, "wait for all threads completing preparing pages.");  //NOLINT
 DEFINE_bool(filter, false, "additionally filter records by a condition");  //NOLINT
+DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
 
 namespace jogasaki::scan_cli {
 
@@ -209,7 +211,11 @@ public:
     int operator()(params& param, std::shared_ptr<configuration> const& cfg) {
         map_thread_to_storage_ = init_map(param);
         numa_nodes_ = numa_max_node()+1;
-        db_ = kvs::database::open();
+        std::map<std::string, std::string> m{};
+        if (! cfg->db_location().empty()) {
+            m["location"s] = cfg->db_location();
+        }
+        db_ = kvs::database::open(m);
         if (param.interactive_) {
             common_options_ = param.original_args_;
             run_interactive(param, cfg);
@@ -898,6 +904,13 @@ extern "C" int main(int argc, char* argv[]) {
     jogasaki::scan_cli::params s{};
     auto cfg = std::make_shared<jogasaki::configuration>();
 
+    jogasaki::common_cli::temporary_folder dir{};
+    if (FLAGS_location == "TMP") {
+        dir.prepare();
+        cfg->db_location(dir.path());
+    } else {
+        cfg->db_location(std::string(FLAGS_location));
+    }
     if(! fill_from_flags(s, *cfg)) return -1;
     if (s.interactive_) {
         std::stringstream ss{};
@@ -920,5 +933,6 @@ extern "C" int main(int argc, char* argv[]) {
     jogasaki::utils::get_watch().set_point(jogasaki::scan_cli::time_point_end_completion, 0);
     LOG(INFO) << "end completion";
     jogasaki::scan_cli::dump_perf_info(false, false, true);
+    dir.clean();
     return 0;
 }

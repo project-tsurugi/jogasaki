@@ -26,7 +26,7 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/kvs_test_utils.h>
+#include <jogasaki/kvs_test_base.h>
 
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/mock/basic_record.h>
@@ -68,9 +68,15 @@ using scalar::comparison_operator;
 
 class join_find_test :
     public test_root,
-    public kvs_test_utils,
+    public kvs_test_base,
     public operator_test_utils {
 
+    void SetUp() override {
+        kvs_db_setup();
+    }
+    void TearDown() override {
+        kvs_db_teardown();
+    }
 public:
 };
 
@@ -134,17 +140,16 @@ TEST_F(join_find_test, simple) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
-    auto tx = db->create_transaction();
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
+    auto tx = db_->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
         input_variables,
         output_variables,
-        get_storage(*db, primary_idx_t1->simple_name()),
+        get_storage(*db_, primary_idx_t1->simple_name()),
         nullptr,
         tx.get(),
         std::make_unique<details::matcher>(
@@ -162,7 +167,6 @@ TEST_F(join_find_test, simple) {
     EXPECT_EQ(output, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
-    (void)db->close();
 }
 
 TEST_F(join_find_test, secondary_index) {
@@ -226,21 +230,20 @@ TEST_F(join_find_test, secondary_index) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(100), create_record<kind::int8>(10));
-    put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(10, 100), {});
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(200), create_record<kind::int8>(20));
-    put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 200), {});
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(201), create_record<kind::int8>(20));
-    put( *db, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
-    auto tx = db->create_transaction();
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(100), create_record<kind::int8>(10));
+    put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(10, 100), {});
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(200), create_record<kind::int8>(20));
+    put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 200), {});
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(201), create_record<kind::int8>(20));
+    put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
+    auto tx = db_->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
         input_variables,
         output_variables,
-        get_storage(*db, primary_idx_t1->simple_name()),
-        get_storage(*db, secondary_idx_t1->simple_name()),
+        get_storage(*db_, primary_idx_t1->simple_name()),
+        get_storage(*db_, secondary_idx_t1->simple_name()),
         tx.get(),
         std::make_unique<details::matcher>(
             true,
@@ -262,7 +265,6 @@ TEST_F(join_find_test, secondary_index) {
 
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
-    (void)db->close();
 }
 
 TEST_F(join_find_test, host_variable_with_condition_expr) {
@@ -349,17 +351,16 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
-    put( *db, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
-    auto tx = db->create_transaction();
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
+    put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
+    auto tx = db_->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
         input_variables,
         output_variables,
-        get_storage(*db, primary_idx_t1->simple_name()),
+        get_storage(*db_, primary_idx_t1->simple_name()),
         nullptr,
         tx.get(),
         std::make_unique<details::matcher>(
@@ -378,7 +379,6 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     EXPECT_EQ(exp, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
-    (void)db->close();
 }
 
 }

@@ -34,6 +34,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 
 #include "../common/load.h"
+#include "../common/temporary_folder.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
@@ -48,6 +49,7 @@ DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.");  //NOLINT
 DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storages");  //NOLINT
+DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
 
 namespace jogasaki::sql_cli {
 
@@ -63,6 +65,7 @@ using namespace jogasaki::executor::process::impl::expression;
 class cli {
     std::unique_ptr<api::database> db_{};
     std::unique_ptr<api::transaction> tx_{};
+    common_cli::temporary_folder temporary_{};
 public:
     int end_tx(bool abort = false) {
         if (abort) {
@@ -162,6 +165,7 @@ public:
         if (rc) {
             LOG(ERROR) << "exit code: " << rc;
         }
+        temporary_.clean();
         return rc;
     }
 
@@ -195,6 +199,12 @@ public:
 
         if (cfg.assign_numa_nodes_uniformly()) {
             cfg.core_affinity(true);
+        }
+        if (FLAGS_location == "TMP") {
+            temporary_.prepare();
+            cfg.db_location(temporary_.path());
+        } else {
+            cfg.db_location(std::string(FLAGS_location));
         }
         return true;
     }

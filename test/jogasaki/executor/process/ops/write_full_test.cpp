@@ -16,6 +16,7 @@
 #include <jogasaki/executor/process/impl/ops/write_full.h>
 
 #include <string>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -35,6 +36,7 @@
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/kvs_test_utils.h>
 #include <jogasaki/operator_test_utils.h>
+#include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -58,9 +60,15 @@ namespace storage = yugawara::storage;
 
 class write_full_test :
     public test_root,
-    public kvs_test_utils,
+    public kvs_test_base,
     public operator_test_utils {
 
+    void SetUp() override {
+        kvs_db_setup();
+    }
+    void TearDown() override {
+        kvs_db_teardown();
+    }
 };
 
 TEST_F(write_full_test, simple) {
@@ -110,14 +118,13 @@ TEST_F(write_full_test, simple) {
         &input_variable_info
     };
 
-    auto db = kvs::database::open();
-    auto tx = db->create_transaction();
-    auto mgr = sequence::manager{*db};
+    auto tx = db_->create_transaction();
+    auto mgr = sequence::manager{*db_};
     mock::task_context task_ctx{ {}, {}, {}, {}};
     write_full_context ctx{
         &task_ctx,
         input_variables,
-        get_storage(*db, i1->simple_name()),
+        get_storage(*db_, i1->simple_name()),
         tx.get(),
         &mgr,
         &resource_,
@@ -125,10 +132,11 @@ TEST_F(write_full_test, simple) {
     };
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
-    (void)tx->commit();
+    ASSERT_EQ(status::ok, tx->commit(true));
+    ASSERT_EQ(status::ok, tx->wait_for_commit(2000*1000*1000));
 
     get(
-        *db,
+        *db_,
         i1->simple_name(),
         jogasaki::mock::create_record<kind::int4>(0),
         jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
@@ -139,7 +147,6 @@ TEST_F(write_full_test, simple) {
     auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(1.0, 2);
     EXPECT_EQ(exp_k, result[0].first);
     EXPECT_EQ(exp_v, result[0].second);
-    EXPECT_TRUE(db->close());
 }
 
 TEST_F(write_full_test, delete) {
@@ -185,13 +192,14 @@ TEST_F(write_full_test, delete) {
         &input_variable_info
     };
 
-    auto db = kvs::database::open();
-    put( *db, i1->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, i1->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(100ms);
+    put( *db_, i1->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, i1->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
     std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
     get(
-        *db,
+        *db_,
         i1->simple_name(),
         jogasaki::mock::create_record<kind::int4>(),
         jogasaki::mock::create_record<kind::float8, kind::int8>(),
@@ -199,13 +207,13 @@ TEST_F(write_full_test, delete) {
     );
     ASSERT_EQ(2, result.size());
 
-    auto tx = db->create_transaction();
-    auto mgr = sequence::manager{*db};
+    auto tx = db_->create_transaction();
+    auto mgr = sequence::manager{*db_};
     mock::task_context task_ctx{ {}, {}, {}, {}};
     write_full_context ctx{
         &task_ctx,
         input_variables,
-        get_storage(*db, i1->simple_name()),
+        get_storage(*db_, i1->simple_name()),
         tx.get(),
         &mgr,
         &resource_,
@@ -214,17 +222,16 @@ TEST_F(write_full_test, delete) {
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
 
-    (void)tx->commit();
+    ASSERT_EQ(status::ok, tx->commit());
     result.clear();
     get(
-        *db,
+        *db_,
         i1->simple_name(),
         jogasaki::mock::create_record<kind::int4>(),
         jogasaki::mock::create_record<kind::float8, kind::int8>(),
         result
     );
     ASSERT_EQ(1, result.size());
-    EXPECT_TRUE(db->close());
 }
 
 }

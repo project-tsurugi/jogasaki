@@ -22,6 +22,7 @@ target_link_libraries(scan-cli
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads
+        PRIVATE Boost::filesystem
 )
 
 target_link_libraries(scan-cli
@@ -43,5 +44,5 @@ endif()
 
 add_test(
         NAME scan-cli
-        COMMAND scan-cli --minimum
+        COMMAND scan-cli --minimum --location TMP
 )

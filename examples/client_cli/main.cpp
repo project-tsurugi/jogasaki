@@ -23,6 +23,10 @@
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/result_set.h>
 
+#include "../common/temporary_folder.h"
+
+DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
+
 namespace jogasaki::client_cli {
 
 using namespace std::string_literals;
@@ -134,6 +138,13 @@ static bool run() {
     env->initialize();
     auto cfg = std::make_shared<configuration>();
     cfg->prepare_benchmark_tables(true);
+    jogasaki::common_cli::temporary_folder dir{};
+    if (FLAGS_location == "TMP") {
+        dir.prepare();
+        cfg->db_location(dir.path());
+    } else {
+        cfg->db_location(std::string(FLAGS_location));
+    }
     auto db = jogasaki::api::create_database(cfg);
     db->start();
     if(auto res = prepare_data(*db); !res) {
@@ -145,6 +156,7 @@ static bool run() {
         return false;
     }
     db->stop();
+    dir.clean();
     return true;
 }
 

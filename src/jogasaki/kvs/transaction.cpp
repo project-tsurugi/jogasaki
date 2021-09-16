@@ -37,8 +37,8 @@ transaction::~transaction() noexcept {
     sharksfin::transaction_dispose(tx_);
 }
 
-status transaction::commit() {
-    auto rc = sharksfin::transaction_commit(tx_);
+status transaction::commit(bool async) {
+    auto rc = sharksfin::transaction_commit(tx_, async);
     if(rc == sharksfin::StatusCode::OK) {
         active_ = false;
         return status::ok;
@@ -74,6 +74,11 @@ class database* transaction::database() const noexcept {
 
 std::mutex& transaction::mutex() noexcept {
     return mutex_;
+}
+
+status transaction::wait_for_commit(std::size_t timeout_ns) {
+    auto rc = sharksfin::transaction_wait_commit(tx_, timeout_ns);
+    return resolve(rc);
 }
 
 }

@@ -30,6 +30,7 @@
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/core_affinity.h>
 #include "utils.h"
+#include "../common/temporary_folder.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
@@ -49,6 +50,7 @@ DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 DEFINE_bool(respect_client_core, false, "Try to run worker on the same core as that of client thread");  //NOLINT
 DEFINE_bool(readonly, true, "Specify readonly option when creating transaction");  //NOLINT
+DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
 
 namespace jogasaki::query_bench_cli {
 
@@ -238,6 +240,14 @@ static int run(
         << "queries:" << queries << " "
         << "clients:" << clients<< " "
         << "";
+
+    jogasaki::common_cli::temporary_folder dir{};
+    if (FLAGS_location == "TMP") {
+        dir.prepare();
+        cfg->db_location(dir.path());
+    } else {
+        cfg->db_location(std::string(FLAGS_location));
+    }
     auto db = jogasaki::api::create_database(cfg);
     db->start();
 
@@ -293,6 +303,7 @@ static int run(
     auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
     show_result(total_executions, duration_ms, cfg->thread_pool_size(), debug);
     db->stop();
+    dir.clean();
     return 0;
 }
 

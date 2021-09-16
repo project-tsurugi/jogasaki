@@ -27,6 +27,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -43,23 +44,23 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-class index_field_mapper_test : public test_root {
+class index_field_mapper_test :
+    public test_root,
+    public kvs_test_base {
 public:
-    static constexpr kvs::order undef = kvs::order::undefined;
-    static constexpr kvs::order asc = kvs::order::ascending;
-    static constexpr kvs::order desc = kvs::order::descending;
-
-    static constexpr kvs::coding_spec spec_asc = kvs::spec_key_ascending;
-    static constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
-    static constexpr kvs::coding_spec spec_val = kvs::spec_value;
+    void SetUp() override {
+        kvs_db_setup();
+    }
+    void TearDown() override {
+        kvs_db_teardown();
+    }
 };
 
 using k = meta::field_type_kind;
 
 TEST_F(index_field_mapper_test, simple) {
-    auto db = kvs::database::open();
-    auto t1 = db->create_storage("T1");
-    auto i2 = db->create_storage("I2");
+    auto t1 = db_->create_storage("T1");
+    auto i2 = db_->create_storage("I2");
     memory::page_pool pool{};
     lifo_paged_memory_resource resource{&pool};
     {
@@ -84,7 +85,7 @@ TEST_F(index_field_mapper_test, simple) {
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(0), primary_rec_meta->nullity_offset(0), primary_rec_meta->at(0), spec_asc, t_k);
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
 
-            auto tx = db->create_transaction();
+            auto tx = db_->create_transaction();
             ASSERT_EQ(status::ok, i2->put(*tx, {s.data(), s.size()}, ""));
             ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
             ASSERT_EQ(status::ok, tx->commit());
@@ -126,7 +127,7 @@ TEST_F(index_field_mapper_test, simple) {
                 },
             };
             {
-                auto tx = db->create_transaction();
+                auto tx = db_->create_transaction();
                 std::unique_ptr<iterator> it{};
                 ASSERT_EQ(status::ok, i2->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
@@ -142,12 +143,10 @@ TEST_F(index_field_mapper_test, simple) {
             }
         }
     }
-    ASSERT_TRUE(db->close());
 }
 
 TEST_F(index_field_mapper_test, without_secondary) {
-    auto db = kvs::database::open();
-    auto t1 = db->create_storage("T1");
+    auto t1 = db_->create_storage("T1");
     memory::page_pool pool{};
     lifo_paged_memory_resource resource{&pool};
     {
@@ -163,7 +162,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(0), primary_rec_meta->nullity_offset(0), primary_rec_meta->at(0), spec_asc, t_k);
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
 
-            auto tx = db->create_transaction();
+            auto tx = db_->create_transaction();
             ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
             ASSERT_EQ(status::ok, tx->commit());
         }
@@ -192,7 +191,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
                 }
             };
             {
-                auto tx = db->create_transaction();
+                auto tx = db_->create_transaction();
                 std::unique_ptr<iterator> it{};
                 ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
@@ -208,7 +207,6 @@ TEST_F(index_field_mapper_test, without_secondary) {
             }
         }
     }
-    ASSERT_TRUE(db->close());
 }
 
 }

@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/test_base.h>
+#include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::sequence {
 
@@ -31,7 +31,9 @@ using namespace takatori::util;
 using namespace yugawara;
 using namespace yugawara::storage;
 
-class sequence_manager_test : public ::testing::Test, public test_base {
+class sequence_manager_test :
+    public ::testing::Test,
+    public kvs_test_base {
 public:
     void SetUp() override {
         db_ = kvs::database::open();

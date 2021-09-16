@@ -27,7 +27,7 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/kvs_test_utils.h>
+#include <jogasaki/kvs_test_base.h>
 #include <jogasaki/executor/process/impl/ops/scan_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 
@@ -64,10 +64,17 @@ using yugawara::variable::criteria;
 
 class scan_test :
     public test_root,
-    public kvs_test_utils,
+    public kvs_test_base,
     public operator_test_utils {
 
 public:
+
+    void SetUp() override {
+        kvs_db_setup();
+    }
+    void TearDown() override {
+        kvs_db_teardown();
+    }
 };
 
 TEST_F(scan_test, simple) {
@@ -117,14 +124,13 @@ TEST_F(scan_test, simple) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
-    auto tx = db->create_transaction();
+    auto tx = db_->create_transaction();
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -135,7 +141,6 @@ TEST_F(scan_test, simple) {
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 TEST_F(scan_test, nullable_fields) {
@@ -184,14 +189,13 @@ TEST_F(scan_test, nullable_fields) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(0.0, 0), {true, true}));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(0.0, 0), {true, true}));
 
-    auto tx = db->create_transaction();
+    auto tx = db_->create_transaction();
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -202,7 +206,6 @@ TEST_F(scan_test, nullable_fields) {
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 TEST_F(scan_test, scan_info) {
@@ -289,13 +292,12 @@ TEST_F(scan_test, scan_info) {
     auto sinfo = builder.create_scan_info(target, *primary_idx);
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"}), create_record<kind::float8>(1.0));
-    put( *db, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/C"}), create_record<kind::float8>(2.0));
-    put( *db, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"}), create_record<kind::float8>(1.0));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/C"}), create_record<kind::float8>(2.0));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
 
-    auto tx = db->create_transaction();
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    auto tx = db_->create_transaction();
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -305,7 +307,6 @@ TEST_F(scan_test, scan_info) {
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 TEST_F(scan_test, secondary_index) {
@@ -381,18 +382,17 @@ TEST_F(scan_test, secondary_index) {
     auto sinfo = builder.create_scan_info(target, *secondary_idx);
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 20), {});
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 201));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(201, 21), {});
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(30), create_record<kind::float8, kind::int8>(3.0, 300));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 20), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 201));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(201, 21), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(30), create_record<kind::float8, kind::int8>(3.0, 300));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
 
-    auto tx = db->create_transaction();
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), get_storage(*db, secondary_idx->simple_name()), tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    auto tx = db_->create_transaction();
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -403,7 +403,6 @@ TEST_F(scan_test, secondary_index) {
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 TEST_F(scan_test, host_variables) {
@@ -513,13 +512,12 @@ TEST_F(scan_test, host_variables) {
     auto sinfo = builder.create_scan_info(target, *primary_idx);
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
-    auto db = kvs::database::open();
-    put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));
-    put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 20), create_record<kind::int8>(2));
-    put( *db, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 20), create_record<kind::int8>(2));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
 
-    auto tx = db->create_transaction();
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    auto tx = db_->create_transaction();
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -527,7 +525,6 @@ TEST_F(scan_test, host_variables) {
     auto exp = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>(100, 20, 2);
     EXPECT_EQ(exp, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 }

@@ -20,6 +20,7 @@ target_link_libraries(query-bench-cli
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads
+        PRIVATE Boost::filesystem
 )
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(query-bench-cli
@@ -35,5 +36,5 @@ endif()
 
 add_test(
         NAME query-bench-cli
-        COMMAND query-bench-cli --minimum
+        COMMAND query-bench-cli --minimum --location TMP
 )

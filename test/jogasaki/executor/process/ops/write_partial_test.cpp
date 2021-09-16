@@ -34,6 +34,7 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -55,15 +56,17 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class write_partial_test : public test_root {
+class write_partial_test :
+    public test_root,
+    public kvs_test_base {
 public:
-    static constexpr kvs::order undef = kvs::order::undefined;
-    static constexpr kvs::order asc = kvs::order::ascending;
-    static constexpr kvs::order desc = kvs::order::descending;
+    void SetUp() override {
+        kvs_db_setup();
+    }
+    void TearDown() override {
+        kvs_db_teardown();
+    }
 
-    static constexpr kvs::coding_spec spec_asc = kvs::spec_key_ascending;
-    static constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
-    static constexpr kvs::coding_spec spec_val = kvs::spec_value;
     basic_record create_key(
         std::int32_t arg0
     ) {
@@ -315,10 +318,9 @@ TEST_F(write_partial_test , simple_update) {
         {},
     };
 
-    auto db = kvs::database::open();
-    add_data(*db);
-    auto tx = db->create_transaction();
-    auto stg = db->get_storage("I1");
+    add_data(*db_);
+    auto tx = db_->create_transaction();
+    auto stg = db_->get_storage("I1");
     auto s = stg.get();
 
     lifo_paged_memory_resource resource{&global::page_pool()};

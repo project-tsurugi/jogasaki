@@ -36,12 +36,11 @@ class sequence_manager_test :
     public kvs_test_base {
 public:
     void SetUp() override {
-        db_ = kvs::database::open();
+        kvs_db_setup();
     }
     void TearDown() override {
-        (void)db_->close();
+        kvs_db_teardown();
     }
-    std::unique_ptr<kvs::database> db_{};
 };
 
 TEST_F(sequence_manager_test, simple) {

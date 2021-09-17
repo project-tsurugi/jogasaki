@@ -19,12 +19,32 @@
 #include <jogasaki/api/impl/database.h>
 #include <gtest/gtest.h>
 #include <jogasaki/kvs_test_utils.h>
+#include "../api/api_test_base.h"
 
 namespace jogasaki::utils {
 
 using namespace std::string_view_literals;
 
-class storage_dump_formatter_test : public ::testing::Test, public kvs_test_utils {};
+class storage_dump_formatter_test :
+    public ::testing::Test,
+    public testing::api_test_base,
+    public kvs_test_utils
+{
+    // change this flag to debug with explain
+    bool to_explain() override {
+        return false;
+    }
+
+    void SetUp() override {
+        auto cfg = std::make_shared<configuration>();
+        db_setup(cfg);
+        auto* impl = db_impl();
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
+};
 
 TEST_F(storage_dump_formatter_test, simple) {
     storage_dump_formatter f{};
@@ -51,9 +71,7 @@ TEST_F(storage_dump_formatter_test, simple) {
 }
 
 TEST_F(storage_dump_formatter_test, dump_db) {
-    auto db = api::create_database();
-    db->start();
-    auto& impl = api::impl::get_impl(*db);
+    auto& impl = *db_impl();
     auto& kvs_db = impl.kvs_db();
     auto stg = kvs_db->create_storage("TEST");
     put(
@@ -72,15 +90,14 @@ TEST_F(storage_dump_formatter_test, dump_db) {
     {
         storage_dump_formatter f{};
         auto out = f.connect(std::cout);
-        db->dump(out, "TEST", 100);
+        db_->dump(out, "TEST", 100);
         f.disconnect();
     }
     {
         storage_dump_formatter f{};
         auto out = std::cout << f;
-        db->dump(out, "TEST", 100);
+        db_->dump(out, "TEST", 100);
     }
-    db->stop();
 }
 
 }

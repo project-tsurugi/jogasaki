@@ -27,7 +27,7 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/kvs_test_utils.h>
+#include <jogasaki/kvs_test_base.h>
 #include <jogasaki/operator_test_utils.h>
 #include <jogasaki/executor/process/impl/ops/find_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -65,11 +65,16 @@ using yugawara::storage::index_feature_set;
 
 class find_test :
     public test_root,
-    public kvs_test_utils,
+    public kvs_test_base,
     public operator_test_utils {
 
 public:
-
+    void SetUp() override {
+        kvs_db_setup();
+    }
+    void TearDown() override {
+        kvs_db_teardown();
+    }
     template <class ...Args>
     void add_types(relation::find& target, Args&&... types) {
         std::vector<std::reference_wrapper<takatori::type::data>> v{types...};
@@ -135,19 +140,17 @@ TEST_F(find_test, simple) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
     using kind = meta::field_type_kind;
-    put(*db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    auto tx = db->create_transaction();
+    put(*db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    auto tx = db_->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(exp, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 TEST_F(find_test, secondary_index) {
@@ -203,19 +206,18 @@ TEST_F(find_test, secondary_index) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
     using kind = meta::field_type_kind;
 
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 20), {});
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 200));
-    put( *db, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 21), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 20), {});
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 200));
+    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 21), {});
 
-    auto tx = db->create_transaction();
+    auto tx = db_->create_transaction();
     mock::task_context task_ctx{{}, {}, {}, {}};
-    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db, primary_idx->simple_name()), get_storage(*db, secondary_idx->simple_name()), tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -227,7 +229,6 @@ TEST_F(find_test, secondary_index) {
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 TEST_F(find_test, host_variable) {
@@ -297,19 +298,17 @@ TEST_F(find_test, host_variable) {
         &output_variable_info
     };
 
-    auto db = kvs::database::open();
     using kind = meta::field_type_kind;
-    put(*db, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    auto tx = db->create_transaction();
+    put(*db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    auto tx = db_->create_transaction();
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(exp, result[0]);
     ASSERT_EQ(status::ok, tx->commit());
-    (void)db->close();
 }
 
 }

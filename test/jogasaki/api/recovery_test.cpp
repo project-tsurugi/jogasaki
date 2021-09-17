@@ -22,6 +22,7 @@
 #include <jogasaki/test_utils.h>
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include "api_test_base.h"
@@ -32,6 +33,9 @@ namespace jogasaki::testing {
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
+
+using namespace yugawara;
+using namespace yugawara::storage;
 
 /**
  * @brief test database recovery
@@ -68,6 +72,7 @@ TEST_F(recovery_test, simple) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    wait_epochs(10);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
@@ -79,6 +84,36 @@ TEST_F(recovery_test, simple) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(3, result.size());
+    }
+}
+
+TEST_F(recovery_test, DISABLED_system_table) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    std::size_t sequences{};
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM "s+std::string{system_sequences_name}, result);
+        sequences = result.size();
+        LOG(INFO) << "sequences: " << sequences;
+    }
+    jogasaki::executor::sequence::manager mgr{*db_impl()->kvs_db()};
+    mgr.register_sequence(100, "SEQ100");
+    mgr.register_sequence(200, "SEQ200");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM "s+std::string{system_sequences_name}, result);
+        ASSERT_EQ(sequences+2, result.size());
+    }
+
+    EXPECT_EQ(0, mgr.load_id_map());
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM "s+std::string{system_sequences_name}, result);
+        ASSERT_EQ(sequences+2, result.size());
     }
 }
 

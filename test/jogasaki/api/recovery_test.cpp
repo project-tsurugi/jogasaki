@@ -65,7 +65,7 @@ public:
     }
 };
 
-TEST_F(recovery_test, simple) {
+TEST_F(recovery_test, DISABLED_simple) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }

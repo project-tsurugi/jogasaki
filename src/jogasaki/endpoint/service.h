@@ -97,8 +97,6 @@ void error(endpoint::response& res, std::string msg) { //NOLINT(performance-unne
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
     reply(res, r);
-    res.code(response_code::application_error);
-    res.message("application error - check message in the response body");
     release_object(r, p);
     p.release_error();
     set_application_error(res);

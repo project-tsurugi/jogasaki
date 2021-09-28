@@ -35,7 +35,7 @@
 #include "request.pb.h"
 #include "response.pb.h"
 #include "common.pb.h"
-#include "common.pb.h"
+#include "status.pb.h"
 
 namespace tateyama::api::endpoint::impl {
 
@@ -88,11 +88,37 @@ void release_object(::response::Response& r, T&) {
     }
 }
 
+inline ::status::Status map_status(jogasaki::status s) {
+    switch(s) {
+        case jogasaki::status::ok: return ::status::Status::OK;
+        case jogasaki::status::not_found: return ::status::Status::NOT_FOUND;
+        case jogasaki::status::already_exists: return ::status::Status::ALREADY_EXISTS;
+        case jogasaki::status::user_rollback: return ::status::Status::USER_ROLLBACK;
+        case jogasaki::status::err_unknown: return ::status::Status::ERR_UNKNOWN;
+        case jogasaki::status::err_io_error: return ::status::Status::ERR_IO_ERROR;
+        case jogasaki::status::err_parse_error: return ::status::Status::ERR_PARSE_ERROR;
+        case jogasaki::status::err_translator_error: return ::status::Status::ERR_TRANSLATOR_ERROR;
+        case jogasaki::status::err_compiler_error: return ::status::Status::ERR_COMPILER_ERROR;
+        case jogasaki::status::err_invalid_argument: return ::status::Status::ERR_INVALID_ARGUMENT;
+        case jogasaki::status::err_invalid_state: return ::status::Status::ERR_INVALID_STATE;
+        case jogasaki::status::err_unsupported: return ::status::Status::ERR_UNSUPPORTED;
+        case jogasaki::status::err_user_error: return ::status::Status::ERR_USER_ERROR;
+        case jogasaki::status::err_aborted: return ::status::Status::ERR_ABORTED;
+        case jogasaki::status::err_aborted_retryable: return ::status::Status::ERR_ABORTED_RETRYABLE;
+        case jogasaki::status::err_not_found: return ::status::Status::ERR_NOT_FOUND;
+        case jogasaki::status::err_already_exists: return ::status::Status::ERR_ALREADY_EXISTS;
+        case jogasaki::status::err_inconsistent_index: return ::status::Status::ERR_INCONSISTENT_INDEX;
+        case jogasaki::status::err_time_out: return ::status::Status::ERR_TIME_OUT;
+    }
+    fail();
+}
+
 template<typename T>
-void error(endpoint::response& res, std::string msg) { //NOLINT(performance-unnecessary-value-param)
+void error(endpoint::response& res, jogasaki::status s, std::string msg) { //NOLINT(performance-unnecessary-value-param)
     ::response::Error e{};
     T p{};
     ::response::Response r{};
+    e.set_status(map_status(s));
     e.set_detail(msg);
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
@@ -185,14 +211,14 @@ private:
 
     jogasaki::api::database* db_{};
 
-    [[nodiscard]] const char* execute_statement(std::string_view sql, jogasaki::api::transaction_handle tx);
-    [[nodiscard]] const char* execute_prepared_statement(
+    [[nodiscard]] jogasaki::status execute_statement(std::string_view sql, jogasaki::api::transaction_handle tx);
+    [[nodiscard]] jogasaki::status execute_prepared_statement(
         std::size_t sid,
         jogasaki::api::parameter_set& params,
         jogasaki::api::transaction_handle tx
     );
     void process_output(output& out);
-    [[nodiscard]] const char* execute_query(
+    [[nodiscard]] jogasaki::status execute_query(
         tateyama::api::endpoint::response& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,

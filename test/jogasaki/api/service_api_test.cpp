@@ -42,6 +42,7 @@
 #include "response.pb.h"
 #include "common.pb.h"
 #include "schema.pb.h"
+#include "status.pb.h"
 
 namespace jogasaki::api {
 
@@ -281,6 +282,15 @@ TEST_F(service_api_test, error_on_commit) {
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::application_error, res->code_);
+
+    ::response::Response resp{};
+    deserialize(res->body_, resp);
+    ASSERT_TRUE(resp.has_result_only());
+    auto& ro = resp.result_only();
+    ASSERT_TRUE(ro.has_error());
+    auto& er = ro.error();
+    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, er.status());
+    ASSERT_FALSE(er.detail().empty());
 }
 
 TEST_F(service_api_test, rollback) {

@@ -267,6 +267,22 @@ TEST_F(service_api_test, begin_and_commit) {
     test_commit(handle);
 }
 
+TEST_F(service_api_test, error_on_commit) {
+    std::uint64_t handle{0};
+    ::request::Request r{};
+    r.mutable_commit()->mutable_transaction_handle()->set_handle(handle);
+    auto s = serialize(r);
+
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    // TODO the operation can be asynchronous. Wait until response becomes ready.
+    EXPECT_TRUE(res->completed());
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::application_error, res->code_);
+}
+
 TEST_F(service_api_test, rollback) {
     std::uint64_t handle{};
     test_begin(handle);

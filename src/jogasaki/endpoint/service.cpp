@@ -433,7 +433,7 @@ jogasaki::status service::execute_prepared_statement(
         return rc;
     }
     if(auto rc = tx->execute(*e); rc != jogasaki::status::ok) {
-        LOG(ERROR) << "error in transaction_->execute()";
+        VLOG(1) << "error in transaction_->execute()";
         return rc;
     }
     return jogasaki::status::ok;
@@ -470,7 +470,7 @@ jogasaki::status service::execute_query(
 
     auto& rs = out->result_set_;
     if(auto rc = tx->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-        LOG(ERROR) << "error in transaction_->execute()";
+        VLOG(1) << "error in transaction_->execute()";
         return rc;
 
     }

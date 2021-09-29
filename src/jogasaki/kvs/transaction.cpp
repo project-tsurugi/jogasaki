@@ -39,9 +39,10 @@ transaction::~transaction() noexcept {
 
 status transaction::commit(bool async) {
     auto rc = sharksfin::transaction_commit(tx_, async);
-    if(rc == sharksfin::StatusCode::OK) {
+    if(rc == sharksfin::StatusCode::OK ||
+        rc == sharksfin::StatusCode::ERR_ABORTED ||
+        rc == sharksfin::StatusCode::ERR_ABORTED_RETRYABLE) {
         active_ = false;
-        return status::ok;
     }
     return resolve(rc);
 }

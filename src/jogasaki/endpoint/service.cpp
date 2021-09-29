@@ -260,12 +260,12 @@ tateyama::status service::operator()(
                 break;
             }
             if(auto rc = tx->commit(); rc == jogasaki::status::ok) {
-                if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
-                    fail();
-                }
                 details::success<::response::ResultOnly>(*res);
             } else {
                 details::error<::response::ResultOnly>(*res, rc, "error in transaction_->commit()");
+            }
+            if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
+                fail();
             }
             res->complete();
             break;
@@ -286,12 +286,12 @@ tateyama::status service::operator()(
                 break;
             }
             if(auto rc = tx->abort(); rc == jogasaki::status::ok) {
-                if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
-                    fail();
-                }
                 details::success<::response::ResultOnly>(*res);
             } else {
                 details::error<::response::ResultOnly>(*res, rc, "error in transaction_->abort()");
+            }
+            if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
+                fail();
             }
             res->complete();
             break;

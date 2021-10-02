@@ -403,35 +403,41 @@ TEST_F(service_api_test, execute_statement_and_query) {
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_execute_query());
-        auto& eq = resp.execute_query();
-
-        ASSERT_FALSE(eq.has_error());
-        ASSERT_TRUE(eq.has_result_set_info());
-        auto& rsinfo = eq.result_set_info();
-        std::cout << "name : " << rsinfo.name() << std::endl;
-        ASSERT_TRUE(rsinfo.has_record_meta());
-        auto meta = rsinfo.record_meta();
-        ASSERT_EQ(2, meta.columns_size());
-        meta.columns(0).type();
-
-        EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
-        EXPECT_TRUE(meta.columns(0).nullable());
-        EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
-        EXPECT_TRUE(meta.columns(1).nullable());
         {
-            ASSERT_TRUE(res->channel_);
-            auto& ch = *res->channel_;
-            ASSERT_EQ(1, ch.buffers_.size());
-            ASSERT_TRUE(ch.buffers_[0]);
-            auto& buf = *ch.buffers_[0];
-            auto m = create_record_meta(meta);
-            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
-            ASSERT_EQ(1, v.size());
-            auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-            EXPECT_EQ(exp, v[0]);
+            ::response::Response resp{};
+            deserialize(res->body_head_, resp);
+            ASSERT_TRUE(resp.has_execute_query());
+            auto& eq = resp.execute_query();
+
+            std::cout << "name : " << eq.name() << std::endl;
+            ASSERT_TRUE(eq.has_record_meta());
+            auto meta = eq.record_meta();
+            ASSERT_EQ(2, meta.columns_size());
+            meta.columns(0).type();
+
+            EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
+            EXPECT_TRUE(meta.columns(0).nullable());
+            EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
+            EXPECT_TRUE(meta.columns(1).nullable());
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                ASSERT_EQ(1, ch.buffers_.size());
+                ASSERT_TRUE(ch.buffers_[0]);
+                auto& buf = *ch.buffers_[0];
+                auto m = create_record_meta(meta);
+                auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+                ASSERT_EQ(1, v.size());
+                auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
+                EXPECT_EQ(exp, v[0]);
+            }
+        }
+        {
+            ::response::Response resp{};
+            deserialize(res->body_, resp);
+            ASSERT_TRUE(resp.has_result_only());
+            auto& ro = resp.result_only();
+            ASSERT_TRUE(ro.has_success());
         }
     }
     test_commit(tx_handle);
@@ -509,35 +515,40 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_execute_query());
-        auto& eq = resp.execute_query();
-
-        ASSERT_FALSE(eq.has_error());
-        ASSERT_TRUE(eq.has_result_set_info());
-        auto& rsinfo = eq.result_set_info();
-        std::cout << "name : " << rsinfo.name() << std::endl;
-        ASSERT_TRUE(rsinfo.has_record_meta());
-        auto meta = rsinfo.record_meta();
-        ASSERT_EQ(2, meta.columns_size());
-
-        EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
-        EXPECT_TRUE(meta.columns(0).nullable());
-        EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
-        EXPECT_TRUE(meta.columns(1).nullable());
         {
-            ASSERT_TRUE(res->channel_);
-            auto& ch = *res->channel_;
-            ASSERT_EQ(1, ch.buffers_.size());
-            ASSERT_TRUE(ch.buffers_[0]);
-            auto& buf = *ch.buffers_[0];
-            ASSERT_LT(0, buf.size_);
-            auto m = create_record_meta(meta);
-            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
-            ASSERT_EQ(1, v.size());
-            auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-            EXPECT_EQ(exp, v[0]);
+            ::response::Response resp{};
+            deserialize(res->body_head_, resp);
+            ASSERT_TRUE(resp.has_execute_query());
+            auto& eq = resp.execute_query();
+            std::cout << "name : " << eq.name() << std::endl;
+            ASSERT_TRUE(eq.has_record_meta());
+            auto meta = eq.record_meta();
+            ASSERT_EQ(2, meta.columns_size());
+
+            EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
+            EXPECT_TRUE(meta.columns(0).nullable());
+            EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
+            EXPECT_TRUE(meta.columns(1).nullable());
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                ASSERT_EQ(1, ch.buffers_.size());
+                ASSERT_TRUE(ch.buffers_[0]);
+                auto& buf = *ch.buffers_[0];
+                ASSERT_LT(0, buf.size_);
+                auto m = create_record_meta(meta);
+                auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+                ASSERT_EQ(1, v.size());
+                auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
+                EXPECT_EQ(exp, v[0]);
+            }
+        }
+        {
+            ::response::Response resp{};
+            deserialize(res->body_, resp);
+            ASSERT_TRUE(resp.has_result_only());
+            auto& ro = resp.result_only();
+            ASSERT_TRUE(ro.has_success());
         }
     }
     test_commit(tx_handle);
@@ -672,44 +683,50 @@ TEST_F(service_api_test, data_types) {
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_execute_query());
-        auto& eq = resp.execute_query();
-
-        ASSERT_FALSE(eq.has_error());
-        ASSERT_TRUE(eq.has_result_set_info());
-        auto& rsinfo = eq.result_set_info();
-        std::cout << "name : " << rsinfo.name() << std::endl;
-        ASSERT_TRUE(rsinfo.has_record_meta());
-        auto meta = rsinfo.record_meta();
-        ASSERT_EQ(5, meta.columns_size());
-
-        EXPECT_EQ(::common::DataType::INT4, meta.columns(0).type());
-        EXPECT_TRUE(meta.columns(0).nullable()); //TODO
-        EXPECT_EQ(::common::DataType::INT8, meta.columns(1).type());
-        EXPECT_TRUE(meta.columns(1).nullable());
-        EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(2).type());
-        EXPECT_TRUE(meta.columns(2).nullable());
-        EXPECT_EQ(::common::DataType::FLOAT4, meta.columns(3).type());
-        EXPECT_TRUE(meta.columns(3).nullable());
-        EXPECT_EQ(::common::DataType::CHARACTER, meta.columns(4).type());
-        EXPECT_TRUE(meta.columns(4).nullable());
         {
-            ASSERT_TRUE(res->channel_);
-            auto& ch = *res->channel_;
-            ASSERT_EQ(1, ch.buffers_.size());
-            ASSERT_TRUE(ch.buffers_[0]);
-            auto& buf = *ch.buffers_[0];
-            ASSERT_LT(0, buf.size_);
-            std::cout << "buf size : " << buf.size_ << std::endl;
-            auto m = create_record_meta(meta);
-            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
-            ASSERT_EQ(2, v.size());
-            auto exp1 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(1, 1, 1.0, 1.0, accessor::text{"1"sv});
-            auto exp2 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(2, 2, 2.0, 2.0, accessor::text{"2"sv});
-            EXPECT_EQ(exp1, v[0]);
-            EXPECT_EQ(exp2, v[1]);
+            ::response::Response resp{};
+            deserialize(res->body_head_, resp);
+            ASSERT_TRUE(resp.has_execute_query());
+            auto& eq = resp.execute_query();
+
+            std::cout << "name : " << eq.name() << std::endl;
+            ASSERT_TRUE(eq.has_record_meta());
+            auto meta = eq.record_meta();
+            ASSERT_EQ(5, meta.columns_size());
+
+            EXPECT_EQ(::common::DataType::INT4, meta.columns(0).type());
+            EXPECT_TRUE(meta.columns(0).nullable()); //TODO
+            EXPECT_EQ(::common::DataType::INT8, meta.columns(1).type());
+            EXPECT_TRUE(meta.columns(1).nullable());
+            EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(2).type());
+            EXPECT_TRUE(meta.columns(2).nullable());
+            EXPECT_EQ(::common::DataType::FLOAT4, meta.columns(3).type());
+            EXPECT_TRUE(meta.columns(3).nullable());
+            EXPECT_EQ(::common::DataType::CHARACTER, meta.columns(4).type());
+            EXPECT_TRUE(meta.columns(4).nullable());
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                ASSERT_EQ(1, ch.buffers_.size());
+                ASSERT_TRUE(ch.buffers_[0]);
+                auto& buf = *ch.buffers_[0];
+                ASSERT_LT(0, buf.size_);
+                std::cout << "buf size : " << buf.size_ << std::endl;
+                auto m = create_record_meta(meta);
+                auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+                ASSERT_EQ(2, v.size());
+                auto exp1 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(1, 1, 1.0, 1.0, accessor::text{"1"sv});
+                auto exp2 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(2, 2, 2.0, 2.0, accessor::text{"2"sv});
+                EXPECT_EQ(exp1, v[0]);
+                EXPECT_EQ(exp2, v[1]);
+            }
+        }
+        {
+            ::response::Response resp{};
+            deserialize(res->body_, resp);
+            ASSERT_TRUE(resp.has_result_only());
+            auto& ro = resp.result_only();
+            ASSERT_TRUE(ro.has_success());
         }
     }
     test_commit(tx_handle);

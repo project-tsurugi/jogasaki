@@ -54,8 +54,7 @@ namespace details {
 
 class query_info;
 
-void set_application_error(endpoint::response& res);
-void reply(response& res, ::response::Response& r);
+void reply(response& res, ::response::Response& r, bool body_head = false);
 void set_metadata(output const& out, ::schema::RecordMeta& meta);
 
 template<typename T>
@@ -122,10 +121,10 @@ void error(endpoint::response& res, jogasaki::status s, std::string msg) { //NOL
     e.set_detail(msg);
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
+    res.code(response_code::application_error);
     reply(res, r);
     release_object(r, p);
     p.release_error();
-    set_application_error(res);
 }
 
 template<typename T, typename... Args>
@@ -139,8 +138,8 @@ inline void success<::response::ResultOnly>(endpoint::response& res) {  //NOLINT
 
     ro.set_allocated_success(&s);
     r.set_allocated_result_only(&ro);
-    reply(res, r);
     res.code(response_code::success);
+    reply(res, r);
     r.release_result_only();
     ro.release_success();
 }
@@ -154,8 +153,8 @@ inline void success<::response::Begin>(endpoint::response& res, jogasaki::api::t
     t.set_handle(static_cast<std::size_t>(tx));
     b.set_allocated_transaction_handle(&t);
     r.set_allocated_begin(&b);
-    reply(res, r);
     res.code(response_code::success);
+    reply(res, r);
     r.release_begin();
     b.release_transaction_handle();
 }
@@ -169,8 +168,8 @@ inline void success<::response::Prepare>(endpoint::response& res, jogasaki::api:
     ps.set_handle(static_cast<std::size_t>(statement));
     p.set_allocated_prepared_statement_handle(&ps);
     r.set_allocated_prepare(&p);
-    reply(res, r);
     res.code(response_code::success);
+    reply(res, r);
     r.release_prepare();
     p.release_prepared_statement_handle();
 }
@@ -178,20 +177,16 @@ inline void success<::response::Prepare>(endpoint::response& res, jogasaki::api:
 template<>
 inline void success<::response::ExecuteQuery>(endpoint::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
     ::schema::RecordMeta meta{};
-    ::response::ResultSetInfo i{};
     ::response::ExecuteQuery e{};
     ::response::Response r{};
 
     set_metadata(*out, meta);
-    i.set_name(out->name_);
-    i.set_allocated_record_meta(&meta);
-    e.set_allocated_result_set_info(&i);
+    e.set_name(out->name_);
+    e.set_allocated_record_meta(&meta);
     r.set_allocated_execute_query(&e);
-    details::reply(res, r);
-    res.code(response_code::started);
+    details::reply(res, r, true);
     r.release_execute_query();
-    e.release_result_set_info();
-    i.release_record_meta();
+    e.release_record_meta();
 }
 
 }

@@ -88,8 +88,7 @@ tateyama::status service::operator()(
     if (!proto_req.ParseFromString(std::string(req->payload()))) {
         LOG(ERROR) << "parse error" << std::endl;
         res->code(response_code::io_error);
-        res->message("parse error with request body");
-        res->complete();
+        res->body("parse error with request body");
         return tateyama::status::ok;
     }
     VLOG(1) << "s:" << proto_req.session_handle().handle() << std::endl;
@@ -103,7 +102,6 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::Begin>(*res, st, "error in db_->create_transaction()");
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kPrepare: {
@@ -125,7 +123,6 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::Prepare>(*res, rc, "error in db_->prepare()");
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kExecuteStatement: {
@@ -138,7 +135,6 @@ tateyama::status service::operator()(
             VLOG(1) << tx << " " << sql << std::endl;
             if(! tx) {
                 details::error<::response::ResultOnly>(*res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
-                res->complete();
                 break;
             }
             if (auto rc = execute_statement(sql, tx); rc == jogasaki::status::ok) {
@@ -146,7 +142,6 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, rc, "error execute_statement()");
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kExecuteQuery: {
@@ -158,25 +153,23 @@ tateyama::status service::operator()(
             jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
             VLOG(1) << tx << " " << sql << std::endl;
             if(! tx) {
-                details::error<::response::ExecuteQuery>(
+                details::error<::response::ResultOnly>(
                     *res,
                     jogasaki::status::err_invalid_argument,
                     "invalid transaction handle"
                 );
-                res->complete();
                 break;
             }
 
             std::unique_ptr<output> out{};
             if (auto rc = execute_query(*res, details::query_info{sql}, tx, out); rc == jogasaki::status::ok) {
-                details::success<::response::ExecuteQuery>(*res, out.get()); // sending response_code = started
-                res->complete();
+                details::success<::response::ExecuteQuery>(*res, out.get());
                 process_output(*out);
                 res->code(response_code::success);
+                details::success<::response::ResultOnly>(*res);
                 release_writers(*res, *out);
             } else {
-                details::error<::response::ExecuteQuery>(*res, rc, "error execute_query()");
-                res->complete();
+                details::error<::response::ResultOnly>(*res, rc, "error execute_query()");
             }
             break;
         }
@@ -195,7 +188,6 @@ tateyama::status service::operator()(
                     jogasaki::status::err_invalid_argument,
                     "invalid transaction handle"
                 );
-                res->complete();
                 break;
             }
 
@@ -206,7 +198,6 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, rc, "error execute_prepared_statement()");
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedQuery: {
@@ -219,12 +210,11 @@ tateyama::status service::operator()(
             jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
             VLOG(1) << tx << " sid:" << sid << std::endl;
             if(! tx) {
-                details::error<::response::ExecuteQuery>(
+                details::error<::response::ResultOnly>(
                     *res,
                     jogasaki::status::err_invalid_argument,
                     "invalid transaction handle"
                 );
-                res->complete();
                 break;
             }
             auto params = jogasaki::api::create_parameter_set();
@@ -233,14 +223,13 @@ tateyama::status service::operator()(
             std::unique_ptr<output> out{};
             if(auto rc = execute_query(*res, details::query_info{sid, params.get()}, tx, out);
                 rc == jogasaki::status::ok) {
-                details::success<::response::ExecuteQuery>(*res, out.get()); // sending response_code = started
-                res->complete();
+                details::success<::response::ExecuteQuery>(*res, out.get());
                 process_output(*out);
                 res->code(response_code::success);
+                details::success<::response::ResultOnly>(*res);
                 release_writers(*res, *out);
             } else {
-                details::error<::response::ExecuteQuery>(*res, rc, "error execute_query()");
-                res->complete();
+                details::error<::response::ResultOnly>(*res, rc, "error execute_query()");
             }
             break;
         }
@@ -256,7 +245,6 @@ tateyama::status service::operator()(
                     jogasaki::status::err_invalid_argument,
                     "invalid transaction handle"
                 );
-                res->complete();
                 break;
             }
             if(auto rc = tx->commit(); rc == jogasaki::status::ok) {
@@ -267,7 +255,6 @@ tateyama::status service::operator()(
             if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
                 fail();
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kRollback: {
@@ -282,7 +269,6 @@ tateyama::status service::operator()(
                     jogasaki::status::err_invalid_argument,
                     "invalid transaction handle"
                 );
-                res->complete();
                 break;
             }
             if(auto rc = tx->abort(); rc == jogasaki::status::ok) {
@@ -293,7 +279,6 @@ tateyama::status service::operator()(
             if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
                 fail();
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kDisposePreparedStatement: {
@@ -307,21 +292,18 @@ tateyama::status service::operator()(
             } else {
                 details::error<::response::ResultOnly>(*res, st, "error destroying statement");
             }
-            res->complete();
             break;
         }
         case ::request::Request::RequestCase::kDisconnect: {
             VLOG(1) << "disconnect" << std::endl;
             details::success<::response::ResultOnly>(*res);
-            res->complete();
             res->close_session(); //TODO re-visit when the notion of session is finalized
             break;
         }
         default:
             LOG(ERROR) << "invalid error case" << std::endl;
             res->code(response_code::io_error);
-            res->message("invalid request code");
-            res->complete();
+            res->body("invalid request code");
             break;
     }
 
@@ -486,15 +468,14 @@ std::size_t service::new_resultset_id() const noexcept {
     return ++resultset_id;
 }
 
-void details::set_application_error(response& res) {
-    res.code(response_code::application_error);
-    res.message("error on application domain - check response body");
-}
-
-void details::reply(response& res, ::response::Response& r) {
+void details::reply(response& res, ::response::Response& r, bool body_head) {
     std::stringstream ss{};
     if (!r.SerializeToOstream(&ss)) {
         std::abort();
+    }
+    if (body_head) {
+        res.body_head(ss.str());
+        return;
     }
     res.body(ss.str());
 }

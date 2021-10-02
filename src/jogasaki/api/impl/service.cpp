@@ -29,8 +29,8 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
 
-#include <tateyama/api/endpoint/request.h>
-#include <tateyama/api/endpoint/response.h>
+#include <tateyama/api/server/request.h>
+#include <tateyama/api/server/response.h>
 #include <jogasaki/kvs/database.h>
 
 #include "schema.pb.h"
@@ -38,9 +38,11 @@
 #include "response.pb.h"
 #include "common.pb.h"
 
-namespace tateyama::api::endpoint::impl {
+namespace jogasaki::api::impl {
 
 using takatori::util::fail;
+using namespace tateyama::api::server;
+using respose_code = tateyama::api::endpoint::response_code;
 
 namespace details {
 
@@ -81,8 +83,8 @@ private:
 
 //TODO make this function asynchronous
 tateyama::status service::operator()(
-    std::shared_ptr<tateyama::api::endpoint::request const> req,
-    std::shared_ptr<tateyama::api::endpoint::response> res
+    std::shared_ptr<tateyama::api::server::request const> req,
+    std::shared_ptr<tateyama::api::server::response> res
 ) {
     ::request::Request proto_req{};
     if (!proto_req.ParseFromString(std::string(req->payload()))) {
@@ -307,7 +309,7 @@ tateyama::status service::operator()(
             break;
     }
 
-    return status::ok;
+    return tateyama::status::ok;
 }
 
 jogasaki::status service::execute_statement(std::string_view sql, jogasaki::api::transaction_handle tx) {
@@ -324,7 +326,7 @@ jogasaki::status service::execute_statement(std::string_view sql, jogasaki::api:
 }
 
 void service::release_writers(
-    tateyama::api::endpoint::response& res,
+    tateyama::api::server::response& res,
     output& out
 ) {
     if (out.data_channel_ && out.writer_) {
@@ -422,7 +424,7 @@ jogasaki::status service::execute_prepared_statement(
 }
 
 jogasaki::status service::execute_query(
-    tateyama::api::endpoint::response& res,
+    tateyama::api::server::response& res,
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
     std::unique_ptr<output>& out
@@ -468,7 +470,7 @@ std::size_t service::new_resultset_id() const noexcept {
     return ++resultset_id;
 }
 
-void details::reply(response& res, ::response::Response& r, bool body_head) {
+void details::reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head) {
     std::stringstream ss{};
     if (!r.SerializeToOstream(&ss)) {
         std::abort();
@@ -518,14 +520,6 @@ void details::set_metadata(output const& out, schema::RecordMeta& meta) {
                 break;
         }
     }
-}
-
-}
-
-namespace tateyama::api::endpoint {
-
-std::unique_ptr<service> create_service(jogasaki::api::database& db) {
-    return std::make_unique<impl::service>(db);
 }
 
 }

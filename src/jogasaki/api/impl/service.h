@@ -27,34 +27,37 @@
 #include <jogasaki/api/statement_handle.h>
 
 #include <tateyama/status.h>
-#include <tateyama/api/endpoint/service.h>
-#include <tateyama/api/endpoint/response.h>
-#include <tateyama/api/endpoint/writer.h>
-#include <tateyama/api/endpoint/data_channel.h>
+#include <tateyama/api/server/service.h>
+#include <tateyama/api/server/response.h>
+#include <tateyama/api/server/writer.h>
+#include <tateyama/api/server/data_channel.h>
+#include <tateyama/api/endpoint/response_code.h>
 
 #include "request.pb.h"
 #include "response.pb.h"
 #include "common.pb.h"
 #include "status.pb.h"
 
-namespace tateyama::api::endpoint::impl {
+namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
+
+using response_code = tateyama::api::endpoint::response_code;
 
 struct output {
     std::unique_ptr<jogasaki::api::result_set> result_set_{};  //NOLINT
     std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};  //NOLINT
     std::string name_;  //NOLINT
-    tateyama::api::endpoint::writer* writer_{};  //NOLINT
-    tateyama::api::endpoint::data_channel* data_channel_{};  //NOLINT
+    std::shared_ptr<tateyama::api::server::writer> writer_{};  //NOLINT
+    std::shared_ptr<tateyama::api::server::data_channel> data_channel_{};  //NOLINT
 };
 
 namespace details {
 
 class query_info;
 
-void reply(response& res, ::response::Response& r, bool body_head = false);
+void reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head = false);
 void set_metadata(output const& out, ::schema::RecordMeta& meta);
 
 template<typename T>
@@ -113,7 +116,7 @@ inline ::status::Status map_status(jogasaki::status s) {
 }
 
 template<typename T>
-void error(endpoint::response& res, jogasaki::status s, std::string msg) { //NOLINT(performance-unnecessary-value-param)
+void error(tateyama::api::server::response& res, jogasaki::status s, std::string msg) { //NOLINT(performance-unnecessary-value-param)
     ::response::Error e{};
     T p{};
     ::response::Response r{};
@@ -128,10 +131,10 @@ void error(endpoint::response& res, jogasaki::status s, std::string msg) { //NOL
 }
 
 template<typename T, typename... Args>
-void success(endpoint::response& res, Args...) = delete; //NOLINT(performance-unnecessary-value-param)
+void success(tateyama::api::server::response& res, Args...) = delete; //NOLINT(performance-unnecessary-value-param)
 
 template<>
-inline void success<::response::ResultOnly>(endpoint::response& res) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<::response::ResultOnly>(tateyama::api::server::response& res) {  //NOLINT(performance-unnecessary-value-param)
     ::response::Success s{};
     ::response::ResultOnly ro{};
     ::response::Response r{};
@@ -145,7 +148,7 @@ inline void success<::response::ResultOnly>(endpoint::response& res) {  //NOLINT
 }
 
 template<>
-inline void success<::response::Begin>(endpoint::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<::response::Begin>(tateyama::api::server::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
     ::common::Transaction t{};
     ::response::Begin b{};
     ::response::Response r{};
@@ -160,7 +163,7 @@ inline void success<::response::Begin>(endpoint::response& res, jogasaki::api::t
 }
 
 template<>
-inline void success<::response::Prepare>(endpoint::response& res, jogasaki::api::statement_handle statement) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<::response::Prepare>(tateyama::api::server::response& res, jogasaki::api::statement_handle statement) {  //NOLINT(performance-unnecessary-value-param)
     ::common::PreparedStatement ps{};
     ::response::Prepare p{};
     ::response::Response r{};
@@ -175,7 +178,7 @@ inline void success<::response::Prepare>(endpoint::response& res, jogasaki::api:
 }
 
 template<>
-inline void success<::response::ExecuteQuery>(endpoint::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<::response::ExecuteQuery>(tateyama::api::server::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
     ::schema::RecordMeta meta{};
     ::response::ExecuteQuery e{};
     ::response::Response r{};
@@ -191,15 +194,15 @@ inline void success<::response::ExecuteQuery>(endpoint::response& res, output* o
 
 }
 
-class service : public api::endpoint::service {
+class service : public tateyama::api::server::service {
 public:
     service() = default;
 
     explicit service(jogasaki::api::database& db);
 
     tateyama::status operator()(
-        std::shared_ptr<tateyama::api::endpoint::request const> req,
-        std::shared_ptr<tateyama::api::endpoint::response> res
+        std::shared_ptr<tateyama::api::server::request const> req,
+        std::shared_ptr<tateyama::api::server::response> res
     ) override;
 
 private:
@@ -214,18 +217,18 @@ private:
     );
     void process_output(output& out);
     [[nodiscard]] jogasaki::status execute_query(
-        tateyama::api::endpoint::response& res,
+        tateyama::api::server::response& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
         std::unique_ptr<output>& out
     );
     void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
-    void release_writers(tateyama::api::endpoint::response& res, output& out);
+    void release_writers(tateyama::api::server::response& res, output& out);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
 
-inline api::endpoint::impl::service& get_impl(api::endpoint::service& svc) {
-    return unsafe_downcast<api::endpoint::impl::service>(svc);
+inline jogasaki::api::impl::service& get_impl(tateyama::api::server::service& svc) {
+    return unsafe_downcast<jogasaki::api::impl::service>(svc);
 }
 
 }

@@ -115,8 +115,7 @@ status database::stop() {
 database::database(
     std::shared_ptr<class configuration> cfg
 ) :
-    cfg_(std::move(cfg)),
-    endpoint_service_(*this)
+    cfg_(std::move(cfg))
 {
     executor::add_builtin_tables(*tables_);
     executor::add_test_tables(*tables_);  //TODO remove on production environment

@@ -36,7 +36,6 @@
 #include <jogasaki/executor/sequence/manager.h>
 
 #include <tateyama/status.h>
-#include <jogasaki/endpoint/service.h> //TODO
 
 namespace jogasaki::scheduler {
 class task_scheduler;
@@ -131,13 +130,6 @@ public:
 
     [[nodiscard]] executor::sequence::manager* sequence_manager() const noexcept;
 
-    // temporary
-    tateyama::status operator()(
-        std::shared_ptr<tateyama::api::endpoint::request const> req,
-        std::shared_ptr<tateyama::api::endpoint::response> res
-    ) override {
-        return endpoint_service_(req, res);
-    }
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -200,8 +192,6 @@ private:
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<api::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<api::transaction>> transactions_{};
-
-    tateyama::api::endpoint::impl::service endpoint_service_{}; //TODO
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

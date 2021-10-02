@@ -428,12 +428,6 @@ public:
         return do_drop_sequence(name, schema);
     }
 
-    // temporary
-    virtual tateyama::status operator()(
-        std::shared_ptr<tateyama::api::endpoint::request const> req,
-        std::shared_ptr<tateyama::api::endpoint::response> res
-    ) = 0;
-
 protected:
     virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
 

@@ -103,6 +103,11 @@ target_include_directories(api
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/jogasaki>
 )
 
+target_link_libraries(api
+        INTERFACE takatori
+        INTERFACE yugawara
+)
+
 if (NOT INSTALL_API_ONLY)
 add_subdirectory(protos)
 add_subdirectory(src)

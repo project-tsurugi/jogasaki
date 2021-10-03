@@ -36,6 +36,7 @@
 
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
 #include <tateyama/api/endpoint/service.h>
+#include <tateyama/utils/loader.h>
 #include "api_test_base.h"
 
 #include "request.pb.h"
@@ -157,7 +158,7 @@ public:
         auto* impl = db_impl();
         add_benchmark_tables(*impl->tables());
         register_kvs_storage(*impl->kvs_db(), *impl->tables());
-        service_ = tateyama::api::endpoint::create_service(*db_);
+        service_ = tateyama::api::endpoint::create_service(tateyama::bootstrap::create_application(db_.get()));
     }
 
     void TearDown() override {

@@ -25,6 +25,3 @@
 [submodule "third_party/tsubakuro"]
 	path = third_party/tsubakuro
 	url = git@github.com:project-tsurugi/tsubakuro.git
-[submodule "third_party/tateyama"]
-	path = third_party/tateyama
-	url = git@github.com:project-tsurugi/tateyama.git

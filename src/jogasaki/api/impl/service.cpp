@@ -165,7 +165,7 @@ tateyama::status service::operator()(
 
             std::unique_ptr<output> out{};
             if (auto rc = execute_query(*res, details::query_info{sql}, tx, out); rc == jogasaki::status::ok) {
-                details::success<::response::ExecuteQuery>(*res, out.get());
+                details::send_body_head(*res, out.get());
                 process_output(*out);
                 res->code(response_code::success);
                 details::success<::response::ResultOnly>(*res);
@@ -225,7 +225,7 @@ tateyama::status service::operator()(
             std::unique_ptr<output> out{};
             if(auto rc = execute_query(*res, details::query_info{sid, params.get()}, tx, out);
                 rc == jogasaki::status::ok) {
-                details::success<::response::ExecuteQuery>(*res, out.get());
+                details::send_body_head(*res, out.get());
                 process_output(*out);
                 res->code(response_code::success);
                 details::success<::response::ResultOnly>(*res);

@@ -177,8 +177,7 @@ inline void success<::response::Prepare>(tateyama::api::server::response& res, j
     p.release_prepared_statement_handle();
 }
 
-template<>
-inline void success<::response::ExecuteQuery>(tateyama::api::server::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
+inline void send_body_head(tateyama::api::server::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
     ::schema::RecordMeta meta{};
     ::response::ExecuteQuery e{};
     ::response::Response r{};

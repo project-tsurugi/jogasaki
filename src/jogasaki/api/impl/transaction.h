@@ -55,7 +55,7 @@ public:
         std::unique_ptr<api::result_set>& result
     ) override;
 
-    void execute_async(api::executable_statement& statement, callback on_completion) override;;
+    bool execute_async(api::executable_statement& statement, callback on_completion) override;;
 
 private:
     impl::database* database_{};

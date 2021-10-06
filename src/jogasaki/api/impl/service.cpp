@@ -145,11 +145,7 @@ tateyama::status service::operator()(
                 details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
                 break;
             }
-            if (auto rc = execute_statement(*e, tx); rc == jogasaki::status::ok) {
-                details::success<::response::ResultOnly>(*res);
-            } else {
-                details::error<::response::ResultOnly>(*res, rc, "error execute_statement()");
-            }
+            execute_statement(res, *e, tx);
             break;
         }
         case ::request::Request::RequestCase::kExecuteQuery: {
@@ -208,11 +204,7 @@ tateyama::status service::operator()(
                 details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
                 break;
             }
-            if (auto rc = execute_statement(*e, tx); rc == jogasaki::status::ok) {
-                details::success<::response::ResultOnly>(*res);
-            } else {
-                details::error<::response::ResultOnly>(*res, rc, "error execute_statement()");
-            }
+            execute_statement(res, *e, tx);
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedQuery: {
@@ -325,15 +317,29 @@ tateyama::status service::operator()(
     return tateyama::status::ok;
 }
 
-jogasaki::status service::execute_statement(
+void service::execute_statement(
+    std::shared_ptr<tateyama::api::server::response>& res,
     jogasaki::api::executable_statement& stmt,
     jogasaki::api::transaction_handle tx
 ) {
-    if(auto rc = tx->execute(stmt); rc != jogasaki::status::ok) {
-        VLOG(1) << "error in transaction_->execute()";
-        return rc;
+    auto c = std::make_shared<callback_control>(res);
+    auto* cbp = c.get();
+    callbacks_.emplace(cbp, std::move(c));
+    if(auto success = tx->execute_async(
+            stmt,
+            [cbp, this](status s, std::string_view message){
+                if (s == jogasaki::status::ok) {
+                    details::success<::response::ResultOnly>(*cbp->response_);
+                } else {
+                    details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                }
+                if(! callbacks_.erase(cbp)) {
+                    fail();
+                }
+            }
+        );! success) {
+        VLOG(1) << "error in transaction_->execute_async()";
     }
-    return jogasaki::status::ok;
 }
 
 void service::release_writers(

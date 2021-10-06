@@ -101,10 +101,11 @@ public:
      * @brief asynchronously execute the statement in the transaction. No result records are expected
      * from the statement (e.g. insert/update/delete).
      * @param statement the statement to be executed
-     * @return status::ok when successful
-     * @return error code otherwise
+     * @return true when successful
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    virtual void execute_async(executable_statement& statement, callback on_completion) = 0;
+    virtual bool execute_async(executable_statement& statement, callback on_completion) = 0;
 };
 
 }

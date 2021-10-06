@@ -141,7 +141,7 @@ status transaction::execute(
     return request_ctx->status_code();
 }
 
-void transaction::execute_async(api::executable_statement& statement, transaction::callback on_completion) {
+bool transaction::execute_async(api::executable_statement& statement, transaction::callback on_completion) {
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
     auto& c = database_->configuration();
@@ -181,11 +181,12 @@ void transaction::execute_async(api::executable_statement& statement, transactio
 //        result = std::make_unique<impl::result_set>(
 //            std::move(store)
 //        );
-        return ;
+        return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
     scheduler_.schedule(*stmt, *request_context_);
     on_completion(request_context_->status_code(), request_context_->status_message());
+    return true;
 }
 
 }

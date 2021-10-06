@@ -19,6 +19,8 @@
 #include <atomic>
 #include <memory>
 
+#include <tbb/concurrent_hash_map.h>
+
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
@@ -206,9 +208,18 @@ public:
 
 private:
 
-    jogasaki::api::database* db_{};
+    struct callback_control {
+        explicit callback_control(std::shared_ptr<tateyama::api::server::response> response) :
+            response_(std::move(response))
+        {};
+        std::shared_ptr<tateyama::api::server::response> response_{};
+    };
 
-    [[nodiscard]] jogasaki::status execute_statement(
+    jogasaki::api::database* db_{};
+    tbb::concurrent_hash_map<void*, std::shared_ptr<callback_control>> callbacks_{};
+
+    void execute_statement(
+        std::shared_ptr<tateyama::api::server::response>& res,
         jogasaki::api::executable_statement& stmt,
         jogasaki::api::transaction_handle tx
     );

@@ -167,6 +167,19 @@ public:
     void test_begin(std::uint64_t& handle);
     void test_commit(std::uint64_t& handle);
 
+    bool wait_completion(tateyama::api::endpoint::mock::test_response& res, std::size_t timeout_ms = 2000) {
+        auto begin = std::chrono::steady_clock::now();
+        while(! res.completed()) {
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(10ms);
+            auto cur = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(cur - begin).count() > timeout_ms) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
         std::vector<std::pair<std::string, common::DataType>> place_holders{args...};
@@ -187,7 +200,6 @@ public:
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -234,7 +246,6 @@ void service_api_test::test_begin(std::uint64_t& handle) {
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
     auto st = (*service_)(req, res);
-    // TODO the operation can be asynchronous. Wait until response becomes ready.
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::success, res->code_);
@@ -257,7 +268,6 @@ void service_api_test::test_commit(std::uint64_t& handle) {
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
     auto st = (*service_)(req, res);
-    // TODO the operation can be asynchronous. Wait until response becomes ready.
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::success, res->code_);
@@ -279,7 +289,6 @@ TEST_F(service_api_test, error_on_commit) {
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
     auto st = (*service_)(req, res);
-    // TODO the operation can be asynchronous. Wait until response becomes ready.
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::application_error, res->code_);
@@ -306,7 +315,6 @@ TEST_F(service_api_test, rollback) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -322,7 +330,6 @@ void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
     auto st = (*service_)(req, res);
-    // TODO the operation can be asynchronous. Wait until response becomes ready.
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::success, res->code_);
@@ -346,7 +353,6 @@ TEST_F(service_api_test, disconnect) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -374,7 +380,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -399,7 +405,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -473,7 +479,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -511,7 +517,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -636,8 +642,7 @@ TEST_F(service_api_test, data_types) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
-        EXPECT_TRUE(res->completed());
+        EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
@@ -679,7 +684,7 @@ TEST_F(service_api_test, data_types) {
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
         auto st = (*service_)(req, res);
-        // TODO the operation can be asynchronous. Wait until response becomes ready.
+        EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);

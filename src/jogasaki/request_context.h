@@ -107,15 +107,31 @@ public:
      * @brief setter for the result status
      * @details this overwrites the status code with more severe status code (e.g. warning is overwritten by an error)
      * If error code is already set to this object, this is no-op.
+     * @return true if the give status is set
+     * @return false if the error status is already set and nothing is changed
      * @note this function is thread-safe and multiple threads can call this function concurrently
      */
-    void status_code(status val) noexcept;
+    bool status_code(status val) noexcept;
 
     /**
      * @brief accessor for the result status
      * @note this function is not thread-safe and should not be called concurrently with status_code(status val) above.
      */
     [[nodiscard]] status status_code() const noexcept;
+
+    /**
+     * @brief setter for the result message
+     * @details this overwrites the existing status message. Use with setter status_code() and set the message only when
+     * it updated the status correctly.
+     * @note this function is thread-safe and multiple threads can call this function concurrently
+     */
+    void status_message(std::string_view val) noexcept;
+
+    /**
+     * @brief accessor for the result status message
+     * @note this function is thread-safe and multiple threads can call this function concurrently
+     */
+    [[nodiscard]] std::string_view status_message() const noexcept;
 
     /**
      * @brief setter for the job context
@@ -137,6 +153,8 @@ private:
     data::result_store* result_{};
     std::atomic<status> status_code_{status::ok};
     maybe_shared_ptr<scheduler::job_context> job_context_{};
+    mutable std::mutex status_message_mutex_{};
+    std::string status_message_{};
 };
 
 }

@@ -62,6 +62,9 @@ bool flat_task::teardown() {
         return true;
     }
     job_context_->completion_latch().release();
+    if (auto& cb = job_context_->callback(); cb) {
+        cb();
+    }
     return false;
 }
 

@@ -64,14 +64,15 @@ memory::lifo_paged_memory_resource* request_context::request_resource() const no
     return request_resource_.get();
 }
 
-void request_context::status_code(status val) noexcept {
+bool request_context::status_code(status val) noexcept {
     status s;
     do {
         s = status_code_.load();
         if (is_error(s)) {
-            return;
+            return false;
         }
     } while (!status_code_.compare_exchange_strong(s, val));
+    return true;
 }
 
 status request_context::status_code() const noexcept {
@@ -88,6 +89,16 @@ void request_context::job(maybe_shared_ptr<scheduler::job_context> arg) noexcept
 
 executor::sequence::manager* request_context::sequence_manager() const noexcept {
     return sequence_manager_;
+}
+
+void request_context::status_message(std::string_view val) noexcept {
+    std::unique_lock lock{status_message_mutex_};
+    status_message_.assign(val);
+}
+
+std::string_view request_context::status_message() const noexcept {
+    std::unique_lock lock{status_message_mutex_};
+    return status_message_;
 }
 
 }

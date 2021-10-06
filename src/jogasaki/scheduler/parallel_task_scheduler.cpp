@@ -49,7 +49,10 @@ void parallel_task_scheduler::do_schedule_task(flat_task&& task) {
 
 void parallel_task_scheduler::wait_for_progress(job_context& ctx) {
     DVLOG(1) << "wait_for_progress";
-    ctx.completion_latch().wait();
+    // if callback is set, asynchronous call is in-progress. So we don't need to wait.
+    if (! ctx.callback()) {
+        ctx.completion_latch().wait();
+    }
 }
 
 void parallel_task_scheduler::start() {

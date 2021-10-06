@@ -95,6 +95,16 @@ public:
         parameter_set const& parameters,
         std::unique_ptr<result_set>& result
     ) = 0;
+
+    using callback = std::function<void(status, std::string_view)>;
+    /**
+     * @brief asynchronously execute the statement in the transaction. No result records are expected
+     * from the statement (e.g. insert/update/delete).
+     * @param statement the statement to be executed
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
+    virtual void execute_async(executable_statement& statement, callback on_completion) = 0;
 };
 
 }

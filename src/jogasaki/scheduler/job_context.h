@@ -38,6 +38,8 @@ class cache_align job_context {
 public:
     constexpr static std::size_t undefined_index = static_cast<std::size_t>(-1);
 
+    using job_completion_callback = std::function<void(void)>;
+
     /**
      * @brief create default context object
      */
@@ -111,6 +113,21 @@ public:
     [[nodiscard]] std::size_t invoker_thread_cpu_id() const noexcept {
         return invoker_thread_cpu_id_;
     }
+
+    /**
+     * @brief setter for the callback
+     */
+    void callback(job_completion_callback callback) noexcept {
+        callback_ = std::move(callback);
+    }
+
+    /**
+     * @brief accessor for completion callback
+     * @return callback
+     */
+    [[nodiscard]] job_completion_callback& callback() noexcept {
+        return callback_;
+    }
 private:
 
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
@@ -119,6 +136,7 @@ private:
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};
     cache_align std::atomic_size_t index_{undefined_index};
+    job_completion_callback callback_{};
 };
 
 }

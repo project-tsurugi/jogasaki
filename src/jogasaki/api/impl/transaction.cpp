@@ -141,4 +141,51 @@ status transaction::execute(
     return request_ctx->status_code();
 }
 
+void transaction::execute_async(api::executable_statement& statement, transaction::callback on_completion) {
+    auto& s = unsafe_downcast<impl::executable_statement&>(statement);
+    auto& e = s.body();
+    auto& c = database_->configuration();
+    auto store = std::make_unique<data::result_store>();  //TODO work
+    request_context_ = std::make_shared<request_context>(
+        c,
+        s.resource(),
+        database_->kvs_db(),
+        tx_,
+        database_->sequence_manager(),
+        store.get()  //TODO work
+    );
+    if (e->is_execute()) {
+        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
+        auto& g = stmt->operators();
+        g.context(*request_context_);
+        std::size_t cpu = sched_getcpu();
+        request_context_->job(
+            std::make_shared<scheduler::job_context>(
+                maybe_shared_ptr{std::addressof(scheduler_)},
+                cpu
+            )
+        );
+        request_context_->job()->callback([=](){  // callback is copy-based
+            on_completion(request_context_->status_code(), request_context_->status_message());
+        });
+
+        auto& ts = scheduler_.get_task_scheduler();
+        ts.schedule_task(scheduler::flat_task{
+            scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
+            request_context_->job().get(),
+            g
+        });
+        ts.wait_for_progress(*request_context_->job());
+
+        // for now, assume only one result is returned
+//        result = std::make_unique<impl::result_set>(
+//            std::move(store)
+//        );
+        return ;
+    }
+    auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
+    scheduler_.schedule(*stmt, *request_context_);
+    on_completion(request_context_->status_code(), request_context_->status_message());
+}
+
 }

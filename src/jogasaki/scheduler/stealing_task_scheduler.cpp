@@ -41,7 +41,10 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
 
 void stealing_task_scheduler::wait_for_progress(job_context& ctx) {
     DVLOG(1) << "wait_for_progress begin";
-    ctx.completion_latch().wait();
+    // if callback is set, asynchronous call is in-progress. So we don't need to wait.
+    if (! ctx.callback()) {
+        ctx.completion_latch().wait();
+    }
     DVLOG(1) << "wait_for_progress completed";
 }
 

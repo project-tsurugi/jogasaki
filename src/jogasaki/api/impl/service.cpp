@@ -139,7 +139,13 @@ tateyama::status service::operator()(
                 details::error<::response::ResultOnly>(*res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
                 break;
             }
-            if (auto rc = execute_statement(sql, tx); rc == jogasaki::status::ok) {
+            std::unique_ptr<jogasaki::api::executable_statement> e{};
+            if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
+                LOG(ERROR) << "error in db_->create_executable()";
+                details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
+                break;
+            }
+            if (auto rc = execute_statement(*e, tx); rc == jogasaki::status::ok) {
                 details::success<::response::ResultOnly>(*res);
             } else {
                 details::error<::response::ResultOnly>(*res, rc, "error execute_statement()");
@@ -192,13 +198,20 @@ tateyama::status service::operator()(
                 );
                 break;
             }
-
             auto params = jogasaki::api::create_parameter_set();
             set_params(pq.parameters(), params);
-            if (auto rc = execute_prepared_statement(sid, *params, tx); rc == jogasaki::status::ok) {
+
+            jogasaki::api::statement_handle handle{sid};
+            std::unique_ptr<jogasaki::api::executable_statement> e{};
+            if(auto rc = db_->resolve(handle, *params, e); rc != jogasaki::status::ok) {
+                LOG(ERROR) << "error in db_->resolve()";
+                details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+                break;
+            }
+            if (auto rc = execute_statement(*e, tx); rc == jogasaki::status::ok) {
                 details::success<::response::ResultOnly>(*res);
             } else {
-                details::error<::response::ResultOnly>(*res, rc, "error execute_prepared_statement()");
+                details::error<::response::ResultOnly>(*res, rc, "error execute_statement()");
             }
             break;
         }
@@ -312,14 +325,12 @@ tateyama::status service::operator()(
     return tateyama::status::ok;
 }
 
-jogasaki::status service::execute_statement(std::string_view sql, jogasaki::api::transaction_handle tx) {
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
-        LOG(ERROR) << "error in db_->create_executable()";
-        return rc;
-    }
-    if(auto rc = tx->execute(*e); rc != jogasaki::status::ok) {
-        LOG(ERROR) << "error in transaction_->execute()";
+jogasaki::status service::execute_statement(
+    jogasaki::api::executable_statement& stmt,
+    jogasaki::api::transaction_handle tx
+) {
+    if(auto rc = tx->execute(stmt); rc != jogasaki::status::ok) {
+        VLOG(1) << "error in transaction_->execute()";
         return rc;
     }
     return jogasaki::status::ok;
@@ -400,27 +411,6 @@ void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<joga
                 break;
         }
     }
-}
-
-jogasaki::status service::execute_prepared_statement(
-    std::size_t sid,
-    jogasaki::api::parameter_set& params,
-    jogasaki::api::transaction_handle tx
-) {
-    if (!tx) {
-        fail();
-    }
-    jogasaki::api::statement_handle handle{sid};
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->resolve(handle, params, e); rc != jogasaki::status::ok) {
-        LOG(ERROR) << "error in db_->resolve()";
-        return rc;
-    }
-    if(auto rc = tx->execute(*e); rc != jogasaki::status::ok) {
-        VLOG(1) << "error in transaction_->execute()";
-        return rc;
-    }
-    return jogasaki::status::ok;
 }
 
 jogasaki::status service::execute_query(

@@ -208,10 +208,8 @@ private:
 
     jogasaki::api::database* db_{};
 
-    [[nodiscard]] jogasaki::status execute_statement(std::string_view sql, jogasaki::api::transaction_handle tx);
-    [[nodiscard]] jogasaki::status execute_prepared_statement(
-        std::size_t sid,
-        jogasaki::api::parameter_set& params,
+    [[nodiscard]] jogasaki::status execute_statement(
+        jogasaki::api::executable_statement& stmt,
         jogasaki::api::transaction_handle tx
     );
     void process_output(output& out);

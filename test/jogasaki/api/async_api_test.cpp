@@ -37,7 +37,7 @@
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 
-namespace jogasaki::testing {
+namespace jogasaki::api {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
@@ -49,7 +49,7 @@ using takatori::util::unsafe_downcast;
 
 class async_api_test :
     public ::testing::Test,
-    public api_test_base {
+    public testing::api_test_base {
 public:
     // change this flag to debug with explain
     bool to_explain() override {
@@ -103,6 +103,69 @@ TEST_F(async_api_test, async_update) {
         message = msg;
         run.store(true);
     });
+    while(! run.load()) {}
+    ASSERT_EQ(status::ok, s);
+    ASSERT_TRUE(message.empty());
+}
+
+class test_writer : public api::writer {
+
+public:
+    test_writer() = default;
+
+    status write(char const* data, std::size_t length) override {
+        BOOST_ASSERT(size_+length <= data_.max_size());  //NOLINT
+        std::memcpy(data_.data()+size_, data, length);
+        size_ += length;
+        return status::ok;
+    }
+
+    status commit() override {
+        return status::ok;
+    }
+
+    std::array<char, 4096> data_{};
+    std::size_t capacity_{};  //NOLINT
+    std::size_t size_{};  //NOLINT
+};
+
+class test_channel : public api::data_channel {
+public:
+    test_channel() = default;
+
+    status acquire(writer*& buf) override {
+        auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
+        buf = s.get();
+        return status::ok;
+    }
+
+    status release(writer& buf) override {
+        return status::ok;
+    }
+
+    std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
+};
+
+TEST_F(async_api_test, async_query) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0", stmt));
+    auto tx = db_->create_transaction();
+    status s{};
+    std::string message{"message"};
+    std::atomic_bool run{false};
+    test_channel ch{};
+    tx->execute_async(
+        *stmt,
+        ch,
+        [&](status st, std::string_view msg){
+            s = st;
+            message = msg;
+            run.store(true);
+        }
+    );
     while(! run.load()) {}
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());

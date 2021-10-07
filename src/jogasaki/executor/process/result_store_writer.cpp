@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "external_writer.h"
+#include "result_store_writer.h"
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -24,20 +24,20 @@ namespace jogasaki::executor::process {
 
 using takatori::util::maybe_shared_ptr;
 
-bool external_writer::write(accessor::record_ref rec) {
+bool result_store_writer::write(accessor::record_ref rec) {
     store_->append(rec);
     return false;
 }
 
-void external_writer::flush() {
+void result_store_writer::flush() {
     // no-op
 }
 
-void external_writer::release() {
+void result_store_writer::release() {
     store_ = nullptr;
 }
 
-external_writer::external_writer(
+result_store_writer::result_store_writer(
     data::iterable_record_store &store,
     maybe_shared_ptr<meta::record_meta> meta
 ) :

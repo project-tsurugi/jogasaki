@@ -142,17 +142,25 @@ status transaction::execute(
 }
 
 bool transaction::execute_async(api::executable_statement& statement, transaction::callback on_completion) {
+    return execute_async(statement, nullptr, std::move(on_completion));
+}
+
+bool transaction::execute_async(api::executable_statement& statement, data_channel& channel, callback on_completion) {
+    return execute_async(statement, std::addressof(channel), std::move(on_completion));
+}
+
+bool transaction::execute_async(api::executable_statement& statement, data_channel* channel, callback on_completion) {
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
     auto& c = database_->configuration();
-    auto store = std::make_unique<data::result_store>();  //TODO work
     request_context_ = std::make_shared<request_context>(
         c,
         s.resource(),
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
-        store.get()  //TODO work
+        nullptr,
+        channel
     );
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
@@ -166,6 +174,7 @@ bool transaction::execute_async(api::executable_statement& statement, transactio
             )
         );
         request_context_->job()->callback([=](){  // callback is copy-based
+            // TODO clean up?
             on_completion(request_context_->status_code(), request_context_->status_message());
         });
 
@@ -176,11 +185,6 @@ bool transaction::execute_async(api::executable_statement& statement, transactio
             g
         });
         ts.wait_for_progress(*request_context_->job());
-
-        // for now, assume only one result is returned
-//        result = std::make_unique<impl::result_set>(
-//            std::move(store)
-//        );
         return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());

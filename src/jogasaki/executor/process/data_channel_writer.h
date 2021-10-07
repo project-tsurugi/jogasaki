@@ -15,30 +15,27 @@
  */
 #pragma once
 
+#include <msgpack.hpp>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/constants.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/executor/record_writer.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/api/data_channel.h>
 
 namespace jogasaki::executor::process {
 
 using takatori::util::maybe_shared_ptr;
 
-class cache_align external_writer : public record_writer {
+class cache_align data_channel_writer : public record_writer {
 public:
-    ~external_writer() override = default;
-    external_writer(external_writer const& other) = delete;
-    external_writer& operator=(external_writer const& other) = delete;
-    external_writer(external_writer&& other) noexcept = delete;
-    external_writer& operator=(external_writer&& other) noexcept = delete;
+    data_channel_writer(data_channel_writer const& other) = delete;
+    data_channel_writer& operator=(data_channel_writer const& other) = delete;
+    data_channel_writer(data_channel_writer&& other) noexcept = delete;
+    data_channel_writer& operator=(data_channel_writer&& other) noexcept = delete;
 
-    external_writer(
-        data::iterable_record_store& store,
+    data_channel_writer(
+        api::data_channel& channel,
         maybe_shared_ptr<meta::record_meta> meta
     );
 
@@ -49,8 +46,10 @@ public:
     void release() override;
 
 private:
-    data::iterable_record_store* store_{};
+    api::data_channel* channel_{};
+    api::writer* writer_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
+    msgpack::sbuffer buf_{0};
 };
 
 }

@@ -22,7 +22,6 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/external_writer.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
@@ -60,7 +59,8 @@ public:
         partition_index partition,
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
-        data::iterable_record_store* result
+        data::iterable_record_store* result,
+        api::data_channel* channel
     );
 
     reader_container reader(reader_index idx) override;
@@ -73,12 +73,16 @@ public:
 
     [[nodiscard]] std::size_t partition() const noexcept;
 
+    [[nodiscard]] api::data_channel* channel() const noexcept {
+        return channel_;
+    }
 private:
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
     data::iterable_record_store* result_{};
-    std::vector<std::shared_ptr<class external_writer>> external_writers_{};
+    api::data_channel* channel_{};
+    std::vector<std::shared_ptr<record_writer>> external_writers_{};
 };
 
 }

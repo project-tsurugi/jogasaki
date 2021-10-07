@@ -81,7 +81,6 @@ private:
 
 }
 
-//TODO make this function asynchronous
 tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::request const> req,
     std::shared_ptr<tateyama::api::server::response> res

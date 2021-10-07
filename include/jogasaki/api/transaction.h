@@ -21,6 +21,7 @@
 #include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/api/data_channel.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::api {
@@ -106,6 +107,17 @@ public:
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
     virtual bool execute_async(executable_statement& statement, callback on_completion) = 0;
+
+    /**
+     * @brief asynchronously execute the statement in the transaction. The result records are expected
+     * to be written to the writers derived from `channel`
+     * @param statement the statement to be executed
+     * @param channel the data channel to aquire/release writer to write output data
+     * @return true when successful
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
+     */
+    virtual bool execute_async(executable_statement& statement, data_channel& channel, callback on_completion) = 0;
 };
 
 }

@@ -25,6 +25,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/api/data_channel.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
@@ -57,6 +58,7 @@ public:
      * processors and operators
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
      * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
+     * @param data_channel data channel to write the data
      */
     explicit request_context(
         std::shared_ptr<class configuration> config,
@@ -64,7 +66,8 @@ public:
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<kvs::transaction> transaction = {},
         executor::sequence::manager* sequence_manager = {},
-        data::result_store* result = {}
+        data::result_store* result = {},
+        api::data_channel* data_channel = {}
     );
 
     /**
@@ -144,6 +147,12 @@ public:
      */
     [[nodiscard]] maybe_shared_ptr<scheduler::job_context> const& job() const noexcept;
 
+    /**
+     * @brief accessor for the data channel
+     * @return data channel
+     */
+    [[nodiscard]] api::data_channel* data_channel() const noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -151,6 +160,7 @@ private:
     std::shared_ptr<kvs::transaction> transaction_{};
     executor::sequence::manager* sequence_manager_{};
     data::result_store* result_{};
+    api::data_channel* data_channel_{};
     std::atomic<status> status_code_{status::ok};
     maybe_shared_ptr<scheduler::job_context> job_context_{};
     mutable std::mutex status_message_mutex_{};

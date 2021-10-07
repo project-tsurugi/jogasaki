@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/external_writer.h>
+#include <jogasaki/executor/process/result_store_writer.h>
 
 #include <string>
 
@@ -22,9 +22,6 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/mock/basic_record.h>
-
-#include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/mock/process_executor.h>
 
 namespace jogasaki::executor::process {
 
@@ -38,9 +35,9 @@ using namespace jogasaki::memory;
 using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
-class external_writer_test : public test_root {};
+class result_store_writer_test : public test_root {};
 
-TEST_F(external_writer_test, basic) {
+TEST_F(result_store_writer_test, basic) {
 
     mock_memory_resource record_resource{};
     mock_memory_resource varlen_resource{};
@@ -53,7 +50,7 @@ TEST_F(external_writer_test, basic) {
         &varlen_resource,
         meta
     };
-    external_writer writer{store, meta};
+    result_store_writer writer{store, meta};
 
     test_record rec1{create_record<kind::int4, kind::float8, kind::int8>(1, 10.0, 100)};
     test_record rec2{create_record<kind::int4, kind::float8, kind::int8>(2, 20.0, 200)};

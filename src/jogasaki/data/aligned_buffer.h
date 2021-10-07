@@ -105,8 +105,8 @@ public:
     [[nodiscard]] bool empty() const noexcept;
 
     /**
-     * @brief rellocate the buffer for different capacity
-     * @param the new buffer capacity
+     * @brief relocate the buffer for different capacity
+     * @param sz the new buffer capacity
      * @details the new buffer is allocated and old one will be released. The alignment is not changed.
      */
     void resize(std::size_t sz);

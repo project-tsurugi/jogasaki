@@ -55,13 +55,16 @@ public:
         std::unique_ptr<api::result_set>& result
     ) override;
 
-    bool execute_async(api::executable_statement& statement, callback on_completion) override;;
+    bool execute_async(api::executable_statement& statement, callback on_completion) override;
+    bool execute_async(api::executable_statement& statement, data_channel& channel, callback on_completion) override;
 
 private:
     impl::database* database_{};
     scheduler::statement_scheduler scheduler_{};
     std::shared_ptr<kvs::transaction> tx_{};
     std::shared_ptr<request_context> request_context_{};
+
+    bool execute_async(api::executable_statement& statement, data_channel* channel, callback on_completion);
 };
 
 }

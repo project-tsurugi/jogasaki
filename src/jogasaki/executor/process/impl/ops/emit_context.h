@@ -17,7 +17,6 @@
 
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/external_writer.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -55,7 +54,7 @@ public:
 
 private:
     data::small_record_store buffer_{};
-    external_writer* writer_{};
+    record_writer* writer_{};
 };
 
 }

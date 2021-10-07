@@ -34,14 +34,16 @@ request_context::request_context(
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<kvs::transaction> transaction,
     executor::sequence::manager* sequence_manager,
-    data::result_store* result
+    data::result_store* result,
+    api::data_channel* data_channel
 ) :
     config_(std::move(config)),
     request_resource_(std::move(request_resource)),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
     sequence_manager_(sequence_manager),
-    result_(result)
+    result_(result),
+    data_channel_(data_channel)
 {}
 
 std::shared_ptr<class configuration> const& request_context::configuration() const {
@@ -99,6 +101,10 @@ void request_context::status_message(std::string_view val) noexcept {
 std::string_view request_context::status_message() const noexcept {
     std::unique_lock lock{status_message_mutex_};
     return status_message_;
+}
+
+api::data_channel* request_context::data_channel() const noexcept {
+    return data_channel_;
 }
 
 }

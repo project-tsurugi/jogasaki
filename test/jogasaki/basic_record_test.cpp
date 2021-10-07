@@ -81,6 +81,8 @@ TEST_F(basic_record_test, nullable) {
         EXPECT_TRUE(meta->nullable(1));
         EXPECT_TRUE(r.is_nullable(0));
         EXPECT_TRUE(r.is_nullable(1));
+        EXPECT_FALSE( r.ref().is_null(meta->nullity_offset(0)));
+        EXPECT_FALSE( r.ref().is_null(meta->nullity_offset(1)));
     }
     {
         auto r = create_record<kind::float4, kind::int8>(1.0, 100);
@@ -89,6 +91,8 @@ TEST_F(basic_record_test, nullable) {
         EXPECT_FALSE(meta->nullable(1));
         EXPECT_FALSE(r.is_nullable(0));
         EXPECT_FALSE(r.is_nullable(1));
+        EXPECT_FALSE( r.ref().is_null(meta->nullity_offset(0)));
+        EXPECT_FALSE( r.ref().is_null(meta->nullity_offset(1)));
     }
     {
         auto r1 = create_nullable_record<kind::float4, kind::int8>(1.0, 100);

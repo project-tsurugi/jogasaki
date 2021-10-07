@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/result_store_writer.h>
+#include <jogasaki/executor/process/data_channel_writer.h>
 
 #include <string>
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/mock/test_channel.h>
+#include "../../test_utils/test_msgbuf_utils.h"
 
 namespace jogasaki::executor::process {
 
@@ -34,35 +35,30 @@ using namespace jogasaki::memory;
 using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
-class result_store_writer_test : public ::testing::Test {};
+class data_channel_writer_test : public ::testing::Test {};
 
-TEST_F(result_store_writer_test, basic) {
-
-    mock_memory_resource record_resource{};
-    mock_memory_resource varlen_resource{};
+TEST_F(data_channel_writer_test, basic) {
     using kind = meta::field_type_kind;
     auto meta = create_meta<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>();
-    data::iterable_record_store store{
-        &record_resource,
-        &varlen_resource,
-        meta
-    };
-    result_store_writer writer{store, meta};
 
-    auto rec1 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(1, 10.0, 100, 1000.0, accessor::text{"111"});
-    auto rec2 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(2, 20.0, 200, 2000.0, accessor::text{"222"});
-    auto record_size = meta->record_size();
-    writer.write(rec1.ref());
-    writer.write(rec2.ref());
+    api::test_channel ch{};
+    data_channel_writer writer{ch, meta};
 
-    compare_info cm{*meta};
-    comparator comp{cm};
-    auto b = store.begin();
-    EXPECT_EQ(0, comp(rec1.ref(), b.ref()));
-    ++b;
-    EXPECT_EQ(0, comp(rec2.ref(), b.ref()));
-    ++b;
-    EXPECT_EQ(store.end(), b);
+//    auto rec1 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(1, 10.0, 100, 1000.0, accessor::text{"111"});
+//    auto rec2 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(2, 20.0, 200, 2000.0, accessor::text{"222"});
+    auto rec3 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(3, 30.0, 300, 3000.0, accessor::text{"333"});
+//    writer.write(rec1.ref());
+//    writer.write(rec2.ref());
+    writer.write(rec3.ref());
+    writer.flush();
+
+    ASSERT_EQ(1, ch.writers_.size());
+    auto& w = *ch.writers_[0];
+    auto recs = api::deserialize_msg({w.data_.data(), w.size_}, *meta);
+    ASSERT_EQ(1, recs.size());
+//    EXPECT_EQ(rec1, recs[0]);
+//    EXPECT_EQ(rec2, recs[1]);
+    EXPECT_EQ(rec3, recs[0]);
 }
 
 }

@@ -36,6 +36,14 @@
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
+#include <jogasaki/mock/test_channel.h>
+#include "../test_utils/test_msgbuf_utils.h"
+
+#include "request.pb.h"
+#include "response.pb.h"
+#include "common.pb.h"
+#include "schema.pb.h"
+#include "status.pb.h"
 
 namespace jogasaki::api {
 
@@ -46,6 +54,27 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+
+inline jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto) {
+    std::vector<meta::field_type> fields{};
+    boost::dynamic_bitset<std::uint64_t> nullities;
+    for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
+        auto& c = proto.columns(i);
+        bool nullable = c.nullable();
+        meta::field_type field{};
+        nullities.push_back(nullable);
+        switch(c.type()) {
+            using kind = meta::field_type_kind;
+            case ::common::DataType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
+            case ::common::DataType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
+            case ::common::DataType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
+            case ::common::DataType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
+            case ::common::DataType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+        }
+    }
+    jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
+    return meta;
+}
 
 class async_api_test :
     public ::testing::Test,
@@ -107,44 +136,6 @@ TEST_F(async_api_test, async_update) {
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());
 }
-
-class test_writer : public api::writer {
-
-public:
-    test_writer() = default;
-
-    status write(char const* data, std::size_t length) override {
-        BOOST_ASSERT(size_+length <= data_.max_size());  //NOLINT
-        std::memcpy(data_.data()+size_, data, length);
-        size_ += length;
-        return status::ok;
-    }
-
-    status commit() override {
-        return status::ok;
-    }
-
-    std::array<char, 4096> data_{};
-    std::size_t capacity_{};  //NOLINT
-    std::size_t size_{};  //NOLINT
-};
-
-class test_channel : public api::data_channel {
-public:
-    test_channel() = default;
-
-    status acquire(writer*& buf) override {
-        auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
-        buf = s.get();
-        return status::ok;
-    }
-
-    status release(writer& buf) override {
-        return status::ok;
-    }
-
-    std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
-};
 
 TEST_F(async_api_test, async_query) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");

@@ -32,17 +32,18 @@ bool data_channel_writer::write(accessor::record_ref rec) {
     }
     buf_.clear();
     for (std::size_t i=0, n=meta_->field_count(); i < n; ++i) {
-        if (rec.is_null(i)) {
+        if (rec.is_null(meta_->nullity_offset(i))) {
             msgpack::pack(buf_, msgpack::type::nil_t());
         } else {
             using k = jogasaki::meta::field_type_kind;
+            auto os = meta_->value_offset(i);
             switch (meta_->at(i).kind()) {
-                case k::int4: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::int4>::runtime_type>(meta_->value_offset(i))); break;
-                case k::int8: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::int8>::runtime_type>(meta_->value_offset(i))); break;
-                case k::float4: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::float4>::runtime_type>(meta_->value_offset(i))); break;
-                case k::float8: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::float8>::runtime_type>(meta_->value_offset(i))); break;
+                case k::int4: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::int4>::runtime_type>(os)); break;
+                case k::int8: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::int8>::runtime_type>(os)); break;
+                case k::float4: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::float4>::runtime_type>(os)); break;
+                case k::float8: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::float8>::runtime_type>(os)); break;
                 case k::character: {
-                    auto text = rec.get_value<meta::field_type_traits<k::character>::runtime_type>(meta_->value_offset(i));
+                    auto text = rec.get_value<meta::field_type_traits<k::character>::runtime_type>(os);
                     msgpack::pack(buf_, static_cast<std::string_view>(text));
                     break;
                 }

@@ -39,18 +39,19 @@ namespace impl {
 void preprocess(
     takatori::plan::process const& process,
     compiled_info const& info,
-    mirror_container& container
+    std::shared_ptr<mirror_container> const& mirrors
 );
 
-[[nodiscard]] mirror_container preprocess_mirror(
+[[nodiscard]] std::shared_ptr<mirror_container> preprocess_mirror(
     maybe_shared_ptr<takatori::statement::statement> const& statement,
+    std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     compiled_info info
 );
 
 [[nodiscard]] executor::process::step create(
     takatori::plan::process const& process,
     compiled_info const& info,
-    mirror_container const& mirrors,
+    std::shared_ptr<mirror_container> const& mirrors,
     variable_table const* host_variables
 );
 

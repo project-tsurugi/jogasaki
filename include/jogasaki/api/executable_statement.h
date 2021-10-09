@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <jogasaki/api/record_meta.h>
+
 /**
  * @brief SQL engine public API
  */
@@ -31,6 +33,8 @@ public:
     executable_statement& operator=(executable_statement const& other) = delete;
     executable_statement(executable_statement&& other) noexcept = delete;
     executable_statement& operator=(executable_statement&& other) noexcept = delete;
+
+    [[nodiscard]] virtual api::record_meta const* meta() const noexcept = 0;
 };
 
 }

@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <jogasaki/api/record_meta.h>
+
 namespace jogasaki::api {
 
 /**
@@ -30,6 +32,8 @@ public:
     prepared_statement& operator=(prepared_statement const& other) = delete;
     prepared_statement(prepared_statement&& other) noexcept = delete;
     prepared_statement& operator=(prepared_statement&& other) noexcept = delete;
+
+    [[nodiscard]] virtual api::record_meta const* meta() const noexcept = 0;
 };
 
 }

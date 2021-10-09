@@ -31,13 +31,15 @@ executable_statement::executable_statement(
     yugawara::compiled_info compiled_info,
     maybe_shared_ptr<model::statement> operators,
     std::shared_ptr<variable_table_info> host_variable_info,
-    std::shared_ptr<variable_table> host_variables
+    std::shared_ptr<variable_table> host_variables,
+    std::shared_ptr<mirror_container> mirrors
 ) noexcept:
     statement_(std::move(statement)),
     compiled_info_(std::move(compiled_info)),
     operators_(std::move(operators)),
     host_variable_info_(std::move(host_variable_info)),
-    host_variables_(std::move(host_variables))
+    host_variables_(std::move(host_variables)),
+    mirrors_(std::move(mirrors))
 {}
 
 maybe_shared_ptr<model::statement> const& executable_statement::operators() const noexcept {

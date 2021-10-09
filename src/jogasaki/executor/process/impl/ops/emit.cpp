@@ -90,7 +90,9 @@ void emit::external_writer_index(std::size_t index) noexcept {
 }
 
 std::shared_ptr<meta::record_meta> emit::create_meta(
-    const processor_info &info, sequence_view<const column> columns) {
+    processor_info const& info,
+    sequence_view<column const> columns
+) {
     // FIXME currently respect the column order coming from takatori
     std::vector<meta::field_type> fields{};
     auto sz = columns.size();

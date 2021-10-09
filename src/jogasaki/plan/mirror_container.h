@@ -73,9 +73,25 @@ public:
      */
     std::shared_ptr<executor::process::impl::variable_table_info> const& host_variable_info() const noexcept;
 
+    /**
+     * @brief set the meta data information for the external writer used by the Emit operator (if any)
+     * @param meta the record metadata for the external write
+     */
+    void external_writer_meta(std::shared_ptr<meta::record_meta> meta) noexcept {
+        external_writer_meta_ = std::move(meta);
+    }
+
+    /**
+     * @brief accessor to the external writer meta data
+     * @returns external writer metadata
+     */
+    std::shared_ptr<meta::record_meta> const& external_writer_meta() const noexcept {
+        return external_writer_meta_;
+    }
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
+    std::shared_ptr<meta::record_meta> external_writer_meta_{};
 };
 
 }

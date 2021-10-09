@@ -43,6 +43,8 @@
 #include <takatori/plan/aggregate.h>
 #include <takatori/plan/graph.h>
 #include <takatori/plan/forward.h>
+#include <takatori/relation/emit.h>
+#include <takatori/util/downcast.h>
 
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
@@ -80,23 +82,45 @@ namespace relation = takatori::relation;
 
 using takatori::util::unsafe_downcast;
 
+std::shared_ptr<meta::record_meta> create_emit_meta(
+    yugawara::compiled_info const& info,
+    takatori::relation::emit const& e
+) {
+    std::vector<meta::field_type> fields{};
+    auto sz = e.columns().size();
+    fields.reserve(sz);
+    for(auto&& c : e.columns()) {
+        fields.emplace_back(utils::type_for(info, c.source()));
+    }
+    return std::make_shared<meta::record_meta>(
+        std::move(fields),
+        boost::dynamic_bitset<std::uint64_t>(sz).flip()
+    ); // assuming all fields nullable
+}
+
 void preprocess(
     takatori::plan::process const& process,
     compiled_info const& info,
-    mirror_container& container
+    std::shared_ptr<mirror_container> const& container
 ) {
-    container.set(
+    container->set(
         std::addressof(process),
         executor::process::impl::create_block_variables_definition(process.operators(), info)
     );
+    takatori::relation::enumerate_bottom(process.operators(), [&container, &info](takatori::relation::expression const& op){
+        if (op.kind() == takatori::relation::expression_kind::emit) {
+            auto& e = unsafe_downcast<takatori::relation::emit>(op);
+            container->external_writer_meta(create_emit_meta(info, e));
+        }
+    });
 }
 
-mirror_container preprocess_mirror(
+std::shared_ptr<mirror_container> preprocess_mirror(
     maybe_shared_ptr<statement::statement> const& statement,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     compiled_info info
 ) {
-    mirror_container container{};
+    auto container = std::make_shared<mirror_container>();
     switch(statement->kind()) {
         case statement::statement_kind::execute:
             takatori::plan::sort_from_upstream(
@@ -119,7 +143,7 @@ mirror_container preprocess_mirror(
         default:
             fail();
     }
-    container.host_variable_info(create_host_variable_info(provider, info));
+    container->host_variable_info(create_host_variable_info(provider, info));
     return container;
 }
 
@@ -213,10 +237,10 @@ status prepare(
 executor::process::step create(
     takatori::plan::process const& process,
     compiled_info const& info,
-    mirror_container const& mirrors,
+    std::shared_ptr<mirror_container> const& mirrors,
     variable_table const* host_variables
 ) {
-    auto& mirror = mirrors.at(std::addressof(process));
+    auto& mirror = mirrors->at(std::addressof(process));
     auto pinfo = std::make_shared<executor::process::processor_info>(
         const_cast<relation::graph_type&>(process.operators()),
         info,
@@ -436,10 +460,10 @@ void create_mirror_for_write(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
-    mirror_container const& mirrors,
+    std::shared_ptr<mirror_container> const& mirrors,
     parameter_set const* parameters
 ) {
-    auto vars = create_host_variables(parameters, mirrors.host_variable_info());
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     auto& node = unsafe_downcast<statement::write>(*statement);
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
     auto write = std::make_shared<executor::common::write>(
@@ -459,8 +483,9 @@ void create_mirror_for_write(
             std::move(statement),
             std::move(info),
             std::move(write),
-            mirrors.host_variable_info(),
-            std::move(vars)
+            mirrors->host_variable_info(),
+            std::move(vars),
+            mirrors
         )
     );
 }
@@ -469,10 +494,10 @@ void create_mirror_for_execute(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
-    mirror_container const& mirrors,
+    std::shared_ptr<mirror_container> const& mirrors,
     parameter_set const* parameters
 ) {
-    auto vars = create_host_variables(parameters, mirrors.host_variable_info());
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
     yugawara::binding::factory bindings{};
     auto mirror = std::make_shared<executor::common::graph>();
@@ -551,8 +576,9 @@ void create_mirror_for_execute(
         std::move(statement),
         std::move(info),
         std::make_shared<executor::common::execute>(mirror),
-        mirrors.host_variable_info(),
-        std::move(vars)
+        mirrors->host_variable_info(),
+        std::move(vars),
+        mirrors
     ));
 }
 

@@ -52,7 +52,7 @@ public:
         maybe_shared_ptr<::takatori::statement::statement> statement,
         yugawara::compiled_info compiled_info,
         std::shared_ptr<::yugawara::variable::configurable_provider> host_variables,
-        mirror_container mirrors
+        std::shared_ptr<mirror_container> mirrors
     ) noexcept :
         statement_(std::move(statement)),
         compiled_info_(std::move(compiled_info)),
@@ -68,7 +68,7 @@ public:
         return compiled_info_;
     }
 
-    [[nodiscard]] mirror_container const& mirrors() const noexcept {
+    [[nodiscard]] std::shared_ptr<mirror_container> const& mirrors() const noexcept {
         return mirrors_;
     }
 
@@ -79,7 +79,7 @@ private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
     std::shared_ptr<yugawara::variable::configurable_provider> host_variables_{};
-    mirror_container mirrors_{};
+    std::shared_ptr<mirror_container> mirrors_{};
 };
 
 }

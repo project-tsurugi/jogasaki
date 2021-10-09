@@ -27,6 +27,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/plan/mirror_container.h>
 
 namespace jogasaki::plan {
 
@@ -56,7 +57,8 @@ public:
         yugawara::compiled_info compiled_info,
         maybe_shared_ptr<model::statement> operators,
         std::shared_ptr<variable_table_info> host_variable_info,
-        std::shared_ptr<variable_table> host_variables
+        std::shared_ptr<variable_table> host_variables,
+        std::shared_ptr<mirror_container> mirrors
     ) noexcept;
 
     [[nodiscard]] maybe_shared_ptr<model::statement> const& operators() const noexcept;
@@ -71,12 +73,16 @@ public:
 
     [[nodiscard]] std::shared_ptr<variable_table_info> const& host_variable_info() const noexcept;
 
+    [[nodiscard]] std::shared_ptr<mirror_container> const& mirrors() const noexcept {
+        return mirrors_;
+    }
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
     maybe_shared_ptr<model::statement> operators_{};
     std::shared_ptr<variable_table_info> host_variable_info_{};
     std::shared_ptr<variable_table> host_variables_{};
+    std::shared_ptr<mirror_container> mirrors_{};
 };
 
 }

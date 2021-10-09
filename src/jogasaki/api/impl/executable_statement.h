@@ -17,6 +17,7 @@
 
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::api::impl {
@@ -47,9 +48,13 @@ public:
      */
     [[nodiscard]] std::shared_ptr<memory::lifo_paged_memory_resource> const& resource() const noexcept;
 
+    [[nodiscard]] api::record_meta const* meta() const noexcept override {
+        return std::addressof(meta_);
+    }
 private:
     std::shared_ptr<plan::executable_statement> body_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
+    impl::record_meta meta_{};
 };
 
 }

@@ -24,7 +24,8 @@ std::shared_ptr<plan::prepared_statement> const& prepared_statement::body() cons
 prepared_statement::prepared_statement(
     std::shared_ptr<plan::prepared_statement> body
 ) :
-    body_(std::move(body))
+    body_(std::move(body)),
+    meta_(body_->mirrors()->external_writer_meta())
 {}
 
 }

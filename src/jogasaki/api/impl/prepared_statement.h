@@ -16,7 +16,7 @@
 #pragma once
 
 #include <jogasaki/api/prepared_statement.h>
-
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/plan/prepared_statement.h>
 
 /**
@@ -34,8 +34,13 @@ public:
     explicit prepared_statement(std::shared_ptr<plan::prepared_statement> body);
 
     [[nodiscard]] std::shared_ptr<plan::prepared_statement> const& body() const noexcept;
+
+    [[nodiscard]] api::record_meta const* meta() const noexcept override {
+        return std::addressof(meta_);
+    }
 private:
     std::shared_ptr<plan::prepared_statement> body_{};
+    impl::record_meta meta_{};
 };
 
 }

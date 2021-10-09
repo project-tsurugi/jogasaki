@@ -359,7 +359,7 @@ TEST_F(compiler_test, join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    mirror_container mirrors{};
+    auto mirrors = std::make_shared<mirror_container>();
     jogasaki::plan::impl::preprocess(b, info, mirrors);
     auto s = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
@@ -401,7 +401,7 @@ TEST_F(compiler_test, left_outer_join) {
     auto& grp1 = b.downstreams()[0];
     auto& grp2 = b2.downstreams()[0];
 
-    mirror_container mirrors{};
+    auto mirrors = std::make_shared<mirror_container>();
     jogasaki::plan::impl::preprocess(b, info, mirrors);
     auto s = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
@@ -453,7 +453,7 @@ TEST_F(compiler_test, aggregate) {
 
     auto& agg = b.downstreams()[0];
 
-    mirror_container mirrors{};
+    auto mirrors = std::make_shared<mirror_container>();
     jogasaki::plan::impl::preprocess(b, info, mirrors);
     auto s = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();

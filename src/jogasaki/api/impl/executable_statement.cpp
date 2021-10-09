@@ -22,7 +22,8 @@ executable_statement::executable_statement(
     std::shared_ptr<memory::lifo_paged_memory_resource> resource
 ) :
     body_(std::move(body)),
-    resource_(std::move(resource))
+    resource_(std::move(resource)),
+    meta_(body_->mirrors()->external_writer_meta())
 {}
 
 std::shared_ptr<plan::executable_statement> const& executable_statement::body() const noexcept {

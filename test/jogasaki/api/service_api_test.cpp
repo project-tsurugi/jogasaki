@@ -38,6 +38,7 @@
 #include <tateyama/api/endpoint/service.h>
 #include "../third_party/tateyama/common/utils/loader.h"
 #include "api_test_base.h"
+#include "../test_utils/msgbuf_utils.h"
 
 #include "request.pb.h"
 #include "response.pb.h"
@@ -59,38 +60,6 @@ using takatori::util::maybe_shared_ptr;
 std::string serialize(::request::Request& r);
 void deserialize(std::string_view s, ::response::Response& res);
 
-template <typename T>
-static inline bool extract(std::string_view data, T &v, std::size_t &offset) {
-    // msgpack::unpack() may throw msgpack::unpack_error with "parse error" or "insufficient bytes" message.
-    msgpack::unpacked result = msgpack::unpack(data.data(), data.size(), offset);
-    const msgpack::object obj(result.get());
-    if (obj.type == msgpack::type::NIL) {
-        return false;
-    }
-    v = obj.as<T>();
-    return true;
-}
-
-void set_null(accessor::record_ref ref, std::size_t index, meta::record_meta& meta) {
-    ref.set_null(meta.nullity_offset(index), true);
-}
-
-template <typename T>
-static inline void set_value(
-    std::string_view data,
-    std::size_t &offset,
-    accessor::record_ref ref,
-    std::size_t index,
-    meta::record_meta& meta
-) {
-    T v;
-    if (extract(data, v, offset)) {
-        ref.set_value(meta.value_offset(index), v);
-    } else {
-        set_null(ref, index, meta);
-    }
-}
-
 jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto) {
     std::vector<meta::field_type> fields{};
     boost::dynamic_bitset<std::uint64_t> nullities;
@@ -110,35 +79,6 @@ jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto
     }
     jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
     return meta;
-}
-
-std::vector<mock::basic_record> deserialize_msg(std::string_view data, jogasaki::meta::record_meta& meta) {
-    std::vector<mock::basic_record> ret{};
-    std::size_t offset{};
-    while(offset < data.size()) {
-        auto& record = ret.emplace_back(maybe_shared_ptr{&meta});
-        auto ref = record.ref();
-        for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
-            switch (meta.at(index).kind()) {
-                case jogasaki::meta::field_type_kind::int4: set_value<std::int32_t>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::int8: set_value<std::int64_t>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::float4: set_value<float>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::float8: set_value<double>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::character: {
-                    std::string v;
-                    if (extract(data, v, offset)) {
-                        record.ref().set_value(meta.value_offset(index), accessor::text{v});
-                    } else {
-                        set_null(record.ref(), index, meta);
-                    }
-                    break;
-                }
-                default:
-                    std::abort();
-            }
-        }
-    }
-    return ret;
 }
 
 class service_api_test :

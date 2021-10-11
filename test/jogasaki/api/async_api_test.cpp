@@ -37,7 +37,7 @@
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/mock/test_channel.h>
-#include "../test_utils/test_msgbuf_utils.h"
+#include "../test_utils/msgbuf_utils.h"
 
 #include "request.pb.h"
 #include "response.pb.h"
@@ -142,13 +142,13 @@ TEST_F(async_api_test, async_query) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0", stmt));
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0 ORDER BY C0", stmt));
     auto tx = db_->create_transaction();
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
     test_channel ch{};
-    tx->execute_async(
+    ASSERT_TRUE(tx->execute_async(
         *stmt,
         ch,
         [&](status st, std::string_view msg){
@@ -156,10 +156,48 @@ TEST_F(async_api_test, async_query) {
             message = msg;
             run.store(true);
         }
-    );
+    ));
     while(! run.load()) {}
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());
+    auto& wrt = ch.writers_[0];
+    ASSERT_TRUE(stmt->meta());
+    auto& m = *unsafe_downcast<api::impl::record_meta>(stmt->meta());
+    auto recs = deserialize_msg({wrt->data_.data(), wrt->size_}, *m.meta());
+    ASSERT_EQ(3, recs.size());
+    auto exp0 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
+    auto exp1 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 20.0);
+    auto exp2 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 30.0);
+    EXPECT_EQ(exp0, recs[0]);
+    EXPECT_EQ(exp1, recs[1]);
+    EXPECT_EQ(exp2, recs[2]);
+    EXPECT_TRUE(ch.all_writers_released());
+}
+
+TEST_F(async_api_test, async_query_heavy_write) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0 ORDER BY C0", stmt));
+    auto tx = db_->create_transaction();
+    status s{};
+    std::string message{"message"};
+    std::atomic_bool run{false};
+    test_channel ch{10};
+    ASSERT_TRUE(tx->execute_async(
+        *stmt,
+        ch,
+        [&](status st, std::string_view msg){
+            s = st;
+            message = msg;
+            run.store(true);
+        }
+    ));
+    while(! run.load()) {}
+    ASSERT_EQ(status::ok, s);
+    ASSERT_TRUE(message.empty());
+    EXPECT_TRUE(ch.all_writers_released());
 }
 
 }

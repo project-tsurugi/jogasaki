@@ -15,6 +15,7 @@
  */
 
 #include <regex>
+#include <thread>
 
 #include <takatori/util/downcast.h>
 
@@ -40,10 +41,17 @@ class test_writer : public api::writer {
 public:
     test_writer() = default;
 
+    explicit test_writer(std::size_t write_latency_ms) :
+        write_latency_ms_(write_latency_ms)
+    {}
+
     status write(char const* data, std::size_t length) override {
         BOOST_ASSERT(size_+length <= data_.max_size());  //NOLINT
         std::memcpy(data_.data()+size_, data, length);
         size_ += length;
+        if (write_latency_ms_ > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{write_latency_ms_});
+        }
         return status::ok;
     }
 
@@ -54,23 +62,35 @@ public:
     std::array<char, 4096> data_{};  //NOLINT
     std::size_t capacity_{};  //NOLINT
     std::size_t size_{};  //NOLINT
+    std::size_t write_latency_ms_{};
 };
 
 class test_channel : public api::data_channel {
 public:
     test_channel() = default;
 
+    explicit test_channel(std::size_t write_latency_ms) :
+        write_latency_ms_(write_latency_ms)
+    {}
+
     status acquire(writer*& buf) override {
-        auto& s = writers_.emplace_back(std::make_shared<test_writer>());
+        auto& s = writers_.emplace_back(std::make_shared<test_writer>(write_latency_ms_));
         buf = s.get();
         return status::ok;
     }
 
     status release(writer& buf) override {
+        all_writers_released_ = true;
         return status::ok;
     }
 
+    bool all_writers_released() const noexcept {
+        return all_writers_released_;
+    }
+
     std::vector<std::shared_ptr<test_writer>> writers_{};  //NOLINT
+    bool all_writers_released_{};
+    std::size_t write_latency_ms_{};
 };
 
 }

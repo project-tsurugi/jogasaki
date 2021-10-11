@@ -138,6 +138,7 @@ void emit::finish(abstract::task_context* context) {
     auto* p = find_context<emit_context>(index(), ctx.contexts());
     if (p && p->writer_) {
         p->writer_->flush();
+        p->writer_->release();
     }
 }
 

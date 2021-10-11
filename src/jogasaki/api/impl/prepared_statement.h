@@ -36,11 +36,11 @@ public:
     [[nodiscard]] std::shared_ptr<plan::prepared_statement> const& body() const noexcept;
 
     [[nodiscard]] api::record_meta const* meta() const noexcept override {
-        return std::addressof(meta_);
+        return meta_.get();
     }
 private:
     std::shared_ptr<plan::prepared_statement> body_{};
-    impl::record_meta meta_{};
+    std::unique_ptr<impl::record_meta> meta_{};
 };
 
 }

@@ -34,6 +34,11 @@ public:
     executable_statement(executable_statement&& other) noexcept = delete;
     executable_statement& operator=(executable_statement&& other) noexcept = delete;
 
+    /**
+     * @brief accessor to output meta data
+     * @return the record meta data if the statement has output data
+     * @return nullptr otherwise
+     */
     [[nodiscard]] virtual api::record_meta const* meta() const noexcept = 0;
 };
 

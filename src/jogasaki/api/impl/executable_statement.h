@@ -49,12 +49,12 @@ public:
     [[nodiscard]] std::shared_ptr<memory::lifo_paged_memory_resource> const& resource() const noexcept;
 
     [[nodiscard]] api::record_meta const* meta() const noexcept override {
-        return std::addressof(meta_);
+        return meta_.get();
     }
 private:
     std::shared_ptr<plan::executable_statement> body_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
-    impl::record_meta meta_{};
+    std::unique_ptr<impl::record_meta> meta_{};
 };
 
 }

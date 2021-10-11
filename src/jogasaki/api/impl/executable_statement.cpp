@@ -23,7 +23,10 @@ executable_statement::executable_statement(
 ) :
     body_(std::move(body)),
     resource_(std::move(resource)),
-    meta_(body_->mirrors()->external_writer_meta())
+    meta_(body_->mirrors()->external_writer_meta() ?
+        std::make_unique<impl::record_meta>(body_->mirrors()->external_writer_meta()) :
+        nullptr
+    )
 {}
 
 std::shared_ptr<plan::executable_statement> const& executable_statement::body() const noexcept {

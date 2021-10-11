@@ -25,7 +25,10 @@ prepared_statement::prepared_statement(
     std::shared_ptr<plan::prepared_statement> body
 ) :
     body_(std::move(body)),
-    meta_(body_->mirrors()->external_writer_meta())
+    meta_(body_->mirrors()->external_writer_meta() ?
+        std::make_unique<impl::record_meta>(body_->mirrors()->external_writer_meta()) :
+        nullptr
+    )
 {}
 
 }

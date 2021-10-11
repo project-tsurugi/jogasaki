@@ -223,9 +223,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
                     if(auto st = unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->
                             process_cogroup(context, cgrp); !st) {
                         ctx.abort();
-                        for(auto* r : ctx.readers_) {
-                            r->release();
-                        }
+                        finish(context);
                         return {operation_status_kind::aborted};
                     }
                 }
@@ -238,12 +236,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
                 break;
         }
     }
-    for(auto* r : ctx.readers_) {
-        r->release();
-    }
-    if (downstream_) {
-        unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->finish(context);
-    }
+    finish(context);
     return {};
 }
 
@@ -251,9 +244,19 @@ operator_kind take_cogroup::kind() const noexcept {
     return operator_kind::take_cogroup;
 }
 
-void take_cogroup::finish(abstract::task_context*) {
-    // top operators decide finish timing on their own
-    fail();
+void take_cogroup::finish(abstract::task_context* context) {
+    if (! context) return;
+    using iterator = data::iterable_record_store::iterator;
+    context_helper c{*context};
+    auto* p = find_context<take_cogroup_context>(index(), c.contexts());
+    if (! p) {
+        for(auto* r : p->readers_) {
+            r->release();
+        }
+    }
+    if (downstream_) {
+        unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->finish(context);
+    }
 }
 
 void take_cogroup::create_readers(take_cogroup_context& ctx) {

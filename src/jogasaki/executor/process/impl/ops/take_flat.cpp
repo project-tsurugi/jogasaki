@@ -91,13 +91,12 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
         if (downstream_) {
             if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                 ctx.abort();
+                finish(context);
                 return {operation_status_kind::aborted};
             }
         }
     }
-    if (downstream_) {
-        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-    }
+    finish(context);
     return {};
 }
 
@@ -109,8 +108,11 @@ const maybe_shared_ptr<meta::record_meta>& take_flat::meta() const noexcept {
     return meta_;
 }
 
-void take_flat::finish(abstract::task_context*) {
-    fail();
+void take_flat::finish(abstract::task_context* context) {
+    if (! context) return;
+    if (downstream_) {
+        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+    }
 }
 
 std::vector<details::take_flat_field> take_flat::create_fields(

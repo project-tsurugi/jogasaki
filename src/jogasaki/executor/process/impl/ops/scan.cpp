@@ -134,21 +134,17 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         if (downstream_) {
             if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
                 ctx.abort();
-                close(ctx);
+                finish(context);
                 return {operation_status_kind::aborted};
             }
         }
     }
-    if (st == status::not_found) {
-        if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-        }
-    } else {
+    finish(context);
+    if (st != status::not_found) {
         ctx.state(context_state::abort);
         ctx.req_context()->status_code(st);
         return {operation_status_kind::aborted};
     }
-    close(ctx);
     return {};
 }
 
@@ -164,9 +160,16 @@ std::string_view scan::secondary_storage_name() const noexcept {
     return secondary_storage_name_;
 }
 
-void scan::finish(abstract::task_context* /* unused */) {
-    // top operators decide finish timing on their own
-    fail();
+void scan::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    auto* p = find_context<scan_context>(index(), ctx.contexts());
+    if (! p) {
+        close(*p);
+    }
+    if (downstream_) {
+        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+    }
 }
 
 void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)

@@ -112,14 +112,13 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
                 if(auto st = unsafe_downcast<group_operator>(
                         downstream_.get())-> process_group(context, !has_next); !st) {
                     ctx.abort();
+                    finish(context);
                     return {operation_status_kind::aborted};
                 }
             }
         }
     }
-    if (downstream_) {
-        unsafe_downcast<group_operator>(downstream_.get())->finish(context);
-    }
+    finish(context);
     return {};
 }
 
@@ -131,9 +130,11 @@ const maybe_shared_ptr<meta::group_meta>& take_group::meta() const noexcept {
     return meta_;
 }
 
-void take_group::finish(abstract::task_context*) {
-    // top operators decide finish timing on their own
-    fail();
+void take_group::finish(abstract::task_context* context) {
+    if (! context) return;
+    if (downstream_) {
+        unsafe_downcast<group_operator>(downstream_.get())->finish(context);
+    }
 }
 
 std::vector<details::take_group_field> take_group::create_fields(

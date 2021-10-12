@@ -124,8 +124,8 @@ public:
         auto context = std::make_shared<request_context>(cfg);
         common::graph g{*context};
 
-        plan::mirror_container mirrors{};
         auto& info = compiler_context->executable_statement()->compiled_info();
+        auto& mirrors = compiler_context->executable_statement()->mirrors();
         jogasaki::plan::impl::preprocess(p0, info, mirrors);
         auto& process = g.emplace<process::step>(jogasaki::plan::impl::create(p0, info, mirrors, nullptr));
         customize_process(
@@ -245,6 +245,8 @@ private:
         vm->bind(bindings(t0c1), t::float8{});
         vm->bind(bindings(t0c2), t::int8{});
         yugawara::compiled_info c_info{{}, vm};
+        auto mirrors = std::make_shared<plan::mirror_container>();
+        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
 
         input_exchanges_.emplace_back(&f0);
         output_exchanges_.emplace_back(&f1);
@@ -255,7 +257,8 @@ private:
                 c_info,
                 std::shared_ptr<model::statement>{},
                 std::shared_ptr<variable_table_info>{},
-                std::shared_ptr<variable_table>{}
+                std::shared_ptr<variable_table>{},
+                std::move(mirrors)
             )
         );
     }

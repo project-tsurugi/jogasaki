@@ -312,6 +312,9 @@ public:
             g1.group_keys()
         };
 
+        auto mirrors = std::make_shared<plan::mirror_container>();
+        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
+
         input_exchanges_.emplace_back(&g0);
         input_exchanges_.emplace_back(&g1);
         compiler_context->executable_statement(
@@ -320,9 +323,11 @@ public:
                 c_info,
                 std::shared_ptr<model::statement>{},
                 std::shared_ptr<variable_table_info>{},
-                std::shared_ptr<variable_table>{}
+                std::shared_ptr<variable_table>{},
+                std::move(mirrors)
             )
         );
+
     }
 
     int run(params& s, std::shared_ptr<configuration> cfg) {
@@ -370,9 +375,8 @@ public:
         auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
 
-        plan::mirror_container mirrors{};
         auto& c_info = compiler_context->executable_statement()->compiled_info();
-        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
+        auto& mirrors = compiler_context->executable_statement()->mirrors();
         auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, c_info, mirrors, nullptr));
         producer1 >> xch1;
         producer2 >> xch2;

@@ -62,4 +62,8 @@ std::shared_ptr<variable_table_info> const& executable_statement::host_variable_
     return host_variable_info_;
 }
 
+std::shared_ptr<mirror_container> const& executable_statement::mirrors() const noexcept {
+    return mirrors_;
+}
+
 }

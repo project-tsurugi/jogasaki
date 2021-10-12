@@ -73,9 +73,8 @@ public:
 
     [[nodiscard]] std::shared_ptr<variable_table_info> const& host_variable_info() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<mirror_container> const& mirrors() const noexcept {
-        return mirrors_;
-    }
+    [[nodiscard]] std::shared_ptr<mirror_container> const& mirrors() const noexcept;
+
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};

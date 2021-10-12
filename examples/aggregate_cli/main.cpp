@@ -286,6 +286,9 @@ public:
 
         yugawara::compiled_info c_info{{}, vmap};
 
+        auto mirrors = std::make_shared<plan::mirror_container>();
+        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
+
         compiler_context->aggregate_provider(std::move(functions));
         input_exchanges_.emplace_back(&g0);
         compiler_context->executable_statement(
@@ -294,7 +297,8 @@ public:
                 c_info,
                 std::shared_ptr<model::statement>{},
                 std::shared_ptr<variable_table_info>{},
-                std::shared_ptr<variable_table>{}
+                std::shared_ptr<variable_table>{},
+                std::move(mirrors)
         )
         );
     }
@@ -320,9 +324,8 @@ public:
         auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
 
-        plan::mirror_container mirrors{};
         auto& info = compiler_context->executable_statement()->compiled_info();
-        jogasaki::plan::impl::preprocess(p0, info, mirrors);
+        auto& mirrors = compiler_context->executable_statement()->mirrors();
         auto& consumer = g.emplace<process::step>(jogasaki::plan::impl::create(p0, info, mirrors, nullptr));
 
         producer_params prod_params{s.records_per_partition_, s.upstream_partitions_, s.sequential_data_, s.key_modulo_};

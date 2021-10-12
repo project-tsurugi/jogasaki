@@ -488,9 +488,8 @@ public:
         );
         common::graph g{*context};
 
-        plan::mirror_container mirrors{};
         auto& info = compiler_context->executable_statement()->compiled_info();
-        jogasaki::plan::impl::preprocess(p0, info, mirrors);
+        auto& mirrors = compiler_context->executable_statement()->mirrors();
         g.emplace<process::step>(jogasaki::plan::impl::create(
             p0,
             info,
@@ -695,6 +694,8 @@ private:
         vm->bind(bindings(t0c4), t::character{t::varying, max_char_len});
         yugawara::compiled_info c_info{expressions, vm};
 
+        auto mirrors = std::make_shared<plan::mirror_container>();
+        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
         compiler_context->storage_provider(std::move(storages));
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
@@ -702,7 +703,8 @@ private:
                 c_info,
                 std::shared_ptr<model::statement>{},
                 std::shared_ptr<variable_table_info>{},
-                std::shared_ptr<variable_table>{}
+                std::shared_ptr<variable_table>{},
+                std::move(mirrors)
             )
         );
     }
@@ -866,6 +868,8 @@ private:
         vm->bind(bindings(t0c13), t::int8{});
         yugawara::compiled_info c_info{{}, vm};
 
+        auto mirrors = std::make_shared<plan::mirror_container>();
+        jogasaki::plan::impl::preprocess(p0, c_info, mirrors);
         compiler_context->storage_provider(std::move(storages));
         compiler_context->executable_statement(
             std::make_shared<plan::executable_statement>(
@@ -873,7 +877,8 @@ private:
                 c_info,
                 std::shared_ptr<model::statement>{},
                 std::shared_ptr<variable_table_info>{},
-                std::shared_ptr<variable_table>{}
+                std::shared_ptr<variable_table>{},
+                std::move(mirrors)
             )
         );
     }

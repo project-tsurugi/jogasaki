@@ -47,20 +47,18 @@ using takatori::util::fail;
 
 using response_code = tateyama::api::endpoint::response_code;
 
-struct output {
-    std::unique_ptr<jogasaki::api::result_set> result_set_{};  //NOLINT
-    std::unique_ptr<jogasaki::api::prepared_statement> prepared_{};  //NOLINT
-    std::string name_;  //NOLINT
-    std::shared_ptr<tateyama::api::server::writer> writer_{};  //NOLINT
-    std::shared_ptr<tateyama::api::server::data_channel> data_channel_{};  //NOLINT
-};
-
 namespace details {
 
 class query_info;
 
+struct channel_info {
+    jogasaki::api::record_meta const* meta_{};  //NOLINT
+    std::string name_;  //NOLINT
+    std::shared_ptr<jogasaki::api::data_channel> data_channel_{};  //NOLINT
+};
+
 void reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head = false);
-void set_metadata(output const& out, ::schema::RecordMeta& meta);
+void set_metadata(channel_info const& info, ::schema::RecordMeta& meta);
 
 template<typename T>
 void set_allocated_object(::response::Response& r, T& p) {
@@ -179,13 +177,13 @@ inline void success<::response::Prepare>(tateyama::api::server::response& res, j
     p.release_prepared_statement_handle();
 }
 
-inline void send_body_head(tateyama::api::server::response& res, output* out) {  //NOLINT(performance-unnecessary-value-param)
+inline void send_body_head(tateyama::api::server::response& res, channel_info* info) {  //NOLINT(performance-unnecessary-value-param)
     ::schema::RecordMeta meta{};
     ::response::ExecuteQuery e{};
     ::response::Response r{};
 
-    set_metadata(*out, meta);
-    e.set_name(out->name_);
+    set_metadata(*info, meta);
+    e.set_name(info->name_);
     e.set_allocated_record_meta(&meta);
     r.set_allocated_execute_query(&e);
     details::reply(res, r, true);
@@ -212,7 +210,8 @@ private:
         explicit callback_control(std::shared_ptr<tateyama::api::server::response> response) :
             response_(std::move(response))
         {};
-        std::shared_ptr<tateyama::api::server::response> response_{};
+        std::shared_ptr<tateyama::api::server::response> response_{};  //NOLINT
+        std::unique_ptr<details::channel_info> channel_info_{};  //NOLINT
     };
 
     jogasaki::api::database* db_{};
@@ -223,21 +222,77 @@ private:
         jogasaki::api::executable_statement& stmt,
         jogasaki::api::transaction_handle tx
     );
-    void process_output(output& out);
     [[nodiscard]] jogasaki::status execute_query(
-        tateyama::api::server::response& res,
+        std::shared_ptr<tateyama::api::server::response> res,
         details::query_info const& q,
-        jogasaki::api::transaction_handle tx,
-        std::unique_ptr<output>& out
+        jogasaki::api::transaction_handle tx
     );
     void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
-    void release_writers(tateyama::api::server::response& res, output& out);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
 
 inline jogasaki::api::impl::service& get_impl(tateyama::api::server::service& svc) {
     return unsafe_downcast<jogasaki::api::impl::service>(svc);
 }
+
+class data_writer : public api::writer {
+public:
+    data_writer() = default;
+
+    explicit data_writer(std::shared_ptr<tateyama::api::server::writer> origin) :
+        origin_(std::move(origin))
+    {}
+
+    status write(char const* data, std::size_t length) override {
+        if (auto rc = origin_->write(data, length); rc != tateyama::status::ok) {
+            fail();
+        }
+        return status::ok;
+    }
+
+    status commit() override {
+        if (auto rc = origin_->commit(); rc != tateyama::status::ok) {
+            fail();
+        }
+        return status::ok;
+    }
+
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::writer> const& origin() const noexcept {
+        return origin_;
+    }
+
+private:
+    std::shared_ptr<tateyama::api::server::writer> origin_{};
+};
+
+class data_channel : public api::data_channel {
+public:
+    data_channel() = default;
+
+    explicit data_channel(std::shared_ptr<tateyama::api::server::data_channel> origin) :
+        origin_(std::move(origin))
+    {}
+
+    status acquire(std::shared_ptr<writer>& wrt) override {
+        std::shared_ptr<tateyama::api::server::writer> writer{};
+        if(auto rc = origin_->acquire(writer); rc != tateyama::status::ok) {
+            fail();
+        }
+        wrt = std::make_shared<data_writer>(std::move(writer));
+        return status::ok;
+    }
+
+    status release(writer& wrt) override {
+        auto& w = unsafe_downcast<data_writer>(wrt);
+        if(auto rc = origin_->release(*w.origin()); rc != tateyama::status::ok) {
+            fail();
+        }
+        return status::ok;
+    }
+
+private:
+    std::shared_ptr<tateyama::api::server::data_channel> origin_{};
+};
 
 }
 

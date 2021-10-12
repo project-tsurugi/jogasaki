@@ -164,15 +164,8 @@ tateyama::status service::operator()(
                 break;
             }
 
-            std::unique_ptr<output> out{};
-            if (auto rc = execute_query(*res, details::query_info{sql}, tx, out); rc == jogasaki::status::ok) {
-                details::send_body_head(*res, out.get());
-                process_output(*out);
-                res->code(response_code::success);
-                details::success<::response::ResultOnly>(*res);
-                release_writers(*res, *out);
-            } else {
-                details::error<::response::ResultOnly>(*res, rc, "error execute_query()");
+            if (auto rc = execute_query(res, details::query_info{sql}, tx); rc != jogasaki::status::ok) {
+                fail();
             }
             break;
         }
@@ -226,16 +219,9 @@ tateyama::status service::operator()(
             auto params = jogasaki::api::create_parameter_set();
             set_params(pq.parameters(), params);
 
-            std::unique_ptr<output> out{};
-            if(auto rc = execute_query(*res, details::query_info{sid, params.get()}, tx, out);
-                rc == jogasaki::status::ok) {
-                details::send_body_head(*res, out.get());
-                process_output(*out);
-                res->code(response_code::success);
-                details::success<::response::ResultOnly>(*res);
-                release_writers(*res, *out);
-            } else {
-                details::error<::response::ResultOnly>(*res, rc, "error execute_query()");
+            if(auto rc = execute_query(res, details::query_info{sid, params.get()}, tx);
+                rc != jogasaki::status::ok) {
+                fail();
             }
             break;
         }
@@ -341,54 +327,15 @@ void service::execute_statement(
     }
 }
 
-void service::release_writers(
-    tateyama::api::server::response& res,
-    output& out
-) {
-    if (out.data_channel_ && out.writer_) {
-        out.data_channel_->release(*out.writer_);
-        out.writer_ = nullptr;
-    }
-    if (out.data_channel_) {
-        res.release_channel(*out.data_channel_);
-        out.data_channel_ = nullptr;
-    }
-}
-
-void service::process_output(output& out) {
-    const jogasaki::api::record_meta* meta = out.result_set_->meta();
-    auto iterator = out.result_set_->iterator();
-    while(true) {
-        auto* rec = iterator->next();
-        auto& wrt = *out.writer_;
-        if (rec != nullptr) {
-            for (std::size_t i=0, n=meta->field_count(); i < n; ++i) {
-                if (rec->is_null(i)) {
-                    msgpack::pack(wrt, msgpack::type::nil_t());
-                } else {
-                    switch (meta->at(i).kind()) {
-                        case jogasaki::api::field_type_kind::int4:
-                            msgpack::pack(wrt, rec->get_int4(i)); break;
-                        case jogasaki::api::field_type_kind::int8:
-                            msgpack::pack(wrt, rec->get_int8(i)); break;
-                        case jogasaki::api::field_type_kind::float4:
-                            msgpack::pack(wrt, rec->get_float4(i)); break;
-                        case jogasaki::api::field_type_kind::float8:
-                            msgpack::pack(wrt, rec->get_float8(i)); break;
-                        case jogasaki::api::field_type_kind::character:
-                            msgpack::pack(wrt, rec->get_character(i)); break;
-                        default:
-                            fail();
-                    }
-                }
-            }
-        } else {
-            VLOG(1) << "detect eor" << std::endl;
-            wrt.commit();
-            break;
-        }
-    }
-}
+//void service::release_writers(
+//    tateyama::api::server::response& res,
+//    details::channel_info& info
+//) {
+//    if (info.data_channel_) {
+//        res.release_channel(*info.data_channel_);
+//        info.data_channel_ = nullptr;
+//    }
+//}
 
 void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
 {
@@ -419,19 +366,23 @@ void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<joga
 }
 
 jogasaki::status service::execute_query(
-    tateyama::api::server::response& res,
+    std::shared_ptr<tateyama::api::server::response> res,
     details::query_info const& q,
-    jogasaki::api::transaction_handle tx,
-    std::unique_ptr<output>& out
+    jogasaki::api::transaction_handle tx
 ) {
     if (!tx) {
         fail();
     }
-    out = std::make_unique<output>();
-    out->name_ = std::string("resultset-");
-    out->name_ += std::to_string(new_resultset_id());
-    res.acquire_channel(out->name_, out->data_channel_);
-    out->data_channel_->acquire(out->writer_);
+    auto c = std::make_shared<callback_control>(res);
+    auto& info = c->channel_info_;
+    info = std::make_unique<details::channel_info>();
+    info->name_ = std::string("resultset-");
+    info->name_ += std::to_string(new_resultset_id());
+    std::shared_ptr<tateyama::api::server::data_channel> ch{};
+    if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+        fail();
+    }
+    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(q.has_sql()) {
@@ -446,13 +397,27 @@ jogasaki::status service::execute_query(
             return rc;
         }
     }
-
-    auto& rs = out->result_set_;
-    if(auto rc = tx->execute(*e, rs); rc != jogasaki::status::ok || !rs) {
-        VLOG(1) << "error in transaction_->execute()";
-        return rc;
-
+    info->meta_ = e->meta();
+    auto* cbp = c.get();
+    callbacks_.emplace(cbp, c);
+    if(auto rc = tx->execute_async(
+            *e,
+            *info->data_channel_,
+            [cbp, this](status s, std::string_view message){
+                if (s == jogasaki::status::ok) {
+//    release_writers(*res, *info);
+                    details::success<::response::ResultOnly>(*cbp->response_);
+                } else {
+                    details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                }
+                if(! callbacks_.erase(cbp)) {
+                    fail();
+                }
+            }
+        ); ! rc) {
+        fail();
     }
+    details::send_body_head(*res, info.get());
     return jogasaki::status::ok;
 }
 
@@ -477,8 +442,8 @@ void details::reply(tateyama::api::server::response& res, ::response::Response& 
     res.body(ss.str());
 }
 
-void details::set_metadata(output const& out, schema::RecordMeta& meta) {
-    auto* metadata = out.result_set_->meta();
+void details::set_metadata(channel_info const& info, schema::RecordMeta& meta) {
+    auto* metadata = info.meta_;
     std::size_t n = metadata->field_count();
 
     for (std::size_t i = 0; i < n; i++) {

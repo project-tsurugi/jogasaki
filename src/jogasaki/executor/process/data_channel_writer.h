@@ -47,7 +47,7 @@ public:
 
 private:
     api::data_channel* channel_{};
-    api::writer* writer_{};
+    std::shared_ptr<api::writer> writer_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
     msgpack::sbuffer buf_{0};
 };

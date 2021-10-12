@@ -40,7 +40,10 @@ operator_kind emit_context::kind() const noexcept {
 }
 
 void emit_context::release() {
-    // TODO
+    if(writer_) {
+        writer_->flush();
+        writer_->release();
+    }
 }
 
 }

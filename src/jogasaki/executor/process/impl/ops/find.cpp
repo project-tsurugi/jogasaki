@@ -151,15 +151,14 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
         if(auto res = stg.get(*ctx.tx_, k, v); res != status::ok) {
+            finish(context);
             if (res == status::not_found) {
                 return {};
             }
             return abort_return(ctx, res);
         }
         auto ret = call_downstream(ctx, k, v, target, resource, context);
-        if (downstream_) {
-            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-        }
+        finish(context);
         return ret;
     }
     auto& stg = *ctx.secondary_stg_;
@@ -169,6 +168,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             k, kvs::end_point_kind::prefixed_inclusive,
             it
         ); res != status::ok) {
+        finish(context);
         if (res == status::not_found) {
             return {};
         }
@@ -176,21 +176,22 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     }
     while(true) {
         if(auto res = it->next(); res != status::ok) {
+            finish(context);
             if (res == status::not_found) {
                 return {};
             }
             return abort_return(ctx, res);
         }
         if(auto success = it->key(k); ! success) {
+            finish(context);
             return abort_return(ctx, status::err_unknown);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {
+            finish(context);
             return ret;
         }
     }
-    if (downstream_) {
-        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
-    }
+    finish(context);
     return {};
 }
 
@@ -206,9 +207,15 @@ std::string_view find::secondary_storage_name() const noexcept {
     return secondary_storage_name_;
 }
 
-void find::finish(abstract::task_context*) {
-    // top operators decide finish timing on their own
-    fail();
+void find::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    if(auto* p = find_context<class find_context>(index(), ctx.contexts())) {
+        p->release();
+    }
+    if (downstream_) {
+        unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+    }
 }
 
 std::vector<details::field_info> find::create_fields(

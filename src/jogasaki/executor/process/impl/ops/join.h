@@ -173,6 +173,11 @@ public:
      * @see operator_base::finish()
      */
     void finish(abstract::task_context* context) override {
+        if (! context) return;
+        context_helper ctx{*context};
+        if (auto* p = find_context<join_context>(index(), ctx.contexts())) {
+            p->release();
+        }
         if (downstream_) {
             unsafe_downcast<record_operator>(downstream_.get())->finish(context);
         }

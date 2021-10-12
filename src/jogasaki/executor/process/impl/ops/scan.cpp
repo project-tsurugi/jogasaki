@@ -163,9 +163,9 @@ std::string_view scan::secondary_storage_name() const noexcept {
 void scan::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    auto* p = find_context<scan_context>(index(), ctx.contexts());
-    if (! p) {
+    if(auto* p = find_context<scan_context>(index(), ctx.contexts())) {
         close(*p);
+        p->release();
     }
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);

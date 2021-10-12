@@ -248,11 +248,8 @@ void take_cogroup::finish(abstract::task_context* context) {
     if (! context) return;
     using iterator = data::iterable_record_store::iterator;
     context_helper c{*context};
-    auto* p = find_context<take_cogroup_context>(index(), c.contexts());
-    if (! p) {
-        for(auto* r : p->readers_) {
-            r->release();
-        }
+    if (auto* p = find_context<take_cogroup_context>(index(), c.contexts())) {
+        p->release();
     }
     if (downstream_) {
         unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->finish(context);

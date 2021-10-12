@@ -198,10 +198,10 @@ void aggregate_group::finish(abstract::task_context* context) {
         if (downstream_) {
             if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                 ctx.abort();
-                return;
             }
         }
     }
+    ctx.release();
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }

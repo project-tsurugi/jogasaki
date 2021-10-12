@@ -120,8 +120,12 @@ std::string_view write_full::storage_name() const noexcept {
     return storage_name_;
 }
 
-void write_full::finish(abstract::task_context*) {
-    //no-op
+void write_full::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    if(auto* p = find_context<write_full_context>(index(), ctx.contexts())) {
+        p->release();
+    }
 }
 
 void write_full::encode_fields(

@@ -356,8 +356,12 @@ maybe_shared_ptr<meta::record_meta> const& write_partial::key_meta() const noexc
     return key_meta_;
 }
 
-void write_partial::finish(abstract::task_context*) {
-    //no-op
+void write_partial::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    if(auto* p = find_context<write_partial_context>(index(), ctx.contexts())) {
+        p->release();
+    }
 }
 
 std::string_view write_partial::storage_name() const noexcept {

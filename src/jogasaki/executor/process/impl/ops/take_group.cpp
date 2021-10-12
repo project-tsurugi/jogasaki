@@ -132,6 +132,10 @@ const maybe_shared_ptr<meta::group_meta>& take_group::meta() const noexcept {
 
 void take_group::finish(abstract::task_context* context) {
     if (! context) return;
+    context_helper c{*context};
+    if(auto* p = find_context<take_group_context>(index(), c.contexts())) {
+        p->release();
+    }
     if (downstream_) {
         unsafe_downcast<group_operator>(downstream_.get())->finish(context);
     }

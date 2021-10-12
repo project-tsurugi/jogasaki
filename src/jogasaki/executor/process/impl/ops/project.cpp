@@ -15,7 +15,6 @@
  */
 #include "project.h"
 
-
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/downcast.h>
 #include <takatori/relation/project.h>
@@ -102,6 +101,11 @@ operator_kind project::kind() const noexcept {
 }
 
 void project::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    if (auto* p = find_context<project_context>(index(), ctx.contexts())) {
+        p->release();
+    }
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }

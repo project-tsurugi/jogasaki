@@ -133,12 +133,10 @@ operator_kind emit::kind() const noexcept {
 }
 
 void emit::finish(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    if (! context) return;
     context_helper ctx{*context};
-    auto* p = find_context<emit_context>(index(), ctx.contexts());
-    if (p && p->writer_) {
-        p->writer_->flush();
-        p->writer_->release();
+    if (auto* p = find_context<emit_context>(index(), ctx.contexts())) {
+        p->release();
     }
 }
 

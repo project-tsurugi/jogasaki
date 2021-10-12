@@ -96,9 +96,8 @@ const maybe_shared_ptr<meta::record_meta>& offer::meta() const noexcept {
 void offer::finish(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
-    auto* p = find_context<offer_context>(index(), ctx.contexts());
-    if (p && p->writer_) {
-        p->writer_->flush();
+    if (auto* p = find_context<offer_context>(index(), ctx.contexts())) {
+        p->release();
     }
 }
 

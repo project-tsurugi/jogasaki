@@ -69,6 +69,11 @@ operator_kind flatten::kind() const noexcept {
 }
 
 void flatten::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    if (auto* p = find_context<flatten_context>(index(), ctx.contexts())) {
+        p->release();
+    }
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }

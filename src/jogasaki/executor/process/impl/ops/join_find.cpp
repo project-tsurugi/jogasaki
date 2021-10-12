@@ -208,6 +208,11 @@ std::string_view join_find::storage_name() const noexcept {
 }
 
 void join_find::finish(abstract::task_context* context) {
+    if (! context) return;
+    context_helper ctx{*context};
+    if (auto* p = find_context<join_find_context>(index(), ctx.contexts())) {
+        p->release();
+    }
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }

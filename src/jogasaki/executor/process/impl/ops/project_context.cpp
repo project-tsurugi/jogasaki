@@ -31,7 +31,7 @@ operator_kind project_context::kind() const noexcept {
 }
 
 void project_context::release() {
-    //TODO any cleanup?
+    // no-op
 }
 
 }

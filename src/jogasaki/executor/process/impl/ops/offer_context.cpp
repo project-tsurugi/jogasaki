@@ -44,6 +44,7 @@ data::small_record_store& offer_context::store() noexcept {
 
 void offer_context::release() {
     if(writer_) {
+        writer_->flush();
         writer_->release();
         writer_ = nullptr;
     }

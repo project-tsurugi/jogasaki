@@ -73,9 +73,8 @@ public:
         write_latency_ms_(write_latency_ms)
     {}
 
-    status acquire(writer*& buf) override {
-        auto& s = writers_.emplace_back(std::make_shared<test_writer>(write_latency_ms_));
-        buf = s.get();
+    status acquire(std::shared_ptr<writer>& w) override {
+        w = writers_.emplace_back(std::make_shared<test_writer>(write_latency_ms_));
         return status::ok;
     }
 

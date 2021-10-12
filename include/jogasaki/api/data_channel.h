@@ -45,22 +45,6 @@ public:
     data_channel& operator=(data_channel&& other) noexcept = default;
 
     /**
-     * @brief accessor to the metadata of the result records
-     * @return the record metadata
-     */
-    [[nodiscard]] api::record_meta const* meta() const noexcept {
-        return meta_.get();
-    }
-
-    /**
-     * @brief setter of the metadata of the result records
-     * @param m the record metadata
-     */
-    void meta(std::shared_ptr<api::record_meta> m) noexcept {
-        meta_ = std::move(m);
-    }
-
-    /**
      * @brief acquire a new writer
      * @param wrt [out] the pointer to the acquired writer. The returned value is valid only when the call finishes with status code status::ok.
      * @details the caller can use the acquired writer freely to write the data. Once it finishes using the writer,
@@ -72,7 +56,7 @@ public:
      * @return status::ok when successful
      * @return other status code when error occurs
      */
-    virtual status acquire(writer*& wrt) = 0;
+    virtual status acquire(std::shared_ptr<writer>& wrt) = 0;
 
     /**
      * @brief declare to finish using the writer and return it to channel
@@ -86,9 +70,6 @@ public:
      * @return other status code when error occurs
      */
     virtual status release(writer& wrt) = 0;
-
-private:
-    std::shared_ptr<api::record_meta> meta_{};
 
 };
 

@@ -61,6 +61,7 @@ file(GLOB SRCS
         "jogasaki/scheduler/*.cpp"
         "jogasaki/kvs/*.cpp"
         "jogasaki/utils/*.cpp"
+        "tateyama/*.cpp"
         )
 
 # add implementation specific testcases

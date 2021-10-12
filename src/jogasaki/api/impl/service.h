@@ -27,6 +27,8 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/impl/data_channel.h>
+#include <jogasaki/api/impl/data_writer.h>
 
 #include <tateyama/status.h>
 #include <tateyama/api/server/service.h>
@@ -46,8 +48,6 @@ using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
 using response_code = tateyama::api::endpoint::response_code;
-
-class data_channel;
 
 namespace details {
 
@@ -179,13 +179,13 @@ inline void success<::response::Prepare>(tateyama::api::server::response& res, j
     p.release_prepared_statement_handle();
 }
 
-inline void send_body_head(tateyama::api::server::response& res, channel_info* info) {  //NOLINT(performance-unnecessary-value-param)
+inline void send_body_head(tateyama::api::server::response& res, channel_info const& info) {  //NOLINT(performance-unnecessary-value-param)
     ::schema::RecordMeta meta{};
     ::response::ExecuteQuery e{};
     ::response::Response r{};
 
-    set_metadata(*info, meta);
-    e.set_name(info->name_);
+    set_metadata(info, meta);
+    e.set_name(info.name_);
     e.set_allocated_record_meta(&meta);
     r.set_allocated_execute_query(&e);
     details::reply(res, r, true);
@@ -236,68 +236,6 @@ private:
 inline jogasaki::api::impl::service& get_impl(tateyama::api::server::service& svc) {
     return unsafe_downcast<jogasaki::api::impl::service>(svc);
 }
-
-class data_writer : public api::writer {
-public:
-    data_writer() = default;
-
-    explicit data_writer(std::shared_ptr<tateyama::api::server::writer> origin) :
-        origin_(std::move(origin))
-    {}
-
-    status write(char const* data, std::size_t length) override {
-        if (auto rc = origin_->write(data, length); rc != tateyama::status::ok) {
-            fail();
-        }
-        return status::ok;
-    }
-
-    status commit() override {
-        if (auto rc = origin_->commit(); rc != tateyama::status::ok) {
-            fail();
-        }
-        return status::ok;
-    }
-
-    [[nodiscard]] std::shared_ptr<tateyama::api::server::writer> const& origin() const noexcept {
-        return origin_;
-    }
-
-private:
-    std::shared_ptr<tateyama::api::server::writer> origin_{};
-};
-
-class data_channel : public api::data_channel {
-public:
-    data_channel() = default;
-
-    explicit data_channel(std::shared_ptr<tateyama::api::server::data_channel> origin) :
-        origin_(std::move(origin))
-    {}
-
-    status acquire(std::shared_ptr<writer>& wrt) override {
-        std::shared_ptr<tateyama::api::server::writer> writer{};
-        if(auto rc = origin_->acquire(writer); rc != tateyama::status::ok) {
-            fail();
-        }
-        wrt = std::make_shared<data_writer>(std::move(writer));
-        return status::ok;
-    }
-
-    status release(writer& wrt) override {
-        auto& w = unsafe_downcast<data_writer>(wrt);
-        if(auto rc = origin_->release(*w.origin()); rc != tateyama::status::ok) {
-            fail();
-        }
-        return status::ok;
-    }
-
-    [[nodiscard]] std::shared_ptr<tateyama::api::server::data_channel> const& origin() const noexcept {
-        return origin_;
-    }
-private:
-    std::shared_ptr<tateyama::api::server::data_channel> origin_{};
-};
 
 }
 

@@ -15,28 +15,18 @@
  */
 #include "service.h"
 
-#include <string_view>
-#include <memory>
-
 #include <msgpack.hpp>
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/status.h>
 #include <jogasaki/api/database.h>
-#include <jogasaki/configuration.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
-#include <jogasaki/kvs/database.h>
-
-#include "schema.pb.h"
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
 
 namespace jogasaki::api::impl {
 
@@ -417,7 +407,7 @@ jogasaki::status service::execute_query(
         ); ! rc) {
         fail();
     }
-    details::send_body_head(*res, info.get());
+    details::send_body_head(*res, *info);
     return jogasaki::status::ok;
 }
 

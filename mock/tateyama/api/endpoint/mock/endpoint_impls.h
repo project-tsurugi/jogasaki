@@ -73,7 +73,11 @@ public:
 
     status release(writer& buf) override;
 
+    [[nodiscard]] bool all_released() const noexcept;
+
     std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
+
+    std::size_t released_{};  //NOLINT
 };
 
 class test_response : public response {
@@ -91,6 +95,8 @@ public:
 
     bool completed();
 
+    [[nodiscard]] bool all_released() const noexcept;
+
     status close_session() override;;
     std::string body_{};  //NOLINT
     std::string body_head_{};  //NOLINT
@@ -98,6 +104,7 @@ public:
     std::string message_{};  //NOLINT
     response_code code_{response_code::unknown};  //NOLINT
     bool completed_{};  //NOLINT
+    std::size_t released_{};  //NOLINT
 };
 
 }

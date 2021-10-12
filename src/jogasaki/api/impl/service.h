@@ -47,6 +47,8 @@ using takatori::util::fail;
 
 using response_code = tateyama::api::endpoint::response_code;
 
+class data_channel;
+
 namespace details {
 
 class query_info;
@@ -54,7 +56,7 @@ class query_info;
 struct channel_info {
     jogasaki::api::record_meta const* meta_{};  //NOLINT
     std::string name_;  //NOLINT
-    std::shared_ptr<jogasaki::api::data_channel> data_channel_{};  //NOLINT
+    std::shared_ptr<jogasaki::api::impl::data_channel> data_channel_{};  //NOLINT
 };
 
 void reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head = false);
@@ -290,6 +292,9 @@ public:
         return status::ok;
     }
 
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::data_channel> const& origin() const noexcept {
+        return origin_;
+    }
 private:
     std::shared_ptr<tateyama::api::server::data_channel> origin_{};
 };

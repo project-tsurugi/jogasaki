@@ -324,6 +324,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
+        EXPECT_TRUE(res->all_released());
 
         ::response::Response resp{};
         deserialize(res->body_, resp);
@@ -349,6 +350,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
+        EXPECT_TRUE(res->all_released());
 
         {
             ::response::Response resp{};
@@ -377,6 +379,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
                 ASSERT_EQ(1, v.size());
                 auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
                 EXPECT_EQ(exp, v[0]);
+                EXPECT_TRUE(ch.all_released());
             }
         }
         {
@@ -459,6 +462,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
+        EXPECT_TRUE(res->all_released());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
 
@@ -488,6 +492,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
                 ASSERT_EQ(1, v.size());
                 auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
                 EXPECT_EQ(exp, v[0]);
+                EXPECT_TRUE(ch.all_released());
             }
         }
         {

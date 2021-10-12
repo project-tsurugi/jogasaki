@@ -404,8 +404,8 @@ jogasaki::status service::execute_query(
             *e,
             *info->data_channel_,
             [cbp, this](status s, std::string_view message){
+                cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
                 if (s == jogasaki::status::ok) {
-//    release_writers(*res, *info);
                     details::success<::response::ResultOnly>(*cbp->response_);
                 } else {
                     details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});

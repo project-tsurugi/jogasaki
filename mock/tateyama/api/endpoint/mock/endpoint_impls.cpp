@@ -51,14 +51,8 @@ status test_channel::acquire(writer*& buf) {
     return status::ok;
 }
 
-status test_channel::release(writer& buf) {
-    (void)buf;
-//        for(auto it=buffers_.begin(); it != buffers_.end(); ++it) {
-//            if (it->get() == std::addressof(buf)) {
-//                buffers_.erase(it);
-//                break;
-//            }
-//        }
+status test_channel::release(writer&) {
+    ++released_;
     return status::ok;
 }
 
@@ -84,8 +78,8 @@ status test_response::acquire_channel(std::string_view name, data_channel*& ch) 
     return status::ok;
 }
 
-status test_response::release_channel(data_channel& ch) {
-    (void)ch;
+status test_response::release_channel(data_channel&) {
+    ++released_;
     return status::ok;
 }
 
@@ -97,4 +91,10 @@ status test_response::close_session() {
     return status::ok;
 }
 
+bool test_response::all_released() const noexcept {
+    return !channel_ || released_ > 0;
+}
+bool test_channel::all_released() const noexcept {
+    return buffers_.size() == released_;
+}
 }

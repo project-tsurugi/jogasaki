@@ -110,7 +110,7 @@ private:
 
 };
 
-loader& get_loader() {
+inline loader& get_loader() {
     static loader ldr(jogasaki_library_name, RTLD_NOW);
     return ldr;
 }

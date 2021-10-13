@@ -16,6 +16,7 @@
 
 #include <regex>
 #include <thread>
+#include <mutex>
 
 #include <takatori/util/downcast.h>
 
@@ -25,6 +26,7 @@
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::api {
 
@@ -48,6 +50,7 @@ public:
     status write(char const* data, std::size_t length) override {
         BOOST_ASSERT(size_+length <= data_.max_size());  //NOLINT
         std::memcpy(data_.data()+size_, data, length);
+        VLOG(1) << "write " << utils::binary_printer{data_.data()+size_, length};
         size_ += length;
         if (write_latency_ms_ > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds{write_latency_ms_});
@@ -62,7 +65,7 @@ public:
     std::array<char, 4096> data_{};  //NOLINT
     std::size_t capacity_{};  //NOLINT
     std::size_t size_{};  //NOLINT
-    std::size_t write_latency_ms_{};
+    std::size_t write_latency_ms_{};  //NOLINT
 };
 
 class test_channel : public api::data_channel {
@@ -74,22 +77,26 @@ public:
     {}
 
     status acquire(std::shared_ptr<writer>& w) override {
+        std::unique_lock lk{mutex_};
         w = writers_.emplace_back(std::make_shared<test_writer>(write_latency_ms_));
         return status::ok;
     }
 
-    status release(writer& buf) override {
-        all_writers_released_ = true;
+    status release(writer&) override {
+        std::unique_lock lk{mutex_};
+        ++released_;
         return status::ok;
     }
 
-    bool all_writers_released() const noexcept {
-        return all_writers_released_;
+    [[nodiscard]] bool all_writers_released() const noexcept {
+        std::unique_lock lk{mutex_};
+        return writers_.size() == released_;
     }
 
+    mutable std::mutex mutex_{};
     std::vector<std::shared_ptr<test_writer>> writers_{};  //NOLINT
-    bool all_writers_released_{};
-    std::size_t write_latency_ms_{};
+    std::size_t released_{};  //NOLINT
+    std::size_t write_latency_ms_{};  //NOLINT
 };
 
 }

@@ -26,6 +26,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/mock/test_channel.h>
 #include <jogasaki/api.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/utils/mock/storage_data.h>
@@ -50,6 +51,7 @@ DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.");  //NOLINT
 DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storages");  //NOLINT
 DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
+DEFINE_bool(async, false, "Whether to use new async api");  //NOLINT
 
 namespace jogasaki::sql_cli {
 
@@ -94,8 +96,21 @@ public:
             std::cout << std::endl;
             return 1;
         }
-        std::unique_ptr<api::result_set> rs{};
-        {
+        if (FLAGS_async) {
+            std::atomic_bool run{false};
+            api::test_channel ch{};
+            if(auto rc = tx_->execute_async(*e, ch,
+                    [&](status st, std::string_view msg){
+                        LOG(INFO) << "completed status:" << st << " msg:" << msg;
+                        run = true;
+                    }
+                ); !rc) {
+                LOG(ERROR) << rc;
+                return -1;
+            }
+            while(! run.load()) {}
+        } else {
+            std::unique_ptr<api::result_set> rs{};
             if(auto rc = tx_->execute(*e, rs); rc != status::ok || !rs) {
                 LOG(ERROR) << rc;
                 return static_cast<int>(rc);

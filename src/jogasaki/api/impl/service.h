@@ -31,6 +31,7 @@
 #include <jogasaki/api/impl/data_writer.h>
 
 #include <tateyama/status.h>
+#include <tateyama/api/registry/environment.h>
 #include <tateyama/api/server/service.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/writer.h>
@@ -206,6 +207,13 @@ public:
         std::shared_ptr<tateyama::api::server::response> res
     ) override;
 
+    tateyama::status initialize(tateyama::api::registry::environment& env, void* context) override;
+
+    tateyama::status shutdown() override;
+
+    static std::shared_ptr<service> create() {
+        return std::make_shared<service>();
+    }
 private:
 
     struct callback_control {

@@ -27,6 +27,7 @@
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
+#include <tateyama/api/registry/registry.h>
 
 namespace jogasaki::api::impl {
 
@@ -420,6 +421,17 @@ std::size_t service::new_resultset_id() const noexcept {
     return ++resultset_id;
 }
 
+tateyama::status service::initialize(tateyama::api::registry::environment& env, void* context) {
+    (void)env;
+    db_ = reinterpret_cast<jogasaki::api::database*>(context);  //NOLINT
+    return tateyama::status::ok;
+}
+
+tateyama::status service::shutdown() {
+    db_ = nullptr;
+    return tateyama::status::ok;
+}
+
 void details::reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head) {
     std::stringstream ss{};
     if (!r.SerializeToOstream(&ss)) {
@@ -473,3 +485,5 @@ void details::set_metadata(channel_info const& info, schema::RecordMeta& meta) {
 }
 
 }
+
+register_component(server, tateyama::api::server::service, jogasaki, jogasaki::api::impl::service::create);  //NOLINT

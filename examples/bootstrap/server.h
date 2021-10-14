@@ -19,8 +19,6 @@
 
 namespace tateyama::server {
 
-int backend_main(int, char **);
-
 template <class T>
 class DBCloser final { //NOLINT
 public:

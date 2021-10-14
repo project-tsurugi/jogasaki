@@ -14,7 +14,6 @@
 
 file(GLOB SOURCES
     "*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/tateyama/endpoint/ipc/*.cpp"
 )
 
 add_executable(server
@@ -27,27 +26,24 @@ set_target_properties(server
 )
 
 target_include_directories(server
-    PRIVATE ${CMAKE_SOURCE_DIR}/src/tateyama/endpoint/service/impl
-    PRIVATE ${CMAKE_SOURCE_DIR}/src/tateyama/endpoint/ipc
     PRIVATE ${CMAKE_BINARY_DIR}/protos
     PRIVATE .
 )
 
 target_link_libraries(server
-    PRIVATE tateyama-impl
-    PRIVATE mock
+    PRIVATE api
+    PRIVATE ${tateyama_engine}
+    PRIVATE jogasaki-mock
     PRIVATE takatori
     PRIVATE yugawara
     PRIVATE ${ENGINE}
-    PRIVATE ${jogasaki_api}
     PRIVATE glog::glog
     PRIVATE gflags::gflags
     PRIVATE pthread
+    PRIVATE Boost::filesystem
     PRIVATE rt
 )
 set_compile_options(server)
-
-target_compile_definitions(server PUBLIC JOGASAKI_LIBRARY_NAME=${jogasaki_library_name})
 
 if(INSTALL_EXAMPLES)
     install_custom(server ${export_name})

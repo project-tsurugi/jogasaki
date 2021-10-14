@@ -17,6 +17,8 @@
 #include <tateyama/api/endpoint/request.h>
 #include <tateyama/api/endpoint/response.h>
 #include <tateyama/api/endpoint/data_channel.h>
+#include <tateyama/api/endpoint/provider.h>
+#include <tateyama/api/registry.h>
 
 #include <memory>
 #include <regex>
@@ -107,4 +109,23 @@ public:
     std::size_t released_{};  //NOLINT
 };
 
+class test_endpoint : public provider {
+public:
+
+    status initialize(environment& env, void* context) {
+        (void)env;
+        (void)context;
+        return tateyama::status::ok;
+    }
+
+    status shutdown() {
+        return tateyama::status::ok;
+    }
+    static std::shared_ptr<provider> create() {
+        return std::make_shared<test_endpoint>();
+    }
+};
+
 }
+
+register_component(endpoint, tateyama::api::endpoint::provider, mock, tateyama::api::endpoint::mock::test_endpoint::create);  //NOLINT

@@ -36,7 +36,9 @@
 
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
 #include <tateyama/api/endpoint/service.h>
-#include "../third_party/tateyama/common/utils/loader.h"
+#include <tateyama/api/registry.h>
+#include <tateyama/api/environment.h>
+#include <tateyama/api/server/service.h>
 #include "api_test_base.h"
 #include "../test_utils/msgbuf_utils.h"
 
@@ -98,10 +100,21 @@ public:
         auto* impl = db_impl();
         add_benchmark_tables(*impl->tables());
         register_kvs_storage(*impl->kvs_db(), *impl->tables());
-        service_ = tateyama::api::endpoint::create_service(tateyama::utils::create_application(db_.get()));
+
+        environment_ = std::make_unique<tateyama::api::environment>();
+        auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
+        environment_->add_application(app);
+        app->initialize(*environment_, db_.get());
+        service_ = tateyama::api::endpoint::create_service(*environment_);
+        environment_->endpoint_service(service_);
+        auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("mock");
+        environment_->add_endpoint(endpoint);
+        endpoint->initialize(*environment_, {});
     }
 
     void TearDown() override {
+        environment_->endpoints()[0]->shutdown();
+        environment_->applications()[0]->shutdown();
         db_teardown();
     }
     void test_begin(std::uint64_t& handle);
@@ -153,7 +166,8 @@ public:
     }
     void test_dispose_prepare(std::uint64_t& handle);
 
-    std::unique_ptr<tateyama::api::endpoint::service> service_{};  //NOLINT
+    std::shared_ptr<tateyama::api::endpoint::service> service_{};  //NOLINT
+    std::unique_ptr<tateyama::api::environment> environment_{};  //NOLINT
 };
 
 using namespace std::string_view_literals;

@@ -27,7 +27,7 @@
 #include <tateyama/api/server/service.h>
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
-#include <tateyama/api/registry/registry.h>
+#include <tateyama/api/registry.h>
 #include <jogasaki/api.h>
 
 #include "server.h"
@@ -84,11 +84,15 @@ int backend_main(int argc, char **argv) {
     }
 
     // service
-    auto env = std::make_shared<tateyama::api::registry::environment>();
-    auto app = tateyama::api::registry::registry<tateyama::api::server::service>::create("jogasaki");
+    auto env = std::make_shared<tateyama::api::environment>();
+    auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
     env->add_application(app);
     app->initialize(*env, db.get());
-    auto endpoint = tateyama::api::registry::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
+
+    auto service = tateyama::api::endpoint::create_service(*env);
+    env->endpoint_service(service);
+
+    auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
     env->add_endpoint(endpoint);
     VLOG(1) << "endpoint service created" << std::endl;
 
@@ -100,7 +104,6 @@ int backend_main(int argc, char **argv) {
         db->stop();
         return 0;
     }
-
 
     std::unordered_map<std::string, std::string> map{
         {"dbname", FLAGS_dbname},

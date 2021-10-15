@@ -128,8 +128,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first
 
-      - id: Install_tateyama_sharksfin_memory
-        name: Install_tateyama_sharksfin_memory
+      - id: Install_tateyama_memory
+        name: Install_tateyama_memory
         run: |
           cd third_party/tateyama
           mkdir -p build
@@ -138,8 +138,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
-      - id: Install_tateyama_sharksfin_shirakami
-        name: Install_tateyama_sharksfin_shirakami
+      - id: Install_tateyama_shirakami
+        name: Install_tateyama_shirakami
         run: |
           cd third_party/tateyama
           mkdir -p build
@@ -148,16 +148,16 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
-      - id: CMake_Build_sharksfin_memory
-        name: CMake_Build_sharksfin_memory
+      - id: Build_jogasaki_memory
+        name: Build_jogasaki_memory
         run: |
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j
 
-      - id: CTest_sharksfin_memory
-        name: CTest_sharksfin_memory
+      - id: Test_jogasaki_memory
+        name: Test_jogasaki_memory
         continue-on-error: false
         env:
           GTEST_OUTPUT: xml
@@ -166,16 +166,16 @@ jobs:
           cd build
           ctest --verbose -j 100
 
-      - id: CMake_Build_sharksfin_shirakami
-        name: CMake_Build_sharksfin_shirakami
+      - id: Build_jogasaki_shirakami
+        name: Build_jogasaki_shirakami
         run: |
           mkdir build-shirakami
           cd build-shirakami
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j
 
-      - id: CTest_sharksfin_shirakami
-        name: CTest_sharksfin_shirakami
+      - id: Test_jogasaki_shirakami
+        name: Test_jogasaki_shirakami
         continue-on-error: false
         env:
           GTEST_OUTPUT: xml

@@ -67,7 +67,7 @@ public:
         std::shared_ptr<kvs::transaction> transaction = {},
         executor::sequence::manager* sequence_manager = {},
         data::result_store* result = {},
-        api::data_channel* data_channel = {}
+        maybe_shared_ptr<api::data_channel> data_channel = {}
     );
 
     /**
@@ -151,7 +151,7 @@ public:
      * @brief accessor for the data channel
      * @return data channel
      */
-    [[nodiscard]] api::data_channel* data_channel() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<api::data_channel> const& data_channel() const noexcept;
 
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
@@ -160,7 +160,7 @@ private:
     std::shared_ptr<kvs::transaction> transaction_{};
     executor::sequence::manager* sequence_manager_{};
     data::result_store* result_{};
-    api::data_channel* data_channel_{};
+    maybe_shared_ptr<api::data_channel> data_channel_{};
     std::atomic<status> status_code_{status::ok};
     maybe_shared_ptr<scheduler::job_context> job_context_{};
     mutable std::mutex status_message_mutex_{};

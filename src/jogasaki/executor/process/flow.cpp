@@ -116,7 +116,7 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
         (context_->result() && external_output > 0) ? &context_->result()->store(partition) : nullptr,
-        (context_->data_channel() && external_output > 0) ? context_->data_channel() : nullptr
+        (context_->data_channel() && external_output > 0) ? context_->data_channel().get() : nullptr
     );
 
     ctx->work_context(

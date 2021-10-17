@@ -136,7 +136,7 @@ tateyama::status service::operator()(
                 details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
                 break;
             }
-            execute_statement(res, *e, tx);
+            execute_statement(res, std::shared_ptr{std::move(e)}, tx);
             break;
         }
         case ::request::Request::RequestCase::kExecuteQuery: {
@@ -188,7 +188,7 @@ tateyama::status service::operator()(
                 details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
                 break;
             }
-            execute_statement(res, *e, tx);
+            execute_statement(res, std::shared_ptr{std::move(e)}, tx);
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedQuery: {
@@ -296,7 +296,7 @@ tateyama::status service::operator()(
 
 void service::execute_statement(
     std::shared_ptr<tateyama::api::server::response>& res,
-    jogasaki::api::executable_statement& stmt,
+    std::shared_ptr<jogasaki::api::executable_statement> stmt,
     jogasaki::api::transaction_handle tx
 ) {
     auto c = std::make_shared<callback_control>(res);
@@ -318,16 +318,6 @@ void service::execute_statement(
         VLOG(1) << "error in transaction_->execute_async()";
     }
 }
-
-//void service::release_writers(
-//    tateyama::api::server::response& res,
-//    details::channel_info& info
-//) {
-//    if (info.data_channel_) {
-//        res.release_channel(*info.data_channel_);
-//        info.data_channel_ = nullptr;
-//    }
-//}
 
 void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
 {
@@ -393,8 +383,8 @@ jogasaki::status service::execute_query(
     auto* cbp = c.get();
     callbacks_.emplace(cbp, c);
     if(auto rc = tx->execute_async(
-            *e,
-            *info->data_channel_,
+            std::shared_ptr{std::move(e)},
+            info->data_channel_,
             [cbp, this](status s, std::string_view message){
                 cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
                 if (s == jogasaki::status::ok) {

@@ -141,16 +141,24 @@ status transaction::execute(
     return request_ctx->status_code();
 }
 
-bool transaction::execute_async(api::executable_statement& statement, transaction::callback on_completion) {
-    return execute_async(statement, nullptr, std::move(on_completion));
+bool transaction::execute_async(maybe_shared_ptr<api::executable_statement> const& statement, transaction::callback on_completion) {
+    return execute_async_common(statement, nullptr, std::move(on_completion));
 }
 
-bool transaction::execute_async(api::executable_statement& statement, data_channel& channel, callback on_completion) {
-    return execute_async(statement, std::addressof(channel), std::move(on_completion));
+bool transaction::execute_async(
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<data_channel> const& channel,
+    callback on_completion
+) {
+    return execute_async_common(statement, channel, std::move(on_completion));
 }
 
-bool transaction::execute_async(api::executable_statement& statement, data_channel* channel, callback on_completion) {
-    auto& s = unsafe_downcast<impl::executable_statement&>(statement);
+bool transaction::execute_async_common(
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<api::data_channel> const& channel,
+    callback on_completion
+) {
+    auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     auto& e = s.body();
     auto& c = database_->configuration();
     request_context_ = std::make_shared<request_context>(
@@ -173,8 +181,10 @@ bool transaction::execute_async(api::executable_statement& statement, data_chann
                 cpu
             )
         );
-        request_context_->job()->callback([=](){  // callback is copy-based
-            // TODO clean up?
+        request_context_->job()->callback([statement, on_completion, channel, this](){  // callback is copy-based
+            // let lambda own the statement/channel so that they live longer by the end of callback
+            (void)statement;
+            (void)channel;
             on_completion(request_context_->status_code(), request_context_->status_message());
         });
 

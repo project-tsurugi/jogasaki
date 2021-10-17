@@ -35,7 +35,7 @@ request_context::request_context(
     std::shared_ptr<kvs::transaction> transaction,
     executor::sequence::manager* sequence_manager,
     data::result_store* result,
-    api::data_channel* data_channel
+    maybe_shared_ptr<api::data_channel> data_channel
 ) :
     config_(std::move(config)),
     request_resource_(std::move(request_resource)),
@@ -103,7 +103,7 @@ std::string_view request_context::status_message() const noexcept {
     return status_message_;
 }
 
-api::data_channel* request_context::data_channel() const noexcept {
+maybe_shared_ptr<api::data_channel> const&  request_context::data_channel() const noexcept {
     return data_channel_;
 }
 

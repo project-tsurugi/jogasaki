@@ -109,7 +109,7 @@ TEST_F(async_api_test, async_insert) {
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
-    tx->execute_async(*stmt, [&](status st, std::string_view msg){
+    tx->execute_async(maybe_shared_ptr{stmt.get()}, [&](status st, std::string_view msg){
         s = st;
         message = msg;
         run.store(true);
@@ -127,7 +127,7 @@ TEST_F(async_api_test, async_update) {
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
-    tx->execute_async(*stmt, [&](status st, std::string_view msg){
+    tx->execute_async(maybe_shared_ptr{stmt.get()}, [&](status st, std::string_view msg){
         s = st;
         message = msg;
         run.store(true);
@@ -149,8 +149,8 @@ TEST_F(async_api_test, async_query) {
     std::atomic_bool run{false};
     test_channel ch{};
     ASSERT_TRUE(tx->execute_async(
-        *stmt,
-        ch,
+        maybe_shared_ptr{stmt.get()},
+        maybe_shared_ptr{&ch},
         [&](status st, std::string_view msg){
             s = st;
             message = msg;
@@ -186,8 +186,8 @@ TEST_F(async_api_test, async_query_heavy_write) {
     std::atomic_bool run{false};
     test_channel ch{10};
     ASSERT_TRUE(tx->execute_async(
-        *stmt,
-        ch,
+        maybe_shared_ptr{stmt.get()},
+        maybe_shared_ptr{&ch},
         [&](status st, std::string_view msg){
             s = st;
             message = msg;

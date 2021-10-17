@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/api/transaction.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/prepared_statement.h>
@@ -24,6 +26,8 @@
 #include <jogasaki/kvs/transaction.h>
 
 namespace jogasaki::api::impl {
+
+using takatori::util::maybe_shared_ptr;
 
 class database;
 
@@ -55,8 +59,12 @@ public:
         std::unique_ptr<api::result_set>& result
     ) override;
 
-    bool execute_async(api::executable_statement& statement, callback on_completion) override;
-    bool execute_async(api::executable_statement& statement, data_channel& channel, callback on_completion) override;
+    bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion) override;
+    bool execute_async(
+        maybe_shared_ptr<api::executable_statement> const& statement,
+        maybe_shared_ptr<data_channel> const& channel,
+        callback on_completion
+    ) override;
 
 private:
     impl::database* database_{};
@@ -64,7 +72,11 @@ private:
     std::shared_ptr<kvs::transaction> tx_{};
     std::shared_ptr<request_context> request_context_{};
 
-    bool execute_async(api::executable_statement& statement, data_channel* channel, callback on_completion);
+    bool execute_async_common(
+        maybe_shared_ptr<api::executable_statement> const& statement,
+        maybe_shared_ptr<api::data_channel> const& channel,
+        callback on_completion
+    );
 };
 
 }

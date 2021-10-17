@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
@@ -25,6 +27,8 @@
 #include <jogasaki/status.h>
 
 namespace jogasaki::api {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief interface to execute statement in the transaction, or to finish the transaction
@@ -101,23 +105,32 @@ public:
     /**
      * @brief asynchronously execute the statement in the transaction. No result records are expected
      * from the statement (e.g. insert/update/delete).
-     * @param statement the statement to be executed
+     * @param statement the statement to be executed. If raw pointer is passed, caller is responsible to ensure it live
+     * long by the end of callback.
+     * @param on_completion the callback invoked when async call is completed
      * @return true when successful
      * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    virtual bool execute_async(executable_statement& statement, callback on_completion) = 0;
+    virtual bool execute_async(maybe_shared_ptr<executable_statement> const& statement, callback on_completion) = 0;
 
     /**
      * @brief asynchronously execute the statement in the transaction. The result records are expected
      * to be written to the writers derived from `channel`
-     * @param statement the statement to be executed
-     * @param channel the data channel to aquire/release writer to write output data
+     * @param statement the statement to be executed.
+     * If raw pointer is passed, caller is responsible to ensure it live long by the end of callback.
+     * @param channel the data channel to acquire/release writer to write output data
+     * If raw pointer is passed, caller is responsible to ensure it live long by the end of callback.
+     * @param on_completion the callback invoked when async call is completed
      * @return true when successful
      * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    virtual bool execute_async(executable_statement& statement, data_channel& channel, callback on_completion) = 0;
+    virtual bool execute_async(
+        maybe_shared_ptr<executable_statement> const& statement,
+        maybe_shared_ptr<data_channel> const& channel,
+        callback on_completion
+    ) = 0;
 };
 
 }

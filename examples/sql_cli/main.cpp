@@ -99,7 +99,9 @@ public:
         if (FLAGS_async) {
             std::atomic_bool run{false};
             api::test_channel ch{};
-            if(auto rc = tx_->execute_async(*e, ch,
+            if(auto rc = tx_->execute_async(
+                std::shared_ptr{std::move(e)},
+                maybe_shared_ptr{&ch},
                     [&](status st, std::string_view msg){
                         LOG(INFO) << "completed status:" << st << " msg:" << msg;
                         run = true;

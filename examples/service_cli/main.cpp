@@ -16,6 +16,8 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <future>
+#include <chrono>
 
 #include <glog/logging.h>
 #include <takatori/util/fail.h>

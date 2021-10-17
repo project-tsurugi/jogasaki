@@ -192,7 +192,7 @@ status database::prepare_common(
 ) {
     std::unique_ptr<api::prepared_statement> ptr{};
     auto st = prepare_common(sql, std::move(provider), ptr);
-    {
+    if (st == status::ok) {
         decltype(prepared_statements_)::accessor acc{};
         api::statement_handle handle{ptr.get()};
         if (prepared_statements_.insert(acc, handle)) {

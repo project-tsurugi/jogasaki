@@ -303,7 +303,7 @@ void service::execute_statement(
     auto* cbp = c.get();
     callbacks_.emplace(cbp, std::move(c));
     if(auto success = tx->execute_async(
-            stmt,
+            std::move(stmt),
             [cbp, this](status s, std::string_view message){
                 if (s == jogasaki::status::ok) {
                     details::success<::response::ResultOnly>(*cbp->response_);
@@ -348,7 +348,7 @@ void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<joga
 }
 
 jogasaki::status service::execute_query(
-    std::shared_ptr<tateyama::api::server::response> res,
+    std::shared_ptr<tateyama::api::server::response> res,  //NOLINT(performance-unnecessary-value-param)
     details::query_info const& q,
     jogasaki::api::transaction_handle tx
 ) {

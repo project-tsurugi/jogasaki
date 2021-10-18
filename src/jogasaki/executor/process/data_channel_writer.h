@@ -34,6 +34,8 @@ public:
     data_channel_writer(data_channel_writer&& other) noexcept = delete;
     data_channel_writer& operator=(data_channel_writer&& other) noexcept = delete;
 
+    ~data_channel_writer() override = default;
+
     data_channel_writer(
         api::data_channel& channel,
         maybe_shared_ptr<meta::record_meta> meta

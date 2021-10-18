@@ -37,6 +37,16 @@ public:
     constexpr record_meta() = default;
 
     /**
+     * @brief destruct the object
+     */
+    virtual ~record_meta() = default;
+
+    record_meta(record_meta const& other) = delete;
+    record_meta& operator=(record_meta const& other) = delete;
+    record_meta(record_meta&& other) noexcept = delete;
+    record_meta& operator=(record_meta&& other) noexcept = delete;
+
+    /**
      * @brief getter for field type
      * @param index field index. Must be equal to, or greater than 0. Must be less than the field count.
      * @return field type

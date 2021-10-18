@@ -39,7 +39,7 @@ namespace impl {
 void preprocess(
     takatori::plan::process const& process,
     compiled_info const& info,
-    std::shared_ptr<mirror_container> const& mirrors
+    std::shared_ptr<mirror_container> const& container
 );
 
 [[nodiscard]] std::shared_ptr<mirror_container> preprocess_mirror(

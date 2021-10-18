@@ -156,7 +156,7 @@ bool transaction::execute_async(
 bool transaction::execute_async_common(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
-    callback on_completion
+    callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     auto& e = s.body();

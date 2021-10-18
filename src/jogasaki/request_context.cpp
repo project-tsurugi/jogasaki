@@ -43,7 +43,7 @@ request_context::request_context(
     transaction_(std::move(transaction)),
     sequence_manager_(sequence_manager),
     result_(result),
-    data_channel_(data_channel)
+    data_channel_(std::move(data_channel))
 {}
 
 std::shared_ptr<class configuration> const& request_context::configuration() const {

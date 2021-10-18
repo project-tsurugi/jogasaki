@@ -21,7 +21,7 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
-#include "../../test_utils/msgbuf_utils.h"
+#include <jogasaki/utils/mock/msgbuf_utils.h>
 
 namespace jogasaki::executor::process {
 

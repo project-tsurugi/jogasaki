@@ -37,7 +37,7 @@
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/mock/test_channel.h>
-#include "../test_utils/msgbuf_utils.h"
+#include <jogasaki/utils/mock/msgbuf_utils.h>
 
 #include "request.pb.h"
 #include "response.pb.h"

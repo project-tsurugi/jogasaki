@@ -29,12 +29,29 @@ test_writer::test_writer(char* data, std::size_t capacity) :
 
 status test_writer::write(char const* data, std::size_t length) {
     std::memcpy(data_ + size_, data, length);
+    if (on_write_) {
+        on_write_(std::string_view{data_ + size_, length});
+    }
     size_ += length;
     return status::ok;
 }
 
 status test_writer::commit() {
+    committed_.store(size_.load());
     return status::ok;
+}
+
+std::string_view test_writer::read() {
+    std::size_t sz = committed_ - read_;
+    if (sz > 0) {
+        read_.store(committed_.load());
+        return {data_+read_, sz};
+    }
+    return {data_+read_, 0};
+}
+
+void test_writer::set_on_write(std::function<void(std::string_view)> on_write) {
+    on_write_ = std::move(on_write);
 }
 
 test_request::test_request(std::string_view payload) :
@@ -46,7 +63,10 @@ std::string_view test_request::payload() const {
 }
 
 status test_channel::acquire(writer*& buf) {
-    auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer_writer<100>>());
+    auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer_writer<1024*8>>());
+    if (on_write_) {
+        s->set_on_write(on_write_);
+    }
     buf = s.get();
     return status::ok;
 }
@@ -74,6 +94,9 @@ status test_response::body_head(std::string_view body_head) {
 status test_response::acquire_channel(std::string_view name, data_channel*& ch) {
     (void) name;
     channel_ = std::make_unique<test_channel>();
+    if (on_write_) {
+        channel_->set_on_write(on_write_);
+    }
     ch = channel_.get();
     return status::ok;
 }
@@ -84,7 +107,7 @@ status test_response::release_channel(data_channel&) {
 }
 
 bool test_response::completed() {
-    return completed_;
+    return completed_.load();
 }
 
 status test_response::close_session() {
@@ -94,7 +117,16 @@ status test_response::close_session() {
 bool test_response::all_released() const noexcept {
     return !channel_ || released_ > 0;
 }
+
+void test_response::set_on_write(std::function<void(std::string_view)> on_write) {
+    on_write_ = std::move(on_write);
+}
+
 bool test_channel::all_released() const noexcept {
     return buffers_.size() == released_;
+}
+
+void test_channel::set_on_write(std::function<void(std::string_view)> on_write) {
+    on_write_ = std::move(on_write);
 }
 }

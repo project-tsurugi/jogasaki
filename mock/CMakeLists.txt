@@ -5,12 +5,25 @@ file(GLOB SOURCES
         "tateyama/api/endpoint/mock/*.cpp"
 )
 
-add_library(jogasaki-mock
-        ${SOURCES}
+set_source_files_properties(
+        ${GENERATED_PROTO_SRCS}
+        PROPERTIES
+        GENERATED TRUE
+        COMPILE_FLAGS -Wno-unused-parameter
 )
 
+add_library(jogasaki-mock
+        ${SOURCES}
+        ${GENERATED_PROTO_SRCS}
+)
+
+add_dependencies(jogasaki-mock
+        build_protos
+        )
+
 target_include_directories(jogasaki-mock
-        PRIVATE .
+        PUBLIC ${CMAKE_BINARY_DIR}/protos
+        PUBLIC .
 )
 
 # avoid name conflict with mock sharksfin implementation
@@ -19,7 +32,7 @@ set_target_properties(jogasaki-mock PROPERTIES
         )
 
 target_link_libraries(jogasaki-mock
-        PRIVATE jogasaki-impl
+        PUBLIC jogasaki-impl
         PRIVATE Boost::boost
         PRIVATE Boost::filesystem
         PRIVATE Boost::thread

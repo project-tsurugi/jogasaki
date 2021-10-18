@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <regex>
+#include <atomic>
 
 namespace tateyama::api::endpoint::mock {
 
@@ -39,9 +40,16 @@ public:
 
     status commit() override;
 
+    std::string_view read();
+
+    void set_on_write(std::function<void(std::string_view)> on_write);
+
     char* data_{};  //NOLINT
     std::size_t capacity_{};  //NOLINT
-    std::size_t size_{};  //NOLINT
+    std::atomic_size_t size_{};  //NOLINT
+    std::atomic_size_t committed_{};  //NOLINT
+    std::atomic_size_t read_{};  //NOLINT
+    std::function<void(std::string_view)> on_write_{};
 };
 
 template<std::size_t Size>
@@ -77,9 +85,11 @@ public:
 
     [[nodiscard]] bool all_released() const noexcept;
 
-    std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
+    void set_on_write(std::function<void(std::string_view)> on_write);
 
+    std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
     std::size_t released_{};  //NOLINT
+    std::function<void(std::string_view)> on_write_{};
 };
 
 class test_response : public response {
@@ -95,6 +105,8 @@ public:
 
     status release_channel(data_channel& ch) override;
 
+    void set_on_write(std::function<void(std::string_view)> on_write);
+
     bool completed();
 
     [[nodiscard]] bool all_released() const noexcept;
@@ -105,8 +117,9 @@ public:
     std::unique_ptr<test_channel> channel_{};  //NOLINT
     std::string message_{};  //NOLINT
     response_code code_{response_code::unknown};  //NOLINT
-    bool completed_{};  //NOLINT
+    std::atomic_bool completed_{};  //NOLINT
     std::size_t released_{};  //NOLINT
+    std::function<void(std::string_view)> on_write_{}; //NOLINT
 };
 
 class test_endpoint : public provider {

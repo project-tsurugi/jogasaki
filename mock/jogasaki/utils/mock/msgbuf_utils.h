@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <sstream>
-#include <gtest/gtest.h>
 
 #include <msgpack.hpp>
 #include <takatori/util/maybe_shared_ptr.h>

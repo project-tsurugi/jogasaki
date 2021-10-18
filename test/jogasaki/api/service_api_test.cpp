@@ -23,6 +23,7 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/mock/storage_data.h>
+#include <jogasaki/utils/mock/command_utils.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction.h>
@@ -40,7 +41,7 @@
 #include <tateyama/api/environment.h>
 #include <tateyama/api/server/service.h>
 #include "api_test_base.h"
-#include "../test_utils/msgbuf_utils.h"
+#include <jogasaki/utils/mock/msgbuf_utils.h>
 
 #include "request.pb.h"
 #include "response.pb.h"
@@ -50,6 +51,7 @@
 
 namespace jogasaki::api {
 
+using namespace std::string_view_literals;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;
@@ -61,27 +63,6 @@ using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
 std::string serialize(::request::Request& r);
 void deserialize(std::string_view s, ::response::Response& res);
-
-jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto) {
-    std::vector<meta::field_type> fields{};
-    boost::dynamic_bitset<std::uint64_t> nullities;
-    for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
-        auto& c = proto.columns(i);
-        bool nullable = c.nullable();
-        meta::field_type field{};
-        nullities.push_back(nullable);
-        switch(c.type()) {
-            using kind = meta::field_type_kind;
-            case ::common::DataType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
-            case ::common::DataType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
-            case ::common::DataType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
-            case ::common::DataType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case ::common::DataType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
-        }
-    }
-    jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
-    return meta;
-}
 
 class service_api_test :
     public ::testing::Test,
@@ -110,6 +91,8 @@ public:
         auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("mock");
         environment_->add_endpoint(endpoint);
         endpoint->initialize(*environment_, {});
+
+        api::utils_raise_exception_on_error = true;
     }
 
     void TearDown() override {
@@ -135,34 +118,14 @@ public:
 
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
-        std::vector<std::pair<std::string, common::DataType>> place_holders{args...};
-        ::request::Request r{};
-        auto* p = r.mutable_prepare();
-        p->mutable_sql()->assign(sql);
-        if (! place_holders.empty()) {
-            auto vars = p->mutable_host_variables();
-            for(auto&& [n, t] : place_holders) {
-                auto* v = vars->add_variables();
-                v->set_name(n);
-                v->set_type(t);
-            }
-        }
-        auto s = serialize(r);
-
+        auto s = encode_prepare(sql, args...);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_prepare());
-        auto& prep = resp.prepare();
-        ASSERT_TRUE(prep.has_prepared_statement_handle());
-        auto& stmt = prep.prepared_statement_handle();
-        handle = stmt.handle();
+        handle = decode_prepare(res->body_);
     }
     void test_dispose_prepare(std::uint64_t& handle);
 
@@ -170,61 +133,28 @@ public:
     std::unique_ptr<tateyama::api::environment> environment_{};  //NOLINT
 };
 
-using namespace std::string_view_literals;
-
-std::string serialize(::request::Request& r) {
-    std::string s{};
-    if (!r.SerializeToString(&s)) {
-        std::abort();
-    }
-//    std::cout << " DebugString : " << r.DebugString() << std::endl;
-//    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
-    return s;
-}
-
-void deserialize(std::string_view s, ::response::Response& res) {
-    if (!res.ParseFromString(std::string(s))) {
-        std::abort();
-    }
-//    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
-//    std::cout << " DebugString : " << res.DebugString() << std::endl;
-}
 
 void service_api_test::test_begin(std::uint64_t& handle) {
-    ::request::Request r{};
-    r.mutable_begin()->set_read_only(false);
-    r.mutable_session_handle()->set_handle(1);
-    auto s = serialize(r);
-
+    auto s = encode_begin(false);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::success, res->code_);
-
-    ::response::Response resp{};
-    deserialize(res->body_, resp);
-    ASSERT_TRUE(resp.has_begin());
-    auto& begin = resp.begin();
-    ASSERT_TRUE(begin.has_transaction_handle());
-    auto& tx = begin.transaction_handle();
-    handle = tx.handle();
+    handle = decode_begin(res->body_);
 }
 
 void service_api_test::test_commit(std::uint64_t& handle) {
-    ::request::Request r{};
-    r.mutable_commit()->mutable_transaction_handle()->set_handle(handle);
-    auto s = serialize(r);
-
+    auto s = encode_commit(handle);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::success, res->code_);
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_TRUE(success);
 }
 
 TEST_F(service_api_test, begin_and_commit) {
@@ -235,58 +165,46 @@ TEST_F(service_api_test, begin_and_commit) {
 
 TEST_F(service_api_test, error_on_commit) {
     std::uint64_t handle{0};
-    ::request::Request r{};
-    r.mutable_commit()->mutable_transaction_handle()->set_handle(handle);
-    auto s = serialize(r);
-
+    auto s = encode_commit(handle);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::application_error, res->code_);
 
-    ::response::Response resp{};
-    deserialize(res->body_, resp);
-    ASSERT_TRUE(resp.has_result_only());
-    auto& ro = resp.result_only();
-    ASSERT_TRUE(ro.has_error());
-    auto& er = ro.error();
-    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, er.status());
-    ASSERT_FALSE(er.detail().empty());
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_FALSE(success);
+    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_FALSE(error.message_.empty());
 }
 
 TEST_F(service_api_test, rollback) {
     std::uint64_t handle{};
     test_begin(handle);
     {
-        ::request::Request r{};
-        r.mutable_rollback()->mutable_transaction_handle()->set_handle(handle);
-        auto s = serialize(r);
-
+        auto s = encode_rollback(handle);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
     }
 }
 
 void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
-    ::request::Request r{};
-    r.mutable_dispose_prepared_statement()->mutable_prepared_statement_handle()->set_handle(handle);
-    auto s = serialize(r);
-
+    auto s = encode_dispose_prepare(handle);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_EQ(tateyama::status::ok, st);
     ASSERT_EQ(response_code::success, res->code_);
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_TRUE(success);
 }
 
 TEST_F(service_api_test, prepare_and_dispose) {
@@ -298,24 +216,15 @@ TEST_F(service_api_test, prepare_and_dispose) {
 TEST_F(service_api_test, disconnect) {
     std::uint64_t handle{};
     {
-        ::request::Request r{};
-        r.mutable_disconnect();
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
-
+        auto s = encode_disconnect();
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
-
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_result_only());
-        auto& ro = resp.result_only();
-        ASSERT_TRUE(ro.has_success());
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
     }
 }
 
@@ -323,16 +232,9 @@ TEST_F(service_api_test, execute_statement_and_query) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     {
-        ::request::Request r{};
-        auto* stmt = r.mutable_execute_statement();
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_sql()->assign("insert into T0(C0, C1) values (1, 10.0)");
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
-
+        auto s = encode_execute_statement(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
@@ -340,25 +242,15 @@ TEST_F(service_api_test, execute_statement_and_query) {
         ASSERT_EQ(response_code::success, res->code_);
         EXPECT_TRUE(res->all_released());
 
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_result_only());
-        auto& ro = resp.result_only();
-        ASSERT_TRUE(ro.has_success());
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
     test_begin(tx_handle);
     {
-        ::request::Request r{};
-        auto* stmt = r.mutable_execute_query();
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_sql()->assign("select * from T0");
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
-
+        auto s = encode_execute_query(tx_handle, "select * from T0");
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
@@ -367,28 +259,21 @@ TEST_F(service_api_test, execute_statement_and_query) {
         EXPECT_TRUE(res->all_released());
 
         {
-            ::response::Response resp{};
-            deserialize(res->body_head_, resp);
-            ASSERT_TRUE(resp.has_execute_query());
-            auto& eq = resp.execute_query();
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::cout << "name : " << name << std::endl;
+            ASSERT_EQ(2, cols.size());
 
-            std::cout << "name : " << eq.name() << std::endl;
-            ASSERT_TRUE(eq.has_record_meta());
-            auto meta = eq.record_meta();
-            ASSERT_EQ(2, meta.columns_size());
-            meta.columns(0).type();
-
-            EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
-            EXPECT_TRUE(meta.columns(0).nullable());
-            EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
-            EXPECT_TRUE(meta.columns(1).nullable());
+            EXPECT_EQ(::common::DataType::INT8, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_EQ(::common::DataType::FLOAT8, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
                 ASSERT_EQ(1, ch.buffers_.size());
                 ASSERT_TRUE(ch.buffers_[0]);
                 auto& buf = *ch.buffers_[0];
-                auto m = create_record_meta(meta);
+                auto m = create_record_meta(cols);
                 auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
                 ASSERT_EQ(1, v.size());
                 auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
@@ -397,11 +282,8 @@ TEST_F(service_api_test, execute_statement_and_query) {
             }
         }
         {
-            ::response::Response resp{};
-            deserialize(res->body_, resp);
-            ASSERT_TRUE(resp.has_result_only());
-            auto& ro = resp.result_only();
-            ASSERT_TRUE(ro.has_success());
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
         }
     }
     test_commit(tx_handle);
@@ -418,20 +300,11 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         std::pair{"c1"s, ::common::DataType::FLOAT8}
     );
     {
-        ::request::Request r{};
-        auto* stmt = r.mutable_execute_prepared_statement();
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
-        auto* params = stmt->mutable_parameters();
-        auto* c0 = params->add_parameters();
-        c0->set_name("c0");
-        c0->set_int8_value(1);
-        auto* c1 = params->add_parameters();
-        c1->set_name("c1");
-        c1->set_float8_value(10.0);
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
-
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
@@ -441,11 +314,8 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_result_only());
-        auto& ro = resp.result_only();
-        ASSERT_TRUE(ro.has_success());
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
     std::uint64_t query_handle{};
@@ -457,19 +327,12 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     );
     test_begin(tx_handle);
     {
-        ::request::Request r{};
-        auto* stmt = r.mutable_execute_prepared_query();
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_prepared_statement_handle()->set_handle(query_handle);
-        auto* params = stmt->mutable_parameters();
-        auto* c0 = params->add_parameters();
-        c0->set_name("c0");
-        c0->set_int8_value(1);
-        auto* c1 = params->add_parameters();
-        c1->set_name("c1");
-        c1->set_float8_value(10.0);
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+        };
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
@@ -481,19 +344,14 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         ASSERT_EQ(response_code::success, res->code_);
 
         {
-            ::response::Response resp{};
-            deserialize(res->body_head_, resp);
-            ASSERT_TRUE(resp.has_execute_query());
-            auto& eq = resp.execute_query();
-            std::cout << "name : " << eq.name() << std::endl;
-            ASSERT_TRUE(eq.has_record_meta());
-            auto meta = eq.record_meta();
-            ASSERT_EQ(2, meta.columns_size());
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::cout << "name : " << name << std::endl;
+            ASSERT_EQ(2, cols.size());
 
-            EXPECT_EQ(::common::DataType::INT8, meta.columns(0).type());
-            EXPECT_TRUE(meta.columns(0).nullable());
-            EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(1).type());
-            EXPECT_TRUE(meta.columns(1).nullable());
+            EXPECT_EQ(::common::DataType::INT8, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_EQ(::common::DataType::FLOAT8, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -501,7 +359,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
                 ASSERT_TRUE(ch.buffers_[0]);
                 auto& buf = *ch.buffers_[0];
                 ASSERT_LT(0, buf.size_);
-                auto m = create_record_meta(meta);
+                auto m = create_record_meta(cols);
                 auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
                 ASSERT_EQ(1, v.size());
                 auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
@@ -510,11 +368,8 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
             }
         }
         {
-            ::response::Response resp{};
-            deserialize(res->body_, resp);
-            ASSERT_TRUE(resp.has_result_only());
-            auto& ro = resp.result_only();
-            ASSERT_TRUE(ro.has_success());
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
         }
     }
     test_commit(tx_handle);
@@ -524,7 +379,6 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
 
 TEST_F(service_api_test, msgpack1) {
     // verify msgpack behavior
-    using namespace std::string_view_literals;
     std::stringstream ss;
     {
         msgpack::pack(ss, msgpack::type::nil_t()); // nil can be put without specifying the type
@@ -572,30 +426,14 @@ TEST_F(service_api_test, data_types) {
         std::pair{"c4"s, ::common::DataType::CHARACTER}
     );
     for(std::size_t i=0; i < 3; ++i) {
-        ::request::Request r{};
-        auto* stmt = r.mutable_execute_prepared_statement();
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
-        r.mutable_session_handle()->set_handle(1);
-
-        auto* params = stmt->mutable_parameters();
-        auto* c0 = params->add_parameters();
-        c0->set_name("c0");
-        c0->set_int4_value(i);
-        auto* c1 = params->add_parameters();
-        c1->set_name("c1");
-        c1->set_int8_value(i);
-        auto* c2 = params->add_parameters();
-        c2->set_name("c2");
-        c2->set_float8_value(i);
-        auto* c3 = params->add_parameters();
-        c3->set_name("c3");
-        c3->set_float4_value(i);
-        auto* c4 = params->add_parameters();
-        c4->set_name("c4");
-        c4->set_character_value(std::to_string(i));
-
-        auto s = serialize(r);
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT4, std::any{std::in_place_type<std::int32_t>, i}},
+            {"c1"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, i}},
+            {"c2"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, i}},
+            {"c3"s, ::common::DataType::FLOAT4, std::any{std::in_place_type<float>, i}},
+            {"c4"s, ::common::DataType::CHARACTER, std::any{std::in_place_type<std::string>, std::to_string(i)}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
@@ -606,11 +444,8 @@ TEST_F(service_api_test, data_types) {
         ASSERT_EQ(tateyama::status::ok, st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        ::response::Response resp{};
-        deserialize(res->body_, resp);
-        ASSERT_TRUE(resp.has_result_only());
-        auto& ro = resp.result_only();
-        ASSERT_TRUE(ro.has_success());
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
     std::uint64_t query_handle{};
@@ -623,22 +458,13 @@ TEST_F(service_api_test, data_types) {
     );
     test_begin(tx_handle);
     {
-        ::request::Request r{};
-        auto* stmt = r.mutable_execute_prepared_query();
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
-        stmt->mutable_prepared_statement_handle()->set_handle(query_handle);
-        auto* params = stmt->mutable_parameters();
-        auto* c1 = params->add_parameters();
-        c1->set_name("c1");
-        c1->set_int8_value(0);
-        auto* c2 = params->add_parameters();
-        c2->set_name("c2");
-        c2->set_float8_value(0.0);
-        auto* c4 = params->add_parameters();
-        c4->set_name("c4");
-        c4->set_character_value("0");
-        r.mutable_session_handle()->set_handle(1);
-        auto s = serialize(r);
+        std::vector<parameter> parameters{
+            {"c1"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 0}},
+            {"c2"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 0.0}},
+            {"c4"s, ::common::DataType::CHARACTER, std::any{std::in_place_type<std::string>, "0"}},
+        };
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
 
@@ -649,26 +475,20 @@ TEST_F(service_api_test, data_types) {
         ASSERT_EQ(response_code::success, res->code_);
 
         {
-            ::response::Response resp{};
-            deserialize(res->body_head_, resp);
-            ASSERT_TRUE(resp.has_execute_query());
-            auto& eq = resp.execute_query();
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::cout << "name : " << name << std::endl;
+            ASSERT_EQ(5, cols.size());
 
-            std::cout << "name : " << eq.name() << std::endl;
-            ASSERT_TRUE(eq.has_record_meta());
-            auto meta = eq.record_meta();
-            ASSERT_EQ(5, meta.columns_size());
-
-            EXPECT_EQ(::common::DataType::INT4, meta.columns(0).type());
-            EXPECT_TRUE(meta.columns(0).nullable()); //TODO
-            EXPECT_EQ(::common::DataType::INT8, meta.columns(1).type());
-            EXPECT_TRUE(meta.columns(1).nullable());
-            EXPECT_EQ(::common::DataType::FLOAT8, meta.columns(2).type());
-            EXPECT_TRUE(meta.columns(2).nullable());
-            EXPECT_EQ(::common::DataType::FLOAT4, meta.columns(3).type());
-            EXPECT_TRUE(meta.columns(3).nullable());
-            EXPECT_EQ(::common::DataType::CHARACTER, meta.columns(4).type());
-            EXPECT_TRUE(meta.columns(4).nullable());
+            EXPECT_EQ(::common::DataType::INT4, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_EQ(::common::DataType::INT8, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_EQ(::common::DataType::FLOAT8, cols[2].type_);
+            EXPECT_TRUE(cols[2].nullable_);
+            EXPECT_EQ(::common::DataType::FLOAT4, cols[3].type_);
+            EXPECT_TRUE(cols[3].nullable_);
+            EXPECT_EQ(::common::DataType::CHARACTER, cols[4].type_);
+            EXPECT_TRUE(cols[4].nullable_);
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -677,7 +497,7 @@ TEST_F(service_api_test, data_types) {
                 auto& buf = *ch.buffers_[0];
                 ASSERT_LT(0, buf.size_);
                 std::cout << "buf size : " << buf.size_ << std::endl;
-                auto m = create_record_meta(meta);
+                auto m = create_record_meta(cols);
                 auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
                 ASSERT_EQ(2, v.size());
                 auto exp1 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(1, 1, 1.0, 1.0, accessor::text{"1"sv});
@@ -687,11 +507,8 @@ TEST_F(service_api_test, data_types) {
             }
         }
         {
-            ::response::Response resp{};
-            deserialize(res->body_, resp);
-            ASSERT_TRUE(resp.has_result_only());
-            auto& ro = resp.result_only();
-            ASSERT_TRUE(ro.has_success());
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
         }
     }
     test_commit(tx_handle);

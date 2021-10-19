@@ -36,6 +36,7 @@
 #include <jogasaki/utils/mock/msgbuf_utils.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/executor/tables.h>
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"
@@ -56,6 +57,7 @@ DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storag
 DEFINE_bool(verify_record, false, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
 DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
+DEFINE_string(history_file, ".service_cli_history", "specify the command history file name");  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -129,8 +131,9 @@ public:
         verify_query_records_ = FLAGS_verify_record;
         auto_commit_ = FLAGS_auto_commit;
 
-//        add_benchmark_tables(*impl->tables());
-//        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        auto& impl = jogasaki::api::impl::get_impl(*db_);
+        jogasaki::executor::add_benchmark_tables(*impl.tables());
+        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
 
         environment_ = std::make_unique<tateyama::api::environment>();
         auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
@@ -146,6 +149,8 @@ public:
         if (fLB::FLAGS_test_build) {
             run = false;
         }
+
+        linenoiseHistoryLoad(FLAGS_history_file.c_str());
         while(run) {
             auto* l = linenoise("> ");
             if (! l) continue;
@@ -194,6 +199,7 @@ public:
         }
 
         db_->stop();
+        linenoiseHistorySave(FLAGS_history_file.c_str());
         return 0;
     }
 
@@ -328,8 +334,10 @@ private:
     }
     bool handle_result_only(std::string_view body, bool suppress_msg = false) {
         auto [success, error] = jogasaki::api::decode_result_only(body);
-        if (success && ! suppress_msg) {
-            std::cout << "command completed successfully." << std::endl;
+        if (success) {
+            if (! suppress_msg) {
+                std::cout << "command completed successfully." << std::endl;
+            }
             return true;
         }
         std::cerr << "command returned error: " << error.status_ << " " << error.message_ << std::endl;
@@ -348,7 +356,6 @@ private:
             std::cout << "command was ignored. no transaction started yet" << std::endl;
             return false;
         }
-        wait_for_statements(); // commit destoroys tx and related graphs
         auto s = jogasaki::api::encode_commit(tx_handle_);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
@@ -361,6 +368,7 @@ private:
             tx_processing_ = false;
             tx_handle_ = -1;
         }
+        wait_for_statements(); // just for cleanup
         return ret;
     }
     bool abort_tx() {
@@ -381,6 +389,7 @@ private:
             tx_processing_ = false;
             tx_handle_ = -1;
         }
+        wait_for_statements(); // just for cleanup
         return ret;
     }
     bool prepare(std::vector<std::string_view> const& args) {
@@ -482,7 +491,7 @@ private:
             query_meta_ = jogasaki::api::create_record_meta(std::move(columns));
             std::size_t ind{};
             for(auto&& f : query_meta_) {
-                std::cout << "column " << idx << " type " << f << std::endl;
+                std::cout << "column " << ind << " type " << f << std::endl;
                 ++ind;
             }
             write_buffer_.seekp(0);

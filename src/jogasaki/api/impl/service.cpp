@@ -380,6 +380,7 @@ jogasaki::status service::execute_query(
         }
     }
     info->meta_ = e->meta();
+    details::send_body_head(*res, *info);
     auto* cbp = c.get();
     callbacks_.emplace(cbp, c);
     if(auto rc = tx->execute_async(
@@ -397,9 +398,9 @@ jogasaki::status service::execute_query(
                 }
             }
         ); ! rc) {
+        // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();
     }
-    details::send_body_head(*res, *info);
     return jogasaki::status::ok;
 }
 

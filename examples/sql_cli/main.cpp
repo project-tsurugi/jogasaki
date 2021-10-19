@@ -50,7 +50,7 @@ DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.");  //NOLINT
 DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storages");  //NOLINT
-DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
+DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(async, false, "Whether to use new async api");  //NOLINT
 
 namespace jogasaki::sql_cli {

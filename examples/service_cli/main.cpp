@@ -21,6 +21,7 @@
 
 #include <glog/logging.h>
 #include <linenoise.h>
+
 #include <takatori/util/fail.h>
 #include <takatori/util/downcast.h>
 
@@ -28,13 +29,16 @@
 #include <tateyama/api/server/service.h>
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/registry.h>
-
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
 
 #include <jogasaki/api.h>
 #include <jogasaki/utils/mock/command_utils.h>
 #include <jogasaki/utils/mock/msgbuf_utils.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/api/impl/database.h>
+
+#include "../common/load.h"
+#include "../common/temporary_folder.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
@@ -51,6 +55,7 @@ DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.
 DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storages");  //NOLINT
 DEFINE_bool(verify_record, false, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
+DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -61,13 +66,68 @@ using tateyama::api::endpoint::response_code;
 
 class cli {
     std::shared_ptr<jogasaki::api::database> db_{};
+    std::shared_ptr<tateyama::api::endpoint::service> service_{};  //NOLINT
+    std::unique_ptr<tateyama::api::environment> environment_{};  //NOLINT
+    std::uint64_t tx_handle_{};  //NOLINT
+    bool tx_processing_{};  //NOLINT
+    bool debug_{}; //NOLINT
+    bool verify_query_records_{};
+    bool auto_commit_{};
+    std::mutex write_buffer_mutex_{};
+    std::stringstream write_buffer_{};
+    std::vector<std::pair<std::uint64_t, std::string>> stmt_handles_{};
+    std::vector<std::future<bool>> on_going_statements_{};
+    jogasaki::meta::record_meta query_meta_{};
+    jogasaki::common_cli::temporary_folder temporary_{};
+
 public:
+
+    bool fill_from_flags(
+        jogasaki::configuration& cfg,
+        std::string const& str = {}
+    ) {
+        gflags::FlagSaver saver{};
+        if (! str.empty()) {
+            if(! gflags::ReadFlagsFromString(str, "", false)) {
+                std::cerr << "parsing options failed" << std::endl;
+            }
+        }
+        cfg.single_thread(FLAGS_single_thread);
+        cfg.work_sharing(FLAGS_work_sharing);
+        cfg.thread_pool_size(FLAGS_thread_count);
+
+        cfg.core_affinity(FLAGS_core_affinity);
+        cfg.initial_core(FLAGS_initial_core);
+        cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+        cfg.default_partitions(FLAGS_partitions);
+        cfg.stealing_enabled(FLAGS_steal);
+
+        if (FLAGS_test_build) {
+            cfg.single_thread(true);
+            cfg.thread_pool_size(1);
+            cfg.initial_core(1);
+            cfg.core_affinity(false);
+            cfg.default_partitions(1);
+        }
+
+        if (cfg.assign_numa_nodes_uniformly()) {
+            cfg.core_affinity(true);
+        }
+        if (FLAGS_location == "TMP") {
+            temporary_.prepare();
+            cfg.db_location(temporary_.path());
+        } else {
+            cfg.db_location(std::string(FLAGS_location));
+        }
+        return true;
+    }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
         db_ = jogasaki::api::create_database(cfg);
         db_->start();
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify_record;
+        auto_commit_ = FLAGS_auto_commit;
 
 //        add_benchmark_tables(*impl->tables());
 //        register_kvs_storage(*impl->kvs_db(), *impl->tables());
@@ -244,7 +304,7 @@ private:
             "  s <statement text or number> : issue statement " << std::endl <<
             "";
     }
-    bool begin_tx() {
+    bool begin_tx(bool for_autocommit = false) {
         if (tx_processing_) {
             std::cout << "command was ignored. transaction already started: " << tx_handle_ << std::endl;
             return false;
@@ -260,13 +320,15 @@ private:
         }
         tx_handle_ = jogasaki::api::decode_begin(res->body_);
         if(error) return false;
-        std::cout << "transaction begin: " << tx_handle_ << std::endl;
+        if(! for_autocommit) {  // suppress msg if auto commit
+            std::cout << "transaction begin: " << tx_handle_ << std::endl;
+        }
         tx_processing_ = true;
         return true;
     }
-    bool handle_result_only(std::string_view body) {
+    bool handle_result_only(std::string_view body, bool suppress_msg = false) {
         auto [success, error] = jogasaki::api::decode_result_only(body);
-        if (success) {
+        if (success && ! suppress_msg) {
             std::cout << "command completed successfully." << std::endl;
             return true;
         }
@@ -281,7 +343,7 @@ private:
         }
         on_going_statements_.clear();
     }
-    bool commit_tx() {
+    bool commit_tx(bool for_autocommit = false) {
         if (! tx_processing_) {
             std::cout << "command was ignored. no transaction started yet" << std::endl;
             return false;
@@ -294,7 +356,7 @@ private:
         if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
         }
-        auto ret = handle_result_only(res->body_);
+        auto ret = handle_result_only(res->body_, for_autocommit);
         if (ret) {
             tx_processing_ = false;
             tx_handle_ = -1;
@@ -360,8 +422,14 @@ private:
             return false;
         }
         if (! tx_processing_) {
-            std::cout << "command was ignored. no transaction started yet" << std::endl;
-            return false;
+            if (! auto_commit_) {
+                std::cout << "command was ignored. no transaction started yet" << std::endl;
+                return false;
+            }
+            if (! begin_tx(true)) {
+                std::cout << "auto commit begin failed." << std::endl;
+                return false;
+            }
         }
         std::string arg{args[0]};
         std::int32_t idx{};
@@ -420,6 +488,12 @@ private:
             write_buffer_.seekp(0);
             write_buffer_.clear();
         }
+        if (auto_commit_) {
+            if (! commit_tx(true)) {
+                std::cout << "auto commit failed to commit tx" << std::endl;
+                return false;
+            }
+        }
         return true;
     }
     bool issue_statement(std::vector<std::string_view> const& args) {
@@ -436,17 +510,6 @@ private:
         });
     }
 
-    std::shared_ptr<tateyama::api::endpoint::service> service_{};  //NOLINT
-    std::unique_ptr<tateyama::api::environment> environment_{};  //NOLINT
-    std::uint64_t tx_handle_{};  //NOLINT
-    bool tx_processing_{};  //NOLINT
-    bool debug_{};    //NOLINT
-    bool verify_query_records_{};
-    std::mutex write_buffer_mutex_{};
-    std::stringstream write_buffer_{};
-    std::vector<std::pair<std::uint64_t, std::string>> stmt_handles_{};
-    std::vector<std::future<bool>> on_going_statements_{};
-    jogasaki::meta::record_meta query_meta_{};
 };
 
 }  // namespace
@@ -462,6 +525,7 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     tateyama::service_cli::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
+    e.fill_from_flags(*cfg);
     try {
         e.run(cfg);  // NOLINT
     } catch (std::exception& e) {

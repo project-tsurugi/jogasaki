@@ -61,10 +61,12 @@ bool flat_task::teardown() {
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
         return true;
     }
-    job_context_->completion_latch().release();
     if (auto& cb = job_context_->callback(); cb) {
         cb();
     }
+
+    // releasing latch should be done at the last step since it starts to release resources such as request context
+    job_context_->completion_latch().release();
     return false;
 }
 

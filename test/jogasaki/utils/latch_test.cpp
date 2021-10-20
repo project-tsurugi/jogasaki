@@ -54,6 +54,12 @@ TEST_F(latch_test, already_opened) {
     l.wait();
 }
 
+TEST_F(latch_test, construct_released) {
+    latch l{true};
+    EXPECT_TRUE(l.wait(1ms));
+    l.wait();
+}
+
 TEST_F(latch_test, reset) {
     latch l{};
     EXPECT_FALSE(l.wait(1ms));

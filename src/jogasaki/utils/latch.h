@@ -25,7 +25,8 @@ namespace jogasaki::utils {
 
 /**
  * @brief latch to block current thread and wait for others
- * @details latch has three status open/closed/released. It's created open. A thread can close it and wait on its release.
+ * @details latch has three status open/closed/released. It's created open by default.
+ * A thread can close it and wait on its release.
  * The other thread can release it to wake up the waiting thread and let it proceed.
  * This object assumes only two threads accessing simultaneously.
  * Releasing latch is a idempotent one-way operation, so released latch cannot be closed even if release() happens before
@@ -36,8 +37,9 @@ class cache_align latch {
 public:
     /**
      * @brief create new object
+     * @param released if true, create the latch in released state.
      */
-    latch() noexcept = default;
+    explicit latch(bool released = false) noexcept;
 
     ~latch() = default;
     latch(latch const& other) = delete;

@@ -34,7 +34,7 @@ void latch::release() {
 
 void latch::wait() {
     std::unique_lock lock{guard_};
-    if (done_) return; // already opened, should not wait
+    if (done_) return; // already released, should not wait
     open_ = false;
     cv_.wait(lock, [&](){ return open_; });
 }
@@ -44,5 +44,10 @@ void latch::reset() {
     open_ = true;
     done_ = false;
 }
+
+latch::latch(bool released) noexcept:
+    open_(true),
+    done_(released)
+{}
 
 } // namespace

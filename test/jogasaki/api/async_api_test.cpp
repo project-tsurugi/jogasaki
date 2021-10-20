@@ -15,6 +15,7 @@
  */
 
 #include <regex>
+#include <future>
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
@@ -47,6 +48,7 @@
 
 namespace jogasaki::api {
 
+using namespace std::chrono_literals;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;
@@ -198,6 +200,56 @@ TEST_F(async_api_test, async_query_heavy_write) {
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());
     EXPECT_TRUE(ch.all_writers_released());
+}
+
+TEST_F(async_api_test, async_query_multi_thread) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    static constexpr std::size_t num_thread = 10;
+    std::vector<std::unique_ptr<std::atomic_bool>> finished{};
+    finished.reserve(num_thread);
+    for(std::size_t i=0; i < num_thread; ++i) {
+        finished.emplace_back(std::make_unique<std::atomic_bool>());
+    }
+    std::vector<std::future<void>> vec{};
+    std::vector<std::unique_ptr<transaction>> transactions{};
+    transactions.resize(num_thread);
+    for(std::size_t i=0; i < num_thread; ++i) {
+        vec.emplace_back(
+            std::async(std::launch::async, [&, i]() {
+                std::unique_ptr<api::executable_statement> stmt{};
+                if(auto rc = db_->create_executable("SELECT * FROM T0", stmt); rc != status::ok) {
+                    std::abort();
+                }
+                transactions[i] = db_->create_transaction();
+                status s{};
+                std::string message{"message"};
+                std::shared_ptr<api::executable_statement> shd(std::move(stmt));
+                auto ch = std::make_shared<test_channel>();
+                transactions[i]->execute_async(
+                    std::move(shd),
+                    ch,
+                    [&, i](status st, std::string_view msg){
+                        s = st;
+                        message = msg;
+                        finished[i]->store(true);
+                        (void)stmt;
+                    }
+                );
+                while (! finished[i]->load()) {
+                    std::this_thread::sleep_for(1ms);
+                }
+                ASSERT_EQ(status::ok, s);
+                ASSERT_TRUE(message.empty());
+                EXPECT_TRUE(ch->all_writers_released());
+                ASSERT_EQ(status::ok,transactions[i]->commit());
+            })
+        );
+    }
+    for(auto&& x : vec) {
+        (void)x.get();
+    }
 }
 
 }

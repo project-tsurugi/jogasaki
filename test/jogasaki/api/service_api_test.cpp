@@ -15,6 +15,8 @@
  */
 
 #include <sstream>
+#include <future>
+#include <thread>
 #include <gtest/gtest.h>
 
 #include <msgpack.hpp>
@@ -34,6 +36,7 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/latch.h>
 
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
 #include <tateyama/api/endpoint/service.h>
@@ -51,6 +54,7 @@
 
 namespace jogasaki::api {
 
+using namespace std::chrono_literals;
 using namespace std::string_view_literals;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
@@ -102,6 +106,8 @@ public:
     }
     void test_begin(std::uint64_t& handle);
     void test_commit(std::uint64_t& handle);
+    void test_statement(std::string_view sql);
+    void test_query();
 
     bool wait_completion(tateyama::api::endpoint::mock::test_response& res, std::size_t timeout_ms = 2000) {
         auto begin = std::chrono::steady_clock::now();
@@ -228,11 +234,11 @@ TEST_F(service_api_test, disconnect) {
     }
 }
 
-TEST_F(service_api_test, execute_statement_and_query) {
+void service_api_test::test_statement(std::string_view sql) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     {
-        auto s = encode_execute_statement(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
+        auto s = encode_execute_statement(tx_handle, sql);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -246,47 +252,54 @@ TEST_F(service_api_test, execute_statement_and_query) {
         ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
+}
+
+void service_api_test::test_query() {
+    std::uint64_t tx_handle{};
     test_begin(tx_handle);
+    auto s = encode_execute_query(tx_handle, "select * from T0");
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(wait_completion(*res));
+    EXPECT_TRUE(res->completed());
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::success, res->code_);
+    EXPECT_TRUE(res->all_released());
+
     {
-        auto s = encode_execute_query(tx_handle, "select * from T0");
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-        auto st = (*service_)(req, res);
-        EXPECT_TRUE(wait_completion(*res));
-        EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-        EXPECT_TRUE(res->all_released());
+        auto [name, cols] = decode_execute_query(res->body_head_);
+        std::cout << "name : " << name << std::endl;
+        ASSERT_EQ(2, cols.size());
 
+        EXPECT_EQ(::common::DataType::INT8, cols[0].type_);
+        EXPECT_TRUE(cols[0].nullable_);
+        EXPECT_EQ(::common::DataType::FLOAT8, cols[1].type_);
+        EXPECT_TRUE(cols[1].nullable_);
         {
-            auto [name, cols] = decode_execute_query(res->body_head_);
-            std::cout << "name : " << name << std::endl;
-            ASSERT_EQ(2, cols.size());
-
-            EXPECT_EQ(::common::DataType::INT8, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
-            EXPECT_EQ(::common::DataType::FLOAT8, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
-            {
-                ASSERT_TRUE(res->channel_);
-                auto& ch = *res->channel_;
-                ASSERT_EQ(1, ch.buffers_.size());
-                ASSERT_TRUE(ch.buffers_[0]);
-                auto& buf = *ch.buffers_[0];
-                auto m = create_record_meta(cols);
-                auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
-                ASSERT_EQ(1, v.size());
-                auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-                EXPECT_EQ(exp, v[0]);
-                EXPECT_TRUE(ch.all_released());
-            }
-        }
-        {
-            auto [success, error] = decode_result_only(res->body_);
-            ASSERT_TRUE(success);
+            ASSERT_TRUE(res->channel_);
+            auto& ch = *res->channel_;
+            ASSERT_EQ(1, ch.buffers_.size());
+            ASSERT_TRUE(ch.buffers_[0]);
+            auto& buf = *ch.buffers_[0];
+            auto m = create_record_meta(cols);
+            auto v = deserialize_msg(std::string_view{buf.data_, buf.size_}, m);
+            ASSERT_EQ(1, v.size());
+            auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
+            EXPECT_EQ(exp, v[0]);
+            EXPECT_TRUE(ch.all_released());
         }
     }
+    {
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
+    }
     test_commit(tx_handle);
+}
+
+TEST_F(service_api_test, execute_statement_and_query) {
+    test_statement("insert into T0(C0, C1) values (1, 10.0)");
+    test_query();
 }
 
 TEST_F(service_api_test, execute_prepared_statement_and_query) {
@@ -375,6 +388,27 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     test_commit(tx_handle);
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
+    test_statement("insert into T0(C0, C1) values (1, 10.0)");
+
+    static constexpr std::size_t num_thread = 10;
+    std::vector<std::future<void>> vec{};
+    utils::latch start{};
+    for(std::size_t i=0; i < num_thread; ++i) {
+        vec.emplace_back(
+            std::async(std::launch::async, [&, i]() {
+                start.wait();
+                test_query();
+            })
+        );
+    }
+    std::this_thread::sleep_for(1ms);
+    start.release();
+    for(auto&& x : vec) {
+        (void)x.get();
+    }
 }
 
 TEST_F(service_api_test, msgpack1) {

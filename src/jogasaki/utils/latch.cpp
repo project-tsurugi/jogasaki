@@ -46,7 +46,6 @@ void latch::reset() {
 }
 
 latch::latch(bool released) noexcept:
-    open_(true),
     done_(released)
 {}
 

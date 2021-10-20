@@ -52,6 +52,12 @@ void signal_handler([[maybe_unused]]int signal)
     longjmp(buf, 1);
 }
 
+// should be in sync one in ipc_provider
+struct ipc_endpoint_context {
+    std::unordered_map<std::string, std::string> options_{};
+    std::function<void()> database_initialize_{};
+};
+
 int backend_main(int argc, char **argv) {
     google::InitGoogleLogging("tateyama database server");
 
@@ -68,20 +74,6 @@ int backend_main(int argc, char **argv) {
     db->start();
     DBCloser dbcloser{db};
     VLOG(1) << "database started";
-
-    // load tpc-c tables
-    if (FLAGS_load) {
-        VLOG(1) << "TPC-C data load begin" << std::endl;
-        std::cout << "TPC-C data load begin" << std::endl;
-        try {
-            tateyama::server::tpcc::load(*db, FLAGS_location);
-        } catch (std::exception& e) {
-            std::cerr << "[" << __FILE__ << ":" <<  __LINE__ << "] " << e.what() << std::endl;
-            std::abort();
-        }
-        VLOG(1) << "TPC-C data load end" << std::endl;
-        std::cout << "TPC-C data load end" << std::endl;
-    }
 
     // service
     auto env = std::make_shared<tateyama::api::environment>();
@@ -105,12 +97,28 @@ int backend_main(int argc, char **argv) {
         return 0;
     }
 
-    std::unordered_map<std::string, std::string> map{
+    ipc_endpoint_context init_context{};
+    init_context.database_initialize_ = [&]() {
+        if (FLAGS_load) {
+            // load tpc-c tables
+            VLOG(1) << "TPC-C data load begin" << std::endl;
+            std::cout << "TPC-C data load begin" << std::endl;
+            try {
+                tateyama::server::tpcc::load(*db, FLAGS_location);
+            } catch (std::exception& e) {
+                std::cerr << "[" << __FILE__ << ":" <<  __LINE__ << "] " << e.what() << std::endl;
+                std::abort();
+            }
+            VLOG(1) << "TPC-C data load end" << std::endl;
+            std::cout << "TPC-C data load end" << std::endl;
+        }
+    };
+
+    init_context.options_ = std::unordered_map<std::string, std::string>{
         {"dbname", FLAGS_dbname},
         {"threads", std::to_string(FLAGS_threads)},
-
     };
-    auto rc = endpoint->initialize(*env, std::addressof(map));
+    auto rc = endpoint->initialize(*env, std::addressof(init_context));
     return rc == status::ok ? 0 : -1;
 }
 

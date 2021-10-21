@@ -81,7 +81,6 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             while((*origin_)() == model::task_result::proceed) {}
             return true;
         }
-        case kind::bootstrap_resolving: bootstrap_resolving(ctx); return true;
     }
     fail();
 }
@@ -137,67 +136,12 @@ job_context* flat_task::job() const {
     return job_context_;
 }
 
-void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
-    (void)ctx;
-    auto& e = *executable_statement_container_;
-    if(auto res = database_->resolve(*prepared_, *parameters_, e); res != status::ok) {
-        fail();
-    }
-    auto&s = unsafe_downcast<api::impl::executable_statement&>(*e);
-    auto* stmt = unsafe_downcast<executor::common::execute>(
-        s.body()->operators().get()
-    );
-    auto& g = stmt->operators();
-    graph_ = std::addressof(g);
-
-    auto& cfg = database_->configuration();
-    *result_store_container_ = std::make_unique<data::result_store>();
-    auto& request_ctx = *request_context_container_;
-    request_ctx = std::make_shared<request_context>(
-        cfg,
-        s.resource(),
-        database_->kvs_db(),
-        tx_,
-        database_->sequence_manager(),
-        (*result_store_container_).get()
-    );
-    g.context(*request_ctx);
-    request_ctx->job(maybe_shared_ptr<job_context>{job_context_});
-}
-
-void flat_task::bootstrap_resolving(tateyama::api::task_scheduler::context& ctx) {
-    resolve(ctx);
-    bootstrap(ctx);
-}
-
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::teardown>,
     job_context* jctx
 ) noexcept:
     kind_(flat_task_kind::teardown),
     job_context_(jctx)
-{}
-
-flat_task::flat_task(
-    task_enum_tag_t<flat_task_kind::bootstrap_resolving>,
-    job_context* jctx,
-    api::prepared_statement const& prepared,
-    api::parameter_set const& parameters,
-    api::impl::database& database,
-    std::shared_ptr<kvs::transaction> tx,
-    std::shared_ptr<request_context>& rctx,
-    std::unique_ptr<data::result_store>& result_store_container,
-    std::unique_ptr<api::executable_statement>& executable_statement_container
-) noexcept:
-    kind_(flat_task_kind::bootstrap_resolving),
-    job_context_(jctx),
-    prepared_(std::addressof(prepared)),
-    parameters_(std::addressof(parameters)),
-    database_(std::addressof(database)),
-    tx_(std::move(tx)),
-    request_context_container_(std::addressof(rctx)),
-    result_store_container_(std::addressof(result_store_container)),
-    executable_statement_container_(std::addressof(executable_statement_container))
 {}
 
 }

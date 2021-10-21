@@ -84,23 +84,6 @@ public:
      */
     virtual status execute(executable_statement& statement, std::unique_ptr<result_set>& result) = 0;
 
-    /**
-     * @brief resolve the placeholder and execute the prepared statement
-     */
-    virtual status execute(
-        prepared_statement const& prepared,
-        parameter_set const& parameters
-    ) = 0;
-
-    /**
-     * @brief resolve the placeholder and execute the prepared statement
-     */
-    virtual status execute(
-        prepared_statement const& prepared,
-        parameter_set const& parameters,
-        std::unique_ptr<result_set>& result
-    ) = 0;
-
     using callback = std::function<void(status, std::string_view)>;
     /**
      * @brief asynchronously execute the statement in the transaction. No result records are expected

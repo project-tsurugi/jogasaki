@@ -176,9 +176,7 @@ tateyama::status service::operator()(
                 break;
             }
 
-            if (auto rc = execute_query(res, details::query_info{sql}, tx); rc != jogasaki::status::ok) {
-                fail();  //TODO handle user error such as missing parameters etc.
-            }
+            execute_query(res, details::query_info{sql}, tx);
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedStatement: {
@@ -255,10 +253,7 @@ tateyama::status service::operator()(
             auto params = jogasaki::api::create_parameter_set();
             set_params(pq.parameters(), params);
 
-            if(auto rc = execute_query(res, details::query_info{sid, params.get()}, tx);
-                rc != jogasaki::status::ok) {
-                fail(); //TODO
-            }
+            execute_query(res, details::query_info{sid, params.get()}, tx);
             break;
         }
         case ::request::Request::RequestCase::kCommit: {
@@ -423,7 +418,7 @@ void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<joga
     }
 }
 
-jogasaki::status service::execute_query(
+void service::execute_query(
     std::shared_ptr<tateyama::api::server::response> res,  //NOLINT(performance-unnecessary-value-param)
     details::query_info const& q,
     jogasaki::api::transaction_handle tx
@@ -443,14 +438,16 @@ jogasaki::status service::execute_query(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(q.has_sql()) {
         if(auto rc = db_->create_executable(q.sql(), e); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "error in db_->create_executable()";
-            return rc; //TODO error handling
+            VLOG(1) << "error in db_->create_executable() : " << rc;
+            details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
+            return;
         }
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
         if(auto rc = db_->resolve(statement, *q.params(), e); rc != jogasaki::status::ok) {
-            LOG(ERROR) << "error in db_->resolve()";
-            return rc; //TODO error handling
+            VLOG(1) << "error in db_->resolve() : " << rc;
+            details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+            return;
         }
     }
     info->meta_ = e->meta();
@@ -475,7 +472,6 @@ jogasaki::status service::execute_query(
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();
     }
-    return jogasaki::status::ok;
 }
 
 service::service(jogasaki::api::database& db) :

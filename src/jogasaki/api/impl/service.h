@@ -232,7 +232,7 @@ private:
         std::shared_ptr<jogasaki::api::executable_statement> stmt,
         jogasaki::api::transaction_handle tx
     );
-    [[nodiscard]] jogasaki::status execute_query(
+    void execute_query(
         std::shared_ptr<tateyama::api::server::response> res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx

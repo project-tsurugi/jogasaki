@@ -3,7 +3,6 @@ file(GLOB SOURCES
         "../../third_party/linenoise-ng/src/*.cpp"
 )
 
-message("source: ${SOURCES}")
 set_source_files_properties(
         ${SOURCES}
         PROPERTIES

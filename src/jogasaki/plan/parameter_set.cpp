@@ -23,7 +23,7 @@ void parameter_set::set_int4(std::string_view name, runtime_t<kind::int4> value)
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::int4>},
-            any{std::in_place_type<runtime_t<kind::int4>>, value}
+            data::value{std::in_place_type<runtime_t<kind::int4>>, value}
         }
     );
 }
@@ -32,7 +32,7 @@ void parameter_set::set_int8(std::string_view name, runtime_t<kind::int8> value)
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::int8>},
-            any{std::in_place_type<runtime_t<kind::int8>>, value}
+            data::value{std::in_place_type<runtime_t<kind::int8>>, value}
         }
     );
 }
@@ -41,7 +41,7 @@ void parameter_set::set_float4(std::string_view name, runtime_t<kind::float4> va
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::float4>},
-            any{std::in_place_type<runtime_t<kind::float4>>, value}
+            data::value{std::in_place_type<runtime_t<kind::float4>>, value}
         }
     );
 }
@@ -50,7 +50,7 @@ void parameter_set::set_float8(std::string_view name, runtime_t<kind::float8> va
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::float8>},
-            any{std::in_place_type<runtime_t<kind::float8>>, value}
+            data::value{std::in_place_type<runtime_t<kind::float8>>, value}
         }
     );
 }
@@ -59,7 +59,8 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::character>},
-            any{std::in_place_type<runtime_t<kind::character>>, value}
+            data::value{std::in_place_type<std::string>, static_cast<std::string_view>(value)}
+            // use std::string so that the content is copied from accessor::text
         }
     );
 }
@@ -68,7 +69,7 @@ void parameter_set::set_null(std::string_view name) {
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::undefined>},
-            any{}
+            data::value{}
         }
     );
 }

@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/value.h>
 #include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::plan {
 
-using executor::process::impl::expression::any;
+using jogasaki::executor::process::impl::expression::any;
 
 /**
  * @brief parameters for place holders
@@ -46,15 +46,15 @@ public:
 
     parameter_entry(
         meta::field_type type,
-        any value
+        data::value value
     );
 
     [[nodiscard]] meta::field_type const& type() const noexcept;
-    [[nodiscard]] any const& value() const noexcept;
+    [[nodiscard]] any value() const noexcept;
 
 private:
     meta::field_type type_{};
-    any value_{};
+    data::value value_{};
 };
 
 }

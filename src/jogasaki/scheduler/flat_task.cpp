@@ -16,7 +16,6 @@
 #include "flat_task.h"
 
 #include <takatori/util/fail.h>
-#include <takatori/util/downcast.h>
 
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
@@ -29,7 +28,6 @@
 namespace jogasaki::scheduler {
 
 using takatori::util::fail;
-using takatori::util::unsafe_downcast;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(1) << *this << " bootstrap task executed.";

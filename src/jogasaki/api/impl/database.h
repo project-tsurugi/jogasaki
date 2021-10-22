@@ -20,6 +20,7 @@
 #include <tbb/concurrent_hash_map.h>
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/aggregate/configurable_provider.h>
 #include <yugawara/variable/configurable_provider.h>
@@ -44,6 +45,7 @@ class task_scheduler;
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
@@ -96,6 +98,12 @@ public:
     [[nodiscard]] status resolve(
         api::statement_handle prepared,
         api::parameter_set const& parameters,
+        std::unique_ptr<api::executable_statement>& statement
+    ) override;
+
+    [[nodiscard]] status resolve(
+        api::statement_handle prepared,
+        maybe_shared_ptr<api::parameter_set const> parameters,
         std::unique_ptr<api::executable_statement>& statement
     ) override;
 
@@ -203,6 +211,12 @@ private:
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
         api::statement_handle& statement
+    );
+
+    [[nodiscard]] status resolve_common(
+        api::prepared_statement const& prepared,
+        maybe_shared_ptr<api::parameter_set const> parameters,
+        std::unique_ptr<api::executable_statement>& statement
     );
 };
 

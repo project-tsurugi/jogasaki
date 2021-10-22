@@ -21,6 +21,8 @@
 #include <yugawara/storage/table.h>
 #include <yugawara/storage/index.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
 #include <jogasaki/api/field_type_kind.h>
@@ -34,6 +36,8 @@ class response;
 }
 
 namespace jogasaki::api {
+
+using takatori::util::maybe_shared_ptr;
 
 class result_set;
 class transaction;
@@ -211,10 +215,31 @@ public:
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned executable statement should be used from single thread/transaction at a point in time.
+     * @note this function assumes `parameters` are owned and kept by caller by the end of statement execution.
+     * To pass the ownership of the parameter set,
+     * use `resolve(statement_handle, maybe_shared_ptr<parameter_set const>, std::unique_ptr<executable_statement>&)`
      */
     virtual status resolve(
         statement_handle prepared,
         parameter_set const& parameters,
+        std::unique_ptr<executable_statement>& statement
+    ) = 0;
+
+    /**
+     * @brief resolve the placeholder and create executable statement
+     * @details Executable statement is the form of statement ready to execute, placeholders are resolved and
+     * compilation is completed.
+     * @param prepared the prepared statement handle used to create executable statement
+     * @param parameters the parameters to assign value for each placeholder
+     * @param statement [out] the unique ptr to be filled with the created executable statement
+     * @return status::ok when successful
+     * @return other code when error
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @note the returned executable statement should be used from single thread/transaction at a point in time.
+     */
+    virtual status resolve(
+        statement_handle prepared,
+        maybe_shared_ptr<parameter_set const> parameters,
         std::unique_ptr<executable_statement>& statement
     ) = 0;
 

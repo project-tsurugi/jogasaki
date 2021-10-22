@@ -249,7 +249,8 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
     }
     statement = std::make_unique<impl::executable_statement>(
         unsafe_downcast<impl::executable_statement>(*exec).body(),
-        unsafe_downcast<impl::executable_statement>(*exec).resource()
+        unsafe_downcast<impl::executable_statement>(*exec).resource(),
+        maybe_shared_ptr<api::parameter_set const>{}
     );
     return status::ok;
 }
@@ -280,8 +281,16 @@ status database::do_create_transaction(transaction_handle& handle, bool readonly
 }
 
 status database::resolve(
+    api::statement_handle prepared,
+    maybe_shared_ptr<api::parameter_set const> parameters,
+    std::unique_ptr<api::executable_statement>& statement
+) {
+    return resolve_common(*prepared.get(), std::move(parameters), statement);
+}
+
+status database::resolve_common(
     api::prepared_statement const& prepared,
-    api::parameter_set const& parameters,
+    maybe_shared_ptr<api::parameter_set const> parameters,
     std::unique_ptr<api::executable_statement>& statement
 ) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
@@ -292,16 +301,25 @@ status database::resolve(
     auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
     ctx->variable_provider(ps->host_variables() ? ps->host_variables() : host_variables_);
     ctx->prepared_statement(ps);
-    auto params = unsafe_downcast<impl::parameter_set>(parameters).body();
+    auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
         LOG(ERROR) << "compilation failed.";
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
         ctx->executable_statement(),
-        std::move(resource)
+        std::move(resource),
+        std::move(parameters)
     );
     return status::ok;
+}
+
+status database::resolve(
+    api::prepared_statement const& prepared,
+    api::parameter_set const& parameters,
+    std::unique_ptr<api::executable_statement>& statement
+) {
+    return resolve_common(prepared, maybe_shared_ptr{std::addressof(parameters)}, statement);
 }
 
 status database::resolve(
@@ -309,7 +327,7 @@ status database::resolve(
     api::parameter_set const& parameters,
     std::unique_ptr<api::executable_statement>& statement
 ) {
-    return resolve(*prepared.get(), parameters, statement);
+    return resolve_common(*prepared.get(), maybe_shared_ptr{std::addressof(parameters)}, statement);
 }
 
 status database::destroy_statement(

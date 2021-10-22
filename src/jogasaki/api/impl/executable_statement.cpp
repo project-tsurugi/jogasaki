@@ -19,14 +19,16 @@ namespace jogasaki::api::impl {
 
 executable_statement::executable_statement(
     std::shared_ptr<plan::executable_statement> body,
-    std::shared_ptr<memory::lifo_paged_memory_resource> resource
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+    maybe_shared_ptr<api::parameter_set const> parameters
 ) :
     body_(std::move(body)),
     resource_(std::move(resource)),
     meta_(body_->mirrors()->external_writer_meta() ?
         std::make_unique<impl::record_meta>(body_->mirrors()->external_writer_meta()) :
         nullptr
-    )
+    ),
+    parameters_(std::move(parameters))
 {}
 
 std::shared_ptr<plan::executable_statement> const& executable_statement::body() const noexcept {

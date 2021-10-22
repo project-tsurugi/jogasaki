@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/plan/executable_statement.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -33,7 +34,8 @@ public:
 
     executable_statement(
         std::shared_ptr<plan::executable_statement> body,
-        std::shared_ptr<memory::lifo_paged_memory_resource> resource
+        std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+        maybe_shared_ptr<api::parameter_set const> parameters
     );
 
     /**
@@ -55,6 +57,7 @@ private:
     std::shared_ptr<plan::executable_statement> body_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
     std::unique_ptr<impl::record_meta> meta_{};
+    maybe_shared_ptr<api::parameter_set const> parameters_{}; // to own parameter set by the end of statement execution
 };
 
 }

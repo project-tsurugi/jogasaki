@@ -16,7 +16,9 @@
 #include "service.h"
 
 #include <msgpack.hpp>
+#include <glog/logging.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/status.h>
@@ -33,6 +35,7 @@
 namespace jogasaki::api::impl {
 
 using takatori::util::fail;
+using takatori::util::maybe_shared_ptr;
 using namespace tateyama::api::server;
 using respose_code = tateyama::api::endpoint::response_code;
 
@@ -40,13 +43,13 @@ namespace details {
 
 class query_info {
 public:
-    using handle_parameters = std::pair<std::size_t, jogasaki::api::parameter_set*>;
+    using handle_parameters = std::pair<std::size_t, maybe_shared_ptr<jogasaki::api::parameter_set const>>;
     explicit query_info(std::string_view sql) :
         entity_(std::in_place_type<std::string_view>, sql)
     {}
 
-    explicit query_info(std::size_t sid, jogasaki::api::parameter_set* params) :
-        entity_(std::in_place_type<handle_parameters>, std::pair{sid, params})
+    explicit query_info(std::size_t sid, maybe_shared_ptr<jogasaki::api::parameter_set const> params) :
+        entity_(std::in_place_type<handle_parameters>, std::pair{sid, std::move(params)})
     {}
 
     [[nodiscard]] bool has_sql() const noexcept {
@@ -63,7 +66,7 @@ public:
         return std::get_if<handle_parameters>(std::addressof(entity_))->first;
     }
 
-    [[nodiscard]] jogasaki::api::parameter_set* params() const noexcept {
+    [[nodiscard]] maybe_shared_ptr<jogasaki::api::parameter_set const> const& params() const noexcept {
         if (has_sql()) fail();
         return std::get_if<handle_parameters>(std::addressof(entity_))->second;
     }
@@ -123,6 +126,7 @@ tateyama::status service::operator()(
             break;
         }
         case ::request::Request::RequestCase::kExecuteStatement: {
+            // beware asynchronous call : stack will be released soon after submitting request
             VLOG(1) << "execute_statement" << std::endl;
             auto& eq = proto_req.execute_statement();
             if(! eq.has_transaction_handle()) {
@@ -152,6 +156,7 @@ tateyama::status service::operator()(
             break;
         }
         case ::request::Request::RequestCase::kExecuteQuery: {
+            // beware asynchronous call : stack will be released soon after submitting request
             VLOG(1) << "execute_query" << std::endl;
             auto& eq = proto_req.execute_query();
             if(! eq.has_transaction_handle()) {
@@ -180,6 +185,7 @@ tateyama::status service::operator()(
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedStatement: {
+            // beware asynchronous call : stack will be released soon after submitting request
             VLOG(1) << "execute_prepared_statement" << std::endl;
             auto& pq = proto_req.execute_prepared_statement();
             if(! pq.has_prepared_statement_handle()) {
@@ -209,7 +215,7 @@ tateyama::status service::operator()(
 
             jogasaki::api::statement_handle handle{sid};
             std::unique_ptr<jogasaki::api::executable_statement> e{};
-            if(auto rc = db_->resolve(handle, *params, e); rc != jogasaki::status::ok) {
+            if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
                 VLOG(1) << "error in db_->resolve()";
                 details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
                 break;
@@ -218,6 +224,7 @@ tateyama::status service::operator()(
             break;
         }
         case ::request::Request::RequestCase::kExecutePreparedQuery: {
+            // beware asynchronous call : stack will be released soon after submitting request
             VLOG(1) << "execute_prepared_query" << std::endl;
             auto& pq = proto_req.execute_prepared_query();
             if(! pq.has_prepared_statement_handle()) {
@@ -252,8 +259,7 @@ tateyama::status service::operator()(
             }
             auto params = jogasaki::api::create_parameter_set();
             set_params(pq.parameters(), params);
-
-            execute_query(res, details::query_info{sid, params.get()}, tx);
+            execute_query(res, details::query_info{sid, std::shared_ptr{std::move(params)}}, tx);
             break;
         }
         case ::request::Request::RequestCase::kCommit: {
@@ -369,6 +375,7 @@ void service::execute_statement(
     std::shared_ptr<jogasaki::api::executable_statement> stmt,
     jogasaki::api::transaction_handle tx
 ) {
+    // beware asynchronous call : stack will be released soon after submitting request
     auto c = std::make_shared<callback_control>(res);
     auto* cbp = c.get();
     if(! callbacks_.emplace(cbp, std::move(c))) {
@@ -423,6 +430,7 @@ void service::execute_query(
     details::query_info const& q,
     jogasaki::api::transaction_handle tx
 ) {
+    // beware asynchronous call : stack will be released soon after submitting request
     BOOST_ASSERT(tx);  //NOLINT
     auto c = std::make_shared<callback_control>(res);
     auto& info = c->channel_info_;
@@ -444,7 +452,7 @@ void service::execute_query(
         }
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
-        if(auto rc = db_->resolve(statement, *q.params(), e); rc != jogasaki::status::ok) {
+        if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
             VLOG(1) << "error in db_->resolve() : " << rc;
             details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
             return;
@@ -453,7 +461,7 @@ void service::execute_query(
     info->meta_ = e->meta();
     details::send_body_head(*res, *info);
     auto* cbp = c.get();
-    callbacks_.emplace(cbp, c);
+    callbacks_.emplace(cbp, std::move(c));
     if(auto rc = tx->execute_async(
             std::shared_ptr{std::move(e)},
             info->data_channel_,

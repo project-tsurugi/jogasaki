@@ -227,13 +227,58 @@ private:
     jogasaki::api::database* db_{};
     tbb::concurrent_hash_map<void*, std::shared_ptr<callback_control>> callbacks_{};
 
+    void command_begin(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+
+    void command_prepare(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_execute_statement(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+
+    void command_execute_query(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_execute_prepared_statement(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_execute_prepared_query(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+
+    void command_commit(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+
+    void command_rollback(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_dispose_prepared_statement(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_disconnect(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+
     void execute_statement(
-        std::shared_ptr<tateyama::api::server::response>& res,
+        std::shared_ptr<tateyama::api::server::response> const& res,
         std::shared_ptr<jogasaki::api::executable_statement> stmt,
         jogasaki::api::transaction_handle tx
     );
     void execute_query(
-        std::shared_ptr<tateyama::api::server::response> res,
+        std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx
     );

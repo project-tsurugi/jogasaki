@@ -1,0 +1,7 @@
+v c0:i8 c1:f8
+p "insert into T0 (C0, C1) values (:c0,:c1)"
+s 0 c0=1 c1=1
+s 0 c0=2 c1=2
+s 0 c0=3 c1=3
+p "select * from T0"
+q 1

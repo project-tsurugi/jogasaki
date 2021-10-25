@@ -46,18 +46,19 @@ DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when 
 DEFINE_int32(thread_count, 1, "Number of threads");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_bool(explain, false, "explain the execution plan");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.");  //NOLINT
-DEFINE_bool(prepare_data, false, "Whether to prepare a few records in the storages");  //NOLINT
-DEFINE_bool(verify_record, false, "Whether to deserialize the query result records");  //NOLINT
+DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
+DEFINE_bool(verify_record, true, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
 DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_string(history_file, ".service_cli_history", "specify the command history file name");  //NOLINT
+DEFINE_int32(exit_on_idle, 180, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
+DEFINE_string(input_file, "", "specify the input commands file to read and execute");  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -65,6 +66,18 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 using tateyama::api::endpoint::response_code;
+
+using takatori::util::unsafe_downcast;
+
+struct stmt_info {
+    stmt_info() = default;
+    stmt_info(std::string_view sql, std::unordered_map<std::string, ::common::DataType> vars) :
+        sql_(sql),
+        host_variables_(std::move(vars))
+    {}
+    std::string sql_{};
+    std::unordered_map<std::string, ::common::DataType> host_variables_{};
+};
 
 class cli {
     std::shared_ptr<jogasaki::api::database> db_{};
@@ -77,12 +90,37 @@ class cli {
     bool auto_commit_{};
     std::mutex write_buffer_mutex_{};
     std::stringstream write_buffer_{};
-    std::vector<std::pair<std::uint64_t, std::string>> stmt_handles_{};
+    std::vector<std::pair<std::uint64_t, stmt_info>> stmt_handles_{};
     std::vector<std::future<bool>> on_going_statements_{};
     jogasaki::meta::record_meta query_meta_{};
     jogasaki::common_cli::temporary_folder temporary_{};
+    std::map<std::string, ::common::DataType> host_variables_{};
+    std::int32_t exit_on_idle_{};
+    std::ifstream input_file_stream_{};
+
+    using Clock = std::chrono::system_clock;
+    std::atomic<Clock::time_point> last_interacted_{Clock::now()};
+    std::atomic_bool to_exit_{false};
 
 public:
+
+    void prepare_data(jogasaki::api::database& db, std::size_t rows) {
+        auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(db);
+        jogasaki::executor::add_benchmark_tables(*db_impl.tables());
+        static constexpr std::size_t mod = 100;
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T0", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T1", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T2", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "WAREHOUSE", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "DISTRICT", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "CUSTOMER", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "NEW_ORDER", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ORDERS", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ORDER_LINE", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ITEM", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "STOCK", rows, true, mod);
+        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "HISTORY", rows, true, mod);
+    }
 
     bool fill_from_flags(
         jogasaki::configuration& cfg,
@@ -124,16 +162,23 @@ public:
         return true;
     }
 
+    void update_timestamp() {
+        last_interacted_.store(Clock::now());
+    }
+
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
-        db_ = jogasaki::api::create_database(cfg);
+        db_ = jogasaki::api::create_database(std::move(cfg));
         db_->start();
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify_record;
         auto_commit_ = FLAGS_auto_commit;
+        exit_on_idle_ = FLAGS_exit_on_idle;
 
         auto& impl = jogasaki::api::impl::get_impl(*db_);
-        jogasaki::executor::add_benchmark_tables(*impl.tables());
         jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
+        if (FLAGS_prepare_data > 0) {
+            prepare_data(*db_, FLAGS_prepare_data);
+        }
 
         environment_ = std::make_unique<tateyama::api::environment>();
         auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
@@ -145,18 +190,52 @@ public:
         environment_->add_endpoint(endpoint);
         endpoint->initialize(*environment_, {});
 
-        bool run = true;
-        if (fLB::FLAGS_test_build) {
-            run = false;
+        if (FLAGS_test_build) {
+            to_exit_ = true;
         }
 
+        // thread to terminate execution after idle duration
+        auto f = std::async(std::launch::async, [&](){
+            if (exit_on_idle_ > 0) {
+                while(! to_exit_) {
+                    std::this_thread::sleep_for(10ms);
+                    auto now = Clock::now();
+                    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_interacted_.load()).count() > exit_on_idle_) {
+                        std::cerr << std::endl << "Program exits because no interaction has been made for " << exit_on_idle_ << " secs. " << std::endl;
+                        std::exit(1);
+                    }
+                }
+            }
+        });
+
         linenoiseHistoryLoad(FLAGS_history_file.c_str());
-        while(run) {
-            auto* l = linenoise("> ");
-            if (! l) continue;
-            linenoiseHistoryAdd(l);
-            std::string input{l};
-            free(l);  //NOLINT
+        if (! FLAGS_input_file.empty()) {
+            boost::filesystem::path path{FLAGS_input_file};
+            if(! boost::filesystem::exists(path)) {
+                std::cerr << "Specified file not found : " << path << std::endl;
+            } else {
+                input_file_stream_.open(path.c_str());
+            }
+        }
+        std::string input{};
+        while(! to_exit_) {
+            if (input_file_stream_.is_open()) {
+                std::getline(input_file_stream_, input);
+                if (input.empty()) {
+                    input_file_stream_.close();
+                    continue;
+                }
+                std::cout << "> " << input << std::endl;
+            } else {
+                update_timestamp();
+                auto* l = linenoise("> ");
+                update_timestamp();
+                if (! l) continue;
+                linenoiseHistoryAdd(l);
+                linenoiseHistorySave(FLAGS_history_file.c_str());
+                input = l;
+                free(l);  //NOLINT
+            }
             auto args = split(input);
             if(args.empty() || args[0].empty()) {
                 print_usage();
@@ -187,9 +266,12 @@ public:
                     issue_statement(args);
                     break;
                 case 'e':
-                    run = false;
+                    to_exit_ = true;
                     break;
                 case '#':  // comment line
+                    break;
+                case 'v':
+                    register_variables(args);
                     break;
                 case 'h':
                 default:
@@ -199,7 +281,6 @@ public:
         }
 
         db_->stop();
-        linenoiseHistorySave(FLAGS_history_file.c_str());
         return 0;
     }
 
@@ -308,6 +389,7 @@ private:
             "  p <sql text> : prepare statement" << std::endl <<
             "  q <query text or number> : issue query " << std::endl <<
             "  s <statement text or number> : issue statement " << std::endl <<
+            "  v [<name>:<type>] : show or register host variables" << std::endl <<
             "";
     }
     bool begin_tx(bool for_autocommit = false) {
@@ -340,7 +422,7 @@ private:
             }
             return true;
         }
-        std::cerr << "command returned error: " << error.status_ << " " << error.message_ << std::endl;
+        std::cerr << "command returned " << ::status::Status_Name(error.status_) << ": " << error.message_ << std::endl;
         return false;
     }
 
@@ -392,13 +474,130 @@ private:
         wait_for_statements(); // just for cleanup
         return ret;
     }
+    ::common::DataType from(std::string_view str) {
+        static const std::unordered_map<std::string, ::common::DataType> map{
+            {"int4", ::common::DataType::INT4},
+            {"int8", ::common::DataType::INT8},
+            {"float4", ::common::DataType::FLOAT4},
+            {"float8", ::common::DataType::FLOAT8},
+            {"character", ::common::DataType::CHARACTER},
+
+            {"i4", ::common::DataType::INT4},
+            {"i8", ::common::DataType::INT8},
+            {"f4", ::common::DataType::FLOAT4},
+            {"f8", ::common::DataType::FLOAT8},
+            {"ch", ::common::DataType::CHARACTER},
+        };
+
+        if(map.count(std::string(str)) != 0) {
+            return map.at(std::string(str));
+        }
+        return ::common::DataType::PADDING; //unsupported type
+    }
+
+    bool is_alphanumeric(char c) {
+        return c == '_' || (c >= '0' && c <='9') || (c >= 'a' && c <='z') || (c >= 'A' && c <='Z');
+    }
+    std::vector<std::string_view> extract_variable_names(std::string_view sql) {
+        // the variables name is the longest string composed by alphanumeric letters and underscore after colon
+        std::vector<std::string_view> ret{};
+        std::size_t pos = 0;
+        std::size_t prev = 0;
+
+        while(true) {
+            pos = sql.find(':', prev);
+            if(pos == std::string::npos) {
+                break;
+            }
+            ++pos;
+            prev = pos;
+            while(true) {
+                if(! is_alphanumeric(*(sql.data()+pos))) {  //NOLINT
+                    break;
+                }
+                ++pos;
+            }
+            if(prev != pos) {
+                ret.emplace_back(sql.data()+prev, pos-prev);  //NOLINT
+            }
+            prev = pos;
+        }
+        if (debug_) {
+            int cnt = 0;
+            std::cout << "extracted variable names" << std::endl;
+            for(auto&& a : ret) {
+                std::cout << "  " << cnt << " : " << a << std::endl;
+                ++cnt;
+            }
+        }
+        return ret;
+    }
+
+    std::vector<std::string_view> split_string(std::string_view s, char delim) {
+        std::vector<std::string_view> ret{};
+        std::size_t pos = 0;
+        std::size_t prev = 0;
+        while(true) {
+            pos = s.find(delim, prev);
+            if(pos == std::string::npos) {
+                if (prev != s.size()) {
+                    ret.emplace_back(s.data()+prev, s.size()-prev);  //NOLINT
+                }
+                break;
+            }
+            if (pos > prev) {
+                ret.emplace_back(s.data()+prev, pos-prev);  //NOLINT
+            }
+            ++pos;
+            prev = pos;
+        }
+        if (debug_) {
+            int cnt = 0;
+            std::cout << "split string" << std::endl;
+            for(auto&& a : ret) {
+                std::cout << "  " << cnt << " : " << a << std::endl;
+                ++cnt;
+            }
+        }
+        return ret;
+    }
+    bool register_variables(std::vector<std::string_view> const& args) {
+        if (args.empty()) {
+            std::cout << "list host variables" << std::endl;
+            for(auto&& v : host_variables_) {
+                std::cout << v.first << " : " << common::DataType_Name(v.second) << std::endl;
+            }
+            return true;
+        }
+        for(auto&& s : args) {
+            auto var = split_string(s, ':');
+            if (var.size() != 2) {
+                std::cerr << "parsing variable failed : " << s << std::endl;
+                return false;
+            }
+            auto t = from(var[1]);
+            if(t == ::common::DataType::PADDING) {
+                std::cerr << "type is not supported : " << s << std::endl;
+                return false;
+            }
+            host_variables_.emplace(var[0], t);
+        }
+        return true;
+    }
     bool prepare(std::vector<std::string_view> const& args) {
         if (args.size() > 1) {
             std::cout << "command was ignored. too many command args" << std::endl;
             return false;
         }
         std::string sql{args[0]};
-        auto s = jogasaki::api::encode_prepare(sql);
+        auto vars = extract_variable_names(sql);
+        std::unordered_map<std::string, ::common::DataType> types{};
+        for(auto&& v: vars) {
+            if(host_variables_.count(std::string{v}) != 0) {
+                types[std::string{v}] = host_variables_.at(std::string{v});
+            }
+        }
+        auto s = jogasaki::api::encode_prepare_vars(sql, types);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -409,8 +608,8 @@ private:
         }
         auto stmt_handle = jogasaki::api::decode_prepare(res->body_);
         if (error) return false;
-        std::cout << "statement prepared: " << stmt_handle << std::endl;
-        stmt_handles_.emplace_back(stmt_handle, sql);
+        std::cout << "statement #" << stmt_handles_.size() << " prepared: " << stmt_handle << std::endl;
+        stmt_handles_.emplace_back(stmt_handle, stmt_info{sql, std::move(types)});
         return true;
     }
     bool list_statements() {
@@ -419,15 +618,79 @@ private:
             std::cout << "no entry" << std::endl;
             return true;
         }
-        for(auto [handle, sql] : stmt_handles_) {
-            std::cout << "#" << i << " " << handle << " : " << sql << std::endl;
+        for(auto&& [handle, info] : stmt_handles_) {
+            std::cout << "#" << i << " " << handle << " : " << info.sql_ << std::endl;
             ++i;
         }
         return true;
     }
-    bool issue_common(bool query, std::vector<std::string_view> const& args, std::function<void(std::string_view)> on_write) {
-        if (args.empty() || args.size() > 1) {
-            std::cout << "command was ignored. missing or too many command args" << std::endl;
+
+    template<class T>
+    T to_value(std::string_view val) {
+        if constexpr (std::is_same_v<T, std::int32_t> || std::is_same_v<T, std::int64_t>) {  //NOLINT
+            return std::strtol(val.data(), nullptr, 10);
+        } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {  //NOLINT
+            return std::strtod(val.data(), nullptr);
+        } else if constexpr (std::is_same_v<T, std::string>) {  //NOLINT
+            return std::string{val};
+        } else {
+            std::abort();
+        }
+        return {};
+    }
+    bool parse_parameters(
+        std::int32_t stmt_idx,
+        std::string_view sql,
+        std::vector<std::string_view> const& args,
+        std::vector<jogasaki::api::parameter>& parameters
+    ) {
+        stmt_info info{};
+        if(stmt_idx >= 0 && static_cast<std::size_t>(stmt_idx) >= stmt_handles_.size()) {
+            std::cerr << "invalid index" << std::endl;
+            return false;
+        }
+        info = stmt_idx >= 0 ? stmt_handles_[stmt_idx].second : stmt_info{sql, {}};
+        auto& types = info.host_variables_;
+        std::size_t used = 0;
+        for(auto s : args) {
+            auto v = split_string(s, '=');
+            if (v.size() != 2) {
+                std::cerr << "invalid parameter : " << s << std::endl;
+                return false;
+            }
+            std::string name{v[0]};
+            if (types.count(name) == 0) {
+                std::cerr << "Host variable('" << name << "') value is assigned but not used in statement : " << info.sql_ << std::endl;
+                return false;
+            }
+            ++used;
+            auto val = v[1];
+            auto type = types.at(name);
+            switch (type) {
+                case ::common::DataType::INT4: parameters.emplace_back(name, type, to_value<std::int32_t>(val)); break;
+                case ::common::DataType::INT8: parameters.emplace_back(name, type, to_value<std::int64_t>(val)); break;
+                case ::common::DataType::FLOAT4: parameters.emplace_back(name, type, to_value<float>(val)); break;
+                case ::common::DataType::FLOAT8: parameters.emplace_back(name, type, to_value<double>(val)); break;
+                case ::common::DataType::CHARACTER: parameters.emplace_back(name, type, to_value<std::string>(val)); break;
+                default:
+                    std::cerr << "invalid type" << std::endl;
+                    return false;
+            }
+        }
+        if (used < types.size()) {
+            std::cerr << "Not all host variable values are assigned for statement : " << info.sql_ << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool issue_common(
+        bool query,
+        std::vector<std::string_view>& args,
+        std::function<void(std::string_view)> on_write
+    ) {
+        if (args.empty()) {
+            std::cout << "command was ignored. missing command args" << std::endl;
             return false;
         }
         if (! tx_processing_) {
@@ -441,14 +704,24 @@ private:
             }
         }
         std::string arg{args[0]};
-        std::int32_t idx{};
+        args.erase(args.begin());
+        auto b = arg.data();
+        char* e{};
         bool sql_string{false};
-        try {
-            idx = std::stol(arg);
-        } catch(std::exception& e) {
+        std::int32_t idx = std::strtol(b, &e, 10);
+        if (b == e || errno == ERANGE) {
             sql_string = true;
+            idx = -1;
+        } else {
+            if (idx < 0 || static_cast<std::size_t>(idx) >= stmt_handles_.size()) {
+                std::cerr << "statement index (" << idx << ") is out of range" << std::endl;
+                return false;
+            }
         }
         std::vector<jogasaki::api::parameter> parameters{};
+        if(! parse_parameters(idx, arg, args, parameters)) {
+            return false;
+        }
         auto s = query ? (
             sql_string ?
                 jogasaki::api::encode_execute_query(tx_handle_, arg) :
@@ -488,10 +761,10 @@ private:
         if (query) {
             auto [name, columns] = jogasaki::api::decode_execute_query(res->body_head_);
             std::cout << "query name : " << name << std::endl;
-            query_meta_ = jogasaki::api::create_record_meta(std::move(columns));
+            query_meta_ = jogasaki::api::create_record_meta(columns);
             std::size_t ind{};
             for(auto&& f : query_meta_) {
-                std::cout << "column " << ind << " type " << f << std::endl;
+                std::cout << "column " << ind << ": " << f << std::endl;
                 ++ind;
             }
             write_buffer_.seekp(0);
@@ -505,10 +778,10 @@ private:
         }
         return true;
     }
-    bool issue_statement(std::vector<std::string_view> const& args) {
+    bool issue_statement(std::vector<std::string_view>& args) {
         return issue_common(false, args, [](std::string_view){});
     }
-    bool issue_query(std::vector<std::string_view> const& args) {
+    bool issue_query(std::vector<std::string_view>& args) {
         return issue_common(true, args, [&](std::string_view data) {
             std::cout << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()} << std::endl;
             if (verify_query_records_) {

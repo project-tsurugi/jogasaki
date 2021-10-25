@@ -63,7 +63,7 @@ std::string_view test_request::payload() const {
 }
 
 status test_channel::acquire(writer*& buf) {
-    auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer_writer<1024*8>>());
+    auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer_writer<1024*1024>>());
     if (on_write_) {
         s->set_on_write(on_write_);
     }

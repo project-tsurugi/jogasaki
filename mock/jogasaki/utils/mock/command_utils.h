@@ -118,9 +118,10 @@ inline void deserialize(std::string_view s, ::response::Response& res) {
 //    std::cout << " DebugString : " << res.DebugString() << std::endl;
 }
 
-template <class ...Args>
-std::string encode_prepare(std::string sql, Args...args) {
-    std::vector<std::pair<std::string, ::common::DataType>> place_holders{args...};
+inline std::string encode_prepare_vars(
+    std::string sql,
+    std::unordered_map<std::string, ::common::DataType> const& place_holders
+) {
     ::request::Request r{};
     auto* p = r.mutable_prepare();
     p->mutable_sql()->assign(sql);
@@ -133,6 +134,12 @@ std::string encode_prepare(std::string sql, Args...args) {
         }
     }
     return serialize(r);
+}
+
+template <class ...Args>
+std::string encode_prepare(std::string sql, Args...args) {
+    std::unordered_map<std::string, ::common::DataType> place_holders{args...};
+    return encode_prepare_vars(std::move(sql), place_holders);
 }
 
 inline std::string encode_begin(bool readonly) {
@@ -173,7 +180,7 @@ inline std::uint64_t decode_prepare(std::string_view res) {
     auto& prep = resp.prepare();
     if (! prep.has_prepared_statement_handle()) {
         auto& err = prep.error();
-        LOG(ERROR) << "**** error returned in Prepare : " << err.status() << " '" << err.detail() << "' **** ";
+        LOG(ERROR) << "**** error returned in Prepare : " << ::status::Status_Name(err.status()) << " '" << err.detail() << "' **** ";
         if (utils_raise_exception_on_error) std::abort();
         return -1;
     }

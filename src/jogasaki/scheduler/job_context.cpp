@@ -15,14 +15,10 @@
  */
 #include "job_context.h"
 
-#include <takatori/util/maybe_shared_ptr.h>
-
 #include <jogasaki/utils/latch.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 
 namespace jogasaki::scheduler {
-
-using takatori::util::maybe_shared_ptr;
 
 void job_context::dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept {
     dag_scheduler_ = std::move(arg);
@@ -63,5 +59,20 @@ job_context::job_context(
     invoker_thread_cpu_id_(invoker_thread_cpu_id)
 {}
 
+void job_context::invoker_thread_cpu_id(std::size_t arg) noexcept {
+    invoker_thread_cpu_id_ = arg;
+}
+
+std::size_t job_context::invoker_thread_cpu_id() const noexcept {
+    return invoker_thread_cpu_id_;
+}
+
+void job_context::callback(job_context::job_completion_callback callback) noexcept {
+    callback_ = std::move(callback);
+}
+
+job_context::job_completion_callback& job_context::callback() noexcept {
+    return callback_;
+}
 }
 

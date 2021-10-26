@@ -16,13 +16,11 @@
 #pragma once
 
 #include <jogasaki/model/task.h>
-#include <jogasaki/request_context.h>
+#include <jogasaki/model/graph.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/api/prepared_statement.h>
-#include <jogasaki/api/parameter_set.h>
-#include <jogasaki/api/impl/database.h>
 #include <jogasaki/common.h>
+#include <jogasaki/scheduler/job_context.h>
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {
@@ -191,6 +189,3 @@ private:
 };
 
 }
-
-
-

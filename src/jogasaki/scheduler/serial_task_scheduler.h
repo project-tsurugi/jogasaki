@@ -20,7 +20,8 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/utils/interference_size.h>
-#include "task_scheduler.h"
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/job_context.h>
 
 namespace jogasaki::scheduler {
 

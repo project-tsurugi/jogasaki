@@ -291,7 +291,7 @@ void service::command_commit(
         );
         return;
     }
-    if(auto rc = tx->commit(); rc == jogasaki::status::ok) {
+    if(auto rc = tx.commit(); rc == jogasaki::status::ok) {
         details::success<::response::ResultOnly>(*res);
     } else {
         VLOG(1) << "error in transaction_->commit()";
@@ -328,7 +328,7 @@ void service::command_rollback(
         );
         return;
     }
-    if(auto rc = tx->abort(); rc == jogasaki::status::ok) {
+    if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
         details::success<::response::ResultOnly>(*res);
     } else {
         VLOG(1) << "error in transaction_->abort()";
@@ -419,7 +419,7 @@ void service::execute_statement(
     if(! callbacks_.emplace(cbp, std::move(c))) {
         fail();
     }
-    if(auto success = tx->execute_async(
+    if(auto success = tx.execute_async(
             std::move(stmt),
             [cbp, this](status s, std::string_view message){
                 if (s == jogasaki::status::ok) {
@@ -500,7 +500,7 @@ void service::execute_query(
     details::send_body_head(*res, *info);
     auto* cbp = c.get();
     callbacks_.emplace(cbp, std::move(c));
-    if(auto rc = tx->execute_async(
+    if(auto rc = tx.execute_async(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
             [cbp, this](status s, std::string_view message){

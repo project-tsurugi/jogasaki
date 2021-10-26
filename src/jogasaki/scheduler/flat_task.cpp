@@ -17,8 +17,6 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/api/executable_statement.h>
-#include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/utils/core_affinity.h>

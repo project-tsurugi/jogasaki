@@ -102,32 +102,24 @@ public:
     /**
      * @brief setter for the invoker thread cpu
      */
-    void invoker_thread_cpu_id(std::size_t arg) noexcept {
-        invoker_thread_cpu_id_ = arg;
-    }
+    void invoker_thread_cpu_id(std::size_t arg) noexcept;
 
     /**
      * @brief accessor for the invoker thread cpu
      * @return cpu id of the invoker thread
      */
-    [[nodiscard]] std::size_t invoker_thread_cpu_id() const noexcept {
-        return invoker_thread_cpu_id_;
-    }
+    [[nodiscard]] std::size_t invoker_thread_cpu_id() const noexcept;
 
     /**
      * @brief setter for the callback
      */
-    void callback(job_completion_callback callback) noexcept {
-        callback_ = std::move(callback);
-    }
+    void callback(job_completion_callback callback) noexcept;
 
     /**
      * @brief accessor for completion callback
      * @return callback
      */
-    [[nodiscard]] job_completion_callback& callback() noexcept {
-        return callback_;
-    }
+    [[nodiscard]] job_completion_callback& callback() noexcept;
 private:
 
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};

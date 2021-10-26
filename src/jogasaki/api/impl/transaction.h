@@ -22,6 +22,7 @@
 #include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/utils/latch.h>
 
 #include <jogasaki/kvs/transaction.h>
 

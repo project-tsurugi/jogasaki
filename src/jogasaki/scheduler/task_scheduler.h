@@ -19,11 +19,10 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
-
-class job_context;
 
 enum class task_scheduler_kind : std::int32_t {
     serial = 0,
@@ -62,16 +61,7 @@ public:
      * @param t the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(flat_task&& t) {
-        if (t.job()->completing() && t.kind() != flat_task_kind::teardown) {
-            // if the job is already submitted teardown task, the number of task should never grow.
-            // teardown task is only the exception since it can reschedule itself.
-            LOG(ERROR) << "task submitted too late : " << t.kind();
-            return;
-        }
-        ++t.job()->task_count();
-        do_schedule_task(std::move(t));
-    }
+    void schedule_task(flat_task&& t);
 
     /**
      * @brief wait for the scheduler to proceed

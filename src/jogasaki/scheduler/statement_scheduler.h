@@ -15,11 +15,16 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/model/statement.h>
 #include <jogasaki/configuration.h>
-#include "task_scheduler.h"
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/dag_controller.h>
 
 namespace jogasaki::scheduler {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief Statement Scheduler

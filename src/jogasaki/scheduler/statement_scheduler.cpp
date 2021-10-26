@@ -15,6 +15,8 @@
  */
 #include "statement_scheduler.h"
 
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <takatori/util/downcast.h>
 #include "statement_scheduler_impl.h"
 

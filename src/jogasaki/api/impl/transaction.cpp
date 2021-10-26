@@ -24,6 +24,7 @@
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/sequence.h>
 
 namespace jogasaki::api::impl {

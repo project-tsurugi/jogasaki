@@ -43,7 +43,7 @@ public:
      * @param db the parent database that the transaction runs on
      * @param readonly whether the transaction is read-only
      */
-    explicit transaction(class database& db, bool readonly = false);
+    explicit transaction(kvs::database& db, bool readonly = false);
 
     /**
      * @brief destruct object
@@ -100,7 +100,7 @@ public:
      * @brief return the parent database object
      * @return the parent database
      */
-    [[nodiscard]] class database* database() const noexcept;
+    [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
      * @brief return the mutex object owned by this transaction
@@ -111,7 +111,7 @@ public:
 private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
-    class database* database_{};
+    kvs::database* database_{};
     bool active_{true};
     std::mutex mutex_{};
 };

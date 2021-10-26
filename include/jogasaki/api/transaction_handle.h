@@ -91,14 +91,14 @@ public:
      * @return status::ok when successful
      * @return error code otherwise
      */
-    [[nodiscard]] status commit();
+    status commit();  //NOLINT(readability-make-member-function-const)
 
     /**
      * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)
      * @return status::ok when successful
      * @return error code otherwise
      */
-    [[nodiscard]] status abort();
+    status abort();  //NOLINT(readability-make-member-function-const)
 
     /**
      * @brief execute the statement in the transaction. No result records are expected
@@ -107,7 +107,7 @@ public:
      * @return status::ok when successful
      * @return error code otherwise
      */
-    [[nodiscard]] status execute(executable_statement& statement);
+    status execute(executable_statement& statement);  //NOLINT(readability-make-member-function-const)
 
     /**
      * @brief execute the statement in the transaction. The result records are expected.
@@ -118,7 +118,7 @@ public:
      * @return status::ok when successful
      * @return error code otherwise
      */
-    [[nodiscard]] status execute(executable_statement& statement, std::unique_ptr<result_set>& result);
+    status execute(executable_statement& statement, std::unique_ptr<result_set>& result);  //NOLINT(readability-make-member-function-const)
 
     /**
      * @brief the callback type used for async execution
@@ -136,7 +136,7 @@ public:
      * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    [[nodiscard]] bool execute_async(maybe_shared_ptr<executable_statement> const& statement, callback on_completion);
+    bool execute_async(maybe_shared_ptr<executable_statement> const& statement, callback on_completion);  //NOLINT(readability-make-member-function-const)
 
     /**
      * @brief asynchronously execute the statement in the transaction. The result records are expected
@@ -150,11 +150,11 @@ public:
      * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    [[nodiscard]] bool execute_async(
+    bool execute_async(
         maybe_shared_ptr<executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,
         callback on_completion
-    );
+    );  //NOLINT(readability-make-member-function-const)
 
 private:
     std::uintptr_t body_{};

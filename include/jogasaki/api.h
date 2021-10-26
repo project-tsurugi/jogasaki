@@ -19,6 +19,7 @@
  * @brief header file aggregating all api files
  */
 
+#include <jogasaki/api/data_channel.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/executable_statement.h>
@@ -34,3 +35,4 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/writer.h>

@@ -216,8 +216,7 @@ public:
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned executable statement should be used from single thread/transaction at a point in time.
      * @note this function assumes `parameters` are owned and kept by caller by the end of statement execution.
-     * To pass the ownership of the parameter set,
-     * use `resolve(statement_handle, maybe_shared_ptr<parameter_set const>, std::unique_ptr<executable_statement>&)`
+     * @deprecated use `resolve(statement_handle, maybe_shared_ptr<parameter_set const>, std::unique_ptr<executable_statement>&)`
      */
     virtual status resolve(
         statement_handle prepared,

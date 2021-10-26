@@ -35,19 +35,19 @@ transaction_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
-status transaction_handle::commit() {
+status transaction_handle::commit() {  //NOLINT(readability-make-member-function-const)
     return reinterpret_cast<api::impl::transaction*>(body_)->commit();  //NOLINT
 }
 
-status transaction_handle::abort() {
+status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
     return reinterpret_cast<api::impl::transaction*>(body_)->abort();  //NOLINT
 }
 
-status transaction_handle::execute(executable_statement& statement) {
+status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
     return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement);  //NOLINT
 }
 
-status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {
+status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
     return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement, result);  //NOLINT
 }
 
@@ -56,7 +56,7 @@ bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> co
     return reinterpret_cast<api::impl::transaction*>(body_)->execute_async(  //NOLINT
         statement,
         std::move(on_completion)
-    );
+    );  //NOLINT(readability-make-member-function-const)
 }
 
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,

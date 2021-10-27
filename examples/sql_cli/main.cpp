@@ -36,6 +36,7 @@
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"
+#include <jogasaki/utils/create_tx.h>
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
@@ -66,7 +67,7 @@ using namespace jogasaki::executor::process::impl::expression;
 
 class cli {
     std::unique_ptr<api::database> db_{};
-    std::unique_ptr<api::transaction> tx_{};
+    std::shared_ptr<api::transaction_handle> tx_{};
     common_cli::temporary_folder temporary_{};
 public:
     int end_tx(bool abort = false) {
@@ -153,7 +154,7 @@ public:
         if (FLAGS_prepare_data) {
             prepare_data(*db_);
         }
-        tx_ = db_->create_transaction();
+        tx_ = utils::create_transaction(*db_);
         int rc{};
         for(auto&& s: stmts) {
             rc = execute_stmt(s);
@@ -165,7 +166,7 @@ public:
                 if (auto rc2 = end_tx()) {
                     return rc2;
                 }
-                tx_ = db_->create_transaction();
+                tx_ = utils::create_transaction(*db_);
             }
         }
         end_tx();

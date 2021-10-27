@@ -24,6 +24,7 @@
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/utils/create_tx.h>
 #include "api_test_base.h"
 
 namespace jogasaki::testing {

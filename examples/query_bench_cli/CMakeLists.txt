@@ -17,6 +17,7 @@ target_include_directories(query-bench-cli
 
 target_link_libraries(query-bench-cli
         PRIVATE jogasaki-impl #FIXME
+        PRIVATE jogasaki-mock
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads

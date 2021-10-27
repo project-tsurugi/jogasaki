@@ -53,7 +53,7 @@ public:
     void execute_query(
         std::string_view query,
         api::parameter_set const& params,
-        api::transaction& tx,
+        api::transaction_handle& tx,
         std::vector<mock::basic_record>& out
     );
 
@@ -61,7 +61,7 @@ public:
         std::string_view query,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params,
-        api::transaction& tx,
+        api::transaction_handle& tx,
         std::vector<mock::basic_record>& out
     );
 
@@ -80,7 +80,7 @@ public:
 
     void execute_query(
         std::string_view query,
-        api::transaction& tx,
+        api::transaction_handle& tx,
         std::vector<mock::basic_record>& out
     );
 
@@ -93,7 +93,7 @@ public:
         std::string_view query,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params,
-        api::transaction& tx
+        api::transaction_handle& tx
     );
     void execute_statement(
         std::string_view query,
@@ -102,7 +102,7 @@ public:
     );
     void execute_statement(
         std::string_view query,
-        api::transaction& tx
+        api::transaction_handle& tx
     );
 
     void execute_statement(
@@ -165,7 +165,7 @@ private:
     void execute_query(
         std::unique_ptr<api::prepared_statement>& prepared,
         api::parameter_set const& params,
-        api::transaction& tx,
+        api::transaction_handle& tx,
         std::vector<mock::basic_record>& out
     );
 

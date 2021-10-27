@@ -33,6 +33,7 @@
 #include <jogasaki/kvs/storage_dump.h>
 #include <jogasaki/error.h>
 #include <jogasaki/api.h>
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::utils {
 
@@ -226,12 +227,12 @@ inline void load_storage_data(
         fail();
     }
     static std::size_t record_per_transaction = 10000;
-    std::unique_ptr<api::transaction> tx{};
+    std::shared_ptr<api::transaction_handle> tx{};
     std::size_t record_count = 0;
     utils::xorshift_random64 rnd{};
     for(std::size_t i=0, n=records_per_partition; i < n; ++i) {
         if (! tx) {
-            tx = db.create_transaction();
+            tx = utils::create_transaction(db);
         }
         std::vector<std::string> colnames{};
         std::vector<std::string> values{};

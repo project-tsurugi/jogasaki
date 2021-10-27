@@ -32,6 +32,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/utils/create_tx.h>
 #include "api_test_base.h"
 
 namespace jogasaki::testing {
@@ -836,7 +837,7 @@ TEST_F(tpcc_test, stock_level2) {
 TEST_F(tpcc_test, new_order_update_and_select) {
     // test multiples statements in a transaction, though different tables
     for(std::size_t i=0; i < 3; ++i) {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         {
             std::string query =
                 "UPDATE "

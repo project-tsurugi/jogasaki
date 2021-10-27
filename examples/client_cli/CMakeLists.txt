@@ -17,6 +17,7 @@ target_include_directories(client-cli
 
 target_link_libraries(client-cli
         PRIVATE ${ENGINE}
+        PRIVATE jogasaki-mock
         PRIVATE takatori
         PRIVATE glog::glog
         PRIVATE gflags::gflags

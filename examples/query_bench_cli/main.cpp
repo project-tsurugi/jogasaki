@@ -29,6 +29,7 @@
 #include <jogasaki/common.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/core_affinity.h>
+#include <jogasaki/utils/create_tx.h>
 #include "utils.h"
 #include "../common/temporary_folder.h"
 
@@ -75,7 +76,7 @@ static bool prepare_data(api::database& db, std::size_t records) {
             return false;
         }
 
-        auto tx = db.create_transaction();
+        auto tx = utils::create_transaction(db);
         if(auto rc = tx->execute(*p1); rc != status::ok) {
             tx->abort();
             return false;
@@ -131,7 +132,7 @@ static bool query(
         }
     }
 
-    auto tx = db.create_transaction(readonly);
+    auto tx = utils::create_transaction(db, readonly);
     std::unique_ptr<api::result_set> rs{};
     {
         trace_scope_name("execute");  //NOLINT

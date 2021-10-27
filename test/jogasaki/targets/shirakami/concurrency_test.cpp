@@ -29,11 +29,12 @@
 #include <jogasaki/utils/mock/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/transaction.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::testing {
 
@@ -70,7 +71,7 @@ public:
             std::cout << std::endl;
         }
     }
-    status execute_query(api::transaction& tx, std::string_view query, std::vector<mock::basic_record>& out) {
+    status execute_query(api::transaction_handle& tx, std::string_view query, std::vector<mock::basic_record>& out) {
         std::unique_ptr<api::executable_statement> stmt{};
         if (auto st = db_->create_executable(query, stmt); st != status::ok) {
             return st;
@@ -95,7 +96,7 @@ public:
         return ret;
     }
 
-    void execute_statement(api::transaction& tx, std::string_view query) {
+    void execute_statement(api::transaction_handle& tx, std::string_view query) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(query, stmt));
         explain(*stmt);
@@ -108,8 +109,8 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(shirakami_concurrency_test, reading_uncomitted) {
-    auto tx0 = db_->create_transaction();
-    auto tx1 = db_->create_transaction();
+    auto tx0 = utils::create_transaction(*db_);
+    auto tx1 = utils::create_transaction(*db_);
     execute_statement( *tx0, "INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     std::vector<mock::basic_record> result{};
     ASSERT_EQ(status::err_aborted_retryable, execute_query(*tx1, "SELECT * FROM T0", result));

@@ -34,6 +34,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::testing {
 
@@ -72,7 +73,7 @@ void api_test_base::explain(api::executable_statement& stmt) {
 void api_test_base::execute_query(
     std::string_view query,
     api::parameter_set const& params,
-    api::transaction& tx,
+    api::transaction_handle& tx,
     std::vector<mock::basic_record>& out
 ) {
     std::unique_ptr<api::prepared_statement> prepared{};
@@ -84,7 +85,7 @@ void api_test_base::execute_query(
     std::string_view query,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     api::parameter_set const& params,
-    api::transaction& tx,
+    api::transaction_handle& tx,
     std::vector<mock::basic_record>& out
 ) {
     std::unique_ptr<api::prepared_statement> prepared{};
@@ -92,7 +93,7 @@ void api_test_base::execute_query(
     return execute_query(prepared, params, tx, out);
 }
 
-void api_test_base::execute_query(std::unique_ptr<api::prepared_statement>& prepared, api::parameter_set const& params, api::transaction& tx,
+void api_test_base::execute_query(std::unique_ptr<api::prepared_statement>& prepared, api::parameter_set const& params, api::transaction_handle& tx,
     std::vector<mock::basic_record>& out) {
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
@@ -122,14 +123,14 @@ void api_test_base::execute_query(
     api::parameter_set const& params,
     std::vector<mock::basic_record>& out
 ) {
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     execute_query(query, variables, params, *tx, out);
     tx->commit();
 }
 
 void api_test_base::execute_query(std::string_view query, api::parameter_set const& params,
     std::vector<mock::basic_record>& out) {
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     execute_query(query, params, *tx, out);
     tx->commit();
 }
@@ -139,7 +140,7 @@ void api_test_base::execute_query(std::string_view query, std::vector<mock::basi
     execute_query(query, params, out);
 }
 
-void api_test_base::execute_query(std::string_view query, api::transaction& tx, std::vector<mock::basic_record>& out) {
+void api_test_base::execute_query(std::string_view query, api::transaction_handle& tx, std::vector<mock::basic_record>& out) {
     api::impl::parameter_set params{};
     execute_query(query, params, tx, out);
 }
@@ -148,7 +149,7 @@ void api_test_base::execute_statement(
     std::string_view query,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     api::parameter_set const& params,
-    api::transaction& tx
+    api::transaction_handle& tx
 ) {
     std::unique_ptr<api::prepared_statement> prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
@@ -164,12 +165,12 @@ void api_test_base::execute_statement(
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     api::parameter_set const& params
 ) {
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     execute_statement(query, variables, params, *tx);
     tx->commit();
 }
 
-void api_test_base::execute_statement(std::string_view query, api::transaction& tx) {
+void api_test_base::execute_statement(std::string_view query, api::transaction_handle& tx) {
     api::impl::parameter_set params{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     execute_statement(query, variables, params, tx);

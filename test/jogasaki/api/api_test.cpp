@@ -36,6 +36,7 @@
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::testing {
 
@@ -102,7 +103,7 @@ TEST_F(api_test, primary_key_violation) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt));
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     ASSERT_EQ(status::err_already_exists, tx->execute(*stmt));
     ASSERT_EQ(status::ok, tx->abort());
 
@@ -122,7 +123,7 @@ TEST_F(api_test, resolve_place_holder_with_null) {
     std::unique_ptr<api::prepared_statement> prepared{};
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", variables, prepared));
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         auto ps = api::create_parameter_set();
         ps->set_int8("p1", 1);
         ps->set_null("p2");

@@ -22,6 +22,7 @@
 #include <jogasaki/api.h>
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/utils/create_tx.h>
 
 #include "../common/temporary_folder.h"
 
@@ -47,7 +48,7 @@ static bool prepare_data(api::database& db) {
         return false;
     }
 
-    auto tx = db.create_transaction();
+    auto tx = utils::create_transaction(db);
     if(auto rc = tx->execute(*p1); rc != status::ok) {
         tx->abort();
         return false;
@@ -115,7 +116,7 @@ static bool query(api::database& db) {
         return false;
     }
 
-    auto tx = db.create_transaction();
+    auto tx = utils::create_transaction(db);
     std::unique_ptr<api::result_set> rs{};
     if(auto rc = tx->execute(*e, rs); rc != status::ok) {
         return false;

@@ -33,7 +33,7 @@ target_include_directories(server
 target_link_libraries(server
     PRIVATE api
     PRIVATE ${tateyama_engine}
-    PRIVATE jogasaki-mock
+    PRIVATE common
     PRIVATE takatori
     PRIVATE yugawara
     PRIVATE ${ENGINE}

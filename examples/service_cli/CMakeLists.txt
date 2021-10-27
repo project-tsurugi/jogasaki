@@ -26,7 +26,7 @@ target_include_directories(service-cli
 target_link_libraries(service-cli
         PRIVATE api
         PRIVATE ${tateyama_engine}
-        PRIVATE jogasaki-mock
+        PRIVATE common
         PRIVATE takatori
         PRIVATE yugawara
         PRIVATE ${ENGINE}

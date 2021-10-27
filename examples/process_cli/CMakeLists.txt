@@ -17,8 +17,8 @@ target_include_directories(process-cli
 
 target_link_libraries(process-cli
         PRIVATE jogasaki-impl #FIXME
-        PRIVATE jogasaki-mock
-        PRIVATE jogasaki-mock-impl #FIXME
+        PRIVATE common
+        PRIVATE common-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads

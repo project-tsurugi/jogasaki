@@ -23,8 +23,8 @@ target_include_directories(${test_target}
 
 target_link_libraries(${test_target}
         PRIVATE jogasaki-impl
-        PRIVATE jogasaki-mock
-        PRIVATE jogasaki-mock-impl
+        PRIVATE common
+        PRIVATE common-impl
         PUBLIC gtest
         PRIVATE tbb
         PRIVATE takatori

@@ -12,26 +12,25 @@ set_source_files_properties(
         COMPILE_FLAGS -Wno-unused-parameter
 )
 
-add_library(jogasaki-mock
+add_library(common
         ${SOURCES}
         ${GENERATED_PROTO_SRCS}
 )
 
-add_dependencies(jogasaki-mock
+add_dependencies(common
         build_protos
         )
 
-target_include_directories(jogasaki-mock
+target_include_directories(common
         PUBLIC ${CMAKE_BINARY_DIR}/protos
         PUBLIC .
 )
 
-# avoid name conflict with mock sharksfin implementation
-set_target_properties(jogasaki-mock PROPERTIES
-        OUTPUT_NAME jogasaki-mock-utils
+set_target_properties(common PROPERTIES
+        OUTPUT_NAME jogasaki-common-utils
         )
 
-target_link_libraries(jogasaki-mock
+target_link_libraries(common
         PUBLIC jogasaki-impl
         PRIVATE Boost::boost
         PRIVATE Boost::filesystem
@@ -41,36 +40,36 @@ target_link_libraries(jogasaki-mock
 )
 
 if (PERFORMANCE_TOOLS)
-    target_link_libraries(jogasaki-mock
+    target_link_libraries(common
             PRIVATE performance-tools::api
             PRIVATE performance-tools::lib
             )
-    target_compile_definitions(jogasaki-mock PUBLIC PERFORMANCE_TOOLS)
+    target_compile_definitions(common PUBLIC PERFORMANCE_TOOLS)
 endif()
 
 # Boost.Thread doesn't seem to allow multiple versions to coexist.
 # This version definition should be shared with caller at least.
-target_compile_definitions(jogasaki-mock PUBLIC BOOST_THREAD_VERSION=4)
+target_compile_definitions(common PUBLIC BOOST_THREAD_VERSION=4)
 
 if(ENABLE_CACHE_ALIGN)
-    target_compile_definitions(jogasaki-mock INTERFACE ENABLE_CACHE_ALIGN)
+    target_compile_definitions(common INTERFACE ENABLE_CACHE_ALIGN)
 endif()
 
-set_compile_options(jogasaki-mock)
+set_compile_options(common)
 
-# mock library needs install only when examples are used
+# common library needs install only when examples are used
 if(INSTALL_EXAMPLES)
-    install_custom(jogasaki-mock ${export_name})
+    install_custom(common ${export_name})
 endif()
 
 # for tests
-add_library(jogasaki-mock-impl INTERFACE)
+add_library(common-impl INTERFACE)
 
-target_include_directories(jogasaki-mock-impl
+target_include_directories(common-impl
         INTERFACE .
         )
 
-target_link_libraries(jogasaki-mock-impl
+target_link_libraries(common-impl
         INTERFACE ${ENGINE}
         INTERFACE takatori
         INTERFACE yugawara
@@ -89,14 +88,14 @@ target_link_libraries(jogasaki-mock-impl
         )
 
 if (PERFORMANCE_TOOLS)
-    target_link_libraries(jogasaki-mock-impl
+    target_link_libraries(common-impl
             INTERFACE performance-tools::api
             INTERFACE performance-tools::lib
             )
-    target_compile_definitions(jogasaki-impl INTERFACE PERFORMANCE_TOOLS)
+    target_compile_definitions(common-impl INTERFACE PERFORMANCE_TOOLS)
 endif()
 
 if(ENABLE_CACHE_ALIGN)
-    target_compile_definitions(jogasaki-mock-impl INTERFACE ENABLE_CACHE_ALIGN)
+    target_compile_definitions(common-impl INTERFACE ENABLE_CACHE_ALIGN)
 endif()
 

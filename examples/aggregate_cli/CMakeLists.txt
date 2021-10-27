@@ -18,8 +18,8 @@ target_include_directories(aggregate-cli
 
 target_link_libraries(aggregate-cli
         PRIVATE jogasaki-impl
-        PRIVATE jogasaki-mock
-        PRIVATE jogasaki-mock-impl
+        PRIVATE common
+        PRIVATE common-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads

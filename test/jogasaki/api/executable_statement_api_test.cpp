@@ -68,7 +68,7 @@ TEST_F(executable_statement_api_test, meta) {
     ASSERT_TRUE(handle);
     auto ps = api::create_parameter_set();
     std::unique_ptr<api::executable_statement> executable{};
-    ASSERT_EQ(status::ok, db_->resolve(handle, *ps, executable));
+    ASSERT_EQ(status::ok, db_->resolve(handle, std::shared_ptr{std::move(ps)}, executable));
     ASSERT_TRUE(executable);
     ASSERT_TRUE(executable->meta());
     auto& meta = *executable->meta();
@@ -106,7 +106,7 @@ TEST_F(executable_statement_api_test, meta_with_parameters) {
     std::unique_ptr<api::executable_statement> executable{};
     auto ps = api::create_parameter_set();
     set(*ps, "p0", api::field_type_kind::int8, 1);
-    ASSERT_EQ(status::ok, db_->resolve(handle, *ps, executable));
+    ASSERT_EQ(status::ok, db_->resolve(handle, std::shared_ptr{std::move(ps)}, executable));
     ASSERT_TRUE(executable);
     ASSERT_TRUE(executable->meta());
     auto& meta = *executable->meta();
@@ -127,7 +127,7 @@ TEST_F(executable_statement_api_test, empty_meta) {
         ASSERT_TRUE(handle);
         auto ps = api::create_parameter_set();
         std::unique_ptr<api::executable_statement> executable{};
-        ASSERT_EQ(status::ok, db_->resolve(handle, *ps, executable));
+        ASSERT_EQ(status::ok, db_->resolve(handle, std::shared_ptr{std::move(ps)}, executable));
         ASSERT_TRUE(executable);
         ASSERT_FALSE(executable->meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));
@@ -139,7 +139,7 @@ TEST_F(executable_statement_api_test, empty_meta) {
         ASSERT_TRUE(handle);
         auto ps = api::create_parameter_set();
         std::unique_ptr<api::executable_statement> executable{};
-        ASSERT_EQ(status::ok, db_->resolve(handle, *ps, executable));
+        ASSERT_EQ(status::ok, db_->resolve(handle, std::shared_ptr{std::move(ps)}, executable));
         ASSERT_TRUE(executable);
         ASSERT_FALSE(executable->meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));

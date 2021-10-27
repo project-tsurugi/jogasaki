@@ -120,7 +120,7 @@ TEST_F(api_test, resolve_place_holder_with_null) {
         {"p1", api::field_type_kind::int8},
         {"p2", api::field_type_kind::float8},
     };
-    std::unique_ptr<api::prepared_statement> prepared{};
+    api::statement_handle prepared{};
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p1, :p2)", variables, prepared));
     {
         auto tx = utils::create_transaction(*db_);
@@ -128,9 +128,10 @@ TEST_F(api_test, resolve_place_holder_with_null) {
         ps->set_int8("p1", 1);
         ps->set_null("p2");
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db_->resolve(*prepared, *ps, exec));
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
     }
 
     std::vector<mock::basic_record> result{};

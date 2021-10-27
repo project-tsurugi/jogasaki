@@ -90,7 +90,7 @@ static bool prepare_data(api::database& db, std::size_t records) {
     return true;
 }
 
-static std::unique_ptr<api::prepared_statement> prepare(api::database& db) {
+static api::statement_handle prepare(api::database& db) {
     std::string select{
         "SELECT w_id, w_tax, c_discount, c_last, c_credit FROM WAREHOUSE, CUSTOMER "
         "WHERE w_id = :w_id "
@@ -103,7 +103,7 @@ static std::unique_ptr<api::prepared_statement> prepare(api::database& db) {
         {"c_d_id", api::field_type_kind::int8},
         {"c_id", api::field_type_kind::int8},
     };
-    std::unique_ptr<api::prepared_statement> p{};
+    api::statement_handle p{};
     if(auto rc = db.prepare(select, variables, p); rc != status::ok) {
         std::abort();
     }
@@ -112,7 +112,7 @@ static std::unique_ptr<api::prepared_statement> prepare(api::database& db) {
 
 static bool query(
     api::database& db,
-    api::prepared_statement const& stmt,
+    api::statement_handle& stmt,
     jogasaki::utils::xorshift_random32& rnd,
     std::size_t records,
     bool readonly,
@@ -127,7 +127,7 @@ static bool query(
     std::unique_ptr<api::executable_statement> e{};
     {
         trace_scope_name("resolve");  //NOLINT
-        if(auto rc = db.resolve(stmt, *ps, e); rc != status::ok) {
+        if(auto rc = db.resolve(stmt, std::shared_ptr{std::move(ps)}, e); rc != status::ok) {
             return false;
         }
     }
@@ -267,7 +267,7 @@ static int run(
                 start.count_down_and_wait();
                 jogasaki::utils::xorshift_random32 rnd{static_cast<std::uint32_t>(123456+i)};
                 while((queries == -1 && !stop) || (queries != -1 && count < queries)) {
-                    if(auto res = query(*db, *stmt, rnd, records, FLAGS_readonly, result); !res) {
+                    if(auto res = query(*db, stmt, rnd, records, FLAGS_readonly, result); !res) {
                         LOG(ERROR) << "query error";
                         std::abort();
                     }
@@ -276,6 +276,7 @@ static int run(
                 if (result == 0) {
                     LOG(INFO) << "client " << i << " output no result";
                 }
+                db->destroy_statement(stmt);
                 return count;
             })
         );

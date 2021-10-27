@@ -97,7 +97,7 @@ static bool query(api::database& db) {
         "c_d_id = :c_d_id AND "
         "c_id = :c_id "
     };
-    std::unique_ptr<api::prepared_statement> p{};
+    api::statement_handle p{};
     if(auto rc = db.prepare(select, p); rc != status::ok) {
         return false;
     }
@@ -108,7 +108,7 @@ static bool query(api::database& db) {
     ps->set_int8("c_id", 1);
 
     std::unique_ptr<api::executable_statement> e{};
-    if(auto rc = db.resolve(*p, *ps, e); rc != status::ok) {
+    if(auto rc = db.resolve(p, std::shared_ptr{std::move(ps)}, e); rc != status::ok) {
         return false;
     }
 
@@ -130,6 +130,9 @@ static bool query(api::database& db) {
         report_record(*rs->meta(), *record);
     }
     tx->commit();
+    if(auto rc = db.destroy_statement(p); rc != status::ok) {
+        return false;
+    }
     rs->close();
     return true;
 }

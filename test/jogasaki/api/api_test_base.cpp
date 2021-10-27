@@ -76,7 +76,7 @@ void api_test_base::execute_query(
     api::transaction_handle& tx,
     std::vector<mock::basic_record>& out
 ) {
-    std::unique_ptr<api::prepared_statement> prepared{};
+    api::statement_handle prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, prepared));
     return execute_query(prepared, params, tx, out);
 }
@@ -88,15 +88,15 @@ void api_test_base::execute_query(
     api::transaction_handle& tx,
     std::vector<mock::basic_record>& out
 ) {
-    std::unique_ptr<api::prepared_statement> prepared{};
+    api::statement_handle prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
     return execute_query(prepared, params, tx, out);
 }
 
-void api_test_base::execute_query(std::unique_ptr<api::prepared_statement>& prepared, api::parameter_set const& params, api::transaction_handle& tx,
+void api_test_base::execute_query(api::statement_handle& prepared, api::parameter_set const& params, api::transaction_handle& tx,
     std::vector<mock::basic_record>& out) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
+    ASSERT_EQ(status::ok, db_->resolve(prepared, params, stmt));
     explain(*stmt);
     std::unique_ptr<api::result_set> rs{};
     if(auto res = tx.execute(*stmt, rs);res != status::ok) {
@@ -115,6 +115,7 @@ void api_test_base::execute_query(std::unique_ptr<api::prepared_statement>& prep
         LOG(INFO) << ss.str();
     }
     rs->close();
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
 void api_test_base::execute_query(
@@ -128,8 +129,11 @@ void api_test_base::execute_query(
     tx->commit();
 }
 
-void api_test_base::execute_query(std::string_view query, api::parameter_set const& params,
-    std::vector<mock::basic_record>& out) {
+void api_test_base::execute_query(
+    std::string_view query,
+    api::parameter_set const& params,
+    std::vector<mock::basic_record>& out
+) {
     auto tx = utils::create_transaction(*db_);
     execute_query(query, params, *tx, out);
     tx->commit();
@@ -151,13 +155,14 @@ void api_test_base::execute_statement(
     api::parameter_set const& params,
     api::transaction_handle& tx
 ) {
-    std::unique_ptr<api::prepared_statement> prepared{};
+    api::statement_handle prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
 
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(*prepared, params, stmt));
+    ASSERT_EQ(status::ok, db_->resolve(prepared, params, stmt));
     explain(*stmt);
     ASSERT_EQ(status::ok, tx.execute(*stmt));
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
 void api_test_base::execute_statement(

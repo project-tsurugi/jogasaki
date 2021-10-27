@@ -163,7 +163,7 @@ public:
 
 private:
     void execute_query(
-        std::unique_ptr<api::prepared_statement>& prepared,
+        api::statement_handle& prepared,
         api::parameter_set const& params,
         api::transaction_handle& tx,
         std::vector<mock::basic_record>& out

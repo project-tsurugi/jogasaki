@@ -397,7 +397,7 @@ private:
             std::cout << "command was ignored. transaction already started: " << tx_handle_ << std::endl;
             return false;
         }
-        auto s = jogasaki::api::encode_begin(false);
+        auto s = jogasaki::utils::encode_begin(false);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -406,7 +406,7 @@ private:
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
-        tx_handle_ = jogasaki::api::decode_begin(res->body_);
+        tx_handle_ = jogasaki::utils::decode_begin(res->body_);
         if(error) return false;
         if(! for_autocommit) {  // suppress msg if auto commit
             std::cout << "transaction begin: " << tx_handle_ << std::endl;
@@ -415,7 +415,7 @@ private:
         return true;
     }
     bool handle_result_only(std::string_view body, bool suppress_msg = false) {
-        auto [success, error] = jogasaki::api::decode_result_only(body);
+        auto [success, error] = jogasaki::utils::decode_result_only(body);
         if (success) {
             if (! suppress_msg) {
                 std::cout << "command completed successfully." << std::endl;
@@ -438,7 +438,7 @@ private:
             std::cout << "command was ignored. no transaction started yet" << std::endl;
             return false;
         }
-        auto s = jogasaki::api::encode_commit(tx_handle_);
+        auto s = jogasaki::utils::encode_commit(tx_handle_);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -459,7 +459,7 @@ private:
             return false;
         }
         wait_for_statements();
-        auto s = jogasaki::api::encode_rollback(tx_handle_);
+        auto s = jogasaki::utils::encode_rollback(tx_handle_);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -597,7 +597,7 @@ private:
                 types[std::string{v}] = host_variables_.at(std::string{v});
             }
         }
-        auto s = jogasaki::api::encode_prepare_vars(sql, types);
+        auto s = jogasaki::utils::encode_prepare_vars(sql, types);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -606,7 +606,7 @@ private:
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
-        auto stmt_handle = jogasaki::api::decode_prepare(res->body_);
+        auto stmt_handle = jogasaki::utils::decode_prepare(res->body_);
         if (error) return false;
         std::cout << "statement #" << stmt_handles_.size() << " prepared: " << stmt_handle << std::endl;
         stmt_handles_.emplace_back(stmt_handle, stmt_info{sql, std::move(types)});
@@ -642,7 +642,7 @@ private:
         std::int32_t stmt_idx,
         std::string_view sql,
         std::vector<std::string_view> const& args,
-        std::vector<jogasaki::api::parameter>& parameters
+        std::vector<jogasaki::utils::parameter>& parameters
     ) {
         stmt_info info{};
         if(stmt_idx >= 0 && static_cast<std::size_t>(stmt_idx) >= stmt_handles_.size()) {
@@ -718,18 +718,18 @@ private:
                 return false;
             }
         }
-        std::vector<jogasaki::api::parameter> parameters{};
+        std::vector<jogasaki::utils::parameter> parameters{};
         if(! parse_parameters(idx, arg, args, parameters)) {
             return false;
         }
         auto s = query ? (
             sql_string ?
-                jogasaki::api::encode_execute_query(tx_handle_, arg) :
-                jogasaki::api::encode_execute_prepared_query(tx_handle_, stmt_handles_[idx].first, parameters)
+                jogasaki::utils::encode_execute_query(tx_handle_, arg) :
+                jogasaki::utils::encode_execute_prepared_query(tx_handle_, stmt_handles_[idx].first, parameters)
         ) : (
             sql_string ?
-                jogasaki::api::encode_execute_statement(tx_handle_, arg) :
-                jogasaki::api::encode_execute_prepared_statement(tx_handle_, stmt_handles_[idx].first, parameters)
+                jogasaki::utils::encode_execute_statement(tx_handle_, arg) :
+                jogasaki::utils::encode_execute_prepared_statement(tx_handle_, stmt_handles_[idx].first, parameters)
         );
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
@@ -745,7 +745,7 @@ private:
                     std::cerr << "error executing command" << std::endl;
                 }
                 if (verify_query_records_) {
-                    auto recs = jogasaki::api::deserialize_msg(write_buffer_.str(), query_meta_);
+                    auto recs = jogasaki::utils::deserialize_msg(write_buffer_.str(), query_meta_);
                     for(auto&& r : recs) {
                         std::cout << "record : " << r << std::endl;
                     }
@@ -759,9 +759,9 @@ private:
             return false;
         }
         if (query) {
-            auto [name, columns] = jogasaki::api::decode_execute_query(res->body_head_);
+            auto [name, columns] = jogasaki::utils::decode_execute_query(res->body_head_);
             std::cout << "query name : " << name << std::endl;
-            query_meta_ = jogasaki::api::create_record_meta(columns);
+            query_meta_ = jogasaki::utils::create_record_meta(columns);
             std::size_t ind{};
             for(auto&& f : query_meta_) {
                 std::cout << "column " << ind << ": " << f << std::endl;

@@ -56,7 +56,7 @@
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/performance_tools.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/mock/storage_data.h>
+#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>

@@ -21,7 +21,7 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
-#include <jogasaki/utils/mock/msgbuf_utils.h>
+#include <jogasaki/utils/msgbuf_utils.h>
 
 namespace jogasaki::executor::process {
 
@@ -54,7 +54,7 @@ TEST_F(data_channel_writer_test, basic) {
 
     ASSERT_EQ(1, ch.writers_.size());
     auto& w = *ch.writers_[0];
-    auto recs = api::deserialize_msg({w.data_.data(), w.size_}, *meta);
+    auto recs = utils::deserialize_msg({w.data_.data(), w.size_}, *meta);
     ASSERT_EQ(3, recs.size());
     EXPECT_EQ(rec1, recs[0]);
     EXPECT_EQ(rec2, recs[1]);

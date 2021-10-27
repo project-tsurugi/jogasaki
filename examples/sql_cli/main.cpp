@@ -29,7 +29,7 @@
 #include <jogasaki/mock/test_channel.h>
 #include <jogasaki/api.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/utils/mock/storage_data.h>
+#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/executor/tables.h>
 #include <tateyama/common.h>
 #include <jogasaki/scheduler/task_scheduler.h>

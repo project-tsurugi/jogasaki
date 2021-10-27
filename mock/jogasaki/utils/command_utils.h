@@ -33,7 +33,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 
-namespace jogasaki::api {
+namespace jogasaki::utils {
 
 using namespace std::string_view_literals;
 using namespace std::literals::string_literals;

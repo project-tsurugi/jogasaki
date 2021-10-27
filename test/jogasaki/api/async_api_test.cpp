@@ -27,7 +27,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/mock/storage_data.h>
+#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction.h>
@@ -38,7 +38,7 @@
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/mock/test_channel.h>
-#include <jogasaki/utils/mock/msgbuf_utils.h>
+#include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "request.pb.h"
@@ -52,6 +52,7 @@ namespace jogasaki::api {
 using namespace std::chrono_literals;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::utils;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;

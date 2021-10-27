@@ -21,7 +21,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/mock/storage_data.h>
+#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction.h>
@@ -33,7 +33,7 @@
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/utils/binary_printer.h>
 
-namespace jogasaki::api {
+namespace jogasaki::utils {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;

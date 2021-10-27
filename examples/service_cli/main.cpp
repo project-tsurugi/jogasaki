@@ -32,8 +32,8 @@
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
 
 #include <jogasaki/api.h>
-#include <jogasaki/utils/mock/command_utils.h>
-#include <jogasaki/utils/mock/msgbuf_utils.h>
+#include <jogasaki/utils/command_utils.h>
+#include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/tables.h>

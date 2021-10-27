@@ -24,8 +24,8 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/mock/storage_data.h>
-#include <jogasaki/utils/mock/command_utils.h>
+#include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/command_utils.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction.h>
@@ -44,7 +44,7 @@
 #include <tateyama/api/environment.h>
 #include <tateyama/api/server/service.h>
 #include "api_test_base.h"
-#include <jogasaki/utils/mock/msgbuf_utils.h>
+#include <jogasaki/utils/msgbuf_utils.h>
 
 #include "request.pb.h"
 #include "response.pb.h"
@@ -58,6 +58,7 @@ using namespace std::chrono_literals;
 using namespace std::string_view_literals;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::utils;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -96,7 +97,7 @@ public:
         environment_->add_endpoint(endpoint);
         endpoint->initialize(*environment_, {});
 
-        api::utils_raise_exception_on_error = true;
+        utils::utils_raise_exception_on_error = true;
     }
 
     void TearDown() override {

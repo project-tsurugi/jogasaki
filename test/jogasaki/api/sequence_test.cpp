@@ -27,7 +27,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/mock/storage_data.h>
+#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction.h>

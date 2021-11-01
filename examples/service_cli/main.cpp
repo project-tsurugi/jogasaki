@@ -753,6 +753,7 @@ private:
                 return handle_result_only(res->body_);
             })
         );
+        std::stringstream{}.swap(write_buffer_);
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok) {
             std::cerr << "service invocation failed" << std::endl;
@@ -767,8 +768,6 @@ private:
                 std::cout << "column " << ind << ": " << f << std::endl;
                 ++ind;
             }
-            write_buffer_.seekp(0);
-            write_buffer_.clear();
         }
         if (auto_commit_) {
             if (! commit_tx(true)) {
@@ -807,6 +806,7 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     tateyama::service_cli::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
+    cfg->prepare_benchmark_tables(true);
     e.fill_from_flags(*cfg);
     try {
         e.run(cfg);  // NOLINT

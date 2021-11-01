@@ -1,0 +1,30 @@
+v no_o_id:i8 no_d_id:i8 no_w_id:i8
+p "INSERT INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)"
+p "select * from NEW_ORDER"
+p "SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id "
+b
+s 0 no_o_id=1 no_d_id=1 no_w_id=1
+s 0 no_o_id=2 no_d_id=2 no_w_id=2
+s 0 no_o_id=3 no_d_id=3 no_w_id=3
+c
+b
+q 1
+q 1
+q 1
+c
+b
+s "update NEW_ORDER set no_o_id=-no_o_id where no_d_id=2 and no_w_id=2 AND no_o_id=2"
+s "update NEW_ORDER set no_o_id=-no_o_id where no_d_id=1 and no_w_id=1 AND no_o_id=1"
+s "update NEW_ORDER set no_o_id=-no_o_id where no_d_id=3 and no_w_id=3 AND no_o_id=3"
+c
+b
+q 1
+c
+b 
+q 2 no_d_id=3 no_w_id=3
+q 2 no_d_id=2 no_w_id=2
+q 2 no_d_id=1 no_w_id=1
+c
+b
+q 1
+c

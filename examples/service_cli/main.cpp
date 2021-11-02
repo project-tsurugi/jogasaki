@@ -455,8 +455,8 @@ private:
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_, for_autocommit);
+        tx_processing_ = false; // tx is finished and destroyed even on failure
         if (ret) {
-            tx_processing_ = false;
             tx_handle_ = -1;
         }
         wait_for_statements(); // just for cleanup
@@ -476,8 +476,8 @@ private:
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_);
+        tx_processing_ = false; // tx is finished and destroyed even on failure
         if (ret) {
-            tx_processing_ = false;
             tx_handle_ = -1;
         }
         wait_for_statements(); // just for cleanup

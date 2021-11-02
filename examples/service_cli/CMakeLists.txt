@@ -1,5 +1,6 @@
 file(GLOB SOURCES
         "*.cpp"
+        "../bootstrap/utils.cpp"
         "../../third_party/linenoise-ng/src/*.cpp"
 )
 

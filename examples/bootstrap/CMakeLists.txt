@@ -14,6 +14,7 @@
 
 file(GLOB SOURCES
     "*.cpp"
+    "../common/utils.cpp"
 )
 
 add_executable(server

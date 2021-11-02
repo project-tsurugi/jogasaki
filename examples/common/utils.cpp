@@ -24,10 +24,10 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
 
-DECLARE_int32(dump_batch_size);  //NOLINT
-DECLARE_int32(load_batch_size);  //NOLINT
+DEFINE_int32(dump_batch_size, 1024, "Batch size for dump");  //NOLINT
+DEFINE_int32(load_batch_size, 1024, "Batch size for load");  //NOLINT
 
-namespace tateyama::server::tpcc {
+namespace jogasaki::common_cli {
 
     std::vector<std::string> tables = {  // NOLINT
         "WAREHOUSE",
@@ -79,4 +79,4 @@ namespace tateyama::server::tpcc {
         }
     }
 
-}  // tateyama::server::tpcc
+}  // jogasaki::common_cli

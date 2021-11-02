@@ -31,15 +31,15 @@
 #include <jogasaki/api.h>
 
 #include "server.h"
-#include "utils.h"
+#include "../common/utils.h"
 
 DEFINE_string(dbname, "tateyama", "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_uint32(threads, 5, "thread pool size");  //NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
-DEFINE_int32(dump_batch_size, 1024, "Batch size for dump");  //NOLINT
-DEFINE_int32(load_batch_size, 1024, "Batch size for load");  //NOLINT
+DECLARE_int32(dump_batch_size);  //NOLINT
+DECLARE_int32(load_batch_size);  //NOLINT
 
 namespace tateyama::server {
 
@@ -104,7 +104,7 @@ int backend_main(int argc, char **argv) {
             VLOG(1) << "TPC-C data load begin" << std::endl;
             std::cout << "TPC-C data load begin" << std::endl;
             try {
-                tateyama::server::tpcc::load(*db, FLAGS_location);
+                jogasaki::common_cli::load(*db, FLAGS_location);
             } catch (std::exception& e) {
                 std::cerr << "[" << __FILE__ << ":" <<  __LINE__ << "] " << e.what() << std::endl;
                 std::abort();

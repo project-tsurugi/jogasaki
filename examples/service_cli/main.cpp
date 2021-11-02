@@ -40,7 +40,7 @@
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"
-#include "../bootstrap/utils.h"
+#include "../common/utils.h"
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
@@ -61,8 +61,8 @@ DEFINE_string(history_file, ".service_cli_history", "specify the command history
 DEFINE_int32(exit_on_idle, 180, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
 DEFINE_string(input_file, "", "specify the input commands file to read and execute");  //NOLINT
 DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
-DEFINE_int32(dump_batch_size, 1024, "Batch size for dump");  //NOLINT
-DEFINE_int32(load_batch_size, 1024, "Batch size for load");  //NOLINT
+DECLARE_int32(dump_batch_size);  //NOLINT
+DECLARE_int32(load_batch_size);  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -183,7 +183,7 @@ public:
         auto& impl = jogasaki::api::impl::get_impl(*db_);
         jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
         if (! load_from_.empty()) {
-            tateyama::server::tpcc::load(*db_, load_from_);
+            jogasaki::common_cli::load(*db_, load_from_);
         }
         if (FLAGS_prepare_data > 0) {
             prepare_data(*db_, FLAGS_prepare_data);

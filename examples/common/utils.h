@@ -15,12 +15,16 @@
  */
 #pragma once
 
+#include "gflags/gflags.h"
 #include "jogasaki/api.h"
 
-namespace tateyama::server::tpcc {
+DECLARE_int32(dump_batch_size);  //NOLINT
+DECLARE_int32(load_batch_size);  //NOLINT
+
+namespace jogasaki::common_cli {
 
     extern std::vector<std::string> tables;
     void dump(jogasaki::api::database&, std::string&);
     void load(jogasaki::api::database&, std::string&);
 
-}  // tateyama::server::tpcc
+}  // jogasaki::common_cli

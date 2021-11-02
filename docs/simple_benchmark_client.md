@@ -29,7 +29,7 @@ insertモードはトランザクション毎に`n_statements`個の下記INSERT
 ```
 INSERT INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)
 ```
-ここでno_w_idは実行中のスレッドIDを使用し、初期データと衝突しない範囲のno_d_idとno_o_idをランダムに生成して挿入する。
+ここでno_w_idは実行中のスレッドに固有の値を使用し、初期データと衝突しない範囲のno_d_idとno_o_idを生成して挿入する。(例えばno_o_idを3001からインクリメントするなど)
 
 ### update
 
@@ -39,14 +39,14 @@ updateモードはトランザクション毎に`n_statements`個の下記UPDATE
 UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s_w_id
 ```
 
-ここでs_w_idは実行中のスレッドIDを使用し、初期データの範囲にマッチするs_i_idをランダムに生成して更新する。
+ここでs_w_idは実行中のスレッドに固有の値を使用し、初期データの範囲にマッチするs_i_idを生成して更新する。
 
 ### query
 
 queryモードはトランザクション毎に`n_statements`個の下記SELECT文を実行する。
 
 ```
-SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id AND no_i_id < 100 ORDER BY no_o_id
+SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id
 ```
 
-no_w_idはスレッドIDを使用し、初期データの範囲にマッチするno_d_idをランダムに生成してクエリする。
+no_w_idはスレッドに固有の値を使用し、初期データの範囲にマッチするno_d_idを生成してクエリする。

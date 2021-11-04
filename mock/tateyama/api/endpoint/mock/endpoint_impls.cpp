@@ -23,37 +23,6 @@ namespace tateyama::api::endpoint::mock {
 using namespace std::literals::string_literals;
 using namespace std::string_view_literals;
 
-test_writer::test_writer(char* data, std::size_t capacity) :
-    data_(data), capacity_(capacity)
-{}
-
-status test_writer::write(char const* data, std::size_t length) {
-    std::memcpy(data_ + size_, data, length);
-    if (on_write_) {
-        on_write_(std::string_view{data_ + size_, length});
-    }
-    size_ += length;
-    return status::ok;
-}
-
-status test_writer::commit() {
-    committed_.store(size_.load());
-    return status::ok;
-}
-
-std::string_view test_writer::read() {
-    std::size_t sz = committed_ - read_;
-    if (sz > 0) {
-        read_.store(committed_.load());
-        return {data_+read_, sz};
-    }
-    return {data_+read_, 0};
-}
-
-void test_writer::set_on_write(std::function<void(std::string_view)> on_write) {
-    on_write_ = std::move(on_write);
-}
-
 test_request::test_request(std::string_view payload) :
     payload_(payload)
 {}
@@ -63,7 +32,7 @@ std::string_view test_request::payload() const {
 }
 
 status test_channel::acquire(writer*& buf) {
-    auto& s = buffers_.emplace_back(std::make_shared<fixed_buffer_writer<1024*1024>>());
+    auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
     if (on_write_) {
         s->set_on_write(on_write_);
     }
@@ -128,5 +97,53 @@ bool test_channel::all_released() const noexcept {
 
 void test_channel::set_on_write(std::function<void(std::string_view)> on_write) {
     on_write_ = std::move(on_write);
+}
+
+std::string_view view_of(std::stringstream& stream) {
+    struct accessor : public std::stringbuf {
+        static char const* data(accessor const* p) {
+            return p->pbase();
+        }
+    };
+    accessor const* buf = reinterpret_cast<accessor*>(stream.rdbuf());  //NOLINT
+    return {accessor::data(buf), static_cast<size_t>(stream.tellp())};
+}
+
+test_writer::test_writer() :
+    buf_(std::string(1024*1024, '\0'))
+{}
+
+status test_writer::write(char const* data, std::size_t length) {
+    buf_.write(data, length);
+    if (on_write_) {
+        auto sv = view_of(buf_);
+        on_write_(std::string_view{sv.data() + size_, length});  //NOLINT
+    }
+    size_ += length;
+    return status::ok;
+}
+
+status test_writer::commit() {
+    buf_.flush();
+    committed_.store(size_.load());
+    return status::ok;
+}
+
+std::string_view test_writer::read() {
+    std::size_t sz = committed_ - read_;
+    auto sv = view_of(buf_);
+    if (sz > 0) {
+        read_.store(committed_.load());
+        return {sv.data()+read_, sz};  //NOLINT
+    }
+    return {sv.data()+read_, 0};  //NOLINT
+}
+
+void test_writer::set_on_write(std::function<void(std::string_view)> on_write) {
+    on_write_ = std::move(on_write);
+}
+
+std::string_view test_writer::view() noexcept {
+    return view_of(buf_);
 }
 }

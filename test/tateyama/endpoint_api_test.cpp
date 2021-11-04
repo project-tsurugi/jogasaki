@@ -30,15 +30,6 @@ class endpoint_api_test : public ::testing::Test {
 
 using namespace std::string_view_literals;
 
-TEST_F(endpoint_api_test, writer) {
-    std::array<char, 100> s{};
-    mock::test_writer wrt{s.data(), s.size()};
-}
-
-TEST_F(endpoint_api_test, fixed_buffer_writer) {
-    mock::fixed_buffer_writer<100> buf{};
-}
-
 TEST_F(endpoint_api_test, request) {
     mock::test_request req{"ABC"};
     mock::test_response res{};

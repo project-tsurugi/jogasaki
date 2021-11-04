@@ -29,12 +29,11 @@ namespace tateyama::api::endpoint::mock {
 using namespace std::literals::string_literals;
 using namespace std::string_view_literals;
 
+std::string_view view_of(std::stringstream& stream);
+
 class test_writer : public writer {
-
 public:
-    test_writer() = default;
-
-    test_writer(char* data, std::size_t capacity);
+    test_writer();
 
     status write(char const* data, std::size_t length) override;
 
@@ -44,24 +43,13 @@ public:
 
     void set_on_write(std::function<void(std::string_view)> on_write);
 
-    char* data_{};  //NOLINT
-    std::size_t capacity_{};  //NOLINT
+    [[nodiscard]] std::string_view view() noexcept;
+private:
+    std::stringstream buf_;
+    std::function<void(std::string_view)> on_write_{};
     std::atomic_size_t size_{};  //NOLINT
     std::atomic_size_t committed_{};  //NOLINT
     std::atomic_size_t read_{};  //NOLINT
-    std::function<void(std::string_view)> on_write_{};
-};
-
-template<std::size_t Size>
-class fixed_buffer_writer : public test_writer {
-public:
-    fixed_buffer_writer() {
-        data_ = array_.data();
-        capacity_ = array_.size();
-    }
-
-private:
-    std::array<char, Size> array_{};
 };
 
 class test_request : public request {

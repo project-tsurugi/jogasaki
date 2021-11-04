@@ -1,0 +1,19 @@
+v c0:i8 c1:f8
+v
+p "INSERT INTO T0 (C0, C1) VALUES (:c0, :c1)"
+p "select * from T0 WHERE C0=:c0 AND C1 = :c1"
+l
+b
+s 0 c0=0 c1=0
+s "INSERT INTO T0 (C0, C1) VALUES (1, 1)"
+c
+b
+q "select * from T0"
+c
+b
+q 1 c0=1 c1=1
+c
+b
+a
+h
+e

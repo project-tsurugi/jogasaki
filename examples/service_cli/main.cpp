@@ -693,6 +693,23 @@ private:
         return true;
     }
 
+    bool fill_sql_or_index(std::string_view arg, std::string& sql, std::int32_t& idx) {
+        auto b = arg.data();
+        char* e{};
+        sql.clear();
+        idx = std::strtol(b, &e, 10);
+        if (b == e || errno == ERANGE) {
+            sql = arg;
+            idx = -1;
+        } else {
+            if (idx < 0 || static_cast<std::size_t>(idx) >= stmt_handles_.size()) {
+                std::cerr << "statement index (" << idx << ") is out of range" << std::endl;
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool issue_common(
         bool query,
         std::vector<std::string_view>& args,
@@ -712,34 +729,26 @@ private:
                 return false;
             }
         }
-        std::string arg{args[0]};
-        args.erase(args.begin());
-        auto b = arg.data();
-        char* e{};
-        bool sql_string{false};
-        std::int32_t idx = std::strtol(b, &e, 10);
-        if (b == e || errno == ERANGE) {
-            sql_string = true;
-            idx = -1;
-        } else {
-            if (idx < 0 || static_cast<std::size_t>(idx) >= stmt_handles_.size()) {
-                std::cerr << "statement index (" << idx << ") is out of range" << std::endl;
-                return false;
-            }
-        }
-        std::vector<jogasaki::utils::parameter> parameters{};
-        if(! parse_parameters(idx, arg, args, parameters)) {
+        std::string sql{};
+        std::int32_t idx{};
+        if(! fill_sql_or_index(args[0], sql, idx)) {
             return false;
         }
-        auto s = query ? (
-            sql_string ?
-                jogasaki::utils::encode_execute_query(tx_handle_, arg) :
-                jogasaki::utils::encode_execute_prepared_query(tx_handle_, stmt_handles_[idx].first, parameters)
-        ) : (
-            sql_string ?
-                jogasaki::utils::encode_execute_statement(tx_handle_, arg) :
-                jogasaki::utils::encode_execute_prepared_statement(tx_handle_, stmt_handles_[idx].first, parameters)
-        );
+        args.erase(args.begin());
+        std::vector<jogasaki::utils::parameter> parameters{};
+        if(! parse_parameters(idx, sql, args, parameters)) {
+            return false;
+        }
+        std::string s{};
+        if (! sql.empty()) {
+            s = query ?
+                jogasaki::utils::encode_execute_query(tx_handle_, sql) :
+                jogasaki::utils::encode_execute_statement(tx_handle_, sql);
+        } else {
+            s = query ?
+                jogasaki::utils::encode_execute_prepared_query(tx_handle_, stmt_handles_[idx].first, parameters) :
+                jogasaki::utils::encode_execute_prepared_statement(tx_handle_, stmt_handles_[idx].first, parameters);
+        }
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
         if (query) {

@@ -33,6 +33,7 @@ optional packages:
 * `doxygen`
 * `graphviz`
 * `clang-tidy-8`
+* [`linenoise-ng`](https://github.com/arangodb/linenoise-ng.git)
 
 ## How to build
 

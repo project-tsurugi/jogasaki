@@ -754,7 +754,10 @@ private:
                     std::cerr << "error executing command" << std::endl;
                 }
                 if (verify_query_records_) {
-                    auto recs = jogasaki::utils::deserialize_msg(write_buffer_.str(), query_meta_);
+                    auto recs = jogasaki::utils::deserialize_msg(
+                        tateyama::api::endpoint::mock::view_of(write_buffer_),
+                        query_meta_
+                    );
                     for(auto&& r : recs) {
                         std::cout << "record : " << r << std::endl;
                     }

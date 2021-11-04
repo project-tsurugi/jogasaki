@@ -337,6 +337,13 @@ public:
         return out << ss.str();
     }
 
+    /**
+     * @brief allocate new varlen field data area
+     * @return string object to store the varlen data
+     */
+    std::string& allocate_varlen_data() {
+        return varlen_fields_.emplace_back();
+    }
 protected:
     [[nodiscard]] entity_type& entity() noexcept {
         return entity_;
@@ -353,6 +360,7 @@ protected:
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     entity_type entity_{};
+    std::vector<std::string> varlen_fields_{};
 };
 
 /**

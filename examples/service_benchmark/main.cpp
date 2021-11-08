@@ -38,6 +38,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/utils/core_affinity.h>
+#include <jogasaki/utils/latch.h>
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"
@@ -617,8 +618,9 @@ private:
 
         // making lambda in order to change this to async
         auto wait_completion = [&, res]() {
-            while(! res->completed()) {
-                std::this_thread::sleep_for(20ms);
+            if(! res->wait_completion(60000ms)) {
+                LOG(ERROR) << "execution took too long";
+                std::abort();
             }
             if(res->code_ != response_code::success) {
                 LOG(ERROR) << "error executing command";

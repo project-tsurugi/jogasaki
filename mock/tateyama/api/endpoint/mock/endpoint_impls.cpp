@@ -52,6 +52,7 @@ void test_response::code(response_code code) {
 status test_response::body(std::string_view body) {
     body_.assign(body);
     completed_ = true;
+    completion_latch_.release();
     return status::ok;
 }
 

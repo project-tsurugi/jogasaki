@@ -24,6 +24,8 @@
 #include <regex>
 #include <atomic>
 
+#include <jogasaki/utils/latch.h>
+
 namespace tateyama::api::endpoint::mock {
 
 using namespace std::literals::string_literals;
@@ -97,6 +99,11 @@ public:
 
     bool completed();
 
+    template <class Rep, class Period>
+    bool wait_completion(std::chrono::duration<Rep, Period> dur) {
+        return completion_latch_.wait(dur);
+    }
+
     [[nodiscard]] bool all_released() const noexcept;
 
     status close_session() override;;
@@ -106,6 +113,7 @@ public:
     std::string message_{};  //NOLINT
     response_code code_{response_code::unknown};  //NOLINT
     std::atomic_bool completed_{};  //NOLINT
+    jogasaki::utils::latch completion_latch_{};  //NOLINT
     std::size_t released_{};  //NOLINT
     std::function<void(std::string_view)> on_write_{}; //NOLINT
 };

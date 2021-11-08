@@ -157,7 +157,7 @@ public:
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
-            "single_thread:" << cfg.single_thread() <<
+            "single_thread:" << cfg.single_thread() << " " <<
             "thread_pool_size:" << cfg.thread_pool_size() << " " <<
             "default_partitions:" << cfg.default_partitions() << " " <<
             "core_affinity:" << cfg.core_affinity() << " " <<

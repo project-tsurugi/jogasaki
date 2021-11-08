@@ -161,11 +161,6 @@ void add_variable(
     }
 }
 
-status database::register_variable(std::string_view name, field_type_kind kind) {
-    add_variable(*host_variables_, name, kind);
-    return status::ok;
-}
-
 status database::prepare_common(
     std::string_view sql,
     std::shared_ptr<yugawara::variable::configurable_provider> provider,
@@ -205,24 +200,8 @@ status database::prepare_common(
     return st;
 }
 
-status database::prepare(std::string_view sql, std::unique_ptr<api::prepared_statement>& statement) {
-    return prepare_common(sql, host_variables_, statement);
-}
-
 status database::prepare(std::string_view sql, statement_handle& statement) {
     return prepare_common(sql, host_variables_, statement);
-}
-
-status database::prepare(
-    std::string_view sql,
-    std::unordered_map<std::string, api::field_type_kind> const& variables,
-    std::unique_ptr<api::prepared_statement>& statement
-) {
-    auto host_variables = std::make_shared<yugawara::variable::configurable_provider>();
-    for(auto&& [n, t] : variables) {
-        add_variable(*host_variables, n, t);
-    }
-    return prepare_common(sql, std::move(host_variables), statement);
 }
 
 status database::prepare(
@@ -238,13 +217,13 @@ status database::prepare(
 }
 
 status database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
-    std::unique_ptr<api::prepared_statement> prepared{};
+    api::statement_handle prepared{};
     if(auto rc = prepare(sql, prepared); rc != status::ok) {
         return rc;
     }
     std::unique_ptr<api::executable_statement> exec{};
-    impl::parameter_set parameters{};
-    if(auto rc = resolve(*prepared, parameters, exec); rc != status::ok) {
+    auto parameters = std::make_shared<impl::parameter_set>();
+    if(auto rc = resolve(prepared, parameters, exec); rc != status::ok) {
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
@@ -255,16 +234,13 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
     return status::ok;
 }
 
-std::unique_ptr<api::transaction> database::do_create_transaction(bool readonly) {
+status database::do_create_transaction(transaction_handle& handle, bool readonly) {
     if (! kvs_db_) {
         LOG(ERROR) << "database not started";
-        return {};
+        return status::err_invalid_state;
     }
-    return std::make_unique<impl::transaction>(*this, readonly);
-}
-
-status database::do_create_transaction(transaction_handle& handle, bool readonly) {
-    if (auto tx = do_create_transaction(readonly)) {
+    {
+        auto tx = std::make_unique<impl::transaction>(*this, readonly);
         decltype(transactions_)::accessor acc{};
         api::transaction_handle t{tx.get()};
         if (transactions_.insert(acc, t)) {
@@ -273,9 +249,6 @@ status database::do_create_transaction(transaction_handle& handle, bool readonly
         } else {
             fail();
         }
-    } else {
-        LOG(ERROR) << "create transaction failed";
-        return status::err_unknown;
     }
     return status::ok;
 }
@@ -312,22 +285,6 @@ status database::resolve_common(
         std::move(parameters)
     );
     return status::ok;
-}
-
-status database::resolve(
-    api::prepared_statement const& prepared,
-    api::parameter_set const& parameters,
-    std::unique_ptr<api::executable_statement>& statement
-) {
-    return resolve_common(prepared, maybe_shared_ptr{std::addressof(parameters)}, statement);
-}
-
-status database::resolve(
-    api::statement_handle prepared,
-    api::parameter_set const& parameters,
-    std::unique_ptr<api::executable_statement>& statement
-) {
-    return resolve_common(*prepared.get(), maybe_shared_ptr{std::addressof(parameters)}, statement);
 }
 
 status database::destroy_statement(

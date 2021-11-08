@@ -40,7 +40,6 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
-using namespace tateyama::api::endpoint;
 
 using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;

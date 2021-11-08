@@ -87,14 +87,14 @@ TEST_F(metadata_test, create_table_with_primary_index) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
     {
+        auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
-        auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db_->create_executable("select * from TEST order by C0", exec));
 //        db_->explain(*exec, std::cout);
@@ -155,14 +155,14 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i2));
     {
+        auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
-        auto tx = db_->create_transaction();
         ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db_->create_executable("select * from TEST where C1=1.0", exec));
 //        db_->explain(*exec, std::cout);

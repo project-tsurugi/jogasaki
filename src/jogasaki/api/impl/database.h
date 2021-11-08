@@ -60,22 +60,9 @@ public:
 
     [[nodiscard]] status stop() override;
 
-    status register_variable(std::string_view name, field_type_kind kind) override;
-
-    [[nodiscard]] status prepare(
-        std::string_view sql,
-        std::unique_ptr<api::prepared_statement>& statement
-    ) override;
-
     [[nodiscard]] status prepare(
         std::string_view sql,
         api::statement_handle& statement
-    ) override;
-
-    [[nodiscard]] status prepare(
-        std::string_view sql,
-        std::unordered_map<std::string, api::field_type_kind> const& variables,
-        std::unique_ptr<api::prepared_statement>& statement
     ) override;
 
     [[nodiscard]] status prepare(
@@ -86,18 +73,6 @@ public:
 
     [[nodiscard]] status create_executable(
         std::string_view sql,
-        std::unique_ptr<api::executable_statement>& statement
-    ) override;
-
-    [[nodiscard]] status resolve(
-        api::prepared_statement const& prepared,
-        api::parameter_set const& parameters,
-        std::unique_ptr<api::executable_statement>& statement
-    ) override;
-
-    [[nodiscard]] status resolve(
-        api::statement_handle prepared,
-        api::parameter_set const& parameters,
         std::unique_ptr<api::executable_statement>& statement
     ) override;
 
@@ -120,8 +95,6 @@ public:
     void dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;
 
     void load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;
-
-    std::unique_ptr<api::transaction> do_create_transaction(bool readonly) override;
 
     status do_create_transaction(transaction_handle& handle, bool readonly) override;
 

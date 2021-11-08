@@ -71,7 +71,7 @@ TEST_F(database_test, simple) {
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", variables, prepared));
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         for(std::size_t i=0; i < 2; ++i) {
             auto ps = api::create_parameter_set();
             ps->set_int8("p0", i);
@@ -86,7 +86,7 @@ TEST_F(database_test, simple) {
     ASSERT_EQ(status::not_found, db_->destroy_statement(prepared));
 
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
         ASSERT_EQ(status::ok,db_->create_executable("select * from T0 order by C0", exec));
         explain(*exec);
@@ -114,7 +114,7 @@ TEST_F(database_test, simple) {
         ASSERT_EQ(status::ok,db_->resolve(prep, ps, exec));
         explain(*exec);
         auto f = [&]() {
-            auto tx = db_->create_transaction();
+            auto tx = utils::create_transaction(*db_);
             std::unique_ptr<api::result_set> rs{};
             ASSERT_EQ(status::ok,tx->execute(*exec, rs));
             auto it = rs->iterator();
@@ -148,12 +148,12 @@ TEST_F(database_test, update_with_host_variable) {
     std::unique_ptr<api::executable_statement> insert{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES(0, 10.0)", insert));
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         ASSERT_EQ(status::ok,tx->execute(*insert));
         tx->commit();
     }
     {
-        auto tx = db_->create_transaction();
+        auto tx = utils::create_transaction(*db_);
         auto ps = api::create_parameter_set();
         ps->set_float8("p1", 0.0);
         std::unique_ptr<api::executable_statement> exec{};

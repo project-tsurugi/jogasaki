@@ -28,13 +28,6 @@
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/transaction.h>
 
-#include <tateyama/status.h>
-
-namespace tateyama::api::endpoint {
-class request;
-class response;
-}
-
 namespace jogasaki::api {
 
 using takatori::util::maybe_shared_ptr;
@@ -91,35 +84,6 @@ public:
     virtual status stop() = 0;
 
     /**
-     * @brief register host variable
-     * @param name the name of the host variable without colon
-     * @param kind type kind of the host variable
-     * @return status::ok when successful
-     * @return other code when error
-     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @deprecated This api will be removed in the future. The host variables definition should be passed
-     * to prepare() function.
-     */
-    virtual status register_variable(std::string_view name, field_type_kind kind) = 0;
-
-    /**
-     * @brief prepare sql statement and create prepared statement
-     * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
-     * @param sql the sql text string to prepare
-     * @param statement [out] the unique ptr to be filled with the created prepared statement
-     * @return status::ok when successful
-     * @return other code when error
-     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @note the returned prepared statement can be shared by multiple threads.
-     * @deprecated use `prepare(std::string_view, statement_handle&)` instead
-     * `
-     */
-    virtual status prepare(
-        std::string_view sql,
-        std::unique_ptr<prepared_statement>& statement
-    ) = 0;
-
-    /**
      * @brief prepare sql statement and create prepared statement
      * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
      * This function stores the prepared statement internally and returns its handle, which must be released with
@@ -134,23 +98,6 @@ public:
     virtual status prepare(
         std::string_view sql,
         statement_handle& statement
-    ) = 0;
-
-    /**
-     * @brief prepare sql statement and create prepared statement
-     * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
-     * @param sql the sql text string to prepare
-     * @param variables the placeholder variable name/type mapping
-     * @param statement [out] the unique ptr to be filled with the created prepared statement
-     * @return status::ok when successful
-     * @return other code when error
-     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @note the returned prepared statement can be shared by multiple threads.
-     * @deprecated use `prepare(std::string_view, std::unordered_map<std::string, api::field_type_kind> const&, statement_handle&)` instead
-     */
-    virtual status prepare(std::string_view sql,
-        std::unordered_map<std::string, api::field_type_kind> const& variables,
-        std::unique_ptr<prepared_statement>& statement
     ) = 0;
 
     /**
@@ -182,46 +129,6 @@ public:
      */
     virtual status destroy_statement(
         api::statement_handle prepared
-    ) = 0;
-
-    /**
-     * @brief resolve the placeholder and create executable statement
-     * @details Executable statement is the form of statement ready to execute, placeholders are resolved and
-     * compilation is completed.
-     * @param prepared the prepared statement used to create executable statement
-     * @param parameters the parameters to assign value for each placeholder
-     * @param statement [out] the unique ptr to be filled with the created executable statement
-     * @return status::ok when successful
-     * @return other code when error
-     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @note the returned executable statement should be used from single thread/transaction at a point in time.
-     * @deprecated use `resolve(statement_handle, parameter_set const&, std::unique_ptr<executable_statement>&)`
-     * )
-     */
-    virtual status resolve(
-        prepared_statement const& prepared,
-        parameter_set const& parameters,
-        std::unique_ptr<executable_statement>& statement
-    ) = 0;
-
-    /**
-     * @brief resolve the placeholder and create executable statement
-     * @details Executable statement is the form of statement ready to execute, placeholders are resolved and
-     * compilation is completed.
-     * @param prepared the prepared statement handle used to create executable statement
-     * @param parameters the parameters to assign value for each placeholder
-     * @param statement [out] the unique ptr to be filled with the created executable statement
-     * @return status::ok when successful
-     * @return other code when error
-     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @note the returned executable statement should be used from single thread/transaction at a point in time.
-     * @note this function assumes `parameters` are owned and kept by caller by the end of statement execution.
-     * @deprecated use `resolve(statement_handle, maybe_shared_ptr<parameter_set const>, std::unique_ptr<executable_statement>&)`
-     */
-    virtual status resolve(
-        statement_handle prepared,
-        parameter_set const& parameters,
-        std::unique_ptr<executable_statement>& statement
     ) = 0;
 
     /**
@@ -264,18 +171,6 @@ public:
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      */
     virtual status explain(executable_statement const& executable, std::ostream& out) = 0;
-
-    /**
-     * @brief begin the new transaction
-     * @param readonly specify whether the new transaction is read-only or not
-     * @return transaction object when success
-     * @return nullptr when error
-     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @deprecated use `create_transaction(transaction_handle&, bool)` instead
-     */
-    std::unique_ptr<transaction> create_transaction(bool readonly = false) {
-        return do_create_transaction(readonly);
-    }
 
     /**
      * @brief begin the new transaction
@@ -453,8 +348,6 @@ public:
     }
 
 protected:
-    virtual std::unique_ptr<transaction> do_create_transaction(bool readonly) = 0;
-
     virtual status do_create_transaction(transaction_handle& handle, bool readonly) = 0;
 
     virtual status do_create_table(
@@ -512,20 +405,3 @@ protected:
 std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
 
 }
-
-/**
- * @brief C-interface for database factory
- * @details extern "C" version to create new database. Prefer create_database if C API is not necessary.
- * This function passes ownership to caller, that must call `delete_database()` when finish using.
- * @param cfg configuration for the database
- * @return database api object
- * @return nullptr if error occurs on creation
- */
-extern "C" jogasaki::api::database* new_database(jogasaki::configuration* cfg);
-
-/**
- * @brief C-interface to delete database object
- * @details delete the object created by new_database().
- * @param db the object to delete
- */
-extern "C" void delete_database(jogasaki::api::database* db);

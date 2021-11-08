@@ -160,7 +160,7 @@ TEST_F(executable_statement_api_test, empty_meta_with_parameters) {
         set(*ps, "p0", api::field_type_kind::int8, 1);
         set(*ps, "p1", api::field_type_kind::float8, 1.0);
         std::unique_ptr<api::executable_statement> executable{};
-        ASSERT_EQ(status::ok, db_->resolve(handle, *ps, executable));
+        ASSERT_EQ(status::ok, db_->resolve(handle, std::shared_ptr{std::move(ps)}, executable));
         ASSERT_TRUE(executable);
         ASSERT_FALSE(executable->meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));

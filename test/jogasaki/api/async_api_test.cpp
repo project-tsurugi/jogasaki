@@ -109,7 +109,7 @@ using namespace std::string_view_literals;
 TEST_F(async_api_test, async_insert) {
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt));
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
@@ -127,7 +127,7 @@ TEST_F(async_api_test, async_update) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("UPDATE T0 SET C1=20.0 WHERE C0=1", stmt));
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
@@ -147,7 +147,7 @@ TEST_F(async_api_test, async_query) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0 ORDER BY C0", stmt));
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
@@ -184,7 +184,7 @@ TEST_F(async_api_test, async_query_heavy_write) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0 ORDER BY C0", stmt));
-    auto tx = db_->create_transaction();
+    auto tx = utils::create_transaction(*db_);
     status s{};
     std::string message{"message"};
     std::atomic_bool run{false};
@@ -215,7 +215,7 @@ TEST_F(async_api_test, async_query_multi_thread) {
         finished.emplace_back(std::make_unique<std::atomic_bool>());
     }
     std::vector<std::future<void>> vec{};
-    std::vector<std::unique_ptr<transaction>> transactions{};
+    std::vector<std::shared_ptr<transaction_handle>> transactions{};
     transactions.resize(num_thread);
     for(std::size_t i=0; i < num_thread; ++i) {
         vec.emplace_back(
@@ -224,7 +224,7 @@ TEST_F(async_api_test, async_query_multi_thread) {
                 if(auto rc = db_->create_executable("SELECT * FROM T0", stmt); rc != status::ok) {
                     std::abort();
                 }
-                transactions[i] = db_->create_transaction();
+                transactions[i] = utils::create_transaction(*db_);
                 status s{};
                 std::string message{"message"};
                 std::shared_ptr<api::executable_statement> shd(std::move(stmt));

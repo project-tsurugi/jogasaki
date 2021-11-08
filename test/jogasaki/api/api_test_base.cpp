@@ -96,7 +96,7 @@ void api_test_base::execute_query(
 void api_test_base::execute_query(api::statement_handle& prepared, api::parameter_set const& params, api::transaction_handle& tx,
     std::vector<mock::basic_record>& out) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(prepared, params, stmt));
+    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
     explain(*stmt);
     std::unique_ptr<api::result_set> rs{};
     if(auto res = tx.execute(*stmt, rs);res != status::ok) {
@@ -159,7 +159,7 @@ void api_test_base::execute_statement(
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
 
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(prepared, params, stmt));
+    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
     explain(*stmt);
     ASSERT_EQ(status::ok, tx.execute(*stmt));
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));

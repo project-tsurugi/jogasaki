@@ -10,6 +10,7 @@ add_subdirectory(aggregate_cli)
 add_subdirectory(client_cli)
 add_subdirectory(query_bench_cli)
 add_subdirectory(bootstrap)
+add_subdirectory(service_benchmark)
 
 if(EXISTS "../third_party/linenoise-ng/src")
 add_subdirectory(service_cli)

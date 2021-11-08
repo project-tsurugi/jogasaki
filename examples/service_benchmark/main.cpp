@@ -46,16 +46,15 @@
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
-DEFINE_int32(thread_count, 1, "Number of threads");  //NOLINT
+DEFINE_int32(thread_count, 1, "Number of threads used in server thread pool");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
-DEFINE_bool(explain, false, "explain the execution plan");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
-DEFINE_bool(verify_record, true, "Whether to deserialize the query result records");  //NOLINT
+DEFINE_bool(verify, false, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
@@ -247,10 +246,8 @@ public:
             cfg.db_location(std::string(FLAGS_location));
         }
 
-
-
         debug_ = FLAGS_debug;
-        verify_query_records_ = FLAGS_verify_record;
+        verify_query_records_ = FLAGS_verify;
         transactions_ = FLAGS_transactions;
         duration_ = FLAGS_duration;
         statements_ = FLAGS_statements;
@@ -274,7 +271,7 @@ public:
         }
         if (mode_ == mode::undefined) {
             LOG(ERROR) << "Specify one of --insert/--update/--query options.";
-            return -1;
+            return false;
         }
 
         LOG(INFO) << "configuration " << cfg
@@ -431,6 +428,9 @@ public:
                                 LOG(ERROR) << "do_statement failed";
                             }
                             ++stmt_count;
+                            if (transactions_ == -1 && stop) {
+                                break;
+                            }
                         }
                         ++tx_count;
                     }
@@ -652,7 +652,9 @@ extern "C" int main(int argc, char* argv[]) {
     tateyama::service_benchmark::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
     cfg->prepare_benchmark_tables(true);
-    e.fill_from_flags(*cfg);
+    if (! e.fill_from_flags(*cfg)) {
+        return -1;
+    }
     try {
         e.run(cfg);  // NOLINT
     } catch (std::exception& e) {

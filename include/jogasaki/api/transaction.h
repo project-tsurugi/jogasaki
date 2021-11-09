@@ -20,7 +20,6 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/executable_statement.h>
-#include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/data_channel.h>

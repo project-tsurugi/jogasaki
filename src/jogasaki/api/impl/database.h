@@ -171,13 +171,13 @@ private:
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
-    tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<api::prepared_statement>> prepared_statements_{};
+    tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<api::transaction>> transactions_{};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
-        std::unique_ptr<api::prepared_statement>& statement
+        std::unique_ptr<impl::prepared_statement>& statement
     );
 
     [[nodiscard]] status prepare_common(
@@ -187,7 +187,7 @@ private:
     );
 
     [[nodiscard]] status resolve_common(
-        api::prepared_statement const& prepared,
+        impl::prepared_statement const& prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         std::unique_ptr<api::executable_statement>& statement
     );

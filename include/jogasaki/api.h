@@ -27,7 +27,6 @@
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/field_type_traits.h>
 #include <jogasaki/api/parameter_set.h>
-#include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/record.h>
 #include <jogasaki/api/record_meta.h>
 #include <jogasaki/api/result_set.h>

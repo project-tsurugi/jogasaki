@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/plan/prepared_statement.h>
 
@@ -27,7 +26,7 @@ namespace jogasaki::api::impl {
 /**
  * @brief database interface to start/stop the services and initiate transaction requests
  */
-class prepared_statement : public api::prepared_statement {
+class prepared_statement {
 public:
     prepared_statement() = default;
 
@@ -35,9 +34,8 @@ public:
 
     [[nodiscard]] std::shared_ptr<plan::prepared_statement> const& body() const noexcept;
 
-    [[nodiscard]] api::record_meta const* meta() const noexcept override {
-        return meta_.get();
-    }
+    [[nodiscard]] api::record_meta const* meta() const noexcept;
+
 private:
     std::shared_ptr<plan::prepared_statement> body_{};
     std::unique_ptr<impl::record_meta> meta_{};

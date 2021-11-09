@@ -15,6 +15,13 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <type_traits>
+#include <ostream>
+#include <functional>
+
+#include <jogasaki/api/record_meta.h>
+
 namespace jogasaki::api {
 
 /**
@@ -36,7 +43,6 @@ public:
      */
     ~statement_handle() = default;
 
-
     statement_handle(statement_handle const& other) = default;
     statement_handle& operator=(statement_handle const& other) = default;
     statement_handle(statement_handle&& other) noexcept = default;
@@ -44,46 +50,43 @@ public:
 
     /**
      * @brief create new object from pointer
-     * @param ptr the target prepared statement
+     * @param arg pointer to the target prepared statement
      */
-    explicit statement_handle(prepared_statement* ptr) noexcept :
-        ptr_(ptr)
-    {}
+    explicit statement_handle(void* arg) noexcept;
 
     /**
      * @brief create new object from integer
      * @param arg integer representing target pointer
      */
-    explicit statement_handle(std::uintptr_t arg) noexcept :
-        ptr_(reinterpret_cast<prepared_statement*>(arg)) //NOLINT
-    {}
+    explicit statement_handle(std::uintptr_t arg) noexcept;
 
     /**
      * @brief accessor to the referenced prepared statement
      * @return the target prepared statement pointer
      */
-    [[nodiscard]] prepared_statement* get() const noexcept {
-        return ptr_;
-    }
+    [[nodiscard]] std::uintptr_t get() const noexcept;
 
     /**
      * @brief conversion operator to std::size_t
      * @return the hash value that can be used for equality comparison
      */
-    explicit operator std::size_t() const noexcept {
-        return reinterpret_cast<std::size_t>(ptr_);  //NOLINT
-    }
+    explicit operator std::size_t() const noexcept;
 
     /**
      * @brief conversion operator to bool
      * @return whether the handle has body (i.e. referencing valid statement) or not
      */
-    explicit operator bool() const noexcept {
-        return ptr_ != nullptr;
-    }
+    explicit operator bool() const noexcept;
+
+    /**
+     * @brief accessor to output meta data
+     * @return the record meta data if the statement has output data
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] api::record_meta const* meta() const noexcept;
 
 private:
-    prepared_statement* ptr_{};
+    std::uintptr_t body_{};
 
 };
 

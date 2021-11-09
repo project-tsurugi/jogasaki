@@ -173,8 +173,7 @@ TEST_F(executable_statement_api_test, empty_meta_with_parameters) {
         auto ps = api::create_parameter_set();
         set(*ps, "p0", api::field_type_kind::int8, 1);
         set(*ps, "p1", api::field_type_kind::float8, 1.0);
-        auto& stmt = *handle.get();
-        ASSERT_FALSE(stmt.meta());
+        ASSERT_FALSE(handle.meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));
     }
 }

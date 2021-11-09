@@ -34,7 +34,6 @@ using takatori::util::maybe_shared_ptr;
 
 class result_set;
 class transaction;
-class prepared_statement;
 class statement_handle;
 class transaction_handle;
 class executable_statement;

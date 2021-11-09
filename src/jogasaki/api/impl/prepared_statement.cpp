@@ -31,4 +31,8 @@ prepared_statement::prepared_statement(
     )
 {}
 
+api::record_meta const* prepared_statement::meta() const noexcept {
+    return meta_.get();
+}
+
 }

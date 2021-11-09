@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/prepared_statement.h>
+#include <jogasaki/api/statement_handle.h>
 
 #include <thread>
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
+#include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/executor/tables.h>
@@ -36,7 +37,7 @@ using namespace std::chrono_literals;
 /**
  * @brief test database api
  */
-class prepared_statement_api_test :
+class statement_handle_test :
     public ::testing::Test,
     public testing::api_test_base {
 
@@ -60,14 +61,13 @@ public:
     }
 };
 
-TEST_F(prepared_statement_api_test, meta) {
+TEST_F(statement_handle_test, meta) {
     std::string sql = "select C0, C1, C2, C3, C4 from T1";
     statement_handle handle{};
     ASSERT_EQ(status::ok, db_->prepare(sql, handle));
     ASSERT_TRUE(handle);
-    auto& stmt = *handle.get();
-    ASSERT_TRUE(stmt.meta());
-    auto& meta = *stmt.meta();
+    ASSERT_TRUE(handle.meta());
+    auto& meta = *handle.meta();
     ASSERT_EQ(5, meta.field_count());
     EXPECT_EQ(api::field_type_kind::int4, meta.at(0).kind());
     EXPECT_EQ(api::field_type_kind::int8, meta.at(1).kind());
@@ -77,7 +77,7 @@ TEST_F(prepared_statement_api_test, meta) {
     ASSERT_EQ(status::ok, db_->destroy_statement(handle));
 }
 
-TEST_F(prepared_statement_api_test, meta_with_parameters) {
+TEST_F(statement_handle_test, meta_with_parameters) {
     std::string sql = "select C0, C1, C2, C3, C4 from T1 where C0=:p0";
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
@@ -85,9 +85,8 @@ TEST_F(prepared_statement_api_test, meta_with_parameters) {
     statement_handle handle{};
     ASSERT_EQ(status::ok, db_->prepare(sql, variables, handle));
     ASSERT_TRUE(handle);
-    auto& stmt = *handle.get();
-    ASSERT_TRUE(stmt.meta());
-    auto& meta = *stmt.meta();
+    ASSERT_TRUE(handle.meta());
+    auto& meta = *handle.meta();
     ASSERT_EQ(5, meta.field_count());
     EXPECT_EQ(api::field_type_kind::int4, meta.at(0).kind());
     EXPECT_EQ(api::field_type_kind::int8, meta.at(1).kind());
@@ -97,14 +96,13 @@ TEST_F(prepared_statement_api_test, meta_with_parameters) {
     ASSERT_EQ(status::ok, db_->destroy_statement(handle));
 }
 
-TEST_F(prepared_statement_api_test, empty_meta_from_prepared_statement) {
+TEST_F(statement_handle_test, empty_meta_from_prepared_statement) {
     {
         std::string sql = "insert into T0(C0, C1) values (1,1.0)";
         statement_handle handle{};
         ASSERT_EQ(status::ok, db_->prepare(sql, handle));
         ASSERT_TRUE(handle);
-        auto& stmt = *handle.get();
-        ASSERT_FALSE(stmt.meta());
+        ASSERT_FALSE(handle.meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));
     }
     {
@@ -112,13 +110,12 @@ TEST_F(prepared_statement_api_test, empty_meta_from_prepared_statement) {
         statement_handle handle{};
         ASSERT_EQ(status::ok, db_->prepare(sql, handle));
         ASSERT_TRUE(handle);
-        auto& stmt = *handle.get();
-        ASSERT_FALSE(stmt.meta());
+        ASSERT_FALSE(handle.meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));
     }
 }
 
-TEST_F(prepared_statement_api_test, empty_meta_with_parameters) {
+TEST_F(statement_handle_test, empty_meta_with_parameters) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},
@@ -128,8 +125,7 @@ TEST_F(prepared_statement_api_test, empty_meta_with_parameters) {
         statement_handle handle{};
         ASSERT_EQ(status::ok, db_->prepare(sql, variables, handle));
         ASSERT_TRUE(handle);
-        auto& stmt = *handle.get();
-        ASSERT_FALSE(stmt.meta());
+        ASSERT_FALSE(handle.meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));
     }
     {
@@ -137,8 +133,7 @@ TEST_F(prepared_statement_api_test, empty_meta_with_parameters) {
         statement_handle handle{};
         ASSERT_EQ(status::ok, db_->prepare(sql, variables, handle));
         ASSERT_TRUE(handle);
-        auto& stmt = *handle.get();
-        ASSERT_FALSE(stmt.meta());
+        ASSERT_FALSE(handle.meta());
         ASSERT_EQ(status::ok, db_->destroy_statement(handle));
     }
 }

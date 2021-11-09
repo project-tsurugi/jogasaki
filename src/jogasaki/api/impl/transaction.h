@@ -19,7 +19,6 @@
 
 #include <jogasaki/api/transaction.h>
 #include <jogasaki/api/executable_statement.h>
-#include <jogasaki/api/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/utils/latch.h>

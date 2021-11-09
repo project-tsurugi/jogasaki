@@ -164,7 +164,7 @@ void add_variable(
 status database::prepare_common(
     std::string_view sql,
     std::shared_ptr<yugawara::variable::configurable_provider> provider,
-    std::unique_ptr<api::prepared_statement>& statement
+    std::unique_ptr<impl::prepared_statement>& statement
 ) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
@@ -185,7 +185,7 @@ status database::prepare_common(
     std::shared_ptr<yugawara::variable::configurable_provider> provider,
     statement_handle& statement
 ) {
-    std::unique_ptr<api::prepared_statement> ptr{};
+    std::unique_ptr<impl::prepared_statement> ptr{};
     auto st = prepare_common(sql, std::move(provider), ptr);
     if (st == status::ok) {
         decltype(prepared_statements_)::accessor acc{};
@@ -217,13 +217,13 @@ status database::prepare(
 }
 
 status database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
-    api::statement_handle prepared{};
-    if(auto rc = prepare(sql, prepared); rc != status::ok) {
+    std::unique_ptr<impl::prepared_statement> prepared{};
+    if(auto rc = prepare_common(sql, host_variables_, prepared); rc != status::ok) {
         return rc;
     }
     std::unique_ptr<api::executable_statement> exec{};
     auto parameters = std::make_shared<impl::parameter_set>();
-    if(auto rc = resolve(prepared, parameters, exec); rc != status::ok) {
+    if(auto rc = resolve_common(*prepared, parameters, exec); rc != status::ok) {
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
@@ -258,11 +258,15 @@ status database::resolve(
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::unique_ptr<api::executable_statement>& statement
 ) {
-    return resolve_common(*prepared.get(), std::move(parameters), statement);
+    return resolve_common(
+        *reinterpret_cast<impl::prepared_statement*>(prepared.get()),  //NOLINT
+        std::move(parameters),
+        statement
+    );
 }
 
 status database::resolve_common(
-    api::prepared_statement const& prepared,
+    impl::prepared_statement const& prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::unique_ptr<api::executable_statement>& statement
 ) {
@@ -470,13 +474,4 @@ std::unique_ptr<database> create_database(std::shared_ptr<class configuration> c
     return std::make_unique<impl::database>(std::move(cfg));
 }
 
-}
-
-extern "C" jogasaki::api::database* new_database(jogasaki::configuration* cfg) {
-    auto c = cfg ? std::make_shared<jogasaki::configuration>(*cfg) : std::make_shared<jogasaki::configuration>();
-    return new jogasaki::api::impl::database(std::move(c));
-}
-
-extern "C" void delete_database(jogasaki::api::database* db) {
-    delete db;  //NOLINT
 }

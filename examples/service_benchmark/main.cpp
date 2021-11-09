@@ -63,7 +63,8 @@ DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 DEFINE_bool(insert, false, "run on insert mode");  //NOLINT
 DEFINE_bool(update, false, "run on update mode");  //NOLINT
-DEFINE_bool(query, false, "run on query mode");  //NOLINT
+DEFINE_bool(query, false, "run on query mode (point query)");  //NOLINT
+DEFINE_bool(query2, false, "run on query mode with multiple records");  //NOLINT
 DEFINE_int32(statements, 1000, "The number of statements issued per transaction.");  //NOLINT
 DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int64(transactions, -1, "Number of transactions executed per client thread. Specify -1 to use duration instead.");  //NOLINT
@@ -89,7 +90,7 @@ struct result_info {
 };
 
 enum class mode {
-    undefined, insert, update, query
+    undefined, insert, update, query, query2
 };
 
 [[nodiscard]] constexpr inline std::string_view to_string_view(mode value) noexcept {
@@ -99,6 +100,7 @@ enum class mode {
         case mode::insert: return "insert"sv;
         case mode::update: return "update"sv;
         case mode::query: return "query"sv;
+        case mode::query2: return "query2"sv;
     }
     std::abort();
 }
@@ -129,6 +131,10 @@ void show_result(
         format((std::int64_t)((double)transactions / threads / duration_ms * 1000)) << " transactions/s/thread, " <<  //NOLINT
         format((std::int64_t)((double)statements / threads / duration_ms * 1000)) << " statements/s/thread, " << //NOLINT
         format((std::int64_t)((double)records/ threads / duration_ms * 1000)) << " records/s/thread";  //NOLINT
+    LOG(INFO) << "avg turn-around: " <<
+        "transaction " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions)) << " ns, " <<  //NOLINT
+        "statement " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / statements)) << " ns, " <<  //NOLINT
+        "record " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / records)) << " ns";  //NOLINT
 }
 
 enum class profile {
@@ -150,7 +156,9 @@ struct data_profile {
         new_order_max_(3000), //TODO
         new_order_new_value_lower_bound_(4000),
         stock_item_id_min_(1),
-        stock_item_id_max_(100000)
+        stock_item_id_max_(100000),
+        district_id_min_(1),
+        district_id_max_(11) // exclusive
     {}
 
     data_profile(profile_t<profile::tiny>) :  //NOLINT
@@ -158,7 +166,9 @@ struct data_profile {
         new_order_max_(3000), //TODO
         new_order_new_value_lower_bound_(2000),
         stock_item_id_min_(1),
-        stock_item_id_max_(50)
+        stock_item_id_max_(50),
+        district_id_min_(1),
+        district_id_max_(3) // exclusive
     {}
 
     std::int64_t new_order_min_{};  //NOLINT
@@ -166,6 +176,8 @@ struct data_profile {
     std::int64_t new_order_new_value_lower_bound_{};  //NOLINT
     std::int64_t stock_item_id_min_{};  //NOLINT
     std::int64_t stock_item_id_max_{};  //NOLINT
+    std::int64_t district_id_min_{};  //NOLINT
+    std::int64_t district_id_max_{};  //NOLINT
 };
 
 
@@ -260,6 +272,9 @@ public:
         if (FLAGS_query) {
             mode_ = mode::query;
         }
+        if (FLAGS_query2) {
+            mode_ = mode::query2;
+        }
         if (FLAGS_insert) {
             mode_ = mode::insert;
         }
@@ -318,6 +333,14 @@ public:
                 );
                 break;
             case mode::query:
+                res = prepare_sql("SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id",
+                    {
+                        {"d_w_id", ::common::DataType::INT8},
+                        {"d_id", ::common::DataType::INT8},
+                    }
+                );
+                break;
+            case mode::query2:
                 res = prepare_sql("SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id",
                     {
                         {"no_d_id", ::common::DataType::INT8},
@@ -371,6 +394,28 @@ public:
                 break;
             }
             case mode::query: {
+                auto mod = profile_.district_id_max_ > profile_.district_id_min_ ?
+                    profile_.district_id_max_ - profile_.district_id_min_: 1;
+                std::int64_t id = profile_.district_id_min_ + seed.rnd_() % mod;
+                res = issue_common(true,
+                    handle,
+                    std::vector<jogasaki::utils::parameter>{
+                        {"d_w_id", ::common::DataType::INT8, static_cast<std::int64_t>(client+1)},
+                        {"d_id", ::common::DataType::INT8, static_cast<std::int64_t>(id)},
+                    },
+                    [&](std::string_view data) {
+                        DVLOG(1) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
+                        ++result_count;
+                        if (verify_query_records_) {
+                            //TODO currently support only one single thread at a time writing to the write_buffer_
+                            std::unique_lock lk{write_buffer_mutex_};
+                            write_buffer_.write(data.data(), data.size());
+                            write_buffer_.flush();
+                        }
+                    });
+                break;
+            }
+            case mode::query2: {
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{

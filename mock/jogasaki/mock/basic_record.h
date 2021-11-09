@@ -28,6 +28,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/data/aligned_buffer.h>
 
 namespace jogasaki::mock {
 
@@ -341,8 +342,8 @@ public:
      * @brief allocate new varlen field data area
      * @return string object to store the varlen data
      */
-    std::string& allocate_varlen_data() {
-        return varlen_fields_.emplace_back();
+    std::string_view allocate_varlen_data(std::string_view sv) {
+        return static_cast<std::string_view>(varlen_fields_.emplace_back(sv));
     }
 protected:
     [[nodiscard]] entity_type& entity() noexcept {
@@ -360,7 +361,7 @@ protected:
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     entity_type entity_{};
-    std::vector<std::string> varlen_fields_{};
+    std::vector<data::aligned_buffer> varlen_fields_{};
 };
 
 /**

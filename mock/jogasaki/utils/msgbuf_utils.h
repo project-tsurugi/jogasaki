@@ -90,9 +90,10 @@ inline std::vector<mock::basic_record> deserialize_msg(std::string_view data, jo
                 case jogasaki::meta::field_type_kind::float4: set_value<float>(data, offset, ref, index, meta); break;
                 case jogasaki::meta::field_type_kind::float8: set_value<double>(data, offset, ref, index, meta); break;
                 case jogasaki::meta::field_type_kind::character: {
-                    auto& v = record.allocate_varlen_data();
+                    std::string v{};
                     if (extract(data, v, offset)) {
-                        record.ref().set_value(meta.value_offset(index), accessor::text{v});
+                        auto sv = record.allocate_varlen_data(v);
+                        record.ref().set_value(meta.value_offset(index), accessor::text{sv});
                     } else {
                         set_null(record.ref(), index, meta);
                     }

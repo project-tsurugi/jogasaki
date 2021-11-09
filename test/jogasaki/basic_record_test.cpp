@@ -170,4 +170,12 @@ TEST_F(basic_record_test, text) {
     }
 }
 
+TEST_F(basic_record_test, allocate_varlen) {
+    std::string data("12345678901234567890");
+    basic_record rec{};
+    auto sv = rec.allocate_varlen_data(data);
+    EXPECT_EQ(sv, data);
+    EXPECT_NE(sv.data(), data.data());
+}
+
 }

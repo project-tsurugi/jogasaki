@@ -369,12 +369,11 @@ std::vector<details::write_target> write::create_targets(
     auto primary = table.owner()->find_primary_index(table);
     BOOST_ASSERT(primary != nullptr); //NOLINT
     // first entry is primary index
-    auto& t = ret.emplace_back(
+    ret.emplace_back(
         primary->simple_name(),
         create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, true),
         create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, false)
     );
-    auto& keys = t.keys_;
     table.owner()->each_index(
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
             if (entry->table() != table || entry == primary) {
@@ -382,7 +381,7 @@ std::vector<details::write_target> write::create_targets(
             }
             ret.emplace_back(
                 entry->simple_name(),
-                create_tuples(ctx, *entry, columns, tuples, info, resource, host_variables, true, keys),
+                create_tuples(ctx, *entry, columns, tuples, info, resource, host_variables, true, ret[0].keys_),
                 std::vector<details::write_tuple>{}
             );
         }

@@ -71,6 +71,10 @@ void add_test_tables(storage::configurable_provider& provider) {
         ::yugawara::storage::index_feature::unique,
         ::yugawara::storage::index_feature::primary,
     };
+    yugawara::storage::index_feature_set secondary_index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+    };
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
             "T0",
@@ -257,6 +261,187 @@ void add_test_tables(storage::configurable_provider& provider) {
                 t->columns()[1],
             },
             index_features
+        });
+    }
+
+//    create table qa_t1 (
+//        c_pk int4   primary key,
+//        c_i4 int4   not null,
+//        c_i8 int8   not null,
+//        c_f4 float4 not null,
+//        c_f8 float8 not null,
+//        c_ch char   not null
+//    );
+//    create index qa_t1_i4_idx on qa_t1(c_i4);
+    {
+        auto t = provider.add_table({
+            "qa_t1",
+            {
+                { "c_pk", type::int4(), nullity{false} },
+                { "c_i4", type::int4(), nullity{false} },
+                { "c_i8", type::int8(), nullity{false} },
+                { "c_f4", type::float4(), nullity{false} },
+                { "c_f8", type::float8(), nullity{false} },
+                { "c_ch", type::character(type::varying), nullity{false} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+                t->columns()[5],
+            },
+            index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t1_i4_idx",
+            {
+                t->columns()[1],
+            },
+            {},
+            secondary_index_features
+        });
+    }
+
+//    create table qa_t2 (
+//        c_pk1 int4 not null,
+//        c_pk2 char null,
+//        c_id1 int4 not null,
+//        c_id2 char null,
+//        c_jk1 int4 not null,
+//        c_jk2 char null,
+//        primary key (c_pk1, c_pk2)
+//    );
+//    create index qa_t2_idc_idx on qa_t2(c_id1, c_id2);
+//    create index qa_t2_jk1_idx on qa_t2(c_jk1);
+    {
+        auto t = provider.add_table({
+            "qa_t2",
+            {
+                { "c_pk1", type::int4(), nullity{false} },
+                { "c_pk2", type::character(type::varying), nullity{true} },
+                { "c_id1", type::int4(), nullity{false} },
+                { "c_id2", type::character(type::varying), nullity{true} },
+                { "c_jk1", type::int4(), nullity{false} },
+                { "c_jk2", type::character(type::varying), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[1],
+            },
+            {
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+                t->columns()[5],
+            },
+            index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t2_idc_idx",
+            {
+                t->columns()[2],
+                t->columns()[3],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t2_jk1_idx",
+            {
+                t->columns()[4],
+            },
+            {},
+            secondary_index_features
+        });
+    }
+//    create table qa_t3 (
+//        c_pk  int4 primary key,
+//        c_gk1 int4 not null,
+//        c_gk2 char null,
+//        c_sk1 int8 not null,
+//        c_sk2 char null
+//    );
+//    create index qa_t3_gk1_idx on qa_t3(c_gk1);
+//    create index qa_t3_gkc_idx on qa_t3(c_gk1, c_gk2);
+//    create index qa_t3_sk1_idx on qa_t3(c_sk1);
+//    create index qa_t3_skc_idx on qa_t3(c_sk1, c_sk2);
+    {
+        auto t = provider.add_table({
+            "qa_t3",
+            {
+                { "c_pk", type::int4(), nullity{false} },
+                { "c_gk1", type::int4(), nullity{false} },
+                { "c_gk2", type::character(type::varying), nullity{true} },
+                { "c_sk1", type::int8(), nullity{false} },
+                { "c_sk2", type::character(type::varying), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+            },
+            index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_gk1_idx",
+            {
+                t->columns()[1],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_gkc_idx",
+            {
+                t->columns()[1],
+                t->columns()[2],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_sk1_idx",
+            {
+                t->columns()[3],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_skc_idx",
+            {
+                t->columns()[3],
+                t->columns()[4],
+            },
+            {},
+            secondary_index_features
         });
     }
 }

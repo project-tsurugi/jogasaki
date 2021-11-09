@@ -1,0 +1,1 @@
+s "insert into qa_t2 (c_pk1, c_pk2, c_id1, c_id2, c_jk1, c_jk2) values (1, '10', 11, '111', 11, '111')"

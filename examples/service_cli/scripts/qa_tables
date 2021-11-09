@@ -1,0 +1,12 @@
+s "insert into qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (1, 10, 100, 11, 111, '11111111111111111111111111111111111')"
+s "insert into qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (2, 20, 200, 22, 222, '22222222222222222222222222222222222')"
+p "select * from qa_t1"
+q 0
+s "insert into qa_t2 (c_pk1, c_pk2, c_id1, c_id2, c_jk1, c_jk2) values (1, '10', 11, '111', 11, '111')"
+s "insert into qa_t2 (c_pk1, c_pk2, c_id1, c_id2, c_jk1, c_jk2) values (2, '20', 22, '222', 22, '222')"
+p "select * from qa_t2"
+q 1
+s "insert into qa_t3 (c_pk, c_gk1, c_gk2, c_sk1, c_sk2) values (1, 10, '111', 11, '111')"
+s "insert into qa_t3 (c_pk, c_gk1, c_gk2, c_sk1, c_sk2) values (2, 20, '222', 22, '222')"
+p "select * from qa_t3"
+q 2

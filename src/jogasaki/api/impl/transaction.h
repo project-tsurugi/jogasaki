@@ -17,7 +17,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/transaction.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
@@ -34,26 +34,28 @@ class database;
 /**
  * @brief transaction
  */
-class transaction : public api::transaction {
+class transaction {
 public:
+    using callback = transaction_handle::callback;
+
     transaction() = default;
     transaction(impl::database& database, bool readonly);
 
-    status commit() override;
-    status abort() override;
-    status execute(api::executable_statement& statement) override;
+    status commit();
+    status abort();
+    status execute(api::executable_statement& statement);
     status execute(
         api::executable_statement& statement,
         std::unique_ptr<api::result_set>& result
-    ) override;
+    );
     impl::database& database();
 
-    bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion) override;
+    bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion);
     bool execute_async(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,
         callback on_completion
-    ) override;
+    );
 
 private:
     impl::database* database_{};

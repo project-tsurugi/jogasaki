@@ -20,7 +20,6 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/transaction.h>
 #include <jogasaki/test_base.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 

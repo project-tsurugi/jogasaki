@@ -33,6 +33,7 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/executor/sequence/manager.h>
 
@@ -172,7 +173,7 @@ private:
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
-    tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<api::transaction>> transactions_{};
+    tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<impl::transaction>> transactions_{};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

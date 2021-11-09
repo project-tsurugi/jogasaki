@@ -26,14 +26,12 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
 #include <jogasaki/api/field_type_kind.h>
-#include <jogasaki/api/transaction.h>
 
 namespace jogasaki::api {
 
 using takatori::util::maybe_shared_ptr;
 
 class result_set;
-class transaction;
 class statement_handle;
 class transaction_handle;
 class executable_statement;

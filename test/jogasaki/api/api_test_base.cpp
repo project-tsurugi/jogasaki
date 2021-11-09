@@ -24,7 +24,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/transaction.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>

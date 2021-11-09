@@ -44,9 +44,19 @@ UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s
 ### query
 
 queryモードはトランザクション毎に`n_statements`個の下記SELECT文を実行する。
+戻される結果セットの大きさの違いからポイントクエリと複数行クエリの2種類のバリエーションがある。
 
+#### ポイントクエリ
+
+```
+SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id"
+```
+d_w_idはスレッドに固有の値を使用し、初期データの範囲にマッチするd_idを生成してクエリする。レコードが1つだけ戻ることを期待している。
+
+#### 複数行クエリ
 ```
 SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id
 ```
 
 no_w_idはスレッドに固有の値を使用し、初期データの範囲にマッチするno_d_idを生成してクエリする。
+複数のレコード戻ることを期待している。

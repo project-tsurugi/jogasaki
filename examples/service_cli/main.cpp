@@ -56,7 +56,7 @@ DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.
 DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
 DEFINE_bool(verify_record, true, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
-DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
+DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_string(history_file, ".service_cli_history", "specify the command history file name");  //NOLINT
 DEFINE_int32(exit_on_idle, 180, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
 DEFINE_string(input_file, "", "specify the input commands file to read and execute");  //NOLINT

@@ -20,7 +20,6 @@ set_target_properties(service-benchmark
 
 target_include_directories(service-benchmark
         PRIVATE .
-        PRIVATE ../../third_party/linenoise-ng/include
 )
 
 target_link_libraries(service-benchmark
@@ -34,6 +33,7 @@ target_link_libraries(service-benchmark
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads
 )
+
 set_compile_options(service-benchmark)
 
 if(INSTALL_EXAMPLES)

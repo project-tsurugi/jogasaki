@@ -57,7 +57,7 @@ DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
 DEFINE_bool(verify, false, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
-DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
+DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
@@ -152,32 +152,29 @@ constexpr inline profile_t<P> profile_v{};
 
 struct data_profile {
     data_profile(profile_t<profile::normal>) :  //NOLINT
-        new_order_min_(1000), //TODO
-        new_order_max_(3000), //TODO
-        new_order_new_value_lower_bound_(4000),
+        new_order_min_(2101),
+        new_order_max_(3001),
         stock_item_id_min_(1),
-        stock_item_id_max_(100000),
+        stock_item_id_max_(100001),
         district_id_min_(1),
-        district_id_max_(11) // exclusive
+        district_id_max_(11)
     {}
 
     data_profile(profile_t<profile::tiny>) :  //NOLINT
-        new_order_min_(1000), //TODO
-        new_order_max_(3000), //TODO
-        new_order_new_value_lower_bound_(2000),
+        new_order_min_(22),
+        new_order_max_(31),
         stock_item_id_min_(1),
-        stock_item_id_max_(50),
+        stock_item_id_max_(51),
         district_id_min_(1),
-        district_id_max_(3) // exclusive
+        district_id_max_(3)
     {}
 
     std::int64_t new_order_min_{};  //NOLINT
-    std::int64_t new_order_max_{};  //NOLINT
-    std::int64_t new_order_new_value_lower_bound_{};  //NOLINT
+    std::int64_t new_order_max_{};  //exclusive //NOLINT
     std::int64_t stock_item_id_min_{};  //NOLINT
-    std::int64_t stock_item_id_max_{};  //NOLINT
+    std::int64_t stock_item_id_max_{}; //exclusive   //NOLINT
     std::int64_t district_id_min_{};  //NOLINT
-    std::int64_t district_id_max_{};  //NOLINT
+    std::int64_t district_id_max_{}; //exclusive   //NOLINT
 };
 
 
@@ -365,7 +362,7 @@ public:
         switch(mode_) {
             case mode::insert: {
                 result_count = 0;
-                std::int64_t id = profile_.new_order_new_value_lower_bound_ + (seed.seq_++);
+                std::int64_t id = profile_.new_order_max_ + (seed.seq_++);
                 res = issue_common(false,
                     handle,
                     std::vector<jogasaki::utils::parameter>{

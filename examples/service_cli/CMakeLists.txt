@@ -16,7 +16,7 @@ add_executable(service-cli
 
 set_target_properties(service-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "service-cli"
+        RUNTIME_OUTPUT_NAME "cli"
 )
 
 target_include_directories(service-cli
@@ -43,5 +43,5 @@ endif()
 
 add_test(
         NAME service-cli
-        COMMAND service-cli --test_build
+        COMMAND cli --test_build
 )

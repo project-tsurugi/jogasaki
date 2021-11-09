@@ -12,7 +12,7 @@ TPC-Cよりも簡単なワークロードを実行する簡易クライアント
 
 insert/update/query共通で、jogasaki-benchmarksによって初期データを用意した後にベンチマークを開始する。
 
-> jogasaki-tpcc --generate --dump --warehouse <# of warehouses>
+> jogasaki-tpcc --generate --dump --duration 0 --warehouse <# of warehouses>
 
 実行ディレクトリに作成されたdbディレクトリをコピーしてクライアント起動時にロードして使用する。
 
@@ -20,7 +20,7 @@ insert/update/query共通で、jogasaki-benchmarksによって初期データを
 ## 使用ステートメント
 
 実行時パラメーター：
-`n_statements`でトランザクション毎の実行ステートメント数(デフォルトで3)を表す
+`n_statements`でトランザクション毎の実行ステートメント数を表す
 
 ### insert 
 
@@ -49,7 +49,7 @@ queryモードはトランザクション毎に`n_statements`個の下記SELECT�
 #### ポイントクエリ
 
 ```
-SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id"
+SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id
 ```
 d_w_idはスレッドに固有の値を使用し、初期データの範囲にマッチするd_idを生成してクエリする。レコードが1つだけ戻ることを期待している。
 

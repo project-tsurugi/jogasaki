@@ -110,17 +110,12 @@ std::string_view view_of(std::stringstream& stream) {
     return {accessor::data(buf), static_cast<size_t>(stream.tellp())};
 }
 
-test_writer::test_writer() :
-    buf_(std::string(1024*1024, '\0'))
+test_writer::test_writer()
 {}
 
 status test_writer::write(char const* data, std::size_t length) {
-    buf_.write(data, length);
-    if (on_write_) {
-        auto sv = view_of(buf_);
-        on_write_(std::string_view{sv.data() + size_, length});  //NOLINT
-    }
-    size_ += length;
+    (void)data;
+    (void)length;
     return status::ok;
 }
 

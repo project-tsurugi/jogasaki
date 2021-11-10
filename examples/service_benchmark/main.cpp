@@ -87,6 +87,9 @@ struct result_info {
     std::int64_t transactions_{};
     std::int64_t statements_{};
     std::int64_t records_{};
+    std::int64_t begin_ns_{};
+    std::int64_t statement_ns_{};
+    std::int64_t commit_ns_{};
 };
 
 enum class mode {
@@ -117,24 +120,28 @@ void show_result(
     auto& transactions = result.transactions_;
     auto& statements = result.statements_;
     auto& records = result.records_;
+    auto transaction_ns = result.commit_ns_ + result.statement_ns_ + result.commit_ns_;
+    auto& statement_ns = result.statement_ns_;
 
     LOG(INFO) << "duration: " << format(duration_ms) << " ms";
+    LOG(INFO) << "  transactions took : " << format((std::int64_t)(double)transaction_ns / threads) << " ns/thread";
+    LOG(INFO) << "  statements took : " << format((std::int64_t)(double)statement_ns / threads) << " ns/thread";
     LOG(INFO) << "executed: " <<
         format(transactions) << " transactions, " <<
         format(statements) << " statements, " <<
         format(records) << " records";
     LOG(INFO) << "throughput: " <<
         format((std::int64_t)((double)transactions / duration_ms * 1000)) << " transactions/s, " <<  //NOLINT
-        format((std::int64_t)((double)statements / duration_ms * 1000)) << " statements/s, " <<  //NOLINT
-        format((std::int64_t)((double)records / duration_ms * 1000)) << " records/s";  //NOLINT
+        format((std::int64_t)((double)statements / statement_ns * 1000 * 1000 * 1000)) << " statements/s, " <<  //NOLINT
+        format((std::int64_t)((double)records / statement_ns * 1000 * 1000 * 1000)) << " records/s";  //NOLINT
     LOG(INFO) << "throughput/thread: " <<
         format((std::int64_t)((double)transactions / threads / duration_ms * 1000)) << " transactions/s/thread, " <<  //NOLINT
-        format((std::int64_t)((double)statements / threads / duration_ms * 1000)) << " statements/s/thread, " << //NOLINT
-        format((std::int64_t)((double)records/ threads / duration_ms * 1000)) << " records/s/thread";  //NOLINT
+        format((std::int64_t)((double)statements / threads / statement_ns * 1000 * 1000 * 1000)) << " statements/s/thread, " << //NOLINT
+        format((std::int64_t)((double)records/ threads / statement_ns * 1000 * 1000 * 1000)) << " records/s/thread";  //NOLINT
     LOG(INFO) << "avg turn-around: " <<
         "transaction " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions)) << " ns, " <<  //NOLINT
-        "statement " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / statements)) << " ns, " <<  //NOLINT
-        "record " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / records)) << " ns";  //NOLINT
+        "statement " << format((std::int64_t)((double)statement_ns * threads / statements)) << " ns, " <<  //NOLINT
+        "record " << format((std::int64_t)((double)statement_ns * threads / records)) << " ns";  //NOLINT
 }
 
 enum class profile {
@@ -456,31 +463,41 @@ public:
                         // by default assign the on numa nodes uniformly
                         jogasaki::utils::thread_core_affinity(i, true);
                     }
-                    std::int64_t tx_count = 0;
-                    std::int64_t stmt_count = 0;
-                    std::int64_t rec_count = 0;
+                    result_info ret{};
                     start.count_down_and_wait();
                     data_seed seed{i, 0};
                     std::uint64_t handle{};
-                    if (auto res = begin_tx(handle); !res) {
-                        std::abort();
+                    {
+                        auto b = clock ::now();
+                        if (auto res = begin_tx(handle); !res) {
+                            std::abort();
+                        }
+                        ret.begin_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                     }
-                    while((transactions_ == -1 && !stop) || (transactions_ != -1 && tx_count < transactions_)) {
+                    while((transactions_ == -1 && !stop) || (transactions_ != -1 && ret.transactions_ < transactions_)) {
                         for(std::size_t j=0, n=statements_; j < n; ++j) {
-                            if(auto res = do_statement(handle, seed, i, rec_count); !res) {
-                                LOG(ERROR) << "do_statement failed";
+                            {
+                                auto b = clock ::now();
+                                if(auto res = do_statement(handle, seed, i, ret.records_); !res) {
+                                    LOG(ERROR) << "do_statement failed";
+                                }
+                                ret.statement_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                             }
-                            ++stmt_count;
+                            ++ret.statements_;
                             if (transactions_ == -1 && stop) {
                                 break;
                             }
                         }
-                        ++tx_count;
+                        ++ret.transactions_;
                     }
-                    if (auto res = commit_tx(handle); !res) {
-                        LOG(ERROR) << "commit_tx failed";
+                    {
+                        auto b = clock ::now();
+                        if (auto res = commit_tx(handle); !res) {
+                            LOG(ERROR) << "commit_tx failed";
+                        }
+                        ret.commit_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                     }
-                    return result_info{tx_count, stmt_count, rec_count};
+                    return ret;
                 })
             );
         }
@@ -493,10 +510,13 @@ public:
         }
         result_info total_result{};
         for(auto&& f : results) {
-            auto [tx, stmts, recs] = f.get();
-            total_result.transactions_ += tx;
-            total_result.statements_ += stmts;
-            total_result.records_ += recs;
+            auto r = f.get();
+            total_result.transactions_ += r.transactions_;
+            total_result.statements_ += r.statements_;
+            total_result.records_ += r.records_;
+            total_result.begin_ns_ += r.begin_ns_;
+            total_result.statement_ns_ += r.statement_ns_;
+            total_result.commit_ns_ += r.commit_ns_;
         }
         results.clear();
         auto end = clock::now();

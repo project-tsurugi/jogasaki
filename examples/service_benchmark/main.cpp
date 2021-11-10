@@ -647,6 +647,11 @@ private:
         return true;
     }
 
+    void reset_write_buffer() {
+        write_buffer_.str("");
+        write_buffer_.clear();
+    }
+
     bool issue_common(
         bool query,
         std::uint64_t handle,
@@ -661,7 +666,7 @@ private:
         if (query) {
             res->set_on_write(std::move(on_write));
         }
-        std::stringstream{}.swap(write_buffer_);
+        reset_write_buffer();
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok) {
             LOG(ERROR) << "service invocation failed";

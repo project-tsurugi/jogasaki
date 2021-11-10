@@ -710,6 +710,11 @@ private:
         return true;
     }
 
+    void reset_write_buffer() {
+        write_buffer_.str("");
+        write_buffer_.clear();
+    }
+
     bool issue_common(
         bool query,
         std::vector<std::string_view>& args,
@@ -774,7 +779,7 @@ private:
                 return handle_result_only(res->body_);
             })
         );
-        std::stringstream{}.swap(write_buffer_);
+        reset_write_buffer();
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok) {
             std::cerr << "service invocation failed" << std::endl;

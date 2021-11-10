@@ -23,6 +23,8 @@ namespace tateyama::api::endpoint::mock {
 using namespace std::literals::string_literals;
 using namespace std::string_view_literals;
 
+buffer_manager buffer_manager_{}; //NOLINT
+
 test_request::test_request(std::string_view payload) :
     payload_(payload)
 {}
@@ -110,29 +112,32 @@ std::string_view view_of(std::stringstream& stream) {
     return {accessor::data(buf), static_cast<size_t>(stream.tellp())};
 }
 
-test_writer::test_writer() :
-    buf_(std::string(1024*1024, '\0'))
-{}
-
 status test_writer::write(char const* data, std::size_t length) {
-    buf_.write(data, length);
+    if (! buf_) {
+        buffer_manager_.acquire(buf_);
+    }
+    buf_->write(data, length);
     if (on_write_) {
-        auto sv = view_of(buf_);
+        auto sv = view_of(*buf_);
         on_write_(std::string_view{sv.data() + size_, length});  //NOLINT
     }
     size_ += length;
     return status::ok;
 }
 
+test_writer::~test_writer() {
+    buffer_manager_.release(buf_);
+}
+
 status test_writer::commit() {
-    buf_.flush();
+    buf_->flush();
     committed_.store(size_.load());
     return status::ok;
 }
 
 std::string_view test_writer::read() {
     std::size_t sz = committed_ - read_;
-    auto sv = view_of(buf_);
+    auto sv = view_of(*buf_);
     if (sz > 0) {
         read_.store(committed_.load());
         return {sv.data()+read_, sz};  //NOLINT
@@ -145,6 +150,32 @@ void test_writer::set_on_write(std::function<void(std::string_view)> on_write) {
 }
 
 std::string_view test_writer::view() noexcept {
-    return view_of(buf_);
+    return view_of(*buf_);
+}
+
+bool buffer_manager::acquire(std::stringstream*& bufp) {
+    std::stringstream* popped{};
+    if (queue_.try_pop(popped)) {
+        bufp = popped;
+        return true;
+    }
+    decltype(entity_)::accessor acc{};
+    auto ss = std::make_shared<std::stringstream>(std::string(1024*1024, '\0'));
+    bufp = ss.get();
+    if (! entity_.insert(acc, std::pair{bufp, std::move(ss)})) { //NOLINT
+        std::abort();
+    }
+    return true;
+}
+
+bool buffer_manager::release(std::stringstream* bufp) {
+    reset_ss(*bufp);
+    decltype(entity_)::accessor acc{};
+    if (entity_.find(acc, bufp)) {
+        queue_.push(bufp);
+    } else {
+        std::abort();
+    }
+    return true;
 }
 }

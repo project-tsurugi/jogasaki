@@ -25,6 +25,8 @@
 #include <atomic>
 
 #include <jogasaki/utils/latch.h>
+#include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_queue.h>
 
 namespace tateyama::api::endpoint::mock {
 
@@ -33,9 +35,28 @@ using namespace std::string_view_literals;
 
 std::string_view view_of(std::stringstream& stream);
 
+inline void reset_ss(std::stringstream& ss) {
+    ss.str("");
+    ss.clear();
+}
+
+class buffer_manager {
+    tbb::concurrent_hash_map<std::stringstream*, std::shared_ptr<std::stringstream>> entity_{};
+    tbb::concurrent_queue<std::stringstream*> queue_{};
+
+public:
+    buffer_manager() = default;
+
+    bool acquire(std::stringstream*& bufp);
+
+    bool release(std::stringstream* bufp);
+};
+
 class test_writer : public writer {
 public:
-    test_writer();
+    test_writer() = default;
+
+    ~test_writer();
 
     status write(char const* data, std::size_t length) override;
 
@@ -47,7 +68,7 @@ public:
 
     [[nodiscard]] std::string_view view() noexcept;
 private:
-    std::stringstream buf_;
+    std::stringstream* buf_{};
     std::function<void(std::string_view)> on_write_{};
     std::atomic_size_t size_{};  //NOLINT
     std::atomic_size_t committed_{};  //NOLINT

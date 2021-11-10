@@ -22,6 +22,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/status.h>
+#include <jogasaki/common.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
@@ -389,16 +390,55 @@ tateyama::status service::operator()(
     VLOG(1) << "s:" << proto_req.session_handle().handle() << std::endl;
 
     switch (proto_req.request_case()) {
-        case ::request::Request::RequestCase::kBegin: command_begin(proto_req, res); break;
-        case ::request::Request::RequestCase::kPrepare: command_prepare(proto_req, res); break;
-        case ::request::Request::RequestCase::kExecuteStatement: command_execute_statement(proto_req, res); break;
-        case ::request::Request::RequestCase::kExecuteQuery: command_execute_query(proto_req, res); break;
-        case ::request::Request::RequestCase::kExecutePreparedStatement: command_execute_prepared_statement(proto_req, res); break;
-        case ::request::Request::RequestCase::kExecutePreparedQuery: command_execute_prepared_query(proto_req, res); break;
-        case ::request::Request::RequestCase::kCommit: command_commit(proto_req, res); break;
-        case ::request::Request::RequestCase::kRollback: command_rollback(proto_req, res); break;
-        case ::request::Request::RequestCase::kDisposePreparedStatement: command_dispose_prepared_statement(proto_req, res); break;
-        case ::request::Request::RequestCase::kDisconnect: command_disconnect(proto_req, res); break;
+        case ::request::Request::RequestCase::kBegin: {
+            trace_scope_name("cmd-begin");  //NOLINT
+            command_begin(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kPrepare: {
+            trace_scope_name("cmd-prepare");  //NOLINT
+            command_prepare(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kExecuteStatement: {
+            trace_scope_name("cmd-execute_statement");  //NOLINT
+            command_execute_statement(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kExecuteQuery: {
+            trace_scope_name("cmd-execute_query");  //NOLINT
+            command_execute_query(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kExecutePreparedStatement: {
+            trace_scope_name("cmd-execute_prepared_statement");  //NOLINT
+            command_execute_prepared_statement(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kExecutePreparedQuery: {
+            trace_scope_name("cmd-execute_prepared_query");  //NOLINT
+            command_execute_prepared_query(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kCommit: {
+            trace_scope_name("cmd-commit");  //NOLINT
+            command_commit(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kRollback: {
+            trace_scope_name("cmd-rollback");  //NOLINT
+            command_rollback(proto_req, res); break;
+        }
+        case ::request::Request::RequestCase::kDisposePreparedStatement: {
+            trace_scope_name("cmd-dispose_prepared_statement");  //NOLINT
+            command_dispose_prepared_statement(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kDisconnect: {
+            trace_scope_name("cmd-disconnect");  //NOLINT
+            command_disconnect(proto_req, res);
+            break;
+        }
         default:
             LOG(ERROR) << "invalid error case" << std::endl;
             res->code(response_code::io_error);
@@ -476,8 +516,11 @@ void service::execute_query(
     info->name_ = std::string("resultset-");
     info->name_ += std::to_string(new_resultset_id());
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
-    if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-        fail();
+    {
+        trace_scope_name("acquire_channel");  //NOLINT
+        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+            fail();
+        }
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
 
@@ -504,7 +547,10 @@ void service::execute_query(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
             [cbp, this](status s, std::string_view message){
-                cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
+                {
+                    trace_scope_name("release_channel");  //NOLINT
+                    cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
+                }
                 if (s == jogasaki::status::ok) {
                     details::success<::response::ResultOnly>(*cbp->response_);
                 } else {
@@ -546,10 +592,14 @@ void details::reply(tateyama::api::server::response& res, ::response::Response& 
         fail();
     }
     if (body_head) {
+        trace_scope_name("body_head");  //NOLINT
         res.body_head(ss.str());
         return;
     }
-    res.body(ss.str());
+    {
+        trace_scope_name("body");  //NOLINT
+        res.body(ss.str());
+    }
 }
 
 void details::set_metadata(channel_info const& info, schema::RecordMeta& meta) {

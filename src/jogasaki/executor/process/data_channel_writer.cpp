@@ -16,6 +16,7 @@
 #include "data_channel_writer.h"
 
 #include <takatori/util/fail.h>
+#include <jogasaki/common.h>
 
 namespace jogasaki::executor::process {
 
@@ -25,8 +26,11 @@ constexpr static std::size_t writer_work_buffer_size = 4096;
 
 bool data_channel_writer::write(accessor::record_ref rec) {
     if (! writer_) {
-        if(auto rc = channel_->acquire(writer_); rc != status::ok) {
-            fail();
+        {
+            trace_scope_name("data_channel::acquire");  //NOLINT
+            if(auto rc = channel_->acquire(writer_); rc != status::ok) {
+                fail();
+            }
         }
         buf_ = msgpack::sbuffer{writer_work_buffer_size}; // automatically expands when capacity is not sufficient
     }
@@ -52,8 +56,14 @@ bool data_channel_writer::write(accessor::record_ref rec) {
             }
         }
     }
-    writer_->write(buf_.data(), buf_.size());
-    writer_->commit();
+    {
+        trace_scope_name("writer::write");  //NOLINT
+        writer_->write(buf_.data(), buf_.size());
+    }
+    {
+        trace_scope_name("writer::commit");  //NOLINT
+        writer_->commit();
+    }
     return false;
 }
 
@@ -64,7 +74,10 @@ void data_channel_writer::flush() {
 }
 
 void data_channel_writer::release() {
-    channel_->release(*writer_);
+    {
+        trace_scope_name("data_channel::release");  //NOLINT
+        channel_->release(*writer_);
+    }
     writer_ = nullptr;
 }
 

@@ -17,4 +17,13 @@
 
 // common things to all translation unit
 
-#include <tateyama/common.h>
+#ifdef TRACY_ENABLE
+#include "../third_party/tracy/Tracy.hpp"
+#include "../third_party/tracy/common/TracySystem.hpp"
+#define trace_scope ZoneScoped
+#define trace_scope_name(name) ZoneScopedN(name)
+
+#else
+#define trace_scope
+#define trace_scope_name(name)
+#endif

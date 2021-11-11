@@ -38,12 +38,6 @@ file(GLOB SOURCES
         "jogasaki/endpoint/*.cpp"
 )
 
-if(TRACY_ENABLE)
-    file(GLOB TRACY_CLIENT
-            "../third_party/tracy/TracyClient.cpp"
-            )
-    list(APPEND SOURCES ${TRACY_CLIENT})
-endif()
 
 set_source_files_properties(
         ${GENERATED_PROTO_SRCS}

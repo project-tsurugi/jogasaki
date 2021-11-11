@@ -92,6 +92,8 @@ GLOG_minloglevel=0 ./group-cli --minimum
 You can use [Tracy Profiler](https://github.com/wolfpld/tracy) to graphically display the threads operations and improve printf debug by printing messages on the tooltips on the Tracy profiler UI.
 By setting cmake build option `-DTRACY_ENABLE=ON`, TracyClient.cpp file is added to the build and tracing macros are enabled.
 
+(2021-11 TracyClient.cpp is included in tateyama only in order to avoid start up conflict, so set `-DTRACY_ENABLE=ON` both on tateyama and jogasaki if you profile jogasaki)
+
 Prerequirement: 
 
 1. ensure tracy code is located under `third_party/tracy` directory.

@@ -82,7 +82,7 @@ void service::command_begin(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     (void)proto_req;
-    VLOG(1) << "begin" << std::endl;
+    DVLOG(1) << "begin";
     jogasaki::api::transaction_handle tx{};
     if (auto st = db_->create_transaction(tx); st == jogasaki::status::ok) {
         details::success<::response::Begin>(*res, tx);
@@ -95,7 +95,7 @@ void service::command_prepare(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    VLOG(1) << "prepare" << std::endl;
+    DVLOG(1) << "prepare";
     auto& pp = proto_req.prepare();
     auto& hvs = pp.host_variables();
     auto& sql = pp.sql();
@@ -104,7 +104,7 @@ void service::command_prepare(
         details::error<::response::Prepare>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
-    VLOG(1) << sql << std::endl;
+    DVLOG(1) << sql;
 
     std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
     for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
@@ -124,7 +124,7 @@ void service::command_execute_statement(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    VLOG(1) << "execute_statement" << std::endl;
+    DVLOG(1) << "execute_statement";
     auto& eq = proto_req.execute_statement();
     if(! eq.has_transaction_handle()) {
         VLOG(1) << "missing transaction_handle";
@@ -138,14 +138,14 @@ void service::command_execute_statement(
         return;
     }
     jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
-    VLOG(1) << tx << " " << sql << std::endl;
+    DVLOG(1) << tx << " " << sql;
     if(! tx) {
         details::error<::response::ResultOnly>(*res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
-        LOG(ERROR) << "error in db_->create_executable()";
+        VLOG(1) << "error in db_->create_executable()";
         details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
         return;
     }
@@ -157,7 +157,7 @@ void service::command_execute_query(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    VLOG(1) << "execute_query" << std::endl;
+    DVLOG(1) << "execute_query";
     auto& eq = proto_req.execute_query();
     if(! eq.has_transaction_handle()) {
         VLOG(1) << "missing transaction_handle";
@@ -171,7 +171,7 @@ void service::command_execute_query(
         return;
     }
     jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
-    VLOG(1) << tx << " " << sql << std::endl;
+    DVLOG(1) << tx << " " << sql;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -189,7 +189,7 @@ void service::command_execute_prepared_statement(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    VLOG(1) << "execute_prepared_statement" << std::endl;
+    DVLOG(1) << "execute_prepared_statement";
     auto& pq = proto_req.execute_prepared_statement();
     if(! pq.has_prepared_statement_handle()) {
         VLOG(1) << "missing prepared_statement_handle";
@@ -204,7 +204,7 @@ void service::command_execute_prepared_statement(
     }
     auto sid = ph.handle();
     jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
-    VLOG(1) << tx << " sid:" << sid << std::endl;
+    DVLOG(1) << tx << " sid:" << sid;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -231,7 +231,7 @@ void service::command_execute_prepared_query(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    VLOG(1) << "execute_prepared_query" << std::endl;
+    DVLOG(1) << "execute_prepared_query";
     auto& pq = proto_req.execute_prepared_query();
     if(! pq.has_prepared_statement_handle()) {
         VLOG(1) << "missing prepared_statement_handle";
@@ -254,7 +254,7 @@ void service::command_execute_prepared_query(
     }
     auto sid = ph.handle();
     jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
-    VLOG(1) << tx << " sid:" << sid << std::endl;
+    DVLOG(1) << tx << " sid:" << sid;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -271,7 +271,7 @@ void service::command_commit(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    VLOG(1) << "commit" << std::endl;
+    DVLOG(1) << "commit";
     auto& cm = proto_req.commit();
     if(! cm.has_transaction_handle()) {
         VLOG(1) << "missing transaction_handle";
@@ -283,7 +283,7 @@ void service::command_commit(
         return;
     }
     jogasaki::api::transaction_handle tx{cm.transaction_handle().handle()};
-    VLOG(1) << tx << std::endl;
+    DVLOG(1) << tx;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -308,7 +308,7 @@ void service::command_rollback(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    VLOG(1) << "rollback" << std::endl;
+    DVLOG(1) << "rollback";
     auto& rb = proto_req.rollback();
     if(! rb.has_transaction_handle()) {
         VLOG(1) << "missing transaction_handle";
@@ -320,7 +320,7 @@ void service::command_rollback(
         return;
     }
     jogasaki::api::transaction_handle tx{rb.transaction_handle().handle()};
-    VLOG(1) << tx << std::endl;
+    DVLOG(1) << tx;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -346,7 +346,7 @@ void service::command_dispose_prepared_statement(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    VLOG(1) << "dispose_prepared_statement" << std::endl;
+    DVLOG(1) << "dispose_prepared_statement";
     auto& ds = proto_req.dispose_prepared_statement();
     if(! ds.has_prepared_statement_handle()) {
         VLOG(1) << "missing prepared_statement_handle";
@@ -371,7 +371,7 @@ void service::command_disconnect(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     (void)proto_req;
-    VLOG(1) << "disconnect" << std::endl;
+    DVLOG(1) << "disconnect";
     details::success<::response::ResultOnly>(*res);
     res->close_session(); //TODO re-visit when the notion of session is finalized
 }
@@ -381,13 +381,17 @@ tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::response> res
 ) {
     ::request::Request proto_req{};
-    if (!proto_req.ParseFromString(std::string(req->payload()))) {
-            LOG(ERROR) << "parse error" << std::endl;
-        res->code(response_code::io_error);
-        res->body("parse error with request body");
-        return tateyama::status::ok;
+    {
+        trace_scope_name("parse request");  //NOLINT
+        if (!proto_req.ParseFromString(std::string(req->payload()))) {
+            VLOG(1) << "parse error";
+            res->code(response_code::io_error);
+            res->body("parse error with request body");
+            return tateyama::status::ok;
+        }
+        DVLOG(1) << "s:" << proto_req.session_handle().handle();
+        DVLOG(1) << "request length:" << req->payload().size();
     }
-    VLOG(1) << "s:" << proto_req.session_handle().handle() << std::endl;
 
     switch (proto_req.request_case()) {
         case ::request::Request::RequestCase::kBegin: {
@@ -440,7 +444,7 @@ tateyama::status service::operator()(
             break;
         }
         default:
-            LOG(ERROR) << "invalid error case" << std::endl;
+            VLOG(1) << "invalid error case";
             res->code(response_code::io_error);
             res->body("invalid request code");
             break;

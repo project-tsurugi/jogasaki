@@ -50,7 +50,8 @@ DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 DEFINE_bool(respect_client_core, false, "Try to run worker on the same core as that of client thread");  //NOLINT
 DEFINE_bool(readonly, true, "Specify readonly option when creating transaction");  //NOLINT
-DEFINE_string(location, "", "specify the database directory. Pass TMP to use temporary directory.");
+DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
+DEFINE_bool(simple, false, "use simple query");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -64,15 +65,21 @@ using clock = std::chrono::high_resolution_clock;
 static bool prepare_data(api::database& db, std::size_t records) {
     std::string insert_warehouse_fmt{"INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (%d, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)"};
     std::string insert_customer_fmt{ "INSERT INTO CUSTOMER (c_id, c_d_id, c_w_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_data, c_ytd_payment, c_payment_cnt, c_delivery_cnt)  VALUES (%d, %d, %d, 'pmdeqxrbgs', 'OE', 'BARBARBAR', 'zlaoknusaxfhasce', 'sagjvpdsyzbhsvnhwzxe', 'adftkgtros', 'qd', '827402212', '8700969702524002', '1973-12-12', 'BC', 50000.00, 0.05, -9.99, 'posxrsroejldsyoyirjofkqsycnbjoalxfkgipoogepnuwmagaxcopincpbfhwercrohqxygjjxhamineoraxkzrirkafmmjkcbkafvnqfzonsdcccijdzqlbywgcgbovpmmjcapfmfqbjnfejaqmhqqtxjayvowuujxqmzvisjghpjpynbamdhvvjncvgzstpvqeeakdpwkjmircrfysmwbbbkzbzefldktqfeubcbcjgdjsjtkcomuhqdazqmgpukiyawmqgyzkciwrxfswnegkrofklawoxypehzzztouvokzhshawbbdkasynuixskxmauxuapnkemytcrchqhvjqhntkvkmgezotza', 10.00, 1, 0)"};
+    std::string insert_district_fmt{ "INSERT INTO DISTRICT (d_id, d_w_id, d_name, d_street_1, d_street_2, d_city, d_state, d_zip, d_tax, d_ytd, d_next_o_id) VALUES (%d, %d, 'fvcclfvyp', 'lopauzeyaipx', 'uwnikzbvcj', 'pxsfqptmnwm', 'yn', '393838416', 0.18, 30000.00, 3001)"};
     for(std::size_t i=0; i < records; ++i) {
         auto insert_warehouse = format(insert_warehouse_fmt, i);
         auto insert_customer = format(insert_customer_fmt, i, i, i);
+        auto insert_district = format(insert_district_fmt, i, i);
         std::unique_ptr<api::executable_statement> p1{};
         std::unique_ptr<api::executable_statement> p2{};
+        std::unique_ptr<api::executable_statement> p3{};
         if(auto rc = db.create_executable(insert_warehouse, p1); rc != status::ok) {
             return false;
         }
         if(auto rc = db.create_executable(insert_customer, p2); rc != status::ok) {
+            return false;
+        }
+        if(auto rc = db.create_executable(insert_district, p3); rc != status::ok) {
             return false;
         }
 
@@ -82,6 +89,10 @@ static bool prepare_data(api::database& db, std::size_t records) {
             return false;
         }
         if(auto rc = tx->execute(*p2); rc != status::ok) {
+            tx->abort();
+            return false;
+        }
+        if(auto rc = tx->execute(*p3); rc != status::ok) {
             tx->abort();
             return false;
         }
@@ -110,19 +121,43 @@ static api::statement_handle prepare(api::database& db) {
     return p;
 }
 
+static api::statement_handle prepare_simple(api::database& db) {
+    std::string select{
+        "SELECT d_next_o_id, d_tax FROM DISTRICT "
+        "WHERE "
+        "d_w_id = :d_w_id AND "
+        "d_id = :d_id "
+    };
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"d_w_id", api::field_type_kind::int8},
+        {"d_id", api::field_type_kind::int8},
+    };
+    api::statement_handle p{};
+    if(auto rc = db.prepare(select, variables, p); rc != status::ok) {
+        std::abort();
+    }
+    return p;
+}
+
 static bool query(
     api::database& db,
     api::statement_handle& stmt,
     jogasaki::utils::xorshift_random32& rnd,
     std::size_t records,
     bool readonly,
+    bool simple,
     std::size_t& result
 ) {
     auto ps = api::create_parameter_set();
     auto id = rnd() % records;
-    ps->set_int8("w_id", id);
-    ps->set_int8("c_d_id", id);
-    ps->set_int8("c_id", id);
+    if (simple) {
+        ps->set_int8("d_w_id", id);
+        ps->set_int8("d_id", id);
+    } else {
+        ps->set_int8("w_id", id);
+        ps->set_int8("c_d_id", id);
+        ps->set_int8("c_id", id);
+    }
 
     std::unique_ptr<api::executable_statement> e{};
     {
@@ -198,17 +233,8 @@ bool fill_from_flags(
 void show_result(
     std::int64_t total_executions,
     std::size_t duration_ms,
-    std::size_t threads,
-    bool debug
+    std::size_t threads
 ) {
-    if (debug) {
-        LOG(INFO) << "======= begin debug info =======";
-    }
-    // TODO
-    if (debug) {
-        LOG(INFO) << "======= end debug info =======";
-    }
-
     LOG(INFO) << "duration: " << format(duration_ms) << " ms";
     LOG(INFO) << "total executions: " << format(total_executions) << " transactions";
     LOG(INFO) << "total throughput: " << format((std::int64_t)((double)total_executions / duration_ms * 1000)) << " transactions/s";
@@ -218,6 +244,7 @@ void show_result(
 static int run(
     std::shared_ptr<jogasaki::configuration> cfg,
     bool debug,
+    bool simple,
     std::size_t duration,
     std::int64_t queries,
     std::size_t clients,
@@ -228,6 +255,7 @@ static int run(
     env->initialize(); //init before logging
     LOG(INFO) << "configuration " << *cfg
         << "debug:" << debug << " "
+        << "simple:" << simple << " "
         << "duration:" << duration << " "
         << "queries:" << queries << " "
         << "clients:" << clients<< " "
@@ -244,6 +272,7 @@ static int run(
     db->start();
 
     if(auto res = prepare_data(*db, records); !res) {
+        LOG(ERROR) << "prepare dat error";
         db->stop();
         return -1;
     }
@@ -263,11 +292,11 @@ static int run(
                 }
                 std::int64_t count = 0;
                 std::size_t result = 0;
-                auto stmt = prepare(*db);
+                auto stmt = simple ? prepare_simple(*db) : prepare(*db);
                 start.count_down_and_wait();
                 jogasaki::utils::xorshift_random32 rnd{static_cast<std::uint32_t>(123456+i)};
                 while((queries == -1 && !stop) || (queries != -1 && count < queries)) {
-                    if(auto res = query(*db, stmt, rnd, records, FLAGS_readonly, result); !res) {
+                    if(auto res = query(*db, stmt, rnd, records, FLAGS_readonly, simple, result); !res) {
                         LOG(ERROR) << "query error";
                         std::abort();
                     }
@@ -294,7 +323,7 @@ static int run(
     results.clear();
     auto end = clock::now();
     auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
-    show_result(total_executions, duration_ms, cfg->thread_pool_size(), debug);
+    show_result(total_executions, duration_ms, cfg->thread_pool_size());
     db->stop();
     dir.clean();
     return 0;
@@ -322,7 +351,15 @@ extern "C" int main(int argc, char* argv[]) {
         clients = 1;
     }
     try {
-        jogasaki::query_bench_cli::run(cfg, FLAGS_debug, FLAGS_duration, queries, clients, FLAGS_records);  // NOLINT
+        jogasaki::query_bench_cli::run(
+            cfg,
+            FLAGS_debug,
+            FLAGS_simple,
+            FLAGS_duration,
+            queries,
+            clients,
+            FLAGS_records
+        );  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;

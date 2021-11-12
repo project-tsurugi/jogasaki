@@ -382,16 +382,19 @@ tateyama::status service::operator()(
 ) {
     ::request::Request proto_req{};
     {
-        trace_scope_name("parse request");  //NOLINT
-        auto s = req->payload();
-        if (!proto_req.ParseFromArray(s.data(), s.size())) {
-            VLOG(1) << "parse error";
-            res->code(response_code::io_error);
-            res->body("parse error with request body");
-            return tateyama::status::ok;
+        trace_scope_name("read/parse request");  //NOLINT
+        std::string s{req->payload()};
+        {
+            trace_scope_name("parse request");  //NOLINT
+            if (!proto_req.ParseFromArray(s.data(), s.size())) {
+                VLOG(1) << "parse error";
+                res->code(response_code::io_error);
+                res->body("parse error with request body");
+                return tateyama::status::ok;
+            }
+            DVLOG(1) << "s:" << proto_req.session_handle().handle();
+            DVLOG(1) << "request length:" << req->payload().size();
         }
-        DVLOG(1) << "s:" << proto_req.session_handle().handle();
-        DVLOG(1) << "request length:" << req->payload().size();
     }
 
     switch (proto_req.request_case()) {

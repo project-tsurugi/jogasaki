@@ -383,7 +383,8 @@ tateyama::status service::operator()(
     ::request::Request proto_req{};
     {
         trace_scope_name("parse request");  //NOLINT
-        if (!proto_req.ParseFromString(std::string(req->payload()))) {
+        auto s = req->payload();
+        if (!proto_req.ParseFromArray(s.data(), s.size())) {
             VLOG(1) << "parse error";
             res->code(response_code::io_error);
             res->body("parse error with request body");

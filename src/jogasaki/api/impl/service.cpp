@@ -320,8 +320,12 @@ tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::response> res
 ) {
     ::request::Request proto_req{};
+    static int cnt = 0;
+    if (cnt % 100 == 0) {
+        LIKWID_MARKER_START("parse_request");
+    }
     {
-        trace_scope_name("parse request");  //NOLINT
+        trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();
         if (!proto_req.ParseFromArray(s.data(), s.size())) {
             VLOG(log_error) << "parse error";
@@ -392,6 +396,10 @@ tateyama::status service::operator()(
             res->body(msg);
             break;
     }
+    if (cnt % 100 == 0) {
+        LIKWID_MARKER_STOP("parse_request");
+    }
+    cnt++;
     return tateyama::status::ok;
 }
 
@@ -525,11 +533,14 @@ std::size_t service::new_resultset_id() const noexcept {
 tateyama::status service::initialize(tateyama::api::environment& env, void* context) {
     (void)env;
     db_ = reinterpret_cast<jogasaki::api::database*>(context);  //NOLINT
+    LIKWID_MARKER_INIT;
+    LIKWID_MARKER_THREADINIT;
     return tateyama::status::ok;
 }
 
 tateyama::status service::shutdown() {
     db_ = nullptr;
+    LIKWID_MARKER_CLOSE;
     return tateyama::status::ok;
 }
 

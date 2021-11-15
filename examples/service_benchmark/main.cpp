@@ -567,13 +567,19 @@ public:
         endpoint->initialize(*environment_, {});
     }
 
+    void finish_env() {
+        environment_->endpoints()[0]->shutdown();
+        environment_->applications()[0]->shutdown();
+        db_->stop();
+    }
+
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
         jogasaki::common_cli::temporary_folder dir{};
         setup_db(cfg, dir);
         setup_env();
         prepare_statement();
         run_workers(cfg);
-        db_->stop();
+        finish_env();
         dir.clean();
         return 0;
     }

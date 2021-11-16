@@ -321,7 +321,7 @@ tateyama::status service::operator()(
 ) {
     ::request::Request proto_req{};
     static int cnt = 0;
-    if (cnt % 100 == 0) {
+    if (cnt % 1000 == 0) {
         LIKWID_MARKER_START("parse_request");
     }
     {
@@ -396,7 +396,7 @@ tateyama::status service::operator()(
             res->body(msg);
             break;
     }
-    if (cnt % 100 == 0) {
+    if (cnt % 1000 == 0) {
         LIKWID_MARKER_STOP("parse_request");
     }
     cnt++;

@@ -39,6 +39,9 @@ DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution"
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
+DEFINE_uint32(initial_core, 1, "the scheduler initial core");  //NOLINT
+DEFINE_int32(worker_initial_core, -1, "the worker initial core. ");  //NOLINT
+DEFINE_bool(assign_numa_nodes_uniformly, false, "whether to assign scheduler threads uniformly");  // NOLINT
 
 namespace tateyama::server {
 
@@ -59,6 +62,8 @@ int backend_main(int argc, char **argv) {
     auto cfg = std::make_shared<jogasaki::configuration>();
     cfg->prepare_benchmark_tables(true);
     cfg->thread_pool_size(FLAGS_threads);
+    cfg->initial_core(FLAGS_initial_core);
+    cfg->assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
 
     auto db = jogasaki::api::create_database(cfg);
     db->start();
@@ -82,6 +87,7 @@ int backend_main(int argc, char **argv) {
     init_context.options_ = std::unordered_map<std::string, std::string>{
         {"dbname", FLAGS_dbname},
         {"threads", std::to_string(FLAGS_threads)},
+        {"initial_core", std::to_string(FLAGS_worker_initial_core)},
     };
     if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();

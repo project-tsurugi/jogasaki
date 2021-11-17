@@ -320,9 +320,11 @@ tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::response> res
 ) {
     ::request::Request proto_req{};
-    static int cnt = 0;
-    if (cnt % 1000 == 0) {
-        LIKWID_MARKER_START("parse_request");
+    static std::int64_t cnt = 0;
+    bool count = false;
+    if (cnt > 0 && cnt % 1000 == 0) {
+        count = true;
+        LIKWID_MARKER_START("service");
     }
     {
         trace_scope_name("parse_request");  //NOLINT
@@ -396,8 +398,8 @@ tateyama::status service::operator()(
             res->body(msg);
             break;
     }
-    if (cnt % 1000 == 0) {
-        LIKWID_MARKER_STOP("parse_request");
+    if (count) {
+        LIKWID_MARKER_STOP("service");
     }
     cnt++;
     return tateyama::status::ok;
@@ -534,7 +536,6 @@ tateyama::status service::initialize(tateyama::api::environment& env, void* cont
     (void)env;
     db_ = reinterpret_cast<jogasaki::api::database*>(context);  //NOLINT
     LIKWID_MARKER_INIT;
-    LIKWID_MARKER_THREADINIT;
     return tateyama::status::ok;
 }
 

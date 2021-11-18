@@ -180,7 +180,6 @@ private:
     bool stealing_enabled_ = false;
     bool work_sharing_ = false;
     std::string db_location_{};
-    bool respect_client_core_ = false;
 };
 
 }

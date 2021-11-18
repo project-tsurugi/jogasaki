@@ -46,9 +46,4 @@ endif()
 if(LIKWID_ENABLE)
     message("likwid enabled")
     add_definitions(-DLIKWID_PERFMON)
-
-    # tracy code has many unused variables/parameters
-#    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-unused-parameter -Wno-maybe-uninitialized")
-#    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -Wno-unused-parameter -Wno-maybe-uninitialized")
-#    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-unused-parameter -Wno-maybe-uninitialized")
 endif()

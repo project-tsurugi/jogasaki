@@ -39,10 +39,13 @@ DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution"
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
-DEFINE_uint32(initial_core, 1, "the scheduler initial core");  //NOLINT
-DEFINE_int32(worker_initial_core, -1, "the worker initial core. ");  //NOLINT
-DEFINE_bool(core_affinity, false, "whether to set core affinity");  //NOLINT
-DEFINE_bool(assign_numa_nodes_uniformly, false, "whether to assign scheduler threads uniformly");  // NOLINT
+DEFINE_bool(sched_core_affinity, false, "Whether scheduler threads are assigned to cores");  //NOLINT
+DEFINE_int32(sched_initial_core, 0, "initial core number for scheduler threads, that the bunch of cores assignment begins with");  //NOLINT
+DEFINE_bool(sched_assign_numa_nodes_uniformly, true, "assign scheduler threads uniformly on all numa nodes");  //NOLINT
+
+DEFINE_bool(worker_core_affinity, false, "Whether endpoint worker threads are assigned to cores");  //NOLINT
+DEFINE_int32(worker_initial_core, 0, "initial core number for endpoint worker threads, that the bunch of cores assignment begins with");  //NOLINT
+DEFINE_bool(worker_assign_numa_nodes_uniformly, true, "assign endpoint worker threads uniformly on all numa nodes");  //NOLINT
 
 namespace tateyama::server {
 
@@ -63,9 +66,9 @@ int backend_main(int argc, char **argv) {
     auto cfg = std::make_shared<jogasaki::configuration>();
     cfg->prepare_benchmark_tables(true);
     cfg->thread_pool_size(FLAGS_threads);
-    cfg->core_affinity(FLAGS_core_affinity);
-    cfg->initial_core(FLAGS_initial_core);
-    cfg->assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
+    cfg->core_affinity(FLAGS_sched_core_affinity);
+    cfg->initial_core(FLAGS_sched_initial_core);
+    cfg->assign_numa_nodes_uniformly(FLAGS_sched_assign_numa_nodes_uniformly);
 
     auto db = jogasaki::api::create_database(cfg);
     db->start();
@@ -90,6 +93,8 @@ int backend_main(int argc, char **argv) {
         {"dbname", FLAGS_dbname},
         {"threads", std::to_string(FLAGS_threads)},
         {"initial_core", std::to_string(FLAGS_worker_initial_core)},
+        {"core_affinity", std::to_string(FLAGS_worker_core_affinity ? 1 : 0)},
+        {"assign_numa_nodes_uniformly", std::to_string(FLAGS_worker_assign_numa_nodes_uniformly ? 1 : 0)},
     };
     if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();

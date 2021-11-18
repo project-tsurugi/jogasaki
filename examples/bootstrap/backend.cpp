@@ -41,11 +41,10 @@ DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 DEFINE_bool(sched_core_affinity, false, "Whether scheduler threads are assigned to cores");  //NOLINT
 DEFINE_int32(sched_initial_core, 0, "initial core number for scheduler threads, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_bool(sched_assign_numa_nodes_uniformly, true, "assign scheduler threads uniformly on all numa nodes");  //NOLINT
-
+DEFINE_bool(sched_assign_numa_nodes_uniformly, false, "assign scheduler threads uniformly on all numa nodes");  //NOLINT
 DEFINE_bool(worker_core_affinity, false, "Whether endpoint worker threads are assigned to cores");  //NOLINT
 DEFINE_int32(worker_initial_core, 0, "initial core number for endpoint worker threads, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_bool(worker_assign_numa_nodes_uniformly, true, "assign endpoint worker threads uniformly on all numa nodes");  //NOLINT
+DEFINE_bool(worker_assign_numa_nodes_uniformly, false, "assign endpoint worker threads uniformly on all numa nodes");  //NOLINT
 
 namespace tateyama::server {
 

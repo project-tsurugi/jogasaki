@@ -29,7 +29,6 @@
 #include <jogasaki/scheduler/step_state_table.h>
 #include <jogasaki/utils/interference_size.h>
 #include "serial_task_scheduler.h"
-#include "parallel_task_scheduler.h"
 #include "step_state.h"
 #include "dag_controller.h"
 #include "thread_params.h"

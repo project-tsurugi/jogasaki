@@ -131,15 +131,7 @@ dag_controller::impl::impl(std::shared_ptr<configuration> cfg, dag_controller* p
     cfg_(std::move(cfg)),
     executor_(cfg_->single_thread() ?
         std::shared_ptr<class task_scheduler>(std::make_shared<serial_task_scheduler>()) :
-        (
-            cfg_->work_sharing() ?
-                std::shared_ptr<class task_scheduler>(
-                    std::make_shared<parallel_task_scheduler>(thread_params(cfg_))
-                ) :
-                std::shared_ptr<class task_scheduler>(
-                    std::make_shared<stealing_task_scheduler>(thread_params(cfg_))
-                )
-        )
+        std::shared_ptr<class task_scheduler>(std::make_shared<stealing_task_scheduler>(thread_params(cfg_)))
     ),
     parent_(parent)
 {}

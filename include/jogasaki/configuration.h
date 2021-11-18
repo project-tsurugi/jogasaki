@@ -131,10 +131,12 @@ public:
         stealing_enabled_ = arg;
     }
 
+    ///@deprecated do nothing any more. Will be removed.
     [[nodiscard]] bool work_sharing() const noexcept {
         return work_sharing_;
     }
 
+    ///@deprecated do nothing any more. Will be removed.
     void work_sharing(bool arg) noexcept {
         work_sharing_ = arg;
     }
@@ -145,14 +147,6 @@ public:
 
     void db_location(std::string_view arg) noexcept {
         db_location_ = arg;
-    }
-
-    [[nodiscard]] bool respect_client_core() const noexcept {
-        return respect_client_core_;
-    }
-
-    void respect_client_core(bool arg) noexcept {
-        respect_client_core_ = arg;
     }
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {

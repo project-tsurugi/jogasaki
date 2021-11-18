@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/scheduler/serial_task_scheduler.h>
-#include <jogasaki/scheduler/parallel_task_scheduler.h>
 #include <jogasaki/executor/common/task.h>
 
 namespace jogasaki {

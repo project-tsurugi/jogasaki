@@ -30,6 +30,7 @@
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/registry.h>
 #include <tateyama/api/endpoint/mock/endpoint_impls.h>
+#include <tateyama/utils/thread_affinity.h>
 
 #include <jogasaki/api.h>
 #include <jogasaki/utils/command_utils.h>
@@ -37,7 +38,6 @@
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/tables.h>
-#include <jogasaki/utils/core_affinity.h>
 #include <jogasaki/utils/latch.h>
 
 #include "../common/load.h"
@@ -458,10 +458,17 @@ public:
             results.emplace_back(
                 std::async(std::launch::async, [&, i](){
                     if (FLAGS_client_initial_core != -1) {
-                        jogasaki::utils::thread_core_affinity(FLAGS_client_initial_core+i, false);
+                        utils::set_thread_affinity(i,
+                            {
+                                utils::affinity_tag<utils::affinity_kind::core_affinity>,
+                                static_cast<std::size_t>(FLAGS_client_initial_core)
+                            }
+                        );
                     } else {
                         // by default assign the on numa nodes uniformly
-                        jogasaki::utils::thread_core_affinity(i, true);
+                        utils::set_thread_affinity(i, utils::affinity_profile{
+                            utils::affinity_tag<utils::affinity_kind::numa_affinity>
+                        });
                     }
                     result_info ret{};
                     start.count_down_and_wait();

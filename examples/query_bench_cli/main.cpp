@@ -28,10 +28,11 @@
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/common.h>
 #include <jogasaki/utils/random.h>
-#include <jogasaki/utils/core_affinity.h>
 #include <jogasaki/utils/create_tx.h>
 #include "utils.h"
 #include "../common/temporary_folder.h"
+
+#include <tateyama/utils/thread_affinity.h>
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
@@ -48,7 +49,6 @@ DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
-DEFINE_bool(respect_client_core, false, "Try to run worker on the same core as that of client thread");  //NOLINT
 DEFINE_bool(readonly, true, "Specify readonly option when creating transaction");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(simple, false, "use simple query");  //NOLINT
@@ -215,7 +215,6 @@ bool fill_from_flags(
     cfg.thread_pool_size(FLAGS_thread_count);
     cfg.default_partitions(FLAGS_partitions);
     cfg.stealing_enabled(FLAGS_steal);
-    cfg.respect_client_core(FLAGS_respect_client_core);
 
     if (FLAGS_minimum) {
         cfg.thread_pool_size(1);
@@ -285,10 +284,17 @@ static int run(
         results.emplace_back(
             std::async(std::launch::async, [&, i](){
                 if (FLAGS_client_initial_core != -1) {
-                    jogasaki::utils::thread_core_affinity(FLAGS_client_initial_core+i, false);
+                    tateyama::utils::set_thread_affinity(i,
+                        {
+                            tateyama::utils::affinity_tag<tateyama::utils::affinity_kind::core_affinity>,
+                            static_cast<std::size_t>(FLAGS_client_initial_core)
+                        }
+                    );
                 } else {
                     // by default assign the on numa nodes uniformly
-                    jogasaki::utils::thread_core_affinity(i, true);
+                    tateyama::utils::set_thread_affinity(i, tateyama::utils::affinity_profile{
+                        tateyama::utils::affinity_tag<tateyama::utils::affinity_kind::numa_affinity>
+                    });
                 }
                 std::int64_t count = 0;
                 std::size_t result = 0;

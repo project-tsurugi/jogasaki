@@ -19,7 +19,6 @@
 
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
-#include <jogasaki/utils/core_affinity.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
 
@@ -33,9 +32,6 @@ void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     job_context_->index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    if (dc.cfg().respect_client_core()) {
-        jogasaki::utils::thread_core_affinity(job_context_->invoker_thread_cpu_id());
-    }
     dc.init(*graph_);
     dc.process_internal_events();
 }

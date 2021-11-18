@@ -41,10 +41,12 @@ DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 DEFINE_bool(sched_core_affinity, false, "Whether scheduler threads are assigned to cores");  //NOLINT
 DEFINE_int32(sched_initial_core, 0, "initial core number for scheduler threads, that the bunch of cores assignment begins with");  //NOLINT
+DEFINE_int32(sched_numa_node, -1, "the numa node number (0-origin) to run the scheduler task. Specify -1 not to specify");  //NOLINT
 DEFINE_bool(sched_assign_numa_nodes_uniformly, false, "assign scheduler threads uniformly on all numa nodes");  //NOLINT
 DEFINE_bool(worker_core_affinity, false, "Whether endpoint worker threads are assigned to cores");  //NOLINT
 DEFINE_int32(worker_initial_core, 0, "initial core number for endpoint worker threads, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(worker_assign_numa_nodes_uniformly, false, "assign endpoint worker threads uniformly on all numa nodes");  //NOLINT
+DEFINE_int32(worker_numa_node, -1, "the numa node number (0-origin) to run the worker task. Specify -1 not to specify");  //NOLINT
 
 namespace tateyama::server {
 
@@ -68,6 +70,7 @@ int backend_main(int argc, char **argv) {
     cfg->core_affinity(FLAGS_sched_core_affinity);
     cfg->initial_core(FLAGS_sched_initial_core);
     cfg->assign_numa_nodes_uniformly(FLAGS_sched_assign_numa_nodes_uniformly);
+    cfg->force_numa_node(FLAGS_sched_numa_node);
 
     auto db = jogasaki::api::create_database(cfg);
     db->start();
@@ -91,9 +94,10 @@ int backend_main(int argc, char **argv) {
     init_context.options_ = std::unordered_map<std::string, std::string>{
         {"dbname", FLAGS_dbname},
         {"threads", std::to_string(FLAGS_threads)},
-        {"initial_core", std::to_string(FLAGS_worker_initial_core)},
+        {"initial_core", std::to_string(static_cast<std::size_t>(FLAGS_worker_initial_core))},
         {"core_affinity", std::to_string(FLAGS_worker_core_affinity ? 1 : 0)},
         {"assign_numa_nodes_uniformly", std::to_string(FLAGS_worker_assign_numa_nodes_uniformly ? 1 : 0)},
+        {"numa_node", std::to_string(static_cast<std::size_t>(FLAGS_worker_numa_node))},
     };
     if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();

@@ -9,18 +9,18 @@
 ## LIKWIDについて
 
 - 比較的新しいCPUの性能分析用ツール(2010年ごろに論文がでている)で、マイクロベンチ、HWカウンタ、スレッドpinningなどのコマンドを提供している
-- Intel VTunes, Linux perf, [Processor Counter Monitor](https://github.com/opcm/pcm)などと共通する機能も多い。特に便利そうな点は、
-  - Marker APIによって、プログラム中の特定の区間のみを指定してHWカウンタを取得することができる。(そのためthreadのcore affinityの設定が重要になる)
+- 機能面ではIntel VTunes, Linux perf, [Processor Counter Monitor](https://github.com/opcm/pcm)と共通する点が多い。
+- 特に便利そうな点
+  - Marker APIによって、プログラム中の特定の区間のみを指定してHWカウンタを取得することができる。(ただしthreadのcore affinityの設定が重要になる)
   - LIKWIDがCPU/Numaトポロジを検出してくれるので、それを使った論理CPU IDによって簡単にCPU affinityの指定ができる
-- GUIはないがプログラマブルにプロファイリングをするのに便利
+    - pcmなどはpinningを自分で行う必要があり細かい部分を取得するのが難しそうだった
+- GUIはない
 
 ## LINKWIDの提供するコマンド
 
 ### likwid-topology 
 
-CPUトポロジを取得することができる。
-likwidがどのように物理コアを認識し、ソケットやNUMAなどのドメインにマッピングするかを調べる事ができる。
-この情報がcore affinityを指定するときに必要になる。
+CPUトポロジを取得することができる。likwidがどのように物理コアを認識し、ソケットやNUMAなどのドメインにマッピングするかを調べる事ができる。この情報がcore affinityを指定するときに必要になる。
 
 ```
 $ likwid-topology 
@@ -81,13 +81,13 @@ Total memory:		31664.3 MB
 
 ### likwid-pin
 
-core affinityを設定することができる。tasksetコマンドのようにコマンド起動時に使う事もできる。ここでのaffinity指定方法はlikwid-prfctrでも共通で使用される。
+core affinityを設定することができる。tasksetコマンドのようにコマンドラッパーとして起動時に使う事もできる。likwid-prfctrと共通のaffinity指定方法が使用される。
 
 #### 用語
 
 - 物理CPU ID
-  hardware threadを1つの物理CPUと認識する
-  cli03の環境では0-223の通し番号が付いていた
+  OSから認識されている物理CPUの番号(lscpuなどで得られるものと同じ)
+  hardware threadを1つの物理CPUと認識するらしく、cli03(28 cores 4 sockets 2 SMTs)の環境では0-223の通し番号が付いていた
 
 - 論理CPU ID
   下記affinity domainを使用してLIKWID独自の記法でCPUを指定するためのID。例えばS0:L:3 (0番ソケットの3番目の論理CPU)といった形式。
@@ -135,6 +135,73 @@ core affinityを設定することができる。tasksetコマンドのように
 
 ### likwid-perfctr
 
+core affinityを設定してコマンドを実行し、そのパフォーマンスカウンタを取得することができる。
+パフォーマンスカウンタのグループが規定されていて、そのグループを指定することで
+
+- `command`を物理コア3と4で実行し、コア3上のカウンタを取得する。メモリに関するパフォーマンスカウンタのグループ`MEM`を用いる。
+  > likwid-perfctr -C 3,4 -c 3 -g MEM `<command>`
+
+実行例
+```
+$ likwid-perfctr -C 3 -c 3 -m -g MEM examples/service_benchmark/cli --load_from db/default/w1 --thread_count 1 --query --duration 10000  --assign_numa_nodes_uniformly=false --initial_core=30 --client_initial_core=3 --core_affinity=true 
+--------------------------------------------------------------------------------
+CPU name:	Intel(R) Xeon(R) Platinum 8176 CPU @ 2.10GHz
+CPU type:	Intel Skylake SP processor
+CPU clock:	2.10 GHz
+--------------------------------------------------------------------------------
+I1119 11:16:49.487202 113783 main.cpp:297] configuration single_thread:false thread_pool_size:1 default_partitions:10 core_affinity:true initial_core:30 assign_numa_nodes_uniformly:false force_numa_node:unspecified stealing_enabled:false prepare_benchmark_tables:true prepare_analytics_benchmark_tables:false debug:false mode:query duration:10000 transactions:-1 statements:1000 clients:1 
+I1119 11:16:52.382808 113783 main.cpp:659] statement prepared: handle(94844741197584) SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id
+I1119 11:17:02.436113 113783 main.cpp:126] duration: 10,053 ms
+I1119 11:17:02.436204 113783 main.cpp:127]   transactions took : 10,082,175,067 ns/thread
+I1119 11:17:02.436210 113783 main.cpp:128]   statements took : 9,976,007,577 ns/thread
+I1119 11:17:02.436215 113783 main.cpp:129] executed: 209 transactions, 208,774 statements, 208,774 records
+I1119 11:17:02.436241 113783 main.cpp:133] throughput: 20 transactions/s, 20,927 statements/s, 20,927 records/s
+I1119 11:17:02.436251 113783 main.cpp:137] throughput/thread: 20 transactions/s/thread, 20,927 statements/s/thread, 20,927 records/s/thread
+I1119 11:17:02.436260 113783 main.cpp:141] avg turn-around: transaction 48,100,478 ns, statement 47,783 ns, record 47,783 ns
+--------------------------------------------------------------------------------
+Region service, Group 1: MEM
++-------------------+------------+
+|    Region Info    | HWThread 3 |
++-------------------+------------+
+| RDTSC Runtime [s] |   0.003759 |
+|     call count    |        208 |
++-------------------+------------+
+
++-----------------------+---------+------------+
+|         Event         | Counter | HWThread 3 |
++-----------------------+---------+------------+
+|   INSTR_RETIRED_ANY   |  FIXC0  |    8309829 |
+| CPU_CLK_UNHALTED_CORE |  FIXC1  |   16844640 |
+|  CPU_CLK_UNHALTED_REF |  FIXC2  |    9337104 |
+|      CAS_COUNT_RD     | MBOX0C0 |       7033 |
+|      CAS_COUNT_WR     | MBOX0C1 |      11958 |
+|      CAS_COUNT_RD     | MBOX1C0 |       7521 |
+|      CAS_COUNT_WR     | MBOX1C1 |      13627 |
+|      CAS_COUNT_RD     | MBOX2C0 |          0 |
+|      CAS_COUNT_WR     | MBOX2C1 |          0 |
+|      CAS_COUNT_RD     | MBOX3C0 |       4012 |
+|      CAS_COUNT_WR     | MBOX3C1 |       7506 |
+|      CAS_COUNT_RD     | MBOX4C0 |       4723 |
+|      CAS_COUNT_WR     | MBOX4C1 |      11127 |
+|      CAS_COUNT_RD     | MBOX5C0 |          0 |
+|      CAS_COUNT_WR     | MBOX5C1 |          0 |
++-----------------------+---------+------------+
+
++-----------------------------------+------------+
+|               Metric              | HWThread 3 |
++-----------------------------------+------------+
+|        Runtime (RDTSC) [s]        |     0.0038 |
+|        Runtime unhalted [s]       |     0.0080 |
+|            Clock [MHz]            |  3779.5496 |
+|                CPI                |     2.0271 |
+|  Memory read bandwidth [MBytes/s] |   396.5202 |
+|  Memory read data volume [GBytes] |     0.0015 |
+| Memory write bandwidth [MBytes/s] |   752.8589 |
+| Memory write data volume [GBytes] |     0.0028 |
+|    Memory bandwidth [MBytes/s]    |  1149.3790 |
+|    Memory data volume [GBytes]    |     0.0043 |
++-----------------------------------+------------+
+```
 
 ## その他・使用上の注意
 
@@ -198,6 +265,16 @@ PC: @     0x7fa740869fb7 gsignal
   |     call count    |         78 |
   +-------------------+------------+
   ```
+
+- PMC3が使えないという警告がでて、いくつかとれない数字があった。メッセージにあるwrmsrコマンドを実行したが効果はなかった。BIOSレベルでfeatureを停止する必要があるのかもしれない。
+```
+Warning: Counter PMC3 cannot be used if Restricted Transactional Memory feature is enabled and
+         bit 0 of register TSX_FORCE_ABORT is 0. As workaround write 0x1 to TSX_FORCE_ABORT:
+         sudo wrmsr 0x10f 0x1
+```
+
+- LIKWIDのcore affinityの指定(likwid-perfctr -Cオプション)は便利だが、tsubakuro/jogasaki連携のようにワーカースレッドとスケジューラースレッドが分かれていて、それぞれ別コアにアサインして測定したいような場合は自前でcore affinityを設定する必要があった
+  - その場合でもlikwid-perfctr -cオプションで計測範囲のCPUが指定できるのは便利
 
 
 

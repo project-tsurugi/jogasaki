@@ -300,15 +300,16 @@ void add_test_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-        provider.add_index({
-            t,
-            "qa_t1_i4_idx",
-            {
-                t->columns()[1],
-            },
-            {},
-            secondary_index_features
-        });
+// temporarily disabling the secondary index TODO
+//        provider.add_index({
+//            t,
+//            "qa_t1_i4_idx",
+//            {
+//                t->columns()[1],
+//            },
+//            {},
+//            secondary_index_features
+//        });
     }
 
 //    create table qa_t2 (

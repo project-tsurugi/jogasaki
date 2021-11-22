@@ -17,6 +17,7 @@
 
 // common things to all translation unit
 
+<<<<<<< Updated upstream
 #ifdef TRACY_ENABLE
 #include "../third_party/tracy/Tracy.hpp"
 #include "../third_party/tracy/common/TracySystem.hpp"
@@ -27,3 +28,20 @@
 #define trace_scope
 #define trace_scope_name(name)
 #endif
+=======
+#include <tateyama/common.h>
+
+#ifdef LIKWID_PERFMON
+#include "likwid-marker.h"
+#else
+#define LIKWID_MARKER_INIT
+#define LIKWID_MARKER_THREADINIT
+#define LIKWID_MARKER_SWITCH
+#define LIKWID_MARKER_REGISTER(regionTag)
+#define LIKWID_MARKER_START(regionTag)
+#define LIKWID_MARKER_STOP(regionTag)
+#define LIKWID_MARKER_CLOSE
+#define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
+#endif
+
+>>>>>>> Stashed changes

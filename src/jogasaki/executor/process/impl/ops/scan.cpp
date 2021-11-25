@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/common.h>
 #include "operator_base.h"
 #include "context_helper.h"
 #include "scan_context.h"
@@ -132,6 +133,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
             break;
         }
         if (downstream_) {
+            trace_scope_name("scan_downstream");
             if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
                 ctx.abort();
                 finish(context);
@@ -173,6 +175,7 @@ void scan::finish(abstract::task_context* context) {
 }
 
 void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
+    trace_scope_name("scan::open");
     auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
     auto be = ctx.scan_info_->begin_endpoint();
     auto ee = ctx.scan_info_->end_endpoint();
@@ -210,6 +213,7 @@ void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-
 }
 
 void scan::close(scan_context& ctx) {
+    trace_scope_name("scan::close");
     ctx.it_.reset();
 }
 

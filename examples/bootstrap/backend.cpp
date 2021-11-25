@@ -18,9 +18,6 @@
 #include <exception>
 #include <iostream>
 #include <chrono>
-#include <mutex>
-#include <condition_variable>
-#include <atomic>
 #include <signal.h>
 
 #include <gflags/gflags.h>
@@ -44,10 +41,6 @@ DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 
 namespace tateyama::server {
-
-std::mutex m_terminate{};
-std::condition_variable c_terminate{};
-std::atomic_bool b_terminate{};
 
 // should be in sync one in ipc_provider
 struct ipc_endpoint_context {

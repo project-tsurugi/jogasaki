@@ -121,7 +121,14 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
     status st{};
-    while((st = ctx.it_->next()) == status::ok) {
+    while(true) {
+        {
+            trace_scope_name("scan_next");
+            st = ctx.it_->next();
+        }
+        if(st != status::ok) {
+            break;
+        }
         utils::checkpoint_holder cp{resource};
         std::string_view k{};
         std::string_view v{};
@@ -163,6 +170,7 @@ std::string_view scan::secondary_storage_name() const noexcept {
 }
 
 void scan::finish(abstract::task_context* context) {
+    trace_scope_name("scan::finish");
     if (! context) return;
     context_helper ctx{*context};
     if(auto* p = find_context<scan_context>(index(), ctx.contexts())) {

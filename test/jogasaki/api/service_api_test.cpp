@@ -580,4 +580,13 @@ TEST_F(service_api_test, invalid_request) {
     EXPECT_NE(response_code::success, res->code_);
 }
 
+TEST_F(service_api_test, empty_request) {
+    // error returned as "invalid request code"
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>("");
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->completed());
+    EXPECT_EQ(tateyama::status::ok, st);
+    EXPECT_NE(response_code::success, res->code_);
+}
 }

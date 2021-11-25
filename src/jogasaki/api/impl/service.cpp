@@ -23,6 +23,7 @@
 
 #include <jogasaki/status.h>
 #include <jogasaki/common.h>
+#include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
@@ -82,7 +83,6 @@ void service::command_begin(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     (void)proto_req;
-    DVLOG(1) << "begin";
     jogasaki::api::transaction_handle tx{};
     if (auto st = db_->create_transaction(tx); st == jogasaki::status::ok) {
         details::success<::response::Begin>(*res, tx);
@@ -95,16 +95,14 @@ void service::command_prepare(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    DVLOG(1) << "prepare";
     auto& pp = proto_req.prepare();
     auto& hvs = pp.host_variables();
     auto& sql = pp.sql();
     if(sql.empty()) {
-        VLOG(1) << "missing sql";
+        VLOG(log_error) << "missing sql";
         details::error<::response::Prepare>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
-    DVLOG(1) << sql;
 
     std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
     for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
@@ -124,28 +122,26 @@ void service::command_execute_statement(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    DVLOG(1) << "execute_statement";
     auto& eq = proto_req.execute_statement();
     if(! eq.has_transaction_handle()) {
-        VLOG(1) << "missing transaction_handle";
+        VLOG(log_error) << "missing transaction_handle";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing transaction_handle");
         return;
     }
     auto& sql = eq.sql();
     if(sql.empty()) {
-        VLOG(1) << "missing sql";
+        VLOG(log_error) << "missing sql";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
     jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
-    DVLOG(1) << tx << " " << sql;
     if(! tx) {
         details::error<::response::ResultOnly>(*res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
-        VLOG(1) << "error in db_->create_executable()";
+        VLOG(log_error) << "error in db_->create_executable()";
         details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
         return;
     }
@@ -157,21 +153,19 @@ void service::command_execute_query(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    DVLOG(1) << "execute_query";
     auto& eq = proto_req.execute_query();
     if(! eq.has_transaction_handle()) {
-        VLOG(1) << "missing transaction_handle";
+        VLOG(log_error) << "missing transaction_handle";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing transaction_handle");
         return;
     }
     auto& sql = eq.sql();
     if(sql.empty()) {
-        VLOG(1) << "missing sql";
+        VLOG(log_error) << "missing sql";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
     jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
-    DVLOG(1) << tx << " " << sql;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -189,22 +183,20 @@ void service::command_execute_prepared_statement(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    DVLOG(1) << "execute_prepared_statement";
     auto& pq = proto_req.execute_prepared_statement();
     if(! pq.has_prepared_statement_handle()) {
-        VLOG(1) << "missing prepared_statement_handle";
+        VLOG(log_error) << "missing prepared_statement_handle";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing prepared_statement_handle");
         return;
     }
     auto& ph = pq.prepared_statement_handle();
     if(! pq.has_transaction_handle()) {
-        VLOG(1) << "missing transaction_handle";
+        VLOG(log_error) << "missing transaction_handle";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing transaction_handle");
         return;
     }
     auto sid = ph.handle();
     jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
-    DVLOG(1) << tx << " sid:" << sid;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -219,7 +211,7 @@ void service::command_execute_prepared_statement(
     jogasaki::api::statement_handle handle{sid};
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        VLOG(1) << "error in db_->resolve()";
+        VLOG(log_error) << "error in db_->resolve()";
         details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
         return;
     }
@@ -231,10 +223,9 @@ void service::command_execute_prepared_query(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    DVLOG(1) << "execute_prepared_query";
     auto& pq = proto_req.execute_prepared_query();
     if(! pq.has_prepared_statement_handle()) {
-        VLOG(1) << "missing prepared_statement_handle";
+        VLOG(log_error) << "missing prepared_statement_handle";
         details::error<::response::ResultOnly>(
             *res,
             status::err_invalid_argument,
@@ -244,7 +235,7 @@ void service::command_execute_prepared_query(
     }
     auto& ph = pq.prepared_statement_handle();
     if(! pq.has_transaction_handle()) {
-        VLOG(1) << "missing transaction_handle";
+        VLOG(log_error) << "missing transaction_handle";
         details::error<::response::ResultOnly>(
             *res,
             status::err_invalid_argument,
@@ -254,7 +245,6 @@ void service::command_execute_prepared_query(
     }
     auto sid = ph.handle();
     jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
-    DVLOG(1) << tx << " sid:" << sid;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -271,10 +261,9 @@ void service::command_commit(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    DVLOG(1) << "commit";
     auto& cm = proto_req.commit();
     if(! cm.has_transaction_handle()) {
-        VLOG(1) << "missing transaction_handle";
+        VLOG(log_error) << "missing transaction_handle";
         details::error<::response::ResultOnly>(
             *res,
             status::err_invalid_argument,
@@ -283,7 +272,6 @@ void service::command_commit(
         return;
     }
     jogasaki::api::transaction_handle tx{cm.transaction_handle().handle()};
-    DVLOG(1) << tx;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -295,7 +283,7 @@ void service::command_commit(
     if(auto rc = tx.commit(); rc == jogasaki::status::ok) {
         details::success<::response::ResultOnly>(*res);
     } else {
-        VLOG(1) << "error in transaction_->commit()";
+        VLOG(log_error) << "error in transaction_->commit()";
         details::error<::response::ResultOnly>(*res, rc, "error in transaction_->commit()");
         // currently, commit failure is assumed to abort the transaction anyway.
         // So let's proceed to destroy the transaction.
@@ -308,10 +296,9 @@ void service::command_rollback(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    DVLOG(1) << "rollback";
     auto& rb = proto_req.rollback();
     if(! rb.has_transaction_handle()) {
-        VLOG(1) << "missing transaction_handle";
+        VLOG(log_error) << "missing transaction_handle";
         details::error<::response::ResultOnly>(
             *res,
             status::err_invalid_argument,
@@ -320,7 +307,6 @@ void service::command_rollback(
         return;
     }
     jogasaki::api::transaction_handle tx{rb.transaction_handle().handle()};
-    DVLOG(1) << tx;
     if(! tx) {
         details::error<::response::ResultOnly>(
             *res,
@@ -332,7 +318,7 @@ void service::command_rollback(
     if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
         details::success<::response::ResultOnly>(*res);
     } else {
-        VLOG(1) << "error in transaction_->abort()";
+        VLOG(log_error) << "error in transaction_->abort()";
         details::error<::response::ResultOnly>(*res, rc, "error in transaction_->abort()");
         // currently, we assume this won't happen or the transaction is aborted anyway.
         // So let's proceed to destroy the transaction.
@@ -346,10 +332,9 @@ void service::command_dispose_prepared_statement(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    DVLOG(1) << "dispose_prepared_statement";
     auto& ds = proto_req.dispose_prepared_statement();
     if(! ds.has_prepared_statement_handle()) {
-        VLOG(1) << "missing prepared_statement_handle";
+        VLOG(log_error) << "missing prepared_statement_handle";
         details::error<::response::ResultOnly>(
             *res,
             status::err_invalid_argument,
@@ -362,7 +347,7 @@ void service::command_dispose_prepared_statement(
         st == jogasaki::status::ok) {
         details::success<::response::ResultOnly>(*res);
     } else {
-        VLOG(1) << "error destroying statement";
+        VLOG(log_error) << "error destroying statement";
         details::error<::response::ResultOnly>(*res, st, "error destroying statement");
     }
 }
@@ -371,7 +356,6 @@ void service::command_disconnect(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     (void)proto_req;
-    DVLOG(1) << "disconnect";
     details::success<::response::ResultOnly>(*res);
     res->close_session(); //TODO re-visit when the notion of session is finalized
 }
@@ -385,13 +369,14 @@ tateyama::status service::operator()(
         trace_scope_name("parse request");  //NOLINT
         auto s = req->payload();
         if (!proto_req.ParseFromArray(s.data(), s.size())) {
-            VLOG(1) << "parse error";
+            VLOG(log_error) << "parse error";
             res->code(response_code::io_error);
-            res->body("parse error with request body");
+            std::string msg{"parse error with request body"};
+            VLOG(log_info) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
+            res->body(msg);
             return tateyama::status::ok;
         }
-        DVLOG(1) << "s:" << proto_req.session_handle().handle();
-        DVLOG(1) << "request length:" << req->payload().size();
+        VLOG(log_info) << "request received (len=" << s.size() << "):" << std::endl << proto_req.Utf8DebugString();
     }
 
     switch (proto_req.request_case()) {
@@ -445,9 +430,11 @@ tateyama::status service::operator()(
             break;
         }
         default:
-            VLOG(1) << "invalid error case";
+            std::string msg{"invalid request code"};
+            VLOG(log_error) << msg;
             res->code(response_code::io_error);
-            res->body("invalid request code");
+            VLOG(log_info) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
+            res->body(msg);
             break;
     }
     return tateyama::status::ok;
@@ -532,14 +519,14 @@ void service::execute_query(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(q.has_sql()) {
         if(auto rc = db_->create_executable(q.sql(), e); rc != jogasaki::status::ok) {
-            VLOG(1) << "error in db_->create_executable() : " << rc;
+            VLOG(log_error) << "error in db_->create_executable() : " << rc;
             details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
             return;
         }
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
         if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
-            VLOG(1) << "error in db_->resolve() : " << rc;
+            VLOG(log_error) << "error in db_->resolve() : " << rc;
             details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
             return;
         }
@@ -598,11 +585,13 @@ void details::reply(tateyama::api::server::response& res, ::response::Response& 
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
+        VLOG(log_info) << "respond with body_head (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
         res.body_head(ss.str());
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
+        VLOG(log_info) << "respond with body (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
         res.body(ss.str());
     }
 }

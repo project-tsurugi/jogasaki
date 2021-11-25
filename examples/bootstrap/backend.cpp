@@ -18,8 +18,10 @@
 #include <exception>
 #include <iostream>
 #include <chrono>
-#include <csignal>
-#include <setjmp.h>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <signal.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -43,14 +45,9 @@ DECLARE_int32(load_batch_size);  //NOLINT
 
 namespace tateyama::server {
 
-jmp_buf buf;
-
-void signal_handler([[maybe_unused]]int signal)
-{
-    VLOG(1) << sys_siglist[signal] << " signal received";
-    LOG(INFO) << sys_siglist[signal] << " signal received";
-    longjmp(buf, 1);
-}
+std::mutex m_terminate{};
+std::condition_variable c_terminate{};
+std::atomic_bool b_terminate{};
 
 // should be in sync one in ipc_provider
 struct ipc_endpoint_context {
@@ -86,31 +83,26 @@ int backend_main(int argc, char **argv) {
 
     auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
     env->add_endpoint(endpoint);
-    VLOG(1) << "endpoint service created" << std::endl;
-
-    // singal handler
-    std::signal(SIGINT, signal_handler);
-    if (setjmp(buf) != 0) {
-        endpoint->shutdown();
-        app->shutdown();
-        db->stop();
-        return 0;
-    }
+    VLOG(1) << "endpoint service created";
 
     ipc_endpoint_context init_context{};
     init_context.database_initialize_ = [&]() {
         if (FLAGS_load) {
             // load tpc-c tables
-            VLOG(1) << "TPC-C data load begin" << std::endl;
-            std::cout << "TPC-C data load begin" << std::endl;
+            VLOG(1) << "TPC-C data load begin";
+            if (!VLOG_IS_ON(1)) {
+                LOG(INFO) << "TPC-C data load begin";
+            }
             try {
                 jogasaki::common_cli::load(*db, FLAGS_location);
             } catch (std::exception& e) {
-                std::cerr << "[" << __FILE__ << ":" <<  __LINE__ << "] " << e.what() << std::endl;
+                LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
                 std::abort();
             }
-            VLOG(1) << "TPC-C data load end" << std::endl;
-            std::cout << "TPC-C data load end" << std::endl;
+            VLOG(1) << "TPC-C data load end";
+            if (!VLOG_IS_ON(1)) {
+                LOG(INFO) << "TPC-C data load end";
+            }
         }
     };
 
@@ -119,7 +111,36 @@ int backend_main(int argc, char **argv) {
         {"threads", std::to_string(FLAGS_threads)},
     };
     auto rc = endpoint->initialize(*env, std::addressof(init_context));
-    return rc == status::ok ? 0 : -1;
+
+    // wait for signal to terminate this
+    int signo;
+    sigset_t ss;
+    sigemptyset(&ss);
+    do {
+        if (auto ret = sigaddset(&ss, SIGINT); ret != 0) {
+            LOG(ERROR) << "fail to sigaddset";
+        }
+        if (auto ret = sigprocmask(SIG_BLOCK, &ss, NULL); ret != 0) {
+            LOG(ERROR) << "fail to pthread_sigmask";
+        }
+        if (auto ret = sigwait(&ss, &signo); ret == 0) { // シグナルを待つ
+            switch(signo) {
+            case SIGINT:
+                // termination process
+                LOG(INFO) << "endpoint->shutdown()";
+                endpoint->shutdown();
+                LOG(INFO) << "app->shutdown()";
+                app->shutdown();
+                LOG(INFO) << "db->stop()";
+                db->stop();
+                LOG(INFO) << "exiting";
+                return rc == status::ok ? 0 : -1;
+            }
+        } else {
+            LOG(ERROR) << "fail to sigwait";
+            return -1;
+        }
+    } while(true);
 }
 
 }  // tateyama::server

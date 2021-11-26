@@ -75,6 +75,7 @@ void add_test_tables(storage::configurable_provider& provider) {
         ::yugawara::storage::index_feature::find,
         ::yugawara::storage::index_feature::scan,
     };
+    (void)secondary_index_features;
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
             "T0",

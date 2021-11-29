@@ -117,26 +117,38 @@ void service::command_prepare(
     }
 }
 
+template<class T>
+jogasaki::api::transaction_handle validate_transaction_handle(
+    T msg,
+    tateyama::api::server::response& res
+) {
+    if(! msg.has_transaction_handle()) {
+        VLOG(log_error) << "missing transaction_handle";
+        details::error<::response::ResultOnly>(res, status::err_invalid_argument, "missing transaction_handle");
+        return {};
+    }
+    jogasaki::api::transaction_handle tx{msg.transaction_handle().handle()};
+    if(! tx) {
+        details::error<::response::ResultOnly>(res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
+        return {};
+    }
+    return tx;
+}
+
 void service::command_execute_statement(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_statement();
-    if(! eq.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing transaction_handle");
+    auto tx = validate_transaction_handle(eq, *res);
+    if(! tx) {
         return;
     }
     auto& sql = eq.sql();
     if(sql.empty()) {
         VLOG(log_error) << "missing sql";
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
-        return;
-    }
-    jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
-    if(! tx) {
-        details::error<::response::ResultOnly>(*res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -154,9 +166,8 @@ void service::command_execute_query(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_query();
-    if(! eq.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing transaction_handle");
+    auto tx = validate_transaction_handle(eq, *res);
+    if(! tx) {
         return;
     }
     auto& sql = eq.sql();
@@ -165,17 +176,29 @@ void service::command_execute_query(
         details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
-    jogasaki::api::transaction_handle tx{eq.transaction_handle().handle()};
-    if(! tx) {
-        details::error<::response::ResultOnly>(
-            *res,
-            jogasaki::status::err_invalid_argument,
-            "invalid transaction handle"
-        );
-        return;
-    }
-
     execute_query(res, details::query_info{sql}, tx);
+}
+
+template<class T>
+jogasaki::api::statement_handle validate_statement_handle(
+    T msg,
+    tateyama::api::server::response& res
+) {
+    if(! msg.has_prepared_statement_handle()) {
+        VLOG(log_error) << "missing prepared_statement_handle";
+        details::error<::response::ResultOnly>(res, status::err_invalid_argument, "missing prepared_statement_handle");
+        return {};
+    }
+    jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle()};
+    if (! handle) {
+        details::error<::response::ResultOnly>(
+            res,
+            jogasaki::status::err_invalid_argument,
+            "invalid statement handle"
+        );
+        return {};
+    }
+    return handle;
 }
 
 void service::command_execute_prepared_statement(
@@ -184,31 +207,17 @@ void service::command_execute_prepared_statement(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_statement();
-    if(! pq.has_prepared_statement_handle()) {
-        VLOG(log_error) << "missing prepared_statement_handle";
-        details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing prepared_statement_handle");
-        return;
-    }
-    auto& ph = pq.prepared_statement_handle();
-    if(! pq.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing transaction_handle");
-        return;
-    }
-    auto sid = ph.handle();
-    jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
+    auto tx = validate_transaction_handle(pq, *res);
     if(! tx) {
-        details::error<::response::ResultOnly>(
-            *res,
-            jogasaki::status::err_invalid_argument,
-            "invalid transaction handle"
-        );
+        return;
+    }
+    auto handle = validate_statement_handle(pq, *res);
+    if(! handle) {
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
     set_params(pq.parameters(), params);
 
-    jogasaki::api::statement_handle handle{sid};
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
         VLOG(log_error) << "error in db_->resolve()";
@@ -224,60 +233,25 @@ void service::command_execute_prepared_query(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_query();
-    if(! pq.has_prepared_statement_handle()) {
-        VLOG(log_error) << "missing prepared_statement_handle";
-        details::error<::response::ResultOnly>(
-            *res,
-            status::err_invalid_argument,
-            "missing prepared_statement_handle"
-        );
-        return;
-    }
-    auto& ph = pq.prepared_statement_handle();
-    if(! pq.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(
-            *res,
-            status::err_invalid_argument,
-            "missing transaction_handle"
-        );
-        return;
-    }
-    auto sid = ph.handle();
-    jogasaki::api::transaction_handle tx{pq.transaction_handle().handle()};
+    auto tx = validate_transaction_handle(pq, *res);
     if(! tx) {
-        details::error<::response::ResultOnly>(
-            *res,
-            jogasaki::status::err_invalid_argument,
-            "invalid transaction handle"
-        );
+        return;
+    }
+    auto handle = validate_statement_handle(pq, *res);
+    if(! handle) {
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
     set_params(pq.parameters(), params);
-    execute_query(res, details::query_info{sid, std::shared_ptr{std::move(params)}}, tx);
+    execute_query(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx);
 }
 void service::command_commit(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& cm = proto_req.commit();
-    if(! cm.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(
-            *res,
-            status::err_invalid_argument,
-            "missing transaction_handle"
-        );
-        return;
-    }
-    jogasaki::api::transaction_handle tx{cm.transaction_handle().handle()};
+    auto tx = validate_transaction_handle(cm, *res);
     if(! tx) {
-        details::error<::response::ResultOnly>(
-            *res,
-            jogasaki::status::err_invalid_argument,
-            "invalid transaction handle"
-        );
         return;
     }
     if(auto rc = tx.commit(); rc == jogasaki::status::ok) {
@@ -297,22 +271,8 @@ void service::command_rollback(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& rb = proto_req.rollback();
-    if(! rb.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(
-            *res,
-            status::err_invalid_argument,
-            "missing transaction_handle"
-        );
-        return;
-    }
-    jogasaki::api::transaction_handle tx{rb.transaction_handle().handle()};
+    auto tx = validate_transaction_handle(rb, *res);
     if(! tx) {
-        details::error<::response::ResultOnly>(
-            *res,
-            jogasaki::status::err_invalid_argument,
-            "invalid transaction handle"
-        );
         return;
     }
     if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
@@ -333,17 +293,12 @@ void service::command_dispose_prepared_statement(
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
-    if(! ds.has_prepared_statement_handle()) {
-        VLOG(log_error) << "missing prepared_statement_handle";
-        details::error<::response::ResultOnly>(
-            *res,
-            status::err_invalid_argument,
-            "missing prepared_statement_handle"
-        );
+
+    auto handle = validate_statement_handle(ds, *res);
+    if(! handle) {
         return;
     }
-    auto& sh = ds.prepared_statement_handle();
-    if(auto st = db_->destroy_statement(jogasaki::api::statement_handle{sh.handle()});
+    if(auto st = db_->destroy_statement(handle);
         st == jogasaki::status::ok) {
         details::success<::response::ResultOnly>(*res);
     } else {

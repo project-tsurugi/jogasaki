@@ -46,6 +46,7 @@
 #include <takatori/relation/emit.h>
 #include <takatori/util/downcast.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
@@ -158,7 +159,7 @@ status create_prepared_statement(
     auto result = yugawara::compiler()(c_options, std::move(*ptr));
     if(!result.success()) {
         for (auto&& d : result.diagnostics()) {
-            LOG(ERROR) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
+            VLOG(log_error) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
         }
         return status::err_compiler_error;
     }
@@ -185,7 +186,7 @@ status prepare(
         program = parser.parse_program("compiler_test", ss);
         // TODO analyze for error check
     } catch (shakujo::parser::Parser::Exception &e) {
-        LOG(ERROR) << "parse error:" << e.message() << " (" << e.region() << ")";
+        VLOG(log_error) << "parse error:" << e.message() << " (" << e.region() << ")";
         return status::err_parse_error;
     }
 
@@ -217,7 +218,7 @@ status prepare(
     if (! r) {
         auto errors = r.release<result_kind::diagnostics>();
         for(auto&& e : errors) {
-            LOG(ERROR) << e.code() << " " << e.message();
+            VLOG(log_error) << e.code() << " " << e.message();
         }
         return status::err_translator_error;
     }

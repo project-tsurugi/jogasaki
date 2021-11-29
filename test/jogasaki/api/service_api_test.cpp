@@ -201,6 +201,22 @@ TEST_F(service_api_test, rollback) {
     }
 }
 
+TEST_F(service_api_test, error_on_rollback) {
+    std::uint64_t handle{0};
+    auto s = encode_rollback(handle);
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->completed());
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::application_error, res->code_);
+
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_FALSE(success);
+    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_FALSE(error.message_.empty());
+}
+
 void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
     auto s = encode_dispose_prepare(handle);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
@@ -217,6 +233,23 @@ TEST_F(service_api_test, prepare_and_dispose) {
     std::uint64_t handle{};
     test_prepare(handle, "select * from T1");
     test_dispose_prepare(handle);
+}
+
+TEST_F(service_api_test, error_on_dispose) {
+    std::uint64_t handle{0};
+    auto s = encode_dispose_prepare(handle);
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+    auto st = (*service_)(req, res);
+
+    EXPECT_TRUE(res->completed());
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::application_error, res->code_);
+
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_FALSE(success);
+    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_FALSE(error.message_.empty());
 }
 
 TEST_F(service_api_test, disconnect) {
@@ -588,5 +621,46 @@ TEST_F(service_api_test, empty_request) {
     EXPECT_TRUE(res->completed());
     EXPECT_EQ(tateyama::status::ok, st);
     EXPECT_NE(response_code::success, res->code_);
+}
+
+TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{0};
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::application_error, res->code_);
+
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_FALSE(success);
+        ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_FALSE(error.message_.empty());
+    }
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::application_error, res->code_);
+
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_FALSE(success);
+        ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_FALSE(error.message_.empty());
+    }
+    test_commit(tx_handle);
 }
 }

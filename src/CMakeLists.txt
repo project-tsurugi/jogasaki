@@ -116,7 +116,6 @@ target_include_directories(jogasaki-impl
 target_link_libraries(jogasaki-impl
         INTERFACE ${ENGINE}
         INTERFACE ${tateyama_engine}
-        INTERFACE ${tateyama_mock}
         INTERFACE takatori
         INTERFACE yugawara
         INTERFACE mizugaki

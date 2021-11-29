@@ -54,7 +54,6 @@ endif()
 
 set(tateyama_package "tateyama-${SHARKSFIN_IMPLEMENTATION}")
 set(tateyama_engine "${tateyama_package}-engine")
-set(tateyama_mock "${tateyama_package}-mock")
 set(ENGINE "engine")
 
 if (NOT INSTALL_API_ONLY)

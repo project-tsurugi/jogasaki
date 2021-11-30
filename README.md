@@ -61,7 +61,8 @@ available options:
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
   * `-DENABLE_COVERAGE=ON` - enable code coverage analysis (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DTRACY_ENABLE=ON` - enable tracy profiler for multi-thread debugging. See section below.
-
+  * `-DLIKWID_ENABLE=ON` - enable LIKWID for performance metrics. See section below.
+    
 ### install 
 
 ```sh
@@ -121,6 +122,24 @@ apt install ccache
 
 First time build does not change as it requires building and caching all artifacts into cache directory, e.g. `~/.ccache`. When you recompile, you will see it finishes very fast.
 Checking `ccache -s` shows the cache hit ratio and size of the cached files.
+
+### Profiling with LIKWID
+
+You can use [LIKWID](https://github.com/RRZE-HPC/likwid) to retrieve the performance metrics via hardware counters.
+By setting cmake build option `-DLIKWID_ENABLE=ON`, jogasaki is linked to the LIKWID library and its marker API macros are enabled.
+
+Prerequirement:
+
+1. Install LIKWID in your environment. Typically, this can be done by clone the LIKWID repository, update the config.mk, run `make` and `make install`. You can install to users local directory, but you need `sudo` to run `make install` in order to set SUID for some binary files.
+
+2. include common.h at the top of files that requires profiling. This allow you to call LIKWID marker APIs such as `LIKWID_MARKER_START`
+```
+#include <jogasaki/common.h>
+```
+3. Make sure LIKWID initialize/deinitialize macros `LIKWID_MARKER_INIT`/`LIKWID_MARKER_CLOSE` are called at some point where the code does initialize/deinitialize. 
+4. Put `LIKWID_MARKER_START`/`LIKWID_MARKER_STOP` macros to specify the scope to profile. 
+
+Running jogasaki with likwid-perfctr command will show you the performance counters incremented by the code between`LIKWID_MARKER_START` and `LIKWID_MARKER_STOP`. See LIKWID documentation for details
 
 ## License
 

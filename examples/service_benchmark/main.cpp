@@ -565,6 +565,13 @@ public:
         auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("mock");
         environment_->add_endpoint(endpoint);
         endpoint->initialize(*environment_, {});
+        endpoint->start();
+    }
+
+    void finish_env() {
+        environment_->endpoints()[0]->shutdown();
+        environment_->applications()[0]->shutdown();
+        db_->stop();
     }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
@@ -573,7 +580,7 @@ public:
         setup_env();
         prepare_statement();
         run_workers(cfg);
-        db_->stop();
+        finish_env();
         dir.clean();
         return 0;
     }

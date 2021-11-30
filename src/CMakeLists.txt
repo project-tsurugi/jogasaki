@@ -85,6 +85,12 @@ target_link_libraries(${ENGINE}
         PRIVATE protobuf::libprotobuf
 )
 
+if(LIKWID_ENABLE)
+    target_link_libraries(${ENGINE}
+            PRIVATE likwid::likwid
+            )
+endif()
+
 if(MC_QUEUE)
     target_compile_definitions(${ENGINE} PUBLIC MC_QUEUE)
 endif()
@@ -135,6 +141,12 @@ target_link_libraries(jogasaki-impl
 
 if(MC_QUEUE)
     target_compile_definitions(jogasaki-impl INTERFACE MC_QUEUE)
+endif()
+
+if(LIKWID_ENABLE)
+    target_link_libraries(jogasaki-impl
+            INTERFACE likwid::likwid
+            )
 endif()
 
 if (PERFORMANCE_TOOLS)

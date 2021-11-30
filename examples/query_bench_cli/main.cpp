@@ -35,7 +35,6 @@
 #include <tateyama/utils/thread_affinity.h>
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
-DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
 DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int64(queries, -1, "Number of queries per client thread. Specify -1 to use duration instead.");  //NOLINT
 DEFINE_int32(thread_count, 10, "Number of threads");  //NOLINT
@@ -208,7 +207,6 @@ bool fill_from_flags(
     }
 
     cfg.single_thread(FLAGS_single_thread);
-    cfg.work_sharing(FLAGS_work_sharing);
     cfg.core_affinity(FLAGS_core_affinity);
     cfg.initial_core(FLAGS_initial_core);
     cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);

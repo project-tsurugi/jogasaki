@@ -39,7 +39,6 @@
 #include <jogasaki/utils/create_tx.h>
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
-DEFINE_bool(work_sharing, false, "Whether to use on work sharing scheduler when run parallel");  //NOLINT
 DEFINE_int32(thread_count, 1, "Number of threads");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
@@ -198,7 +197,6 @@ public:
             }
         }
         cfg.single_thread(FLAGS_single_thread);
-        cfg.work_sharing(FLAGS_work_sharing);
         cfg.thread_pool_size(FLAGS_thread_count);
 
         cfg.core_affinity(FLAGS_core_affinity);

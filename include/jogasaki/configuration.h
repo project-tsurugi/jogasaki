@@ -131,16 +131,6 @@ public:
         stealing_enabled_ = arg;
     }
 
-    ///@deprecated do nothing any more. Will be removed.
-    [[nodiscard]] bool work_sharing() const noexcept {
-        return work_sharing_;
-    }
-
-    ///@deprecated do nothing any more. Will be removed.
-    void work_sharing(bool arg) noexcept {
-        work_sharing_ = arg;
-    }
-
     [[nodiscard]] std::string_view db_location() const noexcept {
         return db_location_;
     }
@@ -178,7 +168,6 @@ private:
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
-    bool work_sharing_ = false;
     std::string db_location_{};
 };
 

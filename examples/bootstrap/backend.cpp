@@ -79,31 +79,35 @@ int backend_main(int argc, char **argv) {
     VLOG(1) << "endpoint service created";
 
     ipc_endpoint_context init_context{};
-    init_context.database_initialize_ = [&]() {
-        if (FLAGS_load) {
-            // load tpc-c tables
-            VLOG(1) << "TPC-C data load begin";
-            if (!VLOG_IS_ON(1)) {
-                LOG(INFO) << "TPC-C data load begin";
-            }
-            try {
-                jogasaki::common_cli::load(*db, FLAGS_location);
-            } catch (std::exception& e) {
-                LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
-                std::abort();
-            }
-            VLOG(1) << "TPC-C data load end";
-            if (!VLOG_IS_ON(1)) {
-                LOG(INFO) << "TPC-C data load end";
-            }
-        }
-    };
-
     init_context.options_ = std::unordered_map<std::string, std::string>{
         {"dbname", FLAGS_dbname},
         {"threads", std::to_string(FLAGS_threads)},
     };
-    auto rc = endpoint->initialize(*env, std::addressof(init_context));
+    if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
+        std::abort();
+    }
+
+    if (FLAGS_load) {
+        // load tpc-c tables
+        VLOG(1) << "TPC-C data load begin";
+        if (!VLOG_IS_ON(1)) {
+            LOG(INFO) << "TPC-C data load begin";
+        }
+        try {
+            jogasaki::common_cli::load(*db, FLAGS_location);
+        } catch (std::exception& e) {
+            LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
+            std::abort();
+        }
+        VLOG(1) << "TPC-C data load end";
+        if (!VLOG_IS_ON(1)) {
+            LOG(INFO) << "TPC-C data load end";
+        }
+    }
+
+    if (auto rc = endpoint->start(); rc != status::ok) {
+        std::abort();
+    }
 
     // wait for signal to terminate this
     int signo;
@@ -127,7 +131,7 @@ int backend_main(int argc, char **argv) {
                 LOG(INFO) << "db->stop()";
                 db->stop();
                 LOG(INFO) << "exiting";
-                return rc == status::ok ? 0 : -1;
+                return 0;
             }
         } else {
             LOG(ERROR) << "fail to sigwait";

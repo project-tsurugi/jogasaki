@@ -148,6 +148,10 @@ public:
         return tateyama::status::ok;
     }
 
+    status start() {
+        return tateyama::status::ok;
+    }
+
     status shutdown() {
         return tateyama::status::ok;
     }

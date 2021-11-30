@@ -565,6 +565,7 @@ public:
         auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("mock");
         environment_->add_endpoint(endpoint);
         endpoint->initialize(*environment_, {});
+        endpoint->start();
     }
 
     void finish_env() {

@@ -320,10 +320,10 @@ tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::response> res
 ) {
     ::request::Request proto_req{};
-    static std::int64_t cnt = 0;
-    bool count = false;
-    if (cnt > 0 && cnt % 1000 == 0) {
-        count = true;
+    thread_local std::atomic_size_t cnt = 0;
+    bool enable_performance_counter = false;
+    if (++cnt > 0 && cnt % 1000 == 0) { // measure with performance counter on every 1000 invocations
+        enable_performance_counter = true;
         LIKWID_MARKER_START("service");
     }
     {
@@ -398,10 +398,9 @@ tateyama::status service::operator()(
             res->body(msg);
             break;
     }
-    if (count) {
+    if (enable_performance_counter) {
         LIKWID_MARKER_STOP("service");
     }
-    cnt++;
     return tateyama::status::ok;
 }
 

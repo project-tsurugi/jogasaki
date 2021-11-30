@@ -38,7 +38,7 @@ option(PERFORMANCE_TOOLS "Enable tooling to measure engine performance" OFF)
 option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 option(TRACY_ENABLE "enable tracy profiler" OFF)
 option(INSTALL_API_ONLY "configure cmake build dir. just to install public api files. No build runs. This is used to provide api files to components outside jogasaki" OFF)
-option(LIKWID_ENABLE "enable likwid hw counter profiling" OFF)
+option(LIKWID_ENABLE "enable likwid hardware counter profiling" OFF)
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")

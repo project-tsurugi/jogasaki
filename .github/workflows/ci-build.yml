@@ -34,6 +34,7 @@ jobs:
         name: Install_shirakami
         run: |
           cd third_party/sharksfin/third_party/shirakami
+          rm -rf build
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
@@ -43,6 +44,7 @@ jobs:
         name: Install_sharksfin
         run: |
           cd third_party/sharksfin
+          rm -rf build
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
@@ -52,9 +54,9 @@ jobs:
         name: Install_fpdecimal
         run: |
           cd third_party/mizugaki/third_party/yugawara/third_party/takatori/third_party/fpdecimal
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
@@ -62,9 +64,9 @@ jobs:
         name: Install_takatori
         run: |
           cd third_party/mizugaki/third_party/yugawara/third_party/takatori
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
@@ -72,9 +74,8 @@ jobs:
         name: Install_hopscotch-map
         run: |
           cd third_party/mizugaki/third_party/hopscotch-map
+          rm -rf ../../build-hopscotch-map
           mkdir -p ../../build-hopscotch-map
-          cd ../../build-hopscotch-map
-          rm -f CMakeCache.txt
           cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
           cmake --build . --target install -- -j
 
@@ -82,9 +83,9 @@ jobs:
         name: Install_yugawara
         run: |
           cd third_party/mizugaki/third_party/yugawara
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
@@ -92,9 +93,9 @@ jobs:
         name: Install_shakujo
         run: |
           cd third_party/mizugaki/third_party/shakujo
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
@@ -102,9 +103,9 @@ jobs:
         name: Install_mizugaki
         run: |
           cd third_party/mizugaki
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
@@ -112,9 +113,9 @@ jobs:
         name: Install_performance_tools
         run: |
           cd third_party/performance-tools
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
@@ -122,9 +123,9 @@ jobs:
         name: Install_moodycamel_concurrentqueue
         run: |
           cd third_party/concurrentqueue
+          rm -rf build_debug
           mkdir -p build_debug
           cd build_debug
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first
 
@@ -132,9 +133,9 @@ jobs:
         name: Install_tateyama_memory
         run: |
           cd third_party/tateyama
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
@@ -142,9 +143,9 @@ jobs:
         name: Install_tateyama_shirakami
         run: |
           cd third_party/tateyama
+          rm -rf build
           mkdir -p build
           cd build
-          rm -f CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 

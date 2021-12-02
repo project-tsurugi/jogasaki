@@ -281,6 +281,9 @@ public:
                 case 'v':
                     register_variables(args);
                     break;
+                case 'w':
+                    wait_for(args);
+                    break;
                 case 'h':
                 default:
                     print_usage();
@@ -398,6 +401,7 @@ private:
             "  q <query text or number> : issue query " << std::endl <<
             "  s <statement text or number> : issue statement " << std::endl <<
             "  v [<name>:<type>] : show or register host variables" << std::endl <<
+            "  w [<duration millisecond>] : wait for the given duration(ms)" << std::endl <<
             "";
     }
     bool begin_tx(bool for_autocommit = false) {
@@ -569,6 +573,22 @@ private:
         }
         return ret;
     }
+
+    bool wait_for(std::vector<std::string_view> const& args) {
+        std::size_t dur_ms{};
+        if (! args.empty() && ! args[0].empty()) {
+            std::string text{};
+            std::int32_t idx{};
+            if (! fill_text_or_index(args[0], text, idx)) {
+                std::cerr << "parsing variable failed : " << args[0] << std::endl;
+                return false;
+            }
+            dur_ms = idx;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{dur_ms});
+        return true;
+    }
+
     bool register_variables(std::vector<std::string_view> const& args) {
         if (args.empty()) {
             std::cout << "list host variables" << std::endl;
@@ -692,21 +712,19 @@ private:
         return true;
     }
 
-    bool fill_sql_or_index(std::string_view arg, std::string& sql, std::int32_t& idx) {
+    // return true if numeric index is extracted, otherwise text is filled
+    bool fill_text_or_index(std::string_view arg, std::string& text, std::int32_t& idx) {
         auto b = arg.data();
         char* e{};
-        sql.clear();
+        text.clear();
         idx = std::strtol(b, &e, 10);
+        bool ret = true;
         if (b == e || errno == ERANGE) {
-            sql = arg;
+            ret = false;
+            text = arg;
             idx = -1;
-        } else {
-            if (idx < 0 || static_cast<std::size_t>(idx) >= stmt_handles_.size()) {
-                std::cerr << "statement index (" << idx << ") is out of range" << std::endl;
-                return false;
-            }
         }
-        return true;
+        return ret;
     }
 
     void reset_write_buffer() {
@@ -735,9 +753,12 @@ private:
         }
         std::string sql{};
         std::int32_t idx{};
-        if(! fill_sql_or_index(args[0], sql, idx)) {
+        if (fill_text_or_index(args[0], sql, idx) &&
+            (idx < 0 || static_cast<std::size_t>(idx) >= stmt_handles_.size())) {
+            std::cerr << "statement index (" << idx << ") is out of range" << std::endl;
             return false;
         }
+
         args.erase(args.begin());
         std::vector<jogasaki::utils::parameter> parameters{};
         if(! parse_parameters(idx, sql, args, parameters)) {

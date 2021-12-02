@@ -1,0 +1,14 @@
+b
+s "insert into qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (2, 20, 200, 22, 222, '22222222222222222222222222222222222')"
+c
+b
+s "insert into hogehoge (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (1, 10, 100, 11, 111, '11111111111111111111111111111111111')"
+a
+p "delete from qa_t1"
+b
+s 0
+c
+w 200
+b
+s "insert into qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (2, 20, 200, 22, 222, '22222222222222222222222222222222222')"
+c

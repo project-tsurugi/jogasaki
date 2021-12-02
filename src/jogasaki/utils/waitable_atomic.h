@@ -80,7 +80,7 @@ public:
     }
 
     bool compare_exchange_weak(T& expected, T desired) noexcept {
-        auto ret = origin_.compare_exchange_weak(expected, desired);
+        return origin_.compare_exchange_weak(expected, desired);
     }
 
     bool compare_exchange_strong(T& expected, T desired) noexcept {

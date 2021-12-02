@@ -59,6 +59,7 @@ set(ENGINE "engine")
 
 if (NOT INSTALL_API_ONLY)
 find_package(${tateyama_package} REQUIRED)
+find_package(ogawayama REQUIRED)
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
 find_package(mizugaki REQUIRED)

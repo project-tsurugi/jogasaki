@@ -76,6 +76,7 @@ jobs:
           cd third_party/mizugaki/third_party/hopscotch-map
           rm -rf ../../build-hopscotch-map
           mkdir -p ../../build-hopscotch-map
+          cd ../../build-hopscotch-map
           cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
           cmake --build . --target install -- -j
 

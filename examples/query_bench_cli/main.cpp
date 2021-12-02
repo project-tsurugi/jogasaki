@@ -24,6 +24,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/api.h>
+#include <jogasaki/logging.h>
 #include <jogasaki/api/environment.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/common.h>
@@ -179,7 +180,7 @@ static bool query(
         auto it = rs->iterator();
         while(it->has_next()) {
             auto* record = it->next();
-            DVLOG(1) << *record;
+            DVLOG(log_debug) << *record;
             (void)record;
             result += record->get_int8(0);
         }

@@ -15,6 +15,7 @@
  */
 #include "task.h"
 
+#include <jogasaki/logging.h>
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
 #include <jogasaki/callback.h>
@@ -34,7 +35,7 @@ task::task(
 {}
 
 model::task_result task::operator()() {
-    VLOG(1) << *this << " process::task executed.";
+    VLOG(log_debug) << *this << " process::task executed.";
     if(auto&& cb = step()->did_start_task(); cb) {
         callback_arg arg{ id() };
         (*cb)(&arg);
@@ -43,10 +44,10 @@ model::task_result task::operator()() {
     auto status = executor_->run();
     switch (status) {
         case abstract::status::completed:
-            VLOG(1) << *this << " process::task completed.";
+            VLOG(log_debug) << *this << " process::task completed.";
             break;
         case abstract::status::completed_with_errors:
-            LOG(WARNING) << *this << " task completed with errors";
+            VLOG(log_warning) << *this << " task completed with errors";
             break;
         case abstract::status::to_sleep:
         case abstract::status::to_yield:

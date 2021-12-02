@@ -86,7 +86,7 @@ public:
             std::unique_ptr<data::iterable_record_store>& store) {
 
         while(reader->next_member()) {
-            DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
+            DVLOG(log_trace) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
             ++record_counter;
             total_val_ += reader->get_member().get_value<double>(value_offset_);
 
@@ -109,7 +109,7 @@ public:
             ++keys_right_only_;
             auto it = r_store_->begin();
             auto end = r_store_->end();
-            DVLOG(2) << *this << " key : " << read_key(r_key_, *r_meta_);
+            DVLOG(log_trace) << *this << " key : " << read_key(r_key_, *r_meta_);
             while(it != end) {
                 consumer(read_key(r_key_, *r_meta_), -1.0, (*it).get_value<double>(r_value_offset));
                 ++it;
@@ -119,7 +119,7 @@ public:
             ++keys_left_only_;
             auto it = l_store_->begin();
             auto end = l_store_->end();
-            DVLOG(2) << *this << " key : " << read_key(l_key_, *l_meta_);
+            DVLOG(log_trace) << *this << " key : " << read_key(l_key_, *l_meta_);
             while(it != end) {
                 consumer(read_key(l_key_, *l_meta_) ,(*it).get_value<double>(l_value_offset), -1.0);
                 ++it;
@@ -130,7 +130,7 @@ public:
             auto l_it = l_store_->begin();
             auto l_end = l_store_->end();
             auto r_end = r_store_->end();
-            DVLOG(2) << *this << " key : " << read_key(l_key_, *l_meta_);
+            DVLOG(log_trace) << *this << " key : " << read_key(l_key_, *l_meta_);
             while(l_it != l_end) {
                 auto r_it = r_store_->begin();
                 while(r_it != r_end) {
@@ -166,7 +166,7 @@ public:
     }
 
     void execute() override {
-        VLOG(1) << *this << " consumer_task executed. count: " << count_;
+        VLOG(log_debug) << *this << " consumer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_consume, id());
         key_offset_ = l_meta_->key().value_offset(0);
         value_offset_ = l_meta_->value().value_offset(0);
@@ -261,7 +261,7 @@ public:
                     break;
                 case state::filled: {
                     consume([&](std::int64_t key, double x, double y) {
-                        DVLOG(2) << *this << " key: " << key << " value1 : " << x << " value2 : " << y;
+                        DVLOG(log_trace) << *this << " key: " << key << " value1 : " << x << " value2 : " << y;
                         total_key_ += key;
                         total_val_ += x + y;
                     });

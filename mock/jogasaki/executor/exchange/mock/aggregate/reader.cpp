@@ -17,6 +17,8 @@
 
 #include <glog/logging.h>
 
+#include <jogasaki/logging.h>
+
 namespace jogasaki::executor::exchange::mock::aggregate {
 
 reader::reader(
@@ -52,7 +54,7 @@ reader::reader(
     while(iterated_table_ != tables_.end() && iterated_table_->empty()) {
         ++iterated_table_;
     }
-    VLOG(1) << "reader initialized to merge " << count << " hash tables";
+    VLOG(log_debug) << "reader initialized to merge " << count << " hash tables";
 }
 
 bool reader::next_group() {

@@ -23,6 +23,7 @@
 #include <takatori/util/enum_tag.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/model/graph.h>
 #include <jogasaki/event.h>
 #include <jogasaki/internal_event.h>
@@ -50,7 +51,7 @@ using enum_tag_t = takatori::util::enum_tag_t<Kind>;
 void dag_controller::impl::operator()(enum_tag_t<event_kind::providing>, event& e) {
     std::lock_guard guard{mutex_};
     if (auto v = graph_->find_step(e.target())) {
-        DVLOG(1) << *v << " got notified upstream started providing";
+        DVLOG(log_debug) << *v << " got notified upstream started providing";
         if (e.source_port_kind() == port_kind::sub) {
             // start prepare task for the providing port
             start_pretask(*v, e.source_port_index());        // no-op if task already running for the port
@@ -66,7 +67,7 @@ void dag_controller::impl::operator()(enum_tag_t<event_kind::providing>, event& 
 
 void dag_controller::impl::operator()(enum_tag_t<event_kind::task_completed>, event& e) {
     std::lock_guard guard{mutex_};
-    DVLOG(1) << "task[id=" << e.task() << "] completed";
+    DVLOG(log_debug) << "task[id=" << e.task() << "] completed";
     if (auto v = graph_->find_step(e.target())) {
         auto& tasks = steps_[v->id()];
         auto k = tasks.task_state(e.task(), task_state_kind::completed);
@@ -300,7 +301,7 @@ void dag_controller::impl::step_state(step const& v, step_state_kind new_state) 
     if (current == new_state) {
         return;
     }
-    DVLOG(1) <<
+    DVLOG(log_debug) <<
         v <<
         " state " <<
         to_string_view(current) <<

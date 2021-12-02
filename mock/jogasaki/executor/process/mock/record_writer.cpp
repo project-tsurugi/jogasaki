@@ -15,6 +15,7 @@
  */
 #include "record_writer.h"
 
+#include <jogasaki/logging.h>
 #include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process::mock {
@@ -40,10 +41,10 @@ bool basic_record_writer::write(accessor::record_ref rec) {
     record_type r{rec, meta_, resource_.get()};
     if (capacity_ == npos || records_.size() < capacity_) {
         auto& x = records_.emplace_back(r);
-        DVLOG(2) << x;
+        DVLOG(log_trace) << x;
     } else {
         records_[pos_ % capacity_] = r;
-        DVLOG(2) << records_[pos_ % capacity_];
+        DVLOG(log_trace) << records_[pos_ % capacity_];
         ++pos_;
     }
     ++write_count_;

@@ -22,8 +22,8 @@
 #include <takatori/util/fail.h>
 #include <yugawara/storage/configurable_provider.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
-
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/field_types.h>
@@ -193,7 +193,7 @@ inline void populate_storage_data(
             if (auto res = tx->commit(); res != status::ok) {
                 fail();
             }
-            VLOG(2) << "committed after " << i << "-th record";
+            VLOG(log_trace) << "committed after " << i << "-th record";
             tx.reset();
         }
     }
@@ -315,7 +315,7 @@ inline void load_storage_data(
             if (auto res = tx->commit(); res != status::ok) {
                 fail();
             }
-            VLOG(2) << "committed after " << i << "-th record";
+            VLOG(log_trace) << "committed after " << i << "-th record";
             tx.reset();
         }
         ++record_count;

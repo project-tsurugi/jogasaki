@@ -17,6 +17,7 @@
 
 #include <takatori/util/fail.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <tateyama/api/task_scheduler/context.h>
@@ -27,7 +28,7 @@ namespace jogasaki::scheduler {
 using takatori::util::fail;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
-    DVLOG(1) << *this << " bootstrap task executed.";
+    DVLOG(log_trace) << *this << " bootstrap task executed.";
     trace_scope_name("bootstrap");  //NOLINT
     job_context_->index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
@@ -37,7 +38,7 @@ void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
 }
 
 void flat_task::dag_schedule() {
-    DVLOG(1) << *this << " dag scheduling task executed.";
+    DVLOG(log_trace) << *this << " dag scheduling task executed.";
     trace_scope_name("dag_schedule");  //NOLINT
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
@@ -45,10 +46,10 @@ void flat_task::dag_schedule() {
 }
 
 bool flat_task::teardown() {
-    DVLOG(1) << *this << " teardown task executed.";
+    DVLOG(log_trace) << *this << " teardown task executed.";
     trace_scope_name("teardown");  //NOLINT
     if (job_context_->task_count() > 1) {
-        DVLOG(1) << *this << " other tasks remain and teardown is rescheduled.";
+        DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
         auto& ts = job_context_->dag_scheduler()->get_task_scheduler();
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
         return true;

@@ -45,11 +45,11 @@ public:
 
     void consume_record(executor::group_reader* reader) {
         while(reader->next_group()) {
-            DVLOG(2) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset_);
+            DVLOG(log_trace) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset_);
             total_key_ += reader->get_group().get_value<std::int64_t>(key_offset_);
             ++keys_;
             while(reader->next_member()) {
-                DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
+                DVLOG(log_trace) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
                 ++records_;
                 total_val_ += reader->get_member().get_value<double>(value_offset_);
             }
@@ -74,12 +74,12 @@ public:
             total_val_ += value_ref.get_value<double>(value_offset_);
             ++keys_;
             ++records_;
-            DVLOG(2) << *this << " key : " << key_ref.get_value<std::int64_t>(key_offset_);
-            DVLOG(2) << *this << "   value : " << value_ref.get_value<double>(value_offset_);
+            DVLOG(log_trace) << *this << " key : " << key_ref.get_value<std::int64_t>(key_offset_);
+            DVLOG(log_trace) << *this << "   value : " << value_ref.get_value<double>(value_offset_);
         }
     }
     void execute() override {
-        VLOG(1) << *this << " consumer_task executed. count: " << count_;
+        VLOG(log_debug) << *this << " consumer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_consume, id());
         auto* reader = reader_.reader<executor::group_reader>();
         key_offset_ = meta_->key().value_offset(0);

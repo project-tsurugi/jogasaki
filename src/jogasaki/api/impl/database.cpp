@@ -22,6 +22,7 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/statement_handle.h>
@@ -168,7 +169,7 @@ status database::prepare_common(
     ctx->aggregate_provider(aggregate_functions_);
     ctx->variable_provider(std::move(provider));
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
-        LOG(ERROR) << "compilation failed.";
+        VLOG(log_error) << "compilation failed.";
         return rc;
     }
     statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
@@ -231,7 +232,7 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
 
 status database::do_create_transaction(transaction_handle& handle, bool readonly) {
     if (! kvs_db_) {
-        LOG(ERROR) << "database not started";
+        VLOG(log_error) << "database not started";
         return status::err_invalid_state;
     }
     {
@@ -275,7 +276,7 @@ status database::resolve_common(
     ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
-        LOG(ERROR) << "compilation failed.";
+        VLOG(log_error) << "compilation failed.";
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
@@ -293,7 +294,7 @@ status database::destroy_statement(
     if (prepared_statements_.find(acc, prepared)) {
         prepared_statements_.erase(acc);
     } else {
-        LOG(WARNING) << "destroy_statement for invalid handle";
+        VLOG(log_warning) << "destroy_statement for invalid handle";
         return status::not_found;
     }
     return status::ok;
@@ -306,7 +307,7 @@ status database::destroy_transaction(
     if (transactions_.find(acc, handle)) {
         transactions_.erase(acc);
     } else {
-        LOG(WARNING) << "destroy_statement for invalid handle";
+        VLOG(log_warning) << "destroy_statement for invalid handle";
         return status::not_found;
     }
     return status::ok;
@@ -340,13 +341,13 @@ status database::do_create_table(std::shared_ptr<yugawara::storage::table> table
     BOOST_ASSERT(table != nullptr);  //NOLINT
     std::string name{table->simple_name()};
     if (! kvs_db_) {
-        LOG(ERROR) << "db not started";
+        VLOG(log_error) << "db not started";
         return status::err_invalid_state;
     }
     try {
         tables_->add_table(std::move(table));
     } catch(std::invalid_argument& e) {
-        LOG(ERROR) << "table " << name << " already exists";
+        VLOG(log_error) << "table " << name << " already exists";
         return status::err_already_exists;
     }
     return status::ok;
@@ -376,13 +377,13 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     BOOST_ASSERT(index != nullptr);  //NOLINT
     std::string name{index->simple_name()};
     if (! kvs_db_) {
-        LOG(ERROR) << "db not started";
+        VLOG(log_error) << "db not started";
         return status::err_invalid_state;
     }
     try {
         tables_->add_index(std::move(index));
     } catch(std::invalid_argument& e) {
-        LOG(ERROR) << "index " << name << " already exists";
+        VLOG(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
     }
     kvs_db_->create_storage(name); // Just to ensure existence of the storage. No need to handle return value.
@@ -406,11 +407,11 @@ status database::do_drop_index(std::string_view name, std::string_view schema) {
         // try to delete stroage on kvs.
         auto stg = kvs_db_->get_storage(name);
         if (! stg) {
-            LOG(INFO) << "kvs storage " << name << " not found.";
+            VLOG(log_info) << "kvs storage " << name << " not found.";
             return status::ok;
         }
         if(auto res = stg->delete_storage(); res != status::ok) {
-            LOG(ERROR) << res << " error on deleting storage " << name;
+            VLOG(log_error) << res << " error on deleting storage " << name;
         }
         return status::ok;
     }
@@ -421,20 +422,20 @@ status database::do_create_sequence(std::shared_ptr<yugawara::storage::sequence>
     (void)schema;
     BOOST_ASSERT(sequence != nullptr);  //NOLINT
     if (auto id = sequence->definition_id(); !id) {
-        LOG(ERROR) << "The sequence definition id is not specified for sequence " <<
+        VLOG(log_error) << "The sequence definition id is not specified for sequence " <<
             sequence->simple_name() <<
             ". Specify definition id when creating the sequence.";
         return status::err_invalid_argument;
     }
     std::string name{sequence->simple_name()};
     if (! kvs_db_) {
-        LOG(ERROR) << "db not started";
+        VLOG(log_error) << "db not started";
         return status::err_invalid_state;
     }
     try {
         tables_->add_sequence(std::move(sequence));
     } catch(std::invalid_argument& e) {
-        LOG(ERROR) << "sequence " << name << " already exists";
+        VLOG(log_error) << "sequence " << name << " already exists";
         return status::err_already_exists;
     }
     return status::ok;

@@ -16,6 +16,7 @@
 #include "reader.h"
 
 #include <glog/logging.h>
+#include <jogasaki/logging.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -44,7 +45,7 @@ reader::reader(
             }
         }
     }
-    VLOG(1) << "reader initialized to merge " << queue_.size() << " pointer tables";
+    VLOG(log_debug) << "reader initialized to merge " << queue_.size() << " pointer tables";
 }
 
 void reader::read_and_pop(impl::iterator it, impl::iterator end) { //NOLINT

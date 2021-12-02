@@ -19,6 +19,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
@@ -52,7 +53,7 @@ public:
     {}
 
     void execute() override {
-        VLOG(1) << *this << " producer_task executed. count: " << count_;
+        VLOG(log_debug) << *this << " producer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_prepare, id());
         LOG(INFO) << id() << " start prepare";
         initialize_writer();

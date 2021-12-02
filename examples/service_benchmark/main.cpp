@@ -33,6 +33,7 @@
 #include <tateyama/utils/thread_affinity.h>
 
 #include <jogasaki/api.h>
+#include <jogasaki/logging.h>
 #include <jogasaki/utils/command_utils.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/binary_printer.h>
@@ -406,7 +407,7 @@ public:
                         {"d_id", ::common::DataType::INT8, static_cast<std::int64_t>(id)},
                     },
                     [&](std::string_view data) {
-                        DVLOG(1) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
+                        DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
                         ++result_count;
                         if (verify_query_records_) {
                             //TODO currently support only one single thread at a time writing to the write_buffer_
@@ -425,7 +426,7 @@ public:
                         {"no_w_id", ::common::DataType::INT8, static_cast<std::int64_t>(client+1)},
                     },
                     [&](std::string_view data) {
-                        DVLOG(1) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
+                        DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
                         ++result_count;
                         if (verify_query_records_) {
                             //TODO currently support only one single thread at a time writing to the write_buffer_
@@ -686,11 +687,11 @@ private:
         }
         if (query) {
             auto [name, columns] = jogasaki::utils::decode_execute_query(res->body_head_);
-            DVLOG(1) << "query name : " << name;
+            DVLOG(jogasaki::log_debug) << "query name : " << name;
             query_meta_ = jogasaki::utils::create_record_meta(columns);
             std::size_t ind{};
             for(auto&& f : query_meta_) {
-                DVLOG(1) << "column " << ind << ": " << f;
+                DVLOG(jogasaki::log_debug) << "column " << ind << ": " << f;
                 ++ind;
             }
         }
@@ -710,7 +711,7 @@ private:
                     query_meta_
                 );
                 for(auto&& r : recs) {
-                    DVLOG(1) << "record : " << r;
+                    DVLOG(jogasaki::log_debug) << "record : " << r;
                 }
             }
             return handle_result_only(res->body_);

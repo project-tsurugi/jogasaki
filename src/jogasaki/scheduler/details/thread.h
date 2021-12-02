@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 #include <boost/thread.hpp>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -70,7 +71,7 @@ public:
             total += sz * count;
         }
         ss << "total: " << total;
-        VLOG(2) << ss.str();
+        VLOG(log_trace) << ss.str();
     }
 
 private:

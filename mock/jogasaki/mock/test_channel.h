@@ -20,6 +20,7 @@
 
 #include <takatori/util/downcast.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/result_set.h>
@@ -49,7 +50,7 @@ public:
     status write(char const* data, std::size_t length) override {
         BOOST_ASSERT(size_+length <= data_.max_size());  //NOLINT
         std::memcpy(data_.data()+size_, data, length);
-        VLOG(1) << "write " << utils::binary_printer{data_.data()+size_, length};
+        VLOG(log_debug) << "write " << utils::binary_printer{data_.data()+size_, length};
         size_ += length;
         if (write_latency_ms_ > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds{write_latency_ms_});

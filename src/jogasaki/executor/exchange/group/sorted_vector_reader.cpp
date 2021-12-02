@@ -16,6 +16,7 @@
  */
 #include "sorted_vector_reader.h"
 
+#include <jogasaki/logging.h>
 #include <jogasaki/utils/watch.h>
 
 namespace jogasaki::executor::exchange::group {
@@ -35,7 +36,7 @@ sorted_vector_reader::sorted_vector_reader(
         if (!p) continue;
         count += p->tables_count();
     }
-    VLOG(1) << "reader initialized to merge " << count << " pointer tables";
+    VLOG(log_debug) << "reader initialized to merge " << count << " pointer tables";
 }
 
 inline void sorted_vector_reader::read_and_pop() { //NOLINT
@@ -110,7 +111,7 @@ void sorted_vector_reader::init_aggregated_table() {
                 count += std::distance(t.begin(), t.end());
             }
         }
-        VLOG(1) << "init_aggregated_table: reserving " << count << " pointers";
+        VLOG(log_debug) << "init_aggregated_table: reserving " << count << " pointers";
         aggregated_pointer_table_.reserve(count);
         for(auto& p : partitions_) {
             if (!p) continue;
@@ -137,8 +138,8 @@ void sorted_vector_reader::init_aggregated_table() {
         aggregated_pointer_table_initialized = true;
 
         w.set_point(2);
-        VLOG(1) << "aggregate: total " << w.duration(0, 1) << "ms";
-        VLOG(1) << "sort: total " << w.duration(1, 2) << "ms";
+        VLOG(log_debug) << "aggregate: total " << w.duration(0, 1) << "ms";
+        VLOG(log_debug) << "sort: total " << w.duration(1, 2) << "ms";
     }
 }
 

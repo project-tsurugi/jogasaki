@@ -69,7 +69,7 @@ public:
             std::unique_ptr<data::iterable_record_store>& store) {
 
         while(reader->next_member()) {
-            DVLOG(2) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
+            DVLOG(log_trace) << *this << "   value : " << reader->get_member().get_value<double>(value_offset_);
             ++record_counter;
             total_val_ += reader->get_member().get_value<double>(value_offset_);
 
@@ -80,7 +80,7 @@ public:
     }
 
     void execute() override {
-        VLOG(1) << *this << " consumer_task executed. count: " << count_;
+        VLOG(log_debug) << *this << " consumer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_consume, id());
         key_offset_ = l_meta_->key().value_offset(0);
         value_offset_ = l_meta_->value().value_offset(0);
@@ -103,7 +103,7 @@ public:
             auto l_value_offset = l_meta_->value().value_offset(0);
 
             auto check_total = [&](std::int64_t key, double x, double y) {
-                DVLOG(2) << *this << " key: " << key << " value1 : " << x << " value2 : " << y;
+                DVLOG(log_trace) << *this << " key: " << key << " value1 : " << x << " value2 : " << y;
                 total_key_ += key;
                 total_val_ += x + y;
             };

@@ -34,7 +34,7 @@ target_include_directories(server
 target_link_libraries(server
     PRIVATE api
     PRIVATE ${tateyama_engine}
-    PRIVATE ogawayama-bridge-api
+    PRIVATE ogawayama-bridge
     PRIVATE common
     PRIVATE takatori
     PRIVATE yugawara

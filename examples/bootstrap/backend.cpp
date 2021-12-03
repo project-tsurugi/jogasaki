@@ -87,6 +87,17 @@ int backend_main(int argc, char **argv) {
     if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();
     }
+
+    // ogawayama bridge
+    ogawayama::bridge::api::prepare();
+    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
+    if (bridge) {
+        if (auto rc = bridge->initialize(db.get(), std::addressof(init_context)); rc != status::ok) {
+            std::abort();
+        }
+    }
+
+    // load tpc-c tables when --load is in the command line option
     if (FLAGS_load) {
         // load tpc-c tables
         LOG(INFO) << "TPC-C data load begin";
@@ -104,6 +115,13 @@ int backend_main(int argc, char **argv) {
     }
     LOG(INFO) << "endpoint service listener started";
 
+    if (bridge) {
+        if (auto rc = bridge->start(); rc != status::ok) {
+            std::abort();
+        }
+        LOG(INFO) << "ogawayama bridge listener started";
+    }
+
     // wait for signal to terminate this
     int signo;
     sigset_t ss;
@@ -119,6 +137,10 @@ int backend_main(int argc, char **argv) {
             switch(signo) {
             case SIGINT:
                 // termination process
+                if (bridge) {
+                    LOG(INFO) << "bridge->shutdown()";
+                    bridge->shutdown();
+                }
                 LOG(INFO) << "endpoint->shutdown()";
                 endpoint->shutdown();
                 LOG(INFO) << "app->shutdown()";

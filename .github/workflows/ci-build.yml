@@ -150,6 +150,34 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
+      - id: Install_jogasaki_api
+        name: Install_jogasaki_api
+        run: |
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DINSTALL_API_ONLY=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j
+
+      - id: Install_manager
+        name: Install_manager
+        run: |
+          cd third_party/ogawayama/third_party/manager
+          mkdir -p build
+          cd build
+          rm -f CMakeCache.txt
+          cmake -DCMAKE_BUILD_TYPE=Debug -DDATA_STORAGE=json -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake --build . --target install --clean-first -- -j
+
+      - id: Install_ogawayama
+        name: Install_ogawayama
+        run: |
+          cd third_party/ogawayama
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake --build . --target install --clean-first -- -j
+
       - id: Build_jogasaki_memory
         name: Build_jogasaki_memory
         run: |

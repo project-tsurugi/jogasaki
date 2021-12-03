@@ -49,7 +49,7 @@ struct ipc_endpoint_context {
 };
 
 int backend_main(int argc, char **argv) {
-    google::InitGoogleLogging("tateyama database server");
+    google::InitGoogleLogging("tateyama_database_server");
 
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
@@ -63,7 +63,7 @@ int backend_main(int argc, char **argv) {
     auto db = jogasaki::api::create_database(cfg);
     db->start();
     DBCloser dbcloser{db};
-    VLOG(1) << "database started";
+    LOG(INFO) << "database started";
 
     // service
     auto env = std::make_shared<tateyama::api::environment>();
@@ -76,7 +76,7 @@ int backend_main(int argc, char **argv) {
 
     auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
     env->add_endpoint(endpoint);
-    VLOG(1) << "endpoint service created";
+    LOG(INFO) << "endpoint service created";
 
     ipc_endpoint_context init_context{};
     init_context.options_ = std::unordered_map<std::string, std::string>{
@@ -86,28 +86,22 @@ int backend_main(int argc, char **argv) {
     if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();
     }
-
     if (FLAGS_load) {
         // load tpc-c tables
-        VLOG(1) << "TPC-C data load begin";
-        if (!VLOG_IS_ON(1)) {
-            LOG(INFO) << "TPC-C data load begin";
-        }
+        LOG(INFO) << "TPC-C data load begin";
         try {
             jogasaki::common_cli::load(*db, FLAGS_location);
         } catch (std::exception& e) {
             LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
             std::abort();
         }
-        VLOG(1) << "TPC-C data load end";
-        if (!VLOG_IS_ON(1)) {
-            LOG(INFO) << "TPC-C data load end";
-        }
+        LOG(INFO) << "TPC-C data load end";
     }
 
     if (auto rc = endpoint->start(); rc != status::ok) {
         std::abort();
     }
+    LOG(INFO) << "endpoint service listener started";
 
     // wait for signal to terminate this
     int signo;

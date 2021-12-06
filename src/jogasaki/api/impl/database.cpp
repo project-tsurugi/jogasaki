@@ -73,7 +73,7 @@ status database::start() {
     }
     bool success = true;
     tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
-        success = success && (kvs_db_->create_storage(id) || kvs_db_->get_storage(id));
+        success = success && kvs_db_->get_or_create_storage(id);
     });
     if (! success) {
         LOG(ERROR) << "creating table schema entries failed";

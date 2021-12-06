@@ -19,6 +19,9 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
+#include <takatori/type/int.h>
+#include <yugawara/variable/nullity.h>
+
 #include <jogasaki/test_utils.h>
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/executor/tables.h>
@@ -28,6 +31,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include "api_test_base.h"
 #include <jogasaki/kvs/id.h>
+#include <jogasaki/utils/storage_dump_formatter.h>
 
 namespace jogasaki::testing {
 
@@ -38,6 +42,8 @@ using namespace std::chrono_literals;
 using namespace yugawara;
 using namespace yugawara::storage;
 
+namespace type = takatori::type;
+using nullity = yugawara::variable::nullity;
 /**
  * @brief test database recovery
  */
@@ -64,9 +70,15 @@ public:
     void TearDown() override {
         db_teardown();
     }
+
+    void dump_content() {
+        utils::storage_dump_formatter f{};
+        auto out = std::cerr << f;
+        db_->dump(out, "T0", 100);
+    }
 };
 
-TEST_F(recovery_test, DISABLED_simple) {
+TEST_F(recovery_test, simple) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -81,6 +93,43 @@ TEST_F(recovery_test, DISABLED_simple) {
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(3, result.size());
+    }
+    dump_content();
+}
+
+TEST_F(recovery_test, DISABLED_recover_twice) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    wait_epochs(10);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(3, result.size());
+    }
+    dump_content();
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    wait_epochs(10);
+    dump_content();
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(3, result.size());
+    }
+    wait_epochs(10);
+    dump_content();
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    wait_epochs(10);
+    dump_content();
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
@@ -144,6 +193,73 @@ TEST_F(recovery_test, DISABLED_delete) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(2, result.size());
+    }
+}
+
+TEST_F(recovery_test, DISABLED_recover_create_index) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        auto t = std::make_shared<table>(
+            "TEST",
+            std::initializer_list<column>{
+                column{ "C0", type::int8(), nullity{false} },
+                column{ "C1", type::float8 (), nullity{true} },
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_table(t));
+        auto i = std::make_shared<yugawara::storage::index>(
+            t,
+            "TEST",
+            std::initializer_list<index::key>{
+                t->columns()[0],
+            },
+            std::initializer_list<index::column_ref>{
+                t->columns()[1],
+            },
+            index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_index(i));
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        auto t = std::make_shared<table>(
+            "TEST",
+            std::initializer_list<column>{
+                column{ "C0", type::int8(), nullity{false} },
+                column{ "C1", type::float8 (), nullity{true} },
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_table(t));
+        auto i = std::make_shared<yugawara::storage::index>(
+            t,
+            "TEST",
+            std::initializer_list<index::key>{
+                t->columns()[0],
+            },
+            std::initializer_list<index::column_ref>{
+                t->columns()[1],
+            },
+            index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_index(i));
     }
 }
 }

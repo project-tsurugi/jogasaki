@@ -621,10 +621,7 @@ status compile(
     compiler_context &ctx,
     parameter_set const* parameters
 ) {
-    if(auto rc = impl::create_executable_statement(ctx, parameters); rc != status::ok) {
-        return rc;
-    }
-    return status::ok;
+    return impl::create_executable_statement(ctx, parameters);
 }
 
 status compile(
@@ -635,10 +632,7 @@ status compile(
     if(auto rc = prepare(sql, ctx); rc != status::ok) {
         return rc;
     }
-    if(auto rc = compile(ctx, parameters); rc != status::ok) {
-        return rc;
-    }
-    return status::ok;
+    return impl::create_executable_statement(ctx, parameters);
 }
 
 }

@@ -299,6 +299,21 @@ struct parameter {
     std::any value_{};
 };
 
+void fill_parameters(std::vector<parameter> const& parameters, ::request::ParameterSet* ps) {
+    for(auto&& p : parameters) {
+        auto* c0 = ps->add_parameters();
+        c0->set_name(p.name_);
+        switch (p.type_) {
+            case ::common::DataType::INT4: c0->set_int4_value(std::any_cast<std::int32_t>(p.value_)); break;
+            case ::common::DataType::INT8: c0->set_int8_value(std::any_cast<std::int64_t>(p.value_)); break;
+            case ::common::DataType::FLOAT4: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
+            case ::common::DataType::FLOAT8: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
+            case ::common::DataType::CHARACTER: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
+            default: std::abort();
+        }
+    }
+}
+
 template<class T>
 std::string encode_execute_prepared_statement_or_query(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
     ::request::Request r{};
@@ -314,18 +329,8 @@ std::string encode_execute_prepared_statement_or_query(std::uint64_t tx_handle, 
     stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
 
     auto* params = stmt->mutable_parameters();
-    for(auto&& p : parameters) {
-        auto* c0 = params->add_parameters();
-        c0->set_name(p.name_);
-        switch (p.type_) {
-            case ::common::DataType::INT4: c0->set_int4_value(std::any_cast<std::int32_t>(p.value_)); break;
-            case ::common::DataType::INT8: c0->set_int8_value(std::any_cast<std::int64_t>(p.value_)); break;
-            case ::common::DataType::FLOAT4: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
-            case ::common::DataType::FLOAT8: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
-            case ::common::DataType::CHARACTER: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
-            default: std::abort();
-        }
-    }
+    fill_parameters(parameters, params);
+
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     if constexpr (std::is_same_v<T, ::request::ExecutePreparedQuery>) {
@@ -343,6 +348,35 @@ inline std::string encode_execute_prepared_statement(std::uint64_t tx_handle, st
 }
 inline std::string encode_execute_prepared_query(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
     return encode_execute_prepared_statement_or_query<::request::ExecutePreparedQuery>(tx_handle, stmt_handle, parameters);
+}
+
+std::string encode_explain(std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
+    ::request::Request r{};
+    auto* explain = r.mutable_explain();
+    explain->mutable_prepared_statement_handle()->set_handle(stmt_handle);
+    auto* params = explain->mutable_parameters();
+    fill_parameters(parameters, params);
+
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_explain();
+    return s;
+}
+
+inline std::pair<std::string, error> decode_explain(std::string_view res) {
+    ::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_explain())  {
+        LOG(ERROR) << "**** missing explain **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {{}, {}};
+    }
+    auto& explain = resp.explain();
+    if (explain.has_error()) {
+        auto& er = explain.error();
+        return {{}, {er.status(), er.detail()}};
+    }
+    return {explain.output(), {}};
 }
 
 }

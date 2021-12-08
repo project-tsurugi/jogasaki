@@ -663,4 +663,112 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
     }
     test_commit(tx_handle);
 }
+
+TEST_F(service_api_test, explain_insert) {
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0(C0, C1) values (:c0, :c1)",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    {
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+        };
+        auto s = encode_explain(stmt_handle, parameters);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [result, error] = decode_explain(res->body_);
+        ASSERT_FALSE(result.empty());
+        LOG(INFO) << result;
+    }
+}
+
+TEST_F(service_api_test, explain_query) {
+    std::uint64_t stmt_handle{};
+
+    test_prepare(
+        stmt_handle,
+        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    {
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+        };
+        auto s = encode_explain(stmt_handle, parameters);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [result, error] = decode_explain(res->body_);
+        ASSERT_FALSE(result.empty());
+        LOG(INFO) << result;
+    }
+}
+
+TEST_F(service_api_test, explain_error_invalid_handle) {
+    std::uint64_t stmt_handle{};
+    {
+        auto s = encode_explain(stmt_handle, {});
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_NE(response_code::success, res->code_);
+
+        auto [result, error] = decode_explain(res->body_);
+        ASSERT_TRUE(result.empty());
+        ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_FALSE(error.message_.empty());
+        LOG(INFO) << error.message_;
+    }
+}
+
+// for now, explain output is just the compiled IR and can be successful even with missing parameters.
+// But in the future, explain will probably require them.
+TEST_F(service_api_test, explain_error_missing_parameter) {
+    std::uint64_t stmt_handle{};
+
+    test_prepare(
+        stmt_handle,
+        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    {
+        auto s = encode_explain(stmt_handle, {});
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [result, error] = decode_explain(res->body_);
+        ASSERT_FALSE(result.empty());
+        LOG(INFO) << result;
+    }
+}
 }

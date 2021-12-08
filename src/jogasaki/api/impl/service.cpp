@@ -179,19 +179,19 @@ void service::command_execute_query(
     execute_query(res, details::query_info{sql}, tx);
 }
 
-template<class T>
+template<class Response, class Request>
 jogasaki::api::statement_handle validate_statement_handle(
-    T msg,
+    Request msg,
     tateyama::api::server::response& res
 ) {
     if(! msg.has_prepared_statement_handle()) {
         VLOG(log_error) << "missing prepared_statement_handle";
-        details::error<::response::ResultOnly>(res, status::err_invalid_argument, "missing prepared_statement_handle");
+        details::error<Response>(res, status::err_invalid_argument, "missing prepared_statement_handle");
         return {};
     }
     jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle()};
     if (! handle) {
-        details::error<::response::ResultOnly>(
+        details::error<Response>(
             res,
             jogasaki::status::err_invalid_argument,
             "invalid statement handle"
@@ -211,7 +211,7 @@ void service::command_execute_prepared_statement(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle(pq, *res);
+    auto handle = validate_statement_handle<::response::ResultOnly>(pq, *res);
     if(! handle) {
         return;
     }
@@ -237,7 +237,7 @@ void service::command_execute_prepared_query(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle(pq, *res);
+    auto handle = validate_statement_handle<::response::ResultOnly>(pq, *res);
     if(! handle) {
         return;
     }
@@ -294,7 +294,7 @@ void service::command_dispose_prepared_statement(
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
 
-    auto handle = validate_statement_handle(ds, *res);
+    auto handle = validate_statement_handle<::response::ResultOnly>(ds, *res);
     if(! handle) {
         return;
     }
@@ -313,6 +313,34 @@ void service::command_disconnect(
     (void)proto_req;
     details::success<::response::ResultOnly>(*res);
     res->close_session(); //TODO re-visit when the notion of session is finalized
+}
+
+void service::command_explain(
+    ::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res
+) {
+    auto& ex = proto_req.explain();
+    auto handle = validate_statement_handle<::response::Explain>(ex, *res);
+    if(! handle) {
+        return;
+    }
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(ex.parameters(), params);
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e);
+        rc != jogasaki::status::ok) {
+        VLOG(log_error) << "error in db_->resolve() : " << rc;
+        details::error<::response::Explain>(*res, rc, "error in db_->resolve()");
+        return;
+    }
+    std::stringstream ss{};
+    jogasaki::api::transaction_handle tx{};
+    if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
+        details::success<::response::Explain>(*res, ss.str());
+    } else {
+        details::error<::response::Explain>(*res, st, "error in db_->explain()");
+    }
 }
 
 tateyama::status service::operator()(
@@ -390,6 +418,11 @@ tateyama::status service::operator()(
             command_disconnect(proto_req, res);
             break;
         }
+        case ::request::Request::RequestCase::kExplain: {
+            trace_scope_name("cmd-explain");  //NOLINT
+            command_explain(proto_req, res);
+            break;
+        }
         default:
             std::string msg{"invalid request code"};
             VLOG(log_error) << msg;
@@ -433,8 +466,7 @@ void service::execute_statement(
     }
 }
 
-void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params)
-{
+void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params) {
     for (std::size_t i = 0; i < static_cast<std::size_t>(ps.parameters_size()) ;i++) {
         auto& p = ps.parameters(i);
         switch (p.value_case()) {

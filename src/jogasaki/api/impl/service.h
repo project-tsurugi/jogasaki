@@ -63,6 +63,10 @@ struct channel_info {
 void reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head = false);
 void set_metadata(channel_info const& info, ::schema::RecordMeta& meta);
 
+template<bool flag = false> void static_fail() {
+    static_assert(flag);
+}
+
 template<typename T>
 void set_allocated_object(::response::Response& r, T& p) {
     if constexpr (std::is_same_v<T, ::response::Begin>) {  //NOLINT
@@ -73,8 +77,10 @@ void set_allocated_object(::response::Response& r, T& p) {
         r.set_allocated_result_only(&p);
     } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {  //NOLINT
         r.set_allocated_execute_query(&p);
+    } else if constexpr (std::is_same_v<T, ::response::Explain>) {  //NOLINT
+        r.set_allocated_explain(&p);
     } else {
-        fail();
+        static_fail();
     }
 }
 
@@ -88,8 +94,10 @@ void release_object(::response::Response& r, T&) {
         r.release_result_only();
     } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {  //NOLINT
         r.release_execute_query();
+    } else if constexpr (std::is_same_v<T, ::response::Explain>) {  //NOLINT
+        r.release_explain();
     } else {
-        fail();
+        static_fail();
     }
 }
 
@@ -180,6 +188,19 @@ inline void success<::response::Prepare>(tateyama::api::server::response& res, j
     p.release_prepared_statement_handle();
 }
 
+template<>
+inline void success<::response::Explain>(tateyama::api::server::response& res, std::string output) {  //NOLINT(performance-unnecessary-value-param)
+    ::response::Explain explain{};
+    ::response::Response r{};
+
+    explain.set_allocated_output(&output);
+    r.set_allocated_explain(&explain);
+    res.code(response_code::success);
+    reply(res, r);
+    r.release_explain();
+    explain.release_output();
+}
+
 inline void send_body_head(tateyama::api::server::response& res, channel_info const& info) {  //NOLINT(performance-unnecessary-value-param)
     ::schema::RecordMeta meta{};
     ::response::ExecuteQuery e{};
@@ -268,6 +289,10 @@ private:
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_disconnect(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_explain(
         ::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );

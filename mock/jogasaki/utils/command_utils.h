@@ -303,6 +303,10 @@ void fill_parameters(std::vector<parameter> const& parameters, ::request::Parame
     for(auto&& p : parameters) {
         auto* c0 = ps->add_parameters();
         c0->set_name(p.name_);
+        if (! p.value_.has_value()) {
+            // null value
+            return;
+        }
         switch (p.type_) {
             case ::common::DataType::INT4: c0->set_int4_value(std::any_cast<std::int32_t>(p.value_)); break;
             case ::common::DataType::INT8: c0->set_int8_value(std::any_cast<std::int64_t>(p.value_)); break;

@@ -771,4 +771,45 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
         LOG(INFO) << result;
     }
 }
+
+TEST_F(service_api_test, null_host_variable) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0(C0, C1) values (:c0, :c1)",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    {
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM T0", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_FALSE(rec.is_null(0));
+        EXPECT_EQ(1, rec.get_value<std::int64_t>(0));
+        EXPECT_TRUE(rec.is_null(1));
+    }
+}
 }

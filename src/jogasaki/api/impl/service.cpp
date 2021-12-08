@@ -335,7 +335,6 @@ void service::command_explain(
         return;
     }
     std::stringstream ss{};
-    jogasaki::api::transaction_handle tx{};
     if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
         details::success<::response::Explain>(*res, ss.str());
     } else {
@@ -406,7 +405,8 @@ tateyama::status service::operator()(
         }
         case ::request::Request::RequestCase::kRollback: {
             trace_scope_name("cmd-rollback");  //NOLINT
-            command_rollback(proto_req, res); break;
+            command_rollback(proto_req, res);
+            break;
         }
         case ::request::Request::RequestCase::kDisposePreparedStatement: {
             trace_scope_name("cmd-dispose_prepared_statement");  //NOLINT
@@ -486,7 +486,8 @@ void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<joga
                 params->set_character(p.name(), p.character_value());
                 break;
             default:
-                fail();
+                params->set_null(p.name());
+                break;
         }
     }
 }

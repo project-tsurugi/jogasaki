@@ -20,6 +20,7 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/error.h>
+#include <jogasaki/logging.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
@@ -33,6 +34,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/coder.h>
+#include <jogasaki/utils/convert_any.h>
 
 namespace jogasaki::executor::common {
 
@@ -97,56 +99,6 @@ bool write::operator()(request_context& context) const {
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-// convert the value type contained in any if necessary
-void convert_any(any& a, meta::field_type const& type) {
-    //TODO validation about type compatibility is not strict for now
-    if (! a) return;
-    using k = meta::field_type_kind;
-    switch(type.kind()) {
-        case k::int4: {
-            switch(a.type_index()) {
-                case index<std::int32_t>: break;
-                case index<std::int64_t>: a = any{std::in_place_type<std::int32_t>, a.to<std::int64_t>()}; break;
-                case index<float>: a = any{std::in_place_type<std::int32_t>, a.to<float>()}; break;
-                case index<double>: a = any{std::in_place_type<std::int32_t>, a.to<double>()}; break;
-                default: fail();
-            }
-            break;
-        }
-        case k::int8: {
-            switch(a.type_index()) {
-                case index<std::int32_t>: a = any{std::in_place_type<std::int64_t>, a.to<std::int32_t>()}; break;
-                case index<std::int64_t>: break;
-                case index<float>: a = any{std::in_place_type<std::int64_t>, a.to<float>()}; break;
-                case index<double>: a = any{std::in_place_type<std::int64_t>, a.to<double>()}; break;
-                default: fail();
-            }
-            break;
-        }
-        case k::float4: {
-            switch(a.type_index()) {
-                case index<std::int32_t>: a = any{std::in_place_type<float>, a.to<std::int32_t>()}; break;
-                case index<std::int64_t>: a = any{std::in_place_type<float>, a.to<std::int64_t>()}; break;
-                case index<float>: break;
-                case index<double>: a = any{std::in_place_type<float>, a.to<double>()}; break;
-                default: fail();
-            }
-            break;
-        }
-        case k::float8: {
-            switch(a.type_index()) {
-                case index<std::int32_t>: a = any{std::in_place_type<double>, a.to<std::int32_t>()}; break;
-                case index<std::int64_t>: a = any{std::in_place_type<double>, a.to<std::int64_t>()}; break;
-                case index<float>: a = any{std::in_place_type<double>, a.to<float>()}; break;
-                case index<double>: break;
-                default: fail();
-            }
-            break;
-        }
-        default: break;  //TODO add more conversions
-    }
-}
-
 sequence_value next_sequence_value(request_context& ctx, sequence_definition_id def_id) {
     BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
     auto& mgr = *ctx.sequence_manager();
@@ -200,9 +152,13 @@ std::size_t encode_tuple(
                 process::impl::variable_table empty{};
                 auto res = eval(empty, &resource);
                 if (res.error()) {
-                    LOG(ERROR) << "evaluation error: " << res.to<process::impl::expression::error>();
+                    VLOG(log_error) << "evaluation error: " << res.to<process::impl::expression::error>();
+                    //TODO fill status code 
                 }
-                convert_any(res, f.type_);
+                if(! utils::convert_any(res, f.type_)) {
+                    VLOG(log_error) << "type mismatch: expected " << f.type_ << ", value index is " << res.type_index();
+                    //TODO fill status code 
+                }
                 if (f.nullable_) {
                     kvs::encode_nullable(res, f.type_, f.spec_, s);
                 } else {

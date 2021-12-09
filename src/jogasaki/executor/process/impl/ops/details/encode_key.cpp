@@ -17,9 +17,11 @@
 
 #include <takatori/util/fail.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/convert_any.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
@@ -40,6 +42,10 @@ std::size_t encode_key(
             if (a.error()) {
                 LOG(ERROR) << "evaluation error: " << a.to<expression::error>();
                 fail();
+            }
+            if(! utils::convert_any(a, k.type_)) {
+                VLOG(log_error) << "type mismatch: expected " << k.type_ << ", value index is " << a.type_index();
+                //TODO fill status code
             }
             if (k.nullable_) {
                 kvs::encode_nullable(a, k.type_, k.spec_, s);

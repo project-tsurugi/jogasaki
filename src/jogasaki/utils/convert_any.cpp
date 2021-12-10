@@ -19,7 +19,6 @@
 
 namespace jogasaki::utils {
 
-using takatori::util::fail;
 using executor::process::impl::expression::any;
 using executor::process::impl::expression::index;
 

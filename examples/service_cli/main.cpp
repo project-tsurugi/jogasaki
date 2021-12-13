@@ -284,6 +284,9 @@ public:
                 case 'w':
                     wait_for(args);
                     break;
+                case 'x':
+                    explain_statement(args);
+                    break;
                 case 'h':
                 default:
                     print_usage();
@@ -402,6 +405,7 @@ private:
             "  s <statement text or number> : issue statement " << std::endl <<
             "  v [<name>:<type>] : show or register host variables" << std::endl <<
             "  w [<duration millisecond>] : wait for the given duration(ms)" << std::endl <<
+            "  x <statement number> : explain query/statement " << std::endl <<
             "";
     }
     bool begin_tx(bool for_autocommit = false) {
@@ -835,6 +839,40 @@ private:
                 write_buffer_.flush();
             }
         });
+    }
+    bool explain_statement(std::vector<std::string_view>& args) {
+        if (args.empty()) {
+            std::cout << "command was ignored. missing command args" << std::endl;
+            return false;
+        }
+        std::string sql{};
+        std::int32_t idx{};
+        if (!fill_text_or_index(args[0], sql, idx) ||
+            (idx < 0 || static_cast<std::size_t>(idx) >= stmt_handles_.size())) {
+            std::cerr << "statement index (" << idx << ") is invalid or out of range" << std::endl;
+            return false;
+        }
+
+        args.erase(args.begin());
+        std::vector<jogasaki::utils::parameter> parameters{};
+        if(! parse_parameters(idx, sql, args, parameters)) {
+            return false;
+        }
+        auto s = jogasaki::utils::encode_explain(stmt_handles_[idx].first, parameters);
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+        auto st = (*service_)(req, res);
+        if(st != tateyama::status::ok) {
+            std::cerr << "service invocation failed" << std::endl;
+            return false;
+        }
+        auto [explained, err] = jogasaki::utils::decode_explain(res->body_);
+        if (explained.empty()) {
+            std::cerr << "explain error: " << err.status_ << " " << err.message_ << std::endl;
+            return false;
+        }
+        std::cout << explained << std::endl;
+        return true;
     }
 
 };

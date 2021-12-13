@@ -36,6 +36,7 @@
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/kvs/id.h>
 
 namespace jogasaki::testing {
 
@@ -112,6 +113,26 @@ TEST_F(api_test, primary_key_violation) {
     auto& rec = result[0];
     EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
     EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+}
+
+TEST_F(api_test, primary_key_violation_in_same_tx) {
+    std::unique_ptr<api::executable_statement> stmt0{};
+    std::unique_ptr<api::executable_statement> stmt1{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt0));
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt1));
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->execute(*stmt0));
+    ASSERT_EQ(status::err_already_exists, tx->execute(*stmt1));
+    ASSERT_EQ(status::ok, tx->abort());
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0", result);
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        // sharksfin memory doesn't support rollback
+        ASSERT_EQ(1, result.size());
+        return;
+    }
+    ASSERT_EQ(0, result.size());
 }
 
 TEST_F(api_test, resolve_place_holder_with_null) {

@@ -315,7 +315,7 @@ void add_test_tables(storage::configurable_provider& provider) {
 
 //    create table qa_t2 (
 //        c_pk1 int4 not null,
-//        c_pk2 char null,
+//        c_pk2 char not null,
 //        c_id1 int4 not null,
 //        c_id2 char null,
 //        c_jk1 int4 not null,
@@ -329,7 +329,7 @@ void add_test_tables(storage::configurable_provider& provider) {
             "qa_t2",
             {
                 { "c_pk1", type::int4(), nullity{false} },
-                { "c_pk2", type::character(type::varying), nullity{true} },
+                { "c_pk2", type::character(type::varying), nullity{false} },
                 { "c_id1", type::int4(), nullity{false} },
                 { "c_id2", type::character(type::varying), nullity{true} },
                 { "c_jk1", type::int4(), nullity{false} },

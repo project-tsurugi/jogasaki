@@ -101,7 +101,7 @@ TEST_F(recovery_test, simple) {
     dump_content();
 }
 
-TEST_F(recovery_test, DISABLED_recover_twice) {
+TEST_F(recovery_test, recover_twice) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -167,7 +167,7 @@ TEST_F(recovery_test, DISABLED_system_table) {
     }
 }
 
-TEST_F(recovery_test, DISABLED_delete) {
+TEST_F(recovery_test, delete) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -196,7 +196,7 @@ TEST_F(recovery_test, DISABLED_delete) {
     }
 }
 
-TEST_F(recovery_test, DISABLED_recover_create_index) {
+TEST_F(recovery_test, recover_create_index) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -242,7 +242,7 @@ TEST_F(recovery_test, DISABLED_recover_create_index) {
                 column{ "C1", type::float8 (), nullity{true} },
             }
         );
-        ASSERT_EQ(status::ok, db_->create_table(t));
+        ASSERT_EQ(status::err_already_exists, db_->create_table(t));
         auto i = std::make_shared<yugawara::storage::index>(
             t,
             "TEST",
@@ -259,7 +259,7 @@ TEST_F(recovery_test, DISABLED_recover_create_index) {
                 ::yugawara::storage::index_feature::primary,
             }
         );
-        ASSERT_EQ(status::ok, db_->create_index(i));
+        ASSERT_EQ(status::err_already_exists, db_->create_index(i));
     }
 }
 }

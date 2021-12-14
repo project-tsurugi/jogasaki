@@ -105,6 +105,7 @@ void api_test_base::execute_query(api::statement_handle& prepared, api::paramete
     }
     ASSERT_TRUE(rs);
     auto it = rs->iterator();
+    LOG(INFO) << "query result : ";
     while(it->has_next()) {
         auto* record = it->next();
         std::stringstream ss{};

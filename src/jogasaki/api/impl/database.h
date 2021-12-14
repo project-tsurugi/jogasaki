@@ -112,6 +112,7 @@ public:
 
     [[nodiscard]] executor::sequence::manager* sequence_manager() const noexcept;
 
+    status initialize_from_providers();
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

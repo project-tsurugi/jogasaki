@@ -62,7 +62,7 @@ public:
         db_setup(cfg);
         auto* impl = db_impl();
         add_benchmark_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        impl->initialize_from_providers();
     }
 
     void TearDown() override {
@@ -98,37 +98,68 @@ TEST_F(sequence_test, generate_primary_key) {
     }
 }
 
-TEST_F(sequence_test, DISABLED_recovery) {
+TEST_F(sequence_test, recovery) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
     {
+        SCOPED_TRACE("initial");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TSEQ0", result);
-        ASSERT_EQ(1, result.size());
+        ASSERT_EQ(2, result.size());
     }
+    int num_seqs = 0;
     {
+        SCOPED_TRACE("before recovery 0");
         std::vector<mock::basic_record> entries{};
         execute_query("SELECT * FROM system_sequences", entries);
-        ASSERT_LT(0, entries.size());
+        num_seqs = entries.size();
+        ASSERT_LT(0, num_seqs);
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
+        SCOPED_TRACE("after recovery 0");
         std::vector<mock::basic_record> entries{};
         execute_query("SELECT * FROM system_sequences", entries);
-        ASSERT_LT(0, entries.size());
+        ASSERT_EQ(num_seqs, entries.size());
     }
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
     {
+        SCOPED_TRACE("before recovery 1");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
-        ASSERT_EQ(2, result.size());
+        ASSERT_EQ(3, result.size());
         auto meta = result[0].record_meta();
         auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));
         auto s1 = result[1].ref().get_value<std::int64_t>(meta->value_offset(0));
+        auto s2 = result[2].ref().get_value<std::int64_t>(meta->value_offset(0));
         EXPECT_LT(s0, s1);
+        EXPECT_LT(s1, s2);
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        SCOPED_TRACE("after recovery 0");
+        std::vector<mock::basic_record> entries{};
+        execute_query("SELECT * FROM system_sequences", entries);
+        ASSERT_EQ(num_seqs, entries.size());
+    }
+    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (40)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
+        ASSERT_EQ(4, result.size());
+        auto meta = result[0].record_meta();
+        auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));
+        auto s1 = result[1].ref().get_value<std::int64_t>(meta->value_offset(0));
+        auto s2 = result[2].ref().get_value<std::int64_t>(meta->value_offset(0));
+        auto s3 = result[3].ref().get_value<std::int64_t>(meta->value_offset(0));
+        EXPECT_LT(s0, s1);
+        EXPECT_LT(s1, s2);
+        EXPECT_LT(s2, s3);
     }
 }
 

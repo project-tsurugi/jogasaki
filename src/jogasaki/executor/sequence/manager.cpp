@@ -21,6 +21,7 @@
 #include <takatori/util/fail.h>
 #include <yugawara/storage/configurable_provider.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -55,7 +56,7 @@ manager::manager(
 
 std::size_t manager::load_id_map() {
     auto stg = db_->get_or_create_storage(system_sequences_name);
-    auto tx = db_->create_transaction(true);
+    auto tx = db_->create_transaction();
     std::unique_ptr<kvs::iterator> it{};
     if(auto res = stg->scan(
             *tx,
@@ -77,6 +78,7 @@ std::size_t manager::load_id_map() {
     if(tx->commit() != status::ok) {
         fail();
     }
+    VLOG(log_debug) << "Sequences loaded from system table : " << ret;
     return ret;
 }
 

@@ -71,18 +71,10 @@ status database::start() {
         LOG(ERROR) << "opening db failed";
         return status::err_io_error;
     }
-    bool success = true;
-    tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
-        success = success && kvs_db_->get_or_create_storage(id);
-    });
-    if (! success) {
-        LOG(ERROR) << "creating table schema entries failed";
-        return status::err_io_error;
-    }
 
-    sequence_manager_ = std::make_unique<executor::sequence::manager>(*kvs_db_);
-    sequence_manager_->load_id_map();
-    sequence_manager_->register_sequences(tables_);
+    if(auto res = initialize_from_providers(); res != status::ok) {
+        return res;
+    }
 
     if (! task_scheduler_) {
         if (cfg_->single_thread()) {
@@ -460,6 +452,21 @@ status database::do_drop_sequence(std::string_view name, std::string_view schema
 
 executor::sequence::manager* database::sequence_manager() const noexcept {
     return sequence_manager_.get();
+}
+
+status database::initialize_from_providers() {
+    bool success = true;
+    tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+        success = success && kvs_db_->get_or_create_storage(id);
+    });
+    if (! success) {
+        LOG(ERROR) << "creating table schema entries failed";
+        return status::err_io_error;
+    }
+    sequence_manager_ = std::make_unique<executor::sequence::manager>(*kvs_db_);
+    sequence_manager_->load_id_map();
+    sequence_manager_->register_sequences(tables_);
+    return status::ok;
 }
 
 }

@@ -103,7 +103,9 @@ sequence_value next_sequence_value(request_context& ctx, sequence_definition_id 
     BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
     auto& mgr = *ctx.sequence_manager();
     auto* seq = mgr.find_sequence(def_id);
-    return seq->next(*ctx.transaction());
+    auto ret = seq->next(*ctx.transaction());
+    mgr.notify_updates(*ctx.transaction());
+    return ret;
 }
 
 // encode tuple into buf, and return result data length
@@ -138,7 +140,8 @@ std::size_t encode_tuple(
                         break;
                     }
                     case process::impl::ops::default_value_kind::sequence:
-                        auto v = next_sequence_value(ctx, f.def_id_);
+                        // increment sequence only in the second loop
+                        auto v = loop == 1 ? next_sequence_value(ctx, f.def_id_) : sequence_value{};
                         executor::process::impl::expression::any a{std::in_place_type<std::int64_t>, v};
                         if (f.nullable_) {
                             kvs::encode_nullable(a, f.type_, f.spec_, s);

@@ -155,7 +155,7 @@ private:
     compiled_info info_{};
     executor::process::impl::variable_table const* host_variables_{};
 
-    std::vector<details::write_tuple> create_tuples(
+    status create_tuples(
         request_context& ctx,
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
@@ -164,17 +164,19 @@ private:
         memory::lifo_paged_memory_resource& resource,
         executor::process::impl::variable_table const* host_variables,
         bool key,
+        std::vector<details::write_tuple>& out,
         std::vector<details::write_tuple> const& primary_key_tuples = {}
     ) const;
 
-    std::vector<details::write_target> create_targets(
+    status create_targets(
         request_context& ctx,
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         takatori::tree::tree_fragment_vector<tuple> const& tuples,
         compiled_info const& info,
         memory::lifo_paged_memory_resource& resource,
-        executor::process::impl::variable_table const* host_variables
+        executor::process::impl::variable_table const* host_variables,
+        std::vector<details::write_target>& out
     ) const;
 
     [[nodiscard]] std::vector<details::write_field> create_fields(

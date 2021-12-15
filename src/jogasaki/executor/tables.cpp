@@ -124,6 +124,34 @@ void add_test_tables(storage::configurable_provider& provider) {
     }
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "NON_NULLABLES",
+            {
+                { "K0", type::int8(), nullity{false}  },
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::int8(), nullity{false}  },
+                { "C2", type::float8(), nullity{false} },
+                { "C3", type::float4(), nullity{false} },
+                { "C4", type::character(type::varying, 100), nullity{false} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+                t->columns()[5],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
             "T2",
             {
                 { "C0", type::int4(), nullity{false} },

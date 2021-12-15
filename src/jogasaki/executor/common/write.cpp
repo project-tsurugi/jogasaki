@@ -73,7 +73,12 @@ bool write::operator()(request_context& context) const {
     kvs::put_option opt = kind_ == write_kind::insert ?
         kvs::put_option::create :
         kvs::put_option::create_or_update;
-    auto targets = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(), info_, *resource_, host_variables_);
+    std::vector<details::write_target> targets{};
+    if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
+            info_, *resource_, host_variables_, targets); res != status::ok) {
+        context.status_code(res);
+        return false;
+    }
     for(auto&& e : targets) {
         auto stg = db->get_or_create_storage(e.storage_name_);
         if(! stg) {
@@ -109,7 +114,7 @@ sequence_value next_sequence_value(request_context& ctx, sequence_definition_id 
 }
 
 // encode tuple into buf, and return result data length
-std::size_t encode_tuple(
+status encode_tuple(
     request_context& ctx,
     write::tuple const& t,
     std::vector<details::write_field> const& fields,
@@ -117,10 +122,11 @@ std::size_t encode_tuple(
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& buf,
     executor::process::impl::variable_table const* host_variables,
+    std::size_t& length,
     details::write_tuple const* primary_key_tuple = nullptr
 ) {
     utils::checkpoint_holder cph(std::addressof(resource));
-    std::size_t length = 0;
+    length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
         kvs::writable_stream s{buf.data(), capacity};
@@ -130,7 +136,8 @@ std::size_t encode_tuple(
                 switch(f.kind_) {
                     case process::impl::ops::default_value_kind::nothing:
                         if (! f.nullable_) {
-                            fail();
+                            VLOG(log_error) << "Null assigned for non-nullable field.";
+                            return status::err_integrity_constraint_violation;
                         }
                         kvs::encode_nullable({}, f.type_, f.spec_, s);
                         break;
@@ -156,15 +163,19 @@ std::size_t encode_tuple(
                 auto res = eval(empty, &resource);
                 if (res.error()) {
                     VLOG(log_error) << "evaluation error: " << res.to<process::impl::expression::error>();
-                    //TODO fill status code 
+                    return status::err_expression_evaluation_failure;
                 }
                 if(! utils::convert_any(res, f.type_)) {
                     VLOG(log_error) << "type mismatch: expected " << f.type_ << ", value index is " << res.type_index();
-                    //TODO fill status code 
+                    return status::err_expression_evaluation_failure;
                 }
                 if (f.nullable_) {
                     kvs::encode_nullable(res, f.type_, f.spec_, s);
                 } else {
+                    if(! res) {
+                        VLOG(log_error) << "Null assigned for non-nullable field.";
+                        return status::err_integrity_constraint_violation;
+                    }
                     kvs::encode(res, f.type_, f.spec_, s);
                 }
                 cph.reset();
@@ -180,7 +191,7 @@ std::size_t encode_tuple(
             }
         }
     }
-    return length;
+    return status::ok;
 }
 
 void create_generated_field(
@@ -290,7 +301,7 @@ std::vector<details::write_field> write::create_fields(
     return fields;
 }
 
-std::vector<details::write_tuple> write::create_tuples(
+status write::create_tuples(
     request_context& ctx,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
@@ -299,53 +310,75 @@ std::vector<details::write_tuple> write::create_tuples(
     memory::lifo_paged_memory_resource& resource,
     executor::process::impl::variable_table const* host_variables,
     bool key,
+    std::vector<details::write_tuple>& out,
     std::vector<details::write_tuple> const& primary_key_tuples
 ) const {
-    std::vector<details::write_tuple> ret{};
     auto fields = create_fields(idx, columns, key);
     data::aligned_buffer buf{};
     std::size_t count = 0;
+    out.clear();
+    out.reserve(tuples.size());
     for(auto&& tuple: tuples) {
-        auto sz = encode_tuple(ctx, tuple, fields, info, resource, buf, host_variables, primary_key_tuples.empty() ? nullptr : &primary_key_tuples[count]);
+        std::size_t sz = 0;
+        if(auto res = encode_tuple(ctx, tuple, fields, info, resource, buf, host_variables, sz,
+            primary_key_tuples.empty() ? nullptr : &primary_key_tuples[count]); res != status::ok) {
+            return res;
+        }
         std::string_view sv{static_cast<char*>(buf.data()), sz};
-        ret.emplace_back(sv);
+        out.emplace_back(sv);
         ++count;
     }
-    return ret;
+    return status::ok;
 }
 
-std::vector<details::write_target> write::create_targets(
+status write::create_targets(
     request_context& ctx,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     takatori::tree::tree_fragment_vector<tuple> const& tuples,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
-    executor::process::impl::variable_table const* host_variables
+    executor::process::impl::variable_table const* host_variables,
+    std::vector<details::write_target>& out
 ) const {
-    std::vector<details::write_target> ret{};
+    out.clear();
     auto& table = idx.table();
     auto primary = table.owner()->find_primary_index(table);
     BOOST_ASSERT(primary != nullptr); //NOLINT
+    std::vector<details::write_tuple> ks{};
+    if (auto res = create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, true, ks);
+        res != status::ok) {
+        return res;
+    }
+    std::vector<details::write_tuple> vs{};
+    if (auto res = create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, false, vs);
+        res != status::ok) {
+        return res;
+    }
     // first entry is primary index
-    ret.emplace_back(
-        primary->simple_name(),
-        create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, true),
-        create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, false)
-    );
+    out.emplace_back(primary->simple_name(), std::move(ks), std::move(vs));
+
+    status ret_status{status::ok};
     table.owner()->each_index(
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (ret_status != status::ok) return;
             if (entry->table() != table || entry == primary) {
                 return;
             }
-            ret.emplace_back(
+            std::vector<details::write_tuple> ts{};
+            if (auto res = create_tuples(ctx, *entry, columns, tuples, info, resource,
+                    host_variables, true, ts, out[0].keys_); res != status::ok) {
+                ret_status = res;
+                return;
+            }
+            out.emplace_back(
                 entry->simple_name(),
-                create_tuples(ctx, *entry, columns, tuples, info, resource, host_variables, true, ret[0].keys_),
+                std::move(ts),
                 std::vector<details::write_tuple>{}
             );
         }
     );
-    return ret;
+    return ret_status;
 }
 
 details::write_tuple::write_tuple(std::string_view data) :

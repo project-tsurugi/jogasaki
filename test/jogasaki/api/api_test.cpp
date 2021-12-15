@@ -135,6 +135,72 @@ TEST_F(api_test, primary_key_violation_in_same_tx) {
     ASSERT_EQ(0, result.size());
 }
 
+TEST_F(api_test, violate_not_null_constraint) {
+    {
+        // insert null to non-primary key column
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO NON_NULLABLES (K0, C1, C2, C3, C4) VALUES (1, 100, 1000.0, 10000.0, '111')", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    {
+        // insert null to primary key column
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO NON_NULLABLES (C0, C1, C2, C3, C4) VALUES (10, 100, 1000.0, 10000.0, '111')", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM NON_NULLABLES", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(api_test, violate_not_null_constraint_by_host_variable) {
+    {
+        // insert null to non-primary key column
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+        };
+        ASSERT_EQ(status::ok, db_->prepare("INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, :p0, 100, 1000.0, 10000.0, '111')", variables, prepared));
+
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+    }
+    {
+        // insert null to primary key column
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int8},
+        };
+        ASSERT_EQ(status::ok, db_->prepare("INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (:p0, 10, 100, 1000.0, 10000.0, '111')", variables, prepared));
+
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+    }
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM NON_NULLABLES", result);
+    ASSERT_EQ(0, result.size());
+}
+
 TEST_F(api_test, resolve_place_holder_with_null) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p1", api::field_type_kind::int8},

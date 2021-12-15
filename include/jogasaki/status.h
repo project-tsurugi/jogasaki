@@ -47,6 +47,8 @@ enum class status : std::int64_t {
     err_already_exists = -13,
     err_inconsistent_index = -14,
     err_time_out = -15,
+    err_integrity_constraint_violation = -16,
+    err_expression_evaluation_failure = -17,
 };
 
 /**
@@ -78,6 +80,8 @@ enum class status : std::int64_t {
         case status::err_already_exists: return "err_already_exists"sv;
         case status::err_inconsistent_index: return "err_inconsistent_index"sv;
         case status::err_time_out: return "err_time_out"sv;
+        case status::err_integrity_constraint_violation: return "err_integrity_constraint_violation"sv;
+        case status::err_expression_evaluation_failure: return "err_expression_evaluation_failure"sv;
     }
     std::abort();
 }

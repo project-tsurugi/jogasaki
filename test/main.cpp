@@ -16,11 +16,13 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 #include <jogasaki/kvs/environment.h>
+#include <jogasaki/logging.h>
 
 int main(int argc, char** argv) {
     // first consume command line options for gtest
     ::testing::InitGoogleTest(&argc, argv);
     FLAGS_logtostderr = true;
+    FLAGS_v = FLAGS_v < jogasaki::log_info ? jogasaki::log_info : FLAGS_v;
     jogasaki::kvs::environment env{};
     env.initialize();
     return RUN_ALL_TESTS();

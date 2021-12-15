@@ -63,7 +63,6 @@ public:
 };
 
 TEST_F(database_test, simple) {
-    std::string sql = "select * from T0";
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},
@@ -153,6 +152,7 @@ TEST_F(database_test, update_with_host_variable) {
         tx->commit();
     }
     {
+        SCOPED_TRACE("update c1 to 0");
         auto tx = utils::create_transaction(*db_);
         auto ps = api::create_parameter_set();
         ps->set_float8("p1", 0.0);
@@ -160,6 +160,34 @@ TEST_F(database_test, update_with_host_variable) {
         ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
+    }
+    {
+        SCOPED_TRACE("verify 0");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C1 FROM T0 ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        auto meta = result[0].record_meta();
+        auto c1 = result[0].ref().get_value<double>(meta->value_offset(0));
+        EXPECT_FALSE(result[0].ref().is_null(meta->nullity_offset(0)));
+        EXPECT_DOUBLE_EQ(0.0, c1);
+    }
+    {
+        SCOPED_TRACE("update c1 to null");
+        auto tx = utils::create_transaction(*db_);
+        auto ps = api::create_parameter_set();
+        ps->set_null("p1");
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+    }
+    {
+        SCOPED_TRACE("verify null");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C1 FROM T0 ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        auto meta = result[0].record_meta();
+        EXPECT_TRUE(result[0].ref().is_null(meta->nullity_offset(0)));
     }
     ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
 }

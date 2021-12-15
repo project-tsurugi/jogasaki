@@ -122,6 +122,8 @@ inline ::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_already_exists: return ::status::Status::ERR_ALREADY_EXISTS;
         case jogasaki::status::err_inconsistent_index: return ::status::Status::ERR_INCONSISTENT_INDEX;
         case jogasaki::status::err_time_out: return ::status::Status::ERR_TIME_OUT;
+        case jogasaki::status::err_integrity_constraint_violation: return ::status::Status::ERR_INTEGRITY_CONSTRAINT_VIOLATION;
+        case jogasaki::status::err_expression_evaluation_failure: return ::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE;
     }
     fail();
 }

@@ -35,6 +35,7 @@
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/convert_any.h>
+#include <jogasaki/utils/storage_utils.h>
 
 namespace jogasaki::executor::common {
 
@@ -343,6 +344,7 @@ status write::create_targets(
 ) const {
     out.clear();
     auto& table = idx.table();
+    out.reserve(utils::index_count(table));
     auto primary = table.owner()->find_primary_index(table);
     BOOST_ASSERT(primary != nullptr); //NOLINT
     std::vector<details::write_tuple> ks{};
@@ -359,10 +361,10 @@ status write::create_targets(
     out.emplace_back(primary->simple_name(), std::move(ks), std::move(vs));
 
     status ret_status{status::ok};
-    table.owner()->each_index(
+    table.owner()->each_table_index(table,
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
             if (ret_status != status::ok) return;
-            if (entry->table() != table || entry == primary) {
+            if (entry == primary) {
                 return;
             }
             std::vector<details::write_tuple> ts{};

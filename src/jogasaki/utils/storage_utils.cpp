@@ -22,9 +22,6 @@
 
 namespace jogasaki::utils {
 
-using takatori::util::unsafe_downcast;
-using takatori::util::fail;
-
 std::size_t index_count(yugawara::storage::table const& table) {
     std::size_t count{};
     table.owner()->each_table_index(table,

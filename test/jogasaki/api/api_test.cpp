@@ -135,7 +135,7 @@ TEST_F(api_test, primary_key_violation_in_same_tx) {
     ASSERT_EQ(0, result.size());
 }
 
-TEST_F(api_test, violate_not_null_constraint) {
+TEST_F(api_test, violate_not_null_constraint_by_insert) {
     {
         // insert null to non-primary key column
         std::unique_ptr<api::executable_statement> stmt{};
@@ -158,7 +158,31 @@ TEST_F(api_test, violate_not_null_constraint) {
     ASSERT_EQ(0, result.size());
 }
 
-TEST_F(api_test, violate_not_null_constraint_by_host_variable) {
+TEST_F(api_test, DISABLED_violate_not_null_constraint_by_update) {
+    execute_statement( "INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
+    {
+        // update to null for non-primary key column
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("UPDATE NON_NULLABLES SET C0=NULL WHERE K0=1", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    {
+        // update to null for primary key column
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("UPDATE NON_NULLABLES SET K0=NULL WHERE K0=1", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM NON_NULLABLES", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(api_test, violate_not_null_constraint_by_insert_host_variable) {
     {
         // insert null to non-primary key column
         api::statement_handle prepared{};
@@ -199,6 +223,50 @@ TEST_F(api_test, violate_not_null_constraint_by_host_variable) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM NON_NULLABLES", result);
     ASSERT_EQ(0, result.size());
+}
+
+TEST_F(api_test, violate_not_null_constraint_by_update_host_variable_non_pkey) {
+    execute_statement( "INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
+    {
+        // update to null for non-primary key column
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+        };
+        ASSERT_EQ(status::ok, db_->prepare("UPDATE NON_NULLABLES SET C0=:p0 WHERE K0=1", variables, prepared));
+
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+    }
+}
+
+TEST_F(api_test, violate_not_null_constraint_by_update_host_variable_pkey) {
+    execute_statement( "INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
+    {
+        // update to null for primary key column
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int8},
+        };
+        ASSERT_EQ(status::ok, db_->prepare("UPDATE NON_NULLABLES SET K0=:p0 WHERE K0=1", variables, prepared));
+
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+    }
 }
 
 TEST_F(api_test, resolve_place_holder_with_null) {

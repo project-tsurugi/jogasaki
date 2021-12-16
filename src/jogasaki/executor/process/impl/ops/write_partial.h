@@ -204,8 +204,10 @@ private:
      * @brief private encoding function
      * @param from_variable specify where the source comes from. True when encoding from variable table to
      * internal buffer (key_buf_/value_buf_). False when encoding internal buffer to kvs::writable_streams.
+     * @returns status::ok if successful
+     * @returns error otherwise
      */
-    void encode_fields(
+    status encode_fields(
         bool from_variable,
         std::vector<details::write_partial_field> const& fields,
         kvs::writable_stream& target,
@@ -225,7 +227,7 @@ private:
         bool key
     );
 
-    void check_length_and_extend_buffer(
+    status check_length_and_extend_buffer(
         bool from_variables,
         write_partial_context& ctx,
         std::vector<details::write_partial_field> const& fields,
@@ -252,7 +254,7 @@ private:
 
     operation_status encode_and_put(write_partial_context& ctx);
 
-    std::string_view prepare_encoded_key(write_partial_context& ctx);
+    status prepare_encoded_key(write_partial_context& ctx, std::string_view& out);
 };
 
 }

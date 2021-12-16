@@ -20,6 +20,7 @@
 #include <takatori/relation/write.h>
 #include <yugawara/binding/factory.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/error.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
@@ -60,25 +61,46 @@ details::write_partial_field::write_partial_field(
     update_variable_is_external_(update_variable_is_external)
 {}
 
-std::string_view write_partial::prepare_encoded_key(write_partial_context& ctx) {
+status write_partial::prepare_encoded_key(write_partial_context& ctx, std::string_view& out) {
     auto source = ctx.input_variables().store().ref();
     // calculate length first, and then put
-    check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source);
+    if(auto res = check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source); res != status::ok) {
+        return res;
+    }
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
-    encode_fields(true, key_fields_, keys, source);
-    return {keys.data(), keys.size()};
+    if(auto res = encode_fields(true, key_fields_, keys, source); res != status::ok) {
+        return res;
+    }
+    out = {keys.data(), keys.size()};
+    return status::ok;
 }
 
 operation_status write_partial::encode_and_put(write_partial_context& ctx) {
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put
-    check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source);
-    check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source);
+    if(auto res = check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source); res != status::ok) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
+    }
+    if(auto res = check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source); res != status::ok) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
+    }
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     kvs::writable_stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
-    encode_fields(false, key_fields_, keys, key_source);
-    encode_fields(false, value_fields_, values, val_source);
+    if(auto res = encode_fields(false, key_fields_, keys, key_source); res != status::ok) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
+    }
+    if(auto res = encode_fields(false, value_fields_, values, val_source); res != status::ok) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
+    }
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
             {keys.data(), keys.size()},
@@ -103,7 +125,12 @@ void write_partial::update_record(write_partial_context& ctx) {
 
 operation_status write_partial::find_record_and_extract(write_partial_context& ctx) {
     auto varlen_resource = ctx.varlen_resource();
-    auto k = prepare_encoded_key(ctx);
+    std::string_view k{};
+    if(auto res = prepare_encoded_key(ctx, k); res != status::ok) {
+        ctx.state(context_state::abort);
+        ctx.req_context()->status_code(res);
+        return {operation_status_kind::aborted};
+    }
     std::string_view v{};
     if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); ! is_ok(res)) {
         if(res == status::err_aborted_retryable) {
@@ -137,7 +164,7 @@ void write_partial::update_fields(
 ) {
     for(auto const& f : fields) {
         if (! f.updated_) continue;
-        // currently assuming all the fields in source/target are nullable
+        // assuming intermediate fields are nullable. Nullability check is done on encoding.
         utils::copy_nullable_field(
             f.type_,
             target,
@@ -176,7 +203,7 @@ void write_partial::decode_fields(
     }
 }
 
-void write_partial::check_length_and_extend_buffer(
+status write_partial::check_length_and_extend_buffer(
     bool from_variables,
     write_partial_context& ,
     std::vector<details::write_partial_field> const& fields,
@@ -184,10 +211,13 @@ void write_partial::check_length_and_extend_buffer(
     accessor::record_ref source
 ) {
     kvs::writable_stream null_stream{};
-    encode_fields(from_variables, fields, null_stream, source);
+    if(auto res = encode_fields(from_variables, fields, null_stream, source); res != status::ok) {
+        return res;
+    }
     if (null_stream.size() > buffer.size()) {
         buffer.resize(null_stream.size());
     }
+    return status::ok;
 }
 
 using variable = takatori::descriptor::variable;
@@ -331,7 +361,7 @@ maybe_shared_ptr<meta::record_meta> write_partial::create_meta(yugawara::storage
     return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
 }
 
-void write_partial::encode_fields(
+status write_partial::encode_fields(
     bool from_variable,
     std::vector<details::write_partial_field> const& fields,
     kvs::writable_stream& target,
@@ -343,9 +373,14 @@ void write_partial::encode_fields(
         if(f.nullable_) {
             kvs::encode_nullable(source, offset, nullity_offset, f.type_, f.spec_, target);
         } else {
+            if(source.is_null(nullity_offset)) {
+                VLOG(log_error) << "Null assigned for non-nullable field.";
+                return status::err_integrity_constraint_violation;
+            }
             kvs::encode(source, offset, f.type_, f.spec_, target);
         }
     }
+    return status::ok;
 }
 
 maybe_shared_ptr<meta::record_meta> const& write_partial::value_meta() const noexcept {

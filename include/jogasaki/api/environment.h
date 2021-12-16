@@ -46,17 +46,3 @@ public:
 std::unique_ptr<environment> create_environment();
 
 }
-
-/**
- * @brief C-interface for environment factory
- * @details extern "C" version of create environment. Prefer create_environment when C API is not necessary.
- * This function passes ownership to caller, that must call `delete_environment()` when finish using.
- * @return environment object
- */
-extern "C" jogasaki::api::environment* new_environment();
-
-/**
- * @brief C-interface to delete environment
- * @param env the environment object to delete
- */
-extern "C" void delete_environment(jogasaki::api::environment* env);

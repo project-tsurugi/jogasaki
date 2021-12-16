@@ -290,6 +290,11 @@ inline std::pair<std::string, std::vector<colinfo>> decode_execute_query(std::st
 }
 
 struct parameter {
+    // construct parameter with null
+    explicit parameter(std::string name) :
+        name_(std::move(name))
+    {}
+
     template <class T>
     parameter(std::string name, ::common::DataType type, T value) :
         name_(std::move(name)), type_(type), value_(value)

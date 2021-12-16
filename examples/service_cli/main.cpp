@@ -697,6 +697,10 @@ private:
             }
             ++used;
             auto val = v[1];
+            if(val == "NULL" || val == "null" || val == "Null") {
+                parameters.emplace_back(name);
+                continue;
+            }
             auto type = types.at(name);
             switch (type) {
                 case ::common::DataType::INT4: parameters.emplace_back(name, type, to_value<std::int32_t>(val)); break;

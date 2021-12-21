@@ -35,13 +35,12 @@ if (WITH_OGAWAYAMA)
     target_compile_definitions(server PUBLIC WITH_OGAWAYAMA)
     target_link_libraries(server
             PRIVATE ogawayama-bridge
-            )
+    )
 endif()
 
 target_link_libraries(server
     PRIVATE api
     PRIVATE ${tateyama_engine}
-    PRIVATE ogawayama-bridge
     PRIVATE common
     PRIVATE takatori
     PRIVATE yugawara

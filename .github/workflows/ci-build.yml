@@ -137,7 +137,7 @@ jobs:
           rm -rf build
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DDATA_STORAGE=json -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DDATA_STORAGE=json -DBUILD_TARGET=METADATA -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Install_tateyama_memory

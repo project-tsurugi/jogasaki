@@ -66,7 +66,7 @@ target_include_directories(${ENGINE}
 
 target_link_libraries(${ENGINE}
         PUBLIC api
-        PUBLIC ${tateyama_engine}
+        PRIVATE ${tateyama_engine}
         PUBLIC takatori
         PUBLIC yugawara
         PRIVATE mizugaki

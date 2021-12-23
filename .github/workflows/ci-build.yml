@@ -124,9 +124,9 @@ jobs:
         name: Install_moodycamel_concurrentqueue
         run: |
           cd third_party/concurrentqueue
-          rm -rf build_debug
-          mkdir -p build_debug
-          cd build_debug
+          rm -rf build
+          mkdir -p build
+          cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first
 
@@ -134,28 +134,18 @@ jobs:
         name: Install_tateyama_memory
         run: |
           cd third_party/tateyama
-          rm -rf build-memory
-          mkdir -p build-memory
-          cd build-memory
+          rm -rf build
+          mkdir -p build
+          cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_tateyama_shirakami
-        name: Install_tateyama_shirakami
-        run: |
-          cd third_party/tateyama
-          rm -rf build-shirakami
-          mkdir -p build-shirakami
-          cd build-shirakami
-          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
           cmake --build . --target install --clean-first -- -j
 
       - id: Build_jogasaki_memory
         name: Build_jogasaki_memory
         run: |
-          rm -rf build-memory
-          mkdir -p build-memory
-          cd build-memory
+          rm -rf build
+          mkdir -p build
+          cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=memory -DWITH_OGAWAYAMA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target all --clean-first -- -j
 
@@ -166,8 +156,18 @@ jobs:
           GTEST_OUTPUT: xml
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
-          cd build-memory
+          cd build
           ctest --verbose -j 100
+
+      - id: Install_tateyama_shirakami
+        name: Install_tateyama_shirakami
+        run: |
+          cd third_party/tateyama
+          rm -rf build
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
+          cmake --build . --target install --clean-first -- -j
 
       - id: Build_jogasaki_shirakami
         name: Build_jogasaki_shirakami

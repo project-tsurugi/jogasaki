@@ -113,9 +113,13 @@ public:
             while(! run.load()) {}
         } else {
             std::unique_ptr<api::result_set> rs{};
-            if(auto rc = tx_->execute(*e, rs); rc != status::ok || !rs) {
+            if(auto rc = tx_->execute(*e, rs); rc != status::ok) {
                 LOG(ERROR) << rc;
                 return static_cast<int>(rc);
+            }
+            if (! rs) {
+                LOG(INFO) << "no result returned";
+                return 0;
             }
             auto it = rs->iterator();
             while(it->has_next()) {

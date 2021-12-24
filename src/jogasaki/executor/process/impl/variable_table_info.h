@@ -157,6 +157,20 @@ public:
     [[nodiscard]] bool exists(std::string_view name) const;
 
     /**
+     * @brief returns begin iterator for the named variables
+     */
+    [[nodiscard]] auto name_list_begin() const noexcept {
+        return named_map_.begin();
+    }
+
+    /**
+     * @brief returns end iterator for the named variables
+     */
+    [[nodiscard]] auto name_list_end() const noexcept {
+        return named_map_.end();
+    }
+
+    /**
      * @brief accessor to metadata of variable store
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;

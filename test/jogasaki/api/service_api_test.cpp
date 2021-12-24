@@ -744,8 +744,6 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
     }
 }
 
-// for now, explain output is just the compiled IR and can be successful even with missing parameters.
-// But in the future, explain will probably require them.
 TEST_F(service_api_test, explain_error_missing_parameter) {
     std::uint64_t stmt_handle{};
 
@@ -764,11 +762,12 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
+        ASSERT_EQ(response_code::application_error, res->code_);
 
-        auto [result, error] = decode_explain(res->body_);
-        ASSERT_FALSE(result.empty());
-        LOG(INFO) << result;
+        auto [explained, error] = decode_explain(res->body_);
+        ASSERT_TRUE(explained.empty());
+        ASSERT_EQ(::status::Status::ERR_UNRESOLVED_HOST_VARIABLE, error.status_);
+        ASSERT_FALSE(error.message_.empty());
     }
 }
 

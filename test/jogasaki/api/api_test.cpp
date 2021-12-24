@@ -327,26 +327,6 @@ TEST_F(api_test, select_update_delete_for_missing_record) {
 }
 
 TEST_F(api_test, resolve_host_variable) {
-    std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int8},
-    };
-    execute_statement( "DELETE FROM T0");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
-    auto ps = api::create_parameter_set();
-    ps->set_int8("p0", 1);
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
-    ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    ps->set_int8("p0", 4);
-    std::vector<mock::basic_record> result2{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result2);
-    ASSERT_EQ(0, result2.size());
-}
-
-TEST_F(api_test, host_variable_new_api) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     variables.emplace("p0", api::field_type_kind::int8);
 
@@ -455,4 +435,66 @@ TEST_F(api_test, host_variable_same_name_different_type) {
         EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
     }
 }
+
+TEST_F(api_test, extra_parameter_not_used_by_stmt) {
+    // WARNING should be shown
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(0, 0)", prepared));
+    {
+        auto tx = utils::create_transaction(*db_);
+        auto ps = api::create_parameter_set();
+        ps->set_int8("unused1", 1);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+    }
+
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    variables.emplace("unused1", api::field_type_kind::int8);
+
+    api::statement_handle query{};
+    ASSERT_EQ(status::ok, db_->prepare("SELECT C0, C1 FROM T0", query));
+    {
+        auto tx = utils::create_transaction(*db_);
+        auto ps = api::create_parameter_set();
+        ps->set_int8("unused1", 1);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(query, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+        ASSERT_EQ(status::ok,db_->destroy_statement(query));
+    }
+}
+
+TEST_F(api_test, undefined_host_variables) {
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::err_translator_error, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:undefined0, 0)", variables, prepared));
+    api::statement_handle query{};
+    ASSERT_EQ(status::err_translator_error, db_->prepare("SELECT C0, C1 FROM T0 WHERE C0=:undefined0", variables, query));
+}
+
+TEST_F(api_test, unresolved_parameters) {
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    variables.emplace("unresolved0", api::field_type_kind::int8);
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:unresolved0, 0)", variables, prepared));
+    {
+        auto ps = api::create_parameter_set();
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::err_unresolved_host_variable,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+    }
+    api::statement_handle query{};
+    ASSERT_EQ(status::ok, db_->prepare("SELECT C0, C1 FROM T0 WHERE C0=:unresolved0", variables, query));
+    {
+        auto ps = api::create_parameter_set();
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::err_unresolved_host_variable,db_->resolve(query, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::ok,db_->destroy_statement(query));
+    }
+}
+
 }

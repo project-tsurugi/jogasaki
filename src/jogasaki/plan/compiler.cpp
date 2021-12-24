@@ -434,6 +434,21 @@ std::shared_ptr<executor::process::impl::variable_table_info> create_host_variab
     );
 }
 
+status validate_host_variables(
+    parameter_set const* parameters,
+    std::shared_ptr<executor::process::impl::variable_table_info> const& info
+) {
+    if(! info) return status::ok;
+    for(auto it = info->name_list_begin(); it != info->name_list_end(); ++it) {
+        auto& name = it->first;
+        if(! parameters->find(name)) {
+            VLOG(log_error) << "Value is not assigned for host variable '" << name << "'";
+            return status::err_unresolved_host_variable;
+        }
+    }
+    return status::ok;
+}
+
 std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     parameter_set const* parameters,
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
@@ -445,6 +460,10 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     auto vars = std::make_shared<executor::process::impl::variable_table>(*info);
     auto target = vars->store().ref();
     for(auto& [name, e] : *parameters) {
+        if(! info->exists(name)) {
+            VLOG(log_warning) << "Parameter '" << name << "' is passed but not used by the statement";
+            continue;
+        }
         auto os = info->at(name);
         utils::copy_nullable_field(
             e.type(),
@@ -592,6 +611,9 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
     auto p = ctx.prepared_statement();
     if (!p) {
         return status::err_invalid_argument;
+    }
+    if(auto res = validate_host_variables(parameters, p->mirrors()->host_variable_info()); res != status::ok) {
+        return res;
     }
     switch(p->statement()->kind()) {
         case statement_kind::write:

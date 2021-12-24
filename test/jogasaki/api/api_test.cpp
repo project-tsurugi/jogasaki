@@ -353,17 +353,80 @@ TEST_F(api_test, host_variable_new_api) {
     execute_statement( "DELETE FROM T0");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
-    auto ps = api::create_parameter_set();
-    ps->set_int8("p0", 1);
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
-    ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    ps->set_int8("p0", 4);
-    std::vector<mock::basic_record> result2{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result2);
-    ASSERT_EQ(0, result2.size());
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 1);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 4);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
+TEST_F(api_test, scan_with_host_variable) {
+    // test scan op, range keys are host vars TODO move to scan op UT rather than using SQL
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    variables.emplace("p0", api::field_type_kind::int8);
+    variables.emplace("p1", api::field_type_kind::int8);
+
+    execute_statement( "DELETE FROM T0");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (20,20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (10,10.0)");
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 15);
+        ps->set_int8("p1", 25);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 > :p0 AND C0 < :p1", variables, *ps, result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_EQ(20, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int8("p0", 15);
+        ps->set_null("p1");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 > :p0 AND C0 < :p1", variables, *ps, result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        ps->set_int8("p1", 15);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0 > :p0 AND C0 < :p1", variables, *ps, result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
+TEST_F(api_test, join_find_with_key_null) {
+    // test join_find op, key contains null TODO move to join_find op UT rather than using SQL
+    execute_statement( "DELETE FROM T0");
+    execute_statement( "DELETE FROM T1");
+    execute_statement( "INSERT INTO T1 (C0) VALUES (1)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (20,20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (10,10.0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 JOIN T1 ON T0.C0 = T1.C1", result);
+        ASSERT_EQ(0, result.size());
+    }
 }
 
 TEST_F(api_test, host_variable_same_name_different_type) {

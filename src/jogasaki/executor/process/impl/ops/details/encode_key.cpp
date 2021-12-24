@@ -27,40 +27,44 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::fail;
 
-std::size_t encode_key(
+status encode_key(
     std::vector<details::search_key_field_info> const& keys,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
-    data::aligned_buffer& out
+    data::aligned_buffer& out,
+    std::size_t& length
 ) {
     utils::checkpoint_holder cph(std::addressof(resource));
-    std::size_t len = 0;
+    length = 0;
     for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
         kvs::writable_stream s{out.data(), loop == 0 ? 0 : out.size()};
         for(auto&& k : keys) {
             auto a = k.evaluator_(input_variables, &resource);
             if (a.error()) {
-                LOG(ERROR) << "evaluation error: " << a.to<expression::error>();
-                fail();
+                VLOG(log_error) << "evaluation error: " << a.to<expression::error>();
+                return status::err_expression_evaluation_failure;
             }
             if(! utils::convert_any(a, k.type_)) {
                 VLOG(log_error) << "type mismatch: expected " << k.type_ << ", value index is " << a.type_index();
-                //TODO fill status code
+                return status::err_expression_evaluation_failure;
             }
             if (k.nullable_) {
                 kvs::encode_nullable(a, k.type_, k.spec_, s);
             } else {
-                BOOST_ASSERT(! a.empty());  //NOLINT
+                if(a.empty()) {
+                    VLOG(log_error) << "Null assigned for non-nullable field.";
+                    return status::err_integrity_constraint_violation;
+                }
                 kvs::encode(a, k.type_, k.spec_, s);
             }
             cph.reset();
         }
-        len = s.size();
-        if (loop == 0 && out.size() < len) {
-            out.resize(len);
+        length = s.size();
+        if (loop == 0 && out.size() < length) {
+            out.resize(length);
         }
     }
-    return len;
+    return status::ok;
 }
 
 }

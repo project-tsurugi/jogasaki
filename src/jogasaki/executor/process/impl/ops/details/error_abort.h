@@ -16,19 +16,18 @@
 #pragma once
 
 #include <jogasaki/status.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
-#include "search_key_field_info.h"
+#include "../operation_status.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-status encode_key(
-    std::vector<details::search_key_field_info> const& keys,
-    executor::process::impl::variable_table& input_variables,
-    memory::lifo_paged_memory_resource& resource,
-    data::aligned_buffer& out,
-    std::size_t& length
-);
+template <class T>
+operation_status error_abort(T& ctx, status res) {
+    ctx.abort();
+    ctx.req_context()->status_code(res);
+    return {operation_status_kind::aborted};
+}
 
 }
+
+
 

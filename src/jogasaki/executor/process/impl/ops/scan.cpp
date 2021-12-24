@@ -35,6 +35,7 @@
 #include "scan_context.h"
 #include "operator_builder.h"
 #include "details/encode_key.h"
+#include "details/error_abort.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -116,7 +117,14 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    open(ctx);
+    if(auto res = open(ctx); res != status::ok) {
+        if(res == status::err_integrity_constraint_violation) {
+            // range keys contain null. Nothing should match.
+            finish(context);
+            return {};
+        }
+        return details::error_abort(ctx, res);
+    }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
     status st{};
@@ -141,9 +149,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     }
     finish(context);
     if (st != status::not_found) {
-        ctx.state(context_state::abort);
-        ctx.req_context()->status_code(st);
-        return {operation_status_kind::aborted};
+        return details::error_abort(ctx, st);
     }
     return {};
 }
@@ -172,7 +178,7 @@ void scan::finish(abstract::task_context* context) {
     }
 }
 
-void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
+status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
     auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
     auto be = ctx.scan_info_->begin_endpoint();
     auto ee = ctx.scan_info_->end_endpoint();
@@ -194,8 +200,14 @@ void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-
         }
     }
     executor::process::impl::variable_table vars{};
-    auto blen = details::encode_key(ctx.scan_info_->begin_columns(), vars, *ctx.varlen_resource(), ctx.key_begin_);
-    auto elen = details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_);
+    std::size_t blen{};
+    if(auto res = details::encode_key(ctx.scan_info_->begin_columns(), vars, *ctx.varlen_resource(), ctx.key_begin_, blen); res != status::ok) {
+        return res;
+    }
+    std::size_t elen{};
+    if(auto res = details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_, elen); res != status::ok) {
+        return res;
+    }
     if(auto res = stg.scan(
             *ctx.tx_,
             {static_cast<char*>(ctx.key_begin_.data()), blen},
@@ -203,10 +215,10 @@ void scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-
             {static_cast<char*>(ctx.key_end_.data()), elen},
             ee,
             ctx.it_
-        );
-        res != status::ok) {
-        fail();
+        ); res != status::ok) {
+        return res;
     }
+    return status::ok;
 }
 
 void scan::close(scan_context& ctx) {

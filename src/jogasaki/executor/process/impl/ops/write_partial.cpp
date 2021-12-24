@@ -30,6 +30,7 @@
 #include <jogasaki/utils/field_types.h>
 #include "operator_base.h"
 #include "context_helper.h"
+#include "details/error_abort.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -75,29 +76,23 @@ status write_partial::prepare_encoded_key(write_partial_context& ctx, std::strin
     return status::ok;
 }
 
-operation_status error_abort(write_partial_context& ctx, status res) noexcept {
-    ctx.state(context_state::abort);
-    ctx.req_context()->status_code(res);
-    return {operation_status_kind::aborted};
-}
-
 operation_status write_partial::encode_and_put(write_partial_context& ctx) {
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put
     if(auto res = check_length_and_extend_buffer(false, ctx, key_fields_, ctx.key_buf_, key_source); res != status::ok) {
-        return error_abort(ctx, res);
+        return details::error_abort(ctx, res);
     }
     if(auto res = check_length_and_extend_buffer(false, ctx, value_fields_, ctx.value_buf_, val_source); res != status::ok) {
-        return error_abort(ctx, res);
+        return details::error_abort(ctx, res);
     }
     kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
     kvs::writable_stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
     if(auto res = encode_fields(false, key_fields_, keys, key_source); res != status::ok) {
-        return error_abort(ctx, res);
+        return details::error_abort(ctx, res);
     }
     if(auto res = encode_fields(false, value_fields_, values, val_source); res != status::ok) {
-        return error_abort(ctx, res);
+        return details::error_abort(ctx, res);
     }
     if(auto res = ctx.stg_->put(
             *ctx.tx_,
@@ -105,7 +100,7 @@ operation_status write_partial::encode_and_put(write_partial_context& ctx) {
             {values.data(), values.size()}
         ); is_error(res)) {
         if(res == status::err_aborted_retryable) {
-            return error_abort(ctx, res);
+            return details::error_abort(ctx, res);
         }
         // updating already found record, so err_not_found should never happen
         fail();
@@ -123,12 +118,12 @@ operation_status write_partial::find_record_and_extract(write_partial_context& c
     auto varlen_resource = ctx.varlen_resource();
     std::string_view k{};
     if(auto res = prepare_encoded_key(ctx, k); res != status::ok) {
-        return error_abort(ctx, res);
+        return details::error_abort(ctx, res);
     }
     std::string_view v{};
     if(auto res = ctx.stg_->get( *ctx.tx_, k, v ); ! is_ok(res)) {
         if(res == status::err_aborted_retryable) {
-            return error_abort(ctx, res);
+            return details::error_abort(ctx, res);
         }
         // The update target has been identified on the upstream operator such as find,
         // so this lookup must be successful. If the control reaches here, it's internal error.
@@ -140,7 +135,7 @@ operation_status write_partial::find_record_and_extract(write_partial_context& c
     decode_fields(value_fields_, values, ctx.value_store_.ref(), varlen_resource);
     if(auto res = ctx.stg_->remove( *ctx.tx_, k ); ! is_ok(res)) {
         if(res == status::err_aborted_retryable) {
-            return error_abort(ctx, res);
+            return details::error_abort(ctx, res);
         }
         fail();
     }

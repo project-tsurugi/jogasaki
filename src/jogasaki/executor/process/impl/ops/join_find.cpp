@@ -30,6 +30,7 @@
 #include "context_helper.h"
 #include "join_find_context.h"
 #include "details/encode_key.h"
+#include "details/error_abort.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -76,7 +77,11 @@ bool matcher::operator()(
     kvs::transaction& tx,
     matcher::memory_resource* resource
 ) {
-    std::size_t len = details::encode_key(key_fields_, input_variables, *resource, buf_);
+    std::size_t len{};
+    if(auto res = details::encode_key(key_fields_, input_variables, *resource, buf_, len); res != status::ok) {
+        status_ = res;
+        return false;
+    }
     std::string_view key{static_cast<char*>(buf_.data()), len};
     std::string_view value{};
 
@@ -140,9 +145,9 @@ status matcher::result() const noexcept {
 operation_status join_find::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
-    auto* p = find_context<class join_find_context>(index(), ctx.contexts());
+    auto* p = find_context<join_find_context>(index(), ctx.contexts());
     if (! p) {
-        p = ctx.make_context<class join_find_context>(
+        p = ctx.make_context<join_find_context>(
             index(),
             ctx.variable_table(block_index()),
             ctx.variable_table(block_index()),
@@ -162,7 +167,7 @@ operation_status join_find::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
-operation_status join_find::operator()(class join_find_context& ctx, abstract::task_context* context) {
+operation_status join_find::operator()(join_find_context& ctx, abstract::task_context* context) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
@@ -190,11 +195,12 @@ operation_status join_find::operator()(class join_find_context& ctx, abstract::t
             }
         } while(ctx.matcher_->next());
     }
-
-    if(ctx.matcher_->result() != status::not_found) {
-        ctx.state(context_state::abort);
-        ctx.req_context()->status_code(ctx.matcher_->result());
-        return {operation_status_kind::aborted};
+    if(auto res = ctx.matcher_->result(); res != status::not_found) {
+        if(res == status::err_integrity_constraint_violation) {
+            // match condition saw null. No record should match.
+            return {};
+        }
+        return details::error_abort(ctx, res);
     }
     return {};
 }

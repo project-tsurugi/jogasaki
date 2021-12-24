@@ -137,7 +137,7 @@ private:
     std::unique_ptr<operator_base> downstream_{};
     index_field_mapper field_mapper_{};
 
-    void open(scan_context& ctx);
+    [[nodiscard]] status open(scan_context& ctx);
 
     void close(scan_context& ctx);
 

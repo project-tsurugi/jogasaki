@@ -33,6 +33,7 @@
 #include "find_context.h"
 #include "operator_builder.h"
 #include "details/encode_key.h"
+#include "details/error_abort.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -112,12 +113,6 @@ operation_status find::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
-operation_status abort_return(class find_context& ctx, status res) {
-    ctx.state(context_state::abort);
-    ctx.req_context()->status_code(res);
-    return {operation_status_kind::aborted};
-}
-
 operation_status find::call_downstream(
     class find_context& ctx,
     std::string_view k,
@@ -127,7 +122,7 @@ operation_status find::call_downstream(
     abstract::task_context* context
 ) {
     if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
-        return abort_return(ctx, res);
+        return details::error_abort(ctx, res);
     }
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
@@ -146,7 +141,16 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     auto resource = ctx.varlen_resource();
     std::string_view v{};
     executor::process::impl::variable_table vars{};
-    auto len = details::encode_key(search_key_fields_, vars, *resource, ctx.key_);
+    std::size_t len{};
+    if(auto res = details::encode_key(search_key_fields_, vars, *resource, ctx.key_, len);
+        res != status::ok) {
+        if (res == status::err_integrity_constraint_violation) {
+            // null is assigned for find condition. Nothing should be found.
+            finish(context);
+            return {};
+        }
+        return details::error_abort(ctx, res);
+    }
     std::string_view k{static_cast<char*>(ctx.key_.data()), len};
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
@@ -155,7 +159,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
-            return abort_return(ctx, res);
+            return details::error_abort(ctx, res);
         }
         auto ret = call_downstream(ctx, k, v, target, resource, context);
         finish(context);
@@ -172,7 +176,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         if (res == status::not_found) {
             return {};
         }
-        return abort_return(ctx, res);
+        return details::error_abort(ctx, res);
     }
     while(true) {
         if(auto res = it->next(); res != status::ok) {
@@ -180,11 +184,11 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
-            return abort_return(ctx, res);
+            return details::error_abort(ctx, res);
         }
         if(auto success = it->key(k); ! success) {
             finish(context);
-            return abort_return(ctx, status::err_unknown);
+            return details::error_abort(ctx, status::err_unknown);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {
             finish(context);

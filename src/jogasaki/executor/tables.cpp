@@ -75,7 +75,6 @@ void add_test_tables(storage::configurable_provider& provider) {
         ::yugawara::storage::index_feature::find,
         ::yugawara::storage::index_feature::scan,
     };
-    (void)secondary_index_features;
     {
         std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
             "T0",
@@ -358,16 +357,15 @@ void add_test_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-// temporarily disabling the secondary index TODO
-//        provider.add_index({
-//            t,
-//            "qa_t1_i4_idx",
-//            {
-//                t->columns()[1],
-//            },
-//            {},
-//            secondary_index_features
-//        });
+        provider.add_index({
+            t,
+            "qa_t1_i4_idx",
+            {
+                t->columns()[1],
+            },
+            {},
+            secondary_index_features
+        });
     }
 
 //    create table qa_t2 (
@@ -408,26 +406,25 @@ void add_test_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-// temporarily disabling the secondary index TODO
-//        provider.add_index({
-//            t,
-//            "qa_t2_idc_idx",
-//            {
-//                t->columns()[2],
-//                t->columns()[3],
-//            },
-//            {},
-//            secondary_index_features
-//        });
-//        provider.add_index({
-//            t,
-//            "qa_t2_jk1_idx",
-//            {
-//                t->columns()[4],
-//            },
-//            {},
-//            secondary_index_features
-//        });
+        provider.add_index({
+            t,
+            "qa_t2_idc_idx",
+            {
+                t->columns()[2],
+                t->columns()[3],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t2_jk1_idx",
+            {
+                t->columns()[4],
+            },
+            {},
+            secondary_index_features
+        });
     }
 //    create table qa_t3 (
 //        c_pk  int4 primary key,
@@ -465,45 +462,44 @@ void add_test_tables(storage::configurable_provider& provider) {
             },
             index_features
         });
-// temporarily disabling the secondary index TODO
-//        provider.add_index({
-//            t,
-//            "qa_t3_gk1_idx",
-//            {
-//                t->columns()[1],
-//            },
-//            {},
-//            secondary_index_features
-//        });
-//        provider.add_index({
-//            t,
-//            "qa_t3_gkc_idx",
-//            {
-//                t->columns()[1],
-//                t->columns()[2],
-//            },
-//            {},
-//            secondary_index_features
-//        });
-//        provider.add_index({
-//            t,
-//            "qa_t3_sk1_idx",
-//            {
-//                t->columns()[3],
-//            },
-//            {},
-//            secondary_index_features
-//        });
-//        provider.add_index({
-//            t,
-//            "qa_t3_skc_idx",
-//            {
-//                t->columns()[3],
-//                t->columns()[4],
-//            },
-//            {},
-//            secondary_index_features
-//        });
+        provider.add_index({
+            t,
+            "qa_t3_gk1_idx",
+            {
+                t->columns()[1],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_gkc_idx",
+            {
+                t->columns()[1],
+                t->columns()[2],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_sk1_idx",
+            {
+                t->columns()[3],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "qa_t3_skc_idx",
+            {
+                t->columns()[3],
+                t->columns()[4],
+            },
+            {},
+            secondary_index_features
+        });
     }
 }
 

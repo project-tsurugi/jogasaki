@@ -79,4 +79,22 @@ TEST_F(validate_qa_test, insert_after_delete_with_secondary_indices) {
     ASSERT_EQ(1, result.size());
 }
 
+TEST_F(validate_qa_test, test_secondary_t2) {
+    execute_statement( "INSERT INTO qa_t2 (c_pk1, c_pk2, c_id1, c_id2, c_jk1, c_jk2) VALUES (1, '10', 100, '1000', 10000, '100000')");
+    execute_statement( "DELETE FROM qa_t2");
+    wait_epochs();
+    execute_statement( "INSERT INTO qa_t2 (c_pk1, c_pk2, c_id1, c_id2, c_jk1, c_jk2) VALUES (1, '10', 100, '1000', 10000, '100000')");
+    execute_statement( "INSERT INTO qa_t2 (c_pk1, c_pk2, c_id1, c_id2, c_jk1, c_jk2) VALUES (2, '20', 200, '2000', 20000, '200000')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM qa_t2", result);
+        ASSERT_EQ(2, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM qa_t2 WHERE c_id1=200 AND c_id2='2000'", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
 }

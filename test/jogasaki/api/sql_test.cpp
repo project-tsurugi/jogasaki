@@ -53,7 +53,7 @@ class sql_test :
 public:
     // change this flag to debug with explain
     bool to_explain() override {
-        return true;
+        return false;
     }
 
     void SetUp() override {
@@ -260,7 +260,7 @@ TEST_F(sql_test, min_empty_table) {
     EXPECT_TRUE(rec.is_null(0));
 }
 
-TEST_F(sql_test, secondary_index) {
+TEST_F(sql_test, update_delete_secondary_index) {
     execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (1, 100)");
     execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (2, 200)");
     {

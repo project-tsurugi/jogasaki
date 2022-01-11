@@ -13,28 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "write_utils.h"
 
 #include <vector>
+#include <boost/dynamic_bitset.hpp>
 
-#include <takatori/util/maybe_shared_ptr.h>
-#include <yugawara/storage/index.h>
+#include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/error.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::maybe_shared_ptr;
 
-/**
- * @brief create meta for the variables' store for index key/value
- * @param idx yugawara index whose key/value are used to create the meta
- * @param for_key specify whether to create meta for key or not
- * @return record meta for the key or value store
- */
-maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
+maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key) {
+    std::vector<meta::field_type> types{};
+    boost::dynamic_bitset<std::uint64_t> nullities{};
+    if (for_key) {
+        for(auto&& k : idx.keys()) {
+            types.emplace_back(utils::type_for(k.column().type()));
+            nullities.push_back(true);
+        }
+    } else {
+        for(auto&& v : idx.values()) {
+            types.emplace_back(utils::type_for(static_cast<yugawara::storage::column const&>(v).type()));
+            nullities.push_back(true);
+        }
+    }
+    return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
+}
 
 }

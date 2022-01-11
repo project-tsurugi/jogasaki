@@ -17,12 +17,8 @@
 
 #include <vector>
 
-#include <yugawara/storage/index.h>
-#include <takatori/relation/write.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/ops/details/field_info.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/error.h>
 #include <jogasaki/kvs/writable_stream.h>
@@ -63,6 +59,7 @@ status details::write_secondary_target::encode_key(
     out = {static_cast<char*>(buf.data()), length};
     return status::ok;
 }
+
 status details::write_secondary_target::encode_and_put(
     write_secondary_context& ctx,
     kvs::transaction& tx,
@@ -74,7 +71,7 @@ status details::write_secondary_target::encode_and_put(
     if(auto res = encode_key(ctx, source_key, source_value, primary_key, k); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->put(tx, k, {}); is_error(res)) {
+    if(auto res = ctx.stg_->put(tx, k, {}, kvs::put_option::create_or_update); is_error(res)) {
         return res;
     }
     return status::ok;

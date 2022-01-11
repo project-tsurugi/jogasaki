@@ -144,48 +144,43 @@ public:
     );
 
     /**
-     * @brief create new object from takatori columns
-     * @param idx target index information
-     * @param keys takatori write keys information
-     * @param columns takatori write columns information
-     * @param input_variable_info variable table info for the input variables
-     * @param host_variable_info host variable info used as source for update.
+     * @brief encode key, find the record, fill variables, and remove
      */
-    status find_record_and_extract(
+    status find_record_and_remove(
         write_primary_context& ctx,
         kvs::transaction& tx,
         accessor::record_ref variables,
         memory_resource* varlen_resource
     );
 
+    /**
+     * @brief do update by copying values from source variable(or host variables) to target.
+     */
     void update_record(
         write_primary_context& ctx,
         accessor::record_ref input_variables,
         accessor::record_ref host_variables
     );
 
+    /**
+     * @brief gather the extracted (possibly updated) variables, encode key/value and put them to index
+     */
     status encode_and_put(write_primary_context& ctx, kvs::transaction& tx) const;
 
     /**
      * @brief accessor to key metadata
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept {
-        return key_meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& key_meta() const noexcept;
 
     /**
      * @brief accessor to value metadata
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept {
-        return value_meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& value_meta() const noexcept;
 
     /**
      * @brief accessor to storage name
      */
-    [[nodiscard]] std::string_view storage_name() const noexcept {
-        return storage_name_;
-    }
+    [[nodiscard]] std::string_view storage_name() const noexcept;
 
 private:
     std::string storage_name_{};

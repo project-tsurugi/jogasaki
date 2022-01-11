@@ -31,7 +31,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief partial write operator
- * @details write operator that partially specifies the data to target columns. Used for Update operation.
+ * @details write operator that partially specifies the data to target columns. Used for Update/Delete operation.
  */
 class write_partial : public record_operator {
 public:
@@ -127,9 +127,7 @@ private:
     details::write_primary_target primary_{};
     std::vector<details::write_secondary_target> secondaries_{};
 
-    std::vector<details::write_secondary_target> create_secondary_targets(
-        yugawara::storage::index const& idx
-    );
+    std::vector<details::write_secondary_target> create_secondary_targets(yugawara::storage::index const& idx);
     operation_status do_update(write_partial_context& ctx);
     operation_status do_delete(write_partial_context& ctx);
 };

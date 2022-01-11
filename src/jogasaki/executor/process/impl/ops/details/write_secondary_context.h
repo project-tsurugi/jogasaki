@@ -18,8 +18,6 @@
 #include <vector>
 #include <memory>
 
-#include <takatori/util/maybe_shared_ptr.h>
-
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
@@ -27,8 +25,6 @@
 #include <jogasaki/kvs/storage.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
-
-using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief partial write operator context

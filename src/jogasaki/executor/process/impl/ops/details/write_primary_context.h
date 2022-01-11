@@ -23,7 +23,6 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -31,13 +30,13 @@ namespace jogasaki::executor::process::impl::ops::details {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief partial write operator context
+ * @brief primary target context
  */
 class write_primary_context {
 public:
     friend class write_primary_target;
-
     using memory_resource = memory::lifo_paged_memory_resource;
+
     /**
      * @brief create empty object
      */
@@ -62,20 +61,17 @@ public:
     /**
      * @brief accessor to the extracted key store
      * @return the encoded key
-     * @pre write_primary_target::find_record_and_extract() is called with this object beforehand
+     * @pre write_primary_target::find_record_and_remove() is called with this object beforehand
      */
-    [[nodiscard]] accessor::record_ref extracted_key() const noexcept {
-        return key_store_.ref();
-    }
+    [[nodiscard]] accessor::record_ref extracted_key() const noexcept;
 
     /**
      * @brief accessor to the extracted value store
      * @return the encoded key
-     * @pre write_primary_target::find_record_and_extract() is called with this object beforehand
+     * @pre write_primary_target::find_record_and_remove() is called with this object beforehand
      */
-    [[nodiscard]] accessor::record_ref extracted_value() const noexcept {
-        return value_store_.ref();
-    }
+    [[nodiscard]] accessor::record_ref extracted_value() const noexcept;
+
 private:
     std::unique_ptr<kvs::storage> stg_{};
     data::aligned_buffer key_buf_{};

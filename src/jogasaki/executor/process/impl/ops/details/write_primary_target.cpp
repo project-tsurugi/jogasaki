@@ -70,7 +70,7 @@ write_primary_target::write_primary_target(
     updates_(std::move(updates))
 {}
 
-status write_primary_target::find_record_and_extract(
+status write_primary_target::find_record_and_remove(
     write_primary_context& ctx,
     kvs::transaction& tx,
     accessor::record_ref variables,
@@ -397,6 +397,18 @@ std::vector<details::update_field> write_primary_target::create_update_fields(
         }
     }
     return ret;
+}
+
+maybe_shared_ptr<meta::record_meta> const& write_primary_target::key_meta() const noexcept {
+    return key_meta_;
+}
+
+maybe_shared_ptr<meta::record_meta> const& write_primary_target::value_meta() const noexcept {
+    return value_meta_;
+}
+
+std::string_view write_primary_target::storage_name() const noexcept {
+    return storage_name_;
 }
 
 }

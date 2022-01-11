@@ -68,6 +68,7 @@ model::statement_kind write::kind() const noexcept {
 }
 
 bool write::operator()(request_context& context) const {
+    (void)kind_;
     auto& tx = context.transaction();
     auto* db = tx->database();
     std::vector<details::write_target> targets{};

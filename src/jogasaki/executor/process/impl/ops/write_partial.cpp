@@ -35,7 +35,6 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::maybe_shared_ptr;
 using variable = takatori::descriptor::variable;
 
 void write_partial::finish(abstract::task_context* context) {

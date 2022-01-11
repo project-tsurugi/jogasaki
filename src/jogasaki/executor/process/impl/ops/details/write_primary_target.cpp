@@ -262,8 +262,7 @@ std::vector<details::field_info> write_primary_target::create_input_key_fields(
     }
     auto meta = create_meta(idx, true);
     ret.reserve(idx.keys().size());
-    for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
-        auto&& k = idx.keys()[i];
+    for(auto&& k : idx.keys()) {
         auto kc = bindings(k.column());
         auto t = utils::type_for(k.column().type());
         auto spec = k.direction() == relation::sort_direction::ascendant ?

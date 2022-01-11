@@ -26,8 +26,6 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-using takatori::util::maybe_shared_ptr;
-
 status details::write_secondary_target::encode_key(
     write_secondary_context& ctx,
     accessor::record_ref source_key,

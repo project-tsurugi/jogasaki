@@ -153,32 +153,14 @@ TEST_F(incremental_aggregate_input_partition_test, avg) {
     auto key_meta = group_meta_->key_shared();
     auto val_meta = group_meta_->value_shared();
     auto it = t.begin();
-    {
-        auto exp = mock::create_nullable_record<kind::int8, kind::pointer>(1, nullptr);
-        EXPECT_EQ(exp, mock::basic_record(get_key_record(it), key_meta));
-    }
-    {
-        auto exp = mock::create_nullable_record<kind::float8, kind::int8>(1.0, 1);
-        EXPECT_EQ(exp, mock::basic_record(get_val_record(it), val_meta));
-    }
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::pointer>(1, nullptr)), mock::basic_record(get_key_record(it), key_meta));
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int8>(1.0, 1)), mock::basic_record(get_val_record(it), val_meta));
     ++it;
-    {
-        auto exp = mock::create_nullable_record<kind::int8, kind::pointer>(2, nullptr);
-        EXPECT_EQ(exp, mock::basic_record(get_key_record(it), key_meta));
-    }
-    {
-        auto exp = mock::create_nullable_record<kind::float8, kind::int8>(6.0, 2);
-        EXPECT_EQ(exp, mock::basic_record(get_val_record(it), val_meta));
-    }
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::pointer>(2, nullptr)), mock::basic_record(get_key_record(it), key_meta));
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int8>(6.0, 2)), mock::basic_record(get_val_record(it), val_meta));
     ++it;
-    {
-        auto exp = mock::create_nullable_record<kind::int8, kind::pointer>(3, nullptr);
-        EXPECT_EQ(exp, mock::basic_record(get_key_record(it), key_meta));
-    }
-    {
-        auto exp = mock::create_nullable_record<kind::float8, kind::int8>(3.0, 1);
-        EXPECT_EQ(exp, mock::basic_record(get_val_record(it), val_meta));
-    }
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::pointer>(3, nullptr)), mock::basic_record(get_key_record(it), key_meta));
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int8>(3.0, 1)), mock::basic_record(get_val_record(it), val_meta));
     ++it;
     EXPECT_EQ(t.end(), it);
 }

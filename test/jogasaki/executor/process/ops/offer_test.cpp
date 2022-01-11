@@ -184,8 +184,7 @@ TEST_F(offer_test, simple) {
     ASSERT_EQ(1, writer->size());
     auto& records = writer->records();
 
-    test_record exp{create_nullable_record<kind::float8, kind::int4, kind::int8>(1.0, 0, 2)};
-    EXPECT_EQ(exp, records[0]);
+    EXPECT_EQ((create_nullable_record<kind::float8, kind::int4, kind::int8>(1.0, 0, 2)), records[0]);
 
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
     vars_ref.set_null(map.at(c0).nullity_offset(), false);

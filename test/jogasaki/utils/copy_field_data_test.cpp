@@ -32,7 +32,6 @@ class copy_field_data_test : public ::testing::Test {};
 TEST_F(copy_field_data_test, simple) {
     mock::basic_record src{create_record<kind::float4, kind::int8>(1.0, 100)};
     mock::basic_record tgt{create_record<kind::int8, kind::float4>(200, 2.0)};
-    mock::basic_record exp{create_record<kind::int8, kind::float4>(100, 1.0)};
     auto src_meta = src.record_meta();
     auto tgt_meta = tgt.record_meta();
     auto cnt = src_meta->field_count();
@@ -44,7 +43,7 @@ TEST_F(copy_field_data_test, simple) {
         auto tgt_offset = tgt_meta->value_offset(j);
         copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset);
     }
-    ASSERT_EQ(exp, tgt);
+    ASSERT_EQ((create_record<kind::int8, kind::float4>(100, 1.0)), tgt);
 }
 
 TEST_F(copy_field_data_test, types) {

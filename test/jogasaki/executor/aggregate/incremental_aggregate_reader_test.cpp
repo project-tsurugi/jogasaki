@@ -305,18 +305,12 @@ TEST_F(incremental_aggregate_reader_test, avg_avg) {
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(1, get_key(r));
     ASSERT_TRUE(r.next_member());
-    {
-        auto exp = mock::create_nullable_record<kind::float8, kind::float8>(1.0, 1.0);
-        EXPECT_EQ(exp, mock::basic_record(get_value_record(r), value_meta));
-    }
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::float8>(1.0, 1.0)), mock::basic_record(get_value_record(r), value_meta));
     ASSERT_FALSE(r.next_member());
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
     ASSERT_TRUE(r.next_member());
-    {
-        auto exp = mock::create_nullable_record<kind::float8, kind::float8>(2.0, 2.0);
-        EXPECT_EQ(exp, mock::basic_record(get_value_record(r), value_meta));
-    }
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::float8>(2.0, 2.0)), mock::basic_record(get_value_record(r), value_meta));
     ASSERT_FALSE(r.next_member());
     ASSERT_FALSE(r.next_group());
 }

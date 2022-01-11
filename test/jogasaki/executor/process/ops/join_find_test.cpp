@@ -375,8 +375,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ASSERT_EQ(1, result.size());
-    auto exp = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 100);
-    EXPECT_EQ(exp, result[0]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 100)), result[0]);
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();
 }

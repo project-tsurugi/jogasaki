@@ -318,8 +318,7 @@ void service_api_test::test_query() {
             auto m = create_record_meta(cols);
             auto v = deserialize_msg(buf.view(), m);
             ASSERT_EQ(1, v.size());
-            auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-            EXPECT_EQ(exp, v[0]);
+            EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), v[0]);
             EXPECT_TRUE(ch.all_released());
         }
     }
@@ -408,8 +407,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
                 auto m = create_record_meta(cols);
                 auto v = deserialize_msg(buf.view(), m);
                 ASSERT_EQ(1, v.size());
-                auto exp = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-                EXPECT_EQ(exp, v[0]);
+                EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), v[0]);
                 EXPECT_TRUE(ch.all_released());
             }
         }

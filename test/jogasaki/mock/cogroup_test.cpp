@@ -116,7 +116,6 @@ TEST_F(cogroup_test, simple) {
     };
     cgrp(consumer);
 
-    auto exp = std::vector<std::int64_t>{1,2,3};
     auto v1 = std::vector<std::vector<double>>{
             {100.0, 101.0},
             {200.0},
@@ -127,7 +126,7 @@ TEST_F(cogroup_test, simple) {
             {},
             {300.0}
     };
-    EXPECT_EQ(exp, keys);
+    EXPECT_EQ((std::vector<std::int64_t>{1,2,3}), keys);
     EXPECT_EQ(v1, values1);
     EXPECT_EQ(v2, values2);
 
@@ -218,7 +217,6 @@ TEST_F(cogroup_test, three_inputs) {
     };
     cgrp(consumer);
 
-    auto exp = std::vector<std::int64_t>{1,2,3};
     auto v1 = std::vector<std::vector<double>>{
             {100.0},
             {200.0, 201.0},
@@ -234,7 +232,7 @@ TEST_F(cogroup_test, three_inputs) {
             {},
             {301.0}
     };
-    EXPECT_EQ(exp, keys);
+    EXPECT_EQ((std::vector<std::int64_t>{1,2,3}), keys);
     EXPECT_EQ(v1, values1);
     EXPECT_EQ(v2, values2);
     EXPECT_EQ(v3, values3);
@@ -304,7 +302,6 @@ TEST_F(cogroup_test, key_value_reversed) {
     };
     cgrp(consumer);
 
-    auto exp = std::vector<std::int64_t>{1,2,3};
     auto v1 = std::vector<std::vector<double>>{
             {100.0, 101.0},
             {200.0},
@@ -315,7 +312,7 @@ TEST_F(cogroup_test, key_value_reversed) {
             {},
             {300.0}
     };
-    EXPECT_EQ(exp, keys);
+    EXPECT_EQ((std::vector<std::int64_t>{1,2,3}), keys);
     EXPECT_EQ(v1, values1);
     EXPECT_EQ(v2, values2);
 

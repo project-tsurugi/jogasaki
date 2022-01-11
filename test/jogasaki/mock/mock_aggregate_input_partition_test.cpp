@@ -97,10 +97,8 @@ TEST_F(mock_aggregate_input_partition_test, basic) {
     keys.emplace(get_key(table.key()));
     values.emplace(get_value(table.value()));
     ASSERT_FALSE(table.next());
-    std::set<key_type> keys_exp{1,2,3};
-    std::set<value_type> values_exp{1.0,4.0,3.0};
-    ASSERT_EQ(keys_exp, keys);
-    ASSERT_EQ(values_exp, values);
+    ASSERT_EQ((std::set<key_type>{1,2,3}), keys);
+    ASSERT_EQ((std::set<value_type>{1.0,4.0,3.0}), values);
 }
 
 TEST_F(mock_aggregate_input_partition_test, multiple_hash_tables) {

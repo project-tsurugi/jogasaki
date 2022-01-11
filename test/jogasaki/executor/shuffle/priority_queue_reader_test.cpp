@@ -96,8 +96,7 @@ TEST_F(priority_queue_reader_test, basic) {
     res.emplace(get_value(r));
     ASSERT_TRUE(r.next_member());
     res.emplace(get_value(r));
-    std::multiset<double> exp{1.0, 2.0};
-    EXPECT_EQ(exp, res);
+    EXPECT_EQ((std::multiset<double>{1.0, 2.0}), res);
     ASSERT_FALSE(r.next_member());
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
@@ -168,8 +167,7 @@ TEST_F(priority_queue_reader_test, multiple_partitions) {
     ASSERT_TRUE(r.next_member());
     res.emplace(get_value(r));
     ASSERT_FALSE(r.next_member());
-    std::multiset<double> exp{1.0, 2.0, 3.0};
-    EXPECT_EQ(exp, res);
+    EXPECT_EQ((std::multiset<double>{1.0, 2.0, 3.0}), res);
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
     ASSERT_TRUE(r.next_member());
@@ -218,8 +216,7 @@ TEST_F(priority_queue_reader_test, empty_partition) {
     res.emplace(get_value(r));
     ASSERT_TRUE(r.next_member());
     res.emplace(get_value(r));
-    std::multiset<double> exp{1.0, 2.0};
-    EXPECT_EQ(exp, res);
+    EXPECT_EQ((std::multiset<double>{1.0, 2.0}), res);
     ASSERT_FALSE(r.next_member());
     ASSERT_TRUE(r.next_group());
     EXPECT_EQ(3, get_key(r));
@@ -385,10 +382,8 @@ TEST_F(priority_queue_reader_test, empty_keys) {
         keys.emplace( get_key(r));
         values.emplace( get_value(r));
     }
-    std::multiset<std::int64_t> exp_keys{0, 1, 2};
-    EXPECT_EQ(exp_keys, keys);
-    std::multiset<double> exp_values{1.0, 2.0, 3.0};
-    EXPECT_EQ(exp_values, values);
+    EXPECT_EQ((std::multiset<std::int64_t>{0, 1, 2}), keys);
+    EXPECT_EQ((std::multiset<double>{1.0, 2.0, 3.0}), values);
 
     ASSERT_FALSE(r.next_member());
     ASSERT_FALSE(r.next_group());

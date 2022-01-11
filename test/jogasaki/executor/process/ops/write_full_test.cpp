@@ -91,12 +91,12 @@ public:
         std::initializer_list<std::size_t> column_indices
     ) -> relation::write& {
         std::vector<relation::write::key> keys{};
-        for(auto idx : key_indices) {
-            keys.emplace_back(take.columns()[idx].destination(), bindings_(tbl->columns()[idx]));
+        for(auto i : key_indices) {
+            keys.emplace_back(take.columns()[i].destination(), bindings_(tbl->columns()[i]));
         }
         std::vector<relation::write::column> columns{};
-        for(auto idx : column_indices) {
-            columns.emplace_back(take.columns()[idx].destination(), bindings_(tbl->columns()[idx]));
+        for(auto i : column_indices) {
+            columns.emplace_back(take.columns()[i].destination(), bindings_(tbl->columns()[i]));
         }
         return process_.operators().insert(relation::write {
             operator_kind,

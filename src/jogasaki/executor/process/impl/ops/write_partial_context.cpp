@@ -18,11 +18,8 @@
 #include <vector>
 #include <memory>
 
-#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/iterator.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -39,11 +36,10 @@ write_partial_context::write_partial_context(
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     tx_(tx),
-    primary_context_(std::make_unique<details::write_primary_context>(
-            std::move(stg),
-            std::move(key_meta),
-            std::move(value_meta)
-        )
+    primary_context_(
+        std::move(stg),
+        std::move(key_meta),
+        std::move(value_meta)
     )
 {}
 
@@ -57,6 +53,10 @@ void write_partial_context::release() {
 
 kvs::transaction* write_partial_context::transaction() const noexcept {
     return tx_;
+}
+
+details::write_primary_context& write_partial_context::primary_context() noexcept {
+    return primary_context_;
 }
 
 }

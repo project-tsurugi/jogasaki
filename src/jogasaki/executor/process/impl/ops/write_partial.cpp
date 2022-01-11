@@ -57,7 +57,7 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    auto& context = *ctx.primary_context_;
+    auto& context = ctx.primary_context();
     // find update target and fill ctx.key_store_ and ctx.value_store_
     if(auto res = primary_.find_record_and_extract(
             context,

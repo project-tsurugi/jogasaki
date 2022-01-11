@@ -15,8 +15,6 @@
  */
 #include "encode_key.h"
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/logging.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/coder.h>
@@ -24,8 +22,6 @@
 #include <jogasaki/utils/convert_any.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
-
-using takatori::util::fail;
 
 status encode_key(
     std::vector<details::search_key_field_info> const& keys,

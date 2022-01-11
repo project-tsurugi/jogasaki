@@ -46,18 +46,13 @@ struct cache_align update_field {
     /**
      * @brief create new object
      * @param type type of the field
-     * @param variable_offset byte offset of the field in the input variables record (in variable table)
-     * @param variable_nullity_offset bit offset of the field nullity in the input variables record
+     * @param source_offset byte offset of the field in the input variables record (in variable table)
+     * @param source_nullity_offset bit offset of the field nullity in the input variables record
      * @param target_offset byte offset of the field in the target record in ctx.key_store_/value_store_.
      * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.key_store_/value_store_.
      * @param nullable whether the target field is nullable or not
-     * @param spec the spec of the source field used for encode/decode
-     * @param updated indicates whether the field will be updated or not
-     * @param update_variable_offset byte offset of the field in the variable table.
-     * Used to provide values only if `updated` is true.
-     * @param update_variable_nullity_offset bit offset of the field nullity in the variable table.
-     * Used to provide values nullity only if `updated` is true.
-     * @param update_variable_is_external indicates whether the update_variable source is from host variables
+     * @param source_external indicates whether the source is from host variables
+     * @param key indicates the filed is part of the key
      */
     update_field(
         meta::field_type type,
@@ -78,7 +73,7 @@ struct cache_align update_field {
         source_external_(source_external),
         key_(key)
     {}
-    meta::field_type type_{};
+    meta::field_type type_{};  //NOLINT
     std::size_t source_offset_{};  //NOLINT
     std::size_t source_nullity_offset_{};  //NOLINT
     std::size_t target_offset_{};  //NOLINT
@@ -109,10 +104,12 @@ public:
     /**
      * @brief create new object
      * @param storage_name the primary storage name to write
-     * @param key_fields field offset information for keys
-     * @param value_fields field offset information for values
      * @param key_meta metadata for keys
      * @param value_meta metadata for values
+     * @param input_keys field offset information for incoming key fields
+     * @param extracted_keys field offset information for extracted key fields
+     * @param extracted_values field offset information for extracted value fields
+     * @param updates update information such as source/target field offsets
      */
     write_primary_target(
         std::string_view storage_name,
@@ -135,15 +132,25 @@ public:
      * @param idx target index information
      * @param keys takatori write keys information
      * @param columns takatori write columns information
+     * @param input_variable_info variable table info for the input variables
+     * @param host_variable_info host variable info used as source for update.
      */
     write_primary_target(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
         sequence_view<column const> columns,
-        variable_table_info const* input_variable_info = nullptr,
+        variable_table_info const& input_variable_info,
         variable_table_info const* host_variable_info = nullptr
     );
 
+    /**
+     * @brief create new object from takatori columns
+     * @param idx target index information
+     * @param keys takatori write keys information
+     * @param columns takatori write columns information
+     * @param input_variable_info variable table info for the input variables
+     * @param host_variable_info host variable info used as source for update.
+     */
     status find_record_and_extract(
         write_primary_context& ctx,
         kvs::transaction& tx,
@@ -189,13 +196,6 @@ private:
     std::vector<details::field_info> extracted_values_{};
     std::vector<details::update_field> updates_{};
 
-    /**
-     * @brief private encoding function
-     * @param from_variable specify where the source comes from. True when encoding from variable table to
-     * internal buffer (key_buf_/value_buf_). False when encoding internal buffer to kvs::writable_streams.
-     * @returns status::ok if successful
-     * @returns error otherwise
-     */
     status encode_fields(
         std::vector<details::field_info> const& fields,
         kvs::writable_stream& target,
@@ -223,6 +223,7 @@ private:
         variable_table_info const* host_variable_info,
         variable_table_info const& input_variable_info
     );
+
     status check_length_and_extend_buffer(
         std::vector<details::field_info> const& fields,
         data::aligned_buffer& buffer,

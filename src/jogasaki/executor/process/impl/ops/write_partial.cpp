@@ -120,7 +120,7 @@ write_partial::write_partial(
             idx,
             keys,
             columns,
-            input_variable_info ? input_variable_info : &info.vars_info_list()[block_index],
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
             info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr
         },
         input_variable_info

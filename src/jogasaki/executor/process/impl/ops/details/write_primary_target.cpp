@@ -37,17 +37,17 @@ write_primary_target::write_primary_target(
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
     sequence_view<column const> columns,
-    variable_table_info const* input_variable_info,
+    variable_table_info const& input_variable_info,
     variable_table_info const* host_variable_info
 ) :
     write_primary_target(
         idx.simple_name(),
         create_meta(idx, true),
         create_meta(idx, false),
-        create_input_key_fields(idx, keys, *input_variable_info),
+        create_input_key_fields(idx, keys, input_variable_info),
         create_extracted_fields(idx, true),
         create_extracted_fields(idx, false),
-        create_update_fields(idx, keys, columns, host_variable_info, *input_variable_info)
+        create_update_fields(idx, keys, columns, host_variable_info, input_variable_info)
     )
 {}
 

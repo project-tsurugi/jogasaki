@@ -119,7 +119,7 @@ public:
 } // namespace
 
 /**
- * @brief write statement
+ * @brief write statement (to execute Insert)
  */
 class write : public model::statement {
 public:

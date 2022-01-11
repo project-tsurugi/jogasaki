@@ -70,10 +70,6 @@ model::statement_kind write::kind() const noexcept {
 bool write::operator()(request_context& context) const {
     auto& tx = context.transaction();
     auto* db = tx->database();
-    // TODO is there the case insert_or_update?
-    kvs::put_option opt = kind_ == write_kind::insert ?
-        kvs::put_option::create :
-        kvs::put_option::create_or_update;
     std::vector<details::write_target> targets{};
     if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
             info_, *resource_, host_variables_, targets); res != status::ok) {
@@ -93,7 +89,7 @@ bool write::operator()(request_context& context) const {
                     *tx,
                     {static_cast<char*>(key.data()), key.size()},
                     {static_cast<char*>(value.data()), value.size()},
-                    opt
+                    kvs::put_option::create  // assuming this class is for Insert only
                 ); ! is_ok(res)) {
                 context.status_code(res);
                 return false;

@@ -188,7 +188,7 @@ public:
 TEST_F(write_partial_test , simple_update) {
     auto&& [take, target] = create_update_take_target_i1();
     create_processor_info();
-    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::int8>(10, 1000);
+    auto input = create_nullable_record<kind::int4, kind::int8>(10, 1000);
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
     variable_table_info input_variable_info{create_variable_table_info(vars, input)};
@@ -230,33 +230,19 @@ TEST_F(write_partial_test , simple_update) {
     ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
     (void)tx->commit();
 
-    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
-    get(
-        *db_,
-        i1_->simple_name(),
-        jogasaki::mock::create_record<kind::int4>(0),
-        jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
-        result
-    );
+    std::vector<std::pair<basic_record, basic_record>> result{};
+    get(*db_, i1_->simple_name(), create_record<kind::int4>(0), create_record<kind::float8, kind::int8>(0.0, 0), result);
     ASSERT_EQ(2, result.size());
-    {
-        auto exp_k = jogasaki::mock::create_record<kind::int4>(10);
-        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(1.0, 1000);
-        EXPECT_EQ(exp_k, result[0].first);
-        EXPECT_EQ(exp_v, result[0].second);
-    }
-    {
-        auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
-        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
-        EXPECT_EQ(exp_k, result[1].first);
-        EXPECT_EQ(exp_v, result[1].second);
-    }
+    EXPECT_EQ(create_record<kind::int4>(10), result[0].first);
+    EXPECT_EQ((create_record<kind::float8, kind::int8>(1.0, 1000)), result[0].second);
+    EXPECT_EQ(create_record<kind::int4>(20), result[1].first);
+    EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
 }
 
 TEST_F(write_partial_test , nullable_columns) {
     auto&& [take, target] = create_update_take_target_i1_nullable();
     create_processor_info();
-    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::int8>(10, 1000);
+    auto input = create_nullable_record<kind::int4, kind::int8>(10, 1000);
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
     variable_table_info input_variable_info{create_variable_table_info(vars, input)};
@@ -298,33 +284,19 @@ TEST_F(write_partial_test , nullable_columns) {
     ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
     (void)tx->commit();
 
-    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
-    get(
-        *db_,
-        i1nullable_->simple_name(),
-        jogasaki::mock::create_nullable_record<kind::int4>(0),
-        jogasaki::mock::create_nullable_record<kind::float8, kind::int8>(0.0, 0),
-        result
-    );
+    std::vector<std::pair<basic_record, basic_record>> result{};
+    get(*db_, i1nullable_->simple_name(), create_nullable_record<kind::int4>(0), create_nullable_record<kind::float8, kind::int8>(0.0, 0), result);
     ASSERT_EQ(2, result.size());
-    {
-        auto exp_k = jogasaki::mock::create_nullable_record<kind::int4>(10);
-        auto exp_v = jogasaki::mock::create_nullable_record<kind::float8, kind::int8>(1.0, 1000);
-        EXPECT_EQ(exp_k, result[0].first);
-        EXPECT_EQ(exp_v, result[0].second);
-    }
-    {
-        auto exp_k = jogasaki::mock::create_nullable_record<kind::int4>(20);
-        auto exp_v = jogasaki::mock::create_nullable_record<kind::float8, kind::int8>(2.0, 200);
-        EXPECT_EQ(exp_k, result[1].first);
-        EXPECT_EQ(exp_v, result[1].second);
-    }
+    EXPECT_EQ(create_record<kind::int4>(10), result[0].first);
+    EXPECT_EQ((create_record<kind::float8, kind::int8>(1.0, 1000)), result[0].second);
+    EXPECT_EQ(create_record<kind::int4>(20), result[1].first);
+    EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
 }
 
 TEST_F(write_partial_test , update_multi_columns) {
     auto&& [take, target] = create_update_multi_take_target_i1();
     create_processor_info();
-    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::float8>(10, 1000, 10000.0);
+    auto input = create_nullable_record<kind::int4, kind::int8, kind::float8>(10, 1000, 10000.0);
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
     vars.emplace_back(sources(target.columns())[1]);
@@ -367,27 +339,13 @@ TEST_F(write_partial_test , update_multi_columns) {
     ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
     (void)tx->commit();
 
-    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
-    get(
-        *db_,
-        i1_->simple_name(),
-        jogasaki::mock::create_record<kind::int4>(0),
-        jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
-        result
-    );
+    std::vector<std::pair<basic_record, basic_record>> result{};
+    get(*db_, i1_->simple_name(), create_record<kind::int4>(0), create_record<kind::float8, kind::int8>(0.0, 0), result);
     ASSERT_EQ(2, result.size());
-    {
-        auto exp_k = jogasaki::mock::create_record<kind::int4>(10);
-        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(10000.0, 1000);
-        EXPECT_EQ(exp_k, result[0].first);
-        EXPECT_EQ(exp_v, result[0].second);
-    }
-    {
-        auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
-        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
-        EXPECT_EQ(exp_k, result[1].first);
-        EXPECT_EQ(exp_v, result[1].second);
-    }
+    EXPECT_EQ(create_record<kind::int4>(10), result[0].first);
+    EXPECT_EQ((create_record<kind::float8, kind::int8>(10000.0, 1000)), result[0].second);
+    EXPECT_EQ(create_record<kind::int4>(20), result[1].first);
+    EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
 }
 
 }

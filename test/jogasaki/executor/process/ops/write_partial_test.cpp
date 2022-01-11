@@ -133,6 +133,18 @@ public:
     });
     std::shared_ptr<index> i1nullable_ = create_primary_index(t1nullable_, {0}, {1,2});
 
+    std::shared_ptr<table> t100_ = create_table({
+        "T100",
+        {
+            { "C0", t::int8(), nullity{false} },
+            { "C1", t::int8(), nullity{false} },
+            { "C2", t::int8(), nullity{false} },
+            { "C3", t::int8(), nullity{false} },
+        },
+    });
+    std::shared_ptr<index> i100_ = create_primary_index(t100_, {0}, {1,2, 3});
+    std::shared_ptr<index> i100_secondary_ = create_secondary_index(t100_, "T100_SECONDARY_", {1}, {});
+
     auto create_target(
         relation::step::take_flat& take,
         relation::write::operator_kind_type operator_kind,
@@ -181,6 +193,15 @@ public:
         take.output() >> target.input();
         add_key_types(target, t::int4{});
         add_column_types(target, t::int8{}, t::float8{});
+        return {take, target};
+    }
+    std::pair<relation::step::take_flat&, relation::write&> create_update_take_target_i100() {
+        auto& take = add_take(4);
+        add_column_types(take, t::int8{}, t::int8{}, t::int8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::update, i100_, t100_, {0}, {1});
+        take.output() >> target.input();
+        add_key_types(target, t::int8{});
+        add_column_types(target, t::int8{});
         return {take, target};
     }
 };
@@ -346,6 +367,67 @@ TEST_F(write_partial_test , update_multi_columns) {
     EXPECT_EQ((create_record<kind::float8, kind::int8>(10000.0, 1000)), result[0].second);
     EXPECT_EQ(create_record<kind::int4>(20), result[1].first);
     EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
+}
+
+TEST_F(write_partial_test , update_secondary) {
+    auto&& [take, target] = create_update_take_target_i100();
+    create_processor_info();
+    auto input = create_nullable_record<kind::int8, kind::int8>(10, 10000);
+    auto vars = sources(target.keys());
+    vars.emplace_back(sources(target.columns())[0]);
+
+    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+
+    write_partial wrt{
+        0,
+        *processor_info_,
+        0,
+        write_kind::update,
+        *i100_,
+        target.keys(),
+        target.columns(),
+        &input_variable_info
+    };
+
+    mock::task_context task_ctx{};
+    put( *db_, i100_->simple_name(), create_record<kind::int8>(10), create_record<kind::int8, kind::int8, kind::int8>(1, 100, 1000));
+    put( *db_, i100_->simple_name(), create_record<kind::int8>(20), create_record<kind::int8, kind::int8, kind::int8>(2, 200, 2000));
+
+    auto tx = db_->create_transaction();
+    auto stg = db_->get_storage(i100_->simple_name());
+    lifo_paged_memory_resource resource{&global::page_pool()};
+    lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+
+    std::vector<details::write_secondary_context> secondaries{};
+    secondaries.emplace_back(db_->get_or_create_storage(i100_secondary_->simple_name()));
+
+    write_partial_context ctx{
+        &task_ctx,
+        input_variables,
+        std::move(stg),
+        tx.get(),
+        wrt.primary().key_meta(),
+        wrt.primary().value_meta(),
+        &resource,
+        &varlen_resource,
+        std::move(secondaries)
+
+    };
+
+    ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
+    (void)tx->commit();
+
+    {
+        std::vector<std::pair<basic_record, basic_record>> result{};
+        get(*db_, i100_->simple_name(), create_record<kind::int8>(0), create_record<kind::int8, kind::int8, kind::int8>(0, 0, 0), result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ(create_record<kind::int8>(10), result[0].first);
+        EXPECT_EQ((create_record<kind::int8, kind::int8, kind::int8>(10000, 100, 1000)), result[0].second);
+        EXPECT_EQ(create_record<kind::int8>(20), result[1].first);
+        EXPECT_EQ((create_record<kind::int8, kind::int8, kind::int8>(2, 200, 2000)), result[1].second);
+    }
 }
 
 }

@@ -47,6 +47,7 @@ using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 
 using namespace jogasaki::mock;
 
@@ -62,6 +63,7 @@ class write_full_test :
     public test_root,
     public kvs_test_base,
     public operator_test_utils {
+public:
 
     void SetUp() override {
         kvs_db_setup();
@@ -69,10 +71,8 @@ class write_full_test :
     void TearDown() override {
         kvs_db_teardown();
     }
-};
 
-TEST_F(write_full_test, simple) {
-    auto t1 = create_table({
+    std::shared_ptr<table> t1_ = create_table({
         "T1",
         {
             { "C0", t::int4(), nullity{false} },
@@ -80,26 +80,60 @@ TEST_F(write_full_test, simple) {
             { "C2", t::int8(), nullity{false} },
         },
     });
-    auto i1 = create_primary_index(t1, {0}, {1,2});
+    std::shared_ptr<index> i1_ = create_primary_index(t1_, {0}, {1,2});
 
-    auto& take = add_take(3);
-    add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+    auto create_target(
+        relation::step::take_flat& take,
+        relation::write::operator_kind_type operator_kind,
+        std::shared_ptr<index> idx,
+        std::shared_ptr<table> tbl,
+        std::initializer_list<std::size_t> key_indices,
+        std::initializer_list<std::size_t> column_indices
+    ) -> relation::write& {
+        std::vector<relation::write::key> keys{};
+        for(auto idx : key_indices) {
+            keys.emplace_back(take.columns()[idx].destination(), bindings_(tbl->columns()[idx]));
+        }
+        std::vector<relation::write::column> columns{};
+        for(auto idx : column_indices) {
+            columns.emplace_back(take.columns()[idx].destination(), bindings_(tbl->columns()[idx]));
+        }
+        return process_.operators().insert(relation::write {
+            operator_kind,
+            bindings_(*idx),
+            std::move(keys),
+            std::move(columns)
+        });
+    }
+    std::pair<relation::step::take_flat&, relation::write&> create_insert_take_target_i1() {
+        auto& take = add_take(3);
+        add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::insert, i1_, t1_, {}, {0,1,2});
+        take.output() >> target.input();
+        add_column_types(target, t::int4{}, t::float8{}, t::int8{});
+        return {take, target};
+    }
 
-    auto& target = process_.operators().insert(relation::write {
-        relation::write_kind::insert,
-        bindings_(*i1),
-        {
-            // TODO verify no key for insert
-        },
-        {
-            { take.columns()[0].destination(), bindings_(t1->columns()[0]) },
-            { take.columns()[1].destination(), bindings_(t1->columns()[1]) },
-            { take.columns()[2].destination(), bindings_(t1->columns()[2]) },
-        },
-    });
+    std::pair<relation::step::take_flat&, relation::write&> create_delete_take_target_i1() {
+        auto& take = add_take(3);
+        add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::delete_, i1_, t1_, {0}, {});
+        take.output() >> target.input();
+        add_key_types(target, t::int4{});
+        return {take, target};
+    }
+    std::pair<relation::step::take_flat&, relation::write&> create_upsert_take_target_i1() {
+        auto& take = add_take(3);
+        add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::insert_or_update, i1_, t1_, {0}, {1, 2});
+        take.output() >> target.input();
+        add_key_types(target, t::int4{});
+        return {take, target};
+    }
+};
 
-    take.output() >> target.input();
-    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
+TEST_F(write_full_test, simple_insert) {
+    auto&& [take, target] = create_insert_take_target_i1();
     create_processor_info();
 
     auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(0, 1.0, 2);
@@ -112,7 +146,7 @@ TEST_F(write_full_test, simple) {
         *processor_info_,
         0,
         write_kind::insert,
-        *i1,
+        *i1_,
         target.keys(),
         target.columns(),
         &input_variable_info
@@ -120,11 +154,11 @@ TEST_F(write_full_test, simple) {
 
     auto tx = db_->create_transaction();
     auto mgr = sequence::manager{*db_};
-    mock::task_context task_ctx{ {}, {}, {}, {}};
+    mock::task_context task_ctx{};
     write_full_context ctx{
         &task_ctx,
         input_variables,
-        get_storage(*db_, i1->simple_name()),
+        get_storage(*db_, i1_->simple_name()),
         tx.get(),
         &mgr,
         &resource_,
@@ -137,7 +171,7 @@ TEST_F(write_full_test, simple) {
 
     get(
         *db_,
-        i1->simple_name(),
+        i1_->simple_name(),
         jogasaki::mock::create_record<kind::int4>(0),
         jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
         result
@@ -149,31 +183,8 @@ TEST_F(write_full_test, simple) {
     EXPECT_EQ(exp_v, result[0].second);
 }
 
-TEST_F(write_full_test, delete) {
-    auto t1 = create_table({
-        "T1",
-        {
-            { "C0", t::int4(), nullity{false} },
-            { "C1", t::float8(), nullity{false}  },
-            { "C2", t::int8(), nullity{false} },
-        },
-    });
-    auto i1 = create_primary_index(t1, {0}, {1,2});
-
-    auto& take = add_take(3);
-    add_column_types(take, t::int4{}, t::float8{}, t::int8{});
-
-    auto& target = process_.operators().insert(relation::write {
-        relation::write_kind::insert,
-        bindings_(*i1),
-        {
-            { take.columns()[0].destination(), bindings_(t1->columns()[0]) },
-        },
-        {},
-    });
-
-    take.output() >> target.input();
-    add_key_types(target, t::int4{});
+TEST_F(write_full_test, simple_delete) {
+    auto&& [take, target] = create_delete_take_target_i1();
     create_processor_info();
 
     auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 0.0, 0);
@@ -186,21 +197,20 @@ TEST_F(write_full_test, delete) {
         *processor_info_,
         0,
         write_kind::delete_,
-        *i1,
+        *i1_,
         target.keys(),
         target.columns(),
         &input_variable_info
     };
 
-    using namespace std::chrono_literals;
     std::this_thread::sleep_for(100ms);
-    put( *db_, i1->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db_, i1->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
     std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
     get(
         *db_,
-        i1->simple_name(),
+        i1_->simple_name(),
         jogasaki::mock::create_record<kind::int4>(),
         jogasaki::mock::create_record<kind::float8, kind::int8>(),
         result
@@ -209,11 +219,11 @@ TEST_F(write_full_test, delete) {
 
     auto tx = db_->create_transaction();
     auto mgr = sequence::manager{*db_};
-    mock::task_context task_ctx{ {}, {}, {}, {}};
+    mock::task_context task_ctx{};
     write_full_context ctx{
         &task_ctx,
         input_variables,
-        get_storage(*db_, i1->simple_name()),
+        get_storage(*db_, i1_->simple_name()),
         tx.get(),
         &mgr,
         &resource_,
@@ -226,12 +236,161 @@ TEST_F(write_full_test, delete) {
     result.clear();
     get(
         *db_,
-        i1->simple_name(),
+        i1_->simple_name(),
         jogasaki::mock::create_record<kind::int4>(),
         jogasaki::mock::create_record<kind::float8, kind::int8>(),
         result
     );
     ASSERT_EQ(1, result.size());
+    auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
+    auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
+    EXPECT_EQ(exp_k, result[0].first);
+    EXPECT_EQ(exp_v, result[0].second);
+}
+
+TEST_F(write_full_test, upsert_as_insert) {
+    auto&& [take, target] = create_upsert_take_target_i1();
+    create_processor_info();
+
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 0.0, 0);
+    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+
+    write_full op{
+        0,
+        *processor_info_,
+        0,
+        write_kind::insert_or_update,
+        *i1_,
+        target.keys(),
+        target.columns(),
+        &input_variable_info
+    };
+
+    std::this_thread::sleep_for(100ms);
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    get(
+        *db_,
+        i1_->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(),
+        result
+    );
+    ASSERT_EQ(1, result.size());
+
+    auto tx = db_->create_transaction();
+    auto mgr = sequence::manager{*db_};
+    mock::task_context task_ctx{};
+    write_full_context ctx{
+        &task_ctx,
+        input_variables,
+        get_storage(*db_, i1_->simple_name()),
+        tx.get(),
+        &mgr,
+        &resource_,
+        &varlen_resource_
+    };
+
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+
+    ASSERT_EQ(status::ok, tx->commit());
+    result.clear();
+    get(
+        *db_,
+        i1_->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(),
+        result
+    );
+    ASSERT_EQ(2, result.size());
+    {
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(10);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0);
+        EXPECT_EQ(exp_k, result[0].first);
+        EXPECT_EQ(exp_v, result[0].second);
+    }
+    {
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
+        EXPECT_EQ(exp_k, result[1].first);
+        EXPECT_EQ(exp_v, result[1].second);
+    }
+}
+
+TEST_F(write_full_test, upsert_as_update) {
+    auto&& [take, target] = create_upsert_take_target_i1();
+    create_processor_info();
+
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 0.0, 0);
+    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+
+    write_full op{
+        0,
+        *processor_info_,
+        0,
+        write_kind::insert_or_update,
+        *i1_,
+        target.keys(),
+        target.columns(),
+        &input_variable_info
+    };
+
+    std::this_thread::sleep_for(100ms);
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    get(
+        *db_,
+        i1_->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(),
+        result
+    );
+    ASSERT_EQ(2, result.size());
+
+    auto tx = db_->create_transaction();
+    auto mgr = sequence::manager{*db_};
+    mock::task_context task_ctx{};
+    write_full_context ctx{
+        &task_ctx,
+        input_variables,
+        get_storage(*db_, i1_->simple_name()),
+        tx.get(),
+        &mgr,
+        &resource_,
+        &varlen_resource_
+    };
+
+    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+
+    ASSERT_EQ(status::ok, tx->commit());
+    result.clear();
+    get(
+        *db_,
+        i1_->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(),
+        result
+    );
+    ASSERT_EQ(2, result.size());
+    {
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(10);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0);
+        EXPECT_EQ(exp_k, result[0].first);
+        EXPECT_EQ(exp_v, result[0].second);
+    }
+    {
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
+        EXPECT_EQ(exp_k, result[1].first);
+        EXPECT_EQ(exp_v, result[1].second);
+    }
 }
 
 }

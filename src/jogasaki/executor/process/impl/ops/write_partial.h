@@ -130,6 +130,8 @@ private:
     std::vector<details::write_secondary_target> create_secondary_targets(
         yugawara::storage::index const& idx
     );
+    operation_status do_update(write_partial_context& ctx);
+    operation_status do_delete(write_partial_context& ctx);
 };
 
 }

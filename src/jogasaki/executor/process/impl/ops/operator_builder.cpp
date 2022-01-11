@@ -174,7 +174,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
     auto block_index = info_->block_indices().at(&node);
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
 
-    if (node.operator_kind() == relation::write_kind::update) {
+    if (node.operator_kind() == relation::write_kind::update || node.operator_kind() == relation::write_kind::delete_) {
         return std::make_unique<write_partial>(
             index_++,
             *info_,

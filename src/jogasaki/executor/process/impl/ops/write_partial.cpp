@@ -58,6 +58,17 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
+    switch(kind_) {
+        case write_kind::update:
+            return do_update(ctx);
+        case write_kind::delete_:
+            return do_delete(ctx);
+        default:
+            fail();
+    }
+}
+
+operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill ctx.key_store_ and ctx.value_store_
     if(auto res = primary_.find_record_and_extract(
@@ -107,6 +118,31 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     return {};
 }
 
+operation_status write_partial::do_delete(write_partial_context& ctx) {
+    auto& context = ctx.primary_context();
+    // find update target and fill ctx.key_store_ and ctx.value_store_
+    if(auto res = primary_.find_record_and_extract(  // TODO extract is not needed if secondaries is empty
+            context,
+            *ctx.transaction(),
+            ctx.input_variables().store().ref(),
+            ctx.varlen_resource()
+        ); res != status::ok) {
+        return details::error_abort(ctx, res);
+    }
+
+    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(auto res = secondaries_[i].encode_and_remove(
+                ctx.secondary_contexts_[i],
+                *ctx.transaction(),
+                context.extracted_key(),
+                context.extracted_value(),
+                context.encoded_key()
+            ); res != status::ok) {
+            return details::error_abort(ctx, res);
+        }
+    }
+    return {};
+}
 operation_status write_partial::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};

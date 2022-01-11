@@ -25,49 +25,39 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 #include "context_base.h"
-#include "write_common_context.h"
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief partial write operator context
  */
-class write_partial_context : public context_base {
+class primary_target_context {
 public:
-    friend class write_partial;
+    friend class primary_target;
+
+    using memory_resource = memory::lifo_paged_memory_resource;
     /**
      * @brief create empty object
      */
-    write_partial_context() = default;
+    primary_target_context() = default;
 
     /**
      * @brief create new object
      */
-    write_partial_context(
-        class abstract::task_context* ctx,
-        variable_table& variables,
+    primary_target_context(
         std::unique_ptr<kvs::storage> stg,
-        kvs::transaction* tx,
         maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta,
-        memory_resource* resource,
-        memory_resource* varlen_resource
+        maybe_shared_ptr<meta::record_meta> value_meta
     );
 
-    [[nodiscard]] operator_kind kind() const noexcept override;
-
-    void release() override;
-
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
-
-    [[nodiscard]] details::primary_target_context* primary_context() const noexcept {
-        return primary_context_.get();
-    }
 private:
-    kvs::transaction* tx_{};
-    std::unique_ptr<details::primary_target_context> primary_context_{};
+    std::unique_ptr<kvs::storage> stg_{};
+    data::aligned_buffer key_buf_{};
+    data::aligned_buffer value_buf_{};
+    data::small_record_store key_store_{};
+    data::small_record_store value_store_{};
 };
 
 }

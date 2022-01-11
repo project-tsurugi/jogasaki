@@ -221,8 +221,8 @@ TEST_F(write_partial_test , simple_update) {
         input_variables,
         std::move(stg),
         tx.get(),
-        wrt.key_meta(),
-        wrt.value_meta(),
+        wrt.primary()->key_meta(),
+        wrt.primary()->value_meta(),
         &resource,
         &varlen_resource
     };
@@ -275,8 +275,8 @@ TEST_F(write_partial_test , nullable_columns) {
         input_variables,
         std::move(stg),
         tx.get(),
-        wrt.key_meta(),
-        wrt.value_meta(),
+        wrt.primary()->key_meta(),
+        wrt.primary()->value_meta(),
         &resource,
         &varlen_resource
     };
@@ -330,8 +330,8 @@ TEST_F(write_partial_test , update_multi_columns) {
         input_variables,
         std::move(stg),
         tx.get(),
-        wrt.key_meta(),
-        wrt.value_meta(),
+        wrt.primary()->key_meta(),
+        wrt.primary()->value_meta(),
         &resource,
         &varlen_resource
     };

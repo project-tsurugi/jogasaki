@@ -25,39 +25,17 @@
 #include <jogasaki/kvs/iterator.h>
 #include "context_base.h"
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::impl::ops::details {
 
-write_partial_context::write_partial_context(
-    class abstract::task_context* ctx,
-    variable_table& variables,
+primary_target_context::primary_target_context(
     std::unique_ptr<kvs::storage> stg,
-    kvs::transaction* tx,
     maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
-    context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource
+    maybe_shared_ptr<meta::record_meta> value_meta
 ) :
-    context_base(ctx, variables, resource, varlen_resource),
-    tx_(tx),
-    primary_context_(std::make_unique<details::primary_target_context>(
-            std::move(stg),
-            std::move(key_meta),
-            std::move(value_meta)
-        )
-    )
+    stg_(std::move(stg)),
+    key_store_(std::move(key_meta)),
+    value_store_(std::move(value_meta))
 {}
-
-operator_kind write_partial_context::kind() const noexcept {
-    return operator_kind::write_partial;
-}
-
-void write_partial_context::release() {
-    //no-op
-}
-
-kvs::transaction* write_partial_context::transaction() const noexcept {
-    return tx_;
-}
 
 }
 

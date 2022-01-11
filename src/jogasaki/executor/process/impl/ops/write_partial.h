@@ -19,7 +19,6 @@
 
 #include <yugawara/storage/index.h>
 #include <takatori/relation/write.h>
-#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/kvs/coder.h>
@@ -28,8 +27,6 @@
 #include "details/write_primary_target.h"
 
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief partial write operator
@@ -53,9 +50,8 @@ public:
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param kind write operation kind
-     * @param storage_name the storage name to write
-     * @param key_fields field offset information for keys
-     * @param value_fields field offset information for values
+     * @param primary the primary target of this write operation
+     * @param input_variable_info input variable information
      */
     write_partial(
         operator_index_type index,
@@ -72,17 +68,16 @@ public:
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param kind write operation kind
-     * @param storage_name the storage name to write
-     * @param idx target index information
-     * @param keys takatori write keys information
+     * @param idx the primary index that this write operation depends (secondaries under this primary are also handled)
+     * @param keys takatori write keys information in the sense of primary index
      * @param columns takatori write columns information
+     * @param input_variable_info input variable information
      */
     write_partial(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
         write_kind kind,
-        std::string_view storage_name,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
         sequence_view<column const> columns,
@@ -110,7 +105,7 @@ public:
     [[nodiscard]] operator_kind kind() const noexcept override;
 
     /**
-     * @brief return storage name
+     * @brief return primary index storage name
      * @return the storage name of the write target
      */
     [[nodiscard]] std::string_view storage_name() const noexcept;
@@ -120,12 +115,13 @@ public:
      */
     void finish(abstract::task_context* context) override;
 
-    [[nodiscard]] details::write_primary_target const& primary() const noexcept {
-        return primary_;
-    }
+    /**
+     * @brief accessor to primary target
+     */
+    [[nodiscard]] details::write_primary_target const& primary() const noexcept;
+
 private:
     write_kind kind_{};
-    std::string storage_name_{};
     details::write_primary_target primary_{};
 };
 

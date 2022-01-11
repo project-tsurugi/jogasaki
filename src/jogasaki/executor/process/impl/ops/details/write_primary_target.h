@@ -85,6 +85,10 @@ struct cache_align write_partial_field {
     bool update_variable_is_external_{}; //NOLINT
 };
 
+/**
+ * @brief primary target for write
+ * @details this object represents write operation interface for primary index
+ */
 class write_primary_target {
 public:
     friend class write_primary_context;
@@ -101,13 +105,11 @@ public:
 
     /**
      * @brief create new object
-     * @param index the index to identify the operator in the process
-     * @param info processor's information where this operation is contained
-     * @param block_index the index of the block that this operation belongs to
-     * @param kind write operation kind
-     * @param storage_name the storage name to write
+     * @param storage_name the primary storage name to write
      * @param key_fields field offset information for keys
      * @param value_fields field offset information for values
+     * @param key_meta metadata for keys
+     * @param value_meta metadata for values
      */
     write_primary_target(
         std::string_view storage_name,
@@ -125,17 +127,11 @@ public:
 
     /**
      * @brief create new object from takatori columns
-     * @param index the index to identify the operator in the process
-     * @param info processor's information where this operation is contained
-     * @param block_index the index of the block that this operation belongs to
-     * @param kind write operation kind
-     * @param storage_name the storage name to write
      * @param idx target index information
      * @param keys takatori write keys information
      * @param columns takatori write columns information
      */
     write_primary_target(
-        std::string_view storage_name,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
         sequence_view<column const> columns,
@@ -172,9 +168,13 @@ public:
         return value_meta_;
     }
 
+    /**
+     * @brief accessor to storage name
+     */
     [[nodiscard]] std::string_view storage_name() const noexcept {
         return storage_name_;
     }
+
 private:
     std::string storage_name_{};
     std::vector<details::write_partial_field> key_fields_{};

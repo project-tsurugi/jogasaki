@@ -60,7 +60,6 @@ write_partial_field::write_partial_field(
 {}
 
 write_primary_target::write_primary_target(
-    std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
     sequence_view<column const> columns,
@@ -68,7 +67,7 @@ write_primary_target::write_primary_target(
     variable_table_info const* host_variable_info
 ) :
     write_primary_target(
-        storage_name,
+        idx.simple_name(),
         create_fields(idx, keys, columns, host_variable_info, *input_variable_info, true),
         create_fields(idx, keys, columns, host_variable_info, *input_variable_info, false),
         create_meta(idx, true),

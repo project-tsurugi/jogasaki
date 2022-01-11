@@ -106,7 +106,6 @@ write_partial::write_partial(
     processor_info const& info,
     operator_base::block_index_type block_index,
     write_kind kind,
-    std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
     sequence_view<column const> columns,
@@ -118,7 +117,6 @@ write_partial::write_partial(
         block_index,
         kind,
         details::write_primary_target{
-            storage_name,
             idx,
             keys,
             columns,
@@ -141,5 +139,9 @@ write_partial::write_partial(
     kind_(kind),
     primary_(std::move(primary))
 {}
+
+details::write_primary_target const& write_partial::primary() const noexcept {
+    return primary_;
+}
 
 }

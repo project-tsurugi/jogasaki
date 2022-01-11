@@ -159,7 +159,6 @@ private:
         maybe_shared_ptr<meta::record_meta> primary_key_meta, //NOLINT
         maybe_shared_ptr<meta::record_meta> primary_value_meta //NOLINT
     ) {
-        yugawara::binding::factory bindings;
         auto& table = idx.table();
         auto primary = table.owner()->find_primary_index(table);
         BOOST_ASSERT(primary != nullptr); //NOLINT

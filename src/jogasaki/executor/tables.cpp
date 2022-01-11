@@ -292,6 +292,35 @@ void add_test_tables(storage::configurable_provider& provider) {
             index_features
         });
     }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "TSECONDARY",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::int8(), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+        provider.add_index({
+            t,
+            "TSECONDARY_I1",
+            {
+                t->columns()[1],
+            },
+            {},
+            secondary_index_features
+        });
+    }
 
 //    create table qa_t1 (
 //        c_pk int4   primary key,

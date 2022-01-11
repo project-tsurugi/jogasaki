@@ -40,8 +40,11 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
+using namespace jogasaki::mock;
 
 using takatori::util::unsafe_downcast;
+
+using kind = meta::field_type_kind;
 
 class sql_test :
     public ::testing::Test,
@@ -50,7 +53,7 @@ class sql_test :
 public:
     // change this flag to debug with explain
     bool to_explain() override {
-        return false;
+        return true;
     }
 
     void SetUp() override {
@@ -255,6 +258,45 @@ TEST_F(sql_test, min_empty_table) {
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.is_null(0));
+}
+
+TEST_F(sql_test, secondary_index) {
+    execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (1, 100)");
+    execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (2, 200)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM TSECONDARY WHERE C1=200", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_record<kind::int8, kind::int8>(2, 200)), result[0]);
+    }
+    execute_statement( "UPDATE TSECONDARY SET C1=300 WHERE C0=1");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM TSECONDARY WHERE C1=300", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_record<kind::int8, kind::int8>(1, 300)), result[0]);
+    }
+    execute_statement( "UPDATE TSECONDARY SET C0=3 WHERE C0=1");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM TSECONDARY WHERE C1=300", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_record<kind::int8, kind::int8>(3, 300)), result[0]);
+    }
+    execute_statement( "DELETE FROM TSECONDARY WHERE C1=300");
+    wait_epochs();
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM TSECONDARY WHERE C1=300", result);
+        ASSERT_EQ(0, result.size());
+    }
+    execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (3, 300)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM TSECONDARY WHERE C1=300", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_record<kind::int8, kind::int8>(3, 300)), result[0]);
+    }
 }
 
 }

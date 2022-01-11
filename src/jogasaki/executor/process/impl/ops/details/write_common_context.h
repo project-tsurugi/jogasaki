@@ -20,11 +20,11 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
-#include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 

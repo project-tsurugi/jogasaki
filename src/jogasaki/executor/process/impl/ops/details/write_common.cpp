@@ -28,8 +28,6 @@
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/field_types.h>
-#include "operator_base.h"
-#include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 

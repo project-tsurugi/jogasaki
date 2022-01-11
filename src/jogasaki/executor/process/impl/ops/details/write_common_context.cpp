@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_partial_context.h"
+#include "write_common_context.h"
 
 #include <vector>
 #include <memory>
@@ -23,7 +23,6 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/iterator.h>
-#include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 

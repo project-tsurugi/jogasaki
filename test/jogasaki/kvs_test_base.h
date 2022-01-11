@@ -61,7 +61,7 @@ public:
         return temporary_.path();
     }
     test::temporary_folder temporary_{};  //NOLINT
-    std::unique_ptr<kvs::database> db_;  //NOLINT
+    std::shared_ptr<kvs::database> db_;  //NOLINT
 };
 
 }

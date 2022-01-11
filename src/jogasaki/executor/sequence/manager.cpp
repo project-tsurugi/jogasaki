@@ -207,7 +207,7 @@ std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_p
 }
 
 void manager::save_id_map() {
-    auto stg = db_->get_storage(system_sequences_name);
+    auto stg = db_->get_or_create_storage(system_sequences_name);
     auto tx = db_->create_transaction();
     data::aligned_buffer key_buf{10};
     data::aligned_buffer val_buf{10};

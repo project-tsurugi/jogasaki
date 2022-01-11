@@ -29,6 +29,7 @@
 #include <yugawara/storage/basic_configurable_provider.h>
 
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 
@@ -245,6 +246,16 @@ public:
         processor_info_ = std::make_shared<processor_info>(process_.operators(), *compiler_info_, host_variables);
     }
 
+    template <class ...Args>
+    void add_types(std::vector<descriptor::variable>& vars, Args&&... types) {
+        std::vector<std::reference_wrapper<takatori::type::data>> v{types...};
+        std::size_t i=0;
+        for(auto&& type : v) {
+            yugawara::analyzer::variable_resolution r{std::move(static_cast<takatori::type::data&>(type))};
+            variable_map_->bind(vars[i], r, true);
+            ++i;
+        }
+    }
     template <bool ForKey, class T, class ...Args>
     void add_types(T& target, Args&&... types) {
         std::vector<std::reference_wrapper<takatori::type::data>> v{types...};

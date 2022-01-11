@@ -32,7 +32,8 @@ write_partial_context::write_partial_context(
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
     context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource
+    context_base::memory_resource* varlen_resource,
+    std::vector<details::write_secondary_context> secondary_contexts
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     tx_(tx),
@@ -40,7 +41,8 @@ write_partial_context::write_partial_context(
         std::move(stg),
         std::move(key_meta),
         std::move(value_meta)
-    )
+    ),
+    secondary_contexts_(std::move(secondary_contexts))
 {}
 
 operator_kind write_partial_context::kind() const noexcept {

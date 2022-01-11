@@ -25,6 +25,7 @@
 #include "write_partial_context.h"
 #include "write_kind.h"
 #include "details/write_primary_target.h"
+#include "details/write_secondary_target.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -59,6 +60,7 @@ public:
         block_index_type block_index,
         write_kind kind,
         details::write_primary_target primary,
+        std::vector<details::write_secondary_target> secondaries,
         variable_table_info const* input_variable_info = nullptr
     );
 
@@ -123,6 +125,11 @@ public:
 private:
     write_kind kind_{};
     details::write_primary_target primary_{};
+    std::vector<details::write_secondary_target> secondaries_{};
+
+    std::vector<details::write_secondary_target> create_secondary_targets(
+        yugawara::storage::index const& idx
+    );
 };
 
 }

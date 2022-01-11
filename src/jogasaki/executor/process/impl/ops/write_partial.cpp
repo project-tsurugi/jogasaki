@@ -31,6 +31,7 @@
 #include "operator_base.h"
 #include "context_helper.h"
 #include "details/error_abort.h"
+#include "details/write_utils.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -68,6 +69,18 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
         return details::error_abort(ctx, res);
     }
 
+    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(auto res = secondaries_[i].encode_and_remove(
+            ctx.secondary_contexts_[i],
+            *ctx.transaction(),
+            context.extracted_key(),
+            context.extracted_value(),
+            context.encoded_key()
+        ); res != status::ok) {
+            return details::error_abort(ctx, res);
+        }
+    }
+
     // update fields in key_store_/value_store_ with values from variable table
     primary_.update_record(
         context,
@@ -79,6 +92,18 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     if(auto res = primary_.encode_and_put(context, *ctx.transaction()); res != status::ok) {
         return details::error_abort(ctx, res);
     }
+
+    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(auto res = secondaries_[i].encode_and_put(
+                ctx.secondary_contexts_[i],
+                *ctx.transaction(),
+                context.extracted_key(),
+                context.extracted_value(),
+                context.encoded_key()
+            ); res != status::ok) {
+            return details::error_abort(ctx, res);
+        }
+    }
     return {};
 }
 
@@ -87,6 +112,11 @@ operation_status write_partial::process_record(abstract::task_context* context) 
     context_helper ctx{*context};
     auto* p = find_context<write_partial_context>(index(), ctx.contexts());
     if (! p) {
+        std::vector<details::write_secondary_context> contexts{};
+        contexts.reserve(secondaries_.size());
+        for(auto&& s : secondaries_) {
+            contexts.emplace_back(ctx.database()->get_or_create_storage(s.storage_name()));
+        }
         p = ctx.make_context<write_partial_context>(
             index(),
             ctx.variable_table(block_index()),
@@ -95,7 +125,8 @@ operation_status write_partial::process_record(abstract::task_context* context) 
             primary_.key_meta(),
             primary_.value_meta(),
             ctx.resource(),
-            ctx.varlen_resource()
+            ctx.varlen_resource(),
+            std::move(contexts)
         );
     }
     return (*this)(*p);
@@ -123,6 +154,7 @@ write_partial::write_partial(
             input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
             info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr
         },
+        create_secondary_targets(idx),
         input_variable_info
     )
 {}
@@ -133,15 +165,49 @@ write_partial::write_partial(
     operator_base::block_index_type block_index,
     write_kind kind,
     details::write_primary_target primary,
+    std::vector<details::write_secondary_target> secondaries,
     variable_table_info const* input_variable_info
 ) :
     record_operator(index, info, block_index, input_variable_info),
     kind_(kind),
-    primary_(std::move(primary))
+    primary_(std::move(primary)),
+    secondaries_(std::move(secondaries))
 {}
 
 details::write_primary_target const& write_partial::primary() const noexcept {
     return primary_;
 }
 
+std::vector<details::write_secondary_target> write_partial::create_secondary_targets(
+    yugawara::storage::index const& idx
+) {
+    auto& table = idx.table();
+    auto& primary = *table.owner()->find_primary_index(table);
+    auto key_meta = details::create_meta(primary, true);
+    auto value_meta = details::create_meta(primary, false);
+    std::vector<details::write_secondary_target> ret{};
+    std::size_t count{};
+    table.owner()->each_table_index(table,
+        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (*entry == idx) {
+                return;
+            }
+            ++count;
+        }
+    );
+    ret.reserve(count);
+    table.owner()->each_table_index(table,
+        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (*entry == idx) {
+                return;
+            }
+            ret.emplace_back(
+                *entry,
+                key_meta,
+                value_meta
+            );
+        }
+    );
+    return ret;
+}
 }

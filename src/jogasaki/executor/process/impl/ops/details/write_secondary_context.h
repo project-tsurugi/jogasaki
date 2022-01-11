@@ -13,33 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_primary_context.h"
+#pragma once
 
 #include <vector>
 #include <memory>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-write_primary_context::write_primary_context(
-    std::unique_ptr<kvs::storage> stg,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta
-) :
-    stg_(std::move(stg)),
-    key_store_(std::move(key_meta)),
-    value_store_(std::move(value_meta))
-{}
+using takatori::util::maybe_shared_ptr;
 
-std::string_view write_primary_context::encoded_key() const noexcept {
-    return {static_cast<char*>(key_buf_.data()), key_len_};
+/**
+ * @brief partial write operator context
+ */
+class write_secondary_context {
+public:
+    friend class write_secondary_target;
+
+    using memory_resource = memory::lifo_paged_memory_resource;
+    /**
+     * @brief create empty object
+     */
+    write_secondary_context() = default;
+
+    /**
+     * @brief create new object
+     */
+    explicit write_secondary_context(
+        std::unique_ptr<kvs::storage> stg
+    ) :
+        stg_(std::move(stg))
+    {}
+
+private:
+    std::unique_ptr<kvs::storage> stg_{};
+    data::aligned_buffer key_buf_{};
+};
+
 }
-
-}
-
-

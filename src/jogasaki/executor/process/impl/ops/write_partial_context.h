@@ -26,6 +26,7 @@
 #include <jogasaki/kvs/storage.h>
 #include "context_base.h"
 #include "details/write_primary_context.h"
+#include "details/write_secondary_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -53,7 +54,8 @@ public:
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
         memory_resource* resource,
-        memory_resource* varlen_resource
+        memory_resource* varlen_resource,
+        std::vector<details::write_secondary_context> secondary_contexts
     );
 
     [[nodiscard]] operator_kind kind() const noexcept override;
@@ -67,6 +69,7 @@ public:
 private:
     kvs::transaction* tx_{};
     details::write_primary_context primary_context_{};
+    std::vector<details::write_secondary_context> secondary_contexts_{};
 };
 
 }

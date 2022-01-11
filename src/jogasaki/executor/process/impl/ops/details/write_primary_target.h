@@ -202,9 +202,6 @@ private:
         accessor::record_ref source
     ) const;
 
-    // create meta for the key_store_/value_store_ in write_partial_context
-    maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
-
     std::vector<details::field_info> create_input_key_fields(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,

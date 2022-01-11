@@ -1,0 +1,53 @@
+/*
+ * Copyright 2018-2020 tsurugi project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include <vector>
+
+#include <takatori/relation/write.h>
+#include <yugawara/binding/factory.h>
+
+#include <jogasaki/logging.h>
+#include <jogasaki/error.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/utils/field_types.h>
+
+namespace jogasaki::executor::process::impl::ops::details {
+
+using takatori::util::maybe_shared_ptr;
+
+inline maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key) {
+    std::vector<meta::field_type> types{};
+    boost::dynamic_bitset<std::uint64_t> nullities{};
+    if (for_key) {
+        for(auto&& k : idx.keys()) {
+            types.emplace_back(utils::type_for(k.column().type()));
+            nullities.push_back(true);
+        }
+    } else {
+        for(auto&& v : idx.values()) {
+            types.emplace_back(utils::type_for(static_cast<yugawara::storage::column const&>(v).type()));
+            nullities.push_back(true);
+        }
+    }
+    return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
+}
+
+}

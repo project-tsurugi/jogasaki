@@ -28,6 +28,7 @@
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/field_types.h>
+#include "write_utils.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 
@@ -111,6 +112,7 @@ status write_primary_target::prepare_encoded_key(write_primary_context& ctx, acc
         return res;
     }
     out = {keys.data(), keys.size()};
+    ctx.key_len_ = keys.size();
     return status::ok;
 }
 
@@ -129,6 +131,7 @@ status write_primary_target::encode_and_put(write_primary_context& ctx, kvs::tra
     if(auto res = encode_fields(extracted_keys_, keys, key_source); res != status::ok) {
         return res;
     }
+    ctx.key_len_ = keys.size();
     if(auto res = encode_fields(extracted_values_, values, val_source); res != status::ok) {
         return res;
     }
@@ -394,23 +397,6 @@ std::vector<details::update_field> write_primary_target::create_update_fields(
         }
     }
     return ret;
-}
-
-maybe_shared_ptr<meta::record_meta> write_primary_target::create_meta(yugawara::storage::index const& idx, bool for_key) {
-    std::vector<meta::field_type> types{};
-    boost::dynamic_bitset<std::uint64_t> nullities{};
-    if (for_key) {
-        for(auto&& k : idx.keys()) {
-            types.emplace_back(utils::type_for(k.column().type()));
-            nullities.push_back(true);
-        }
-    } else {
-        for(auto&& v : idx.values()) {
-            types.emplace_back(utils::type_for(static_cast<yugawara::storage::column const&>(v).type()));
-            nullities.push_back(true);
-        }
-    }
-    return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
 }
 
 }

@@ -52,12 +52,37 @@ public:
         maybe_shared_ptr<meta::record_meta> value_meta
     );
 
+    /**
+     * @brief accessor to the encoded key
+     * @return the encoded key
+     * @pre write_primary_target::encode_and_put() or find_record_and_extract() is called with this object beforehand
+     */
+    [[nodiscard]] std::string_view encoded_key() const noexcept;
+
+    /**
+     * @brief accessor to the extracted key store
+     * @return the encoded key
+     * @pre write_primary_target::find_record_and_extract() is called with this object beforehand
+     */
+    [[nodiscard]] accessor::record_ref extracted_key() const noexcept {
+        return key_store_.ref();
+    }
+
+    /**
+     * @brief accessor to the extracted value store
+     * @return the encoded key
+     * @pre write_primary_target::find_record_and_extract() is called with this object beforehand
+     */
+    [[nodiscard]] accessor::record_ref extracted_value() const noexcept {
+        return value_store_.ref();
+    }
 private:
     std::unique_ptr<kvs::storage> stg_{};
     data::aligned_buffer key_buf_{};
     data::aligned_buffer value_buf_{};
     data::small_record_store key_store_{};
     data::small_record_store value_store_{};
+    std::size_t key_len_{};
 };
 
 }

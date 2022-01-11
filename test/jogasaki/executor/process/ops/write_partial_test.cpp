@@ -223,7 +223,8 @@ TEST_F(write_partial_test , simple_update) {
         wrt.primary().key_meta(),
         wrt.primary().value_meta(),
         &resource,
-        &varlen_resource
+        &varlen_resource,
+        {}
     };
 
     ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
@@ -276,7 +277,8 @@ TEST_F(write_partial_test , nullable_columns) {
         wrt.primary().key_meta(),
         wrt.primary().value_meta(),
         &resource,
-        &varlen_resource
+        &varlen_resource,
+        {}
     };
 
     ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
@@ -330,7 +332,8 @@ TEST_F(write_partial_test , update_multi_columns) {
         wrt.primary().key_meta(),
         wrt.primary().value_meta(),
         &resource,
-        &varlen_resource
+        &varlen_resource,
+        {}
     };
 
     ASSERT_TRUE(static_cast<bool>(wrt(ctx)));

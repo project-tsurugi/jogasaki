@@ -117,6 +117,12 @@ public:
         maybe_shared_ptr<meta::record_meta> value_meta
     );
 
+    ~primary_target() = default;
+    primary_target(primary_target const& other) = default;
+    primary_target& operator=(primary_target const& other) = default;
+    primary_target(primary_target&& other) noexcept = default;
+    primary_target& operator=(primary_target&& other) noexcept = default;
+
     /**
      * @brief create new object from takatori columns
      * @param index the index to identify the operator in the process
@@ -150,7 +156,7 @@ public:
         accessor::record_ref host_variables
     );
 
-    status encode_and_put(primary_target_context& ctx, kvs::transaction& tx);
+    status encode_and_put(primary_target_context& ctx, kvs::transaction& tx) const;
 
     /**
      * @brief accessor to key metadata
@@ -166,7 +172,7 @@ public:
         return value_meta_;
     }
 
-    std::string_view storage_name() const noexcept {
+    [[nodiscard]] std::string_view storage_name() const noexcept {
         return storage_name_;
     }
 private:
@@ -188,7 +194,7 @@ private:
         std::vector<details::write_partial_field> const& fields,
         kvs::writable_stream& target,
         accessor::record_ref source
-    );
+    ) const;
 
     // create meta for the key_store_/value_store_ in write_partial_context
     maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
@@ -208,23 +214,23 @@ private:
         std::vector<details::write_partial_field> const& fields,
         data::aligned_buffer& buffer,
         accessor::record_ref source
-    );
+    ) const;
 
     void decode_fields(
         std::vector<details::write_partial_field> const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* varlen_resource
-    );
+    ) const;
 
     void update_fields(
         std::vector<details::write_partial_field> const& fields,
         accessor::record_ref target,
         accessor::record_ref input_variables,
         accessor::record_ref host_variables
-    );
+    ) const;
 
-    status prepare_encoded_key(primary_target_context& ctx, accessor::record_ref source, std::string_view& out);
+    status prepare_encoded_key(primary_target_context& ctx, accessor::record_ref source, std::string_view& out) const;
 };
 
 }

@@ -46,7 +46,7 @@ void write_partial::finish(abstract::task_context* context) {
 }
 
 std::string_view write_partial::storage_name() const noexcept {
-    return primary_->storage_name();
+    return primary_.storage_name();
 }
 
 operator_kind write_partial::kind() const noexcept {
@@ -59,7 +59,7 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     }
     auto& context = *ctx.primary_context_;
     // find update target and fill ctx.key_store_ and ctx.value_store_
-    if(auto res = primary_->find_record_and_extract(
+    if(auto res = primary_.find_record_and_extract(
             context,
             *ctx.transaction(),
             ctx.input_variables().store().ref(),
@@ -69,14 +69,14 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     }
 
     // update fields in key_store_/value_store_ with values from variable table
-    primary_->update_record(
+    primary_.update_record(
         context,
         ctx.input_variables().store().ref(),
         host_variables() ? host_variables()->store().ref() : accessor::record_ref{}
     );
 
     // encode values from key_store_/value_store_ and send to kvs
-    if(auto res = primary_->encode_and_put(context, *ctx.transaction()); res != status::ok) {
+    if(auto res = primary_.encode_and_put(context, *ctx.transaction()); res != status::ok) {
         return details::error_abort(ctx, res);
     }
     return {};
@@ -92,8 +92,8 @@ operation_status write_partial::process_record(abstract::task_context* context) 
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
-            primary_->key_meta(),
-            primary_->value_meta(),
+            primary_.key_meta(),
+            primary_.value_meta(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -117,14 +117,14 @@ write_partial::write_partial(
         info,
         block_index,
         kind,
-        std::make_unique<details::primary_target>(
+        details::primary_target{
             storage_name,
             idx,
             keys,
             columns,
             input_variable_info ? input_variable_info : &info.vars_info_list()[block_index],
             info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr
-        ),
+        },
         input_variable_info
     )
 {}
@@ -134,7 +134,7 @@ write_partial::write_partial(
     processor_info const& info,
     operator_base::block_index_type block_index,
     write_kind kind,
-    std::unique_ptr<details::primary_target> primary,
+    details::primary_target primary,
     variable_table_info const* input_variable_info
 ) :
     record_operator(index, info, block_index, input_variable_info),

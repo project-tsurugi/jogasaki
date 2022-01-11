@@ -62,7 +62,7 @@ public:
         processor_info const& info,
         block_index_type block_index,
         write_kind kind,
-        std::unique_ptr<details::primary_target> primary,
+        details::primary_target primary,
         variable_table_info const* input_variable_info = nullptr
     );
 
@@ -120,13 +120,13 @@ public:
      */
     void finish(abstract::task_context* context) override;
 
-    [[nodiscard]] details::primary_target* primary() const noexcept {
-        return primary_.get();
+    [[nodiscard]] details::primary_target const& primary() const noexcept {
+        return primary_;
     }
 private:
     write_kind kind_{};
     std::string storage_name_{};
-    std::unique_ptr<details::primary_target> primary_{};
+    details::primary_target primary_{};
 };
 
 }

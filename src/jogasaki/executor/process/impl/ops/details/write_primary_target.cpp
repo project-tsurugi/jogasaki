@@ -59,7 +59,7 @@ write_partial_field::write_partial_field(
     update_variable_is_external_(update_variable_is_external)
 {}
 
-primary_target::primary_target(
+write_primary_target::write_primary_target(
     std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
@@ -67,7 +67,7 @@ primary_target::primary_target(
     variable_table_info const* input_variable_info,
     variable_table_info const* host_variable_info
 ) :
-    primary_target(
+    write_primary_target(
         storage_name,
         create_fields(idx, keys, columns, host_variable_info, *input_variable_info, true),
         create_fields(idx, keys, columns, host_variable_info, *input_variable_info, false),
@@ -76,7 +76,7 @@ primary_target::primary_target(
     )
 {}
 
-primary_target::primary_target(
+write_primary_target::write_primary_target(
     std::string_view storage_name,
     std::vector<details::write_partial_field> key_fields,
     std::vector<details::write_partial_field> value_fields,
@@ -90,8 +90,8 @@ primary_target::primary_target(
     value_meta_(std::move(value_meta))
 {}
 
-status primary_target::find_record_and_extract(
-    primary_target_context& ctx,
+status write_primary_target::find_record_and_extract(
+    write_primary_context& ctx,
     kvs::transaction& tx,
     accessor::record_ref variables,
     memory_resource* varlen_resource
@@ -122,7 +122,7 @@ status primary_target::find_record_and_extract(
     return status::ok;
 }
 
-status primary_target::prepare_encoded_key(primary_target_context& ctx, accessor::record_ref source, std::string_view& out) const {
+status write_primary_target::prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const {
     // calculate length first, and then put
     if(auto res = check_length_and_extend_buffer(true, ctx, key_fields_, ctx.key_buf_, source); res != status::ok) {
         return res;
@@ -135,7 +135,7 @@ status primary_target::prepare_encoded_key(primary_target_context& ctx, accessor
     return status::ok;
 }
 
-status primary_target::encode_and_put(primary_target_context& ctx, kvs::transaction& tx) const {
+status write_primary_target::encode_and_put(write_primary_context& ctx, kvs::transaction& tx) const {
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put
@@ -167,8 +167,8 @@ status primary_target::encode_and_put(primary_target_context& ctx, kvs::transact
     return status::ok;
 }
 
-void primary_target::update_record(
-    primary_target_context& ctx,
+void write_primary_target::update_record(
+    write_primary_context& ctx,
     accessor::record_ref input_variables,
     accessor::record_ref host_variables
 ) {
@@ -176,7 +176,7 @@ void primary_target::update_record(
     update_fields(value_fields_, ctx.value_store_.ref(), input_variables, host_variables);
 }
 
-void primary_target::update_fields(
+void write_primary_target::update_fields(
     std::vector<details::write_partial_field> const& fields,
     accessor::record_ref target,
     accessor::record_ref input_variables,
@@ -197,7 +197,7 @@ void primary_target::update_fields(
     }
 }
 
-void primary_target::decode_fields(
+void write_primary_target::decode_fields(
     std::vector<details::write_partial_field> const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
@@ -223,9 +223,9 @@ void primary_target::decode_fields(
     }
 }
 
-status primary_target::check_length_and_extend_buffer(
+status write_primary_target::check_length_and_extend_buffer(
     bool from_variables,
-    primary_target_context& ,
+    write_primary_context& ,
     std::vector<details::write_partial_field> const& fields,
     data::aligned_buffer& buffer,
     accessor::record_ref source
@@ -240,7 +240,7 @@ status primary_target::check_length_and_extend_buffer(
     return status::ok;
 }
 
-status primary_target::encode_fields(
+status write_primary_target::encode_fields(
     bool from_variable,
     std::vector<details::write_partial_field> const& fields,
     kvs::writable_stream& target,
@@ -283,7 +283,7 @@ std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
 }
 
 
-std::vector<details::write_partial_field> primary_target::create_fields(
+std::vector<details::write_partial_field> write_primary_target::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
     sequence_view<column const> columns, // columns to be updated
@@ -380,7 +380,7 @@ std::vector<details::write_partial_field> primary_target::create_fields(
     return ret;
 }
 
-maybe_shared_ptr<meta::record_meta> primary_target::create_meta(yugawara::storage::index const& idx, bool for_key) {
+maybe_shared_ptr<meta::record_meta> write_primary_target::create_meta(yugawara::storage::index const& idx, bool for_key) {
     std::vector<meta::field_type> types{};
     boost::dynamic_bitset<std::uint64_t> nullities{};
     if (for_key) {

@@ -33,20 +33,20 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief partial write operator context
  */
-class primary_target_context {
+class write_primary_context {
 public:
-    friend class primary_target;
+    friend class write_primary_target;
 
     using memory_resource = memory::lifo_paged_memory_resource;
     /**
      * @brief create empty object
      */
-    primary_target_context() = default;
+    write_primary_context() = default;
 
     /**
      * @brief create new object
      */
-    primary_target_context(
+    write_primary_context(
         std::unique_ptr<kvs::storage> stg,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta

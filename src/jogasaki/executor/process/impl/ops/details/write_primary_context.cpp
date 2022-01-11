@@ -26,7 +26,7 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-primary_target_context::primary_target_context(
+write_primary_context::write_primary_context(
     std::unique_ptr<kvs::storage> stg,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta

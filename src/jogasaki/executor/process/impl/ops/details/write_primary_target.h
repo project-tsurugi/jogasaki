@@ -85,9 +85,9 @@ struct cache_align write_partial_field {
     bool update_variable_is_external_{}; //NOLINT
 };
 
-class primary_target {
+class write_primary_target {
 public:
-    friend class primary_target_context;
+    friend class write_primary_context;
 
     using key = takatori::relation::write::key;
     using column = takatori::relation::write::column;
@@ -97,7 +97,7 @@ public:
     /**
      * @brief create empty object
      */
-    primary_target() = default;
+    write_primary_target() = default;
 
     /**
      * @brief create new object
@@ -109,7 +109,7 @@ public:
      * @param key_fields field offset information for keys
      * @param value_fields field offset information for values
      */
-    primary_target(
+    write_primary_target(
         std::string_view storage_name,
         std::vector<details::write_partial_field> key_fields,
         std::vector<details::write_partial_field> value_fields,
@@ -117,11 +117,11 @@ public:
         maybe_shared_ptr<meta::record_meta> value_meta
     );
 
-    ~primary_target() = default;
-    primary_target(primary_target const& other) = default;
-    primary_target& operator=(primary_target const& other) = default;
-    primary_target(primary_target&& other) noexcept = default;
-    primary_target& operator=(primary_target&& other) noexcept = default;
+    ~write_primary_target() = default;
+    write_primary_target(write_primary_target const& other) = default;
+    write_primary_target& operator=(write_primary_target const& other) = default;
+    write_primary_target(write_primary_target&& other) noexcept = default;
+    write_primary_target& operator=(write_primary_target&& other) noexcept = default;
 
     /**
      * @brief create new object from takatori columns
@@ -134,7 +134,7 @@ public:
      * @param keys takatori write keys information
      * @param columns takatori write columns information
      */
-    primary_target(
+    write_primary_target(
         std::string_view storage_name,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
@@ -144,19 +144,19 @@ public:
     );
 
     status find_record_and_extract(
-        primary_target_context& ctx,
+        write_primary_context& ctx,
         kvs::transaction& tx,
         accessor::record_ref variables,
         memory_resource* varlen_resource
     );
 
     void update_record(
-        primary_target_context& ctx,
+        write_primary_context& ctx,
         accessor::record_ref input_variables,
         accessor::record_ref host_variables
     );
 
-    status encode_and_put(primary_target_context& ctx, kvs::transaction& tx) const;
+    status encode_and_put(write_primary_context& ctx, kvs::transaction& tx) const;
 
     /**
      * @brief accessor to key metadata
@@ -210,7 +210,7 @@ private:
 
     status check_length_and_extend_buffer(
         bool from_variables,
-        primary_target_context& ctx,
+        write_primary_context& ctx,
         std::vector<details::write_partial_field> const& fields,
         data::aligned_buffer& buffer,
         accessor::record_ref source
@@ -230,7 +230,7 @@ private:
         accessor::record_ref host_variables
     ) const;
 
-    status prepare_encoded_key(primary_target_context& ctx, accessor::record_ref source, std::string_view& out) const;
+    status prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
 };
 
 }

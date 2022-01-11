@@ -39,7 +39,7 @@ write_partial_context::write_partial_context(
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     tx_(tx),
-    primary_context_(std::make_unique<details::primary_target_context>(
+    primary_context_(std::make_unique<details::write_primary_context>(
             std::move(stg),
             std::move(key_meta),
             std::move(value_meta)

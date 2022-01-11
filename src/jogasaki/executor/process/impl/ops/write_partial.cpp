@@ -117,7 +117,7 @@ write_partial::write_partial(
         info,
         block_index,
         kind,
-        details::primary_target{
+        details::write_primary_target{
             storage_name,
             idx,
             keys,
@@ -134,7 +134,7 @@ write_partial::write_partial(
     processor_info const& info,
     operator_base::block_index_type block_index,
     write_kind kind,
-    details::primary_target primary,
+    details::write_primary_target primary,
     variable_table_info const* input_variable_info
 ) :
     record_operator(index, info, block_index, input_variable_info),

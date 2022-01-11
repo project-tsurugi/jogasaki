@@ -62,12 +62,12 @@ public:
 
     [[nodiscard]] kvs::transaction* transaction() const noexcept;
 
-    [[nodiscard]] details::primary_target_context* primary_context() const noexcept {
+    [[nodiscard]] details::write_primary_context* primary_context() const noexcept {
         return primary_context_.get();
     }
 private:
     kvs::transaction* tx_{};
-    std::unique_ptr<details::primary_target_context> primary_context_{};
+    std::unique_ptr<details::write_primary_context> primary_context_{};
 };
 
 }

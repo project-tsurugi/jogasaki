@@ -29,6 +29,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "context_helper.h"
+#include "details/error_abort.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -283,9 +284,7 @@ operation_status write_full::do_insert(write_full_context& ctx) {
             {values.data(), values.size()},
             opt
         ); ! is_ok(res)) {
-        ctx.state(context_state::abort);
-        ctx.req_context()->status_code(res);
-        return {operation_status_kind::aborted};
+        return details::error_abort(ctx, res);
     }
     return {};
 }
@@ -307,9 +306,7 @@ operation_status write_full::do_delete(write_full_context& ctx) {
     auto k = prepare_key(ctx);
     if(auto res = ctx.stg_->remove(*ctx.tx_, k ); is_error(res)) {
         if(res == status::err_aborted_retryable) {
-            ctx.state(context_state::abort);
-            ctx.req_context()->status_code(res);
-            return {operation_status_kind::aborted};
+            return details::error_abort(ctx, res);
         }
         fail();
     }

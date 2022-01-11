@@ -22,6 +22,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/details/field_info.h>
 #include <jogasaki/kvs/coder.h>
 #include "write_primary_context.h"
 
@@ -41,7 +42,7 @@ static constexpr std::size_t npos = static_cast<std::size_t>(-1);
  * the record (of key/value respectively), updates the record fields by replacing the value with one from variable table
  * record (source), encodes the record and puts into kvs.
  */
-struct cache_align write_partial_field {
+struct cache_align update_field {
     /**
      * @brief create new object
      * @param type type of the field
@@ -58,31 +59,33 @@ struct cache_align write_partial_field {
      * Used to provide values nullity only if `updated` is true.
      * @param update_variable_is_external indicates whether the update_variable source is from host variables
      */
-    write_partial_field(
+    update_field(
         meta::field_type type,
-        std::size_t variable_offset,
-        std::size_t variable_nullity_offset,
+        std::size_t source_offset,
+        std::size_t source_nullity_offset,
         std::size_t target_offset,
         std::size_t target_nullity_offset,
         bool nullable,
-        kvs::coding_spec spec,
-        bool updated,
-        std::size_t update_variable_offset,
-        std::size_t update_variable_nullity_offset,
-        bool update_variable_is_external
-    );
-
-    meta::field_type type_{}; //NOLINT
-    std::size_t variable_offset_{}; //NOLINT
-    std::size_t variable_nullity_offset_{}; //NOLINT
-    std::size_t target_offset_{}; //NOLINT
-    std::size_t target_nullity_offset_{}; //NOLINT
+        bool source_external,
+        bool key
+    ) :
+        type_(std::move(type)),
+        source_offset_(source_offset),
+        source_nullity_offset_(source_nullity_offset),
+        target_offset_(target_offset),
+        target_nullity_offset_(target_nullity_offset),
+        nullable_(nullable),
+        source_external_(source_external),
+        key_(key)
+    {}
+    meta::field_type type_{};
+    std::size_t source_offset_{};  //NOLINT
+    std::size_t source_nullity_offset_{};  //NOLINT
+    std::size_t target_offset_{};  //NOLINT
+    std::size_t target_nullity_offset_{};  //NOLINT
     bool nullable_{}; //NOLINT
-    kvs::coding_spec spec_{}; //NOLINT
-    bool updated_{}; //NOLINT
-    std::size_t update_variable_offset_{}; //NOLINT
-    std::size_t update_variable_nullity_offset_{}; //NOLINT
-    bool update_variable_is_external_{}; //NOLINT
+    bool source_external_{}; //NOLINT
+    bool key_{}; //NOLINT
 };
 
 /**
@@ -113,10 +116,12 @@ public:
      */
     write_primary_target(
         std::string_view storage_name,
-        std::vector<details::write_partial_field> key_fields,
-        std::vector<details::write_partial_field> value_fields,
         maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta
+        maybe_shared_ptr<meta::record_meta> value_meta,
+        std::vector<details::field_info> input_keys,
+        std::vector<details::field_info> extracted_keys,
+        std::vector<details::field_info> extracted_values,
+        std::vector<details::update_field> updates
     );
 
     ~write_primary_target() = default;
@@ -177,10 +182,12 @@ public:
 
 private:
     std::string storage_name_{};
-    std::vector<details::write_partial_field> key_fields_{};
-    std::vector<details::write_partial_field> value_fields_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
+    std::vector<details::field_info> input_keys_{};
+    std::vector<details::field_info> extracted_keys_{};
+    std::vector<details::field_info> extracted_values_{};
+    std::vector<details::update_field> updates_{};
 
     /**
      * @brief private encoding function
@@ -190,8 +197,7 @@ private:
      * @returns error otherwise
      */
     status encode_fields(
-        bool from_variable,
-        std::vector<details::write_partial_field> const& fields,
+        std::vector<details::field_info> const& fields,
         kvs::writable_stream& target,
         accessor::record_ref source
     ) const;
@@ -199,35 +205,35 @@ private:
     // create meta for the key_store_/value_store_ in write_partial_context
     maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
 
-    std::vector<details::write_partial_field> create_fields(
+    std::vector<details::field_info> create_input_key_fields(
+        yugawara::storage::index const& idx,
+        sequence_view<key const> keys,
+        variable_table_info const& input_variable_info
+    );
+
+    std::vector<details::field_info> create_extracted_fields(
+        yugawara::storage::index const& idx,
+        bool key
+    );
+
+    std::vector<details::update_field> create_update_fields(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
         sequence_view<column const> columns,
         variable_table_info const* host_variable_info,
-        variable_table_info const& input_variable_info,
-        bool key
+        variable_table_info const& input_variable_info
     );
-
     status check_length_and_extend_buffer(
-        bool from_variables,
-        write_primary_context& ctx,
-        std::vector<details::write_partial_field> const& fields,
+        std::vector<details::field_info> const& fields,
         data::aligned_buffer& buffer,
         accessor::record_ref source
     ) const;
 
     void decode_fields(
-        std::vector<details::write_partial_field> const& fields,
+        std::vector<details::field_info> const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* varlen_resource
-    ) const;
-
-    void update_fields(
-        std::vector<details::write_partial_field> const& fields,
-        accessor::record_ref target,
-        accessor::record_ref input_variables,
-        accessor::record_ref host_variables
     ) const;
 
     status prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const;

@@ -25,7 +25,7 @@
 #include <jogasaki/kvs/coder.h>
 #include "write_partial_context.h"
 #include "write_kind.h"
-#include "details/write_common.h"
+#include "details/write_primary_target.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_common.h"
+#include "write_primary_target.h"
 
 #include <vector>
 

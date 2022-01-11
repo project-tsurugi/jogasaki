@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_common_context.h"
+#include "write_primary_context.h"
 
 #include <vector>
 #include <memory>

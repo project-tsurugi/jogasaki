@@ -25,7 +25,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 #include "context_base.h"
-#include "details/write_common_context.h"
+#include "details/write_primary_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

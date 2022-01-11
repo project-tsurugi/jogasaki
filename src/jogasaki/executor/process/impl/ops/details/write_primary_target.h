@@ -23,7 +23,7 @@
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/kvs/coder.h>
-#include "write_common_context.h"
+#include "write_primary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 

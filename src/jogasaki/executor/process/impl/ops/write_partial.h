@@ -125,7 +125,8 @@ public:
         std::vector<details::write_partial_field> key_fields,
         std::vector<details::write_partial_field> value_fields,
         maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta
+        maybe_shared_ptr<meta::record_meta> value_meta,
+        variable_table_info const* input_variable_info = nullptr
     );
 
     /**
@@ -147,7 +148,8 @@ public:
         std::string_view storage_name,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
-        sequence_view<column const> columns
+        sequence_view<column const> columns,
+        variable_table_info const* input_variable_info = nullptr
     );
 
 
@@ -223,7 +225,7 @@ private:
         sequence_view<key const> keys,
         sequence_view<column const> columns,
         processor_info const& info,
-        block_index_type block_index,
+        variable_table_info const& block,
         bool key
     );
 

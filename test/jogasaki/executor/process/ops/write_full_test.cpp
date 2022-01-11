@@ -165,10 +165,9 @@ TEST_F(write_full_test, simple_insert) {
         &varlen_resource_
     };
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
     ASSERT_EQ(status::ok, tx->commit(true));
     ASSERT_EQ(status::ok, tx->wait_for_commit(2000*1000*1000));
-
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
     get(
         *db_,
         i1_->simple_name(),

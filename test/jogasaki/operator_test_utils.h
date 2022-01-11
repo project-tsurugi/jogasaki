@@ -69,6 +69,16 @@ std::vector<descriptor::variable> destinations(std::vector<Column>& columns) {
     return ret;
 }
 
+template <class Column>
+std::vector<descriptor::variable> sources(std::vector<Column>& columns) {
+    std::vector<descriptor::variable> ret{};
+    ret.reserve(columns.size());
+    for(auto&& c : columns) {
+        ret.emplace_back(c.source());
+    }
+    return ret;
+}
+
 inline variable_table_info create_variable_table_info(
     std::vector<descriptor::variable> const& variables,
     jogasaki::mock::basic_record const& rec

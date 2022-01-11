@@ -34,6 +34,7 @@
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/operator_test_utils.h>
 #include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::process::impl::ops {
@@ -58,75 +59,14 @@ namespace storage = yugawara::storage;
 
 class write_partial_test :
     public test_root,
-    public kvs_test_base {
+    public kvs_test_base,
+    public operator_test_utils {
 public:
     void SetUp() override {
         kvs_db_setup();
     }
     void TearDown() override {
         kvs_db_teardown();
-    }
-
-    basic_record create_key(
-        std::int32_t arg0
-    ) {
-        return create_nullable_record<kind::int4>(arg0);
-    }
-
-    basic_record create_value(
-        double arg0,
-        std::int64_t arg1
-    ) {
-        return create_nullable_record<kind::float8, kind::int8>(arg0, arg1);
-    }
-
-    basic_record create_nullable_value(
-        double arg0,
-        std::int64_t arg1,
-        bool arg0_null,
-        bool arg1_null
-    ) {
-        return create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(arg0, arg1), {arg0_null, arg1_null});
-    }
-    using key_record = jogasaki::mock::basic_record;
-    using value_record = jogasaki::mock::basic_record;
-    void add_data(kvs::database& db) {
-        auto stg = db.create_storage("I1");
-        auto tx = db.create_transaction();
-
-        std::string key_buf(100, '\0');
-        std::string val_buf(100, '\0');
-        kvs::writable_stream key_stream{key_buf};
-        kvs::writable_stream val_stream{val_buf};
-        {
-            key_record key_rec{create_key(10)};
-            auto key_meta = key_rec.record_meta();
-            kvs::encode_nullable(key_rec.ref(), key_meta->value_offset(0), key_meta->nullity_offset(0), key_meta->at(0), spec_asc, key_stream);
-            value_record val_rec{create_value(1.0, 100)};
-            auto val_meta = val_rec.record_meta();
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
-            ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.size()},
-                std::string_view{val_buf.data(), val_stream.size()}
-            ));
-        }
-        key_stream.reset();
-        val_stream.reset();
-        {
-            key_record key_rec{create_key(20)};
-            auto key_meta = key_rec.record_meta();
-            kvs::encode_nullable(key_rec.ref(), key_meta->value_offset(0), key_meta->nullity_offset(0), key_meta->at(0), spec_asc, key_stream);
-            value_record val_rec{create_value(2.0, 200)};
-            auto val_meta = val_rec.record_meta();
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(0), val_meta->nullity_offset(0), val_meta->at(0), spec_val, val_stream);
-            kvs::encode_nullable(val_rec.ref(), val_meta->value_offset(1), val_meta->nullity_offset(1), val_meta->at(1), spec_val, val_stream);
-            ASSERT_EQ(status::ok, stg->put(*tx,
-                std::string_view{key_buf.data(), key_stream.size()},
-                std::string_view{val_buf.data(), val_stream.size()}
-            ));
-        }
-        ASSERT_EQ(status::ok, tx->commit());
     }
 
     void show_record(
@@ -173,161 +113,112 @@ public:
             show_record(value_meta, v);
         }
     }
+    std::shared_ptr<table> t1_ = create_table({
+        "T1",
+        {
+            { "C0", t::int4(), nullity{false} },
+            { "C1", t::float8(), nullity{false} },
+            { "C2", t::int8(), nullity{false} },
+        },
+    });
+    std::shared_ptr<index> i1_ = create_primary_index(t1_, {0}, {1,2});
+
+    std::shared_ptr<table> t1nullable_ = create_table({
+        "T1NULLABLE",
+        {
+            { "C0", t::int4(), nullity{true} },
+            { "C1", t::float8(), nullity{true} },
+            { "C2", t::int8(), nullity{true} },
+        },
+    });
+    std::shared_ptr<index> i1nullable_ = create_primary_index(t1nullable_, {0}, {1,2});
+
+    auto create_target(
+        relation::step::take_flat& take,
+        relation::write::operator_kind_type operator_kind,
+        std::shared_ptr<index> idx,
+        std::shared_ptr<table> tbl,
+        std::initializer_list<std::size_t> key_indices,
+        std::initializer_list<std::size_t> column_indices
+    ) -> relation::write& {
+        std::vector<relation::write::key> keys{};
+        for(auto i : key_indices) {
+            keys.emplace_back(take.columns()[i].destination(), bindings_(tbl->columns()[i]));
+        }
+        std::vector<relation::write::column> columns{};
+        for(auto i : column_indices) {
+            columns.emplace_back(take.columns()[i].destination(), bindings_(tbl->columns()[i]));
+        }
+        return process_.operators().insert(relation::write {
+            operator_kind,
+            bindings_(*idx),
+            std::move(keys),
+            std::move(columns)
+        });
+    }
+    std::pair<relation::step::take_flat&, relation::write&> create_update_take_target_i1() {
+        auto& take = add_take(3);
+        add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::update, i1_, t1_, {0}, {2});
+        take.output() >> target.input();
+        add_key_types(target, t::int4{});
+        add_column_types(target, t::int8{});
+        return {take, target};
+    }
+    std::pair<relation::step::take_flat&, relation::write&> create_update_take_target_i1_nullable() {
+        auto& take = add_take(3);
+        add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::update, i1nullable_, t1nullable_, {0}, {2});
+        take.output() >> target.input();
+        add_key_types(target, t::int4{});
+        add_column_types(target, t::int8{});
+        return {take, target};
+    }
+    std::pair<relation::step::take_flat&, relation::write&> create_update_multi_take_target_i1() {
+        auto& take = add_take(3);
+        add_column_types(take, t::int4{}, t::float8{}, t::int8{});
+        auto& target = create_target(take, relation::write_kind::update, i1_, t1_, {0}, {2, 1});
+        take.output() >> target.input();
+        add_key_types(target, t::int4{});
+        add_column_types(target, t::int8{}, t::float8{});
+        return {take, target};
+    }
 };
 
 TEST_F(write_partial_test , simple_update) {
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table({
-        "T0",
-        {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
-    storage::column const& t0c2 = t0->columns()[2];
+    auto&& [take, target] = create_update_take_target_i1();
+    create_processor_info();
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::int8>(10, 1000);
+    auto vars = sources(target.keys());
+    vars.emplace_back(sources(target.columns())[0]);
+    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
 
-    std::shared_ptr<storage::index> i0 = storages->add_index(
-        { t0, "I0",
-            {
-                t0->columns()[0],
-            },
-            {
-                t0->columns()[1],
-                t0->columns()[2],
-            },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        }
-    );
-    std::shared_ptr<storage::table> t1 = storages->add_table({
-        "T1",
-        {
-            { "C0", t::int4() },
-            { "C1", t::float8() },
-            { "C2", t::int8() },
-        },
-    });
-    storage::column const& t1c0 = t1->columns()[0];
-    storage::column const& t1c1 = t1->columns()[1];
-    storage::column const& t1c2 = t1->columns()[2];
-
-    std::shared_ptr<storage::index> i1 = storages->add_index(
-        { t1, "I1",
-            {
-                t1->columns()[0],
-            },
-            {
-                t1->columns()[1],
-                t1->columns()[2],
-            },
-            {
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            },
-        }
-    );
-
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process {});
-    auto c0 = bindings.stream_variable("c0");
-    auto c1 = bindings.stream_variable("c1");
-    auto c2 = bindings.stream_variable("c2");
-    auto& r0 = p0.operators().insert(relation::scan {
-        bindings(*i0),
-        {
-            { bindings(t0c0), c0 },
-            { bindings(t0c1), c1 },
-            { bindings(t0c2), c2 },
-        },
-    });
-
-    auto&& r1 = p0.operators().insert(relation::write {
-        relation::write_kind::update,
-        bindings(*i1),
-        {
-            { c0, bindings(t1c0) },
-        },
-        {
-            { c1, bindings(t1c1) },
-        },
-    });
-
-    r0.output() >> r1.input();
-
-    auto vm = std::make_shared<yugawara::analyzer::variable_mapping>();
-    vm->bind(c0, t::int4{});
-    vm->bind(c1, t::float8{});
-    vm->bind(c2, t::int8{});
-    vm->bind(bindings(t1c0), t::int4{});
-    vm->bind(bindings(t1c1), t::float8{});
-    vm->bind(bindings(t1c2), t::int8{});
-    vm->bind(bindings(t0c0), t::int4{});
-    vm->bind(bindings(t0c1), t::float8{});
-    vm->bind(bindings(t0c2), t::int8{});
-    yugawara::compiled_info c_info{{}, vm};
-
-    processor_info p_info{p0.operators(), c_info};
-
-    std::vector<write_partial::column> write_columns{
-        {c0, bindings(t1c0)},
-        {c1, bindings(t1c1)},
-        {c2, bindings(t1c2)},
-    };
-
-    using kind = meta::field_type_kind;
-    auto meta = std::make_shared<record_meta>(
-        std::vector<field_type>{
-            field_type(field_enum_tag<kind::int4>),
-            field_type(field_enum_tag<kind::float8>),
-            field_type(field_enum_tag<kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{3}.flip()
-    );
     write_partial wrt{
         0,
-        p_info,
+        *processor_info_,
         0,
         write_kind::update,
-        "I1",
-        *i1,
-        r1.keys(),
-        r1.columns()
+        i1_->simple_name(),
+        *i1_,
+        target.keys(),
+        target.columns(),
+        &input_variable_info
     };
 
-    ASSERT_EQ(1, p_info.vars_info_list().size());
-    auto& block_info = p_info.vars_info_list()[wrt.block_index()];
-    variable_table variables{block_info};
+    mock::task_context task_ctx{};
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
-    using kind = meta::field_type_kind;
-    using test_record = jogasaki::mock::basic_record;
-
-    mock::task_context task_ctx{
-        {},
-        {},
-        {},
-        {},
-    };
-
-    add_data(*db_);
     auto tx = db_->create_transaction();
-    auto stg = db_->get_storage("I1");
-    auto s = stg.get();
-
+    auto stg = db_->get_storage(i1_->simple_name());
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+
     write_partial_context ctx{
         &task_ctx,
-        variables,
+        input_variables,
         std::move(stg),
         tx.get(),
         wrt.key_meta(),
@@ -336,73 +227,166 @@ TEST_F(write_partial_test , simple_update) {
         &varlen_resource
     };
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 10);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    vars_ref.set_value<double>(map.at(c1).value_offset(), 10.0);
-    vars_ref.set_null(map.at(c1).nullity_offset(), false);
-    wrt(ctx);
+    ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
+    (void)tx->commit();
 
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    get(
+        *db_,
+        i1_->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(0),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
+        result
+    );
+    ASSERT_EQ(2, result.size());
     {
-        std::string str(100, '\0');
-        kvs::writable_stream key{str};
-        kvs::encode_nullable(
-            expression::any{std::in_place_type<std::int32_t>, 10},
-            meta::field_type{field_enum_tag<kind::int4>},
-            kvs::coding_spec{true, kvs::order::ascending},
-            key
-        );
-        std::string_view k{str.data(), key.size()};
-        std::string_view v{};
-        ASSERT_EQ(status::ok, s->get(*tx, k, v));
-        std::string buf{v};
-        kvs::readable_stream value{buf};
-        expression::any res{};
-        kvs::decode_nullable(
-            value,
-            meta::field_type{field_enum_tag<kind::float8>},
-            kvs::coding_spec{false, kvs::order::undefined},
-            res
-        );
-        EXPECT_EQ(10.0, res.to<double>());
-        kvs::decode_nullable(
-            value,
-            meta::field_type{field_enum_tag<kind::int8>},
-            kvs::coding_spec{false, kvs::order::undefined},
-            res
-        );
-        EXPECT_EQ(100, res.to<std::int64_t>());
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(10);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(1.0, 1000);
+        EXPECT_EQ(exp_k, result[0].first);
+        EXPECT_EQ(exp_v, result[0].second);
     }
     {
-        std::string str(100, '\0');
-        kvs::writable_stream key{str};
-        kvs::encode_nullable(
-            expression::any{std::in_place_type<std::int32_t>, 20},
-            meta::field_type{field_enum_tag<kind::int4>},
-            kvs::coding_spec{true, kvs::order::ascending},
-            key
-        );
-        std::string_view k{str.data(), key.size()};
-        std::string_view v{};
-        ASSERT_EQ(status::ok, s->get(*tx, k, v));
-        std::string buf{v};
-        kvs::readable_stream value{buf};
-        expression::any res{};
-        kvs::decode_nullable(
-            value,
-            meta::field_type{field_enum_tag<kind::float8>},
-            kvs::coding_spec{false, kvs::order::undefined},
-            res
-        );
-        EXPECT_EQ(2.0, res.to<double>());
-        kvs::decode_nullable(
-            value,
-            meta::field_type{field_enum_tag<kind::int8>},
-            kvs::coding_spec{false, kvs::order::undefined},
-            res
-        );
-        EXPECT_EQ(200, res.to<std::int64_t>());
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
+        EXPECT_EQ(exp_k, result[1].first);
+        EXPECT_EQ(exp_v, result[1].second);
+    }
+}
+
+TEST_F(write_partial_test , nullable_columns) {
+    auto&& [take, target] = create_update_take_target_i1_nullable();
+    create_processor_info();
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::int8>(10, 1000);
+    auto vars = sources(target.keys());
+    vars.emplace_back(sources(target.columns())[0]);
+    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+
+    write_partial wrt{
+        0,
+        *processor_info_,
+        0,
+        write_kind::update,
+        i1nullable_->simple_name(),
+        *i1nullable_,
+        target.keys(),
+        target.columns(),
+        &input_variable_info
+    };
+
+    mock::task_context task_ctx{};
+    put( *db_, i1nullable_->simple_name(), create_nullable_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, i1nullable_->simple_name(), create_nullable_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(2.0, 200));
+
+    auto tx = db_->create_transaction();
+    auto stg = db_->get_storage(i1nullable_->simple_name());
+    lifo_paged_memory_resource resource{&global::page_pool()};
+    lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+
+    write_partial_context ctx{
+        &task_ctx,
+        input_variables,
+        std::move(stg),
+        tx.get(),
+        wrt.key_meta(),
+        wrt.value_meta(),
+        &resource,
+        &varlen_resource
+    };
+
+    ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
+    (void)tx->commit();
+
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    get(
+        *db_,
+        i1nullable_->simple_name(),
+        jogasaki::mock::create_nullable_record<kind::int4>(0),
+        jogasaki::mock::create_nullable_record<kind::float8, kind::int8>(0.0, 0),
+        result
+    );
+    ASSERT_EQ(2, result.size());
+    {
+        auto exp_k = jogasaki::mock::create_nullable_record<kind::int4>(10);
+        auto exp_v = jogasaki::mock::create_nullable_record<kind::float8, kind::int8>(1.0, 1000);
+        EXPECT_EQ(exp_k, result[0].first);
+        EXPECT_EQ(exp_v, result[0].second);
+    }
+    {
+        auto exp_k = jogasaki::mock::create_nullable_record<kind::int4>(20);
+        auto exp_v = jogasaki::mock::create_nullable_record<kind::float8, kind::int8>(2.0, 200);
+        EXPECT_EQ(exp_k, result[1].first);
+        EXPECT_EQ(exp_v, result[1].second);
+    }
+}
+
+TEST_F(write_partial_test , update_multi_columns) {
+    auto&& [take, target] = create_update_multi_take_target_i1();
+    create_processor_info();
+    auto input = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::float8>(10, 1000, 10000.0);
+    auto vars = sources(target.keys());
+    vars.emplace_back(sources(target.columns())[0]);
+    vars.emplace_back(sources(target.columns())[1]);
+    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    variable_table input_variables{input_variable_info};
+    input_variables.store().set(input.ref());
+
+    write_partial wrt{
+        0,
+        *processor_info_,
+        0,
+        write_kind::update,
+        i1_->simple_name(),
+        *i1_,
+        target.keys(),
+        target.columns(),
+        &input_variable_info
+    };
+
+    mock::task_context task_ctx{};
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
+    put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
+
+    auto tx = db_->create_transaction();
+    auto stg = db_->get_storage(i1_->simple_name());
+    lifo_paged_memory_resource resource{&global::page_pool()};
+    lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+
+    write_partial_context ctx{
+        &task_ctx,
+        input_variables,
+        std::move(stg),
+        tx.get(),
+        wrt.key_meta(),
+        wrt.value_meta(),
+        &resource,
+        &varlen_resource
+    };
+
+    ASSERT_TRUE(static_cast<bool>(wrt(ctx)));
+    (void)tx->commit();
+
+    std::vector<std::pair<jogasaki::mock::basic_record, jogasaki::mock::basic_record>> result{};
+    get(
+        *db_,
+        i1_->simple_name(),
+        jogasaki::mock::create_record<kind::int4>(0),
+        jogasaki::mock::create_record<kind::float8, kind::int8>(0.0, 0),
+        result
+    );
+    ASSERT_EQ(2, result.size());
+    {
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(10);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(10000.0, 1000);
+        EXPECT_EQ(exp_k, result[0].first);
+        EXPECT_EQ(exp_v, result[0].second);
+    }
+    {
+        auto exp_k = jogasaki::mock::create_record<kind::int4>(20);
+        auto exp_v = jogasaki::mock::create_record<kind::float8, kind::int8>(2.0, 200);
+        EXPECT_EQ(exp_k, result[1].first);
+        EXPECT_EQ(exp_v, result[1].second);
     }
 }
 

@@ -234,12 +234,11 @@ std::vector<details::write_partial_field> write_partial::create_fields(
     sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
     sequence_view<column const> columns, // columns to be updated
     processor_info const& info,
-    operator_base::block_index_type block_index,
+    variable_table_info const& block,
     bool key
 ) {
     std::vector<details::write_partial_field> ret{};
     yugawara::binding::factory bindings{};
-    auto& block = info.vars_info_list()[block_index];
     std::unordered_map<variable, variable> key_dest_to_src{};
     std::unordered_map<variable, variable> column_dest_to_src{};
     for(auto&& c : keys) {
@@ -307,10 +306,10 @@ std::vector<details::write_partial_field> write_partial::create_fields(
             updated = true;
             auto&& src = column_dest_to_src.at(b);
             auto* host_vars_info = info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr;
-            auto [os, nos, b] = resolve_variable_offsets(block, host_vars_info, src);
+            auto [os, nos, src_is_external ] = resolve_variable_offsets(block, host_vars_info, src);
             update_source_offset = os;
             update_source_nullity_offset = nos;
-            update_src_is_external = b;
+            update_src_is_external = src_is_external;
         }
         ret.emplace_back(
             t,
@@ -438,7 +437,8 @@ write_partial::write_partial(
     std::string_view storage_name,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
-    sequence_view<column const> columns
+    sequence_view<column const> columns,
+    variable_table_info const* input_variable_info
 ) :
     write_partial(
         index,
@@ -446,10 +446,11 @@ write_partial::write_partial(
         block_index,
         kind,
         storage_name,
-        create_fields(kind, idx, keys, columns, info, block_index, true),
-        create_fields(kind, idx, keys, columns, info, block_index, false),
+        create_fields(kind, idx, keys, columns, info, (input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]), true),
+        create_fields(kind, idx, keys, columns, info, (input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]), false),
         create_meta(idx, true),
-        create_meta(idx, false)
+        create_meta(idx, false),
+        input_variable_info
     )
 {}
 
@@ -462,9 +463,10 @@ write_partial::write_partial(
     std::vector<details::write_partial_field> key_fields,
     std::vector<details::write_partial_field> value_fields,
     maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta
+    maybe_shared_ptr<meta::record_meta> value_meta,
+    variable_table_info const* input_variable_info
 ) :
-    record_operator(index, info, block_index),
+    record_operator(index, info, block_index, input_variable_info),
     kind_(kind),
     storage_name_(storage_name),
     key_fields_(std::move(key_fields)),

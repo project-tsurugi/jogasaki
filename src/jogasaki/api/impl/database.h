@@ -167,9 +167,6 @@ private:
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{
         std::make_shared<yugawara::aggregate::configurable_provider>()
     };
-    std::shared_ptr<yugawara::variable::configurable_provider> host_variables_{
-        std::make_shared<yugawara::variable::configurable_provider>()
-    };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};

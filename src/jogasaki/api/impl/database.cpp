@@ -189,7 +189,7 @@ status database::prepare_common(
 }
 
 status database::prepare(std::string_view sql, statement_handle& statement) {
-    return prepare_common(sql, host_variables_, statement);
+    return prepare_common(sql, {}, statement);
 }
 
 status database::prepare(
@@ -206,7 +206,7 @@ status database::prepare(
 
 status database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
     std::unique_ptr<impl::prepared_statement> prepared{};
-    if(auto rc = prepare_common(sql, host_variables_, prepared); rc != status::ok) {
+    if(auto rc = prepare_common(sql, {}, prepared); rc != status::ok) {
         return rc;
     }
     std::unique_ptr<api::executable_statement> exec{};
@@ -264,7 +264,7 @@ status database::resolve_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
-    ctx->variable_provider(ps->host_variables() ? ps->host_variables() : host_variables_);
+    ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {

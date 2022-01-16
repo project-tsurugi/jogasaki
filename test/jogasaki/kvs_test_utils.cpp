@@ -40,8 +40,12 @@ using takatori::util::fail;
 using kind = meta::field_type_kind;
 
 
-void
-kvs_test_utils::put(kvs::database& db, std::string_view storage_name, mock::basic_record key, mock::basic_record value) {
+std::string kvs_test_utils::put(
+    kvs::database& db,
+    std::string_view storage_name,
+    mock::basic_record key,
+    mock::basic_record value
+) {
     BOOST_ASSERT(key);  //NOLINT
     auto stg = db.get_or_create_storage(storage_name);
     auto tx = db.create_transaction();
@@ -76,6 +80,41 @@ kvs_test_utils::put(kvs::database& db, std::string_view storage_name, mock::basi
     if(auto res = stg->put(*tx,
             std::string_view{key_buf.data(), key_stream.size()},
             std::string_view{val_buf.data(), val_stream.size()}
+        ); res != status::ok) {
+        fail();
+    }
+    if(auto res = tx->commit(true); res != status::ok) fail();
+    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) fail();
+    return std::string{key_buf.data(), key_stream.size()};
+}
+
+void kvs_test_utils::put_secondary(
+    kvs::database& db,
+    std::string_view storage_name,
+    mock::basic_record key,
+    std::string_view encoded_primary_key
+) {
+    BOOST_ASSERT(key);  //NOLINT
+    auto stg = db.get_or_create_storage(storage_name);
+    auto tx = db.create_transaction();
+
+    std::string key_buf(1000, '\0');
+    kvs::writable_stream key_stream{key_buf};
+
+    auto& key_meta = key.record_meta();
+    for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {
+        if (key_meta->nullable(i)) {
+            kvs::encode_nullable(
+                key.ref(), key_meta->value_offset(i), key_meta->nullity_offset(i),
+                key_meta->at(i), spec_asc, key_stream);
+            continue;
+        }
+        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, key_stream);
+    }
+    key_stream.write(encoded_primary_key.data(), encoded_primary_key.size());
+    if(auto res = stg->put(*tx,
+            std::string_view{key_buf.data(), key_stream.size()},
+            std::string_view{}
         ); res != status::ok) {
         fail();
     }

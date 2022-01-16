@@ -48,11 +48,20 @@ public:
     static constexpr kvs::coding_spec spec_desc = kvs::spec_key_descending;
     static constexpr kvs::coding_spec spec_val = kvs::spec_value;
 
-    void put(
+    // put key/value to storage and return binary sequence for encoded key
+    std::string put(
         kvs::database& db,
         std::string_view storage_name,
         mock::basic_record key,
         mock::basic_record value
+    );
+
+    // put secondary index key by concatenating secondary keys with encoded primary key
+    void put_secondary(
+        kvs::database& db,
+        std::string_view storage_name,
+        mock::basic_record key,
+        std::string_view encoded_primary_key
     );
     void get(
         kvs::database& db,

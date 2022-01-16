@@ -81,23 +81,15 @@ status write_primary_target::find_record_and_remove(
         return res;
     }
     std::string_view v{};
-    if(auto res = ctx.stg_->get( tx, k, v ); ! is_ok(res)) {
-        if(res == status::err_aborted_retryable) {
-            return res;
-        }
-        // The update target has been identified on the upstream operator such as find,
-        // so this lookup must be successful. If the control reaches here, it's internal error.
-        fail();
+    if(auto res = ctx.stg_->get( tx, k, v ); res != status::ok) {
+        return res;
     }
     kvs::readable_stream keys{k.data(), k.size()};
     kvs::readable_stream values{v.data(), v.size()};
     decode_fields(extracted_keys_, keys, ctx.key_store_.ref(), varlen_resource);
     decode_fields(extracted_values_, values, ctx.value_store_.ref(), varlen_resource);
-    if(auto res = ctx.stg_->remove( tx, k ); ! is_ok(res)) {
-        if(res == status::err_aborted_retryable) {
-            return res;
-        }
-        fail();
+    if(auto res = ctx.stg_->remove( tx, k ); res != status::ok) {
+        return res;
     }
     return status::ok;
 }
@@ -139,12 +131,8 @@ status write_primary_target::encode_and_put(write_primary_context& ctx, kvs::tra
             tx,
             {keys.data(), keys.size()},
             {values.data(), values.size()}
-        ); is_error(res)) {
-        if(res == status::err_aborted_retryable) {
-            return res;
-        }
-        // updating already found record, so err_not_found should never happen
-        fail();
+        ); res != status::ok) {
+        return res;
     }
     return status::ok;
 }

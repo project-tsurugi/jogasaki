@@ -142,7 +142,7 @@ public:
             { "C3", t::int8(), nullity{false} },
         },
     });
-    std::shared_ptr<index> i100_ = create_primary_index(t100_, {0}, {1,2, 3});
+    std::shared_ptr<index> i100_ = create_primary_index(t100_, {0}, {1,2,3});
     std::shared_ptr<index> i100_secondary_ = create_secondary_index(t100_, "T100_SECONDARY_", {1}, {});
 
     auto create_target(
@@ -392,8 +392,14 @@ TEST_F(write_partial_test , update_secondary) {
     };
 
     mock::task_context task_ctx{};
-    put( *db_, i100_->simple_name(), create_record<kind::int8>(10), create_record<kind::int8, kind::int8, kind::int8>(1, 100, 1000));
-    put( *db_, i100_->simple_name(), create_record<kind::int8>(20), create_record<kind::int8, kind::int8, kind::int8>(2, 200, 2000));
+    {
+        auto pkey = put( *db_, i100_->simple_name(), create_record<kind::int8>(10), create_record<kind::int8, kind::int8, kind::int8>(1, 100, 1000));
+        put_secondary(*db_, i100_secondary_->simple_name(), create_record<kind::int8>(1), pkey);
+    }
+    {
+        auto pkey = put( *db_, i100_->simple_name(), create_record<kind::int8>(20), create_record<kind::int8, kind::int8, kind::int8>(2, 200, 2000));
+        put_secondary(*db_, i100_secondary_->simple_name(), create_record<kind::int8>(2), pkey);
+    }
 
     auto tx = db_->create_transaction();
     auto stg = db_->get_storage(i100_->simple_name());

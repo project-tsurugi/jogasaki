@@ -46,6 +46,35 @@ public:
     ) {
         return create_record<kind::float8>(arg0);
     }
+
+    maybe_shared_ptr<meta::group_meta> test_group_meta1() {
+        return std::make_shared<meta::group_meta>(
+            std::make_shared<meta::record_meta>(
+                std::vector<meta::field_type>{
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
+                },
+                boost::dynamic_bitset<std::uint64_t>{std::string("0")}),
+            std::make_shared<meta::record_meta>(
+                std::vector<meta::field_type>{
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
+                },
+                boost::dynamic_bitset<std::uint64_t>{std::string("0")})
+        );
+    }
+    maybe_shared_ptr<meta::group_meta> test_group_meta1_kv_reversed() {
+        return std::make_shared<meta::group_meta>(
+            std::make_shared<meta::record_meta>(
+                std::vector<meta::field_type>{
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::float8>),
+                },
+                boost::dynamic_bitset<std::uint64_t>{std::string("0")}),
+            std::make_shared<meta::record_meta>(
+                std::vector<meta::field_type>{
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
+                },
+                boost::dynamic_bitset<std::uint64_t>{std::string("0")})
+        );
+    }
 };
 
 using group_type = mock::basic_group_reader::group_type;

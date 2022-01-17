@@ -53,7 +53,7 @@ public:
         contexts_.emplace_back(std::make_shared<mock::task_context>(
             std::vector<reader_container>{r},
             std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
-            std::vector<std::shared_ptr<executor::record_writer>>{external_writer_},
+            external_writer_,
             std::shared_ptr<abstract::scan_info>{}
         ));
     }
@@ -109,7 +109,7 @@ TEST_F(process_executor_test, custom_factory) {
     custom_contexts.emplace_back(std::make_shared<mock::task_context>(
         std::vector<reader_container>{r},
         std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
-        std::vector<std::shared_ptr<executor::record_writer>>{external_writer_},
+        external_writer_,
         std::shared_ptr<abstract::scan_info>{}
     ));
     abstract::process_executor_factory f = [&](

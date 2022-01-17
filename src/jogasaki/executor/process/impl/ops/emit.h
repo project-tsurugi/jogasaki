@@ -93,11 +93,6 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
     /**
-     * @brief set external writer index
-     */
-    void external_writer_index(std::size_t index) noexcept;
-
-    /**
      * @see operator_base::finish()
      */
     void finish(abstract::task_context* context) override;
@@ -105,7 +100,6 @@ public:
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::vector<details::emit_field> fields_{};
-    std::size_t external_writer_index_{};
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(
         processor_info const& info,

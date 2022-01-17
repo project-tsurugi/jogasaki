@@ -325,7 +325,7 @@ private:
                 std::make_shared<process::mock::task_context>(
                     std::vector<reader_container>{r},
                     std::vector<std::shared_ptr<executor::record_writer>>{writer},
-                    std::vector<std::shared_ptr<executor::record_writer>>{},
+                    std::shared_ptr<executor::record_writer>{},
                     std::shared_ptr<abstract::scan_info>{}
                 );
 

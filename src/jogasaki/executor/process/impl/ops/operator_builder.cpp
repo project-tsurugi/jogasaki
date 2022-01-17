@@ -165,8 +165,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::buff
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit& node) {
     auto block_index = info_->block_indices().at(&node);
     auto e = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
-    auto writer_index = io_exchange_map_->add_external_output(e.get());
-    e->external_writer_index(writer_index);
+    io_exchange_map_->set_external_output(e.get());
     return e;
 }
 

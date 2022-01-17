@@ -67,7 +67,7 @@ public:
 
     record_writer* downstream_writer(writer_index idx) override;
 
-    record_writer* external_writer(writer_index idx) override;
+    record_writer* external_writer() override;
 
     class abstract::scan_info const* scan_info() override;
 
@@ -82,7 +82,7 @@ private:
     std::shared_ptr<impl::scan_info> scan_info_{};
     data::iterable_record_store* result_{};
     api::data_channel* channel_{};
-    std::vector<std::shared_ptr<record_writer>> external_writers_{};
+    std::shared_ptr<record_writer> external_writer_{};
 };
 
 }

@@ -75,7 +75,7 @@ operation_status emit::operator()(emit_context &ctx) {
         );
     }
     if (! ctx.writer_) {
-        ctx.writer_ = ctx.task_context().external_writer(external_writer_index_);
+        ctx.writer_ = ctx.task_context().external_writer();
     }
     ctx.writer_->write(target);
     return {};
@@ -83,10 +83,6 @@ operation_status emit::operator()(emit_context &ctx) {
 
 const maybe_shared_ptr<meta::record_meta> &emit::meta() const noexcept {
     return meta_;
-}
-
-void emit::external_writer_index(std::size_t index) noexcept {
-    external_writer_index_ = index;
 }
 
 std::shared_ptr<meta::record_meta> emit::create_meta(

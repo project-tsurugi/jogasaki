@@ -48,7 +48,7 @@ TEST_F(processor_test, basic) {
     auto context = std::make_shared<mock::task_context>(
         std::vector<reader_container>{r},
         std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer},
-        std::vector<std::shared_ptr<executor::record_writer>>{external_writer},
+        external_writer,
         std::shared_ptr<abstract::scan_info>{}
     );
     auto proc = std::make_shared<processor>();

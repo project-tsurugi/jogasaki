@@ -37,12 +37,12 @@ public:
     explicit task_context(
         std::vector<reader_container> readers = {},
         std::vector<std::shared_ptr<executor::record_writer>> downstream_writers = {},
-        std::vector<std::shared_ptr<executor::record_writer>> external_writers = {},
+        std::shared_ptr<executor::record_writer> external_writer = {},
         std::shared_ptr<abstract::scan_info> info = {}
     ) :
         readers_(std::move(readers)),
         downstream_writers_(std::move(downstream_writers)),
-        external_writers_(std::move(external_writers)),
+        external_writer_(std::move(external_writer)),
         scan_info_(std::move(info))
     {}
 
@@ -54,8 +54,8 @@ public:
         return downstream_writers_.at(idx).get();
     }
 
-    executor::record_writer* external_writer(writer_index idx) override {
-        return external_writers_.at(idx).get();
+    executor::record_writer* external_writer() override {
+        return external_writer_.get();
     }
 
     void do_release() {
@@ -67,10 +67,9 @@ public:
                 w->release();
             }
         }
-        for(auto& w : external_writers_) {
-            if (w) {
-                w->release();
-            }
+        if(external_writer_) {
+            external_writer_->release();
+            external_writer_.reset();
         }
         scan_info_.reset();
     }
@@ -86,7 +85,7 @@ private:
     std::size_t partition_{};
     std::vector<reader_container> readers_{};
     std::vector<std::shared_ptr<executor::record_writer>> downstream_writers_{};
-    std::vector<std::shared_ptr<executor::record_writer>> external_writers_{};
+    std::shared_ptr<executor::record_writer> external_writer_{};
     std::shared_ptr<abstract::scan_info> scan_info_{};
 };
 

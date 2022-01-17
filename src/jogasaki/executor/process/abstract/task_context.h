@@ -82,16 +82,14 @@ public:
     [[nodiscard]] virtual record_writer* downstream_writer(writer_index idx) = 0;
 
     /**
-     * @brief accessor to external writers (e.g. ones writing out record from Emit or Write)
+     * @brief accessor to external writer (e.g. one writing out record from Emit)
      * @details object in the "acquired" state will be borrowed corresponding to the given index.
      * The callers are responsible to call release() of the object when they finish using it.
      * The release() called second time are no-op, so they are safely called multiple times.
-     * @param idx the requested external writer's index, which corresponds to the index of
-     * external output from the process step
-     * (the knowledge on the index of external output is shared with processor impl.)
-     * @return external writer corresponding to the given index
+     * @return external writer to output result records when the task supports output
+     * @return nullptr if the task has no external writer supported
      */
-    [[nodiscard]] virtual record_writer* external_writer(writer_index idx) = 0;
+    [[nodiscard]] virtual record_writer* external_writer() = 0;
 
     /**
      * @brief accessor to scan information that defines scan specification for the task

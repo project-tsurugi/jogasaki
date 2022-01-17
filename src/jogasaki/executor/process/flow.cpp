@@ -75,12 +75,10 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
     auto partitions = check_if_empty_input_from_shuffle();
     auto& operators = proc->operators();
-    auto external_output = operators.io_exchange_map().external_output_count();
-    // for now only one task within a request emits, fix when multiple emits happen
-    BOOST_ASSERT(external_output <= 1);  //NOLINT
+    auto external_output = operators.io_exchange_map().external_output();
     auto* result = context_->result();
-    if (result && external_output > 0) {
-        auto& emit = unsafe_downcast<impl::ops::emit>(operators.io_exchange_map().external_output_at(0));
+    if (result && external_output != nullptr) {
+        auto& emit = unsafe_downcast<impl::ops::emit>(*external_output);
         result->initialize(partitions, emit.meta());
     }
     contexts.reserve(partitions);
@@ -110,13 +108,13 @@ common::step_kind flow::kind() const noexcept {
 }
 
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {
-    auto external_output = operators.io_exchange_map().external_output_count();
+    auto external_output = operators.io_exchange_map().external_output();
     auto ctx = std::make_shared<impl::task_context>(
         partition,
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
-        (context_->result() && external_output > 0) ? &context_->result()->store(partition) : nullptr,
-        (context_->data_channel() && external_output > 0) ? context_->data_channel().get() : nullptr
+        (context_->result() && external_output != nullptr) ? &context_->result()->store(partition) : nullptr,
+        (context_->data_channel() && external_output != nullptr) ? context_->data_channel().get() : nullptr
     );
 
     ctx->work_context(

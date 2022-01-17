@@ -35,8 +35,7 @@ process::impl::task_context::task_context(
     io_exchange_map_(std::addressof(io_exchange_map)),
     scan_info_(std::move(scan_info)),
     result_(result),
-    channel_(channel),
-    external_writers_(io_exchange_map_->external_output_count())
+    channel_(channel)
 {}
 
 reader_container task_context::reader(task_context::reader_index idx) {
@@ -73,19 +72,18 @@ record_writer* task_context::downstream_writer(task_context::writer_index idx) {
     return {};
 }
 
-record_writer* task_context::external_writer(task_context::writer_index idx) {
-    BOOST_ASSERT(idx < external_writers_.size());  //NOLINT
+record_writer* task_context::external_writer() {
+    BOOST_ASSERT(io_exchange_map_->external_output() != nullptr);  //NOLINT
     BOOST_ASSERT(result_ != nullptr || channel_ != nullptr);  //NOLINT
-    auto& op = unsafe_downcast<ops::emit>(io_exchange_map_->external_output_at(idx));
-    auto& slot = external_writers_.operator[](idx);
-    if (! slot) {
+    auto& op = *unsafe_downcast<ops::emit>(io_exchange_map_->external_output());
+    if (! external_writer_) {
         if (result_) {
-            slot = std::make_shared<result_store_writer>(*result_, op.meta());
+            external_writer_ = std::make_shared<result_store_writer>(*result_, op.meta());
         } else {
-            slot = std::make_shared<data_channel_writer>(*channel_, op.meta());
+            external_writer_ = std::make_shared<data_channel_writer>(*channel_, op.meta());
         }
     }
-    return slot.get();
+    return external_writer_.get();
 }
 
 class abstract::scan_info const* task_context::scan_info() {

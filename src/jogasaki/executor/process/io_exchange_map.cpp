@@ -33,9 +33,8 @@ std::size_t io_exchange_map::add_output(io_exchange_map::output_exchange* s) {
     return output_entity_.size() - 1;
 }
 
-std::size_t io_exchange_map::add_external_output(io_exchange_map::external_output_operator* s) {
-    external_output_entity_.emplace_back(s);
-    return external_output_entity_.size() - 1;
+void io_exchange_map::set_external_output(io_exchange_map::external_output_operator* s) {
+    external_output_entity_ = s;
 }
 
 std::size_t io_exchange_map::input_index(io_exchange_map::input_exchange* s) {
@@ -56,15 +55,6 @@ std::size_t io_exchange_map::output_index(io_exchange_map::output_exchange* s) {
     return npos;
 }
 
-std::size_t io_exchange_map::external_output_index(io_exchange_map::external_output_operator* s) {
-    for(std::size_t i=0, n=external_output_entity_.size(); i < n; ++i) {
-        if(external_output_entity_[i] == s) {
-            return i;
-        }
-    }
-    return npos;
-}
-
 io_exchange_map::input_exchange* const& io_exchange_map::input_at(std::size_t index) const {
     return input_entity_.at(index);
 }
@@ -73,8 +63,8 @@ io_exchange_map::output_exchange* const& io_exchange_map::output_at(std::size_t 
     return output_entity_.at(index);
 }
 
-io_exchange_map::external_output_operator const& io_exchange_map::external_output_at(std::size_t index) const {
-    return *external_output_entity_.at(index);
+io_exchange_map::external_output_operator const* io_exchange_map::external_output() const {
+    return external_output_entity_;
 }
 
 std::size_t io_exchange_map::input_count() const noexcept {
@@ -85,9 +75,6 @@ std::size_t io_exchange_map::output_count() const noexcept {
     return output_entity_.size();
 }
 
-std::size_t io_exchange_map::external_output_count() const noexcept {
-    return external_output_entity_.size();
-}
 }
 
 

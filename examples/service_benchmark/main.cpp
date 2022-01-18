@@ -70,6 +70,7 @@ DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int64(transactions, -1, "Number of transactions executed per client thread. Specify -1 to use duration instead.");  //NOLINT
 DEFINE_int32(clients, 1, "Number of client threads");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
+DEFINE_bool(tasked_insert, true, "run insert as task");  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -132,16 +133,16 @@ void show_result(
         format(records) << " records";
     LOG(INFO) << "throughput: " <<
         format((std::int64_t)((double)transactions / duration_ms * 1000)) << " transactions/s, " <<  //NOLINT
-        format((std::int64_t)((double)statements / statement_ns * 1000 * 1000 * 1000)) << " statements/s, " <<  //NOLINT
-        format((std::int64_t)((double)records / statement_ns * 1000 * 1000 * 1000)) << " records/s";  //NOLINT
+        format((std::int64_t)((double)statements / statement_ns * threads * 1000 * 1000 * 1000)) << " statements/s, " <<  //NOLINT
+        format((std::int64_t)((double)records / statement_ns * threads * 1000 * 1000 * 1000)) << " records/s";  //NOLINT
     LOG(INFO) << "throughput/thread: " <<
         format((std::int64_t)((double)transactions / threads / duration_ms * 1000)) << " transactions/s/thread, " <<  //NOLINT
-        format((std::int64_t)((double)statements / threads / statement_ns * 1000 * 1000 * 1000)) << " statements/s/thread, " << //NOLINT
-        format((std::int64_t)((double)records/ threads / statement_ns * 1000 * 1000 * 1000)) << " records/s/thread";  //NOLINT
+        format((std::int64_t)((double)statements / statement_ns * 1000 * 1000 * 1000)) << " statements/s/thread, " << //NOLINT
+        format((std::int64_t)((double)records/ statement_ns * 1000 * 1000 * 1000)) << " records/s/thread";  //NOLINT
     LOG(INFO) << "avg turn-around: " <<
         "transaction " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions)) << " ns, " <<  //NOLINT
-        "statement " << format((std::int64_t)((double)statement_ns * threads / statements)) << " ns, " <<  //NOLINT
-        "record " << format((std::int64_t)((double)statement_ns * threads / records)) << " ns";  //NOLINT
+        "statement " << format((std::int64_t)((double)statement_ns / statements)) << " ns, " <<  //NOLINT
+        "record " << format((std::int64_t)((double)statement_ns / records)) << " ns";  //NOLINT
 }
 
 enum class profile {
@@ -237,6 +238,7 @@ public:
         }
         cfg.single_thread(FLAGS_single_thread);
         cfg.thread_pool_size(FLAGS_thread_count);
+        cfg.tasked_write(FLAGS_tasked_insert);
 
         cfg.core_affinity(FLAGS_core_affinity);
         cfg.initial_core(FLAGS_initial_core);

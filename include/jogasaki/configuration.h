@@ -139,6 +139,14 @@ public:
         db_location_ = arg;
     }
 
+    [[nodiscard]] bool tasked_write() const noexcept {
+        return tasked_write_;
+    }
+
+    void tasked_write(bool arg) noexcept {
+        tasked_write_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -169,6 +177,7 @@ private:
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
     std::string db_location_{};
+    bool tasked_write_ = false;
 };
 
 }

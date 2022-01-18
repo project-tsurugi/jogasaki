@@ -63,6 +63,18 @@ bool flat_task::teardown() {
     return false;
 }
 
+void flat_task::write() {
+    DVLOG(log_trace) << *this << " write task executed.";
+    trace_scope_name("write");  //NOLINT
+    (*write_)(*req_context_);
+
+    if (auto& cb = job_context_->callback(); cb) {
+        cb();
+    }
+    // releasing latch should be done at the last step since it starts to release resources such as request context
+    job_context_->completion_latch().release();
+}
+
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
     switch(kind_) {
         using kind = flat_task_kind;
@@ -74,6 +86,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             while((*origin_)() == model::task_result::proceed) {}
             return true;
         }
+        case kind::write: write(); return true;
     }
     fail();
 }
@@ -135,6 +148,17 @@ flat_task::flat_task(
 ) noexcept:
     kind_(flat_task_kind::teardown),
     job_context_(jctx)
+{}
+
+flat_task::flat_task(
+    task_enum_tag_t<flat_task_kind::write>,
+    request_context* rctx,
+    executor::common::write* write
+) noexcept:
+    kind_(flat_task_kind::write),
+    job_context_(rctx->job().get()),
+    write_(write),
+    req_context_(rctx)
 {}
 
 }

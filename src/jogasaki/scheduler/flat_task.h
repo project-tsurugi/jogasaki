@@ -17,6 +17,7 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/graph.h>
+#include <jogasaki/executor/common/write.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/common.h>
@@ -33,6 +34,7 @@ enum class flat_task_kind : std::size_t {
     dag_events,
     bootstrap,
     teardown,
+    write,
 };
 
 /**
@@ -48,6 +50,7 @@ enum class flat_task_kind : std::size_t {
         case kind::dag_events: return "dag_events"sv;
         case kind::bootstrap: return "bootstrap"sv;
         case kind::teardown: return "teardown"sv;
+        case kind::write: return "write"sv;
     }
     std::abort();
 }
@@ -133,6 +136,16 @@ public:
     ) noexcept;
 
     /**
+     * @brief construct new object to run write
+     * @param jctx the job context where the task belongs
+     */
+    flat_task(
+        task_enum_tag_t<flat_task_kind::write>,
+        request_context* rctx,
+        executor::common::write* write
+    ) noexcept;
+
+    /**
      * @brief getter for type kind
      */
     [[nodiscard]] constexpr flat_task_kind kind() const noexcept {
@@ -175,11 +188,14 @@ private:
     job_context* job_context_{};
     std::shared_ptr<model::task> origin_{};
     model::graph* graph_{};
+    executor::common::write* write_{};
+    request_context* req_context_{};
 
     bool execute(tateyama::api::task_scheduler::context& ctx);
     void bootstrap(tateyama::api::task_scheduler::context& ctx);
     void dag_schedule();
     bool teardown();
+    void write();
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

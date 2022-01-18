@@ -171,6 +171,32 @@ bool transaction::execute_async_common(
         ts.wait_for_progress(*request_context_->job());
         return true;
     }
+    if(c->tasked_write()) {
+        auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
+        std::size_t cpu = sched_getcpu();
+        request_context_->job(
+            std::make_shared<scheduler::job_context>(
+                maybe_shared_ptr{std::addressof(scheduler_)},
+                cpu
+            )
+        );
+        request_context_->job()->callback([statement, on_completion, this](){  // callback is copy-based
+            // let lambda own the statement/channel so that they live longer by the end of callback
+            (void)statement;
+            on_completion(request_context_->status_code(), request_context_->status_message());
+            async_execution_latch_.release();
+        });
+
+        async_execution_latch_.reset(); // close latch until async exec completes
+        auto& ts = scheduler_.get_task_scheduler();
+        ts.schedule_task(scheduler::flat_task{
+            scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
+            request_context_.get(),
+            stmt,
+        });
+        ts.wait_for_progress(*request_context_->job());
+        return true;
+    }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
     scheduler_.schedule(*stmt, *request_context_);
     on_completion(request_context_->status_code(), request_context_->status_message());

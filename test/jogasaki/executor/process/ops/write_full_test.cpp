@@ -218,6 +218,7 @@ TEST_F(write_full_test, simple_delete) {
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
 
     ASSERT_EQ(status::ok, tx->commit());
+    wait_epochs();  // delete can be delayed
     result.clear();
     get(*db_, i1_->simple_name(), create_record<kind::int4>(), create_record<kind::float8, kind::int8>(), result);
     ASSERT_EQ(1, result.size());

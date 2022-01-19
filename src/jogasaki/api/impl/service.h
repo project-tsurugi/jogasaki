@@ -29,6 +29,7 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/data_channel.h>
 #include <jogasaki/api/impl/data_writer.h>
+#include <jogasaki/utils/interference_size.h>
 
 #include <tateyama/status.h>
 #include <tateyama/api/environment.h>
@@ -54,7 +55,7 @@ namespace details {
 
 class query_info;
 
-struct channel_info {
+struct cache_align channel_info {
     jogasaki::api::record_meta const* meta_{};  //NOLINT
     std::string name_;  //NOLINT
     std::shared_ptr<jogasaki::api::impl::data_channel> data_channel_{};  //NOLINT
@@ -240,7 +241,7 @@ public:
     }
 private:
 
-    struct callback_control {
+    struct cache_align callback_control {
         explicit callback_control(std::shared_ptr<tateyama::api::server::response> response) :
             response_(std::move(response))
         {};

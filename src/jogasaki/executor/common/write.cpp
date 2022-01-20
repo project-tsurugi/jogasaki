@@ -340,8 +340,8 @@ status write::create_targets(
     std::vector<details::write_target>& out
 ) const {
     out.clear();
+    out.reserve(5);  // approx. number for primary+secondary indices for a table
     auto& table = idx.table();
-    out.reserve(utils::index_count(table));
     auto primary = table.owner()->find_primary_index(table);
     BOOST_ASSERT(primary != nullptr); //NOLINT
     std::vector<details::write_tuple> ks{};

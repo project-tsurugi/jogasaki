@@ -60,14 +60,12 @@ public:
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
-    utils::latch async_execution_latch_{true};  // latch is closed during async execution
 
     bool execute_async_common(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<api::data_channel> const& channel,
         callback on_completion
     );
-    void check_async_execution();
 };
 
 }

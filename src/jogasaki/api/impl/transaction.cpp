@@ -31,18 +31,11 @@ namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
 
-// check and wait if async exec is on-going
-void transaction::check_async_execution() {
-    async_execution_latch_.wait();
-}
-
 status transaction::commit() {
-    check_async_execution();
     return tx_->object()->commit();
 }
 
 status transaction::abort() {
-    check_async_execution();
     return tx_->object()->abort();
 }
 
@@ -55,7 +48,6 @@ status transaction::execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
 ) {
-    check_async_execution();
     auto& s = unsafe_downcast<impl::executable_statement&>(statement);
     auto& e = s.body();
     auto& c = database_->configuration();
@@ -136,7 +128,6 @@ bool transaction::execute_async_common(
     maybe_shared_ptr<api::data_channel> const& channel,
     callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
-    check_async_execution();
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     auto& e = s.body();
     auto& c = database_->configuration();
@@ -170,10 +161,8 @@ bool transaction::execute_async_common(
             (void)statement;
             (void)channel;
             on_completion(rctx->status_code(), rctx->status_message());
-            async_execution_latch_.release();
         });
 
-        async_execution_latch_.reset(); // close latch until async exec completes
         auto& ts = *rctx->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
@@ -195,10 +184,8 @@ bool transaction::execute_async_common(
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             on_completion(rctx->status_code(), rctx->status_message());
-            async_execution_latch_.release();
         });
 
-        async_execution_latch_.reset(); // close latch until async exec completes
         auto& ts = *rctx->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::write>,

@@ -58,8 +58,13 @@ bool flat_task::teardown() {
         cb();
     }
 
-    // releasing latch should be done at the last step since it starts to release resources such as request context
+    // releasing latch should be done here at the last step working on job context
+    // since it starts to release resources such as request context
     job()->completion_latch().release();
+
+    // we rely on callback to own request_context, but somehow it fails to release.
+    // So temporarily we explicitly release the callback object. TODO investigate more
+    std::function<void(void)>{}.swap(job()->callback());
     return false;
 }
 
@@ -71,8 +76,13 @@ void flat_task::write() {
     if (auto& cb = job()->callback(); cb) {
         cb();
     }
+
     // releasing latch should be done at the last step since it starts to release resources such as request context
     job()->completion_latch().release();
+
+    // we rely on callback to own request_context, but somehow it fails to release.
+    // So temporarily we explicitly release the callback object. TODO investigate more
+    std::function<void(void)>{}.swap(job()->callback());
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
@@ -86,7 +96,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             while((*origin_)() == model::task_result::proceed) {}
             return true;
         }
-        case kind::write: write(); return true;
+        case kind::write: write(); return false;
     }
     fail();
 }

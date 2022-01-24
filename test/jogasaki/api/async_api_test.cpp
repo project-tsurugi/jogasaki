@@ -90,6 +90,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->tasked_write(true);
         db_setup(cfg);
 
         auto* impl = db_impl();
@@ -120,6 +121,7 @@ TEST_F(async_api_test, async_insert) {
     while(! run.load()) {}
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());
+    ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(async_api_test, async_update) {
@@ -203,6 +205,7 @@ TEST_F(async_api_test, async_query_heavy_write) {
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());
     EXPECT_TRUE(ch.all_writers_released());
+    ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(async_api_test, async_query_multi_thread) {

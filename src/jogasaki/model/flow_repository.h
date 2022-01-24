@@ -25,11 +25,9 @@
 
 namespace jogasaki::model {
 
-using takatori::util::unsafe_downcast;
-
 /**
  * @brief steps' flow context container
- * @details 0-origin index is assigned for each steap and it's used to identify the position
+ * @details 0-origin index is assigned for each step and it's used to identify the position
  * to store flow in this container.
  */
 class cache_align flow_repository {
@@ -52,10 +50,9 @@ public:
     /**
      * @brief setter for the context at the given index
      * @param idx the index of the context
-     * @param ctx the context to be stored
-     * @return reference to the stored context
+     * @param arg the context to be stored
      */
-    std::unique_ptr<flow>& set(std::size_t idx, std::unique_ptr<flow> ctx) noexcept;
+    void set(std::size_t idx, std::unique_ptr<flow> arg) noexcept;
 
     /**
      * @brief returns whether the context is stored at the given index
@@ -71,9 +68,9 @@ public:
     [[nodiscard]] std::size_t size() const noexcept;
 
     /**
-     * @brief getter for the context at the given index
-     * @param idx the index to get the context
-     * @return the context object at the index
+     * @brief getter for the flow at the given index
+     * @param idx the index to get the flow object
+     * @return the flow object at the index
      * @return nullptr if no context object is stored
      */
     [[nodiscard]] flow* at(std::size_t idx) const noexcept;
@@ -81,19 +78,6 @@ public:
 private:
     flows_type flows_{};
 };
-
-/**
- * @brief helper function to get the context of specified type `T`
- * @tparam T the type of the context
- * @param idx the index to find the context in the container
- * @param container the container to find the context
- * @return context object at the index of the container
- * @return nullptr if no context object is found
- */
-template<class T>
-[[nodiscard]] T* find_flow(std::size_t idx, flow_repository& container) {
-    return unsafe_downcast<T>(container.at(idx));
-}
 
 }
 

@@ -24,9 +24,13 @@
 
 namespace jogasaki::model {
 
-using ::takatori::util::sequence_view;
+template <class T>
+using sequence_view = takatori::util::sequence_view<T>;
+
 /**
  * @brief group step data flow
+ * @details a flow is the context information object corresponding to the step in the step graph.
+ * This object holds the runtime state of the step while step object holds static structure info.
  */
 class flow { //NOLINT(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 public:
@@ -37,8 +41,15 @@ public:
      */
     using port_index_type = std::size_t;
 
+    /**
+     * @brief destruct the object
+     */
     virtual ~flow() = default;
 
+    /**
+     * @brief accessor to the step kind
+     * @return the step kind correponding to this flow
+     */
     [[nodiscard]] virtual step_kind kind() const noexcept = 0;
 
     /**

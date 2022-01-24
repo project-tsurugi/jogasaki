@@ -57,8 +57,8 @@ void step::deactivate(request_context& rctx) {
     rctx.flows()->set(id(), nullptr);
 }
 
-void step::notify_prepared() {
-
+void step::notify_prepared(request_context&) {
+    // no-op for now
 }
 
 bool step::has_subinput() {
@@ -129,7 +129,7 @@ sequence_view<std::shared_ptr<model::task>> step::create_pretask(request_context
 }
 
 model::flow& step::data_flow_object(request_context& rctx) const noexcept {
-    return *model::find_flow<model::flow>(id(), *rctx.flows());
+    return *rctx.flows()->at(id());
 }
 
 void step::data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) noexcept {

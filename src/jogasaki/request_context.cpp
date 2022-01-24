@@ -108,6 +108,30 @@ maybe_shared_ptr<api::data_channel> const&  request_context::data_channel() cons
     return data_channel_;
 }
 
+void request_context::flows(maybe_shared_ptr<model::flow_repository> arg) noexcept {
+    flows_ = std::move(arg);
+}
+
+maybe_shared_ptr<model::flow_repository> const& request_context::flows() const noexcept {
+    return flows_;
+}
+
+void request_context::scheduler(maybe_shared_ptr<scheduler::task_scheduler> arg) noexcept {
+    scheduler_ = std::move(arg);
+}
+
+maybe_shared_ptr<scheduler::task_scheduler> const& request_context::scheduler() const noexcept {
+    return scheduler_;
+}
+
+void request_context::stmt_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept {
+    statement_scheduler_ = std::move(arg);
+}
+
+maybe_shared_ptr<scheduler::statement_scheduler> const& request_context::stmt_scheduler() const noexcept {
+    return statement_scheduler_;
+}
+
 void prepare_scheduler(request_context& rctx) {
     std::shared_ptr<scheduler::task_scheduler> sched{};
     if(rctx.configuration()->single_thread()) {

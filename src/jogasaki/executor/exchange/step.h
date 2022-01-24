@@ -39,10 +39,10 @@ public:
         column_order_(std::move(column_order))
     {}
 
-    void notify_prepared() override {
+    void notify_prepared(request_context&) override {
         // no-op for exchange
     }
-    void notify_completed() override {
+    void notify_completed(request_context&) override {
         // no-op for exchange
     }
 

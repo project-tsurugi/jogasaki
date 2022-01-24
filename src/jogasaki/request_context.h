@@ -157,49 +157,38 @@ public:
     [[nodiscard]] maybe_shared_ptr<api::data_channel> const& data_channel() const noexcept;
 
     /**
-     * @brief setter for the job context
+     * @brief setter for the flow repository
      */
-    void flows(maybe_shared_ptr<model::flow_repository> arg) noexcept {
-        flows_ = std::move(arg);
-    }
+    void flows(maybe_shared_ptr<model::flow_repository> arg) noexcept;
 
     /**
-     * @brief accessor for the job context
-     * @return job context
+     * @brief accessor for the flow repository
+     * @return flow repository
      */
-    [[nodiscard]] maybe_shared_ptr<model::flow_repository> const& flows() const noexcept {
-        return flows_;
-    }
+    [[nodiscard]] maybe_shared_ptr<model::flow_repository> const& flows() const noexcept;
 
     /**
-     * @brief setter for the job context
+     * @brief setter for the task scheduler
      */
-    void scheduler(maybe_shared_ptr<scheduler::task_scheduler> arg) noexcept {
-        scheduler_ = std::move(arg);
-    }
+    void scheduler(maybe_shared_ptr<scheduler::task_scheduler> arg) noexcept;
 
     /**
-     * @brief accessor for the job context
-     * @return job context
+     * @brief accessor for the task scheduler
+     * @return task scheduler used in this request scope
      */
-    [[nodiscard]] maybe_shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept {
-        return scheduler_;
-    }
+    [[nodiscard]] maybe_shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept;
 
     /**
-     * @brief setter for the job context
+     * @brief setter for the statement scheduler
      */
-    void stmt_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept {
-        statement_scheduler_ = std::move(arg);
-    }
+    void stmt_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept;
 
     /**
-     * @brief accessor for the job context
-     * @return job context
+     * @brief accessor for the statement scheduler
+     * @return statement scheduler
      */
-    [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& stmt_scheduler() const noexcept {
-        return statement_scheduler_;
-    }
+    [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& stmt_scheduler() const noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -217,6 +206,10 @@ private:
     maybe_shared_ptr<scheduler::statement_scheduler> statement_scheduler_{};
 };
 
+/**
+ * @brief utility to set default task/statement schedulers (mainly for testing)
+ * @param rctx the request context
+ */
 void prepare_scheduler(request_context& rctx);
 
 }

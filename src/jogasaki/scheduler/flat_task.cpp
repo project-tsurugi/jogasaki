@@ -176,6 +176,10 @@ bool flat_task::sticky() const noexcept {
     return sticky_;
 }
 
+request_context* flat_task::req_context() const noexcept {
+    return req_context_;
+}
+
 }
 
 

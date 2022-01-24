@@ -42,8 +42,8 @@ public:
         std::shared_ptr<class io_info> io_info = {}
     );
 
-    void notify_prepared() override;
-    void notify_completed() override;
+    void notify_prepared(request_context& rctx) override;
+    void notify_completed(request_context& rctx) override;
 
     [[nodiscard]] model::step_kind kind() const noexcept override;
 

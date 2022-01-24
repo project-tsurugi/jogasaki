@@ -98,6 +98,7 @@ public:
 
     /**
      * @brief request step to create main tasks required
+     * @param rctx the context where tasks are created and stored
      * @return list of 0 or more tasks that should be newly executed to process main input
      * The tasks are owned by the step.
      */
@@ -105,6 +106,7 @@ public:
 
     /**
      * @brief request step to create prepare task to process input to the given sub-input port
+     * @param rctx the context where tasks are created and stored
      * @return list of 0 or a task that should be newly executed to process sub input
      * The tasks are owned by the step.
      */
@@ -122,12 +124,14 @@ public:
 
     /**
      * @brief activate step context for data flow
+     * @param rctx the context where the active data flow object is stored
      * @pre not activated yet, or already deactivated
      */
     virtual void activate(request_context& rctx) = 0;
 
     /**
      * @brief deactivate step context for data flow
+     * @param rctx the context where the target data flow object is stored
      * @pre already activated and not yet deactivated
      */
     virtual void deactivate(request_context& rctx) = 0;
@@ -135,14 +139,16 @@ public:
     /**
      * @brief notify the step of preparation completion
      * steps can use this notification to clean up resources for prepare tasks
+     * @param rctx the context where the state objects (flows) are stored
      */
-    virtual void notify_prepared() = 0;
+    virtual void notify_prepared(request_context& rctx) = 0;
 
     /**
      * @brief notify the step of main tasks completion
      * steps can use this notification to clean up resources for main tasks
+     * @param rctx the context where the state objects (flows) are stored
      */
-    virtual void notify_completed() = 0;
+    virtual void notify_completed(request_context& rctx) = 0;
 
     /**
      * @return whether the step has sub input ports

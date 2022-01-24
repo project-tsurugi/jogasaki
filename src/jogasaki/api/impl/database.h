@@ -114,9 +114,8 @@ public:
 
     status initialize_from_providers();
 
-    std::shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept {
-        return task_scheduler_;
-    }
+    std::shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept;
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

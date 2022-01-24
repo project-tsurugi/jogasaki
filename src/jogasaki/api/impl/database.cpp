@@ -470,6 +470,10 @@ status database::initialize_from_providers() {
     return status::ok;
 }
 
+std::shared_ptr<scheduler::task_scheduler> const& database::scheduler() const noexcept {
+    return task_scheduler_;
+}
+
 }
 
 namespace jogasaki::api {

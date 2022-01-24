@@ -118,12 +118,12 @@ void step::activate(request_context& rctx) {
     );
 }
 
-void step::notify_prepared() {
+void step::notify_prepared(request_context&) {
     // check if main inputs are already available
     // raise providing to start main tasks running soon
 }
 
-void step::notify_completed() {
+void step::notify_completed(request_context&) {
     // destroy process buffer
 }
 

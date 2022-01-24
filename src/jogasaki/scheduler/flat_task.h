@@ -98,7 +98,7 @@ public:
 
     /**
      * @brief construct new object wrapping jogasaki task
-     * @param jctx the job context where the task belongs
+     * @param rctx the request context where the task belongs
      * @param origin the jogasaki executor task
      * @param sticky whether the task is sticky or not
      */
@@ -110,7 +110,7 @@ public:
 
     /**
      * @brief construct new object to run dag scheduler internal events
-     * @param jctx the job context where the task belongs
+     * @param rctx the request context where the task belongs
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::dag_events>,
@@ -119,7 +119,7 @@ public:
 
     /**
      * @brief construct new object to bootstrap the job to run dag
-     * @param jctx the job context where the task belongs
+     * @param rctx the request context where the task belongs
      * @param g the dag object to run as the job
      */
     flat_task(
@@ -130,7 +130,7 @@ public:
 
     /**
      * @brief construct new object to teardown (finish processing) the job
-     * @param jctx the job context where the task belongs
+     * @param rctx the request context where the task belongs
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::teardown>,
@@ -139,7 +139,7 @@ public:
 
     /**
      * @brief construct new object to run write
-     * @param jctx the job context where the task belongs
+     * @param rctx the request context where the task belongs
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::write>,
@@ -193,9 +193,8 @@ public:
     /**
      * @brief accessor to the job context that the task belongs to.
      */
-    [[nodiscard]] request_context* req_context() const noexcept {
-        return req_context_;
-    }
+    [[nodiscard]] request_context* req_context() const noexcept;
+
 private:
     flat_task_kind kind_{};
     request_context* req_context_{};

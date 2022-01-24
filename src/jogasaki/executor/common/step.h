@@ -65,7 +65,7 @@ public:
     [[nodiscard]] virtual model::step_kind kind() const noexcept = 0;
 
     void deactivate(request_context& rctx) override;
-    void notify_prepared() override;
+    void notify_prepared(request_context&) override;
     [[nodiscard]] bool has_subinput() override;
 
     [[nodiscard]] port_index sub_input_port_index(step const* source);

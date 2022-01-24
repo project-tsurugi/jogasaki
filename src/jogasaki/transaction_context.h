@@ -32,117 +32,92 @@
 
 namespace jogasaki {
 
-using takatori::util::maybe_shared_ptr;
-
 /**
  * @brief context object for the transaction scope
- * @details this class represents context information in the scope of the transaction
+ * @details this class represents context information in the scope of the transaction.
+ * This contains more state/context than kvs::transaction, which is the low level I/O abstraction.
+ * This represents more state information in the jogasaki layer, such as simultaneous requests
+ * sharing the kvs::transaction.
  */
 class transaction_context {
 public:
+    /**
+     * @brief create empty object
+     */
     transaction_context() = default;
 
     /**
      * @brief create new context object
      * @param transaction the kvs transaction used in this context
-     * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
-     * @param data_channel data channel to write the data
      */
     explicit transaction_context(
         std::shared_ptr<kvs::transaction> transaction
-    ) :
-        transaction_(std::move(transaction)),
-        id_(id_source_++)
-    {}
+    );
 
-    [[nodiscard]] operator kvs::transaction&() const noexcept {  //NOLINT
-        return *transaction_;
-    }
+    [[nodiscard]] operator kvs::transaction&() const noexcept;  //NOLINT
 
     /**
      * @brief accessor for the wrapped transaction
      * @return transaction object in the kvs layer
      */
-    [[nodiscard]] std::shared_ptr<kvs::transaction> const& object() const {
-        return transaction_;
-    }
-
-    [[nodiscard]] std::size_t id() const noexcept {
-        return id_;
-    }
-
-    [[nodiscard]] operator bool() const noexcept {
-        return transaction_ != nullptr;
-    }
+    [[nodiscard]] std::shared_ptr<kvs::transaction> const& object() const;
 
     /**
-     * @brief commit the transaction
-     * @details commit the current transaction. When successful,
-     * the object gets invalidated and should not be used any more.
-     * @return status::ok if the operation is successful
-     * @return other status code when error occurs
+     * @brief the transaction id
+     * @return the id to uniquely identify the transaction context
      */
-    [[nodiscard]] status commit(bool async = false) {
-        return transaction_->commit(async);
-    }
+    [[nodiscard]] std::size_t id() const noexcept;
 
     /**
-     * @brief wait for commit
-     * @details wait for async commit
-     * @return status::ok if the operation is successful
-     * @return status::err_time_out if waiting timed out
-     * @return other status code when error occurs
+     * @brief check if the object is valid
+     * @return true if the object contains valid transaction
+     * @return false otherwise
      */
-    [[nodiscard]] status wait_for_commit(std::size_t timeout_ns = 0UL) {
-        return transaction_->wait_for_commit(timeout_ns);
-    }
+    [[nodiscard]] explicit operator bool() const noexcept;
 
     /**
-     * @brief abort the transaction
-     * @details abort the current transaction. When successful,
-     * the object gets invalidated and should not be used any more.
-     * @return status::ok if the operation is successful
-     * @return other status code when error occurs
+     * @see kvs::transaction::commit()
      */
-    [[nodiscard]] status abort() {
-        return transaction_->abort();
-    }
+    [[nodiscard]] status commit(bool async = false);
 
     /**
-     * @brief return the native transaction control handle in the transaction layer
-     * @note this is expected to be package private (i.e. callable from code in kvs namespace)
-     * @return the handle held by this object
+     * @see kvs::transaction::wait_for_commit()
      */
-    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept {
-        return transaction_->control_handle();
-    }
+    [[nodiscard]] status wait_for_commit(std::size_t timeout_ns = 0UL);
 
     /**
-     * @brief return the native handle in the transaction layer
-     * @note this is expected to be package private (i.e. callable from code in kvs namespace)
-     * @return the handle held by this object
+     * @see kvs::transaction::abort()
      */
-    [[nodiscard]] sharksfin::TransactionHandle handle() noexcept {
-        return transaction_->handle();
-    }
+    [[nodiscard]] status abort();
 
     /**
-     * @brief return the parent database object
-     * @return the parent database
+     * @see kvs::transaction::control_handle()
      */
-    [[nodiscard]] kvs::database* database() const noexcept {
-        return transaction_->database();
-    }
+    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept;
+
+    /**
+     * @see kvs::transaction::handle()
+     */
+    [[nodiscard]] sharksfin::TransactionHandle handle() noexcept;
+
+    /**
+     * @see kvs::transaction::database()
+     */
+    [[nodiscard]] kvs::database* database() const noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
 
-    static inline std::atomic_size_t id_source_{};
+    static inline std::atomic_size_t id_source_{};  //NOLINT
 };
 
-inline std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction> arg) noexcept {
-    return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
-}
+/**
+ * @brief wrap the kvs::transaction and convert into transaction context
+ * @param arg the kvs::transaction object
+ * @return the converted context
+ */
+std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction> arg) noexcept;
 
 }
 

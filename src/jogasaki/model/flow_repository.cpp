@@ -25,14 +25,12 @@ flow_repository::flow_repository(std::size_t size) :
     flows_(size)
 {}
 
-std::unique_ptr<flow>& flow_repository::set(
+void flow_repository::set(
     std::size_t idx,
-    std::unique_ptr<flow> ctx
-) noexcept
-{
+    std::unique_ptr<flow> arg
+) noexcept {
     if (idx >= flows_.size()) fail();
-    flows_[idx] = std::move(ctx);
-    return flows_[idx];
+    flows_[idx] = std::move(arg);
 }
 
 bool flow_repository::exists(std::size_t idx) const noexcept {

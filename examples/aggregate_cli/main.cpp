@@ -315,6 +315,7 @@ public:
             nullptr,
             &result
         );
+        prepare_scheduler(*context);
         create_compiled_info(compiler_context, s);
 
         auto& g0 = unsafe_downcast<takatori::plan::aggregate>(*input_exchanges_[0]);

@@ -117,6 +117,13 @@ void prepare_scheduler(request_context& rctx) {
             scheduler::thread_params(rctx.configuration()));
     }
     rctx.scheduler(std::move(sched));
+
+    rctx.stmt_scheduler(
+        std::make_shared<scheduler::statement_scheduler>(
+            rctx.configuration(),
+            *rctx.scheduler()
+        )
+    );
 }
 
 }

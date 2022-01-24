@@ -76,6 +76,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
 
     auto compiler_context = std::make_shared<plan::compiler_context>();
     auto context = std::make_shared<request_context>(cfg);
+    prepare_scheduler(*context);
 
     global::config_pool(cfg);
     common::graph g{};

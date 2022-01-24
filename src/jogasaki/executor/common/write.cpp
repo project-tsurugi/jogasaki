@@ -243,13 +243,13 @@ std::vector<details::write_field> write::create_fields(
     sequence_view<column const> columns,
     bool key
 ) const {
-    using variable = takatori::descriptor::variable;
+    using reference = takatori::descriptor::variable::reference_type;
     yugawara::binding::factory bindings{};
     std::vector<details::write_field> fields{};
-    std::unordered_map<variable, std::size_t> variable_indices{};
+    std::unordered_map<reference, std::size_t> variable_indices{};
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
         auto&& c = columns[i];
-        variable_indices[c] = i;
+        variable_indices[c.reference()] = i;
     }
     if (key) {
         fields.reserve(idx.keys().size());
@@ -260,14 +260,14 @@ std::vector<details::write_field> write::create_fields(
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
             bool nullable = k.column().criteria().nullity().nullable();
-            if(variable_indices.count(kc) == 0) {
+            if(variable_indices.count(kc.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = k.column().default_value();
                 create_generated_field(fields, npos, dv, type, nullable, spec);
                 continue;
             }
             fields.emplace_back(
-                variable_indices[kc],
+                variable_indices[kc.reference()],
                 t,
                 spec,
                 nullable
@@ -282,14 +282,14 @@ std::vector<details::write_field> write::create_fields(
             auto& type = c.type();
             auto t = utils::type_for(type);
             bool nullable = c.criteria().nullity().nullable();
-            if(variable_indices.count(b) == 0) {
+            if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = c.default_value();
                 create_generated_field(fields, npos, dv, type, nullable, kvs::spec_value);
                 continue;
             }
             fields.emplace_back(
-                variable_indices[b],
+                variable_indices[b.reference()],
                 t,
                 kvs::spec_value,
                 nullable

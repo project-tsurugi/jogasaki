@@ -454,6 +454,9 @@ private:
             std::cout << "command was ignored. no transaction started yet" << std::endl;
             return false;
         }
+        if(for_autocommit) {
+            wait_for_statements(); // just for cleanup
+        }
         auto s = jogasaki::utils::encode_commit(tx_handle_);
         auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();

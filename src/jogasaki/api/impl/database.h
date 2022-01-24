@@ -113,6 +113,10 @@ public:
     [[nodiscard]] executor::sequence::manager* sequence_manager() const noexcept;
 
     status initialize_from_providers();
+
+    std::shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept {
+        return task_scheduler_;
+    }
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -168,7 +172,7 @@ private:
         std::make_shared<yugawara::aggregate::configurable_provider>()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
-    std::unique_ptr<scheduler::task_scheduler> task_scheduler_;
+    std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<impl::transaction>> transactions_{};

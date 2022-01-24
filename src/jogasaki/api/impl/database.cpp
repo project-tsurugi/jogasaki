@@ -78,9 +78,9 @@ status database::start() {
 
     if (! task_scheduler_) {
         if (cfg_->single_thread()) {
-            task_scheduler_ = std::make_unique<scheduler::serial_task_scheduler>();
+            task_scheduler_ = std::make_shared<scheduler::serial_task_scheduler>();
         } else {
-            task_scheduler_ = std::make_unique<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
+            task_scheduler_ = std::make_shared<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
         }
     }
     task_scheduler_->start();

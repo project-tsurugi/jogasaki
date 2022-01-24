@@ -18,6 +18,8 @@
 #include <memory>
 
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include "error.h"
 
@@ -105,6 +107,17 @@ std::string_view request_context::status_message() const noexcept {
 
 maybe_shared_ptr<api::data_channel> const&  request_context::data_channel() const noexcept {
     return data_channel_;
+}
+
+void prepare_scheduler(request_context& rctx) {
+    std::shared_ptr<scheduler::task_scheduler> sched{};
+    if(rctx.configuration()->single_thread()) {
+        sched = std::make_shared<scheduler::serial_task_scheduler>();
+    } else {
+        sched = std::make_shared<scheduler::stealing_task_scheduler>(
+            scheduler::thread_params(rctx.configuration()));
+    }
+    rctx.scheduler(std::move(sched));
 }
 
 }

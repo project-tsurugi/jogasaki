@@ -33,10 +33,7 @@ model::task_result task::operator()() {
     VLOG(log_debug) << *this << " exchange_task executed.";
     common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
 
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*context()->job()->dag_scheduler());
-    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    auto& ts = dc.get_task_scheduler();
-    ts.schedule_task(
+    context()->scheduler()->schedule_task(
         scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
                 context()->job().get()

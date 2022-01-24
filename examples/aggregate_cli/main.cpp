@@ -311,7 +311,7 @@ public:
             cfg,
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::shared_ptr<kvs::database>{},
-            std::shared_ptr<kvs::transaction>{},
+            std::shared_ptr<transaction_context>{},
             nullptr,
             &result
         );

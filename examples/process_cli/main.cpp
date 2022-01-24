@@ -122,6 +122,7 @@ public:
         auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
         auto& p0 = find_process(p);
         auto context = std::make_shared<request_context>(cfg);
+        prepare_scheduler(*context);
         common::graph g{*context};
 
         auto& info = compiler_context->executable_statement()->compiled_info();

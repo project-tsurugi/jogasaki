@@ -68,6 +68,7 @@ status transaction::execute(
         database_->sequence_manager(),
         store.get()
     );
+    request_ctx->scheduler(database_->scheduler());
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -80,7 +81,7 @@ status transaction::execute(
             )
         );
 
-        auto& ts = scheduler_.get_task_scheduler();
+        auto& ts = *request_ctx->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             request_ctx->job().get(),
@@ -144,6 +145,7 @@ bool transaction::execute_async_common(
         nullptr,
         channel
     );
+    request_context_->scheduler(database_->scheduler());
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -164,7 +166,7 @@ bool transaction::execute_async_common(
         });
 
         async_execution_latch_.reset(); // close latch until async exec completes
-        auto& ts = scheduler_.get_task_scheduler();
+        auto& ts = *request_context_->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             request_context_->job().get(),
@@ -190,7 +192,7 @@ bool transaction::execute_async_common(
         });
 
         async_execution_latch_.reset(); // close latch until async exec completes
-        auto& ts = scheduler_.get_task_scheduler();
+        auto& ts = *request_context_->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
             request_context_.get(),

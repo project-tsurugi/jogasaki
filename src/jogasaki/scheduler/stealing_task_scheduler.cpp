@@ -38,8 +38,11 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     auto& jctx = *t.job();
     auto idx = jctx.index().load();
     if (idx == job_context::undefined_index) {
-        auto& tctx = *jctx.req_context()->tx_context();
-        scheduler_.schedule_at(std::move(t), determine_worker(tctx, scheduler_cfg_.thread_count()));
+        if(auto tctx = jctx.req_context()->tx_context()) {
+            scheduler_.schedule_at(std::move(t), determine_worker(*tctx, scheduler_cfg_.thread_count()));
+            return;
+        }
+        scheduler_.schedule(std::move(t));
         return;
     }
     scheduler_.schedule_at(std::move(t), idx);

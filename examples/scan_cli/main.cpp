@@ -482,10 +482,11 @@ public:
             cfg,
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::move(db),
-            std::move(tx),
+            std::make_shared<transaction_context>(std::move(tx)),
             nullptr,
             &result
         );
+        prepare_scheduler(*context);
         common::graph g{*context};
 
         auto& info = compiler_context->executable_statement()->compiled_info();

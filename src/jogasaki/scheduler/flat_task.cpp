@@ -50,7 +50,7 @@ bool flat_task::teardown() {
     trace_scope_name("teardown");  //NOLINT
     if (job_context_->task_count() > 1) {
         DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
-        auto& ts = job_context_->dag_scheduler()->get_task_scheduler();
+        auto& ts = *job_context_->req_context()->scheduler();
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
         return true;
     }

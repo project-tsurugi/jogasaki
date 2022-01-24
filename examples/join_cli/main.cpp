@@ -342,11 +342,11 @@ public:
             cfg,
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             std::shared_ptr<kvs::database>{},
-            std::shared_ptr<kvs::transaction>{},
+            std::shared_ptr<transaction_context>{},
             nullptr,
             &result
         );
-
+        prepare_scheduler(*context);
         auto& g0 = unsafe_downcast<takatori::plan::group>(*input_exchanges_[0]);
         auto& g1 = unsafe_downcast<takatori::plan::group>(*input_exchanges_[1]);
         meta::variable_order input_order{

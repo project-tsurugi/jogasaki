@@ -39,6 +39,7 @@ using takatori::util::maybe_shared_ptr;
 namespace scheduler {
 class dag_controller;
 class statement_scheduler;
+class task_scheduler;
 }
 
 /**
@@ -177,6 +178,22 @@ public:
     [[nodiscard]] maybe_shared_ptr<executor::flow_container> const& flows() const noexcept {
         return flows_;
     }
+
+    /**
+     * @brief setter for the job context
+     */
+    void scheduler(maybe_shared_ptr<scheduler::task_scheduler> arg) noexcept {
+        scheduler_ = std::move(arg);
+    }
+
+    /**
+     * @brief accessor for the job context
+     * @return job context
+     */
+    [[nodiscard]] maybe_shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept {
+        return scheduler_;
+    }
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -190,7 +207,10 @@ private:
     mutable std::mutex status_message_mutex_{};
     std::string status_message_{};
     maybe_shared_ptr<executor::flow_container> flows_{};
+    maybe_shared_ptr<scheduler::task_scheduler> scheduler_{};
 };
+
+void prepare_scheduler(request_context& rctx);
 
 }
 

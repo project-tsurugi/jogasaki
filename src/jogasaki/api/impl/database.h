@@ -114,7 +114,7 @@ public:
 
     status initialize_from_providers();
 
-    std::shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept;
+    [[nodiscard]] std::shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept;
 
 protected:
     status do_create_table(

@@ -156,7 +156,7 @@ bool transaction::execute_async_common(
                 cpu
             )
         );
-        rctx->job()->callback([statement, on_completion, channel, rctx, this](){  // callback is copy-based
+        rctx->job()->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             (void)channel;
@@ -180,7 +180,7 @@ bool transaction::execute_async_common(
                 cpu
             )
         );
-        rctx->job()->callback([statement, on_completion, rctx, this](){  // callback is copy-based
+        rctx->job()->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             on_completion(rctx->status_code(), rctx->status_message());

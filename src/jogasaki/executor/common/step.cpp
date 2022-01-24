@@ -132,7 +132,7 @@ model::flow& step::data_flow_object(request_context& rctx) const noexcept {
     return *rctx.flows()->at(id());
 }
 
-void step::data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) noexcept {
+void step::data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) const noexcept {
     rctx.flows()->set(id(), std::move(p));
 }
 

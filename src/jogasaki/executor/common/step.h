@@ -118,7 +118,7 @@ public:
 
 protected:
 
-    void data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) noexcept;
+    void data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) const noexcept;
 
 private:
     identity_type id_{};

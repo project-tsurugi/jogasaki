@@ -15,24 +15,9 @@
  */
 #include "transaction_context.h"
 
-#include <atomic>
-
-#include <takatori/util/maybe_shared_ptr.h>
-
-#include <jogasaki/configuration.h>
-#include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/data/result_store.h>
-#include <jogasaki/api/data_channel.h>
-#include <jogasaki/scheduler/job_context.h>
-#include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/executor/sequence/sequence.h>
 
 namespace jogasaki {
-
-using takatori::util::maybe_shared_ptr;
 
 transaction_context::transaction_context(std::shared_ptr<kvs::transaction> transaction) :
     transaction_(std::move(transaction)),

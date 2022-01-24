@@ -207,7 +207,7 @@ TEST_F(write_test, simple_insert) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         nullptr
     );
     ASSERT_TRUE(wrt(*context));
@@ -247,7 +247,7 @@ TEST_F(write_test, insert_two_records) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         nullptr
     );
     ASSERT_TRUE(wrt(*context));
@@ -284,7 +284,7 @@ TEST_F(write_test, nullable_table) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         nullptr
     );
     ASSERT_TRUE(wrt(*context));
@@ -317,7 +317,7 @@ TEST_F(write_test, insert_nulls) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         nullptr
     );
     ASSERT_TRUE(wrt(*context));
@@ -352,7 +352,7 @@ TEST_F(write_test, insert_null_pkey) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         nullptr
     );
     ASSERT_TRUE(wrt(*context));
@@ -386,7 +386,7 @@ TEST_F(write_test, default_value) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         nullptr
     );
     ASSERT_TRUE(wrt(*context));
@@ -433,7 +433,7 @@ TEST_F(write_test, sequence_value) {
         std::make_shared<configuration>(),
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         db_,
-        tx,
+        std::make_shared<transaction_context>(tx),
         mgr.get()
     );
     ASSERT_TRUE(wrt(*context));

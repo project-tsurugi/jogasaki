@@ -31,7 +31,7 @@ request_context::request_context(
     std::shared_ptr<class configuration> config,
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource,
     std::shared_ptr<kvs::database> database,
-    std::shared_ptr<kvs::transaction> transaction,
+    std::shared_ptr<transaction_context> transaction,
     executor::sequence::manager* sequence_manager,
     data::result_store* result,
     maybe_shared_ptr<api::data_channel> data_channel
@@ -58,7 +58,7 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
 }
 
 [[nodiscard]] std::shared_ptr<kvs::transaction> const& request_context::transaction() const {
-    return transaction_;
+    return transaction_->object();
 }
 
 memory::lifo_paged_memory_resource* request_context::request_resource() const noexcept {

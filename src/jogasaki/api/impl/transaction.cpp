@@ -38,12 +38,12 @@ void transaction::check_async_execution() {
 
 status transaction::commit() {
     check_async_execution();
-    return tx_->commit();
+    return tx_->object()->commit();
 }
 
 status transaction::abort() {
     check_async_execution();
-    return tx_->abort();
+    return tx_->object()->abort();
 }
 
 status transaction::execute(api::executable_statement& statement) {
@@ -109,7 +109,9 @@ transaction::transaction(
 ) :
     database_(std::addressof(database)),
     scheduler_(database_->configuration(), *database_->task_scheduler()),
-    tx_(database_->kvs_db()->create_transaction(readonly))
+    tx_(std::make_shared<transaction_context>(
+        std::shared_ptr{database_->kvs_db()->create_transaction(readonly)}
+    ))
 {}
 
 bool transaction::execute_async(maybe_shared_ptr<api::executable_statement> const& statement, transaction::callback on_completion) {

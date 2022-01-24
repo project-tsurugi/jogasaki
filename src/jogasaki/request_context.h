@@ -23,6 +23,7 @@
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/api/data_channel.h>
@@ -64,7 +65,7 @@ public:
         std::shared_ptr<class configuration> config,
         std::shared_ptr<memory::lifo_paged_memory_resource> request_resource = {},
         std::shared_ptr<kvs::database> database = {},
-        std::shared_ptr<kvs::transaction> transaction = {},
+        std::shared_ptr<transaction_context> transaction = {},
         executor::sequence::manager* sequence_manager = {},
         data::result_store* result = {},
         maybe_shared_ptr<api::data_channel> data_channel = {}
@@ -99,6 +100,14 @@ public:
      * @return transaction shared within this request
      */
     [[nodiscard]] std::shared_ptr<kvs::transaction> const& transaction() const;
+
+    /**
+     * @brief accessor for the transaction
+     * @return transaction shared within this request
+     */
+    [[nodiscard]] std::shared_ptr<transaction_context> const& tx_context() const {
+        return transaction_;
+    }
 
     /**
      * @brief accessor for the sequence manager
@@ -157,7 +166,7 @@ private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};
-    std::shared_ptr<kvs::transaction> transaction_{};
+    std::shared_ptr<transaction_context> transaction_{};
     executor::sequence::manager* sequence_manager_{};
     data::result_store* result_{};
     maybe_shared_ptr<api::data_channel> data_channel_{};

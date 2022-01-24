@@ -23,7 +23,7 @@
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/utils/latch.h>
 
-#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::api::impl {
 
@@ -60,7 +60,7 @@ public:
 private:
     impl::database* database_{};
     scheduler::statement_scheduler scheduler_{};
-    std::shared_ptr<kvs::transaction> tx_{};
+    std::shared_ptr<transaction_context> tx_{};
     std::shared_ptr<request_context> request_context_{};
     utils::latch async_execution_latch_{true};  // latch is closed during async execution
 

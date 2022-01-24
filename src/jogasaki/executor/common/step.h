@@ -127,7 +127,6 @@ private:
     std::vector<std::unique_ptr<model::port>> sub_input_ports_{};
     std::vector<std::unique_ptr<model::port>> output_ports_{};
     model::graph* owner_{};
-    std::unique_ptr<flow> data_flow_object_{};
     std::shared_ptr<callback_type> will_create_tasks_{};
     std::shared_ptr<callback_type> did_create_tasks_{};
     std::shared_ptr<callback_type> did_start_task_{};

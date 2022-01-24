@@ -26,6 +26,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/executor/flow_container.h>
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/manager.h>
@@ -162,6 +163,20 @@ public:
      */
     [[nodiscard]] maybe_shared_ptr<api::data_channel> const& data_channel() const noexcept;
 
+    /**
+     * @brief setter for the job context
+     */
+    void flows(maybe_shared_ptr<executor::flow_container> arg) noexcept {
+        flows_ = std::move(arg);
+    }
+
+    /**
+     * @brief accessor for the job context
+     * @return job context
+     */
+    [[nodiscard]] maybe_shared_ptr<executor::flow_container> const& flows() const noexcept {
+        return flows_;
+    }
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -174,6 +189,7 @@ private:
     maybe_shared_ptr<scheduler::job_context> job_context_{};
     mutable std::mutex status_message_mutex_{};
     std::string status_message_{};
+    maybe_shared_ptr<executor::flow_container> flows_{};
 };
 
 }

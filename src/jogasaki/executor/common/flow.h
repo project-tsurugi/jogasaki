@@ -17,6 +17,9 @@
 
 #include <vector>
 
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/step_kind.h>
 
 namespace jogasaki::executor::common {

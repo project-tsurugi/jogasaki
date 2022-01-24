@@ -54,7 +54,7 @@ void step::id(identity_type id) noexcept {
 }
 
 void step::deactivate() {
-    data_flow_object_.reset();
+    context()->flows()->set(id(), nullptr);
 }
 
 void step::notify_prepared() {
@@ -114,11 +114,10 @@ void step::connect_to_sub(step& downstream, port_index src, port_index target) {
 }
 
 sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
-    assert(data_flow_object_ != nullptr); //NOLINT
     if (will_create_tasks_) {
         (*will_create_tasks_)(nullptr);
     }
-    auto ret = data_flow_object_->create_tasks();
+    auto ret = data_flow_object().create_tasks();
     if (did_create_tasks_) {
         (*did_create_tasks_)(nullptr);
     }
@@ -126,16 +125,15 @@ sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
 }
 
 sequence_view<std::shared_ptr<model::task>> step::create_pretask(port_index subinput) {
-    assert(data_flow_object_ != nullptr); //NOLINT
-    return data_flow_object_->create_pretask(subinput);
+    return data_flow_object().create_pretask(subinput);
 }
 
 flow& step::data_flow_object() const noexcept {
-    return *data_flow_object_;
+    return *find_flow<flow>(id(), *context()->flows());
 }
 
 void step::data_flow_object(std::unique_ptr<flow> p) noexcept {
-    data_flow_object_ = std::move(p);
+    context()->flows()->set(id(), std::move(p));
 }
 
 class request_context* step::context() const noexcept {

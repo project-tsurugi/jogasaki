@@ -333,6 +333,7 @@ void dag_controller::impl::init(model::graph& g) {
     for(auto&& v: g.steps()) {
         step_state(*v, step_state_kind::created);
     }
+    graph_->context()->flows(std::make_shared<executor::flow_container>(graph_->steps().size()));
     graph_deactivated_ = false;
 }
 

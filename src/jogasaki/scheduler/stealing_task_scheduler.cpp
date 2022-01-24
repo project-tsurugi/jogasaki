@@ -35,10 +35,11 @@ std::size_t determine_worker(transaction_context const& tx, std::size_t worker_c
 }
 
 void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
-    auto& jctx = *t.job();
+    auto& rctx = *t.req_context();
+    auto& jctx = *rctx.job();
     auto idx = jctx.index().load();
     if (idx == job_context::undefined_index) {
-        if(auto tctx = jctx.req_context()->transaction()) {
+        if(auto tctx = rctx.transaction()) {
             scheduler_.schedule_at(std::move(t), determine_worker(*tctx, scheduler_cfg_.thread_count()));
             return;
         }

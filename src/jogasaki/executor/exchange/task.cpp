@@ -36,9 +36,9 @@ model::task_result task::operator()() {
     context()->scheduler()->schedule_task(
         scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
-                context()->job().get()
+                context()
         }
-    ); // TODO want to pass job_context from somewhere else
+    );
     return model::task_result::complete;
 }
 }

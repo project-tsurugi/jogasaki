@@ -83,7 +83,7 @@ status transaction::execute(
         auto& ts = *request_ctx->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
-            request_ctx->job().get(),
+            request_ctx.get(),
             g
         });
         ts.wait_for_progress(*request_ctx->job());
@@ -135,7 +135,7 @@ bool transaction::execute_async_common(
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     auto& e = s.body();
     auto& c = database_->configuration();
-    request_context_ = std::make_shared<request_context>(
+    auto request_context_ = std::make_shared<request_context>(
         c,
         s.resource(),
         database_->kvs_db(),
@@ -155,7 +155,7 @@ bool transaction::execute_async_common(
                 cpu
             )
         );
-        request_context_->job()->callback([statement, on_completion, channel, this](){  // callback is copy-based
+        request_context_->job()->callback([statement, on_completion, channel, request_context_, this](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             (void)channel;
@@ -167,7 +167,7 @@ bool transaction::execute_async_common(
         auto& ts = *request_context_->scheduler();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
-            request_context_->job().get(),
+            request_context_.get(),
             g
         });
         ts.wait_for_progress(*request_context_->job());
@@ -182,7 +182,7 @@ bool transaction::execute_async_common(
                 cpu
             )
         );
-        request_context_->job()->callback([statement, on_completion, this](){  // callback is copy-based
+        request_context_->job()->callback([statement, on_completion, request_context_, this](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             on_completion(request_context_->status_code(), request_context_->status_message());

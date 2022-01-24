@@ -55,7 +55,9 @@ TEST_F(task_scheduler_test, single) {
         return task_result::complete;
     });
     job_context jctx{};
-    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, t});
+    request_context rctx{};
+    rctx.job(maybe_shared_ptr{&jctx});
+    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, t});
     executor.wait_for_progress(jctx);
     ASSERT_TRUE(run);
 }
@@ -64,6 +66,8 @@ TEST_F(task_scheduler_test, DISABLED_multi) {
     stealing_task_scheduler executor{thread_params(1)};
     std::atomic_flag run = false;
     job_context jctx{};
+    request_context rctx{};
+    rctx.job(maybe_shared_ptr{&jctx});
     auto t = std::make_shared<task_wrapper>([&]() {
         run.test_and_set() ;
         jctx.completion_latch().release();
@@ -71,7 +75,7 @@ TEST_F(task_scheduler_test, DISABLED_multi) {
         return task_result::complete;
     });
     executor.start();
-    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &jctx, t});
+    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, t});
     executor.wait_for_progress(jctx);
     executor.stop();
     ASSERT_TRUE(run.test_and_set());

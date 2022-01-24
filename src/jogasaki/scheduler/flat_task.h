@@ -104,7 +104,7 @@ public:
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::wrapped>,
-        job_context* jctx,
+        request_context* rctx,
         std::shared_ptr<model::task> origin
     ) noexcept;
 
@@ -114,7 +114,7 @@ public:
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::dag_events>,
-        job_context* jctx
+        request_context* rctx
     ) noexcept;
 
     /**
@@ -124,7 +124,7 @@ public:
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::bootstrap>,
-        job_context* jctx,
+        request_context* rctx,
         model::graph& g
     ) noexcept;
 
@@ -134,7 +134,7 @@ public:
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::teardown>,
-        job_context* jctx
+        request_context* rctx
     ) noexcept;
 
     /**
@@ -190,13 +190,18 @@ public:
      */
     [[nodiscard]] bool sticky() const noexcept;
 
+    /**
+     * @brief accessor to the job context that the task belongs to.
+     */
+    [[nodiscard]] request_context* req_context() const noexcept {
+        return req_context_;
+    }
 private:
     flat_task_kind kind_{};
-    job_context* job_context_{};
+    request_context* req_context_{};
     std::shared_ptr<model::task> origin_{};
     model::graph* graph_{};
     executor::common::write* write_{};
-    request_context* req_context_{};
     bool sticky_{};
 
     bool execute(tateyama::api::task_scheduler::context& ctx);

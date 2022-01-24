@@ -38,7 +38,7 @@ model::task_result mock_task::operator()() {
         common::send_event(*context_, event_enum_tag<event_kind::task_completed>, src_->id(), id());
     }
     context()->scheduler()->schedule_task(
-        scheduler::flat_task{scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>, context()->job().get()});
+        scheduler::flat_task{scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>, context()});
     return has_next ? model::task_result::proceed : model::task_result::complete;
 }
 

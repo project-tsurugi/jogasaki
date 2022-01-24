@@ -289,7 +289,7 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
                 // make sure teardown task is submitted only once
                 auto completing = job().completing().load();
                 if (!completing && job().completing().compare_exchange_strong(completing, true)) {
-                    executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(job())});
+                    executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, request_context_.get()});
                 }
             }
             break;
@@ -355,7 +355,7 @@ void dag_controller::impl::schedule(model::graph& g, request_context& rctx) {
         // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
         rctx.job()->reset();
     }
-    executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
+    executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, request_context_.get()});
 
     // pass serial scheduler the control, or block waiting for parallel schedulers to proceed
     executor_->wait_for_progress(job());
@@ -367,7 +367,7 @@ void dag_controller::impl::start_running(step& v) {
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;
     for(auto& t : task_list) {
-        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, std::addressof(job()), t});
+        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, request_context_.get(), t});
         tasks.register_task(task_kind::main, slot, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
         ++slot;
@@ -383,7 +383,7 @@ void dag_controller::impl::start_pretask(step& v, step_state_table::slot_index i
     }
     if(auto view = v.create_pretask(*request_context_, index);!view.empty()) {
         auto& t = view.front();
-        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, std::addressof(job()), t});
+        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, request_context_.get(), t});
         tasks.register_task(task_kind::pre, index, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
     }

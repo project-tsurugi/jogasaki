@@ -138,6 +138,7 @@ TEST_F(async_api_test, async_update) {
     while(! run.load()) {}
     ASSERT_EQ(status::ok, s);
     ASSERT_TRUE(message.empty());
+    ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(async_api_test, async_query) {
@@ -175,6 +176,7 @@ TEST_F(async_api_test, async_query) {
     EXPECT_EQ(exp1, recs[1]);
     EXPECT_EQ(exp2, recs[2]);
     EXPECT_TRUE(ch.all_writers_released());
+    ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(async_api_test, async_query_heavy_write) {

@@ -30,17 +30,17 @@ using takatori::util::fail;
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(log_trace) << *this << " bootstrap task executed.";
     trace_scope_name("bootstrap");  //NOLINT
-    job_context_->index().store(ctx.index());
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
+    job()->index().store(ctx.index());
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job()->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    dc.init(*graph_, *job_context_->req_context());
+    dc.init(*graph_, *req_context_);
     dc.process_internal_events();
 }
 
 void flat_task::dag_schedule() {
     DVLOG(log_trace) << *this << " dag scheduling task executed.";
     trace_scope_name("dag_schedule");  //NOLINT
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job()->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.process_internal_events();
 }
@@ -48,18 +48,18 @@ void flat_task::dag_schedule() {
 bool flat_task::teardown() {
     DVLOG(log_trace) << *this << " teardown task executed.";
     trace_scope_name("teardown");  //NOLINT
-    if (job_context_->task_count() > 1) {
+    if (job()->task_count() > 1) {
         DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
-        auto& ts = *job_context_->req_context()->scheduler();
-        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, job_context_});
+        auto& ts = *req_context_->scheduler();
+        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_});
         return true;
     }
-    if (auto& cb = job_context_->callback(); cb) {
+    if (auto& cb = job()->callback(); cb) {
         cb();
     }
 
     // releasing latch should be done at the last step since it starts to release resources such as request context
-    job_context_->completion_latch().release();
+    job()->completion_latch().release();
     return false;
 }
 
@@ -68,11 +68,11 @@ void flat_task::write() {
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
 
-    if (auto& cb = job_context_->callback(); cb) {
+    if (auto& cb = job()->callback(); cb) {
         cb();
     }
     // releasing latch should be done at the last step since it starts to release resources such as request context
-    job_context_->completion_latch().release();
+    job()->completion_latch().release();
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
@@ -96,7 +96,7 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
         // job completed, and the latch is just released. Should not touch the job context any more.
         return;
     }
-    --job_context_->task_count();
+    --job()->task_count();
 }
 
 flat_task::identity_type flat_task::id() const {
@@ -108,30 +108,30 @@ flat_task::identity_type flat_task::id() const {
 
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::wrapped>,
-    job_context* jctx,
+    request_context* rctx,
     std::shared_ptr<model::task> origin
 ) noexcept:
     kind_(flat_task_kind::wrapped),
-    job_context_(jctx),
+    req_context_(rctx),
     origin_(std::move(origin)),
     sticky_(origin_->has_transactional_io())
 {}
 
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::dag_events>,
-    job_context* jctx
+    request_context* rctx
 ) noexcept:
     kind_(flat_task_kind::dag_events),
-    job_context_(jctx)
+    req_context_(rctx)
 {}
 
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::bootstrap>,
-    job_context* jctx,
+    request_context* rctx,
     model::graph& g
 ) noexcept:
     kind_(flat_task_kind::bootstrap),
-    job_context_(jctx),
+    req_context_(rctx),
     graph_(std::addressof(g))
 {}
 
@@ -140,15 +140,15 @@ std::shared_ptr<model::task> const& flat_task::origin() const noexcept {
 }
 
 job_context* flat_task::job() const {
-    return job_context_;
+    return req_context_->job().get();
 }
 
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::teardown>,
-    job_context* jctx
+    request_context* rctx
 ) noexcept:
     kind_(flat_task_kind::teardown),
-    job_context_(jctx)
+    req_context_(rctx)
 {}
 
 flat_task::flat_task(
@@ -157,9 +157,8 @@ flat_task::flat_task(
     executor::common::write* write
 ) noexcept:
     kind_(flat_task_kind::write),
-    job_context_(rctx->job().get()),
-    write_(write),
     req_context_(rctx),
+    write_(write),
     sticky_(true)
 {}
 

@@ -121,20 +121,6 @@ public:
      */
     [[nodiscard]] job_completion_callback& callback() noexcept;
 
-    /**
-     * @brief setter for the callback
-     */
-    void req_context(request_context& arg) noexcept {
-        parent_ = std::addressof(arg);
-    }
-
-    /**
-     * @brief accessor for completion callback
-     * @return callback
-     */
-    [[nodiscard]] request_context* req_context() const noexcept {
-        return parent_;
-    }
 private:
 
     maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
@@ -144,7 +130,6 @@ private:
     cache_align std::atomic_size_t job_tasks_{};
     cache_align std::atomic_size_t index_{undefined_index};
     job_completion_callback callback_{};
-    request_context* parent_{};
 };
 
 }

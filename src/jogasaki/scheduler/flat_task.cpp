@@ -54,7 +54,8 @@ bool flat_task::teardown() {
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_});
         return true;
     }
-    if (auto& cb = job()->callback(); cb) {
+    auto& cb = job()->callback();
+    if(cb) {
         cb();
     }
 
@@ -64,7 +65,7 @@ bool flat_task::teardown() {
 
     // we rely on callback to own request_context, but somehow it fails to release.
     // So temporarily we explicitly release the callback object. TODO investigate more
-    std::function<void(void)>{}.swap(job()->callback());
+    std::function<void(void)>{}.swap(cb);
     return false;
 }
 
@@ -73,7 +74,8 @@ void flat_task::write() {
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
 
-    if (auto& cb = job()->callback(); cb) {
+    auto& cb = job()->callback();
+    if(cb) {
         cb();
     }
 
@@ -82,7 +84,7 @@ void flat_task::write() {
 
     // we rely on callback to own request_context, but somehow it fails to release.
     // So temporarily we explicitly release the callback object. TODO investigate more
-    std::function<void(void)>{}.swap(job()->callback());
+    std::function<void(void)>{}.swap(cb);
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {

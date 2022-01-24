@@ -364,7 +364,8 @@ public:
             g1.group_keys()
         };
 
-        common::graph g{*context};
+        global::config_pool(cfg);
+        common::graph g{};
         producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.sequential_data_, s.key_modulo_, s.prepare_pages_};
         producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.sequential_data_, s.key_modulo_, s.prepare_pages_};
         auto& producer1 = g.emplace<producer_process>(meta, l_params);
@@ -400,7 +401,7 @@ public:
             std::min(s.left_upstream_partitions_+s.right_upstream_partitions_, cfg->thread_pool_size()));
         consumer.partitions(s.downstream_partitions_);
         dag_controller dc{std::move(cfg)};
-        dc.schedule(g);
+        dc.schedule(g, *context);
         dump_result_data(result, s);
         return 0;
     }

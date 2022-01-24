@@ -121,6 +121,7 @@ database::database(
     if(cfg_->prepare_analytics_benchmark_tables()) {
         executor::add_analytics_benchmark_tables(*tables_);
     }
+    global::config_pool(cfg_);
 }
 
 std::shared_ptr<class configuration> const& database::configuration() const noexcept {

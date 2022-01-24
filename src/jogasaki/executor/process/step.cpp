@@ -16,6 +16,7 @@
 #include "step.h"
 
 #include <memory>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/meta/group_meta.h>
@@ -100,18 +101,21 @@ std::size_t step::partitions() const noexcept {
         info_->details().has_find_operator()) {
         return 1;
     }
-    return owner()->context()->configuration()->default_partitions();
+    return global::config_pool()->default_partitions();
 }
 
-void step::activate() {
+void step::activate(request_context& rctx) {
     if(! io_info_) {
         io_info_ = create_io_info();
     }
-    data_flow_object(std::make_unique<flow>(
-        context(),
-        this,
-        info_
-    ));
+    data_flow_object(
+        rctx,
+        std::make_unique<flow>(
+            std::addressof(rctx),
+            this,
+            info_
+        )
+    );
 }
 
 void step::notify_prepared() {

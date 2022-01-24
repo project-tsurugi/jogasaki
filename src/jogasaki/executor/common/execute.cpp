@@ -18,17 +18,8 @@
 namespace jogasaki::executor::common {
 
 execute::execute(std::shared_ptr<common::graph> graph) noexcept:
-    operators_(std::move(graph)),
-    context_(operators_->context())
+    operators_(std::move(graph))
 {}
-
-void execute::context(request_context& context) {
-    context_ = std::addressof(context);
-}
-
-request_context* execute::context() const noexcept {
-    return context_;
-}
 
 model::statement_kind execute::kind() const noexcept {
     return model::statement_kind::execute;

@@ -72,7 +72,7 @@ public:
         return executor::common::step_kind::group;
     }
 
-    void activate() override;
+    void activate(request_context& rctx) override;
 
     [[nodiscard]] meta::variable_order const& output_order() const noexcept override;
 

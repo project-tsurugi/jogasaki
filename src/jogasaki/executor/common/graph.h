@@ -39,16 +39,9 @@ class graph : public model::graph {
 public:
     graph() = default;
 
-    explicit graph(request_context& context) noexcept;
-
     [[nodiscard]] sequence_view<std::unique_ptr<model::step> const> steps() const noexcept override;
 
     [[nodiscard]] optional_ptr<model::step> find_step(model::step::identity_type id) noexcept override;
-
-    // TODO graph should have request context?
-    void context(request_context& context);
-
-    [[nodiscard]] request_context* context() const noexcept override;
 
     model::step& insert(std::unique_ptr<model::step> step);
 
@@ -72,7 +65,6 @@ public:
 
 private:
     std::vector<std::unique_ptr<model::step>> steps_{};
-    request_context* context_{};
 };
 
 }

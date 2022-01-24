@@ -53,8 +53,8 @@ void step::id(identity_type id) noexcept {
     id_ = id;
 }
 
-void step::deactivate() {
-    context()->flows()->set(id(), nullptr);
+void step::deactivate(request_context& rctx) {
+    rctx.flows()->set(id(), nullptr);
 }
 
 void step::notify_prepared() {
@@ -113,32 +113,27 @@ void step::connect_to_sub(step& downstream, port_index src, port_index target) {
     );
 }
 
-sequence_view<std::shared_ptr<model::task>> step::create_tasks() {
+sequence_view<std::shared_ptr<model::task>> step::create_tasks(request_context& rctx) {
     if (will_create_tasks_) {
         (*will_create_tasks_)(nullptr);
     }
-    auto ret = data_flow_object().create_tasks();
+    auto ret = data_flow_object(rctx).create_tasks();
     if (did_create_tasks_) {
         (*did_create_tasks_)(nullptr);
     }
     return ret;
 }
 
-sequence_view<std::shared_ptr<model::task>> step::create_pretask(port_index subinput) {
-    return data_flow_object().create_pretask(subinput);
+sequence_view<std::shared_ptr<model::task>> step::create_pretask(request_context& rctx, port_index subinput) {
+    return data_flow_object(rctx).create_pretask(subinput);
 }
 
-flow& step::data_flow_object() const noexcept {
-    return *find_flow<flow>(id(), *context()->flows());
+flow& step::data_flow_object(request_context& rctx) const noexcept {
+    return *find_flow<flow>(id(), *rctx.flows());
 }
 
-void step::data_flow_object(std::unique_ptr<flow> p) noexcept {
-    context()->flows()->set(id(), std::move(p));
-}
-
-class request_context* step::context() const noexcept {
-    assert(owner_); //NOLINT
-    return owner_->context();
+void step::data_flow_object(request_context& rctx, std::unique_ptr<flow> p) noexcept {
+    rctx.flows()->set(id(), std::move(p));
 }
 
 std::ostream& step::write_to(std::ostream& out) const {

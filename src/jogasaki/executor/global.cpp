@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <jogasaki/memory/page_pool.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 
@@ -42,6 +43,14 @@ executor::function::incremental::aggregate_function_repository& incremental_aggr
 executor::function::aggregate_function_repository& aggregate_function_repository() {
     static executor::function::aggregate_function_repository repo{};
     return repo;
+}
+
+maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuration> arg) {
+    static maybe_shared_ptr<configuration> pool = std::make_shared<configuration>();
+    if(arg) {
+        pool = std::move(arg);
+    }
+    return pool;
 }
 
 }

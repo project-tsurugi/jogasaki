@@ -32,8 +32,11 @@ public:
     simple_cogroup_process(simple_cogroup_process&& other) noexcept = default;
     simple_cogroup_process& operator=(simple_cogroup_process&& other) noexcept = default;
 
-    void activate() override {
-        data_flow_object(std::make_unique<simple_cogroup_process_flow>(nullptr, this, context()));
+    void activate(request_context& rctx) override {
+        data_flow_object(
+            rctx,
+            std::make_unique<simple_cogroup_process_flow>(nullptr, this, std::addressof(rctx))
+        );
     }
     std::size_t partitions() const noexcept override {
         return default_partitions;

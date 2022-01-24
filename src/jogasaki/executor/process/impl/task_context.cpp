@@ -25,12 +25,14 @@ task_context::task_context(std::size_t partition) :
 {}
 
 process::impl::task_context::task_context(
+    request_context& rctx,
     std::size_t partition,
     io_exchange_map const& io_exchange_map,
     std::shared_ptr<impl::scan_info> scan_info,
     data::iterable_record_store* result,
     api::data_channel* channel
 ) :
+    request_context_(std::addressof(rctx)),
     partition_(partition),
     io_exchange_map_(std::addressof(io_exchange_map)),
     scan_info_(std::move(scan_info)),
@@ -39,7 +41,7 @@ process::impl::task_context::task_context(
 {}
 
 reader_container task_context::reader(task_context::reader_index idx) {
-    auto& flow = io_exchange_map_->input_at(idx)->data_flow_object();
+    auto& flow = io_exchange_map_->input_at(idx)->data_flow_object(*request_context_);
     using step_kind = common::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
@@ -56,7 +58,7 @@ reader_container task_context::reader(task_context::reader_index idx) {
 }
 
 record_writer* task_context::downstream_writer(task_context::writer_index idx) {
-    auto& flow = io_exchange_map_->output_at(idx)->data_flow_object();
+    auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
     using step_kind = common::step_kind;
     switch(flow.kind()) {
         case step_kind::group:

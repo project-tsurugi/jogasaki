@@ -318,7 +318,9 @@ public:
         create_compiled_info(compiler_context, s);
 
         auto& g0 = unsafe_downcast<takatori::plan::aggregate>(*input_exchanges_[0]);
-        common::graph g{*context};
+
+        global::config_pool(cfg);
+        common::graph g{};
         auto& xch = g.emplace<exchange::aggregate::step>(plan::impl::create(g0, compiler_context->executable_statement()->compiled_info()));
 
         auto& p = unsafe_downcast<takatori::statement::execute>(*compiler_context->executable_statement()->statement()).execution_plan();
@@ -349,7 +351,7 @@ public:
         jogasaki::utils::get_latches().enable(sync_wait_prepare, std::min(s.upstream_partitions_, cfg->thread_pool_size()));
         consumer.partitions(s.downstream_partitions_);
         dag_controller dc{std::move(cfg)};
-        dc.schedule(g);
+        dc.schedule(g, *context);
         dump_result_data(result, s);
         return 0;
     }

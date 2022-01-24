@@ -56,6 +56,7 @@ public:
      * @param result the store to keep the result data
      */
     task_context(
+        request_context& rctx,
         partition_index partition,
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
@@ -77,6 +78,7 @@ public:
         return channel_;
     }
 private:
+    request_context* request_context_{};
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};

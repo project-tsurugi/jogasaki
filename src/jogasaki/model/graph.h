@@ -21,10 +21,6 @@
 
 #include "step.h"
 
-namespace jogasaki {
-class request_context;
-}
-
 namespace jogasaki::model {
 
 template <class T>
@@ -40,11 +36,6 @@ public:
      * Multiple calls return the steps in the same order, but the order is not meaningful (e.g. not ensured to be topologically sorted)
      */
     [[nodiscard]] virtual sequence_view<std::unique_ptr<step> const> steps() const = 0;
-
-    /**
-     * @return request context associated with this step graph
-     */
-    [[nodiscard]] virtual request_context* context() const = 0;
 
     /**
      * @brief find the step for the given identity in this graph

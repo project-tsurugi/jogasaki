@@ -87,7 +87,7 @@ void dag_controller::impl::operator()(enum_tag_t<event_kind::completion_instruct
 void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::activate>, internal_event&, step* s) {
     auto& step = steps_[s->id()];
     if(step.state_ == step_state_kind::created) {
-        s->activate();
+        s->activate(*request_context_);
         step.assign_slot(task_kind::pre, s->subinput_ports().size());
     }
     if (s->has_subinput()) {
@@ -108,7 +108,7 @@ void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::consume>, 
 void dag_controller::impl::operator()(enum_tag_t<internal_event_kind::deactivate>, internal_event&, step* s) {
     auto& st = steps_[s->id()].state_;
     if(st == step_state_kind::completed) {
-        s->deactivate();
+        s->deactivate(*request_context_);
         step_state(*s, step_state_kind::deactivated);
     }
 }
@@ -322,10 +322,11 @@ void dag_controller::impl::process_internal_events() {
     }
 }
 
-void dag_controller::impl::init(model::graph& g) {
+void dag_controller::impl::init(model::graph& g, request_context& rctx) {
     std::lock_guard guard{mutex_};
     // assuming one graph per scheduler
-    graph_ = &g;
+    graph_ = std::addressof(g);
+    request_context_ = std::addressof(rctx);
     steps_.clear();
     while(! internal_events_.empty()) {
         internal_events_.pop();
@@ -333,27 +334,26 @@ void dag_controller::impl::init(model::graph& g) {
     for(auto&& v: g.steps()) {
         step_state(*v, step_state_kind::created);
     }
-    graph_->context()->flows(std::make_shared<executor::flow_container>(graph_->steps().size()));
+    rctx.flows(std::make_shared<executor::flow_container>(graph_->steps().size()));
     graph_deactivated_ = false;
 }
 
 job_context& dag_controller::impl::job() noexcept {
-    return *graph_->context()->job();  //TODO avoid request context from graph
+    return *request_context_->job();
 }
 
-void dag_controller::impl::schedule(model::graph& g) {
-    init(g);
-    if (! graph_->context()->job()) {
-
+void dag_controller::impl::schedule(model::graph& g, request_context& rctx) {
+    init(g, rctx);
+    if (! rctx.job()) {
         std::size_t cpu = sched_getcpu();
-        g.context()->job(
+        rctx.job(
             std::make_shared<job_context>(
                 std::make_shared<scheduler::statement_scheduler>(maybe_shared_ptr{parent()}), cpu
             )
         );
     } else {
         // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
-        graph_->context()->job()->reset();
+        rctx.job()->reset();
     }
     executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, std::addressof(job())});
 
@@ -362,7 +362,7 @@ void dag_controller::impl::schedule(model::graph& g) {
 }
 
 void dag_controller::impl::start_running(step& v) {
-    auto task_list = v.create_tasks();
+    auto task_list = v.create_tasks(*request_context_);
     auto& tasks = steps_[v.id()];
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;
@@ -381,7 +381,7 @@ void dag_controller::impl::start_pretask(step& v, step_state_table::slot_index i
         // task already started
         return;
     }
-    if(auto view = v.create_pretask(index);!view.empty()) {
+    if(auto view = v.create_pretask(*request_context_, index);!view.empty()) {
         auto& t = view.front();
         executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, std::addressof(job()), t});
         tasks.register_task(task_kind::pre, index, t->id());

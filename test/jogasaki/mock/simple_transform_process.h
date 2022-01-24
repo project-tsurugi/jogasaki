@@ -33,9 +33,12 @@ public:
     simple_transform_process(simple_transform_process&& other) noexcept = default;
     simple_transform_process& operator=(simple_transform_process&& other) noexcept = default;
 
-    void activate() override {
+    void activate(request_context& rctx) override {
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<simple_transform_process_flow>(p, this, context()));
+        data_flow_object(
+            rctx,
+            std::make_unique<simple_transform_process_flow>(p, this, std::addressof(rctx))
+        );
     }
 private:
     std::vector<std::unique_ptr<model::task>> tasks_{};

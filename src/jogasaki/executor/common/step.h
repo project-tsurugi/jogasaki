@@ -64,7 +64,7 @@ public:
 
     [[nodiscard]] virtual step_kind kind() const noexcept = 0;
 
-    void deactivate() override;
+    void deactivate(request_context& rctx) override;
     void notify_prepared() override;
     [[nodiscard]] bool has_subinput() override;
 
@@ -74,11 +74,11 @@ public:
 
     void connect_to_sub(step& downstream, port_index src = npos, port_index target = npos);
 
-    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_tasks() override;
+    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_tasks(request_context& rctx) override;
 
-    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_pretask(port_index subinput) override;
+    [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_pretask(request_context& rctx, port_index subinput) override;
 
-    [[nodiscard]] flow& data_flow_object() const noexcept;
+    [[nodiscard]] flow& data_flow_object(request_context& rctx) const noexcept;
 
     std::ostream& write_to(std::ostream& out) const override;
 
@@ -118,8 +118,7 @@ public:
 
 protected:
 
-    void data_flow_object(std::unique_ptr<flow> p) noexcept;
-    [[nodiscard]] class request_context* context() const noexcept;
+    void data_flow_object(request_context& rctx, std::unique_ptr<flow> p) noexcept;
 
 private:
     identity_type id_{};

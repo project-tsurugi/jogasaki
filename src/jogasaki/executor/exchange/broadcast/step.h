@@ -26,16 +26,17 @@ class step : public exchange::step {
 public:
     step() = default;
 
-    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
+    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks(request_context& rctx) override {
         // exchange task is nop
-        tasks_.emplace_back(std::make_shared<exchange::task>(context(), this));
+        tasks_.emplace_back(std::make_shared<exchange::task>(std::addressof(rctx), this));
         return tasks_;
     }
 
     [[nodiscard]] common::step_kind kind() const noexcept override {
         return common::step_kind::broadcast;
     }
-    void activate() override {
+    void activate(request_context&) override {
+
     }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};

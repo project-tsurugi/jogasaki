@@ -42,10 +42,13 @@ step::step(
     )
 {}
 
-void step::activate() {
+void step::activate(request_context& rctx) {
     auto* down = downstream(0);
     auto downstream_partitions = down ? down->partitions() : default_partitions;
-    data_flow_object(std::make_unique<mock::aggregate::flow>(info_, context(), this, downstream_partitions));
+    data_flow_object(
+        rctx,
+        std::make_unique<mock::aggregate::flow>(info_, std::addressof(rctx), this, downstream_partitions)
+    );
 }
 
 meta::variable_order const &step::output_order() const noexcept {

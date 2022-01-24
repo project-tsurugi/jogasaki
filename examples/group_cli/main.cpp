@@ -77,7 +77,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto compiler_context = std::make_shared<plan::compiler_context>();
     auto context = std::make_shared<request_context>(cfg);
 
-    common::graph g{*context};
+    global::config_pool(cfg);
+    common::graph g{};
     auto& scan = g.emplace<producer_process>(meta, s);
     auto& xch = g.emplace<group::step>(info, meta::variable_order{}, meta::variable_order{});
     auto& emit = g.emplace<consumer_process>(info->group_meta(), s);
@@ -89,7 +90,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     jogasaki::utils::get_latches().enable(sync_wait_prepare,
         std::min(s.upstream_partitions_, cfg->thread_pool_size()));
     dag_controller dc{std::move(cfg)};
-    dc.schedule(g);
+    dc.schedule(g, *context);
     return 0;
 }
 

@@ -75,7 +75,7 @@ public:
     /**
      * @brief schedule the graph to run
      */
-    void schedule(model::graph &g);
+    void schedule(model::graph &g, request_context& rctx);
 
     /**
      * @brief accessor to task scheduler

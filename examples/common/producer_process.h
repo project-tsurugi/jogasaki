@@ -38,14 +38,17 @@ public:
             Params& c) :
             meta_(std::move(meta)), params_(&c) {}
 
-    void activate() override {
+    void activate(request_context& rctx) override {
         auto p = dynamic_cast<executor::exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<producer_flow<Params>>(p, this, context(), meta_, *params_));
+        data_flow_object(
+            rctx,
+            std::make_unique<producer_flow<Params>>(p, this, std::addressof(rctx), meta_, *params_)
+        );
     }
 
-    void deactivate() override {
+    void deactivate(request_context& rctx) override {
         meta_.reset();
-        executor::process::step::deactivate();
+        executor::process::step::deactivate(rctx);
     }
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};

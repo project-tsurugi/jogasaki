@@ -34,7 +34,7 @@ public:
             request_context* context) : downstream_(downstream), step_(step), context_(context) {}
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
         // process with scan creates only one task
-        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object()).setup_partitions(1);
+        auto [sinks, srcs] = dynamic_cast<exchange::flow&>(downstream_->data_flow_object(*context_)).setup_partitions(1);
         (void)srcs;
         (void)sinks;
 //        auto& writer = sinks[0].acquire_writer();

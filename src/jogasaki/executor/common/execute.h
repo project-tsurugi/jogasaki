@@ -39,17 +39,6 @@ public:
     explicit execute(std::shared_ptr<common::graph> graph) noexcept;
 
     /**
-     * @brief request context setter
-     * @param context the request context to set
-     */
-    void context(request_context& context);
-
-    /**
-     * @brief accessor to the request context
-     */
-    [[nodiscard]] request_context* context() const noexcept;
-
-    /**
      * @brief accessor to the statement kind
      * @return the statement kind
      */
@@ -63,7 +52,6 @@ public:
 
 private:
     std::shared_ptr<common::graph> operators_{};
-    request_context* context_{};
 };
 
 }

@@ -40,9 +40,9 @@ public:
         exchange::step(std::move(meta), std::move(column_order))
     {}
 
-    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override {
+    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks(request_context& rctx) override {
         // exchange task is nop
-        tasks_.emplace_back(std::make_shared<exchange::task>(context(), this));
+        tasks_.emplace_back(std::make_shared<exchange::task>(std::addressof(rctx), this));
         return tasks_;
     }
 
@@ -50,9 +50,12 @@ public:
         return common::step_kind::forward;
     }
 
-    void activate() override {
+    void activate(request_context& rctx) override {
         // create data flow object
-        data_flow_object(std::make_unique<forward::flow>(input_meta(), context(), this));
+        data_flow_object(
+            rctx,
+            std::make_unique<forward::flow>(input_meta(), std::addressof(rctx), this)
+        );
     }
 
     [[nodiscard]] meta::variable_order const& output_order() const noexcept {

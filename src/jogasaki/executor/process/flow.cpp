@@ -45,7 +45,7 @@ std::size_t flow::check_if_empty_input_from_shuffle() {
     bool empty = true;
     bool shuffle_input = true;
     for(std::size_t i=0, n=exchange_map->input_count(); i < n; ++i) {
-        if(auto* flow = dynamic_cast<executor::exchange::shuffle::flow*>(&exchange_map->input_at(i)->data_flow_object()); flow != nullptr) {
+        if(auto* flow = dynamic_cast<executor::exchange::shuffle::flow*>(&exchange_map->input_at(i)->data_flow_object(*context_)); flow != nullptr) {
             if (! flow->info().empty_input()) {
                 empty = false;
                 break;
@@ -87,7 +87,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     }
     auto& exchange_map = step_->io_exchange_map();
     for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
-        (void)dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object()).setup_partitions(partitions);
+        (void)dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_)).setup_partitions(partitions);
     }
 
     auto& d = info_->details();
@@ -122,6 +122,7 @@ common::step_kind flow::kind() const noexcept {
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {
     auto external_output = operators.io_exchange_map().external_output();
     auto ctx = std::make_shared<impl::task_context>(
+        *context_,
         partition,
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.

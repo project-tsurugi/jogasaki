@@ -29,8 +29,6 @@ namespace jogasaki::executor::common {
 
 using takatori::util::unsafe_downcast;
 
-graph::graph(request_context& context) noexcept: context_(std::addressof(context)) {}
-
 takatori::util::sequence_view<std::unique_ptr<model::step> const> graph::steps() const noexcept {
     return takatori::util::sequence_view(steps_);
 }
@@ -40,14 +38,6 @@ optional_ptr<model::step> graph::find_step(model::step::identity_type id) noexce
         return takatori::util::optional_ptr<model::step>(steps_[id].get());
     }
     return takatori::util::optional_ptr<model::step>{};
-}
-
-void graph::context(request_context& context) {
-    context_ = std::addressof(context);
-}
-
-request_context* graph::context() const noexcept {
-    return context_;
 }
 
 model::step& graph::insert(std::unique_ptr<model::step> step) {

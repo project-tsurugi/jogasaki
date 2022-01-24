@@ -32,9 +32,12 @@ public:
     simple_emit_process(simple_emit_process&& other) noexcept = default;
     simple_emit_process& operator=(simple_emit_process&& other) noexcept = default;
 
-    void activate() override {
+    void activate(request_context& rctx) override {
         auto p = dynamic_cast<exchange::step*>(output_ports()[0]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<simple_emit_process_flow>(p, this, context()));
+        data_flow_object(
+            rctx,
+            std::make_unique<simple_emit_process_flow>(p, this, std::addressof(rctx))
+        );
     }
     std::size_t partitions() const noexcept override {
         return 1;

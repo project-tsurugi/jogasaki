@@ -34,10 +34,13 @@ public:
     explicit consumer_process(maybe_shared_ptr<meta::group_meta> meta, params& c) :
             meta_(std::move(meta)), params_(&c) {}
 
-    void activate() override {
+    void activate(request_context& rctx) override {
         auto l = dynamic_cast<executor::exchange::step*>(input_ports()[0]->opposites()[0]->owner());
         auto r = dynamic_cast<executor::exchange::step*>(input_ports()[1]->opposites()[0]->owner());
-        data_flow_object(std::make_unique<consumer_flow>(l, r, this, context(), meta_, *params_));
+        data_flow_object(
+            rctx,
+            std::make_unique<consumer_flow>(l, r, this, std::addressof(rctx), meta_, *params_)
+        );
     }
 
     [[nodiscard]] std::size_t partitions() const noexcept override {

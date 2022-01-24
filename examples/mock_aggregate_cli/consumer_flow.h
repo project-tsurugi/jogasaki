@@ -50,7 +50,7 @@ public:
     {}
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        auto srcs = dynamic_cast<executor::exchange::mock::aggregate::flow&>(upstream_->data_flow_object()).sources();
+        auto srcs = dynamic_cast<executor::exchange::mock::aggregate::flow&>(upstream_->data_flow_object(*context_)).sources();
         tasks_.reserve(srcs.size());
         for(auto& s : srcs) {
             tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, s.acquire_reader(), meta_));

@@ -36,7 +36,7 @@ public:
         ++count_;
         auto ret = count_ < limit_ ? model::task_result::proceed : model::task_result::complete;
         if (ret == model::task_result::complete) {
-            auto& jctx = *src_->owner()->context()->job();
+            auto& jctx = *context_->job();
             jctx.completion_latch().release();
         }
         return ret;
@@ -80,8 +80,11 @@ public:
     test_process(test_process&& other) noexcept = default;
     test_process& operator=(test_process&& other) noexcept = default;
 
-    void activate() override {
-        data_flow_object(std::make_unique<test_process_flow>(nullptr, this, context()));
+    void activate(request_context& rctx) override {
+        data_flow_object(
+            rctx,
+            std::make_unique<test_process_flow>(nullptr, this, std::addressof(rctx))
+        );
     }
 private:
 };

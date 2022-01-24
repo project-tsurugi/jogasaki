@@ -72,7 +72,6 @@ status transaction::execute(
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        g.context(*request_ctx);
         std::size_t cpu = sched_getcpu();
         request_ctx->job(
             std::make_shared<scheduler::job_context>(
@@ -149,7 +148,6 @@ bool transaction::execute_async_common(
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        g.context(*request_context_);
         std::size_t cpu = sched_getcpu();
         request_context_->job(
             std::make_shared<scheduler::job_context>(

@@ -31,8 +31,8 @@ public:
         return common::step_kind::deliver;
     }
 
-    void activate() override {
-        data_flow_object(std::make_unique<flow>(context(), this));
+    void activate(request_context& rctx) override {
+        data_flow_object(rctx, std::make_unique<flow>(std::addressof(rctx), this));
     }
 private:
 };

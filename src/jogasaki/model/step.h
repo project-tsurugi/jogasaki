@@ -20,6 +20,10 @@
 #include "port.h"
 #include "task.h"
 
+namespace jogasaki {
+class request_context;
+}
+
 namespace jogasaki::model {
 
 class graph;
@@ -97,14 +101,14 @@ public:
      * @return list of 0 or more tasks that should be newly executed to process main input
      * The tasks are owned by the step.
      */
-    [[nodiscard]] virtual sequence_view<std::shared_ptr<task>> create_tasks() = 0;
+    [[nodiscard]] virtual sequence_view<std::shared_ptr<task>> create_tasks(request_context& rctx) = 0;
 
     /**
      * @brief request step to create prepare task to process input to the given sub-input port
      * @return list of 0 or a task that should be newly executed to process sub input
      * The tasks are owned by the step.
      */
-    [[nodiscard]] virtual sequence_view<std::shared_ptr<task>> create_pretask(port_index_type subinput) = 0;
+    [[nodiscard]] virtual sequence_view<std::shared_ptr<task>> create_pretask(request_context& rctx, port_index_type subinput) = 0;
 
     /**
      * @return identity that uniquely identifies this step within the owner graph
@@ -120,13 +124,13 @@ public:
      * @brief activate step context for data flow
      * @pre not activated yet, or already deactivated
      */
-    virtual void activate() = 0;
+    virtual void activate(request_context& rctx) = 0;
 
     /**
      * @brief deactivate step context for data flow
      * @pre already activated and not yet deactivated
      */
-    virtual void deactivate() = 0;
+    virtual void deactivate(request_context& rctx) = 0;
 
     /**
      * @brief notify the step of preparation completion

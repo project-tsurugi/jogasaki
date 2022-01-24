@@ -54,8 +54,8 @@ public:
     {}
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        auto l_srcs = dynamic_cast<executor::exchange::group::flow&>(left_upstream_->data_flow_object()).sources();
-        auto r_srcs = dynamic_cast<executor::exchange::group::flow&>(right_upstream_->data_flow_object()).sources();
+        auto l_srcs = dynamic_cast<executor::exchange::group::flow&>(left_upstream_->data_flow_object(*context_)).sources();
+        auto r_srcs = dynamic_cast<executor::exchange::group::flow&>(right_upstream_->data_flow_object(*context_)).sources();
         tasks_.reserve(l_srcs.size());
         assert(l_srcs.size() == r_srcs.size());
         for(std::size_t i = 0, n = l_srcs.size(); i < n; ++i) {

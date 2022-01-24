@@ -60,7 +60,7 @@ public:
     // for testing
     void partitions(std::size_t num) noexcept;
 
-    void activate() override;
+    void activate(request_context& rctx) override;
 
     void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept;
 

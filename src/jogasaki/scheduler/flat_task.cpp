@@ -33,7 +33,7 @@ void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     job_context_->index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*job_context_->dag_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    dc.init(*graph_);
+    dc.init(*graph_, *job_context_->req_context());
     dc.process_internal_events();
 }
 

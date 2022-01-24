@@ -112,7 +112,7 @@ public:
      * @note this function is deprecated and will be used solely for testing
      * @param g the dag to be processed
      */
-    void schedule(model::graph &g);
+    void schedule(model::graph &g, request_context& rctx);
 
     /**
      * @brief accessor to the task scheduler
@@ -127,8 +127,9 @@ public:
     /**
      * @brief set the graph to run as the job
      * @param g the dag object to process
+     * @param rctx the request context
      */
-    void init(model::graph& g);
+    void init(model::graph& g, request_context& rctx);
 
     /**
      * @brief accessor to the owner object that holds this impl.
@@ -143,6 +144,7 @@ public:
 private:
     std::shared_ptr<configuration> cfg_{};
     model::graph *graph_{};
+    maybe_shared_ptr<request_context> request_context_{};
     steps_status steps_{};
     std::queue<internal_event> internal_events_{};
     bool graph_deactivated_{false};

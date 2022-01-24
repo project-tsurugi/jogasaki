@@ -41,7 +41,7 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
     switch(s.kind()) {
         case kind::execute: {
             auto& g = unsafe_downcast<executor::common::execute>(s).operators();
-            dag_controller_->schedule(g);
+            dag_controller_->schedule(g, context);
             break;
         }
         case kind::write: {

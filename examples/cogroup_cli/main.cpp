@@ -82,7 +82,8 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto context = std::make_shared<request_context>(cfg);
     prepare_scheduler(*context);
 
-    common::graph g{*context};
+    global::config_pool(cfg);
+    common::graph g{};
     producer_params l_params{s.records_per_upstream_partition_, s.left_upstream_partitions_, s.key_modulo_, s.sequential_data_, s.prepare_pages_ };
     producer_params r_params{s.records_per_upstream_partition_, s.right_upstream_partitions_, s.key_modulo_, s.sequential_data_, s.prepare_pages_ };
     auto& scan1 = g.emplace<producer_process>(meta, l_params);
@@ -100,7 +101,7 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     jogasaki::utils::get_latches().enable(sync_wait_prepare,
         std::min(s.left_upstream_partitions_+s.right_upstream_partitions_, cfg->thread_pool_size()));
     dag_controller dc{std::move(cfg)};
-    dc.schedule(g);
+    dc.schedule(g, *context);
     return 0;
 }
 

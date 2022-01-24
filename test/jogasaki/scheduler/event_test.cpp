@@ -47,17 +47,17 @@ class event_test : public test_root {};
 
 TEST_F(event_test, DISABLED_basic) {
     auto ctx = std::make_shared<request_context>();
-    auto g = std::make_shared<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>();
     auto p = std::make_unique<test::test_process>();
     g->insert(std::move(p));
     dag_controller dc{};
-    dc.schedule(*g);
+    dc.schedule(*g, *ctx);
     ASSERT_TRUE(true);
 }
 
 TEST_F(event_test, DISABLED_simple_forward) {
     auto ctx = std::make_shared<request_context>();
-    auto g = std::make_shared<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>();
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto fwd = std::make_unique<forward::step>();
@@ -70,13 +70,13 @@ TEST_F(event_test, DISABLED_simple_forward) {
     g->insert(std::move(emit));
     g->insert(std::move(dvr));
     dag_controller dc{};
-    dc.schedule(*g);
+    dc.schedule(*g, *ctx);
     ASSERT_TRUE(true);
 }
 
 TEST_F(event_test, DISABLED_simple_shuffle) {
     auto ctx = std::make_shared<request_context>();
-    auto g = std::make_shared<common::graph>(*ctx);
+    auto g = std::make_shared<common::graph>();
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
@@ -89,7 +89,7 @@ TEST_F(event_test, DISABLED_simple_shuffle) {
     g->insert(std::move(emit));
     g->insert(std::move(dvr));
     dag_controller dc{};
-    dc.schedule(*g);
+    dc.schedule(*g, *ctx);
     ASSERT_TRUE(true);
 }
 

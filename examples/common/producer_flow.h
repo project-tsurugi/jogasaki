@@ -48,7 +48,7 @@ public:
             params_(&p) {}
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object()).setup_partitions(params_->upstream_partitions_);
+        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object(*context_)).setup_partitions(params_->upstream_partitions_);
         (void)srcs;
         resources_.reserve(sinks.size());
         tasks_.reserve(sinks.size());

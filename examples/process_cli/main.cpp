@@ -123,7 +123,8 @@ public:
         auto& p0 = find_process(p);
         auto context = std::make_shared<request_context>(cfg);
         prepare_scheduler(*context);
-        common::graph g{*context};
+        global::config_pool(cfg);
+        common::graph g{};
 
         auto& info = compiler_context->executable_statement()->compiled_info();
         auto& mirrors = compiler_context->executable_statement()->mirrors();
@@ -138,7 +139,7 @@ public:
 
         dag_controller dc{std::move(cfg)};
         utils::get_watch().set_point(time_point_schedule, 0);
-        dc.schedule(g);
+        dc.schedule(g, *context);
         utils::get_watch().set_point(time_point_completed, 0);
         dump_perf_info();
 

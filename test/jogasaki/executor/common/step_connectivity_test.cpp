@@ -38,7 +38,7 @@ class step_connectivity_test : public test_root {};
 class test_step : public process::step {
 public:
     test_step() = default;
-    void activate() override {}
+    void activate(request_context&) override {}
     //TODO fix operator<< to dump object info.
 };
 

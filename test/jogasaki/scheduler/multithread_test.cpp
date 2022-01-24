@@ -65,7 +65,7 @@ TEST_F(multithread_test, DISABLED_simple_forward) {
     statement_scheduler dc{cfg};
     job_context jctx{};
     ctx->job(maybe_shared_ptr{&jctx});
-    jctx.dag_scheduler(maybe_shared_ptr{&dc});
+    ctx->stmt_scheduler(maybe_shared_ptr{&dc});
     dc.schedule(execute{g}, *ctx);
     ASSERT_TRUE(true);
 }
@@ -91,7 +91,7 @@ TEST_F(multithread_test, DISABLED_simple_shuffle) {
     statement_scheduler dc{cfg};
     job_context jctx{};
     ctx->job(maybe_shared_ptr{&jctx});
-    jctx.dag_scheduler(maybe_shared_ptr{&dc});
+    ctx->stmt_scheduler(maybe_shared_ptr{&dc});
     dc.schedule(execute{g}, *ctx);
     ASSERT_TRUE(true);
 }
@@ -125,7 +125,7 @@ TEST_F(multithread_test, DISABLED_cogroup) {
     statement_scheduler dc{cfg};
     job_context jctx{};
     ctx->job(maybe_shared_ptr{&jctx});
-    jctx.dag_scheduler(maybe_shared_ptr{&dc});
+    ctx->stmt_scheduler(maybe_shared_ptr{&dc});
     dc.schedule(execute{g}, *ctx);
     ASSERT_TRUE(true);
 }

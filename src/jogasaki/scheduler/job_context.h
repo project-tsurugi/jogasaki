@@ -28,8 +28,6 @@ namespace scheduler {
 
 using takatori::util::maybe_shared_ptr;
 
-class statement_scheduler;
-
 /**
  * @brief context object for the job
  * @details this class represents context information in the scope of the job scheduling
@@ -49,7 +47,6 @@ public:
      * @brief create default context object
      */
     job_context(
-        maybe_shared_ptr<scheduler::statement_scheduler> statement,
         std::size_t invoker_thread_cpu_id
     ) noexcept;
 
@@ -58,17 +55,6 @@ public:
     job_context& operator=(job_context const& other) = delete;
     job_context(job_context&& other) noexcept = delete;
     job_context& operator=(job_context&& other) noexcept = delete;
-
-    /**
-     * @brief setter for the statement scheduler
-     */
-    void dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept;
-
-    /**
-     * @brief accessor for the statement scheduler
-     * @return statement scheduler shared within this job
-     */
-    [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& dag_scheduler() const noexcept;
 
     /**
      * @brief accessor for the completion latch used to notify client thread
@@ -123,7 +109,6 @@ public:
 
 private:
 
-    maybe_shared_ptr<scheduler::statement_scheduler> dag_scheduler_{};
     utils::latch completion_latch_{};
     std::size_t invoker_thread_cpu_id_{};
     cache_align std::atomic_bool completing_{false};

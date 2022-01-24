@@ -69,13 +69,18 @@ status transaction::execute(
         store.get()
     );
     request_ctx->scheduler(database_->scheduler());
+    request_ctx->stmt_scheduler(
+        std::make_shared<scheduler::statement_scheduler>(
+            database_->configuration(),
+            *database_->task_scheduler()
+        )
+    );
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         std::size_t cpu = sched_getcpu();
         request_ctx->job(
             std::make_shared<scheduler::job_context>(
-                maybe_shared_ptr{std::addressof(scheduler_)},
                 cpu
             )
         );
@@ -95,7 +100,8 @@ status transaction::execute(
         return request_ctx->status_code();
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
-    scheduler_.schedule(*stmt, *request_ctx);
+    scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
+    sched.schedule(*stmt, *request_ctx);
     return request_ctx->status_code();
 }
 
@@ -108,7 +114,6 @@ transaction::transaction(
     bool readonly
 ) :
     database_(std::addressof(database)),
-    scheduler_(database_->configuration(), *database_->task_scheduler()),
     tx_(std::make_shared<transaction_context>(
         std::shared_ptr{database_->kvs_db()->create_transaction(readonly)}
     ))
@@ -145,13 +150,18 @@ bool transaction::execute_async_common(
         channel
     );
     rctx->scheduler(database_->scheduler());
+    rctx->stmt_scheduler(
+        std::make_shared<scheduler::statement_scheduler>(
+            database_->configuration(),
+            *database_->task_scheduler()
+        )
+    );
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         std::size_t cpu = sched_getcpu();
         rctx->job(
             std::make_shared<scheduler::job_context>(
-                maybe_shared_ptr{std::addressof(scheduler_)},
                 cpu
             )
         );
@@ -178,7 +188,6 @@ bool transaction::execute_async_common(
         std::size_t cpu = sched_getcpu();
         rctx->job(
             std::make_shared<scheduler::job_context>(
-                maybe_shared_ptr{std::addressof(scheduler_)},
                 cpu
             )
         );
@@ -200,7 +209,8 @@ bool transaction::execute_async_common(
         return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
-    scheduler_.schedule(*stmt, *rctx);
+    scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
+    sched.schedule(*stmt, *rctx);
     on_completion(rctx->status_code(), rctx->status_message());
     return true;
 }

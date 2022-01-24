@@ -31,7 +31,7 @@ void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(log_trace) << *this << " bootstrap task executed.";
     trace_scope_name("bootstrap");  //NOLINT
     job()->index().store(ctx.index());
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job()->dag_scheduler());
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_, *req_context_);
     dc.process_internal_events();
@@ -40,7 +40,7 @@ void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
 void flat_task::dag_schedule() {
     DVLOG(log_trace) << *this << " dag scheduling task executed.";
     trace_scope_name("dag_schedule");  //NOLINT
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*job()->dag_scheduler());
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.process_internal_events();
 }

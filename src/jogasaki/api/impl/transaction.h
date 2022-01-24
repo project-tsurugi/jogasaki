@@ -59,7 +59,6 @@ public:
 
 private:
     impl::database* database_{};
-    scheduler::statement_scheduler scheduler_{};
     std::shared_ptr<transaction_context> tx_{};
     utils::latch async_execution_latch_{true};  // latch is closed during async execution
 

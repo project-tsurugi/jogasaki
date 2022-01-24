@@ -186,6 +186,20 @@ public:
         return scheduler_;
     }
 
+    /**
+     * @brief setter for the job context
+     */
+    void stmt_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept {
+        statement_scheduler_ = std::move(arg);
+    }
+
+    /**
+     * @brief accessor for the job context
+     * @return job context
+     */
+    [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& stmt_scheduler() const noexcept {
+        return statement_scheduler_;
+    }
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -200,6 +214,7 @@ private:
     std::string status_message_{};
     maybe_shared_ptr<model::flow_repository> flows_{};
     maybe_shared_ptr<scheduler::task_scheduler> scheduler_{};
+    maybe_shared_ptr<scheduler::statement_scheduler> statement_scheduler_{};
 };
 
 void prepare_scheduler(request_context& rctx);

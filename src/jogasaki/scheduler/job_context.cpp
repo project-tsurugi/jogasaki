@@ -16,17 +16,8 @@
 #include "job_context.h"
 
 #include <jogasaki/utils/latch.h>
-#include <jogasaki/scheduler/statement_scheduler.h>
 
 namespace jogasaki::scheduler {
-
-void job_context::dag_scheduler(maybe_shared_ptr<scheduler::statement_scheduler> arg) noexcept {
-    dag_scheduler_ = std::move(arg);
-}
-
-maybe_shared_ptr<scheduler::statement_scheduler> const& job_context::dag_scheduler() const noexcept {
-    return dag_scheduler_;
-}
 
 utils::latch& job_context::completion_latch() noexcept {
     return completion_latch_;
@@ -52,10 +43,8 @@ void job_context::reset() noexcept {
 }
 
 job_context::job_context(
-    maybe_shared_ptr<scheduler::statement_scheduler> statement,
     std::size_t invoker_thread_cpu_id
 ) noexcept:
-    dag_scheduler_(std::move(statement)),
     invoker_thread_cpu_id_(invoker_thread_cpu_id)
 {}
 

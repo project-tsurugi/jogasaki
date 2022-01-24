@@ -85,6 +85,7 @@ maybe_shared_ptr<scheduler::job_context> const& request_context::job() const noe
 }
 
 void request_context::job(maybe_shared_ptr<scheduler::job_context> arg) noexcept {
+    arg->req_context(*this);
     job_context_ = std::move(arg);
 }
 

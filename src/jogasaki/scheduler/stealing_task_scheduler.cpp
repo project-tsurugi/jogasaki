@@ -30,11 +30,16 @@ stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_(scheduler_cfg_)
 {}
 
+std::size_t determine_worker(kvs::transaction* tx, std::size_t worker_count) {
+    return reinterpret_cast<std::size_t>(tx) % worker_count;  //NOLINT
+}
+
 void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
-    auto& jctx = *t.job(); // TODO for now scheduling job tasks into the same thread
+    auto& jctx = *t.job();
     auto idx = jctx.index().load();
     if (idx == job_context::undefined_index) {
-        scheduler_.schedule(std::move(t));
+        auto* tx = jctx.req_context()->transaction().get();
+        scheduler_.schedule_at(std::move(t), determine_worker(tx, scheduler_cfg_.thread_count()));
         return;
     }
     scheduler_.schedule_at(std::move(t), idx);

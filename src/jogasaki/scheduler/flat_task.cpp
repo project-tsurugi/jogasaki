@@ -113,7 +113,8 @@ flat_task::flat_task(
 ) noexcept:
     kind_(flat_task_kind::wrapped),
     job_context_(jctx),
-    origin_(std::move(origin))
+    origin_(std::move(origin)),
+    sticky_(origin_->has_transactional_io())
 {}
 
 flat_task::flat_task(
@@ -158,8 +159,13 @@ flat_task::flat_task(
     kind_(flat_task_kind::write),
     job_context_(rctx->job().get()),
     write_(write),
-    req_context_(rctx)
+    req_context_(rctx),
+    sticky_(true)
 {}
+
+bool flat_task::sticky() const noexcept {
+    return sticky_;
+}
 
 }
 

@@ -90,9 +90,21 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         (void)dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object()).setup_partitions(partitions);
     }
 
+    auto& d = info_->details();
     auto exec = factory(proc, contexts);
     for (std::size_t i=0; i < partitions; ++i) {
-        tasks_.emplace_back(std::make_unique<task>(context_, step_, exec, proc));
+        tasks_.emplace_back(std::make_unique<task>(
+            context_,
+            step_,
+            exec,
+            proc,
+            (
+                d.has_write_operations() ||
+                d.has_find_operator() ||
+                d.has_scan_operator() ||
+                d.has_join_find_or_scan_operator()
+            )
+        ));
     }
     return tasks_;
 }

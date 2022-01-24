@@ -103,6 +103,12 @@ public:
      */
     [[nodiscard]] virtual task_result operator()() = 0;
 
+    /**
+     * @brief accessor to I/O operation property of the task
+     * @return whether the task contains transactional I/O operations that requires special handling in scheduling
+     */
+    [[nodiscard]] virtual bool has_transactional_io() = 0;
+
 protected:
     virtual std::ostream& write_to(std::ostream& out) const = 0;
 

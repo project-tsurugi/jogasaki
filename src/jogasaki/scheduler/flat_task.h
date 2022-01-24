@@ -98,7 +98,9 @@ public:
 
     /**
      * @brief construct new object wrapping jogasaki task
+     * @param jctx the job context where the task belongs
      * @param origin the jogasaki executor task
+     * @param sticky whether the task is sticky or not
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::wrapped>,
@@ -183,6 +185,11 @@ public:
         return value.write_to(out);
     }
 
+    /**
+     * @brief returns whether the task is sticky
+     */
+    [[nodiscard]] bool sticky() const noexcept;
+
 private:
     flat_task_kind kind_{};
     job_context* job_context_{};
@@ -190,6 +197,7 @@ private:
     model::graph* graph_{};
     executor::common::write* write_{};
     request_context* req_context_{};
+    bool sticky_{};
 
     bool execute(tateyama::api::task_scheduler::context& ctx);
     void bootstrap(tateyama::api::task_scheduler::context& ctx);

@@ -27,11 +27,13 @@ task::task(
     request_context *context,
     task::step_type *src,
     std::shared_ptr<abstract::process_executor> exec,
-    std::shared_ptr<abstract::processor> processor
+    std::shared_ptr<abstract::processor> processor,
+    bool has_transactional_io
 ) :
     common::task(context, src),
     executor_(std::move(exec)),
-    processor_(std::move(processor))
+    processor_(std::move(processor)),
+    has_transactional_io_(has_transactional_io)
 {}
 
 model::task_result task::operator()() {
@@ -72,6 +74,10 @@ model::task_result task::operator()() {
         (*cb)(&arg);
     }
     return jogasaki::model::task_result::complete;
+}
+
+bool task::has_transactional_io() {
+    return has_transactional_io_;
 }
 
 }

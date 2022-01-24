@@ -42,6 +42,8 @@ public:
 
     [[nodiscard]] request_context* context() const;
 
+    [[nodiscard]] bool has_transactional_io() override;
+
 protected:
     std::ostream& write_to(std::ostream& out) const override;;
 

@@ -37,18 +37,21 @@ public:
         bool has_scan_operator,
         bool has_emit_operator,
         bool has_find_operator,
+        bool has_join_find_or_scan_operator,
         bool has_write_operations
     );
 
     [[nodiscard]] bool has_scan_operator() const noexcept;
     [[nodiscard]] bool has_emit_operator() const noexcept;
     [[nodiscard]] bool has_find_operator() const noexcept;
+    [[nodiscard]] bool has_join_find_or_scan_operator() const noexcept;
     [[nodiscard]] bool has_write_operations() const noexcept;
 
 private:
     bool has_scan_operator_ = false;
     bool has_emit_operator_ = false;
     bool has_find_operator_ = false;
+    bool has_join_find_or_scan_operator_ = false;
     bool has_write_operations_ = false;
 };
 

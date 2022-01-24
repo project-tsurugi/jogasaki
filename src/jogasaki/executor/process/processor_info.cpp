@@ -28,11 +28,13 @@ processor_details::processor_details(
     bool has_scan_operator,
     bool has_emit_operator,
     bool has_find_operator,
+    bool has_join_find_or_scan_operator,
     bool has_write_operations
 ) :
     has_scan_operator_(has_scan_operator),
     has_emit_operator_(has_emit_operator),
     has_find_operator_(has_find_operator),
+    has_join_find_or_scan_operator_(has_join_find_or_scan_operator),
     has_write_operations_(has_write_operations)
 {}
 
@@ -50,6 +52,10 @@ bool processor_details::has_find_operator() const noexcept {
 
 bool processor_details::has_write_operations() const noexcept {
     return has_write_operations_;
+}
+
+bool processor_details::has_join_find_or_scan_operator() const noexcept {
+    return has_join_find_or_scan_operator_;
 }
 
 processor_info::processor_info(
@@ -107,6 +113,7 @@ processor_details processor_info::create_details() {
     bool has_scan_operator = false;
     bool has_emit_operator = false;
     bool has_find_operator = false;
+    bool has_join_find_or_scan_operator = false;
     bool has_write_operator = false;
     using kind = relation::expression_kind;
     takatori::relation::sort_from_upstream(*relations_, [&](relation::expression const& node) {
@@ -123,6 +130,12 @@ processor_details processor_info::create_details() {
             case kind::write:
                 has_write_operator = true;
                 break;
+            case kind::join_find:
+                has_join_find_or_scan_operator = true;
+                break;
+            case kind::join_scan:
+                has_join_find_or_scan_operator = true;
+                break;
             default:
                 break;
         }
@@ -131,7 +144,8 @@ processor_details processor_info::create_details() {
         has_scan_operator,
         has_emit_operator,
         has_find_operator,
-        has_write_operator
+        has_join_find_or_scan_operator,
+        has_write_operator,
     };
 }
 

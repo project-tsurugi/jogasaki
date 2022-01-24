@@ -49,6 +49,10 @@ std::ostream& task::write_to(std::ostream& out) const {
     using namespace std::string_view_literals;
     return out << "task[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;
 }
+
+bool task::has_transactional_io() {
+    return false;
+}
 }
 
 

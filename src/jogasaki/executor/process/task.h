@@ -33,14 +33,18 @@ public:
         request_context* context,
         step_type* src,
         std::shared_ptr<abstract::process_executor> exec,
-        std::shared_ptr<abstract::processor> processor
+        std::shared_ptr<abstract::processor> processor,
+        bool has_transactional_io
     );
 
     [[nodiscard]] model::task_result operator()() override;
 
+    [[nodiscard]] bool has_transactional_io() override;
+
 private:
     std::shared_ptr<abstract::process_executor> executor_{};
     std::shared_ptr<abstract::processor> processor_{};
+    bool has_transactional_io_{};
 };
 
 }

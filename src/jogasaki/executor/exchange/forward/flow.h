@@ -23,7 +23,7 @@
 #include <jogasaki/executor/exchange/flow.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
-#include <jogasaki/executor/common/step_kind.h>
+#include <jogasaki/model/step_kind.h>
 #include "sink.h"
 #include "source.h"
 
@@ -74,8 +74,8 @@ public:
 
     [[nodiscard]] source_list_view sources() override;
 
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::forward;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::forward;
     }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};

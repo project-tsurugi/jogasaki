@@ -42,7 +42,7 @@ process::impl::task_context::task_context(
 
 reader_container task_context::reader(task_context::reader_index idx) {
     auto& flow = io_exchange_map_->input_at(idx)->data_flow_object(*request_context_);
-    using step_kind = common::step_kind;
+    using step_kind = model::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
             return unsafe_downcast<exchange::group::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
@@ -59,7 +59,7 @@ reader_container task_context::reader(task_context::reader_index idx) {
 
 record_writer* task_context::downstream_writer(task_context::writer_index idx) {
     auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
-    using step_kind = common::step_kind;
+    using step_kind = model::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
             return &unsafe_downcast<exchange::group::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT

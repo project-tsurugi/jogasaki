@@ -15,7 +15,10 @@
  */
 #pragma once
 
-namespace jogasaki::executor::common {
+#include <string_view>
+#include <cstdlib>
+
+namespace jogasaki::model {
 
 enum class step_kind {
     process,

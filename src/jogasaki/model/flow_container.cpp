@@ -17,7 +17,7 @@
 
 #include <takatori/util/fail.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::model {
 
 using takatori::util::fail;
 
@@ -25,9 +25,9 @@ flow_container::flow_container(std::size_t size) :
     flows_(size)
 {}
 
-std::unique_ptr<common::flow>& flow_container::set(
+std::unique_ptr<flow>& flow_container::set(
     std::size_t idx,
-    std::unique_ptr<common::flow> ctx
+    std::unique_ptr<flow> ctx
 ) noexcept
 {
     if (idx >= flows_.size()) fail();
@@ -43,7 +43,7 @@ std::size_t flow_container::size() const noexcept {
     return flows_.size();
 }
 
-common::flow* flow_container::at(std::size_t idx) const noexcept {
+flow* flow_container::at(std::size_t idx) const noexcept {
     if (idx >= flows_.size()) return nullptr;
     return flows_.at(idx).get();
 }

@@ -564,6 +564,7 @@ void create_mirror_for_execute(
         }
     );
 
+    using model::step_kind;
     for(auto&& [s, step] : steps) {
         auto map = std::make_shared<executor::process::io_exchange_map>();
         if(takatori::plan::has_upstream(*s)) {
@@ -572,7 +573,7 @@ void create_mirror_for_execute(
                 [step=step, &steps, &map](takatori::plan::step const& up){
                     // assuming enumerate_upstream respects the input port ordering TODO confirm
                     *step << *steps[&up];
-                    if(step->kind() == executor::common::step_kind::process) {
+                    if(step->kind() == step_kind::process) {
                         map->add_input(unsafe_downcast<executor::exchange::step>(steps[&up]));
                     }
                 }
@@ -582,13 +583,13 @@ void create_mirror_for_execute(
             takatori::plan::enumerate_downstream(
                 *s,
                 [step=step, &steps, &map](takatori::plan::step const& down){
-                    if(step->kind() == executor::common::step_kind::process) {
+                    if(step->kind() == step_kind::process) {
                         map->add_output(unsafe_downcast<executor::exchange::step>(steps[&down]));
                     }
                 }
             );
         }
-        if(step->kind() == executor::common::step_kind::process) {
+        if(step->kind() == step_kind::process) {
             unsafe_downcast<executor::process::step>(step)->io_exchange_map(std::move(map));
         }
     }

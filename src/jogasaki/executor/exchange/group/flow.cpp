@@ -127,8 +127,8 @@ class request_context* flow::context() const noexcept {
     return context_;
 }
 
-common::step_kind flow::kind() const noexcept {
-    return common::step_kind::group;
+model::step_kind flow::kind() const noexcept {
+    return model::step_kind::group;
 }
 
 } // namespace

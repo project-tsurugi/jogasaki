@@ -19,8 +19,8 @@
 #include <jogasaki/model/graph.h>
 #include <jogasaki/callback.h>
 #include <jogasaki/executor/common/port.h>
-#include <jogasaki/executor/common/step_kind.h>
-#include <jogasaki/executor/common/flow.h>
+#include <jogasaki/model/step_kind.h>
+#include <jogasaki/model/flow.h>
 
 namespace jogasaki::executor::common {
 
@@ -62,7 +62,7 @@ public:
      */
     void id(identity_type id) noexcept;
 
-    [[nodiscard]] virtual step_kind kind() const noexcept = 0;
+    [[nodiscard]] virtual model::step_kind kind() const noexcept = 0;
 
     void deactivate(request_context& rctx) override;
     void notify_prepared() override;
@@ -78,7 +78,7 @@ public:
 
     [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_pretask(request_context& rctx, port_index subinput) override;
 
-    [[nodiscard]] flow& data_flow_object(request_context& rctx) const noexcept;
+    [[nodiscard]] model::flow& data_flow_object(request_context& rctx) const noexcept;
 
     std::ostream& write_to(std::ostream& out) const override;
 
@@ -118,7 +118,7 @@ public:
 
 protected:
 
-    void data_flow_object(request_context& rctx, std::unique_ptr<flow> p) noexcept;
+    void data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) noexcept;
 
 private:
     identity_type id_{};

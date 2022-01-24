@@ -22,7 +22,7 @@
 
 #include <jogasaki/model/port.h>
 #include <jogasaki/model/step.h>
-#include <jogasaki/executor/common/flow.h>
+#include <jogasaki/model/flow.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/executor/exchange/sink.h>
@@ -33,7 +33,7 @@ namespace jogasaki::executor::exchange {
 /**
  * @brief exchange step data flow
  */
-class flow : public common::flow {
+class flow : public model::flow {
 public:
     using sink_list_view = takatori::util::reference_list_view<takatori::util::universal_extractor<exchange::sink>>;
 

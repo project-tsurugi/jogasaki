@@ -27,8 +27,8 @@ class step : public exchange::step {
 public:
     step() = default;
 
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::deliver;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::deliver;
     }
 
     void activate(request_context& rctx) override {

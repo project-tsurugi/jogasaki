@@ -26,7 +26,7 @@
 
 namespace jogasaki::executor {
 
-class simple_emit_process_flow : public common::flow {
+class simple_emit_process_flow : public model::flow {
 public:
     simple_emit_process_flow() = default;
     ~simple_emit_process_flow() = default;
@@ -44,8 +44,8 @@ public:
     takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
         return {};
     }
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::process;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::process;
     }
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};

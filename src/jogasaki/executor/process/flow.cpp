@@ -115,8 +115,8 @@ sequence_view<std::shared_ptr<model::task>> flow::create_pretask(flow::port_inde
     return {};
 }
 
-common::step_kind flow::kind() const noexcept {
-    return common::step_kind::process;
+model::step_kind flow::kind() const noexcept {
+    return model::step_kind::process;
 }
 
 std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {

@@ -37,7 +37,7 @@ class step;
 /**
  * @brief process step data flow
  */
-class flow : public common::flow {
+class flow : public model::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
@@ -62,7 +62,7 @@ public:
 
     [[nodiscard]] sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type subinput) override;
 
-    [[nodiscard]] common::step_kind kind() const noexcept override;
+    [[nodiscard]] model::step_kind kind() const noexcept override;
 
 private:
     request_context* context_{};

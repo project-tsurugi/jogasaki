@@ -45,7 +45,7 @@ public:
     void notify_prepared() override;
     void notify_completed() override;
 
-    [[nodiscard]] common::step_kind kind() const noexcept override;
+    [[nodiscard]] model::step_kind kind() const noexcept override;
 
     /**
      * @brief declare the number of partitions

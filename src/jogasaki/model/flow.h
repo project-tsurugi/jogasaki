@@ -20,9 +20,9 @@
 #include <takatori/util/sequence_view.h>
 
 #include <jogasaki/model/task.h>
-#include <jogasaki/executor/common/step_kind.h>
+#include <jogasaki/model/step_kind.h>
 
-namespace jogasaki::executor::common {
+namespace jogasaki::model {
 
 using ::takatori::util::sequence_view;
 /**

@@ -34,7 +34,7 @@ using takatori::util::maybe_shared_ptr;
 template<class T>
 using sequence_view = takatori::util::sequence_view<T>;
 
-class consumer_flow : public executor::common::flow {
+class consumer_flow : public model::flow {
 public:
     consumer_flow() = default;
     consumer_flow(
@@ -72,8 +72,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
-        return executor::common::step_kind::process;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::process;
     }
 
 private:

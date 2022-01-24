@@ -46,8 +46,8 @@ public:
         return tasks_;
     }
 
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::forward;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::forward;
     }
 
     void activate(request_context& rctx) override {

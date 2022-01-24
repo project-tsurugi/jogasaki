@@ -22,7 +22,7 @@
 #include <jogasaki/executor/exchange/shuffle/flow.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
-#include <jogasaki/executor/common/step_kind.h>
+#include <jogasaki/model/step_kind.h>
 #include "sink.h"
 #include "source.h"
 
@@ -79,8 +79,8 @@ public:
     /**
      * @copydoc
      */
-    [[nodiscard]] common::step_kind kind() const noexcept override {
-        return common::step_kind::aggregate;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::aggregate;
     }
 
     [[nodiscard]] class request_context* context() const noexcept {

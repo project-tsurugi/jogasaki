@@ -20,10 +20,10 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/common/flow.h>
+#include <jogasaki/model/flow.h>
 #include <jogasaki/utils/interference_size.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::model {
 
 using takatori::util::unsafe_downcast;
 
@@ -34,7 +34,7 @@ using takatori::util::unsafe_downcast;
  */
 class cache_align flow_container {
 public:
-    using flows_type = std::vector<std::unique_ptr<common::flow>>;
+    using flows_type = std::vector<std::unique_ptr<flow>>;
 
     /**
      * @brief create empty object
@@ -55,7 +55,7 @@ public:
      * @param ctx the context to be stored
      * @return reference to the stored context
      */
-    std::unique_ptr<common::flow>& set(std::size_t idx, std::unique_ptr<common::flow> ctx) noexcept;
+    std::unique_ptr<flow>& set(std::size_t idx, std::unique_ptr<flow> ctx) noexcept;
 
     /**
      * @brief returns whether the context is stored at the given index
@@ -76,7 +76,7 @@ public:
      * @return the context object at the index
      * @return nullptr if no context object is stored
      */
-    [[nodiscard]] common::flow* at(std::size_t idx) const noexcept;
+    [[nodiscard]] flow* at(std::size_t idx) const noexcept;
 
 private:
     flows_type flows_{};

@@ -55,8 +55,8 @@ public:
         meta::variable_order output_column_order
     );
 
-    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
-        return executor::common::step_kind::aggregate;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::aggregate;
     }
 
     void activate(request_context& rctx) override;

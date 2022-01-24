@@ -35,7 +35,7 @@ std::shared_ptr<io_info> step::create_io_info() {
     for(auto& in : input_ports()) {
         auto& xchg = *unsafe_downcast<exchange::step>(in->opposites()[0]->owner());
         switch(xchg.kind()) {
-            case common::step_kind::forward: {
+            case model::step_kind::forward: {
                 auto& fwd = unsafe_downcast<exchange::forward::step>(xchg);
                 inputs.emplace_back(
                     fwd.output_meta(),
@@ -43,8 +43,8 @@ std::shared_ptr<io_info> step::create_io_info() {
                 );
                 break;
             }
-            case common::step_kind::group:
-            case common::step_kind::aggregate:
+            case model::step_kind::group:
+            case model::step_kind::aggregate:
             {
                 auto& grp = unsafe_downcast<exchange::shuffle::step>(xchg);
                 inputs.emplace_back(
@@ -61,9 +61,9 @@ std::shared_ptr<io_info> step::create_io_info() {
     for(auto& out : output_ports()) {
         auto& xchg = *unsafe_downcast<exchange::step>(out->opposites()[0]->owner());
         switch(xchg.kind()) {
-            case common::step_kind::forward:
-            case common::step_kind::group:
-            case common::step_kind::aggregate: {
+            case model::step_kind::forward:
+            case model::step_kind::group:
+            case model::step_kind::aggregate: {
                 auto& x = unsafe_downcast<exchange::step>(xchg);
                 outputs.emplace_back(
                     x.input_meta(),
@@ -92,8 +92,8 @@ step::step(
     relation_io_map_(std::move(relation_io_map))
 {}
 
-common::step_kind step::kind() const noexcept {
-    return common::step_kind::process;
+model::step_kind step::kind() const noexcept {
+    return model::step_kind::process;
 }
 
 std::size_t step::partitions() const noexcept {

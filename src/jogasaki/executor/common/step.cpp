@@ -128,11 +128,11 @@ sequence_view<std::shared_ptr<model::task>> step::create_pretask(request_context
     return data_flow_object(rctx).create_pretask(subinput);
 }
 
-flow& step::data_flow_object(request_context& rctx) const noexcept {
-    return *find_flow<flow>(id(), *rctx.flows());
+model::flow& step::data_flow_object(request_context& rctx) const noexcept {
+    return *model::find_flow<model::flow>(id(), *rctx.flows());
 }
 
-void step::data_flow_object(request_context& rctx, std::unique_ptr<flow> p) noexcept {
+void step::data_flow_object(request_context& rctx, std::unique_ptr<model::flow> p) noexcept {
     rctx.flows()->set(id(), std::move(p));
 }
 

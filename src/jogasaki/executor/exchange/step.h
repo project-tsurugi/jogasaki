@@ -65,7 +65,7 @@ public:
     }
 
     [[nodiscard]] bool handles_group() const noexcept {
-        return kind() == common::step_kind::group || kind() == common::step_kind::aggregate;
+        return kind() == model::step_kind::group || kind() == model::step_kind::aggregate;
     }
 private:
     maybe_shared_ptr<meta::record_meta> input_meta_{};

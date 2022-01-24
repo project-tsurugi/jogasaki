@@ -33,7 +33,7 @@ template<class T>
 using sequence_view = takatori::util::sequence_view<T>;
 
 template <class Params>
-class producer_flow : public executor::common::flow {
+class producer_flow : public model::flow {
 public:
     producer_flow() = default;
     producer_flow(executor::exchange::step* downstream,
@@ -63,8 +63,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] executor::common::step_kind kind() const noexcept override {
-        return executor::common::step_kind::process;
+    [[nodiscard]] model::step_kind kind() const noexcept override {
+        return model::step_kind::process;
     }
 
 private:

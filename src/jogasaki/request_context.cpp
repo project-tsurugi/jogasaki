@@ -59,8 +59,8 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
     return database_;
 }
 
-[[nodiscard]] std::shared_ptr<kvs::transaction> const& request_context::transaction() const {
-    return transaction_->object();
+[[nodiscard]] std::shared_ptr<transaction_context> const& request_context::transaction() const {
+    return transaction_;
 }
 
 memory::lifo_paged_memory_resource* request_context::request_resource() const noexcept {

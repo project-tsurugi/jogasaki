@@ -56,7 +56,7 @@ public:
         variable_table& output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
-        kvs::transaction& tx,
+        transaction_context& tx,
         memory_resource* resource = nullptr
     );
 
@@ -86,7 +86,7 @@ private:
 
     variable_table* output_variables_{};
     kvs::storage* primary_storage_{};
-    kvs::transaction* tx_{};
+    transaction_context* tx_{};
     matcher::memory_resource* resource_{};
     std::unique_ptr<kvs::iterator> it_{};
 };

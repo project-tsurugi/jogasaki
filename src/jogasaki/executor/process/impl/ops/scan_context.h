@@ -19,7 +19,7 @@
 #include <memory>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include "context_base.h"
@@ -45,7 +45,7 @@ public:
         variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
         std::unique_ptr<kvs::storage> secondary_stg,
-        kvs::transaction* tx,
+        transaction_context* tx,
         impl::scan_info const* scan_info,
         memory_resource* resource,
         memory_resource* varlen_resource
@@ -55,12 +55,12 @@ public:
 
     void release() override;
 
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};
-    kvs::transaction* tx_{};
+    transaction_context* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     impl::scan_info const* scan_info_{};
     data::aligned_buffer key_begin_{};

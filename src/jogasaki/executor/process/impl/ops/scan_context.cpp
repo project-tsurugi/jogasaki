@@ -16,7 +16,6 @@
 #include "scan_context.h"
 
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include "context_base.h"
@@ -28,7 +27,7 @@ scan_context::scan_context(
     variable_table& variables,
     std::unique_ptr<kvs::storage> stg,
     std::unique_ptr<kvs::storage> secondary_stg,
-    kvs::transaction* tx,
+    transaction_context* tx,
     impl::scan_info const* scan_info,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
@@ -51,7 +50,7 @@ void scan_context::release() {
     }
 }
 
-kvs::transaction* scan_context::transaction() const noexcept {
+transaction_context* scan_context::transaction() const noexcept {
     return tx_;
 }
 

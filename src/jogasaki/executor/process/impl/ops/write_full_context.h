@@ -20,7 +20,7 @@
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/kvs/storage.h>
 #include "context_base.h"
 
@@ -44,7 +44,7 @@ public:
         class abstract::task_context* ctx,
         variable_table& input_variables,
         std::unique_ptr<kvs::storage> stg,
-        kvs::transaction* tx,
+        transaction_context* tx,
         sequence::manager* sequence_manager,
         memory_resource* resource,
         memory_resource* varlen_resource
@@ -57,11 +57,11 @@ public:
     /**
      * @brief accessor to transaction held by this object
      */
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
-    kvs::transaction* tx_{};
+    transaction_context* tx_{};
     sequence::manager* sequence_manager_{};
     data::aligned_buffer key_buf_{};
     data::aligned_buffer value_buf_{};

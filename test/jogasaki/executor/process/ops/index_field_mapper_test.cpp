@@ -127,7 +127,7 @@ TEST_F(index_field_mapper_test, simple) {
                 },
             };
             {
-                auto tx = db_->create_transaction();
+                auto tx = wrap(db_->create_transaction());
                 std::unique_ptr<iterator> it{};
                 ASSERT_EQ(status::ok, i2->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
@@ -191,7 +191,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
                 }
             };
             {
-                auto tx = db_->create_transaction();
+                auto tx = wrap(db_->create_transaction());
                 std::unique_ptr<iterator> it{};
                 ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());

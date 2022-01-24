@@ -74,7 +74,7 @@ bool matcher::operator()(
     variable_table& output_variables,
     kvs::storage& primary_stg,
     kvs::storage* secondary_stg,
-    kvs::transaction& tx,
+    transaction_context& tx,
     matcher::memory_resource* resource
 ) {
     std::size_t len{};

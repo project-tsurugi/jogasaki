@@ -50,7 +50,7 @@ public:
         class abstract::task_context* ctx,
         variable_table& variables,
         std::unique_ptr<kvs::storage> stg,
-        kvs::transaction* tx,
+        transaction_context* tx,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
         memory_resource* resource,
@@ -62,12 +62,12 @@ public:
 
     void release() override;
 
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept;
 
     [[nodiscard]] details::write_primary_context& primary_context() noexcept;
 
 private:
-    kvs::transaction* tx_{};
+    transaction_context* tx_{};
     details::write_primary_context primary_context_{};
     std::vector<details::write_secondary_context> secondary_contexts_{};
 };

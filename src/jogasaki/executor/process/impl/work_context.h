@@ -55,7 +55,7 @@ public:
         std::unique_ptr<memory_resource> resource,
         std::unique_ptr<memory_resource> varlen_resource,
         std::shared_ptr<kvs::database> database,
-        std::shared_ptr<kvs::transaction> transaction,
+        std::shared_ptr<transaction_context> transaction,
         bool empty_input_from_shuffle
     );
 
@@ -110,7 +110,7 @@ public:
      * @brief accessor to kvs transaction
      * @return the transaction that is shared within request
      */
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept;
 
     /**
      * @brief accessor to request context
@@ -132,7 +132,7 @@ private:
     std::unique_ptr<memory_resource> resource_{};
     std::unique_ptr<memory_resource> varlen_resource_{};
     std::shared_ptr<kvs::database> database_{};
-    std::shared_ptr<kvs::transaction> transaction_{};
+    std::shared_ptr<transaction_context> transaction_{};
     bool empty_input_from_shuffle_{};
 };
 

@@ -49,7 +49,7 @@ public:
         variable_table& output_variables,
         std::unique_ptr<kvs::storage> primary_stg,
         std::unique_ptr<kvs::storage> secondary_stg,
-        kvs::transaction* tx,
+        transaction_context* tx,
         std::unique_ptr<details::matcher> matcher,
         memory_resource* resource,
         memory_resource* varlen_resource
@@ -59,12 +59,12 @@ public:
 
     void release() override;
 
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> primary_stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};
-    kvs::transaction* tx_{};
+    transaction_context* tx_{};
     std::unique_ptr<details::matcher> matcher_{};
 };
 

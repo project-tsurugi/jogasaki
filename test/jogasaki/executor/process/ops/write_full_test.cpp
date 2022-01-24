@@ -152,7 +152,7 @@ TEST_F(write_full_test, simple_insert) {
         &input_variable_info
     };
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto mgr = sequence::manager{*db_};
     mock::task_context task_ctx{};
     write_full_context ctx{
@@ -202,7 +202,7 @@ TEST_F(write_full_test, simple_delete) {
     get(*db_, i1_->simple_name(), create_record<kind::int4>(), create_record<kind::float8, kind::int8>(), result);
     ASSERT_EQ(2, result.size());
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto mgr = sequence::manager{*db_};
     mock::task_context task_ctx{};
     write_full_context ctx{
@@ -253,7 +253,7 @@ TEST_F(write_full_test, upsert_as_insert) {
     get(*db_, i1_->simple_name(), create_record<kind::int4>(), create_record<kind::float8, kind::int8>(), result);
     ASSERT_EQ(1, result.size());
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto mgr = sequence::manager{*db_};
     mock::task_context task_ctx{};
     write_full_context ctx{
@@ -306,7 +306,7 @@ TEST_F(write_full_test, upsert_as_update) {
     get(*db_, i1_->simple_name(), create_record<kind::int4>(), create_record<kind::float8, kind::int8>(), result);
     ASSERT_EQ(2, result.size());
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto mgr = sequence::manager{*db_};
     mock::task_context task_ctx{};
     write_full_context ctx{

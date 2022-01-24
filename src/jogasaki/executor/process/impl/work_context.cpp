@@ -24,7 +24,7 @@ work_context::work_context(
     std::unique_ptr<memory_resource> resource,
     std::unique_ptr<memory_resource> varlen_resource,
     std::shared_ptr<kvs::database> database,
-    std::shared_ptr<kvs::transaction> transaction,
+    std::shared_ptr<transaction_context> transaction,
     bool empty_input_from_shuffle
 ) :
     request_context_(request_context),
@@ -63,7 +63,7 @@ kvs::database* work_context::database() const noexcept {
     return database_.get();
 }
 
-kvs::transaction* work_context::transaction() const noexcept {
+transaction_context* work_context::transaction() const noexcept {
     return transaction_.get();
 }
 

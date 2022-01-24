@@ -101,15 +101,7 @@ public:
      * @brief accessor for the transaction
      * @return transaction shared within this request
      */
-    [[nodiscard]] std::shared_ptr<kvs::transaction> const& transaction() const;
-
-    /**
-     * @brief accessor for the transaction
-     * @return transaction shared within this request
-     */
-    [[nodiscard]] std::shared_ptr<transaction_context> const& tx_context() const {
-        return transaction_;
-    }
+    [[nodiscard]] std::shared_ptr<transaction_context> const& transaction() const;
 
     /**
      * @brief accessor for the sequence manager

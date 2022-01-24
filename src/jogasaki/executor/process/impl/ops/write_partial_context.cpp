@@ -28,7 +28,7 @@ write_partial_context::write_partial_context(
     class abstract::task_context* ctx,
     variable_table& variables,
     std::unique_ptr<kvs::storage> stg,
-    kvs::transaction* tx,
+    transaction_context* tx,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
     context_base::memory_resource* resource,
@@ -53,7 +53,7 @@ void write_partial_context::release() {
     //no-op
 }
 
-kvs::transaction* write_partial_context::transaction() const noexcept {
+transaction_context* write_partial_context::transaction() const noexcept {
     return tx_;
 }
 

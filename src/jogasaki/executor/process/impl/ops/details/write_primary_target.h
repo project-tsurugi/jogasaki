@@ -148,7 +148,7 @@ public:
      */
     status find_record_and_remove(
         write_primary_context& ctx,
-        kvs::transaction& tx,
+        transaction_context& tx,
         accessor::record_ref variables,
         memory_resource* varlen_resource
     );
@@ -165,7 +165,7 @@ public:
     /**
      * @brief gather the extracted (possibly updated) variables, encode key/value and put them to index
      */
-    status encode_and_put(write_primary_context& ctx, kvs::transaction& tx) const;
+    status encode_and_put(write_primary_context& ctx, transaction_context& tx) const;
 
     /**
      * @brief accessor to key metadata

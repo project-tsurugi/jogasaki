@@ -29,7 +29,7 @@ join_find_context::join_find_context(
     variable_table& output_variables,
     std::unique_ptr<kvs::storage> primary_stg,
     std::unique_ptr<kvs::storage> secondary_stg,
-    kvs::transaction* tx,
+    transaction_context* tx,
     std::unique_ptr<details::matcher> matcher,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
@@ -49,7 +49,7 @@ void join_find_context::release() {
     //TODO
 }
 
-kvs::transaction* join_find_context::transaction() const noexcept {
+transaction_context* join_find_context::transaction() const noexcept {
     return tx_;
 }
 

@@ -26,7 +26,7 @@ write_full_context::write_full_context(
     class abstract::task_context* ctx,
     variable_table& input_variables,
     std::unique_ptr<kvs::storage> stg,
-    kvs::transaction* tx,
+    transaction_context* tx,
     sequence::manager* sequence_manager,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
@@ -45,7 +45,7 @@ void write_full_context::release() {
     //no-op
 }
 
-kvs::transaction* write_full_context::transaction() const noexcept {
+transaction_context* write_full_context::transaction() const noexcept {
     return tx_;
 }
 

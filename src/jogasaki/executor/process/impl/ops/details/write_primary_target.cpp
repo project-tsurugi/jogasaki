@@ -72,7 +72,7 @@ write_primary_target::write_primary_target(
 
 status write_primary_target::find_record_and_remove(
     write_primary_context& ctx,
-    kvs::transaction& tx,
+    transaction_context& tx,
     accessor::record_ref variables,
     memory_resource* varlen_resource
 ) {
@@ -108,7 +108,7 @@ status write_primary_target::prepare_encoded_key(write_primary_context& ctx, acc
     return status::ok;
 }
 
-status write_primary_target::encode_and_put(write_primary_context& ctx, kvs::transaction& tx) const {
+status write_primary_target::encode_and_put(write_primary_context& ctx, transaction_context& tx) const {
     auto key_source = ctx.key_store_.ref();
     auto val_source = ctx.value_store_.ref();
     // calculate length first, then put

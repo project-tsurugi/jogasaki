@@ -18,7 +18,7 @@
 #include <vector>
 
 #include <jogasaki/kvs/storage.h>
-#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/status.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -102,7 +102,7 @@ public:
         std::string_view value,
         accessor::record_ref target,
         kvs::storage& stg,
-        kvs::transaction& tx,
+        transaction_context& tx,
         memory_resource* resource
     );
 
@@ -131,7 +131,7 @@ private:
     status find_primary_index(
         std::string_view key,
         kvs::storage& stg,
-        kvs::transaction& tx,
+        transaction_context& tx,
         std::string_view& value_out
     );
 

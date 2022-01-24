@@ -231,7 +231,7 @@ TEST_F(write_partial_test , simple_update) {
     put( *db_, i1_->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto stg = db_->get_storage(i1_->simple_name());
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
@@ -285,7 +285,7 @@ TEST_F(write_partial_test , nullable_columns) {
     put( *db_, i1nullable_->simple_name(), create_nullable_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, i1nullable_->simple_name(), create_nullable_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(2.0, 200));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto stg = db_->get_storage(i1nullable_->simple_name());
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
@@ -340,7 +340,7 @@ TEST_F(write_partial_test , update_multi_columns) {
     put( *db_, i1_->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, i1_->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto stg = db_->get_storage(i1_->simple_name());
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
@@ -401,7 +401,7 @@ TEST_F(write_partial_test , update_secondary) {
         put_secondary(*db_, i100_secondary_->simple_name(), create_record<kind::int8>(2), pkey);
     }
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto stg = db_->get_storage(i100_->simple_name());
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};

@@ -143,7 +143,7 @@ TEST_F(join_find_test, simple) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
@@ -236,7 +236,7 @@ TEST_F(join_find_test, secondary_index) {
     put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 200), {});
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(201), create_record<kind::int8>(20));
     put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,
@@ -354,7 +354,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
     join_find_context ctx(
         &task_ctx,

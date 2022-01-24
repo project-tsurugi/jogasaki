@@ -85,9 +85,9 @@ public:
     [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
-     * @brief accessor to kvs transaction
+     * @brief accessor to transaction context
      */
-    [[nodiscard]] kvs::transaction* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept;
 
     /**
      * @brief accessor to variable_table

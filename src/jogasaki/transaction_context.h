@@ -55,6 +55,10 @@ public:
         id_(id_source_++)
     {}
 
+    [[nodiscard]] operator kvs::transaction&() const noexcept {  //NOLINT
+        return *transaction_;
+    }
+
     /**
      * @brief accessor for the wrapped transaction
      * @return transaction object in the kvs layer
@@ -70,12 +74,75 @@ public:
     [[nodiscard]] operator bool() const noexcept {
         return transaction_ != nullptr;
     }
+
+    /**
+     * @brief commit the transaction
+     * @details commit the current transaction. When successful,
+     * the object gets invalidated and should not be used any more.
+     * @return status::ok if the operation is successful
+     * @return other status code when error occurs
+     */
+    [[nodiscard]] status commit(bool async = false) {
+        return transaction_->commit(async);
+    }
+
+    /**
+     * @brief wait for commit
+     * @details wait for async commit
+     * @return status::ok if the operation is successful
+     * @return status::err_time_out if waiting timed out
+     * @return other status code when error occurs
+     */
+    [[nodiscard]] status wait_for_commit(std::size_t timeout_ns = 0UL) {
+        return transaction_->wait_for_commit(timeout_ns);
+    }
+
+    /**
+     * @brief abort the transaction
+     * @details abort the current transaction. When successful,
+     * the object gets invalidated and should not be used any more.
+     * @return status::ok if the operation is successful
+     * @return other status code when error occurs
+     */
+    [[nodiscard]] status abort() {
+        return transaction_->abort();
+    }
+
+    /**
+     * @brief return the native transaction control handle in the transaction layer
+     * @note this is expected to be package private (i.e. callable from code in kvs namespace)
+     * @return the handle held by this object
+     */
+    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept {
+        return transaction_->control_handle();
+    }
+
+    /**
+     * @brief return the native handle in the transaction layer
+     * @note this is expected to be package private (i.e. callable from code in kvs namespace)
+     * @return the handle held by this object
+     */
+    [[nodiscard]] sharksfin::TransactionHandle handle() noexcept {
+        return transaction_->handle();
+    }
+
+    /**
+     * @brief return the parent database object
+     * @return the parent database
+     */
+    [[nodiscard]] kvs::database* database() const noexcept {
+        return transaction_->database();
+    }
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
 
     static inline std::atomic_size_t id_source_{};
 };
+
+inline std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction> arg) noexcept {
+    return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
+}
 
 }
 

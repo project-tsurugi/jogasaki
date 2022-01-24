@@ -61,7 +61,7 @@ status details::write_secondary_target::encode_key(
 
 status details::write_secondary_target::encode_and_put(
     write_secondary_context& ctx,
-    kvs::transaction& tx,
+    transaction_context& tx,
     accessor::record_ref source_key,
     accessor::record_ref source_value,
     std::string_view primary_key
@@ -79,7 +79,7 @@ status details::write_secondary_target::encode_and_put(
 
 status details::write_secondary_target::encode_and_remove(
     write_secondary_context& ctx,
-    kvs::transaction& tx,
+    transaction_context& tx,
     accessor::record_ref source_key,
     accessor::record_ref source_value,
     std::string_view primary_key

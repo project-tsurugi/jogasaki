@@ -143,7 +143,7 @@ TEST_F(find_test, simple) {
     using kind = meta::field_type_kind;
     put(*db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
     find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -215,7 +215,7 @@ TEST_F(find_test, secondary_index) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 200));
     put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 21), {});
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{{}, {}, {}, {}};
     find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), &resource_, &varlen_resource_);
 
@@ -301,7 +301,7 @@ TEST_F(find_test, host_variable) {
     using kind = meta::field_type_kind;
     put(*db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
     find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));

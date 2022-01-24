@@ -127,7 +127,7 @@ TEST_F(scan_test, simple) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
@@ -192,7 +192,7 @@ TEST_F(scan_test, nullable_fields) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(0.0, 0), {true, true}));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
@@ -296,7 +296,7 @@ TEST_F(scan_test, scan_info) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/C"}), create_record<kind::float8>(2.0));
     put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -391,7 +391,7 @@ TEST_F(scan_test, secondary_index) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(30), create_record<kind::float8, kind::int8>(3.0, 300));
     put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -516,7 +516,7 @@ TEST_F(scan_test, host_variables) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 20), create_record<kind::int8>(2));
     put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
 
-    auto tx = db_->create_transaction();
+    auto tx = wrap(db_->create_transaction());
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));

@@ -70,6 +70,7 @@ model::statement_kind write::kind() const noexcept {
 bool write::operator()(request_context& context) const {
     (void)kind_;
     auto& tx = context.transaction();
+    BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
     std::vector<details::write_target> targets{};
     if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
@@ -106,8 +107,8 @@ sequence_value next_sequence_value(request_context& ctx, sequence_definition_id 
     BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
     auto& mgr = *ctx.sequence_manager();
     auto* seq = mgr.find_sequence(def_id);
-    auto ret = seq->next(*ctx.transaction());
-    mgr.notify_updates(*ctx.transaction());
+    auto ret = seq->next(*ctx.transaction()->object());
+    mgr.notify_updates(*ctx.transaction()->object());
     return ret;
 }
 

@@ -28,7 +28,7 @@ find_context::find_context(
     variable_table& output_variables,
     std::unique_ptr<kvs::storage> stg,
     std::unique_ptr<kvs::storage> secondary_stg,
-    kvs::transaction* tx,
+    transaction_context* tx,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
@@ -46,7 +46,7 @@ void find_context::release() {
     //TODO
 }
 
-kvs::transaction* find_context::transaction() const noexcept {
+transaction_context* find_context::transaction() const noexcept {
     return tx_;
 }
 

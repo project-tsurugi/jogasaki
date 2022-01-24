@@ -18,8 +18,6 @@
 #include <memory>
 #include <takatori/util/maybe_shared_ptr.h>
 
-using takatori::util::maybe_shared_ptr;
-
 // attention: making globals depend on lower domain slows down compile time
 namespace jogasaki::executor::function::incremental {
 class aggregate_function_repository;
@@ -82,7 +80,7 @@ enum class pool_operation : std::int32_t {
  * @param arg updated configuration. Pass nullptr just to refer current value.
  * @return reference to the configuration
  */
-maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuration> arg = nullptr);
+takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::util::maybe_shared_ptr<configuration> arg = nullptr);
 
 }
 

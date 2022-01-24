@@ -23,6 +23,8 @@
 
 namespace jogasaki::global {
 
+using takatori::util::maybe_shared_ptr;
+
 memory::page_pool& page_pool(pool_operation op) {
     static std::unique_ptr<memory::page_pool> pool = std::make_unique<memory::page_pool>();
     switch(op) {

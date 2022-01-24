@@ -37,7 +37,7 @@ TEST_F(request_context_test, basic) {
     c.status_code(status::err_not_found);
     ASSERT_EQ(status::err_not_found, c.status_code());
     c.status_code(status::err_aborted_retryable);
-    ASSERT_EQ(status::err_not_found, c.status_code());
+    ASSERT_EQ(status::err_aborted_retryable, c.status_code());
 }
 
 }

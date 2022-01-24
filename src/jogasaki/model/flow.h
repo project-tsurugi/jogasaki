@@ -21,6 +21,7 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step_kind.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::model {
 
@@ -32,7 +33,7 @@ using sequence_view = takatori::util::sequence_view<T>;
  * @details a flow is the context information object corresponding to the step in the step graph.
  * This object holds the runtime state of the step while step object holds static structure info.
  */
-class flow { //NOLINT(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
+class cache_align flow { //NOLINT(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 public:
     /**
      * @brief index used to identify the port attached to this step

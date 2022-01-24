@@ -37,7 +37,7 @@ class step;
 /**
  * @brief process step data flow
  */
-class flow : public model::flow {
+class cache_align flow : public model::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 

@@ -26,8 +26,6 @@ class request_context;
 
 namespace scheduler {
 
-using takatori::util::maybe_shared_ptr;
-
 /**
  * @brief context object for the job
  * @details this class represents context information in the scope of the job scheduling
@@ -46,7 +44,7 @@ public:
     /**
      * @brief create default context object
      */
-    job_context(
+    explicit job_context(
         std::size_t invoker_thread_cpu_id
     ) noexcept;
 

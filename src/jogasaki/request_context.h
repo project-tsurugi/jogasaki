@@ -46,7 +46,7 @@ class task_scheduler;
  * @brief context object for the request scope
  * @details this class represents context information in the scope of the execution request
  */
-class request_context {
+class cache_align request_context {
 public:
     /**
      * @brief create default context object
@@ -195,15 +195,16 @@ private:
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<transaction_context> transaction_{};
     executor::sequence::manager* sequence_manager_{};
-    data::result_store* result_{};
-    maybe_shared_ptr<api::data_channel> data_channel_{};
-    std::atomic<status> status_code_{status::ok};
+
     maybe_shared_ptr<scheduler::job_context> job_context_{};
-    mutable std::mutex status_message_mutex_{};
-    std::string status_message_{};
     maybe_shared_ptr<model::flow_repository> flows_{};
     maybe_shared_ptr<scheduler::task_scheduler> scheduler_{};
     maybe_shared_ptr<scheduler::statement_scheduler> statement_scheduler_{};
+
+    data::result_store* result_{};
+    maybe_shared_ptr<api::data_channel> data_channel_{};
+    std::atomic<status> status_code_{status::ok};
+    std::string status_message_{};
 };
 
 /**

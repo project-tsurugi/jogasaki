@@ -39,7 +39,7 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     auto& jctx = *rctx.job();
     auto idx = jctx.index().load();
     if (idx == job_context::undefined_index) {
-        if(auto tctx = rctx.transaction()) {
+        if(auto& tctx = rctx.transaction()) {
             scheduler_.schedule_at(std::move(t), determine_worker(*tctx, scheduler_cfg_.thread_count()));
             return;
         }

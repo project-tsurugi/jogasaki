@@ -32,20 +32,20 @@ using takatori::util::unsafe_downcast;
  * @details 0-origin index is assigned for each steap and it's used to identify the position
  * to store flow in this container.
  */
-class cache_align flow_container {
+class cache_align flow_repository {
 public:
     using flows_type = std::vector<std::unique_ptr<flow>>;
 
     /**
      * @brief create empty object
      */
-    flow_container() = default;
+    flow_repository() = default;
 
     /**
      * @brief create new object of given size
      * @param size the capacity of the container
      */
-    explicit flow_container(
+    explicit flow_repository(
         std::size_t size
     );
 
@@ -91,22 +91,8 @@ private:
  * @return nullptr if no context object is found
  */
 template<class T>
-[[nodiscard]] T* find_flow(std::size_t idx, flow_container& container) {
+[[nodiscard]] T* find_flow(std::size_t idx, flow_repository& container) {
     return unsafe_downcast<T>(container.at(idx));
-}
-
-/**
- * @brief make operator context and store it in the context list held by task context (work context)
- * @tparam T the operator context type
- * @tparam Args arguments types to construct operator context
- * @param index the index to position the context in the context list
- * @param args arguments to construct operator context
- * @return pointer to the created/stored context
- */
-template<class T, class ... Args>
-[[nodiscard]] T* make_flow(flow_container& container, std::size_t index, Args&&...args) {
-    auto& p = container.set(index, std::make_unique<T>(std::forward<Args>(args)...));
-    return unsafe_downcast<T>(p.get());
 }
 
 }

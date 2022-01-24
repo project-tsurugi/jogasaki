@@ -334,7 +334,7 @@ void dag_controller::impl::init(model::graph& g, request_context& rctx) {
     for(auto&& v: g.steps()) {
         step_state(*v, step_state_kind::created);
     }
-    rctx.flows(std::make_shared<model::flow_container>(graph_->steps().size()));
+    rctx.flows(std::make_shared<model::flow_repository>(graph_->steps().size()));
     graph_deactivated_ = false;
 }
 

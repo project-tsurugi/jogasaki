@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "flow_container.h"
+#include "flow_repository.h"
 
 #include <takatori/util/fail.h>
 
@@ -21,11 +21,11 @@ namespace jogasaki::model {
 
 using takatori::util::fail;
 
-flow_container::flow_container(std::size_t size) :
+flow_repository::flow_repository(std::size_t size) :
     flows_(size)
 {}
 
-std::unique_ptr<flow>& flow_container::set(
+std::unique_ptr<flow>& flow_repository::set(
     std::size_t idx,
     std::unique_ptr<flow> ctx
 ) noexcept
@@ -35,15 +35,15 @@ std::unique_ptr<flow>& flow_container::set(
     return flows_[idx];
 }
 
-bool flow_container::exists(std::size_t idx) const noexcept {
+bool flow_repository::exists(std::size_t idx) const noexcept {
     return flows_[idx] != nullptr;
 }
 
-std::size_t flow_container::size() const noexcept {
+std::size_t flow_repository::size() const noexcept {
     return flows_.size();
 }
 
-flow* flow_container::at(std::size_t idx) const noexcept {
+flow* flow_repository::at(std::size_t idx) const noexcept {
     if (idx >= flows_.size()) return nullptr;
     return flows_.at(idx).get();
 }

@@ -243,14 +243,19 @@ private:
 
     struct cache_align callback_control {
         explicit callback_control(std::shared_ptr<tateyama::api::server::response> response) :
+            id_(id_src_++),
             response_(std::move(response))
-        {};
+        {}
+
+        std::size_t id_{};  //NOLINT
         std::shared_ptr<tateyama::api::server::response> response_{};  //NOLINT
         std::unique_ptr<details::channel_info> channel_info_{};  //NOLINT
+
+        static inline std::atomic_size_t id_src_{0};
     };
 
     jogasaki::api::database* db_{};
-    tbb::concurrent_hash_map<void*, std::shared_ptr<callback_control>> callbacks_{};
+    tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
 
     void command_begin(
         ::request::Request const& proto_req,

@@ -445,7 +445,8 @@ void service::execute_statement(
     // beware asynchronous call : stack will be released soon after submitting request
     auto c = std::make_shared<callback_control>(res);
     auto* cbp = c.get();
-    if(! callbacks_.emplace(cbp, std::move(c))) {
+    auto cid = c->id_;
+    if(! callbacks_.emplace(cid, std::move(c))) {
         fail();
     }
     if(auto success = tx.execute_async(
@@ -456,7 +457,7 @@ void service::execute_statement(
                 } else {
                     details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});
                 }
-                if(! callbacks_.erase(cbp)) {
+                if(! callbacks_.erase(cbp->id_)) {
                     fail();
                 }
             }
@@ -531,7 +532,8 @@ void service::execute_query(
     info->meta_ = e->meta();
     details::send_body_head(*res, *info);
     auto* cbp = c.get();
-    callbacks_.emplace(cbp, std::move(c));
+    auto cid = c->id_;
+    callbacks_.emplace(cid, std::move(c));
     if(auto rc = tx.execute_async(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
@@ -545,7 +547,7 @@ void service::execute_query(
                 } else {
                     details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});
                 }
-                if(! callbacks_.erase(cbp)) {
+                if(! callbacks_.erase(cbp->id_)) {
                     fail();
                 }
             }

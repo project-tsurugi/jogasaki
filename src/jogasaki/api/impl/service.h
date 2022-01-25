@@ -55,6 +55,18 @@ namespace details {
 
 class query_info;
 
+template<typename P>
+inline size_t my_hasher( P* ptr ) {
+    size_t const h = reinterpret_cast<size_t>( ptr ); //NOLINT
+    return (h >> 5) ^ h;
+}
+
+template<typename Key>
+struct my_hash_compare {
+    static size_t hash( const Key& a ) { return my_hasher(a); }
+    static bool equal( const Key& a, const Key& b ) { return a == b; }
+};
+
 struct cache_align channel_info {
     jogasaki::api::record_meta const* meta_{};  //NOLINT
     std::string name_;  //NOLINT
@@ -250,7 +262,7 @@ private:
     };
 
     jogasaki::api::database* db_{};
-    tbb::concurrent_hash_map<void*, std::shared_ptr<callback_control>> callbacks_{};
+    tbb::concurrent_hash_map<void*, std::shared_ptr<callback_control>, details::my_hash_compare<void*>> callbacks_{};
 
     void command_begin(
         ::request::Request const& proto_req,

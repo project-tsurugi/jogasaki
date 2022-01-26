@@ -24,6 +24,7 @@
 namespace jogasaki::scheduler {
 
 thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};  //NOLINT
+thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> serial_task_scheduler::job_contexts_{};  //NOLINT
 
 void serial_task_scheduler::do_schedule_task(
     flat_task&& task
@@ -50,6 +51,14 @@ void serial_task_scheduler::stop() {
 
 task_scheduler_kind serial_task_scheduler::kind() const noexcept {
     return task_scheduler_kind::serial;
+}
+
+void serial_task_scheduler::register_job(std::shared_ptr<job_context> ctx) {
+    job_contexts_.emplace(ctx->id(), std::move(ctx));
+}
+
+void serial_task_scheduler::unregister_job(std::size_t job_id) {
+    job_contexts_.erase(job_id);
 }
 }
 

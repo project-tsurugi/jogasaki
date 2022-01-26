@@ -71,19 +71,17 @@ status transaction::execute(
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         std::size_t cpu = sched_getcpu();
-        request_ctx->job(
-            std::make_shared<scheduler::job_context>(
-                cpu
-            )
-        );
+        auto job = std::make_shared<scheduler::job_context>(cpu);
+        request_ctx->job(maybe_shared_ptr{job.get()});
 
         auto& ts = *request_ctx->scheduler();
+        ts.register_job(job);
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             request_ctx.get(),
             g
         });
-        ts.wait_for_progress(*request_ctx->job());
+        ts.wait_for_progress(*job);
 
         // for now, assume only one result is returned
         result = std::make_unique<impl::result_set>(
@@ -151,12 +149,10 @@ bool transaction::execute_async_common(
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
         std::size_t cpu = sched_getcpu();
-        rctx->job(
-            std::make_shared<scheduler::job_context>(
-                cpu
-            )
-        );
-        rctx->job()->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
+
+        auto job = std::make_shared<scheduler::job_context>(cpu);
+        rctx->job(maybe_shared_ptr{job.get()});
+        job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             (void)channel;
@@ -164,35 +160,34 @@ bool transaction::execute_async_common(
         });
 
         auto& ts = *rctx->scheduler();
+        ts.register_job(job);
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             rctx.get(),
             g
         });
-        ts.wait_for_progress(*rctx->job());
+        ts.wait_for_progress(*job);
         return true;
     }
     if(c->tasked_write()) {
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         std::size_t cpu = sched_getcpu();
-        rctx->job(
-            std::make_shared<scheduler::job_context>(
-                cpu
-            )
-        );
-        rctx->job()->callback([statement, on_completion, rctx](){  // callback is copy-based
+        auto job = std::make_shared<scheduler::job_context>(cpu);
+        rctx->job(maybe_shared_ptr{job.get()});
+        job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             on_completion(rctx->status_code(), rctx->status_message());
         });
 
         auto& ts = *rctx->scheduler();
+        ts.register_job(job);
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
             rctx.get(),
             stmt,
         });
-        ts.wait_for_progress(*rctx->job());
+        ts.wait_for_progress(*job);
         return true;
     }
     auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());

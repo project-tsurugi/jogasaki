@@ -61,8 +61,19 @@ public:
      */
     [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 
+    /**
+     * @brief register the job context
+     */
+    void register_job(std::shared_ptr<job_context> ctx) override;
+
+    /**
+     * @brief declare the end of job and unregister it from the scheduler
+     */
+    void unregister_job(std::size_t job_id) override;
+
 private:
     static thread_local entity_type tasks_;
+    static thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> job_contexts_;
 };
 
 }

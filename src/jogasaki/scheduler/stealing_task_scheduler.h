@@ -16,6 +16,7 @@
 #pragma once
 
 #include <takatori/util/maybe_shared_ptr.h>
+#include <tbb/concurrent_hash_map.h>
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/task.h>
@@ -83,9 +84,20 @@ public:
      */
     [[nodiscard]] task_scheduler_kind kind() const noexcept override;
 
+    /**
+     * @brief register the job context
+     */
+    void register_job(std::shared_ptr<job_context> ctx) override;
+
+    /**
+     * @brief declare the end of job and unregister it from the scheduler
+     */
+    void unregister_job(std::size_t job_id) override;
+
 private:
     tateyama::api::task_scheduler::task_scheduler_cfg scheduler_cfg_{};
     tateyama::api::task_scheduler::scheduler<flat_task> scheduler_;
+    tbb::concurrent_hash_map<std::size_t, std::shared_ptr<job_context>> job_contexts_{};
 
     tateyama::api::task_scheduler::task_scheduler_cfg create_scheduler_cfg(thread_params params);
 };

@@ -15,6 +15,8 @@
  */
 #include "stealing_task_scheduler.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/logging.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
@@ -24,6 +26,8 @@
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {
+
+using takatori::util::fail;
 
 stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_cfg_(create_scheduler_cfg(params)),
@@ -79,6 +83,19 @@ tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::creat
     ret.initial_core(params.inititial_core());
     ret.stealing_enabled(params.stealing_enabled());
     return ret;
+}
+
+void stealing_task_scheduler::register_job(std::shared_ptr<job_context> ctx) {
+    auto cid = ctx->id();
+    if(! job_contexts_.emplace(cid, std::move(ctx))) {
+        fail();
+    }
+}
+
+void stealing_task_scheduler::unregister_job(std::size_t job_id) {
+    if(! job_contexts_.erase(job_id)) {
+        fail();
+    }
 }
 }
 

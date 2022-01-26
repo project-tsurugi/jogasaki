@@ -105,14 +105,23 @@ public:
      */
     [[nodiscard]] job_completion_callback& callback() noexcept;
 
+    /**
+     * @brief accessor for job context unique id
+     * @return id value
+     */
+    [[nodiscard]] std::size_t id() const noexcept;
+
 private:
 
+    std::size_t id_{id_src_++};
     utils::latch completion_latch_{};
     std::size_t invoker_thread_cpu_id_{};
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};
     cache_align std::atomic_size_t index_{undefined_index};
     job_completion_callback callback_{};
+
+    static inline std::atomic_size_t id_src_{0};
 };
 
 }

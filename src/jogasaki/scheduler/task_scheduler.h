@@ -84,6 +84,16 @@ public:
      * @return kind of the task scheduler
      */
     [[nodiscard]] virtual task_scheduler_kind kind() const noexcept = 0;
+
+    /**
+     * @brief register the job context
+     */
+    virtual void register_job(std::shared_ptr<job_context> ctx) = 0;
+
+    /**
+     * @brief declare the end of job and unregister it from the scheduler
+     */
+    virtual void unregister_job(std::size_t job_id) = 0;
 };
 
 }

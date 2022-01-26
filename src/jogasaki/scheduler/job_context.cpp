@@ -63,5 +63,9 @@ void job_context::callback(job_context::job_completion_callback callback) noexce
 job_context::job_completion_callback& job_context::callback() noexcept {
     return callback_;
 }
+
+std::size_t job_context::id() const noexcept {
+    return id_;
+}
 }
 

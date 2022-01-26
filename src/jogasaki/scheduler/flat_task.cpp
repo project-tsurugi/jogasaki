@@ -48,43 +48,50 @@ void flat_task::dag_schedule() {
 bool flat_task::teardown() {
     DVLOG(log_trace) << *this << " teardown task executed.";
     trace_scope_name("teardown");  //NOLINT
+    auto& ts = *req_context_->scheduler();
     if (job()->task_count() > 1) {
         DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
-        auto& ts = *req_context_->scheduler();
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_});
         return true;
     }
-    auto& cb = job()->callback();
+    auto& j = *job();
+    auto& cb = j.callback();
     if(cb) {
         cb();
+
+        // we rely on callback to own request_context, but somehow it fails to release.
+        // So temporarily we explicitly release the callback object. TODO investigate more
+        std::function<void(void)>{}.swap(cb);
     }
 
     // releasing latch should be done here at the last step working on job context
     // since it starts to release resources such as request context
-    job()->completion_latch().release();
+    j.completion_latch().release();
 
-    // we rely on callback to own request_context, but somehow it fails to release.
-    // So temporarily we explicitly release the callback object. TODO investigate more
-    std::function<void(void)>{}.swap(cb);
+    ts.unregister_job(j.id());
     return false;
 }
 
 void flat_task::write() {
     DVLOG(log_trace) << *this << " write task executed.";
     trace_scope_name("write");  //NOLINT
+    auto& ts = *req_context_->scheduler();
     (*write_)(*req_context_);
 
-    auto& cb = job()->callback();
+    auto& j = *job();
+    auto& cb = j.callback();
     if(cb) {
         cb();
+
+        // we rely on callback to own request_context, but somehow it fails to release.
+        // So temporarily we explicitly release the callback object. TODO investigate more
+        std::function<void(void)>{}.swap(cb);
     }
 
     // releasing latch should be done at the last step since it starts to release resources such as request context
-    job()->completion_latch().release();
+    j.completion_latch().release();
 
-    // we rely on callback to own request_context, but somehow it fails to release.
-    // So temporarily we explicitly release the callback object. TODO investigate more
-    std::function<void(void)>{}.swap(cb);
+    ts.unregister_job(j.id());
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {

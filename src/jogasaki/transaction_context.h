@@ -22,6 +22,67 @@
 
 namespace jogasaki {
 
+namespace details {
+
+class worker_manager {
+public:
+    constexpr static std::uint32_t empty_worker = static_cast<std::uint32_t>(-1);
+
+    bool increment_and_set_on_zero(std::uint32_t& worker_index) {
+        std::size_t cur = use_count_and_worker_id_.load();
+        std::size_t next{};
+        std::uint32_t cnt = 0;
+        std::uint32_t wid = 0;
+        do {
+            cnt = static_cast<std::uint32_t>(cur >> 32U);
+            wid = static_cast<std::uint32_t>(cur & ((1UL << 32U)-1));
+            if (cnt == 0) {
+                wid = worker_index;
+            }
+            next = cnt + 1;
+            next <<= 32U;
+            next |= wid;
+        } while(! use_count_and_worker_id_.compare_exchange_strong(cur, next));
+        if(cnt == 0) {
+            return true;
+        }
+        worker_index = wid;
+        return false;
+    }
+
+    bool decrement_and_clear_on_zero() {
+        std::size_t cur = use_count_and_worker_id_.load();
+        std::size_t next{};
+        std::uint32_t cnt = 0;
+        std::uint32_t wid = 0;
+        do {
+            cnt = static_cast<std::uint32_t>(cur >> 32U);
+            wid = static_cast<std::uint32_t>(cur & ((1UL << 32U)-1));
+            if (cnt == 1) {
+                wid = empty_worker;
+            }
+            next = cnt - 1;
+            next <<= 32U;
+            next |= wid;
+        } while(! use_count_and_worker_id_.compare_exchange_strong(cur, next));
+        return cnt == 1;
+    }
+
+    [[nodiscard]] std::uint32_t worker_id() const noexcept {
+        std::size_t cur = use_count_and_worker_id_.load();
+        return static_cast<std::uint32_t>(cur & ((1UL << 32U)-1));
+    }
+    [[nodiscard]] std::uint32_t use_count() const noexcept {
+        std::size_t cur = use_count_and_worker_id_.load();
+        return static_cast<std::uint32_t>(cur >> 32U);
+    }
+
+private:
+    std::atomic_size_t use_count_and_worker_id_{empty_worker & ((1UL << 32U)-1)};
+};
+
+}
+
 /**
  * @brief context object for the transaction scope
  * @details this class represents context information in the scope of the transaction.
@@ -95,9 +156,17 @@ public:
      */
     [[nodiscard]] kvs::database* database() const noexcept;
 
+    bool increment_worker_count(std::uint32_t& worker_index) {
+        return mgr_.increment_and_set_on_zero(worker_index);
+    }
+
+    bool decrement_worker_count() {
+        return mgr_.decrement_and_clear_on_zero();
+    }
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
+    details::worker_manager mgr_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

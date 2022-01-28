@@ -147,6 +147,13 @@ public:
         tasked_write_ = arg;
     }
 
+    [[nodiscard]] bool scheduler_rr_workers() const noexcept {
+        return scheduler_rr_workers_;
+    }
+
+    void scheduler_rr_workers(bool arg) noexcept {
+        scheduler_rr_workers_ = arg;
+    }
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -178,6 +185,7 @@ private:
     bool stealing_enabled_ = false;
     std::string db_location_{};
     bool tasked_write_ = false;
+    bool scheduler_rr_workers_ = false;
 };
 
 }

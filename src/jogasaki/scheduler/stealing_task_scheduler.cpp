@@ -88,6 +88,7 @@ tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::creat
     ret.assign_numa_nodes_uniformly(params.assign_numa_nodes_uniformly());
     ret.initial_core(params.inititial_core());
     ret.stealing_enabled(params.stealing_enabled());
+    ret.round_robbin(params.rr_workers());
     return ret;
 }
 

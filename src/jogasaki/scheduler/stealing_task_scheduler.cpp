@@ -49,7 +49,6 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
                 scheduler_.schedule(std::move(t));
                 return;
             }
-//            scheduler_.schedule_at(std::move(t), determine_worker(*tctx, scheduler_cfg_.thread_count()));
             // other task is already scheduled to use the tx. schedule at the same worker.
             scheduler_.schedule_at(std::move(t), preferred_worker);
             return;

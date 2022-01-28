@@ -203,11 +203,23 @@ private:
     executor::common::write* write_{};
     bool sticky_{};
 
+    /**
+     * @return true if job completes together with the task
+     * @return false if only task completes
+     */
     bool execute(tateyama::api::task_scheduler::context& ctx);
+
     void bootstrap(tateyama::api::task_scheduler::context& ctx);
     void dag_schedule();
+
+    /**
+     * @return true if the teardown task completes
+     * @return false if the teardown task is rescheduled
+     */
     bool teardown();
+
     void write();
+    void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

@@ -52,9 +52,9 @@ bool flat_task::teardown() {
     if (job()->task_count() > 1) {
         DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
         ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_});
-        return true;
+        return false;
     }
-    return false;
+    return true;
 }
 
 void flat_task::write() {
@@ -66,44 +66,48 @@ void flat_task::write() {
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
     switch(kind_) {
         using kind = flat_task_kind;
-        case kind::dag_events: dag_schedule(); return true;
-        case kind::bootstrap: bootstrap(ctx); return true;
+        case kind::dag_events: dag_schedule(); return false;
+        case kind::bootstrap: bootstrap(ctx); return false;
         case kind::teardown: return teardown();
         case kind::wrapped: {
             trace_scope_name("executor_task");  //NOLINT
             while((*origin_)() == model::task_result::proceed) {}
-            return true;
+            return false;
         }
-        case kind::write: write(); return false;
+        case kind::write: write(); return true;
     }
     fail();
 }
 
+void flat_task::finish_job() {
+    // job completed, and the latch needs to be released
+    auto& ts = *req_context_->scheduler();
+    auto& j = *job();
+    auto& cb = j.callback();
+    if(cb) {
+        cb();
+
+        // we rely on callback to own request_context, but somehow it fails to release.
+        // So temporarily we explicitly release the callback object. TODO investigate more
+        std::function<void(void)>{}.swap(cb);
+    }
+
+    // releasing latch should be done at the last step since it starts to release resources such as request context
+    j.completion_latch().release();
+
+    ts.unregister_job(j.id());
+}
+
 void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
-    bool res = execute(ctx);
+    auto job_completes = execute(ctx);
     if(auto& tctx = req_context_->transaction(); tctx && sticky_) {
         tctx->decrement_worker_count();
     }
-    if(! res) {
-        // job completed, and the latch needs to be released
-        auto& ts = *req_context_->scheduler();
-        auto& j = *job();
-        auto& cb = j.callback();
-        if(cb) {
-            cb();
-
-            // we rely on callback to own request_context, but somehow it fails to release.
-            // So temporarily we explicitly release the callback object. TODO investigate more
-            std::function<void(void)>{}.swap(cb);
-        }
-
-        // releasing latch should be done at the last step since it starts to release resources such as request context
-        j.completion_latch().release();
-
-        ts.unregister_job(j.id());
+    if(! job_completes) {
+        --job()->task_count();
         return;
     }
-    --job()->task_count();
+    finish_job();
 }
 
 flat_task::identity_type flat_task::id() const {

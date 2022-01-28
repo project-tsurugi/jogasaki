@@ -24,6 +24,14 @@ namespace jogasaki {
 
 namespace details {
 
+inline std::uint32_t upper(std::uint64_t arg) {
+    return static_cast<std::uint32_t>(arg >> 32U);
+}
+
+inline std::uint32_t lower(std::uint64_t arg) {
+    return static_cast<std::uint32_t>(arg & ((1UL << 32U)-1));
+}
+
 class worker_manager {
 public:
     constexpr static std::uint32_t empty_worker = static_cast<std::uint32_t>(-1);
@@ -34,8 +42,8 @@ public:
         std::uint32_t cnt = 0;
         std::uint32_t wid = 0;
         do {
-            cnt = static_cast<std::uint32_t>(cur >> 32U);
-            wid = static_cast<std::uint32_t>(cur & ((1UL << 32U)-1));
+            cnt = upper(cur);
+            wid = lower(cur);
             if (cnt == 0) {
                 wid = worker_index;
             }
@@ -56,8 +64,8 @@ public:
         std::uint32_t cnt = 0;
         std::uint32_t wid = 0;
         do {
-            cnt = static_cast<std::uint32_t>(cur >> 32U);
-            wid = static_cast<std::uint32_t>(cur & ((1UL << 32U)-1));
+            cnt = upper(cur);
+            wid = lower(cur);
             if (cnt == 1) {
                 wid = empty_worker;
             }
@@ -70,11 +78,11 @@ public:
 
     [[nodiscard]] std::uint32_t worker_id() const noexcept {
         std::size_t cur = use_count_and_worker_id_.load();
-        return static_cast<std::uint32_t>(cur & ((1UL << 32U)-1));
+        return lower(cur);
     }
     [[nodiscard]] std::uint32_t use_count() const noexcept {
         std::size_t cur = use_count_and_worker_id_.load();
-        return static_cast<std::uint32_t>(cur >> 32U);
+        return upper(cur);
     }
 
 private:

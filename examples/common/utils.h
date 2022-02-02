@@ -24,7 +24,11 @@ DECLARE_int32(load_batch_size);  //NOLINT
 namespace jogasaki::common_cli {
 
     extern std::vector<std::string> tables;
+    extern std::vector<std::string> tpch_tables;
+
     void dump(jogasaki::api::database&, std::string&);
     void load(jogasaki::api::database&, std::string&);
+    void dump_tpch(jogasaki::api::database&, std::string&);
+    void load_tpch(jogasaki::api::database&, std::string&);
 
 }  // jogasaki::common_cli

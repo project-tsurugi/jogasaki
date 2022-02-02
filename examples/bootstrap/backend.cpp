@@ -31,7 +31,6 @@
 
 #include "server.h"
 #include "../common/utils.h"
-#include "../common/tpch_utils.h"
 
 DEFINE_string(dbname, "tateyama", "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT

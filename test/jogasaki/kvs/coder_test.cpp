@@ -68,7 +68,7 @@ TEST_F(coder_test, simple) {
     s.write(f32, asc);
     s.write(i64, asc);
     s.write(f64, asc);
-    s.write(txt, asc);
+    s.write(txt, asc, true, 3);
 
     auto rs = s.readable();
     ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
@@ -92,7 +92,7 @@ TEST_F(coder_test, descendant) {
     s.write(f32, desc);
     s.write(i64, desc);
     s.write(f64, desc);
-    s.write(txt, desc);
+    s.write(txt, desc, true, 3);
 
     auto rs = s.readable();
     ASSERT_EQ(i32, rs.read<std::int32_t>(desc, false));
@@ -304,38 +304,124 @@ TEST_F(coder_test, f64_asc) {
     EXPECT_EQ('\xFF', buf[15]);
 }
 
-TEST_F(coder_test, text) {
+TEST_F(coder_test, text_asc) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    s.write(txt, asc);
+    s.write(txt, asc, true, 3);
 
     auto rs = s.readable();
 
     ASSERT_EQ(txt, rs.read<accessor::text>(asc, false, &resource));
-    EXPECT_EQ('\x80', buf[0]);
-    EXPECT_EQ('\x03', buf[1]);
-    EXPECT_EQ('A', buf[2]);
-    EXPECT_EQ('B', buf[3]);
-    EXPECT_EQ('C', buf[4]);
+    EXPECT_EQ('A', buf[0]);
+    EXPECT_EQ('B', buf[1]);
+    EXPECT_EQ('C', buf[2]);
+    EXPECT_EQ('\x00', buf[3]);
+    EXPECT_EQ('\x00', buf[4]);
+    EXPECT_EQ('\x00', buf[5]);
+    EXPECT_EQ('\x00', buf[6]);
 }
 
-TEST_F(coder_test, empty_text) {
+char invert(unsigned char ch) {
+    return static_cast<unsigned char>(-1)^ch;
+}
+
+TEST_F(coder_test, text_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::text txt{&resource, "ABC"sv};
+    s.write(txt, desc, true, 3);
+    auto rs = s.readable();
+
+    ASSERT_EQ(txt, rs.read<accessor::text>(desc, false, &resource));
+    EXPECT_EQ(invert('A'), buf[0]);
+    EXPECT_EQ(invert('B'), buf[1]);
+    EXPECT_EQ(invert('C'), buf[2]);
+    EXPECT_EQ('\xFF', buf[3]);
+    EXPECT_EQ('\xFF', buf[4]);
+    EXPECT_EQ('\xFF', buf[5]);
+    EXPECT_EQ('\xFF', buf[6]);
+}
+
+TEST_F(coder_test, empty_text_asc) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, ""sv};
-    s.write(txt, asc);
+    s.write(txt, asc, true, 3);
 
     auto rs = s.readable();
     auto result = rs.read<accessor::text>(asc, false, &resource);
     ASSERT_EQ(txt, result);
     ASSERT_EQ(0, result.size());
-    EXPECT_EQ('\x80', buf[0]);
+    EXPECT_EQ('\x00', buf[0]);
     EXPECT_EQ('\x00', buf[1]);
+    EXPECT_EQ('\x00', buf[2]);
+    EXPECT_EQ('\x00', buf[3]);
 }
 
+TEST_F(coder_test, empty_text_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::text txt{&resource, ""sv};
+    s.write(txt, desc, true, 3);
+
+    auto rs = s.readable();
+    auto result = rs.read<accessor::text>(desc, false, &resource);
+    ASSERT_EQ(txt, result);
+    ASSERT_EQ(0, result.size());
+    EXPECT_EQ('\xFF', buf[0]);
+    EXPECT_EQ('\xFF', buf[1]);
+    EXPECT_EQ('\xFF', buf[2]);
+    EXPECT_EQ('\xFF', buf[3]);
+}
+
+TEST_F(coder_test, text_non_variant_asc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::text txt{&resource, "ABC"sv};
+    s.write(txt, asc, false, 6);
+    auto rs = s.readable();
+
+    accessor::text exp{&resource, "ABC   "sv};
+    EXPECT_EQ(exp, rs.read<accessor::text>(asc, false, &resource));
+    EXPECT_EQ('A', buf[0]);
+    EXPECT_EQ('B', buf[1]);
+    EXPECT_EQ('C', buf[2]);
+    EXPECT_EQ('\x20', buf[3]);
+    EXPECT_EQ('\x20', buf[4]);
+    EXPECT_EQ('\x20', buf[5]);
+    EXPECT_EQ('\x00', buf[6]);
+    EXPECT_EQ('\x00', buf[7]);
+    EXPECT_EQ('\x00', buf[8]);
+    EXPECT_EQ('\x00', buf[9]);
+}
+
+TEST_F(coder_test, text_non_variant_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::text txt{&resource, "ABC"sv};
+    s.write(txt, desc, false, 6);
+    auto rs = s.readable();
+
+    accessor::text exp{&resource, "ABC   "sv};
+    EXPECT_EQ(exp, rs.read<accessor::text>(desc, false, &resource));
+    EXPECT_EQ(invert('A'), buf[0]);
+    EXPECT_EQ(invert('B'), buf[1]);
+    EXPECT_EQ(invert('C'), buf[2]);
+    EXPECT_EQ(invert('\x20'), buf[3]);
+    EXPECT_EQ(invert('\x20'), buf[4]);
+    EXPECT_EQ(invert('\x20'), buf[5]);
+    EXPECT_EQ('\xFF', buf[6]);
+    EXPECT_EQ('\xFF', buf[7]);
+    EXPECT_EQ('\xFF', buf[8]);
+    EXPECT_EQ('\xFF', buf[9]);
+}
 TEST_F(coder_test, encode_decode) {
     std::string src(100, 0);
     std::string tgt(100, 0);
@@ -606,60 +692,72 @@ TEST_F(coder_test, text_ordering) {
     std::string src2(100, 0);
     std::string src3(100, 0);
     std::string src4(100, 0);
+    std::string src5(100, 0);
     kvs::writable_stream s0{src0};
     kvs::writable_stream s1{src1};
     kvs::writable_stream s2{src2};
     kvs::writable_stream s3{src3};
     kvs::writable_stream s4{src4};
+    kvs::writable_stream s5{src5};
     executor::process::impl::expression::any c0{std::in_place_type<accessor::text>, text{""}};
     executor::process::impl::expression::any c2{std::in_place_type<accessor::text>, text{"AA"}};
     executor::process::impl::expression::any c3a{std::in_place_type<accessor::text>, text{"AAA"}};
     executor::process::impl::expression::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
+    executor::process::impl::expression::any c5{std::in_place_type<accessor::text>, text{"BB"}};
     {
         // ascending non nullable
         encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1);
         encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2);
         encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3);
         encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4);
+        encode(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s5);
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+        EXPECT_LT(bin(src4.data(), s4.size()), bin(src5.data(), s5.size()));
     }
     s0.reset();
     s1.reset();
     s2.reset();
     s3.reset();
     s4.reset();
+    s5.reset();
     {
         // descending non nullable
         encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1);
         encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2);
         encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3);
         encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4);
+        encode(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s5);
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+        EXPECT_GT(bin(src4.data(), s4.size()), bin(src5.data(), s5.size()));
     }
     s0.reset();
     s1.reset();
     s2.reset();
     s3.reset();
     s4.reset();
+    s5.reset();
     {
         // ascending nullable
         encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1);
         encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2);
         encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3);
         encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4);
+        encode_nullable(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s5);
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+        EXPECT_LT(bin(src4.data(), s4.size()), bin(src5.data(), s5.size()));
     }
     s0.reset();
     s1.reset();
     s2.reset();
     s3.reset();
     s4.reset();
+    s5.reset();
     {
         // descending nullable
         encode_nullable({}, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s0);
@@ -667,10 +765,12 @@ TEST_F(coder_test, text_ordering) {
         encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2);
         encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3);
         encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4);
+        encode_nullable(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s5);
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+        EXPECT_GT(bin(src4.data(), s4.size()), bin(src5.data(), s5.size()));
     }
 }
 }

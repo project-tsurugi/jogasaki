@@ -94,13 +94,19 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr) {
+    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr, bool varying, std::size_t max_len) {
         std::string_view sv{data};
         // for key encoding, we are assuming the text is not so long
         BOOST_ASSERT(sv.length() < 32768); //NOLINT
-        details::text_encoding_prefix_type len{static_cast<details::text_encoding_prefix_type>(sv.length())};
-        do_write<details::text_encoding_prefix_type_bits>(details::key_encode<details::text_encoding_prefix_type_bits>(len, odr));
         do_write(sv.data(), sv.size(), odr);
+        if(! varying) {
+            // padding chars
+            if(sv.size() < max_len) {
+                do_write('\x20', max_len-sv.size(), odr);
+            }
+        }
+        auto& term = details::get_terminator(odr);
+        write(term.data(), term.size());
     }
 
     /**
@@ -155,7 +161,7 @@ private:
     }
 
     void do_write(char const* dt, std::size_t sz, order odr);
-
+    void do_write(char const ch, std::size_t sz, order odr);
 };
 
 }

@@ -38,6 +38,19 @@ inline constexpr order operator~(order o) noexcept {
     }
 }
 
+struct varlen_info {
+    bool varying_{};  //NOLINT
+    std::size_t length_{};  //NOLINT
+
+    [[nodiscard]] bool varying() const noexcept {
+        return varying_;
+    }
+
+    [[nodiscard]] std::size_t length() const noexcept {
+        return length_;
+    }
+};
+
 /**
  * @brief specification on encoding/decoding
  */
@@ -51,8 +64,14 @@ public:
     /**
      * @brief create new coding spec
      */
-    constexpr coding_spec(bool is_key, order order) noexcept :
-        is_key_(is_key), order_(order)
+    constexpr coding_spec(
+        bool is_key,
+        order order,
+        varlen_info vi = {}
+    ) noexcept :
+        is_key_(is_key),
+        order_(order),
+        varlen_info_(vi)
     {}
 
     /**
@@ -68,9 +87,26 @@ public:
     [[nodiscard]] order ordering() const noexcept {
         return order_;
     }
+
+    /**
+     * @brief returns the varlen info
+     */
+    [[nodiscard]] class varlen_info const& varlen_info() const noexcept {
+        return varlen_info_;
+    }
+
+    /**
+     * @brief setter for varlen info
+     */
+    void varlen_info(class varlen_info vi) noexcept {
+        varlen_info_ = vi;
+    }
+
 private:
     bool is_key_{false};
     order order_{order::undefined};
+    class varlen_info varlen_info_{};
+
 };
 
 // predefined coding specs
@@ -82,6 +118,52 @@ namespace details {
 
 using text_encoding_prefix_type = std::int16_t;
 constexpr static std::size_t text_encoding_prefix_type_bits = sizeof(std::int16_t) * bits_per_byte;
+
+using text_terminator_type = std::int64_t;
+constexpr static std::size_t text_terminator_type_bits = sizeof(std::int64_t) * bits_per_byte;
+
+class text_terminator {
+public:
+    constexpr static size_t byte_size = 4;
+
+    constexpr explicit text_terminator(order odr) {
+        for(char & ch : buf_) {  //NOLINT
+            ch = static_cast<char>(odr == kvs::order::ascending ? 0 : -1);
+        }
+    }
+
+    char const* data() const noexcept {
+        return std::addressof(buf_[0]); //NOLINT
+    }
+
+    bool equal(char const* s, std::size_t safe_len) const noexcept {
+        BOOST_ASSERT(byte_size <= safe_len); //NOLINT
+        (void)safe_len;
+        for(std::size_t i=0; i < byte_size; ++i) {
+            if(s[i] != buf_[i]) return false; //NOLINT
+        }
+        return true;
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return byte_size;
+    }
+
+private:
+    union {
+        char buf_[byte_size] = {};  //NOLINT
+    };
+};
+
+constexpr static text_terminator terminator_asc{order::ascending};
+constexpr static text_terminator terminator_desc{order::descending};
+constexpr static text_terminator terminator_undef{order::undefined};
+inline static text_terminator const& get_terminator(order odr) noexcept {
+    if(odr == order::ascending) return terminator_asc;
+    if(odr == order::descending) return terminator_desc;
+    return terminator_undef;
+}
+
 
 template<typename To, typename From>
 static inline To type_change(From from) {

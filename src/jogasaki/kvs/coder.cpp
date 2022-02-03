@@ -32,6 +32,7 @@ void encode(
 ) {
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
+    auto vi = spec.varlen_info();
     switch(type.kind()) {
         case kind::boolean: dest.write<runtime_t<kind::boolean>>(src.get_value<runtime_t<kind::boolean>>(offset), odr); break;
         case kind::int1: dest.write<runtime_t<kind::int1>>(src.get_value<runtime_t<kind::int1>>(offset), odr); break;
@@ -40,7 +41,7 @@ void encode(
         case kind::int8: dest.write<runtime_t<kind::int8>>(src.get_value<runtime_t<kind::int8>>(offset), odr); break;
         case kind::float4: dest.write<runtime_t<kind::float4>>(src.get_value<runtime_t<kind::float4>>(offset), odr); break;
         case kind::float8: dest.write<runtime_t<kind::float8>>(src.get_value<runtime_t<kind::float8>>(offset), odr); break;
-        case kind::character: dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr); break;
+        case kind::character: dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr, vi.varying(), vi.length()); break;
         default:
             fail();
     }
@@ -72,6 +73,7 @@ void encode(
     using kind = meta::field_type_kind;
     BOOST_ASSERT(! src.empty());  //NOLINT
     auto odr = spec.ordering();
+    auto vi = spec.varlen_info();
     switch(type.kind()) {
         case kind::boolean: dest.write<runtime_t<kind::boolean>>(src.to<runtime_t<kind::boolean>>(), odr); break;
         case kind::int1: dest.write<runtime_t<kind::int1>>(src.to<runtime_t<kind::int1>>(), odr); break;
@@ -80,7 +82,7 @@ void encode(
         case kind::int8: dest.write<runtime_t<kind::int8>>(src.to<runtime_t<kind::int8>>(), odr); break;
         case kind::float4: dest.write<runtime_t<kind::float4>>(src.to<runtime_t<kind::float4>>(), odr); break;
         case kind::float8: dest.write<runtime_t<kind::float8>>(src.to<runtime_t<kind::float8>>(), odr); break;
-        case kind::character: dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr); break;
+        case kind::character: dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr, vi.varying(), vi.length()); break;
         default:
             fail();
     }

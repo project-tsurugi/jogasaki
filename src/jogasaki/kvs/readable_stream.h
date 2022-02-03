@@ -105,6 +105,18 @@ public:
         return value;
     }
 
+    std::size_t read_text_length(order odr) {
+        auto& term = details::get_terminator(odr);
+        auto pos = pos_;
+        while(pos < capacity_) {
+            if(term.equal(base_+pos, capacity_-pos)) {
+                return pos - pos_;
+            }
+            ++pos;
+        }
+        return pos - pos_;
+    }
+
     /**
      * @brief read next text in the buffer
      * @param odr the order of the field
@@ -113,12 +125,10 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
-        auto l = read<details::text_encoding_prefix_type>(odr, false);
-        BOOST_ASSERT(l >= 0); //NOLINT
-        auto len = static_cast<std::size_t>(l);
+        auto len = read_text_length(odr);
         BOOST_ASSERT(pos_ + len <= capacity_);  // NOLINT
         auto pos = pos_;
-        pos_ += len;
+        pos_ += len + details::text_terminator::byte_size;
         if (!discard && len > 0) {
             auto p = static_cast<char*>(resource->allocate(len));
             if (odr == order::ascending) {

@@ -71,5 +71,14 @@ void writable_stream::do_write(char const* dt, std::size_t sz, order odr) {
     pos_ += sz;
 }
 
+void writable_stream::do_write(char const ch, std::size_t sz, order odr) {
+    BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
+    if (sz > 0 && capacity_ > 0) {
+        for (std::size_t i = 0; i < sz; ++i) {
+            *(base_ + pos_ + i) = odr == order::ascending ? ch : ~ch;  // NOLINT
+        }
+    }
+    pos_ += sz;
+}
 }
 

@@ -90,7 +90,7 @@ TEST_F(tpch_test, q2_1) {
         "AND PS_PARTKEY = :partkey ";
 
     auto ps = api::create_parameter_set();
-    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB   "sv);
+    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBBBBB"sv);
     set(*ps, "partkey", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
@@ -118,7 +118,7 @@ TEST_F(tpch_test, q2_2) {
     set(*ps, "partkey", api::field_type_kind::int8, 1);
     set(*ps, "size", api::field_type_kind::int8, 1);
     set(*ps, "type", api::field_type_kind::character, "BBBBBBBB"sv);
-    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB   "sv);
+    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBBBBB"sv);
     set(*ps, "mincost", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};

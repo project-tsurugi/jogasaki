@@ -86,7 +86,7 @@ TEST_F(tpcc_test, warehouse) {
     execute_query("SELECT * FROM WAREHOUSE WHERE w_id >= 10 ORDER BY w_id", result);
     ASSERT_EQ(2, result.size());
     EXPECT_EQ(10, result[0].get_value<std::int64_t>(0));
-    EXPECT_EQ(accessor::text("fogereb   "), result[0].get_value<accessor::text>(1));
+    EXPECT_EQ(accessor::text("fogereb"), result[0].get_value<accessor::text>(1));
 
     EXPECT_EQ(20, result[1].get_value<std::int64_t>(0));
 }
@@ -311,7 +311,7 @@ TEST_F(tpcc_test, payment1) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment_update2) {
@@ -355,7 +355,7 @@ TEST_F(tpcc_test, payment2) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment3) {
@@ -370,7 +370,7 @@ TEST_F(tpcc_test, payment3) {
 
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
-    resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
+    resolve(query, ":c_last", "'BBBBBBBBBBBBBBBB'");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
@@ -390,7 +390,7 @@ TEST_F(tpcc_test, payment4) {
 
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
-    resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
+    resolve(query, ":c_last", "'BBBBBBBBBBBBBBBB'");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
@@ -415,7 +415,7 @@ TEST_F(tpcc_test, payment5) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment6) {
@@ -433,7 +433,7 @@ TEST_F(tpcc_test, payment6) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
+    EXPECT_EQ(accessor::text("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, payment_update3) {
@@ -534,7 +534,7 @@ TEST_F(tpcc_test, order_status2) {
 
     resolve(query, ":c_w_id", "1");
     resolve(query, ":c_d_id", "1");
-    resolve(query, ":c_last", "'BBBBBBBBBBBBBBBBBBBBBB'");
+    resolve(query, ":c_last", "'BBBBBBBBBBBBBBBB'");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
@@ -722,7 +722,7 @@ TEST_F(tpcc_test, delivery_update2) {
         "ol_w_id = :ol_w_id"
     ;
 
-    resolve(query, ":ol_delivery_d", "'A'"); // nullable
+    resolve(query, ":ol_delivery_d", "'AAAAAAAAAAAAAAAAAAAAAAAAA'"); // nullable
     resolve(query, ":ol_o_id", "1");
     resolve(query, ":ol_d_id", "1");
     resolve(query, ":ol_w_id", "1");
@@ -741,7 +741,7 @@ TEST_F(tpcc_test, delivery_update2) {
     std::vector<mock::basic_record> result{};
     execute_query(verify, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(accessor::text("A"), result[0].get_value<accessor::text>(0));
+    EXPECT_EQ(accessor::text("AAAAAAAAAAAAAAAAAAAAAAAAA"), result[0].get_value<accessor::text>(0));
 }
 
 TEST_F(tpcc_test, delivery3) {

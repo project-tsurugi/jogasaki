@@ -20,6 +20,7 @@
 #include <boost/filesystem.hpp>
 
 #include <takatori/util/fail.h>
+#include <takatori/type/character.h>
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/logging.h>
@@ -264,8 +265,8 @@ inline void load_storage_data(
                 }
                 case kind::character: {
                     char c = 'A' + val % 26;
-                    std::size_t len = 1 + (sequential_data ? record_count : rnd()) % 70;
-                    len = record_count % 2 == 1 ? len + 20 : len;
+                    auto& ct = takatori::util::unsafe_downcast<takatori::type::character>(k.type());
+                    auto len = ct.length() ? *ct.length() : 1;
                     std::string d(len, c);
                     expression::any a{create_value<accessor::text>(
                         accessor::text{d.data(), d.size()}, record_count, nullable)

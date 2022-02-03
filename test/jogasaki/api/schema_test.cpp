@@ -429,4 +429,5 @@ TEST_F(schema_test, null_value) {
         EXPECT_EQ(exp, result[0]);
     }
 }
+
 }

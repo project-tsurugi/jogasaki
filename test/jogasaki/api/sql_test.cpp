@@ -299,4 +299,22 @@ TEST_F(sql_test, update_delete_secondary_index) {
     }
 }
 
+TEST_F(sql_test, update_char_columns) {
+    execute_statement( "INSERT INTO CHAR_TAB(C0, CH, VC) VALUES (0, '000', '000')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CH, VC FROM CHAR_TAB", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_EQ((create_record<kind::character, kind::character>(accessor::text{"000  "sv}, accessor::text{"000"sv})), result[0]);
+    }
+    execute_statement("UPDATE CHAR_TAB SET CH='11', VC='11' WHERE C0=0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CH, VC FROM CHAR_TAB", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        EXPECT_EQ((create_record<kind::character, kind::character>(accessor::text{"11   "sv}, accessor::text{"11"sv})), result[0]);
+    }
+}
 }

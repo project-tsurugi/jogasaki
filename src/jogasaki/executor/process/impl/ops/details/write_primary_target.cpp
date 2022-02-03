@@ -285,9 +285,11 @@ std::vector<details::field_info> write_primary_target::create_extracted_fields(
         for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
             auto&& k = idx.keys()[i];
             auto kc = bindings(k.column());
+            auto& type = k.column().type();
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
+            spec.storage(details::extract_storage_spec(type));
             ret.emplace_back(
                 t,
                 true,
@@ -306,13 +308,15 @@ std::vector<details::field_info> write_primary_target::create_extracted_fields(
         auto b = bindings(v);
         auto& c = static_cast<yugawara::storage::column const&>(v);
         auto t = utils::type_for(c.type());
+        auto spec = kvs::spec_value;
+        spec.storage(details::extract_storage_spec(c.type()));
         ret.emplace_back(
             t,
             true,
             meta->value_offset(i),
             meta->nullity_offset(i),
             c.criteria().nullity().nullable(),
-            kvs::spec_value
+            spec
         );
     }
     return ret;

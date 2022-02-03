@@ -25,6 +25,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
+#include <jogasaki/executor/process/impl/ops/details/write_utils.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -193,22 +194,6 @@ status encode_tuple(
     return status::ok;
 }
 
-constexpr static std::size_t system_varchar_default_length = 1UL << 32U;
-constexpr static std::size_t system_char_default_length = 1UL;
-constexpr static std::size_t system_char_max_length = 1UL << 10U;
-
-// padding occurs only on write operations. search/find/scan don't add padding,
-// and use the data in the storage or given condition expression.
-kvs::storage_spec extract_storage_spec(takatori::type::data const& type) {
-    if(type.kind() == takatori::type::type_kind::character) {
-        auto& ct = takatori::util::unsafe_downcast<takatori::type::character>(type);
-        auto varying = ct.varying();
-        auto len = ct.length() ? *ct.length() : (varying ? system_varchar_default_length : system_char_default_length);
-        return {!varying, len};
-    }
-    return {};
-}
-
 void create_generated_field(
     std::vector<details::write_field>& ret,
     std::size_t index,
@@ -276,7 +261,7 @@ std::vector<details::write_field> write::create_fields(
             auto t = utils::type_for(type);
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            spec.storage(extract_storage_spec(type));
+            spec.storage(process::impl::ops::details::extract_storage_spec(type));
             bool nullable = k.column().criteria().nullity().nullable();
             if(variable_indices.count(kc.reference()) == 0) {
                 // no column specified - use default value
@@ -301,7 +286,7 @@ std::vector<details::write_field> write::create_fields(
             auto t = utils::type_for(type);
             bool nullable = c.criteria().nullity().nullable();
             auto spec = kvs::spec_value;
-            spec.storage(extract_storage_spec(type));
+            spec.storage(process::impl::ops::details::extract_storage_spec(type));
             if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = c.default_value();

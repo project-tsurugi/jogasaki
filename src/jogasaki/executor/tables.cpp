@@ -242,6 +242,28 @@ void add_test_tables(storage::configurable_provider& provider) {
         });
     }
     {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "CHAR_TAB",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "VC", type::character(type::varying, 5) , nullity{true} },
+                { "CH", type::character(~type::varying, 5) , nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+            },
+            index_features
+        });
+    }
+    {
         auto s1 = std::make_shared<storage::sequence>(
             tseq0_c0_sequence,
             "tseq0_c0_sequence"

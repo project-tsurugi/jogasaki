@@ -168,7 +168,7 @@ private:
     }
 
     void do_write(char const* dt, std::size_t sz, order odr);
-    void do_write(char const ch, std::size_t sz, order odr);
+    void do_write(char ch, std::size_t sz, order odr);
 };
 
 }

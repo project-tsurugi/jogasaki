@@ -109,7 +109,7 @@ public:
         auto& term = details::get_terminator(odr);
         auto pos = pos_;
         while(pos < capacity_) {
-            if(term.equal(base_+pos, capacity_-pos)) {
+            if(term.equal(base_+pos, capacity_-pos)) {  //NOLINT
                 return pos - pos_;
             }
             ++pos;

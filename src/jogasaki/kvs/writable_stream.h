@@ -18,9 +18,12 @@
 #include <cmath>
 #include <boost/endian/conversion.hpp>
 
+#include <jogasaki/logging.h>
 #include "readable_stream.h"
 
 namespace jogasaki::kvs {
+
+static constexpr char padding_character = '\x20';
 
 namespace details {
 
@@ -94,15 +97,19 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr, bool varying, std::size_t max_len) {
+    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr, bool add_padding, std::size_t max_len) {
         std::string_view sv{data};
-        // for key encoding, we are assuming the text is not so long
-        BOOST_ASSERT(sv.length() < 32768); //NOLINT
-        do_write(sv.data(), sv.size(), odr);
-        if(! varying) {
+        auto sz = sv.length();
+        if(max_len < sz) {
+            VLOG(log_warning) << "data truncation occurred. storage max:" << max_len << " data length:" << sz;
+            sz = max_len;
+            //TODO raise error
+        }
+        do_write(sv.data(), sz, odr);
+        if(add_padding) {
             // padding chars
             if(sv.size() < max_len) {
-                do_write('\x20', max_len-sv.size(), odr);
+                do_write(padding_character, max_len-sv.size(), odr);
             }
         }
         auto& term = details::get_terminator(odr);

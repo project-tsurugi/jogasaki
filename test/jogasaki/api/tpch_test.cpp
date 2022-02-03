@@ -90,7 +90,7 @@ TEST_F(tpch_test, q2_1) {
         "AND PS_PARTKEY = :partkey ";
 
     auto ps = api::create_parameter_set();
-    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB   "sv);
     set(*ps, "partkey", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
@@ -117,8 +117,8 @@ TEST_F(tpch_test, q2_2) {
     auto ps = api::create_parameter_set();
     set(*ps, "partkey", api::field_type_kind::int8, 1);
     set(*ps, "size", api::field_type_kind::int8, 1);
-    set(*ps, "type", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
-    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
+    set(*ps, "type", api::field_type_kind::character, "BBBBBBBB"sv);
+    set(*ps, "region", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB   "sv);
     set(*ps, "mincost", api::field_type_kind::int8, 1);
 
     std::vector<mock::basic_record> result{};
@@ -139,8 +139,8 @@ TEST_F(tpch_test, q6) {
         "AND L_QUANTITY < :quantity";
 
     auto ps = api::create_parameter_set();
-    set(*ps, "datefrom", api::field_type_kind::character, "BBBBBBBBBBBBBBBBBBBBBB"sv);
-    set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCCCCCCCCCCCCCC"sv);
+    set(*ps, "datefrom", api::field_type_kind::character, "BBBBBBBBBB"sv);
+    set(*ps, "dateto", api::field_type_kind::character, "CCCCCCCCCC"sv);
     set(*ps, "discount", api::field_type_kind::int8, 1);
     set(*ps, "quantity", api::field_type_kind::int8, 2);
 

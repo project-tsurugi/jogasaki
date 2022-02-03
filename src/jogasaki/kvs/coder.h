@@ -38,17 +38,30 @@ inline constexpr order operator~(order o) noexcept {
     }
 }
 
-struct varlen_info {
-    bool varying_{};  //NOLINT
-    std::size_t length_{};  //NOLINT
+class storage_spec {
+public:
+    constexpr static std::size_t system_max_length = 2UL * 1024 * 1024;
 
-    [[nodiscard]] bool varying() const noexcept {
-        return varying_;
+    storage_spec() = default;
+    storage_spec(
+        bool add_padding,
+        std::size_t length
+    ) :
+        add_padding_(add_padding),
+        length_(length)
+    {}
+
+    [[nodiscard]] bool add_padding() const noexcept {
+        return add_padding_;
     }
 
     [[nodiscard]] std::size_t length() const noexcept {
         return length_;
     }
+
+private:
+    bool add_padding_{};  //NOLINT
+    std::size_t length_{system_max_length};  //NOLINT
 };
 
 /**
@@ -67,11 +80,11 @@ public:
     constexpr coding_spec(
         bool is_key,
         order order,
-        varlen_info vi = {}
+        storage_spec vi = {}
     ) noexcept :
         is_key_(is_key),
         order_(order),
-        varlen_info_(vi)
+        storage_spec_(vi)
     {}
 
     /**
@@ -91,21 +104,21 @@ public:
     /**
      * @brief returns the varlen info
      */
-    [[nodiscard]] class varlen_info const& varlen_info() const noexcept {
-        return varlen_info_;
+    [[nodiscard]] storage_spec const& storage() const noexcept {
+        return storage_spec_;
     }
 
     /**
      * @brief setter for varlen info
      */
-    void varlen_info(class varlen_info vi) noexcept {
-        varlen_info_ = vi;
+    void storage(storage_spec vi) noexcept {
+        storage_spec_ = vi;
     }
 
 private:
     bool is_key_{false};
     order order_{order::undefined};
-    class varlen_info varlen_info_{};
+    storage_spec storage_spec_{};
 
 };
 
@@ -115,12 +128,6 @@ constexpr coding_spec spec_key_descending = coding_spec(true, order::descending)
 constexpr coding_spec spec_value = coding_spec(false, order::undefined);
 
 namespace details {
-
-using text_encoding_prefix_type = std::int16_t;
-constexpr static std::size_t text_encoding_prefix_type_bits = sizeof(std::int16_t) * bits_per_byte;
-
-using text_terminator_type = std::int64_t;
-constexpr static std::size_t text_terminator_type_bits = sizeof(std::int64_t) * bits_per_byte;
 
 class text_terminator {
 public:
@@ -132,7 +139,7 @@ public:
         }
     }
 
-    char const* data() const noexcept {
+    [[nodiscard]] char const* data() const noexcept {
         return std::addressof(buf_[0]); //NOLINT
     }
 
@@ -163,7 +170,6 @@ inline static text_terminator const& get_terminator(order odr) noexcept {
     if(odr == order::descending) return terminator_desc;
     return terminator_undef;
 }
-
 
 template<typename To, typename From>
 static inline To type_change(From from) {

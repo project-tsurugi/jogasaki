@@ -86,7 +86,7 @@ TEST_F(tpcc_test, warehouse) {
     execute_query("SELECT * FROM WAREHOUSE WHERE w_id >= 10 ORDER BY w_id", result);
     ASSERT_EQ(2, result.size());
     EXPECT_EQ(10, result[0].get_value<std::int64_t>(0));
-    EXPECT_EQ(accessor::text("fogereb"), result[0].get_value<accessor::text>(1));
+    EXPECT_EQ(accessor::text("fogereb   "), result[0].get_value<accessor::text>(1));
 
     EXPECT_EQ(20, result[1].get_value<std::int64_t>(0));
 }

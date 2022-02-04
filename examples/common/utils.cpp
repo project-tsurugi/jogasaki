@@ -79,4 +79,42 @@ namespace jogasaki::common_cli {
         }
     }
 
+
+    std::vector<std::string> tpch_tables = {  // NOLINT
+        "PART",
+        "SUPPLIER",
+        "PARTSUPP",
+        "CUSTOMER",
+        "ORDERS",
+        "LINEITEM",
+        "NATION",
+        "REGION"
+    };
+
+    void
+    dump_tpch(jogasaki::api::database& db, std::string &location)
+    {
+        boost::filesystem::path dir = prepare(location);
+        for (auto& table : tpch_tables) {
+            std::ofstream ofs((dir / (table+".tbldmp")).c_str());
+            if (ofs.fail()) {
+                throw std::ios_base::failure("Failed to open file.");
+            }
+            db.dump(ofs, table, FLAGS_dump_batch_size);
+        }
+    }
+
+    void
+    load_tpch(jogasaki::api::database& db, std::string &location)
+    {
+        boost::filesystem::path dir = prepare(location);
+        for (auto& table : tpch_tables) {
+            std::ifstream ifs((dir / (table+".tbldmp")).c_str());
+            if (ifs.fail()) {
+                throw std::ios_base::failure("Failed to open file.");
+            }
+            db.load(ifs, table, FLAGS_load_batch_size);
+        }
+    }
+
 }  // jogasaki::common_cli

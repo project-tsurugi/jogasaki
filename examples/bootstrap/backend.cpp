@@ -37,6 +37,7 @@ DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_uint32(threads, 5, "thread pool size");  //NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
+DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 
@@ -55,9 +56,21 @@ int backend_main(int argc, char **argv) {
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    bool tpch_mode = false;
+    bool tpcc_mode = true;
+    if (FLAGS_tpch) {
+        tpch_mode = true;
+        tpcc_mode = false;
+    }
+
     // database
     auto cfg = std::make_shared<jogasaki::configuration>();
-    cfg->prepare_benchmark_tables(true);
+    if (tpcc_mode) {
+        cfg->prepare_benchmark_tables(true);
+    }
+    if (tpch_mode) {
+        cfg->prepare_analytics_benchmark_tables(true);
+    }
     cfg->thread_pool_size(FLAGS_threads);
 
     auto db = jogasaki::api::create_database(cfg);
@@ -87,15 +100,28 @@ int backend_main(int argc, char **argv) {
         std::abort();
     }
     if (FLAGS_load) {
-        // load tpc-c tables
-        LOG(INFO) << "TPC-C data load begin";
-        try {
-            jogasaki::common_cli::load(*db, FLAGS_location);
-        } catch (std::exception& e) {
-            LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
-            std::abort();
+        if (tpcc_mode) {
+            // load tpc-c tables
+            LOG(INFO) << "TPC-C data load begin";
+            try {
+                jogasaki::common_cli::load(*db, FLAGS_location);
+            } catch (std::exception& e) {
+                LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
+                std::abort();
+            }
+            LOG(INFO) << "TPC-C data load end";
         }
-        LOG(INFO) << "TPC-C data load end";
+        if (tpch_mode) {
+            // load tpc-h tables
+            LOG(INFO) << "TPC-H data load begin";
+            try {
+                jogasaki::common_cli::load_tpch(*db, FLAGS_location);
+            } catch (std::exception& e) {
+                LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
+                std::abort();
+            }
+            LOG(INFO) << "TPC-H data load end";
+        }
     }
 
     if (auto rc = endpoint->start(); rc != status::ok) {

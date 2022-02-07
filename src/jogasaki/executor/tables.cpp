@@ -548,10 +548,10 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
     {
 //        "CREATE TABLE WAREHOUSE ("
 //        "w_id INT NOT NULL, "
-//        "w_name CHAR(10) NOT NULL, "
-//        "w_street_1 CHAR(20) NOT NULL, "
-//        "w_street_2 CHAR(20) NOT NULL, "
-//        "w_city CHAR(20) NOT NULL, "
+//        "w_name VARCHAR(10) NOT NULL, "
+//        "w_street_1 VARCHAR(20) NOT NULL, "
+//        "w_street_2 VARCHAR(20) NOT NULL, "
+//        "w_city VARCHAR(20) NOT NULL, "
 //        "w_state CHAR(2) NOT NULL, "
 //        "w_zip CHAR(9) NOT NULL, "
 //        "w_tax DOUBLE NOT NULL, "
@@ -561,10 +561,10 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             "WAREHOUSE",
             {
                 { "w_id", int_type(), not_null },
-                { "w_name", type::character(10), not_null },
-                { "w_street_1", type::character(20), not_null },
-                { "w_street_2", type::character(20), not_null },
-                { "w_city", type::character(20), not_null },
+                { "w_name", type::character(type::varying, 10), not_null },
+                { "w_street_1", type::character(type::varying, 20), not_null },
+                { "w_street_2", type::character(type::varying, 20), not_null },
+                { "w_city", type::character(type::varying, 20), not_null },
                 { "w_state", type::character(2), not_null },
                 { "w_zip", type::character(9), not_null },
                 { "w_tax", type::float8(), not_null },
@@ -594,10 +594,10 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
 //        "CREATE TABLE DISTRICT ("
 //        "d_id INT NOT NULL, "
 //        "d_w_id INT NOT NULL, "
-//        "d_name CHAR(10) NOT NULL, "
-//        "d_street_1 CHAR(20) NOT NULL, "
-//        "d_street_2 CHAR(20) NOT NULL, "
-//        "d_city CHAR(20) NOT NULL, "
+//        "d_name VARCHAR(10) NOT NULL, "
+//        "d_street_1 VARCHAR(20) NOT NULL, "
+//        "d_street_2 VARCHAR(20) NOT NULL, "
+//        "d_city VARCHAR(20) NOT NULL, "
 //        "d_state CHAR(2) NOT NULL, "
 //        "d_zip  CHAR(9) NOT NULL, "
 //        "d_tax DOUBLE NOT NULL, "
@@ -609,10 +609,10 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
             {
                 { "d_id", int_type(), not_null },
                 { "d_w_id", int_type(), not_null },
-                { "d_name", type::character(10), not_null },
-                { "d_street_1", type::character(20), not_null },
-                { "d_street_2", type::character(20), not_null },
-                { "d_city", type::character(20), not_null },
+                { "d_name", type::character(type::varying, 10), not_null },
+                { "d_street_1", type::character(type::varying, 20), not_null },
+                { "d_street_2", type::character(type::varying, 20), not_null },
+                { "d_city", type::character(type::varying, 20), not_null },
                 { "d_state", type::character(2), not_null },
                 { "d_zip", type::character(9), not_null },
                 { "d_tax", type::float8(), not_null },
@@ -646,12 +646,12 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
 //        "c_id INT NOT NULL, "
 //        "c_d_id INT NOT NULL, "
 //        "c_w_id INT NOT NULL, "
-//        "c_first CHAR(16) NOT NULL, "
+//        "c_first VARCHAR(16) NOT NULL, "
 //        "c_middle CHAR(2) NOT NULL, "
-//        "c_last CHAR(16) NOT NULL, "
-//        "c_street_1 CHAR(20) NOT NULL, "
-//        "c_street_2 CHAR(20) NOT NULL, "
-//        "c_city CHAR(20) NOT NULL, "
+//        "c_last VARCHAR(16) NOT NULL, "
+//        "c_street_1 VARCHAR(20) NOT NULL, "
+//        "c_street_2 VARCHAR(20) NOT NULL, "
+//        "c_city VARCHAR(20) NOT NULL, "
 //        "c_state CHAR(2) NOT NULL, "
 //        "c_zip  CHAR(9) NOT NULL, "
 //        "c_phone CHAR(16) NOT NULL, "
@@ -663,7 +663,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
 //        "c_ytd_payment DOUBLE NOT NULL, "
 //        "c_payment_cnt INT NOT NULL, "
 //        "c_delivery_cnt INT NOT NULL, "
-//        "c_data CHAR(500) NOT NULL, "
+//        "c_data VARCHAR(500) NOT NULL, "
 //        "PRIMARY KEY(c_w_id, c_d_id, c_id))",
         auto t = provider.add_table({
             "CUSTOMER",
@@ -671,12 +671,12 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "c_id", int_type(), not_null },
                 { "c_d_id", int_type(), not_null },
                 { "c_w_id", int_type(), not_null },
-                { "c_first", type::character(16), not_null },
+                { "c_first", type::character(type::varying, 16), not_null },
                 { "c_middle", type::character(2), not_null },
-                { "c_last", type::character(16), not_null },
-                { "c_street_1", type::character(20), not_null },
-                { "c_street_2", type::character(20), not_null },
-                { "c_city", type::character(20), not_null },
+                { "c_last", type::character(type::varying, 16), not_null },
+                { "c_street_1", type::character(type::varying, 20), not_null },
+                { "c_street_2", type::character(type::varying, 20), not_null },
+                { "c_city", type::character(type::varying, 20), not_null },
                 { "c_state", type::character(2), not_null },
                 { "c_zip", type::character(9), not_null },
                 { "c_phone", type::character(16), not_null },
@@ -688,7 +688,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "c_ytd_payment", type::float8(), not_null },
                 { "c_payment_cnt", int_type(), not_null },
                 { "c_delivery_cnt", int_type(), not_null },
-                { "c_data", type::character(500), not_null },
+                { "c_data", type::character(type::varying, 500), not_null },
             },
         });
         provider.add_index({
@@ -869,18 +869,18 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
 //        "CREATE TABLE ITEM ("
 //        "i_id INT NOT NULL, "
 //        "i_im_id INT, " // not used
-//        "i_name CHAR(24) NOT NULL, "
+//        "i_name VARCHAR(24) NOT NULL, "
 //        "i_price DOUBLE NOT NULL, "
-//        "i_data CHAR(50) NOT NULL, "
+//        "i_data VARCHAR(50) NOT NULL, "
 //        "PRIMARY KEY(i_id))",
         auto t = provider.add_table({
             "ITEM",
             {
                 { "i_id", int_type(), not_null },
                 { "i_im_id", int_type(), not_null },
-                { "i_name", type::character(24), not_null },
+                { "i_name", type::character(type::varying, 24), not_null },
                 { "i_price", type::float8(), not_null },
-                { "i_data", type::character(50), not_null },
+                { "i_data", type::character(type::varying, 50), not_null },
             },
         });
         provider.add_index({
@@ -916,7 +916,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
 //        "s_ytd INT NOT NULL, "
 //        "s_order_cnt INT NOT NULL, "
 //        "s_remote_cnt INT NOT NULL, "
-//        "s_data CHAR(50) NOT NULL, "
+//        "s_data VARCHAR(50) NOT NULL, "
 //        "PRIMARY KEY(s_w_id, s_i_id))",
         auto t = provider.add_table({
             "STOCK",
@@ -937,7 +937,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "s_ytd", int_type(), not_null },
                 { "s_order_cnt", int_type(), not_null },
                 { "s_remote_cnt", int_type(), not_null },
-                { "s_data", type::character(50), not_null },
+                { "s_data", type::character(type::varying, 50), not_null },
             },
         });
         provider.add_index({
@@ -994,7 +994,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "h_w_id", int_type(), not_null },
                 { "h_date", type::character(25), not_null },
                 { "h_amount", type::float8(), not_null },
-                { "h_data", type::character(24), not_null },
+                { "h_data", type::character(type::varying, 24), not_null },
             },
         });
         provider.add_index({
@@ -1051,16 +1051,16 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
             "PART",
             {
                 {"P_PARTKEY", int_type(), not_null},
-                {"P_NAME", type::character(55), not_null},
+                {"P_NAME", type::character(type::varying, 55), not_null},
                 {"P_MFGR", type::character(25), not_null},
                 {"P_BRAND", type::character(10), not_null},
-                {"P_TYPE1", type::character(10), not_null},
-                {"P_TYPE2", type::character(10), not_null},
-                {"P_TYPE3", type::character(8), not_null},
+                {"P_TYPE1", type::character(type::varying, 10), not_null},
+                {"P_TYPE2", type::character(type::varying, 10), not_null},
+                {"P_TYPE3", type::character(type::varying, 8), not_null},
                 {"P_SIZE", type::int8(), not_null},
                 {"P_CONTAINER", type::character(10), not_null},
                 {"P_RETAILPRICE", int_type(), not_null},
-                {"P_COMMENT", type::character(23), not_null},
+                {"P_COMMENT", type::character(type::varying, 23), not_null},
             },
         });
         provider.add_index({
@@ -1099,11 +1099,11 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
             {
                 {"S_SUPPKEY", int_type(), not_null},
                 {"S_NAME", type::character(25), not_null},
-                {"S_ADDRESS", type::character(40), not_null},
+                {"S_ADDRESS", type::character(type::varying, 40), not_null},
                 {"S_NATIONKEY", int_type{}, not_null},
                 {"S_PHONE", type::character(15), not_null},
                 {"S_ACCTBAL", int_type{}, not_null},
-                {"S_COMMENT", type::character(101), not_null},
+                {"S_COMMENT", type::character(type::varying, 101), not_null},
             },
         });
         provider.add_index({
@@ -1138,7 +1138,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
                 {"PS_SUPPKEY", int_type(), not_null},
                 {"PS_AVAILQTY", int_type(), not_null},
                 {"PS_SUPPLYCOST", int_type(), not_null},
-                {"PS_COMMENT", type::character(199), not_null},
+                {"PS_COMMENT", type::character(type::varying, 199), not_null},
             },
         });
         provider.add_index({
@@ -1171,13 +1171,13 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
             "CUSTOMER",
             {
                 {"C_CUSTKEY", int_type(), not_null},
-                {"C_NAME", type::character(25), not_null},
-                {"C_ADDRESS", type::character(40), not_null},
+                {"C_NAME", type::character(type::varying, 25), not_null},
+                {"C_ADDRESS", type::character(type::varying, 40), not_null},
                 {"C_NATIONKEY", int_type(), not_null},
                 {"C_PHONE", type::character(15), not_null},
                 {"C_ACCTBAL", int_type(), not_null},
                 {"C_MKTSEGMENT", type::character(10), not_null},
-                {"C_COMMENT", type::character(117), not_null},
+                {"C_COMMENT", type::character(type::varying, 117), not_null},
             },
         });
         provider.add_index({
@@ -1221,7 +1221,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
                 {"O_ORDERPRIORITY", type::character(15), not_null},
                 {"O_CLERK", type::character(10), not_null},
                 {"O_SHIPPRIORITY", int_type(), not_null},
-                {"O_COMMENT", type::character(79), not_null},
+                {"O_COMMENT", type::character(type::varying, 79), not_null},
             },
         });
         provider.add_index({
@@ -1280,7 +1280,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
                 {"L_RECEIPTDATE", type::character(10), not_null},
                 {"L_SHIPINSTRUCT", type::character(25), not_null},
                 {"L_SHIPMODE", type::character(10), not_null},
-                {"L_COMMENT", type::character(44), not_null},
+                {"L_COMMENT", type::character(type::varying, 44), not_null},
             },
         });
         provider.add_index({
@@ -1322,7 +1322,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
                 {"N_NATIONKEY", int_type(), not_null},
                 {"N_NAME", type::character(25), not_null},
                 {"N_REGIONKEY", int_type(), not_null},
-                {"N_COMMENT", type::character(152), not_null},
+                {"N_COMMENT", type::character(type::varying, 152), not_null},
             },
         });
         provider.add_index({
@@ -1349,7 +1349,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
             {
                 {"R_REGIONKEY", int_type(), not_null},
                 {"R_NAME", type::character(25), not_null},
-                {"R_COMMENT", type::character(152), not_null},
+                {"R_COMMENT", type::character(type::varying, 152), not_null},
             },
         });
         provider.add_index({

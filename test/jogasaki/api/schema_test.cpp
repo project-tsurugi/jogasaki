@@ -83,7 +83,6 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(schema_test, variety_types) {
-    // TODO use int4, float4 - currently avoid them using null
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -132,9 +131,9 @@ TEST_F(schema_test, variety_types) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
 
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (0, '0', 0, 0.0, '0', '0', 0, 0.0, '0')");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (1, '1', 1, 1.0, '1', '1', 1, 1.0, '1')");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (2, '2', 2, 2.0, '2', '2', 2, 2.0, '2')");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST "
                   "WHERE "
@@ -142,26 +141,25 @@ TEST_F(schema_test, variety_types) {
                   "K2 = 1   AND "
                   "K3 = 1.0 AND "
                   "K4 = '1' AND "
-//                  "K5 = 1 AND "
-//                  "K6 = 1 AND "
+                  "K5 = 1 AND "
+                  "K6 = 1 AND "
                   "V1 = '1' AND "
                   "V2 = 1   AND "
                   "V3 = 1.0 AND "
                   "V4 = '1' AND "
-//                  "V5 = 1 AND "
-//                  "V6 = 1 AND "
+                  "V5 = 1 AND "
+                  "V6 = 1 AND "
                   "C0 = 1 ", result);
     ASSERT_EQ(1, result.size());
     auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
-        boost::dynamic_bitset<std::uint64_t>{"1100001100000"s},  // note right most is position 0
+        boost::dynamic_bitset<std::uint64_t>{"0000000000000"s},  // note right most is position 0
         std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
-        {false, false, false, false, false, true, true, false, false, false, false, true, true }
+        {false, false, false, false, false, false, false, false, false, false, false, false, false }
     );
     EXPECT_EQ(exp, result[0]);
 }
 
 TEST_F(schema_test, nullables) {
-    // TODO use int4, float4 - currently avoid them using null
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -210,11 +208,10 @@ TEST_F(schema_test, nullables) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
 
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (0, '0', 0, 0.0, '0', '0', 0, 0.0, '0')");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (1, '1', 1, 1.0, '1', '1', 1, 1.0, '1')");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (2, '2', 2, 2.0, '2', '2', 2, 2.0, '2')");
-
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST WHERE "
@@ -233,26 +230,25 @@ TEST_F(schema_test, nullables) {
                       "K2 = 1   AND "
                       "K3 = 1.0 AND "
                       "K4 = '1' AND "
-                      //                  "K5 = 1 AND "
-                      //                  "K6 = 1 AND "
+                      "K5 = 1 AND "
+                      "K6 = 1 AND "
                       "V1 = '1' AND "
                       "V2 = 1   AND "
                       "V3 = 1.0 AND "
                       "V4 = '1' AND "
-                      //                  "V5 = 1 AND "
-                      //                  "V6 = 1 AND "
+                      "V5 = 1 AND "
+                      "V6 = 1 AND "
                       "C0 = 1", result);
         ASSERT_EQ(1, result.size());
         auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
             std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
-            {false, false, false, false, false, true, true, false, false, false, false, true, true}
+            {false, false, false, false, false, false, false, false, false, false, false, false, false}
         );
         EXPECT_EQ(exp, result[0]);
     }
 }
 
 TEST_F(schema_test, descending_keys) {
-    // TODO use int4, float4 - currently avoid them using null
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -300,17 +296,17 @@ TEST_F(schema_test, descending_keys) {
         }
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
 
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (0, '0', 0, 0.0, '0', '0', 0, 0.0, '0')");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (1, '1', 1, 1.0, '1', '1', 1, 1.0, '1')");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, V1, V2, V3, V4) VALUES (2, '2', 2, 2.0, '2', '2', 2, 2.0, '2')");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST WHERE C0 = 1", result);
     ASSERT_EQ(1, result.size());
     auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
         std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
-        {false, false, false, false, false, true, true, false, false, false, false, true, true}
+        {false, false, false, false, false, false, false, false, false, false, false, false, false}
     );
     EXPECT_EQ(exp, result[0]);
 }

@@ -1219,7 +1219,7 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
                 {"O_TOTALPRICE", int_type(), not_null},
                 {"O_ORDERDATE", type::character(10), not_null},
                 {"O_ORDERPRIORITY", type::character(15), not_null},
-                {"O_CLERK", type::character(10), not_null},
+                {"O_CLERK", type::character(15), not_null},
                 {"O_SHIPPRIORITY", int_type(), not_null},
                 {"O_COMMENT", type::character(type::varying, 79), not_null},
             },

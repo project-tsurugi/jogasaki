@@ -197,11 +197,17 @@ std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_p
     kvs::readable_stream key{k.data(), k.size()};
     kvs::readable_stream value{v.data(), v.size()};
     executor::process::impl::expression::any dest{};
-    kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
+    if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
+        res != status::ok) {
+        fail();
+    }
     sequence_definition_id def_id{};
     sequence_id id{};
     def_id = dest.to<std::int64_t>();
-    kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
+    if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
+        res != status::ok) {
+        fail();
+    }
     id = dest.to<std::int64_t>();
     return {def_id, id};
 }

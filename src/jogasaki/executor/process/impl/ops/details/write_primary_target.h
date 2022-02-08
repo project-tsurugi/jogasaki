@@ -222,7 +222,7 @@ private:
         accessor::record_ref source
     ) const;
 
-    void decode_fields(
+    status decode_fields(
         std::vector<details::field_info> const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,

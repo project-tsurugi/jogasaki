@@ -112,12 +112,12 @@ private:
     std::vector<details::field_info> primary_value_fields_{};
     std::vector<details::secondary_index_field_info> secondary_key_fields_{};
 
-    void consume_secondary_key_fields(
+    status consume_secondary_key_fields(
         std::vector<details::secondary_index_field_info> const& fields,
         kvs::readable_stream& stream
     );
 
-    void decode_fields(
+    status decode_fields(
         std::vector<details::field_info> const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,
@@ -135,7 +135,7 @@ private:
         std::string_view& value_out
     );
 
-    void populate_field_variables(
+    status populate_field_variables(
         std::string_view key,
         std::string_view value,
         accessor::record_ref target,

@@ -277,8 +277,11 @@ status encode_nullable(
  * @param spec the coding spec for the decoded field
  * @param dest the any container for the result value
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, decode might have happened partially,
+ * so the read stream state and destination should be reset or discarded.
  */
-void decode(
+status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -295,8 +298,11 @@ void decode(
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, decode might have happened partially,
+ * so the read stream state and destination should be reset or discarded.
  */
-void decode(
+status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -314,8 +320,11 @@ void decode(
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, decode might have happened partially,
+ * so the read stream state and destination should be reset or discarded.
  */
-void decode_nullable(
+status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -332,8 +341,11 @@ void decode_nullable(
  * @param spec the coding spec for the decoded field
  * @param dest the any container for the result value
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, decode might have happened partially,
+ * so the read stream state and destination should be reset or discarded.
  */
-void decode_nullable(
+status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -346,8 +358,11 @@ void decode_nullable(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, decode might have happened partially,
+ * so the read stream state should be reset or discarded.
  */
-void consume_stream(
+status consume_stream(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec);
@@ -357,8 +372,11 @@ void consume_stream(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, decode might have happened partially,
+ * so the read stream state should be reset or discarded.
  */
-void consume_stream_nullable(
+status consume_stream_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec);

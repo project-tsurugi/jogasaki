@@ -109,7 +109,7 @@ status encode_nullable(
     return status::ok;
 }
 
-void decode(
+status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -131,9 +131,10 @@ void decode(
         default:
             fail();
     }
+    return status::ok;
 }
 
-void decode(
+status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -155,9 +156,10 @@ void decode(
         default:
             fail();
     }
+    return status::ok;
 }
 
-void decode_nullable(
+status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -173,11 +175,12 @@ void decode_nullable(
     bool is_null = flag == 0;
     dest.set_null(nullity_offset, is_null);
     if (! is_null) {
-        decode(src, type, spec, dest, offset, resource);
+        return decode(src, type, spec, dest, offset, resource);
     }
+    return status::ok;
 }
 
-void decode_nullable(
+status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
@@ -191,12 +194,12 @@ void decode_nullable(
     bool is_null = flag == 0;
     if (is_null) {
         dest = {};
-        return;
+        return status::ok;
     }
-    decode(src, type, spec, dest, resource);
+    return decode(src, type, spec, dest, resource);
 }
 
-void consume_stream(
+status consume_stream(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec
@@ -215,9 +218,10 @@ void consume_stream(
         default:
             fail();
     }
+    return status::ok;
 }
 
-void consume_stream_nullable(
+status consume_stream_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec
@@ -228,8 +232,9 @@ void consume_stream_nullable(
     BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
     bool is_null = flag == 0;
     if (! is_null) {
-        consume_stream(src, type, spec);
+        return consume_stream(src, type, spec);
     }
+    return status::ok;
 }
 
 }

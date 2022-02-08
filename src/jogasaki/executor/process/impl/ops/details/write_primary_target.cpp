@@ -157,7 +157,7 @@ void write_primary_target::update_record(
     }
 }
 
-void write_primary_target::decode_fields(
+status write_primary_target::decode_fields(
     std::vector<details::field_info> const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
@@ -165,22 +165,27 @@ void write_primary_target::decode_fields(
 ) const {
     for(auto&& f : fields) {
         if (f.nullable_) {
-            kvs::decode_nullable(
-                stream,
-                f.type_,
-                f.spec_,
-                target,
-                f.offset_,
-                f.nullity_offset_,
-                varlen_resource
-            );
+            if(auto res = kvs::decode_nullable(
+                    stream,
+                    f.type_,
+                    f.spec_,
+                    target,
+                    f.offset_,
+                    f.nullity_offset_,
+                    varlen_resource
+                ); res != status::ok) {
+                return res;
+            }
             continue;
         }
-        kvs::decode(stream, f.type_, f.spec_, target, f.offset_, varlen_resource);
+        if(auto res = kvs::decode(stream, f.type_, f.spec_, target, f.offset_, varlen_resource); res != status::ok) {
+            return res;
+        }
         target.set_null(f.nullity_offset_, false); // currently assuming fields are nullable and
         // f.nullity_offset_ is valid even if f.nullable_
         // is false
     }
+    return status::ok;
 }
 
 status write_primary_target::check_length_and_extend_buffer(

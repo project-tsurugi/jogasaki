@@ -64,11 +64,11 @@ TEST_F(coder_test, simple) {
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
     accessor::text txt2{&resource, "ABC"sv};
-    s.write(i32, asc);
-    s.write(f32, asc);
-    s.write(i64, asc);
-    s.write(f64, asc);
-    s.write(txt, asc, false, 3);
+    EXPECT_EQ(status::ok, s.write(i32, asc));
+    EXPECT_EQ(status::ok, s.write(f32, asc));
+    EXPECT_EQ(status::ok, s.write(i64, asc));
+    EXPECT_EQ(status::ok, s.write(f64, asc));
+    EXPECT_EQ(status::ok, s.write(txt, asc, false, 3));
 
     auto rs = s.readable();
     ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
@@ -88,11 +88,11 @@ TEST_F(coder_test, descendant) {
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
     accessor::text txt2{&resource, "ABC"sv};
-    s.write(i32, desc);
-    s.write(f32, desc);
-    s.write(i64, desc);
-    s.write(f64, desc);
-    s.write(txt, desc, false, 3);
+    EXPECT_EQ(status::ok, s.write(i32, desc));
+    EXPECT_EQ(status::ok, s.write(f32, desc));
+    EXPECT_EQ(status::ok, s.write(i64, desc));
+    EXPECT_EQ(status::ok, s.write(f64, desc));
+    EXPECT_EQ(status::ok, s.write(txt, desc, false, 3));
 
     auto rs = s.readable();
     ASSERT_EQ(i32, rs.read<std::int32_t>(desc, false));
@@ -107,8 +107,8 @@ TEST_F(coder_test, i32_asc) {
     kvs::writable_stream s{buf};
     int_t<32> i1{2};
     int_t<32> i2{-2};
-    s.write(i1, asc);
-    s.write(i2, asc);
+    EXPECT_EQ(status::ok, s.write(i1, asc));
+    EXPECT_EQ(status::ok, s.write(i2, asc));
 
     auto rs = s.readable();
     ASSERT_EQ(i1, rs.read<std::int32_t>(asc, false));
@@ -128,8 +128,8 @@ TEST_F(coder_test, i32_desc) {
     kvs::writable_stream s{buf};
     int_t<32> i1{2};
     int_t<32> i2{-2};
-    s.write(i1, desc);
-    s.write(i2, desc);
+    EXPECT_EQ(status::ok, s.write(i1, desc));
+    EXPECT_EQ(status::ok, s.write(i2, desc));
 
     auto rs = s.readable();
 
@@ -150,8 +150,8 @@ TEST_F(coder_test, i64_asc) {
     kvs::writable_stream s{buf};
     int_t<64> i1{2};
     int_t<64> i2{-2};
-    s.write(i1, asc);
-    s.write(i2, asc);
+    EXPECT_EQ(status::ok, s.write(i1, asc));
+    EXPECT_EQ(status::ok, s.write(i2, asc));
 
     auto rs = s.readable();
 
@@ -181,8 +181,8 @@ TEST_F(coder_test, i16_asc) {
     kvs::writable_stream s{buf};
     int_t<16> i1{2};
     int_t<16> i2{-2};
-    s.write(i1, asc);
-    s.write(i2, asc);
+    EXPECT_EQ(status::ok, s.write(i1, asc));
+    EXPECT_EQ(status::ok, s.write(i2, asc));
 
     auto rs = s.readable();
 
@@ -199,8 +199,8 @@ TEST_F(coder_test, i8_asc) {
     kvs::writable_stream s{buf};
     int_t<8> i1{2};
     int_t<8> i2{-2};
-    s.write(i1, asc);
-    s.write(i2, asc);
+    EXPECT_EQ(status::ok, s.write(i1, asc));
+    EXPECT_EQ(status::ok, s.write(i2, asc));
 
     auto rs = s.readable();
 
@@ -215,8 +215,8 @@ TEST_F(coder_test, f32_asc) {
     kvs::writable_stream s{buf};
     float_t<32> f1{2};
     float_t<32> f2{-2};
-    s.write(f1, asc);
-    s.write(f2, asc);
+    EXPECT_EQ(status::ok, s.write(f1, asc));
+    EXPECT_EQ(status::ok, s.write(f2, asc));
 
     auto rs = s.readable();
 
@@ -237,8 +237,8 @@ TEST_F(coder_test, f32_desc) {
     kvs::writable_stream s{buf};
     float_t<32> f1{2};
     float_t<32> f2{-2};
-    s.write(f1, desc);
-    s.write(f2, desc);
+    EXPECT_EQ(status::ok, s.write(f1, desc));
+    EXPECT_EQ(status::ok, s.write(f2, desc));
 
     auto rs = s.readable();
 
@@ -261,10 +261,10 @@ TEST_F(coder_test, float_nan) {
     float_t<32> f2{std::nanf("2")};
     float_t<64> f3{std::nan("3")};
     float_t<64> f4{std::nan("4")};
-    s.write(f1, asc);
-    s.write(f2, desc);
-    s.write(f3, asc);
-    s.write(f4, desc);
+    EXPECT_EQ(status::ok, s.write(f1, asc));
+    EXPECT_EQ(status::ok, s.write(f2, desc));
+    EXPECT_EQ(status::ok, s.write(f3, asc));
+    EXPECT_EQ(status::ok, s.write(f4, desc));
 
     auto rs = s.readable();
 
@@ -279,8 +279,8 @@ TEST_F(coder_test, f64_asc) {
     kvs::writable_stream s{buf};
     float_t<64> f1{2};
     float_t<64> f2{-2};
-    s.write(f1, asc);
-    s.write(f2, asc);
+    EXPECT_EQ(status::ok, s.write(f1, asc));
+    EXPECT_EQ(status::ok, s.write(f2, asc));
 
     auto rs = s.readable();
 
@@ -309,7 +309,7 @@ TEST_F(coder_test, text_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    s.write(txt, asc, false, 3);
+    EXPECT_EQ(status::ok, s.write(txt, asc, false, 3));
 
     auto rs = s.readable();
 
@@ -332,7 +332,7 @@ TEST_F(coder_test, text_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    s.write(txt, desc, false, 3);
+    EXPECT_EQ(status::ok, s.write(txt, desc, false, 3));
     auto rs = s.readable();
 
     ASSERT_EQ(txt, rs.read<accessor::text>(desc, false, &resource));
@@ -350,7 +350,7 @@ TEST_F(coder_test, empty_text_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, ""sv};
-    s.write(txt, asc, false, 3);
+    EXPECT_EQ(status::ok, s.write(txt, asc, false, 3));
 
     auto rs = s.readable();
     auto result = rs.read<accessor::text>(asc, false, &resource);
@@ -367,7 +367,7 @@ TEST_F(coder_test, empty_text_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, ""sv};
-    s.write(txt, desc, false, 3);
+    EXPECT_EQ(status::ok, s.write(txt, desc, false, 3));
 
     auto rs = s.readable();
     auto result = rs.read<accessor::text>(desc, false, &resource);
@@ -384,7 +384,7 @@ TEST_F(coder_test, text_non_variant_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    s.write(txt, asc, true, 6);
+    EXPECT_EQ(status::ok, s.write(txt, asc, true, 6));
     auto rs = s.readable();
 
     accessor::text exp{&resource, "ABC   "sv};
@@ -406,7 +406,7 @@ TEST_F(coder_test, text_non_variant_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    s.write(txt, desc, true, 6);
+    EXPECT_EQ(status::ok, s.write(txt, desc, true, 6));
     auto rs = s.readable();
 
     accessor::text exp{&resource, "ABC   "sv};

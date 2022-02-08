@@ -29,12 +29,13 @@ writable_stream::writable_stream(void* buffer, std::size_t capacity) :
 
 writable_stream::writable_stream(std::string& s) : writable_stream(s.data(), s.capacity()) {}
 
-void writable_stream::write(char const* dt, std::size_t sz) {
+status writable_stream::write(char const* dt, std::size_t sz) {
     BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
     if (sz > 0 && capacity_ > 0) {
         std::memcpy(base_ + pos_, dt, sz);  // NOLINT
     }
     pos_ += sz;
+    return status::ok;
 }
 
 void writable_stream::reset() {

@@ -114,7 +114,9 @@ public:
             }
         }
         auto& term = details::get_terminator(odr);
-        write(term.data(), term.size());
+        if(auto res = write(term.data(), term.size()); res != status::ok) {
+            return res;
+        }
         return status::ok;
     }
 
@@ -123,7 +125,7 @@ public:
      * @details the raw data is written to the stream. Given binary sequence is used
      * and no ordering or type conversion occurs.
      */
-    void write(char const* dt, std::size_t sz);
+    status write(char const* dt, std::size_t sz);
 
     /**
      * @brief reset the current position

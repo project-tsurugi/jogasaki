@@ -52,7 +52,9 @@ status details::write_secondary_target::encode_key(
                 }
             }
         }
-        s.write(primary_key.data(), primary_key.size());
+        if (auto res = s.write(primary_key.data(), primary_key.size()); res != status::ok) {
+            return res;
+        }
         if (loop == 0) {
             length = s.size();
             if (buf.size() < length) {

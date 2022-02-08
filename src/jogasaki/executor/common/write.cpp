@@ -145,7 +145,9 @@ status encode_tuple(
                         break;
                     case process::impl::ops::default_value_kind::immediate: {
                         auto d = f.default_value_;
-                        s.write(static_cast<char const*>(d.data()), d.size());
+                        if(auto res = s.write(static_cast<char const*>(d.data()), d.size()); res != status::ok) {
+                            return res;
+                        }
                         break;
                     }
                     case process::impl::ops::default_value_kind::sequence:
@@ -192,7 +194,10 @@ status encode_tuple(
             }
         }
         if (primary_key_tuple != nullptr) {
-            s.write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size());
+            if(auto res = s.write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size());
+                res != status::ok) {
+                return res;
+            }
         }
         if (loop == 0) {
             length = s.size();

@@ -433,8 +433,8 @@ TEST_F(coder_test, encode_decode) {
     test::record source_record{2, 2.0};
     test::record target_record{1, 1.0};
     auto src_meta = source_record.record_meta();
-    encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), spec_asc, s);
-    encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), spec_asc, s);
+    EXPECT_EQ(status::ok, encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), spec_asc, s));
+    EXPECT_EQ(status::ok, encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), spec_asc, s));
     auto rs = s.readable();
     auto tgt_meta = target_record.record_meta();
     decode(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
@@ -458,8 +458,8 @@ TEST_F(coder_test, encode_decode_any) {
 
     executor::process::impl::expression::any src0{std::in_place_type<std::int64_t>, 2};
     executor::process::impl::expression::any src1{std::in_place_type<double>, 2.0};
-    encode(src0, src_meta->at(0), spec_asc, s);
-    encode(src1, src_meta->at(1), spec_asc, s);
+    EXPECT_EQ(status::ok, encode(src0, src_meta->at(0), spec_asc, s));
+    EXPECT_EQ(status::ok, encode(src1, src_meta->at(1), spec_asc, s));
     auto rs = s.readable();
     auto tgt_meta = target_record.record_meta();
     decode(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), &resource);
@@ -486,8 +486,8 @@ TEST_F(coder_test, nullable) {
         test::record source_record{2, 2.0};
         test::record target_record{1, 1.0};
         auto src_meta = source_record.record_meta();
-        encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s);
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s));
         auto rs = s.readable();
         auto tgt_meta = target_record.record_meta();
         decode_nullable(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
@@ -504,10 +504,10 @@ TEST_F(coder_test, nullable) {
         mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(2, 2, 2.0, 2.0), {false, true, false, true})};
         mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(1, 1, 1.0, 1.0), {false, false, false, false})};
         auto src_meta = source_record.record_meta();
-        encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(2), src_meta->nullity_offset(2), src_meta->at(2), spec_asc, s);
-        encode_nullable(source_record.ref(), src_meta->value_offset(3), src_meta->nullity_offset(3), src_meta->at(3), spec_asc, s);
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(2), src_meta->nullity_offset(2), src_meta->at(2), spec_asc, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(3), src_meta->nullity_offset(3), src_meta->at(3), spec_asc, s));
         auto rs = s.readable();
         auto tgt_meta = target_record.record_meta();
         decode_nullable(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
@@ -537,10 +537,10 @@ TEST_F(coder_test, encode_decode_any_nullable) {
     executor::process::impl::expression::any src2{std::in_place_type<double>, 2.0};
     executor::process::impl::expression::any src3{};
 
-    encode_nullable(src0, src_meta->at(0), spec_asc, s);
-    encode_nullable(src1, src_meta->at(1), spec_asc, s);
-    encode_nullable(src2, src_meta->at(2), spec_asc, s);
-    encode_nullable(src3, src_meta->at(3), spec_asc, s);
+    EXPECT_EQ(status::ok, encode_nullable(src0, src_meta->at(0), spec_asc, s));
+    EXPECT_EQ(status::ok, encode_nullable(src1, src_meta->at(1), spec_asc, s));
+    EXPECT_EQ(status::ok, encode_nullable(src2, src_meta->at(2), spec_asc, s));
+    EXPECT_EQ(status::ok, encode_nullable(src3, src_meta->at(3), spec_asc, s));
     auto rs = s.readable();
     auto tgt_meta = target_record.record_meta();
     decode_nullable(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource);
@@ -614,9 +614,9 @@ void test_ordering() {
     executor::process::impl::expression::any p1{std::in_place_type<runtime_t<Kind>>, 1};
     {
         // ascending non nullable
-        encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1);
-        encode(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s2);
-        encode(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s3);
+        EXPECT_EQ(status::ok, encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s3));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
@@ -626,9 +626,9 @@ void test_ordering() {
     s3.reset();
     {
         // descending non nullable
-        encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s1);
-        encode(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s2);
-        encode(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s3);
+        EXPECT_EQ(status::ok, encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s3));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
     }
@@ -638,10 +638,10 @@ void test_ordering() {
     s3.reset();
     {
         // ascending nullable
-        encode_nullable({}, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s0);
-        encode_nullable(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1);
-        encode_nullable(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s2);
-        encode_nullable(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s3);
+        EXPECT_EQ(status::ok, encode_nullable({}, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s3));
         EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -652,10 +652,10 @@ void test_ordering() {
     s3.reset();
     {
         // descending nullable
-        encode_nullable({}, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s0);
-        encode_nullable(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s1);
-        encode_nullable(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s2);
-        encode_nullable(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s3);
+        EXPECT_EQ(status::ok, encode_nullable({}, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(z0, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(p1, meta::field_type{meta::field_enum_tag<Kind>}, spec_desc, s3));
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -706,11 +706,11 @@ TEST_F(coder_test, text_ordering) {
     executor::process::impl::expression::any c5{std::in_place_type<accessor::text>, text{"BB"}};
     {
         // ascending non nullable
-        encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1);
-        encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2);
-        encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3);
-        encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4);
-        encode(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s5);
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4));
+        EXPECT_EQ(status::ok, encode(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s5));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
@@ -724,11 +724,11 @@ TEST_F(coder_test, text_ordering) {
     s5.reset();
     {
         // descending non nullable
-        encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1);
-        encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2);
-        encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3);
-        encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4);
-        encode(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s5);
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4));
+        EXPECT_EQ(status::ok, encode(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s5));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
@@ -742,11 +742,11 @@ TEST_F(coder_test, text_ordering) {
     s5.reset();
     {
         // ascending nullable
-        encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1);
-        encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2);
-        encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3);
-        encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4);
-        encode_nullable(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s5);
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s4));
+        EXPECT_EQ(status::ok, encode_nullable(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s5));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
@@ -760,12 +760,12 @@ TEST_F(coder_test, text_ordering) {
     s5.reset();
     {
         // descending nullable
-        encode_nullable({}, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s0);
-        encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1);
-        encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2);
-        encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3);
-        encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4);
-        encode_nullable(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s5);
+        EXPECT_EQ(status::ok, encode_nullable({}, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3a, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c3b, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s4));
+        EXPECT_EQ(status::ok, encode_nullable(c5, meta::field_type{meta::field_enum_tag<kind::character>}, spec_desc, s5));
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));

@@ -31,7 +31,7 @@ namespace jogasaki::utils {
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
-inline void encode_any(
+inline status encode_any(
     data::aligned_buffer& target,
     meta::field_type const& type,
     bool nullable,
@@ -48,12 +48,18 @@ inline void encode_any(
                 if (! nullable) {
                     fail();
                 }
-                kvs::encode_nullable(f, type, spec, s);
+                if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
+                    return res;
+                }
             } else {
                 if (nullable) {
-                    kvs::encode_nullable(f, type, spec, s);
+                    if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
+                        return res;
+                    }
                 } else {
-                    kvs::encode(f, type, spec, s);
+                    if(auto res = kvs::encode(f, type, spec, s); res != status::ok) {
+                        return res;
+                    }
                 }
             }
         }
@@ -64,6 +70,7 @@ inline void encode_any(
             }
         }
     }
+    return status::ok;
 }
 
 }

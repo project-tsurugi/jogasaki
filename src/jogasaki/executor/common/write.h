@@ -179,10 +179,11 @@ private:
         std::vector<details::write_target>& out
     ) const;
 
-    [[nodiscard]] std::vector<details::write_field> create_fields(
+    [[nodiscard]] status create_fields(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
-        bool key
+        bool key,
+        std::vector<details::write_field>& out
     ) const;
 };
 

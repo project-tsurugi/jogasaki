@@ -205,13 +205,18 @@ status write_primary_target::encode_fields(
 ) const {
     for(auto const& f : fields) {
         if(f.nullable_) {
-            kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, target);
+            if(auto res = kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, target);
+                res != status::ok) {
+                return res;
+            }
         } else {
             if(source.is_null(f.nullity_offset_)) {
                 VLOG(log_error) << "Null assigned for non-nullable field.";
                 return status::err_integrity_constraint_violation;
             }
-            kvs::encode(source, f.offset_, f.type_, f.spec_, target);
+            if(auto res = kvs::encode(source, f.offset_, f.type_, f.spec_, target); res != status::ok) {
+                return res;
+            }
         }
     }
     return status::ok;

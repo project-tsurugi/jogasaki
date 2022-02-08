@@ -42,9 +42,14 @@ status details::write_secondary_target::encode_key(
         for(auto&& f : secondary_key_fields_) {
             auto src = f.key_ ? source_key : source_value;
             if (f.nullable_) {
-                kvs::encode_nullable(src, f.offset_, f.nullity_offset_, f.type_, f.spec_, s);
+                if(auto res = kvs::encode_nullable(src, f.offset_, f.nullity_offset_, f.type_, f.spec_, s);
+                    res != status::ok) {
+                    return res;
+                }
             } else {
-                kvs::encode(src, f.offset_, f.type_, f.spec_, s);
+                if(auto res = kvs::encode(src, f.offset_, f.type_, f.spec_, s); res != status::ok) {
+                    return res;
+                }
             }
         }
         s.write(primary_key.data(), primary_key.size());

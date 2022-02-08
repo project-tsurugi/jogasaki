@@ -139,7 +139,9 @@ status encode_tuple(
                             VLOG(log_error) << "Null assigned for non-nullable field.";
                             return status::err_integrity_constraint_violation;
                         }
-                        kvs::encode_nullable({}, f.type_, f.spec_, s);
+                        if(auto res = kvs::encode_nullable({}, f.type_, f.spec_, s); res != status::ok) {
+                            return res;
+                        }
                         break;
                     case process::impl::ops::default_value_kind::immediate: {
                         auto d = f.default_value_;
@@ -151,9 +153,13 @@ status encode_tuple(
                         auto v = loop == 1 ? next_sequence_value(ctx, f.def_id_) : sequence_value{};
                         executor::process::impl::expression::any a{std::in_place_type<std::int64_t>, v};
                         if (f.nullable_) {
-                            kvs::encode_nullable(a, f.type_, f.spec_, s);
+                            if(auto res = kvs::encode_nullable(a, f.type_, f.spec_, s); res != status::ok) {
+                                return res;
+                            }
                         } else {
-                            kvs::encode(a, f.type_, f.spec_, s);
+                            if(auto res = kvs::encode(a, f.type_, f.spec_, s); res != status::ok) {
+                                return res;
+                            }
                         }
                         break;
                 }
@@ -170,13 +176,17 @@ status encode_tuple(
                     return status::err_expression_evaluation_failure;
                 }
                 if (f.nullable_) {
-                    kvs::encode_nullable(res, f.type_, f.spec_, s);
+                    if(auto rc = kvs::encode_nullable(res, f.type_, f.spec_, s); rc != status::ok) {
+                        return rc;
+                    }
                 } else {
                     if(! res) {
                         VLOG(log_error) << "Null assigned for non-nullable field.";
                         return status::err_integrity_constraint_violation;
                     }
-                    kvs::encode(res, f.type_, f.spec_, s);
+                    if(auto rc = kvs::encode(res, f.type_, f.spec_, s); rc != status::ok) {
+                        return rc;
+                    }
                 }
                 cph.reset();
             }
@@ -194,7 +204,7 @@ status encode_tuple(
     return status::ok;
 }
 
-void create_generated_field(
+status create_generated_field(
     std::vector<details::write_field>& ret,
     std::size_t index,
     yugawara::storage::column_value const& dv,
@@ -217,7 +227,9 @@ void create_generated_field(
                 type,
                 nullptr
             );
-            utils::encode_any( buf, t, nullable, spec, {src});
+            if(auto res = utils::encode_any( buf, t, nullable, spec, {src}); res != status::ok) {
+                return res;
+            }
             break;
         }
         case column_value_kind::sequence: {
@@ -238,23 +250,24 @@ void create_generated_field(
         static_cast<std::string_view>(buf),
         def_id
     );
+    return status::ok;
 }
 
-std::vector<details::write_field> write::create_fields(
+status write::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    bool key
+    bool key,
+    std::vector<details::write_field>& out
 ) const {
     using reference = takatori::descriptor::variable::reference_type;
     yugawara::binding::factory bindings{};
-    std::vector<details::write_field> fields{};
     std::unordered_map<reference, std::size_t> variable_indices{};
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
         auto&& c = columns[i];
         variable_indices[c.reference()] = i;
     }
     if (key) {
-        fields.reserve(idx.keys().size());
+        out.reserve(idx.keys().size());
         for(auto&& k : idx.keys()) {
             auto kc = bindings(k.column());
             auto& type = k.column().type();
@@ -266,10 +279,12 @@ std::vector<details::write_field> write::create_fields(
             if(variable_indices.count(kc.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = k.column().default_value();
-                create_generated_field(fields, npos, dv, type, nullable, spec);
+                if(auto res = create_generated_field(out, npos, dv, type, nullable, spec); res != status::ok) {
+                    return res;
+                }
                 continue;
             }
-            fields.emplace_back(
+            out.emplace_back(
                 variable_indices[kc.reference()],
                 t,
                 spec,
@@ -277,7 +292,7 @@ std::vector<details::write_field> write::create_fields(
             );
         }
     } else {
-        fields.reserve(idx.values().size());
+        out.reserve(idx.values().size());
         for(auto&& v : idx.values()) {
             auto b = bindings(v);
 
@@ -290,10 +305,12 @@ std::vector<details::write_field> write::create_fields(
             if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = c.default_value();
-                create_generated_field(fields, npos, dv, type, nullable, spec);
+                if(auto res = create_generated_field(out, npos, dv, type, nullable, spec); res != status::ok) {
+                    return res;
+                }
                 continue;
             }
-            fields.emplace_back(
+            out.emplace_back(
                 variable_indices[b.reference()],
                 t,
                 spec,
@@ -301,7 +318,7 @@ std::vector<details::write_field> write::create_fields(
             );
         }
     }
-    return fields;
+    return status::ok;
 }
 
 status write::create_tuples(
@@ -316,7 +333,10 @@ status write::create_tuples(
     std::vector<details::write_tuple>& out,
     std::vector<details::write_tuple> const& primary_key_tuples
 ) const {
-    auto fields = create_fields(idx, columns, key);
+    std::vector<details::write_field> fields{};
+    if(auto res = create_fields(idx, columns, key, fields); res != status::ok) {
+        return res;
+    }
     data::aligned_buffer buf{};
     std::size_t count = 0;
     out.clear();

@@ -50,6 +50,7 @@ enum class status : std::int64_t {
     err_integrity_constraint_violation = -16,
     err_expression_evaluation_failure = -17,
     err_unresolved_host_variable = -18,
+    err_type_mismatch = -19,
 };
 
 /**
@@ -84,6 +85,7 @@ enum class status : std::int64_t {
         case status::err_integrity_constraint_violation: return "err_integrity_constraint_violation"sv;
         case status::err_expression_evaluation_failure: return "err_expression_evaluation_failure"sv;
         case status::err_unresolved_host_variable: return "err_unresolved_host_variable"sv;
+        case status::err_type_mismatch: return "err_type_mismatch"sv;
     }
     std::abort();
 }

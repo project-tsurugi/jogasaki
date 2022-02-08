@@ -19,6 +19,7 @@
 #include <boost/endian/conversion.hpp>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/status.h>
 #include "readable_stream.h"
 
 namespace jogasaki::kvs {
@@ -86,8 +87,9 @@ public:
      */
     template<class T, std::size_t N = sizeof(T) * bits_per_byte>
     std::enable_if_t<(std::is_integral_v<T> && (N == 8 || N == 16 || N == 32 || N == 64)) ||
-        (std::is_floating_point_v<T> && (N == 32 || N == 64)), void> write(T data, order odr) {
+        (std::is_floating_point_v<T> && (N == 32 || N == 64)), status> write(T data, order odr) {
         do_write<N>(details::key_encode<N>(data, odr));
+        return status::ok;
     }
 
     /**
@@ -97,13 +99,12 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, void> write(T data, order odr, bool add_padding, std::size_t max_len) {
+    std::enable_if_t<std::is_same_v<T, accessor::text>, status> write(T data, order odr, bool add_padding, std::size_t max_len) {
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {
-            VLOG(log_warning) << "data truncation occurred. storage max:" << max_len << " data length:" << sz;
-            sz = max_len;
-            //TODO raise error
+            VLOG(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
+            return status::err_type_mismatch;
         }
         do_write(sv.data(), sz, odr);
         if(add_padding) {
@@ -114,6 +115,7 @@ public:
         }
         auto& term = details::get_terminator(odr);
         write(term.data(), term.size());
+        return status::ok;
     }
 
     /**

@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <jogasaki/status.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
@@ -196,7 +197,7 @@ template<std::size_t N> using float_t = typename float_n<N>::type;
 template<std::size_t N>
 static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // NOLINT
 
-}
+} // namespace details
 
 /**
  * @brief encode a non-nullable field data to kvs binary representation
@@ -205,8 +206,12 @@ static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // N
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, write might have happened partially,
+ * so the destination stream should be reset or discarded.
+ *
  */
-void encode(accessor::record_ref src,
+status encode(accessor::record_ref src,
     std::size_t offset,
     meta::field_type const& type,
     coding_spec spec,
@@ -220,8 +225,11 @@ void encode(accessor::record_ref src,
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, write might have happened partially,
+ * so the destination stream should be reset or discarded.
  */
-void encode_nullable(
+status encode_nullable(
     accessor::record_ref src,
     std::size_t offset,
     std::size_t nullity_offset,
@@ -236,8 +244,11 @@ void encode_nullable(
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, write might have happened partially,
+ * so the destination stream should be reset or discarded.
  */
-void encode(executor::process::impl::expression::any const& src,
+status encode(executor::process::impl::expression::any const& src,
     meta::field_type const& type,
     coding_spec spec,
     writable_stream& dest);
@@ -248,8 +259,11 @@ void encode(executor::process::impl::expression::any const& src,
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
+ * @return status::ok when successful
+ * @return any error otherwise. When error occurs, write might have happened partially,
+ * so the destination stream should be reset or discarded.
  */
-void encode_nullable(
+status encode_nullable(
     executor::process::impl::expression::any const& src,
     meta::field_type const& type,
     coding_spec spec,

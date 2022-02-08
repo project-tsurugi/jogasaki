@@ -497,4 +497,21 @@ TEST_F(api_test, unresolved_parameters) {
     }
 }
 
+TEST_F(api_test, char_data_too_long) {
+    execute_statement( "INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (0,'00000', '11111')");
+    {
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (1,'00000X', '11111')", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_type_mismatch, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    {
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (2,'00000', '111111')", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_type_mismatch, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+}
 }

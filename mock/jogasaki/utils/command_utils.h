@@ -144,7 +144,11 @@ std::string encode_prepare(std::string sql, Args...args) {
 
 inline std::string encode_begin(bool readonly) {
     ::request::Request r{};
-    r.mutable_begin()->set_read_only(readonly);
+    r.mutable_begin()->mutable_option()->set_operation_kind(
+        readonly ?
+            request::TransactionOption_OperationKind_OPERATION_KIND_READ_ONLY :
+            request::TransactionOption_OperationKind_OPERATION_KIND_READ_WRITE
+    );
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     return s;

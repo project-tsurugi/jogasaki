@@ -82,9 +82,17 @@ void service::command_begin(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
-    (void)proto_req;
+    bool readonly = false;
+    auto& bg = proto_req.begin();
+    if(bg.has_option()) {
+        auto& op = bg.option();
+        if(op.operation_kind() == ::request::TransactionOption_OperationKind_OPERATION_KIND_READ_ONLY) {
+            readonly = true;
+        }
+        //TODO handle other option values
+    }
     jogasaki::api::transaction_handle tx{};
-    if (auto st = db_->create_transaction(tx); st == jogasaki::status::ok) {
+    if (auto st = db_->create_transaction(tx, readonly); st == jogasaki::status::ok) {
         details::success<::response::Begin>(*res, tx);
     } else {
         details::error<::response::Begin>(*res, st, "error in db_->create_transaction()");

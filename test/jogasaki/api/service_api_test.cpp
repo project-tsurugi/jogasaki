@@ -104,7 +104,11 @@ public:
         environment_->applications()[0]->shutdown();
         db_teardown();
     }
-    void test_begin(std::uint64_t& handle);
+    void test_begin(std::uint64_t& handle,
+        bool readonly = false,
+        bool is_long = false,
+        std::vector<std::string> const& write_preserves = {}
+    );
     void test_commit(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_query();
@@ -140,8 +144,12 @@ public:
 };
 
 
-void service_api_test::test_begin(std::uint64_t& handle) {
-    auto s = encode_begin(false);
+void service_api_test::test_begin(std::uint64_t& handle,
+    bool readonly,
+    bool is_long,
+    std::vector<std::string> const& write_preserves
+) {
+    auto s = encode_begin(readonly, is_long, write_preserves);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -809,4 +817,17 @@ TEST_F(service_api_test, null_host_variable) {
         EXPECT_TRUE(rec.is_null(1));
     }
 }
+
+TEST_F(service_api_test, begin_batch) {
+    std::uint64_t tx_handle{};
+    {
+        test_begin(tx_handle, false, true, {"T0", "T1"});
+        test_commit(tx_handle);
+    }
+    {
+        test_begin(tx_handle, true, true, {});
+        test_commit(tx_handle);
+    }
+}
+
 }

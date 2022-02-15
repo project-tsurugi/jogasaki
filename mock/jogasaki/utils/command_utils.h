@@ -142,14 +142,26 @@ std::string encode_prepare(std::string sql, Args...args) {
     return encode_prepare_vars(std::move(sql), place_holders);
 }
 
-inline std::string encode_begin(bool readonly) {
+inline std::string encode_begin(
+    bool readonly,
+    bool is_long = false,
+    std::vector<std::string> const& write_preserves = {}
+) {
     ::request::Request r{};
-    r.mutable_begin()->mutable_option()->set_operation_kind(
+    auto opt = r.mutable_begin()->mutable_option();
+    opt->set_operation_kind(
         readonly ?
             request::TransactionOption_OperationKind_OPERATION_KIND_READ_ONLY :
             request::TransactionOption_OperationKind_OPERATION_KIND_READ_WRITE
     );
     r.mutable_session_handle()->set_handle(1);
+    if(is_long) {
+        opt->set_type(::request::TransactionOption_TransactionType::TransactionOption_TransactionType_TRANSACTION_TYPE_LONG);
+        for(auto&& s : write_preserves) {
+            auto* wp = opt->add_write_preserves();
+            wp->set_name(s);
+        }
+    }
     auto s = serialize(r);
     return s;
 }

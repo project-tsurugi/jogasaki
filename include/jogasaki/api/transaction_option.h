@@ -42,6 +42,16 @@ public:
         write_preserves_(std::move(write_preserves))
     {}
 
+    transaction_option& readonly(bool arg) noexcept {
+        readonly_ = arg;
+        return *this;
+    }
+
+    transaction_option& is_long(bool arg) noexcept {
+        is_long_ = arg;
+        return *this;
+    }
+
     [[nodiscard]] bool readonly() const noexcept {
         return readonly_;
     }

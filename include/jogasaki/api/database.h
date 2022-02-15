@@ -179,7 +179,7 @@ public:
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @deprecated use `create_transaction(transaction_handle& handle, transaction_option const& option)`
      */
-    status create_transaction(transaction_handle& handle, bool readonly = false) {
+    status create_transaction(transaction_handle& handle, bool readonly) {
         return do_create_transaction(handle, transaction_option(readonly));
     }
 

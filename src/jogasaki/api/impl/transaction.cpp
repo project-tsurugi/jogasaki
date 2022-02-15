@@ -101,11 +101,13 @@ impl::database& transaction::database() {
 
 transaction::transaction(
     impl::database& database,
-    bool readonly
+    bool readonly,
+    bool is_long,
+    std::vector<std::string> const& write_preserves
 ) :
     database_(std::addressof(database)),
     tx_(std::make_shared<transaction_context>(
-        std::shared_ptr{database_->kvs_db()->create_transaction(readonly)}
+        std::shared_ptr{database_->kvs_db()->create_transaction(readonly, is_long, write_preserves)}
     ))
 {}
 

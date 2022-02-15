@@ -97,7 +97,7 @@ public:
 
     void load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;
 
-    status do_create_transaction(transaction_handle& handle, bool readonly) override;
+    status do_create_transaction(transaction_handle& handle, transaction_option const& option) override;
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
 

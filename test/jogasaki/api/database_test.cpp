@@ -192,4 +192,15 @@ TEST_F(database_test, update_with_host_variable) {
     ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
 }
 
+TEST_F(database_test, long_transaction) {
+    std::unique_ptr<api::executable_statement> insert0{}, insert1{};
+    EXPECT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES(0, 10.0)", insert0));
+    EXPECT_EQ(status::ok, db_->create_executable("INSERT INTO T1 (C0, C1) VALUES(0, 10.0)", insert1));
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {"T0", "T1"});
+        EXPECT_EQ(status::ok,tx->execute(*insert0));
+        EXPECT_EQ(status::ok,tx->execute(*insert1));
+        EXPECT_EQ(status::ok,tx->commit());
+    }
+}
 }

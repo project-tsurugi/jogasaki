@@ -16,12 +16,33 @@
 #include "transaction.h"
 #include "database.h"
 
+#include <jogasaki/logging.h>
 #include <jogasaki/kvs/error.h>
 
 namespace jogasaki::kvs {
 
-transaction::transaction(kvs::database &db, bool readonly) : database_(std::addressof(db)) {
-    sharksfin::TransactionOptions options{};
+transaction::transaction(
+    kvs::database &db,
+    bool readonly,
+    bool is_long,
+    std::vector<std::string> const& write_preserves
+) : database_(std::addressof(db)) {
+    sharksfin::TransactionOptions::WritePreserves wps{};
+    std::vector<std::unique_ptr<kvs::storage>> stgs{}; // to keep storages during transaction_begin call
+    stgs.reserve(write_preserves.size());
+    for(auto&& wp : write_preserves) {
+        auto s = db.get_storage(wp);
+        if(! s) {
+            VLOG(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
+            fail(); //TODO
+        }
+        wps.emplace_back(s->handle());
+        stgs.emplace_back(std::move(s));
+    }
+    sharksfin::TransactionOptions options{
+        is_long ? sharksfin::TransactionOptions::TransactionType::LONG : sharksfin::TransactionOptions::TransactionType::SHORT,
+        std::move(wps)
+    };
     if (readonly) {
         options.operation_kind(sharksfin::TransactionOptions::OperationKind::READ_ONLY);
     }

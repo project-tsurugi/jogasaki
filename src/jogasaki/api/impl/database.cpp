@@ -223,13 +223,18 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
     return status::ok;
 }
 
-status database::do_create_transaction(transaction_handle& handle, bool readonly) {
+status database::do_create_transaction(transaction_handle& handle, transaction_option const& option) {
     if (! kvs_db_) {
         VLOG(log_error) << "database not started";
         return status::err_invalid_state;
     }
     {
-        auto tx = std::make_unique<impl::transaction>(*this, readonly);
+        auto tx = std::make_unique<impl::transaction>(
+            *this,
+            option.readonly(),
+            option.is_long(),
+            option.write_preserves()
+        );
         decltype(transactions_)::accessor acc{};
         api::transaction_handle t{tx.get()};
         if (transactions_.insert(acc, t)) {

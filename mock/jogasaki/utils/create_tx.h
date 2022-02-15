@@ -19,10 +19,16 @@
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/transaction_option.h>
 
 namespace jogasaki::utils {
 
-inline std::shared_ptr<api::transaction_handle> create_transaction(api::database& db, bool readonly = false) {
+inline std::shared_ptr<api::transaction_handle> create_transaction(
+    api::database& db,
+    bool readonly = false,
+    bool is_long = false,
+    std::vector<std::string> const& write_preserves = {}
+) {
     auto p = std::addressof(db);
     auto tx = std::shared_ptr<api::transaction_handle>{
         new api::transaction_handle(),
@@ -33,7 +39,12 @@ inline std::shared_ptr<api::transaction_handle> create_transaction(api::database
             }
         }
     };
-    if(auto rc = db.create_transaction(*tx, readonly); rc != status::ok) {
+    if(auto rc = db.create_transaction(*tx, api::transaction_option{
+                readonly,
+                is_long,
+                write_preserves
+            }
+        ); rc != status::ok) {
         return {};
     }
     return tx;

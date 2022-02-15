@@ -26,6 +26,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
 #include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/transaction_option.h>
 
 namespace jogasaki::api {
 
@@ -171,13 +172,27 @@ public:
 
     /**
      * @brief begin the new transaction
+     * @param handle [out] transaction handle filled when successful
      * @param readonly specify whether the new transaction is read-only or not
-     * @return transaction object when success
-     * @return nullptr when error
+     * @return status::ok when successful
+     * @return any other error otherwise
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @deprecated use `create_transaction(transaction_handle& handle, transaction_option const& option)`
      */
     status create_transaction(transaction_handle& handle, bool readonly = false) {
-        return do_create_transaction(handle, readonly);
+        return do_create_transaction(handle, transaction_option(readonly));
+    }
+
+    /**
+     * @brief begin the new transaction
+     * @param handle [out] transaction handle filled when successful
+     * @param option specify option values for the new transaction
+     * @return status::ok when successful
+     * @return any other error otherwise
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
+    status create_transaction(transaction_handle& handle, transaction_option const& option = transaction_option{}) {
+        return do_create_transaction(handle, option);
     }
 
     /**
@@ -345,7 +360,7 @@ public:
     }
 
 protected:
-    virtual status do_create_transaction(transaction_handle& handle, bool readonly) = 0;
+    virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
 
     virtual status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

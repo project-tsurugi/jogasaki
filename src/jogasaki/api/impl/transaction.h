@@ -39,7 +39,11 @@ public:
     using callback = transaction_handle::callback;
 
     transaction() = default;
-    transaction(impl::database& database, bool readonly);
+    transaction(impl::database& database,
+        bool readonly,
+        bool is_long,
+        std::vector<std::string> const& write_preserves
+    );
 
     status commit();
     status abort();

@@ -132,11 +132,13 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         utils::checkpoint_holder cp{resource};
         std::string_view k{};
         std::string_view v{};
-        if(!ctx.it_->key(k) || !ctx.it_->value(v)) {
-            fail();
+        if((st = ctx.it_->key(k)) != status::ok) {
+            break;
         }
-        if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
-            st = res;
+        if((st = ctx.it_->value(v)) != status::ok) {
+            break;
+        }
+        if (st = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); st != status::ok) {
             break;
         }
         if (downstream_) {

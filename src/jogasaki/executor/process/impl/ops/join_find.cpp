@@ -127,10 +127,10 @@ bool matcher::next() {
     }
     std::string_view key{};
     std::string_view value{};
-    if(auto r = it_->key(key); ! r) {
+    if(auto r = it_->key(key); r != status::ok) {
         fail();
     }
-    if(auto r = it_->value(value); ! r) {
+    if(auto r = it_->value(value); r != status::ok) {
         fail();
     }
     return field_mapper_(key, value, output_variables_->store().ref(), *primary_storage_, *tx_, resource_) == status::ok;

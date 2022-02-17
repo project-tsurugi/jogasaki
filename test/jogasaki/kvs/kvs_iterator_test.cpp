@@ -85,18 +85,18 @@ TEST_F(kvs_iterator_test, full_scan) {
         ASSERT_TRUE(it);
         //ASSERT_FALSE(it->key(k)); // UB until first next() call
         ASSERT_EQ(status::ok, it->next());
-        ASSERT_TRUE(it->key(k));
-        ASSERT_TRUE(it->value(v));
+        ASSERT_EQ(status::ok, it->key(k));
+        ASSERT_EQ(status::ok, it->value(v));
         EXPECT_EQ("k1", k);
         EXPECT_EQ("v1", v);
         ASSERT_EQ(status::ok, it->next());
-        ASSERT_TRUE(it->key(k));
-        ASSERT_TRUE(it->value(v));
+        ASSERT_EQ(status::ok, it->key(k));
+        ASSERT_EQ(status::ok, it->value(v));
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
         ASSERT_EQ(status::ok, it->next());
-        ASSERT_TRUE(it->key(k));
-        ASSERT_TRUE(it->value(v));
+        ASSERT_EQ(status::ok, it->key(k));
+        ASSERT_EQ(status::ok, it->value(v));
         EXPECT_EQ("k3", k);
         EXPECT_EQ("v3", v);
         ASSERT_EQ(status::not_found, it->next());

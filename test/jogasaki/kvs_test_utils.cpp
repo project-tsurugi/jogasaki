@@ -149,7 +149,10 @@ void kvs_test_utils::get(
     while(it->next() == status::ok) {
         std::string_view k{};
         std::string_view v{};
-        if (!it->key(k) || !it->value(v)) {
+        if (auto r = it->key(k); r != status::ok) {
+            fail();
+        }
+        if (auto r = it->value(v); r != status::ok) {
             fail();
         }
         std::string key_buf(k);

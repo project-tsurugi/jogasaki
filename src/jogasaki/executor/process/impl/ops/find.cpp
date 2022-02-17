@@ -186,9 +186,9 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             }
             return details::error_abort(ctx, res);
         }
-        if(auto success = it->key(k); ! success) {
+        if(auto res = it->key(k); res != status::ok) {
             finish(context);
-            return details::error_abort(ctx, status::err_unknown);
+            return details::error_abort(ctx, res);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {
             finish(context);

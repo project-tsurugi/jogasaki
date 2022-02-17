@@ -60,22 +60,22 @@ public:
      * This doesn't change the iterator state.
      * @param k[out] the key of the current entry
      * The data pointed by the returned value gets invalidated if the iterator state is changed.
-     * @return true if the operation is successful
-     * @return false otherwise
+     * @return status::ok if the operation is successful
+     * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
-    [[nodiscard]] bool key(std::string_view& k) const;
+    [[nodiscard]] status key(std::string_view& k) const;
 
     /**
      * @brief retrieve the value of the current iterator position
      * This doesn't change the iterator state.
      * @param v[out] the value of the current entry
      * The data pointed by the returned value gets invalidated if the iterator state is changed.
-     * @return true if the operation is successful
-     * @return false otherwise
+     * @return status::ok if the operation is successful
+     * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
-    [[nodiscard]] bool value(std::string_view& v) const;
+    [[nodiscard]] status value(std::string_view& v) const;
 
     /**
      * @brief return the native handle in the transaction layer

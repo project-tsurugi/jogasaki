@@ -38,22 +38,22 @@ status iterator::next() {
     return resolve(res);
 }
 
-bool iterator::key(std::string_view& k) const {
+status iterator::key(std::string_view& k) const {
     sharksfin::Slice slice{};
-    if(sharksfin::StatusCode res = sharksfin::iterator_get_key(handle_, &slice);res != sharksfin::StatusCode::OK) {
-        return false;
+    auto res = sharksfin::iterator_get_key(handle_, &slice);
+    if(res == sharksfin::StatusCode::OK) {
+        k = slice.to_string_view();
     }
-    k = slice.to_string_view();
-    return true;
+    return resolve(res);
 }
 
-bool iterator::value(std::string_view& v) const {
+status iterator::value(std::string_view& v) const {
     sharksfin::Slice slice{};
-    if(sharksfin::StatusCode res = sharksfin::iterator_get_value(handle_, &slice);res != sharksfin::StatusCode::OK) {
-        return false;
+    auto res = sharksfin::iterator_get_value(handle_, &slice);
+    if(res == sharksfin::StatusCode::OK) {
+        v = slice.to_string_view();
     }
-    v = slice.to_string_view();
-    return true;
+    return resolve(res);
 }
 
 sharksfin::IteratorHandle iterator::handle() const noexcept {

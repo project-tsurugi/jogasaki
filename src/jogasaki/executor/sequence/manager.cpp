@@ -191,7 +191,10 @@ using kind = meta::field_type_kind;
 std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_ptr<kvs::iterator>& it) {
     std::string_view k{};
     std::string_view v{};
-    if (!it->key(k) || !it->value(v)) {
+    if (auto r = it->key(k); r != status::ok) {
+        fail();
+    }
+    if (auto r = it->value(v); r != status::ok) {
         fail();
     }
     kvs::readable_stream key{k.data(), k.size()};

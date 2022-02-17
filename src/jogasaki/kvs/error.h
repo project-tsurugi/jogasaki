@@ -42,7 +42,9 @@ namespace jogasaki::kvs {
         case sharksfin::StatusCode::ERR_USER_ERROR: return status::err_user_error;
         case sharksfin::StatusCode::ERR_ABORTED: return status::err_aborted;
         case sharksfin::StatusCode::ERR_ABORTED_RETRYABLE: return status::err_aborted_retryable;
-        case sharksfin::StatusCode::ERR_TIME_OUT: return status::err_unknown;  //TODO
+        case sharksfin::StatusCode::ERR_TIME_OUT: return status::err_time_out;
+        case sharksfin::StatusCode::ERR_NOT_IMPLEMENTED: return status::err_not_implemented;
+        case sharksfin::StatusCode::ERR_ILLEGAL_OPERATION: return status::err_illegal_operation;
     }
     std::abort();
 }

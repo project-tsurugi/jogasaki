@@ -15,7 +15,7 @@
  */
 #include "performance_tools.h"
 #ifdef PERFORMANCE_TOOLS
-#include <performance-tools/lap_counter_init.h>
+#include <performance-tools/marker_init.h>  // exactly the same as performance-tools/lap_counter_init.h
 #endif
 
 #include <memory>

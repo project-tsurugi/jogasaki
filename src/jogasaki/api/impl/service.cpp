@@ -365,11 +365,7 @@ tateyama::status service::operator()(
 ) {
     ::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
-    bool enable_performance_counter = false;
-    if (++cnt > 0 && cnt % 1000 == 0) { // measure with performance counter on every 1000 invocations
-        enable_performance_counter = true;
-        LIKWID_MARKER_START("service");
-    }
+    LIKWID_MARKER_START("service");
     {
         trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();
@@ -448,9 +444,7 @@ tateyama::status service::operator()(
             res->body(msg);
             break;
     }
-    if (enable_performance_counter) {
-        LIKWID_MARKER_STOP("service");
-    }
+    LIKWID_MARKER_STOP("service");
     return tateyama::status::ok;
 }
 

@@ -87,7 +87,7 @@ TEST_F(host_variables_test, insert_host_variable) {
     EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
 }
 
-TEST_F(host_variables_test, update_host_variable) {
+TEST_F(host_variables_test, DISABLED_update_host_variable) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},
@@ -113,6 +113,7 @@ TEST_F(host_variables_test, update_host_variable) {
         ps->set_int8("i0", 1);
         ps->set_int8("i1", 2);
         execute_statement( "UPDATE T0 SET C0 = :i1 WHERE C0 = :i0", variables, *ps);
+        wait_epochs(2);
 
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);

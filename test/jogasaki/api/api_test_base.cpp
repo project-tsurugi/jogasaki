@@ -99,9 +99,13 @@ void api_test_base::execute_query(api::statement_handle& prepared, api::paramete
     ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
     explain(*stmt);
     std::unique_ptr<api::result_set> rs{};
-    if(auto res = tx.execute(*stmt, rs);res != status::ok) {
-        LOG(ERROR) << "execute failed with rc : " << res;
-        fail();
+    int retry = 10;
+    while(retry-- > 0) {
+        if(auto res = tx.execute(*stmt, rs);res != status::ok) {
+            LOG(ERROR) << "execute failed with rc : " << res;
+            continue;
+        }
+        break;
     }
     ASSERT_TRUE(rs);
     auto it = rs->iterator();

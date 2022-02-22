@@ -364,7 +364,6 @@ tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::response> res
 ) {
     ::request::Request proto_req{};
-    thread_local std::atomic_size_t cnt = 0;
     LIKWID_MARKER_START("service");
     {
         trace_scope_name("parse_request");  //NOLINT

@@ -15,6 +15,7 @@
  */
 #include "error.h"
 
+#include <boost/stacktrace.hpp>
 #include <glog/logging.h>
 #include <sharksfin/StatusCode.h>
 
@@ -25,7 +26,7 @@ namespace jogasaki::kvs {
 
 status resolve(sharksfin::StatusCode code) noexcept {
     if(code != sharksfin::StatusCode::OK) {
-        DVLOG(log_debug) << "error: " << code;
+        DVLOG(log_debug) << "error: " << code << std::endl << ::boost::stacktrace::stacktrace {};
     }
     switch(code) {
         case sharksfin::StatusCode::OK: return status::ok;

@@ -17,7 +17,6 @@
 
 #include <sharksfin/StatusCode.h>
 
-#include <jogasaki/logging.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::kvs {

@@ -19,11 +19,9 @@
 
 #include <tateyama/common.h>
 
-#ifdef LIKWID_PERFMON
+#ifndef PERFORMANCE_TOOLS
 #include "likwid-marker.h"
 #else
-
-#ifdef PERFORMANCE_TOOLS
 
 #include "performance-tools/perf_counter.h"
 #include "performance-tools/marker.h"
@@ -39,5 +37,3 @@
 #define trace_scope_name(regionTag) MARKER_SCOPE(regionTag)
 
 #endif  // PERFORMANCE_TOOLS
-
-#endif  // LIKWID_PERFMON

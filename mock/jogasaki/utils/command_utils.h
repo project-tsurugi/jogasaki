@@ -149,11 +149,10 @@ inline std::string encode_begin(
 ) {
     ::request::Request r{};
     auto opt = r.mutable_begin()->mutable_option();
-    opt->set_operation_kind(
-        readonly ?
-            request::TransactionOption_OperationKind_OPERATION_KIND_READ_ONLY :
-            request::TransactionOption_OperationKind_OPERATION_KIND_READ_WRITE
-    );
+    opt->set_type(::request::TransactionOption_TransactionType::TransactionOption_TransactionType_TRANSACTION_TYPE_SHORT);
+    if(readonly) {
+        opt->set_type(::request::TransactionOption_TransactionType::TransactionOption_TransactionType_TRANSACTION_TYPE_READ_ONLY);
+    }
     r.mutable_session_handle()->set_handle(1);
     if(is_long) {
         opt->set_type(::request::TransactionOption_TransactionType::TransactionOption_TransactionType_TRANSACTION_TYPE_LONG);

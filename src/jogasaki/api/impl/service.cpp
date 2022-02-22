@@ -88,7 +88,7 @@ void service::command_begin(
     auto& bg = proto_req.begin();
     if(bg.has_option()) {
         auto& op = bg.option();
-        if(op.operation_kind() == ::request::TransactionOption_OperationKind_OPERATION_KIND_READ_ONLY) {
+        if(op.type() == ::request::TransactionOption_TransactionType_TRANSACTION_TYPE_READ_ONLY) {
             readonly = true;
         }
         if(op.type() == :: request::TransactionOption_TransactionType_TRANSACTION_TYPE_LONG) {

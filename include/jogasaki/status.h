@@ -51,8 +51,6 @@ enum class status : std::int64_t {
     err_expression_evaluation_failure = -17,
     err_unresolved_host_variable = -18,
     err_type_mismatch = -19,
-    err_not_implemented = -20,
-    err_illegal_operation = -21,
 };
 
 /**
@@ -88,8 +86,6 @@ enum class status : std::int64_t {
         case status::err_expression_evaluation_failure: return "err_expression_evaluation_failure"sv;
         case status::err_unresolved_host_variable: return "err_unresolved_host_variable"sv;
         case status::err_type_mismatch: return "err_type_mismatch"sv;
-        case status::err_not_implemented: return "err_not_implemented"sv;
-        case status::err_illegal_operation: return "err_illegal_operation"sv;
     }
     std::abort();
 }

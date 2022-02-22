@@ -127,8 +127,6 @@ inline ::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_expression_evaluation_failure: return ::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE;
         case jogasaki::status::err_unresolved_host_variable: return ::status::Status::ERR_UNRESOLVED_HOST_VARIABLE;
         case jogasaki::status::err_type_mismatch: return ::status::Status::ERR_TYPE_MISMATCH;
-        case jogasaki::status::err_not_implemented: return ::status::Status::ERR_NOT_IMPLEMENTED;
-        case jogasaki::status::err_illegal_operation: return ::status::Status::ERR_ILLEGAL_OPERATION;
     }
     fail();
 }

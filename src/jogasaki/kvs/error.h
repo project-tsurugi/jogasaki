@@ -17,8 +17,8 @@
 
 #include <sharksfin/StatusCode.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/status.h>
-
 
 namespace jogasaki::kvs {
 
@@ -28,26 +28,7 @@ namespace jogasaki::kvs {
  * @note this is generic error mapping and is not applicable to all error situation. Depending on the
  * function requirement, it should manually map the error code.
  */
-[[nodiscard]] inline status resolve(sharksfin::StatusCode code) noexcept {
-    switch(code) {
-        case sharksfin::StatusCode::OK: return status::ok;
-        case sharksfin::StatusCode::NOT_FOUND: return status::not_found;
-        case sharksfin::StatusCode::ALREADY_EXISTS: return status::already_exists;
-        case sharksfin::StatusCode::USER_ROLLBACK: return status::user_rollback;
-        case sharksfin::StatusCode::ERR_UNKNOWN: return status::err_unknown;
-        case sharksfin::StatusCode::ERR_IO_ERROR: return status::err_io_error;
-        case sharksfin::StatusCode::ERR_INVALID_ARGUMENT: return status::err_invalid_argument;
-        case sharksfin::StatusCode::ERR_INVALID_STATE: return status::err_invalid_state;
-        case sharksfin::StatusCode::ERR_UNSUPPORTED: return status::err_unsupported;
-        case sharksfin::StatusCode::ERR_USER_ERROR: return status::err_user_error;
-        case sharksfin::StatusCode::ERR_ABORTED: return status::err_aborted;
-        case sharksfin::StatusCode::ERR_ABORTED_RETRYABLE: return status::err_aborted_retryable;
-        case sharksfin::StatusCode::ERR_TIME_OUT: return status::err_time_out;
-        case sharksfin::StatusCode::ERR_NOT_IMPLEMENTED: return status::err_not_implemented;
-        case sharksfin::StatusCode::ERR_ILLEGAL_OPERATION: return status::err_illegal_operation;
-    }
-    std::abort();
-}
+[[nodiscard]] status resolve(sharksfin::StatusCode code) noexcept;
 
 }
 

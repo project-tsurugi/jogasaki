@@ -44,7 +44,7 @@ transaction::transaction(
         std::move(wps)
     };
     if (readonly) {
-        options.operation_kind(sharksfin::TransactionOptions::OperationKind::READ_ONLY);
+        options.transaction_type(sharksfin::TransactionOptions::TransactionType::READ_ONLY);
     }
     if(auto res = sharksfin::transaction_begin(db.handle(), options, &tx_); res != sharksfin::StatusCode::OK) {
         fail();

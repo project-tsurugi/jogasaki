@@ -185,6 +185,7 @@ TEST_F(recovery_test, delete) {
         ASSERT_EQ(3, result.size());
     }
     execute_statement( "DELETE FROM T0 WHERE C0=2");
+    wait_epochs(2);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);

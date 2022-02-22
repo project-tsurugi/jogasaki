@@ -100,6 +100,7 @@ TEST_F(sql_test, update_primary_key) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
     execute_statement( "UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");
+    wait_epochs(2);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());
@@ -277,6 +278,7 @@ TEST_F(sql_test, update_delete_secondary_index) {
         EXPECT_EQ((create_record<kind::int8, kind::int8>(1, 300)), result[0]);
     }
     execute_statement( "UPDATE TSECONDARY SET C0=3 WHERE C0=1");
+    wait_epochs(2);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM TSECONDARY WHERE C1=300", result);

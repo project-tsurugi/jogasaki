@@ -87,7 +87,7 @@ TEST_F(host_variables_test, insert_host_variable) {
     EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
 }
 
-TEST_F(host_variables_test, DISABLED_update_host_variable) {
+TEST_F(host_variables_test, update_host_variable) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},

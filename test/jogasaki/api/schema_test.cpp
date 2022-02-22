@@ -412,6 +412,7 @@ TEST_F(schema_test, null_value) {
         EXPECT_EQ(exp, result[0]);
         execute_statement( "DELETE FROM TEST");
     }
+    wait_epochs(2);
     {
         execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
         std::vector<mock::basic_record> result{};

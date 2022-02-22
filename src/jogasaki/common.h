@@ -20,8 +20,21 @@
 #include <tateyama/common.h>
 
 #ifndef PERFORMANCE_TOOLS
+
+#ifdef LIKWID_PERFMON
 #include "likwid-marker.h"
-#else
+#else  // LIKWID_PERFMON
+#define LIKWID_MARKER_INIT
+#define LIKWID_MARKER_THREADINIT
+#define LIKWID_MARKER_SWITCH
+#define LIKWID_MARKER_REGISTER(regionTag)
+#define LIKWID_MARKER_START(regionTag)
+#define LIKWID_MARKER_STOP(regionTag)
+#define LIKWID_MARKER_CLOSE
+#define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
+#endif  // LIKWID_PERFMON
+
+#else  // PERFORMANCE_TOOLS
 
 #include "performance-tools/perf_counter.h"
 #include "performance-tools/marker.h"

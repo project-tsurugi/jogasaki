@@ -55,7 +55,7 @@ DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
-DEFINE_bool(verify, false, "Whether to deserialize the query result records");  //NOLINT
+DEFINE_bool(verify, false, "Whether to deserialize the query result records. Requires clients=1");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
@@ -271,6 +271,11 @@ public:
         statements_ = FLAGS_statements;
         clients_ = FLAGS_clients;
 
+        if (verify_query_records_ && clients_ != 1) {
+            LOG(ERROR) << "--verify requires --clients=1";
+            return false;
+        }
+
         if (FLAGS_update) {
             mode_ = mode::update;
         }
@@ -412,7 +417,6 @@ public:
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
                         ++result_count;
                         if (verify_query_records_) {
-                            //TODO currently support only one single thread at a time writing to the write_buffer_
                             std::unique_lock lk{write_buffer_mutex_};
                             write_buffer_.write(data.data(), data.size());
                             write_buffer_.flush();
@@ -431,7 +435,6 @@ public:
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
                         ++result_count;
                         if (verify_query_records_) {
-                            //TODO currently support only one single thread at a time writing to the write_buffer_
                             std::unique_lock lk{write_buffer_mutex_};
                             write_buffer_.write(data.data(), data.size());
                             write_buffer_.flush();
@@ -485,7 +488,7 @@ public:
                     while((transactions_ == -1 && !stop) || (transactions_ != -1 && ret.transactions_ < transactions_)) {
                         for(std::size_t j=0, n=statements_; j < n; ++j) {
                             {
-                                auto b = clock ::now();
+                                auto b = clock::now();
                                 if(auto res = do_statement(handle, seed, i, ret.records_); !res) {
                                     LOG(ERROR) << "do_statement failed";
                                 }
@@ -687,7 +690,7 @@ private:
             LOG(ERROR) << "service invocation failed";
             return false;
         }
-        if (query) {
+        if (query && verify_query_records_) {
             auto [name, columns] = jogasaki::utils::decode_execute_query(res->body_head_);
             DVLOG(jogasaki::log_debug) << "query name : " << name;
             query_meta_ = jogasaki::utils::create_record_meta(columns);

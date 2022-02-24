@@ -58,8 +58,7 @@ public:
 
 using k = meta::field_type_kind;
 
-//TODO enable after shirakami fix
-TEST_F(scan_handle_test, DISABLED_commit_without_releasing_scan_handle) {
+TEST_F(scan_handle_test, commit_without_releasing_scan_handle) {
     // special scenario forgetting release iterator before commit
     // This caused reading wrong result.
     auto t1 = db_->create_storage("T1");

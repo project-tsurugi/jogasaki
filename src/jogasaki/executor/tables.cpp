@@ -780,7 +780,7 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
                 { "o_d_id", int_type(), not_null },
                 { "o_w_id", int_type(), not_null },
                 { "o_c_id", int_type(), not_null },
-                { "o_entry_d", type::character(16), not_null },
+                { "o_entry_d", type::character(25), not_null },
                 { "o_carrier_id", int_type(), nullable },
                 { "o_ol_cnt", int_type(), not_null },
                 { "o_all_local", int_type(), not_null },

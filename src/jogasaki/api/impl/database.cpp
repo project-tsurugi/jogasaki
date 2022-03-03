@@ -320,14 +320,14 @@ status database::explain(api::executable_statement const& executable, std::ostre
     return status::ok;
 }
 
-void database::dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) {
+status database::dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) {
     kvs::storage_dump dumper{*kvs_db_};
-    dumper.dump(output, index_name, batch_size);
+    return dumper.dump(output, index_name, batch_size);
 }
 
-void database::load(std::istream& input, std::string_view index_name, std::size_t batch_size) {
+status database::load(std::istream& input, std::string_view index_name, std::size_t batch_size) {
     kvs::storage_dump dumper{*kvs_db_};
-    dumper.load(input, index_name, batch_size);
+    return dumper.load(input, index_name, batch_size);
 }
 
 scheduler::task_scheduler* database::task_scheduler() const noexcept {

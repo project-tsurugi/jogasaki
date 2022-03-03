@@ -101,6 +101,11 @@ void api_test_base::execute_query(api::statement_handle& prepared, api::paramete
     std::unique_ptr<api::result_set> rs{};
     if(auto res = tx.execute(*stmt, rs);res != status::ok) {
         LOG(ERROR) << "execute failed with rc : " << res;
+        if(res == status::err_not_implemented) {
+            // skip testing and proceed
+            FAIL();
+            return;
+        }
         fail();
     }
     ASSERT_TRUE(rs);

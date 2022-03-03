@@ -44,8 +44,10 @@ public:
      * @param storage_name the target storage
      * @param batch_size the max number of entries to be processed in each transaction,
      *    or 0 to process all entries in one transaction
+     * @return status::ok when successful
+     * @return any error otherwise
      */
-    void dump(std::ostream& stream, std::string_view storage_name, std::size_t batch_size = 0);
+    status dump(std::ostream& stream, std::string_view storage_name, std::size_t batch_size = 0);
 
     /**
      * @brief loads contents of the target storage from the given input stream.
@@ -53,8 +55,10 @@ public:
      * @param storage_name the target storage
      * @param batch_size the max number of entries to be processed in each transaction,
      *    or 0 to process all entries in one transaction
+     * @return status::ok when successful
+     * @return any error otherwise
      */
-    void load(std::istream& stream, std::string_view storage_name, std::size_t batch_size = 0);
+    status load(std::istream& stream, std::string_view storage_name, std::size_t batch_size = 0);
 
     /**
      * @brief appends a dump entry into the given stream.

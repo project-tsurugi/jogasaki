@@ -93,9 +93,9 @@ public:
 
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
 
-    void dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;
+    status dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;
 
-    void load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;
+    status load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;
 
     status do_create_transaction(transaction_handle& handle, transaction_option const& option) override;
 

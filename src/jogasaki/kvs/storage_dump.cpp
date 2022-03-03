@@ -15,9 +15,10 @@
  */
 #include "storage_dump.h"
 
-#include <cassert>
 #include <cstdint>
+#include <boost/assert.hpp>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
 
@@ -34,7 +35,7 @@ public:
         batch_size_(batch_size)
     {}
 
-    void operator()(transaction& tx) {
+    status operator()(transaction& tx) {
         auto* db = tx.database();
         auto stg = db->get_or_create_storage(storage_key_);
 
@@ -64,8 +65,9 @@ public:
                 break;
             }
             if (res != status::ok) {
-                // aborted_retryable should not come here - outside cc
-                fail();
+                VLOG(log_error) << res << " unexpected error on dump";
+                eof_ = true;
+                return res;
             }
             std::string_view key{};
             std::string_view value{};
@@ -79,6 +81,7 @@ public:
                 break;
             }
         }
+        return status::ok;
     }
 
     explicit operator bool() const {
@@ -104,7 +107,7 @@ public:
         batch_size_(batch_size)
     {}
 
-    void operator()(transaction& tx) {
+    status operator()(transaction& tx) {
         auto* db = tx.database();
         auto stg = db->get_or_create_storage(storage_key_);
 
@@ -124,6 +127,7 @@ public:
                 break;
             }
         }
+        return status::ok;
     }
 
     explicit operator bool() const {
@@ -142,30 +146,39 @@ private:
 };
 
 template<class Step>
-static void process_step(database& db, Step& step) {
+static status process_step(database& db, Step& step) {
     auto tx = db.create_transaction();
-    step(*tx);
-    check(tx->commit() == status::ok);
+    auto res = step(*tx);
+    if(auto res2 = tx->commit(); res2 != status::ok) {
+        VLOG(log_error) << res2 << " commit failed";
+    }
+    return res;
 }
 
 }  // namespace
 
-void storage_dump::dump(std::ostream& stream, std::string_view storage_name, std::size_t batch_size) {
+status storage_dump::dump(std::ostream& stream, std::string_view storage_name, std::size_t batch_size) {
     dump_step step { stream, storage_name, batch_size };
     do {
-        process_step(*db_, step);
+        if(auto res = process_step(*db_, step); res != status::ok) {
+            return res;
+        }
     } while (step);
+    return status::ok;
 }
 
-void storage_dump::load(std::istream& stream, std::string_view storage_name, std::size_t batch_size) {
+status storage_dump::load(std::istream& stream, std::string_view storage_name, std::size_t batch_size) {
     load_step step { stream, storage_name, batch_size };
     do {
-        process_step(*db_, step);
+        if(auto res = process_step(*db_, step); res != status::ok) {
+            return res;
+        }
     } while (step);
+    return status::ok;
 }
 
 void storage_dump::append(std::ostream& stream, std::string_view key, std::string_view value) {
-    assert(key.size() != EOF_MARK);  // NOLINT
+    BOOST_ASSERT(key.size() != EOF_MARK);  // NOLINT
 
     auto key_size = static_cast<size_type>(key.size());
     stream.write(reinterpret_cast<char*>(&key_size), sizeof(key_size));  // NOLINT

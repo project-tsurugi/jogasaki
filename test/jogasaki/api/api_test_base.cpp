@@ -101,7 +101,7 @@ void api_test_base::execute_query(api::statement_handle& prepared, api::paramete
     std::unique_ptr<api::result_set> rs{};
     if(auto res = tx.execute(*stmt, rs);res != status::ok) {
         LOG(ERROR) << "execute failed with rc : " << res;
-        if(res == status::err_not_implemented) {
+        if(res == status::err_not_implemented || res == status::err_aborted_retryable) {
             // skip testing and proceed
             FAIL();
             return;
@@ -132,7 +132,9 @@ void api_test_base::execute_query(
 ) {
     auto tx = utils::create_transaction(*db_);
     execute_query(query, variables, params, *tx, out);
-    tx->commit();
+    if(! ::testing::Test::HasFailure()) {
+        tx->commit();
+    }
 }
 
 void api_test_base::execute_query(
@@ -142,7 +144,9 @@ void api_test_base::execute_query(
 ) {
     auto tx = utils::create_transaction(*db_);
     execute_query(query, params, *tx, out);
-    tx->commit();
+    if(! ::testing::Test::HasFailure()) {
+        tx->commit();
+    }
 }
 
 void api_test_base::execute_query(std::string_view query, std::vector<mock::basic_record>& out) {

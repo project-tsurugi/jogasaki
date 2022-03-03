@@ -74,12 +74,16 @@ TEST_F(transaction_test, concurrent_query_requests_on_same_tx) {
     auto tx = utils::create_transaction(*db_);
     status s{};
     std::string message{"message"};
-    std::atomic_bool run0{false}, run1{false};
+    std::atomic_bool run0{false}, run1{false}, error_abort{false};
     test_channel ch0{}, ch1{};
     ASSERT_TRUE(tx->execute_async(
         maybe_shared_ptr{stmt0.get()},
         maybe_shared_ptr{&ch0},
         [&](status st, std::string_view msg){
+            if(st != status::ok) {
+                LOG(ERROR) << st;
+                error_abort.store(true);
+            }
             run0.store(true);
         }
     ));
@@ -87,10 +91,18 @@ TEST_F(transaction_test, concurrent_query_requests_on_same_tx) {
         maybe_shared_ptr{stmt1.get()},
         maybe_shared_ptr{&ch1},
         [&](status st, std::string_view msg){
+            if(st != status::ok) {
+                LOG(ERROR) << st;
+                error_abort.store(true);
+            }
             run1.store(true);
         }
     ));
-    while(! run0.load() || ! run1.load()) {}
+    while(! error_abort.load() && !(run0.load() && run1.load())) {}
+    if(error_abort) {
+        // to continue test in-case err_not_implemented
+        FAIL();
+    }
     {
         auto& wrt = ch0.writers_[0];
         ASSERT_TRUE(stmt0->meta());

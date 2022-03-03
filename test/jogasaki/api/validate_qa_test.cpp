@@ -97,4 +97,14 @@ TEST_F(validate_qa_test, test_secondary_t2) {
     }
 }
 
+TEST_F(validate_qa_test, long_tx_with_qa_table) {
+    auto tx = utils::create_transaction(*db_, false, true, {"qa_t1"});
+    execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')", *tx);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM qa_t1 where c_pk=1", *tx, result);
+    ASSERT_EQ(1, result.size());
+    execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (2, 20, 200, 2000.0, 20000.0, '200000')", *tx);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
 }

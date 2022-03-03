@@ -111,7 +111,16 @@ public:
     );
     void test_commit(std::uint64_t& handle);
     void test_statement(std::string_view sql);
+    void test_statement(std::string_view sql, std::uint64_t tx_handle);
     void test_query();
+
+    void test_query(
+        std::string_view sql,
+        std::uint64_t tx_handle,
+        std::vector<::common::DataType> const& column_types,
+        std::vector<bool> const& nullabilities,
+        std::vector<mock::basic_record> const& expected
+    );
 
     bool wait_completion(tateyama::api::endpoint::mock::test_response& res, std::size_t timeout_ms = 2000) {
         auto begin = std::chrono::steady_clock::now();
@@ -275,30 +284,36 @@ TEST_F(service_api_test, disconnect) {
     }
 }
 
+void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
+    auto s = encode_execute_statement(tx_handle, sql);
+    auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(wait_completion(*res));
+    EXPECT_TRUE(res->completed());
+    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_EQ(response_code::success, res->code_);
+    EXPECT_TRUE(res->all_released());
+
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_TRUE(success);
+}
+
 void service_api_test::test_statement(std::string_view sql) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
-    {
-        auto s = encode_execute_statement(tx_handle, sql);
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-        auto st = (*service_)(req, res);
-        EXPECT_TRUE(wait_completion(*res));
-        EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
-        ASSERT_EQ(response_code::success, res->code_);
-        EXPECT_TRUE(res->all_released());
-
-        auto [success, error] = decode_result_only(res->body_);
-        ASSERT_TRUE(success);
-    }
+    test_statement(sql, tx_handle);
     test_commit(tx_handle);
 }
 
-void service_api_test::test_query() {
-    std::uint64_t tx_handle{};
-    test_begin(tx_handle);
-    auto s = encode_execute_query(tx_handle, "select * from T0");
+void service_api_test::test_query(
+    std::string_view sql,
+    std::uint64_t tx_handle,
+    std::vector<::common::DataType> const& column_types,
+    std::vector<bool> const& nullabilities,
+    std::vector<mock::basic_record> const& expected
+) {
+    auto s = encode_execute_query(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -311,12 +326,12 @@ void service_api_test::test_query() {
     {
         auto [name, cols] = decode_execute_query(res->body_head_);
         std::cout << "name : " << name << std::endl;
-        ASSERT_EQ(2, cols.size());
+        ASSERT_EQ(column_types.size(), cols.size());
 
-        EXPECT_EQ(::common::DataType::INT8, cols[0].type_);
-        EXPECT_TRUE(cols[0].nullable_);
-        EXPECT_EQ(::common::DataType::FLOAT8, cols[1].type_);
-        EXPECT_TRUE(cols[1].nullable_);
+        for(std::size_t i=0, n=cols.size(); i<n; ++i) {
+            EXPECT_EQ(column_types[i], cols[i].type_);
+            EXPECT_EQ(nullabilities[i], cols[i].nullable_);
+        }
         {
             ASSERT_TRUE(res->channel_);
             auto& ch = *res->channel_;
@@ -325,8 +340,10 @@ void service_api_test::test_query() {
             auto& buf = *ch.buffers_[0];
             auto m = create_record_meta(cols);
             auto v = deserialize_msg(buf.view(), m);
-            ASSERT_EQ(1, v.size());
-            EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), v[0]);
+            ASSERT_EQ(expected.size(), v.size());
+            for(std::size_t i=0, n=v.size(); i<n; ++i) {
+                EXPECT_EQ(expected[i], v[i]);
+            }
             EXPECT_TRUE(ch.all_released());
         }
     }
@@ -334,6 +351,24 @@ void service_api_test::test_query() {
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_TRUE(success);
     }
+}
+
+void service_api_test::test_query() {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_query(
+        "select * from T0",
+        tx_handle,
+        {
+            ::common::DataType::INT8,
+            ::common::DataType::FLOAT8
+        },
+        {
+            true,
+            true
+        },
+        {mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)}
+    );
     test_commit(tx_handle);
 }
 
@@ -818,7 +853,7 @@ TEST_F(service_api_test, null_host_variable) {
     }
 }
 
-TEST_F(service_api_test, begin_batch) {
+TEST_F(service_api_test, begin_long_tx) {
     std::uint64_t tx_handle{};
     {
         test_begin(tx_handle, false, true, {"T0", "T1"});
@@ -830,4 +865,25 @@ TEST_F(service_api_test, begin_batch) {
     }
 }
 
+TEST_F(service_api_test, long_tx_simple) {
+    std::uint64_t tx_handle{};
+    {
+        test_begin(tx_handle, false, true, {"T0"});
+        test_statement("insert into T0(C0, C1) values (1, 10.0)", tx_handle);
+        test_query(
+            "select * from T0 where C0=1",
+            tx_handle,
+            {
+                ::common::DataType::INT8,
+                ::common::DataType::FLOAT8
+            },
+            {
+                true,
+                true
+            },
+            {mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)}
+        );
+        test_commit(tx_handle);
+    }
+}
 }

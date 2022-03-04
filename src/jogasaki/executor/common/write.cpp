@@ -19,6 +19,7 @@
 #include <takatori/statement/write.h>
 #include <yugawara/binding/factory.h>
 
+#include <jogasaki/constants.h>
 #include <jogasaki/error.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/model/statement.h>
@@ -370,7 +371,7 @@ status write::create_targets(
     std::vector<details::write_target>& out
 ) const {
     out.clear();
-    out.reserve(5);  // approx. number for primary+secondary indices for a table
+    out.reserve(approx_index_count_per_table);
     auto& table = idx.table();
     auto primary = table.owner()->find_primary_index(table);
     BOOST_ASSERT(primary != nullptr); //NOLINT

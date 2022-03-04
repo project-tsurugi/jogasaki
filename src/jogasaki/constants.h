@@ -38,4 +38,11 @@ constexpr static std::size_t bits_per_byte = std::numeric_limits<std::uint8_t>::
  */
 constexpr static std::string_view system_sequences_name = "system_sequences";
 
+/**
+ * @brief average number of indices per table
+ * @details the count includes primary/secondary.
+ * This is expected value for typical use case. Should be used for estimation, not limitation.
+ */
+constexpr static std::size_t approx_index_count_per_table = 5;
+
 }

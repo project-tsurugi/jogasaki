@@ -222,11 +222,24 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
     );
     return status::ok;
 }
-
+status database::validate_option(transaction_option const& option) {
+    if(option.is_long()) {
+        for(auto&& wp : option.write_preserves()) {
+            if(auto t = tables_->find_table(wp); ! t) {
+                VLOG(log_error) << "The table `" << wp << "` specified for write preserve is not found.";
+                return status::err_invalid_argument;
+            }
+        }
+    }
+    return status::ok;
+}
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option) {
     if (! kvs_db_) {
         VLOG(log_error) << "database not started";
         return status::err_invalid_state;
+    }
+    if(auto res = validate_option(option); res != status::ok) {
+        return res;
     }
     {
         auto tx = std::make_unique<impl::transaction>(

@@ -516,8 +516,7 @@ TEST_F(api_test, char_data_too_long) {
 }
 
 TEST_F(api_test, bad_wp_storage_name) {
-    ASSERT_DEATH({
-        auto tx = utils::create_transaction(*db_, false, true, {"DUMMY_STORAGE"});
-    }, "fail");
+    api::transaction_handle tx{};
+    ASSERT_NE(status::ok, db_->create_transaction(tx, api::transaction_option{false, true, {"DUMMY_STORAGE"}}));
 }
 }

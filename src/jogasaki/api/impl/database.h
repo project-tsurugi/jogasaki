@@ -193,6 +193,8 @@ private:
         maybe_shared_ptr<api::parameter_set const> parameters,
         std::unique_ptr<api::executable_statement>& statement
     );
+
+    status validate_option(transaction_option const& option);
 };
 
 inline api::impl::database& get_impl(api::database& db) {

@@ -519,4 +519,31 @@ TEST_F(api_test, bad_wp_storage_name) {
     api::transaction_handle tx{};
     ASSERT_NE(status::ok, db_->create_transaction(tx, api::transaction_option{false, true, {"DUMMY_STORAGE"}}));
 }
+
+TEST_F(api_test, empty_result) {
+    // we don't use not_found error even when query result is empty
+    {
+        // scan op
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::ok, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->commit());
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        // find op
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0 WHERE C0=0", stmt));
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::ok, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->commit());
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
 }

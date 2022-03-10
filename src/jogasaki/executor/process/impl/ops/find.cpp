@@ -188,6 +188,10 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         }
         if(auto res = it->key(k); res != status::ok) {
             finish(context);
+            // shirakami returns not_found here even if next() above returns ok. TODO confirm contract
+            if (res == status::not_found) {
+                return {};
+            }
             return details::error_abort(ctx, res);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {

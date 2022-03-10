@@ -44,6 +44,7 @@ status resolve(sharksfin::StatusCode code) noexcept {
         case sharksfin::StatusCode::ERR_TIME_OUT: return status::err_time_out;
         case sharksfin::StatusCode::ERR_NOT_IMPLEMENTED: return status::err_not_implemented;
         case sharksfin::StatusCode::ERR_ILLEGAL_OPERATION: return status::err_illegal_operation;
+        case sharksfin::StatusCode::ERR_CONFLICT_ON_WRITE_PRESERVE: return status::err_conflict_on_write_preserve;
     }
     std::abort();
 }

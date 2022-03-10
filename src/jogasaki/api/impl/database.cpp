@@ -107,6 +107,7 @@ database::database(
 {
     executor::add_builtin_tables(*tables_);
     executor::add_test_tables(*tables_);  //TODO remove on production environment
+    executor::add_qa_tables(*tables_);
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
         global::incremental_aggregate_function_repository()

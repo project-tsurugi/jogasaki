@@ -129,6 +129,8 @@ inline ::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_type_mismatch: return ::status::Status::ERR_TYPE_MISMATCH;
         case jogasaki::status::err_not_implemented: return ::status::Status::ERR_NOT_IMPLEMENTED;
         case jogasaki::status::err_illegal_operation: return ::status::Status::ERR_ILLEGAL_OPERATION;
+        case jogasaki::status::err_missing_operation_target: return ::status::Status::ERR_MISSING_OPERATION_TARGET;
+        case jogasaki::status::err_conflict_on_write_preserve: return ::status::Status::ERR_CONFLICT_ON_WRITE_PRESERVE;
     }
     fail();
 }

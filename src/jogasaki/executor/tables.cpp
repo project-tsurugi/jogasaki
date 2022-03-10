@@ -342,7 +342,21 @@ void add_test_tables(storage::configurable_provider& provider) {
             secondary_index_features
         });
     }
+}
 
+void add_qa_tables(storage::configurable_provider& provider) {
+    namespace type = ::takatori::type;
+    using ::yugawara::variable::nullity;
+    yugawara::storage::index_feature_set index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+        ::yugawara::storage::index_feature::unique,
+        ::yugawara::storage::index_feature::primary,
+    };
+    yugawara::storage::index_feature_set secondary_index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+    };
 //    create table qa_t1 (
 //        c_pk int4   primary key,
 //        c_i4 int4   not null,

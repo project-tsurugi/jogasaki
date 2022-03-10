@@ -163,7 +163,8 @@ void api_test_base::execute_statement(
     std::string_view query,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     api::parameter_set const& params,
-    api::transaction_handle& tx
+    api::transaction_handle& tx,
+    status expected
 ) {
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
@@ -171,7 +172,7 @@ void api_test_base::execute_statement(
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
     explain(*stmt);
-    ASSERT_EQ(status::ok, tx.execute(*stmt));
+    ASSERT_EQ(expected, tx.execute(*stmt));
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
@@ -185,10 +186,10 @@ void api_test_base::execute_statement(
     tx->commit();
 }
 
-void api_test_base::execute_statement(std::string_view query, api::transaction_handle& tx) {
+void api_test_base::execute_statement(std::string_view query, api::transaction_handle& tx, status expected) {
     api::impl::parameter_set params{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(query, variables, params, tx);
+    execute_statement(query, variables, params, tx, expected);
 }
 
 void api_test_base::execute_statement(std::string_view query) {

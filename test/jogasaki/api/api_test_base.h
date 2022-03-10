@@ -92,7 +92,8 @@ public:
         std::string_view query,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params,
-        api::transaction_handle& tx
+        api::transaction_handle& tx,
+        status expected = status::ok
     );
     void execute_statement(
         std::string_view query,
@@ -101,7 +102,8 @@ public:
     );
     void execute_statement(
         std::string_view query,
-        api::transaction_handle& tx
+        api::transaction_handle& tx,
+        status expected = status::ok
     );
 
     void execute_statement(

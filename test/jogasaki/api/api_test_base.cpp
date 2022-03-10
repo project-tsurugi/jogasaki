@@ -95,14 +95,11 @@ void api_test_base::execute_query(
 
 void api_test_base::execute_query(api::statement_handle& prepared, api::parameter_set const& params, api::transaction_handle& tx,
     std::vector<mock::basic_record>& out) {
-    out.clear();
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
     explain(*stmt);
     std::unique_ptr<api::result_set> rs{};
-    auto res = tx.execute(*stmt, rs);
-    if(res == status::not_found) return;
-    if(res != status::ok) {
+    if(auto res = tx.execute(*stmt, rs);res != status::ok) {
         LOG(ERROR) << "execute failed with rc : " << res;
         if(res == status::err_not_implemented || res == status::err_aborted_retryable) {
             // skip testing and proceed

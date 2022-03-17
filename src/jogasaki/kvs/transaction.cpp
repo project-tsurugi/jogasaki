@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 #include "transaction.h"
-#include "database.h"
+
+#include <thread>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/kvs/error.h>
+#include <jogasaki/kvs/database.h>
 
 namespace jogasaki::kvs {
 
@@ -59,7 +61,19 @@ transaction::~transaction() noexcept {
 }
 
 status transaction::commit(bool async) {
-    auto rc = sharksfin::transaction_commit(tx_, async);
+    sharksfin::StatusCode rc{};
+    // TODO remove retry here when scheduler is ready to handle waiting tasks
+    std::size_t trial = 30;
+    while(trial > 0 && (rc = sharksfin::transaction_commit(tx_, async)) == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TX) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        --trial;
+    }
+    if (trial == 0) {
+        VLOG(log_error) << "commit failed and giving up retries.";
+        auto res = abort();
+        VLOG(log_warning) << "abort returns:" << res;
+        return status::err_aborted;
+    }
     if(rc == sharksfin::StatusCode::OK ||
         rc == sharksfin::StatusCode::ERR_ABORTED ||
         rc == sharksfin::StatusCode::ERR_ABORTED_RETRYABLE) {

@@ -43,10 +43,9 @@ DECLARE_int32(load_batch_size);  //NOLINT
 
 namespace tateyama::server {
 
-// should be in sync one in ipc_provider
-struct ipc_endpoint_context {
+// should be in sync one in ipc_provider/steram_provider
+struct endpoint_context {
     std::unordered_map<std::string, std::string> options_{};
-    std::function<void()> database_initialize_{};
 };
 
 int backend_main(int argc, char **argv) {
@@ -87,16 +86,23 @@ int backend_main(int argc, char **argv) {
     auto service = tateyama::api::endpoint::create_service(*env);
     env->endpoint_service(service);
 
-    auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
-    env->add_endpoint(endpoint);
-    LOG(INFO) << "endpoint service created";
+    auto ipc_endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
+    env->add_endpoint(ipc_endpoint);
+    LOG(INFO) << "ipc endpoint service created";
+    auto stream_endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("stream_endpoint");
+    env->add_endpoint(stream_endpoint);
+    LOG(INFO) << "stream endpoint service created";
 
-    ipc_endpoint_context init_context{};
+    endpoint_context init_context{};
     init_context.options_ = std::unordered_map<std::string, std::string>{
         {"dbname", FLAGS_dbname},
         {"threads", std::to_string(FLAGS_threads)},
+        {"port", std::to_string(12345)},
     };
-    if (auto rc = endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
+    if (auto rc = ipc_endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
+        std::abort();
+    }
+    if (auto rc = stream_endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();
     }
     if (FLAGS_load) {
@@ -124,10 +130,14 @@ int backend_main(int argc, char **argv) {
         }
     }
 
-    if (auto rc = endpoint->start(); rc != status::ok) {
+    if (auto rc = ipc_endpoint->start(); rc != status::ok) {
         std::abort();
     }
-    LOG(INFO) << "endpoint service listener started";
+    LOG(INFO) << "ipc endpoint service listener started";
+    if (auto rc = stream_endpoint->start(); rc != status::ok) {
+        std::abort();
+    }
+    LOG(INFO) << "stream endpoint service listener started";
 
     // wait for signal to terminate this
     int signo;
@@ -144,8 +154,10 @@ int backend_main(int argc, char **argv) {
             switch(signo) {
             case SIGINT:
                 // termination process
-                LOG(INFO) << "endpoint->shutdown()";
-                endpoint->shutdown();
+                LOG(INFO) << "ipc_endpoint->shutdown()";
+                ipc_endpoint->shutdown();
+                LOG(INFO) << "stream_endpoint->shutdown()";
+                stream_endpoint->shutdown();
                 LOG(INFO) << "app->shutdown()";
                 app->shutdown();
                 LOG(INFO) << "db->stop()";

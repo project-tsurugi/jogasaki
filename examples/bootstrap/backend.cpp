@@ -46,7 +46,6 @@ namespace tateyama::server {
 // should be in sync one in ipc_provider/steram_provider
 struct endpoint_context {
     std::unordered_map<std::string, std::string> options_{};
-    std::function<void()> database_initialize_{};
 };
 
 int backend_main(int argc, char **argv) {

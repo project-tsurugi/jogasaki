@@ -107,19 +107,17 @@ TEST_F(validate_qa_test, long_tx_with_qa_table) {
 
 TEST_F(validate_qa_test, verify_invalid_state) {
     execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
-//    wait_epochs(10);
     auto tx = utils::create_transaction(*db_, false, true, {"qa_t1"});
     std::vector<mock::basic_record> result{};
     execute_query("SELECT c_pk FROM qa_t1 where c_pk=1", *tx, result);
     ASSERT_EQ(1, result.size());
-//    execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (2, 20, 200, 2000.0, 20000.0, '200000')", *tx);
+    execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (2, 20, 200, 2000.0, 20000.0, '200000')", *tx);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(validate_qa_test, verify_invalid_state_on_non_qa_table) {
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     auto tx = utils::create_transaction(*db_, false, true, {"T0"});
-    wait_epochs(10);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0 FROM T0 where C0=1", *tx, result);
     ASSERT_EQ(1, result.size());
@@ -131,7 +129,7 @@ TEST_F(validate_qa_test, verify_invalid_state_on_non_qa_table) {
 TEST_F(validate_qa_test, simplified_crash_on_wp_build) {
     // using T0 instead of qa tables
     {
-//        execute_statement("delete from qa_t1 where c_pk=1");
+        execute_statement("delete from T0 where C0=1");
         execute_statement("INSERT INTO T0(C0, C1) VALUES (1, 10.0)");
         std::vector<mock::basic_record> result{};
         execute_query("select C1 from T0 where C0=1", result);
@@ -139,7 +137,6 @@ TEST_F(validate_qa_test, simplified_crash_on_wp_build) {
     }
     {
         execute_statement("delete from T0 where C0=1");
-        wait_epochs(2);
         execute_statement("INSERT INTO T0(C0, C1) VALUES (1, 10.0)");
         std::vector<mock::basic_record> result{};
         execute_query("select C1 from T0 where C0=1", result);

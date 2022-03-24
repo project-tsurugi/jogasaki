@@ -177,24 +177,6 @@ TEST_F(long_tx_test, multiple_tx_iud) {
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 20.0)), result[1]);
 }
 
-TEST_F(long_tx_test, short_tx_causes_premature) {
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
-    wait_epochs(4);
-    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
-    auto tx2 = utils::create_transaction(*db_, false, true, {});
-    wait_epochs(4);
-//    execute_statement("SELECT * FROM T0 WHERE C0=2", *tx2, status::err_io_error);
-    execute_statement("SELECT * FROM T0 WHERE C0=2", *tx2, status::ok);
-//    ASSERT_EQ(status::ok, tx1->commit());
-    ASSERT_EQ(status::ok, tx2->commit());
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 ORDER BY C0", result);
-    ASSERT_EQ(2, result.size());
-    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 20.0)), result[1]);
-}
-
 TEST_F(long_tx_test, reading_others_wp_prep_by_ltx) {
     auto tx = utils::create_transaction(*db_, false, true, {"T0"});
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx);

@@ -64,6 +64,15 @@ file(GLOB SRCS
         "tateyama/*.cpp"
         )
 
+# long tx specific testcases
+if(BUILD_SHIRAKAMI_WP)
+list(APPEND SRCS
+        "jogasaki/long_tx/long_tx_api_test.cpp"
+        "jogasaki/long_tx/long_tx_test.cpp"
+        "jogasaki/long_tx/validate_qa_ltx_test.cpp"
+        )
+endif()
+
 # add implementation specific testcases
 file(GLOB ADDED
         "jogasaki/targets/${SHARKSFIN_IMPLEMENTATION}/*.cpp"

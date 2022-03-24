@@ -31,7 +31,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
-#include "api_test_base.h"
+#include "../api/api_test_base.h"
 
 namespace jogasaki::testing {
 

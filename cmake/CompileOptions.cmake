@@ -47,3 +47,7 @@ if(LIKWID_ENABLE)
     message("likwid enabled")
     add_definitions(-DLIKWID_PERFMON)
 endif()
+
+if(BUILD_SHIRAKAMI_WP)
+    add_definitions(-DBUILD_SHIRAKAMI_WP)
+endif()

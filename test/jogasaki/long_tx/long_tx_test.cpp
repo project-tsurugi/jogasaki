@@ -31,7 +31,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
-#include "api_test_base.h"
+#include "../api/api_test_base.h"
 
 namespace jogasaki::testing {
 
@@ -163,11 +163,10 @@ TEST_F(long_tx_test, multiple_tx_insert2) {
 TEST_F(long_tx_test, multiple_tx_iud) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
-//    wait_epochs(8);
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
     execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx1);
-    execute_statement("UPDATE T0 SET C1=20.0 WHERE C0=2", *tx2, status::err_io_error); // WP-1 raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
+    execute_statement("UPDATE T0 SET C1=20.0 WHERE C0=2", *tx2, status::err_aborted); // WP-1 raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
     ASSERT_EQ(status::ok, tx1->commit());
     ASSERT_EQ(status::ok, tx2->commit());
     std::vector<mock::basic_record> result{};
@@ -182,11 +181,9 @@ TEST_F(long_tx_test, reading_others_wp_prep_by_ltx) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx);
     ASSERT_EQ(status::ok, tx->commit());
-    wait_epochs(8);
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {});
-    wait_epochs(4);
-    execute_statement("SELECT * FROM T0 WHERE C0=2", *tx2, status::err_io_error); // WP-0+alpha raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
+    execute_statement("SELECT * FROM T0 WHERE C0=2", *tx2, status::err_aborted); // WP-0+alpha raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
     ASSERT_EQ(status::ok, tx1->commit());
     ASSERT_EQ(status::ok, tx2->commit());
     std::vector<mock::basic_record> result{};
@@ -199,11 +196,9 @@ TEST_F(long_tx_test, reading_others_wp_prep_by_ltx) {
 TEST_F(long_tx_test, reading_others_wp_prep_by_stx) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
-    wait_epochs(8);
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {});
-    wait_epochs(4);
-    execute_statement("SELECT * FROM T0 WHERE C0=2", *tx2, status::err_io_error); // WP-0+alpha raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
+    execute_statement("SELECT * FROM T0 WHERE C0=2", *tx2, status::err_aborted); // WP-0+alpha raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
     ASSERT_EQ(status::ok, tx1->commit());
     ASSERT_EQ(status::ok, tx2->commit());
     std::vector<mock::basic_record> result{};
@@ -220,15 +215,11 @@ TEST_F(long_tx_test, reading_others_wp_after_commit) {
         execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx);
         ASSERT_EQ(status::ok, tx->commit());
     }
-    wait_epochs(8);
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
-//    wait_epochs(4);
     execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx1);
     ASSERT_EQ(status::ok, tx1->commit());
-//    wait_epochs(4);
 
-    execute_statement("SELECT * FROM T0 WHERE C0=1", *tx2, status::ok);
     execute_statement("UPDATE T0 SET C1=100.0 WHERE C0=1", *tx2);
     ASSERT_EQ(status::ok, tx2->commit());
     std::vector<mock::basic_record> result{};

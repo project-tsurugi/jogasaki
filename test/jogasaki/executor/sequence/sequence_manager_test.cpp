@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::sequence {
@@ -487,6 +488,9 @@ TEST_F(sequence_manager_test, drop_sequence) {
 }
 
 TEST_F(sequence_manager_test, save_and_recover) {
+    if (jogasaki::kvs::implementation_id() != "memory" && BUILD_WP) {
+        GTEST_SKIP() << "shirakami wp build doesn't support recovery yet";
+    }
     {
         manager mgr{*db_};
         EXPECT_EQ(0, mgr.load_id_map());

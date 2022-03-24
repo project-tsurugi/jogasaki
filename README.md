@@ -56,6 +56,7 @@ available options:
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `memory`)
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.
+* `-DBUILD_SHIRAKAMI_WP=ON` - (temporary) enables building with shirakami build with BUILD_WP=ON/BUILD_CPR=OFF. Use with SHARKSFIN_IMPLEMENTATION=shirakami.
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)

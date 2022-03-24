@@ -127,24 +127,6 @@ TEST_F(validate_qa_test, verify_invalid_state_on_non_qa_table) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
-TEST_F(validate_qa_test, crash_on_wp_build) {
-    // once this scenario crashed with BUILD_WP=ON
-    {
-//        execute_statement("delete from qa_t1 where c_pk=1");
-        execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
-        std::vector<mock::basic_record> result{};
-        execute_query("select c_pk from qa_t1 where c_pk=1", result);
-        EXPECT_EQ(1, result.size());
-    }
-    {
-        execute_statement("delete from qa_t1 where c_pk=1");
-//        wait_epochs(40);
-        execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
-        std::vector<mock::basic_record> result{};
-        execute_query("select c_pk from qa_t1 where c_pk=1", result);
-        EXPECT_EQ(1, result.size());
-    }
-}
 
 TEST_F(validate_qa_test, simplified_crash_on_wp_build) {
     // using T0 instead of qa tables
@@ -163,26 +145,6 @@ TEST_F(validate_qa_test, simplified_crash_on_wp_build) {
         execute_query("select C1 from T0 where C0=1", result);
         EXPECT_EQ(1, result.size());
     }
-}
-
-TEST_F(validate_qa_test, long_vs_short_insert1) {
-    // inserting to same page. This scenario once blocked and waited forever.
-    auto tx1 = utils::create_transaction(*db_, false, true, {"qa_t1"});
-    auto tx2 = utils::create_transaction(*db_);
-    execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')", *tx2, status::err_conflict_on_write_preserve);
-    execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')", *tx1);
-    ASSERT_EQ(status::ok, tx1->commit());
-    ASSERT_EQ(status::ok, tx2->commit());
-}
-
-TEST_F(validate_qa_test, long_vs_short_insert2) {
-    // inserting to same page. This scenario once blocked and waited forever.
-    auto tx1 = utils::create_transaction(*db_, false, true, {"qa_t1"});
-    auto tx2 = utils::create_transaction(*db_);
-    execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')", *tx1);
-    execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')", *tx2, status::err_conflict_on_write_preserve);
-    ASSERT_EQ(status::ok, tx1->commit());
-    ASSERT_EQ(status::ok, tx2->commit());
 }
 
 TEST_F(validate_qa_test, long_update) {

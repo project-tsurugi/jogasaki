@@ -18,6 +18,12 @@
 #include <thread>
 #include <chrono>
 
+#ifdef BUILD_SHIRAKAMI_WP
+static constexpr bool BUILD_WP = true;
+#else
+static constexpr bool BUILD_WP = false;
+#endif
+
 namespace jogasaki {
 
 class test_base {

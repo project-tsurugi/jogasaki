@@ -137,6 +137,7 @@ TEST_F(validate_qa_test, simplified_crash_on_wp_build) {
     }
     {
         execute_statement("delete from T0 where C0=1");
+        wait_epochs(2); // delete have to wait. timing issue seen on Ubuntu20
         execute_statement("INSERT INTO T0(C0, C1) VALUES (1, 10.0)");
         std::vector<mock::basic_record> result{};
         execute_query("select C1 from T0 where C0=1", result);

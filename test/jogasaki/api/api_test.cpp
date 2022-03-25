@@ -116,9 +116,6 @@ TEST_F(api_test, primary_key_violation) {
 }
 
 TEST_F(api_test, primary_key_violation_in_same_tx) {
-    if (jogasaki::kvs::implementation_id() != "memory" && BUILD_WP) {
-        GTEST_SKIP() << "wp build has limitation on dirty read"; // TODO investigate
-    }
     std::unique_ptr<api::executable_statement> stmt0{};
     std::unique_ptr<api::executable_statement> stmt1{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt0));

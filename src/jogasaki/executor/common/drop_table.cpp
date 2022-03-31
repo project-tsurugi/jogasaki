@@ -38,8 +38,10 @@ model::statement_kind drop_table::kind() const noexcept {
 }
 
 bool drop_table::operator()(request_context& context) const {
+    BOOST_ASSERT(context.storage_provider());  //NOLINT
+    // note: To fully clean up garbage, try to proceed further even if some entry removal failed or warned.
     auto& provider = *context.storage_provider();
-    auto& c = const_cast<yugawara::storage::table&>(yugawara::binding::extract<yugawara::storage::table>(ct_->target()));
+    auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     if(auto res = provider.remove_index(c.simple_name());! res) {
         VLOG(log_error) << "primary index for table " << c.simple_name() << " not found";
     }

@@ -16,6 +16,7 @@
 #include "create_table.h"
 
 #include <takatori/statement/create_table.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/binding/extract.h>
 
@@ -36,20 +37,16 @@ model::statement_kind create_table::kind() const noexcept {
 }
 
 bool create_table::operator()(request_context& context) const {
+    BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
-    auto& c = const_cast<yugawara::storage::table&>(yugawara::binding::extract<yugawara::storage::table>(ct_->definition()));
-    std::shared_ptr<::yugawara::storage::table> t = provider.add_table(std::move(c), false);
+    auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
+    auto t = provider.add_table(c, false);
 
-    auto& i = yugawara::binding::extract<yugawara::storage::index>(ct_->primary_key());
-    provider.add_index(::yugawara::storage::index{
-        t,
-        std::string{t->simple_name()},
-        i.keys(),
-        i.values(),
-        i.features()
-    });
-    if(auto stg = context.database()->get_or_create_storage(c.simple_name());! stg) {
-        VLOG(log_error) << "storage " << c.simple_name() << " already exists ";
+    auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
+    BOOST_ASSERT(i.ownership());  //NOLINT
+    provider.add_index(i.ownership(), false);
+    if(auto stg = context.database()->get_or_create_storage(c->simple_name());! stg) {
+        VLOG(log_error) << "storage " << c->simple_name() << " already exists ";
     }
     return true;
 }

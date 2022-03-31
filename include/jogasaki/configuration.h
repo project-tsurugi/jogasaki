@@ -154,6 +154,15 @@ public:
     void scheduler_rr_workers(bool arg) noexcept {
         scheduler_rr_workers_ = arg;
     }
+
+    [[nodiscard]] bool lazy_worker() const noexcept {
+        return lazy_worker_;
+    }
+
+    void lazy_worker(bool arg) noexcept {
+        lazy_worker_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -166,6 +175,7 @@ public:
             "stealing_enabled:" << cfg.stealing_enabled() << " " <<
             "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
             "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
+            "lazy_worker:" << cfg.lazy_worker() << " " <<
             "";
     }
 
@@ -186,6 +196,7 @@ private:
     std::string db_location_{};
     bool tasked_write_ = false;
     bool scheduler_rr_workers_ = false;
+    bool lazy_worker_ = false;
 };
 
 }

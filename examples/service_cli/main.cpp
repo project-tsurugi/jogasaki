@@ -62,6 +62,7 @@ DEFINE_string(input_file, "", "specify the input commands file to read and execu
 DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
+DEFINE_bool(lazy_worker, false, "worker sleeps frequently to wait for queue content");  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -144,6 +145,7 @@ public:
         cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
         cfg.default_partitions(FLAGS_partitions);
         cfg.stealing_enabled(FLAGS_steal);
+        cfg.lazy_worker(FLAGS_lazy_worker);
 
         if (FLAGS_test_build) {
             cfg.single_thread(true);

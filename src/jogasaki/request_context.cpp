@@ -127,6 +127,14 @@ maybe_shared_ptr<scheduler::statement_scheduler> const& request_context::stmt_sc
     return statement_scheduler_;
 }
 
+void request_context::storage_provider(maybe_shared_ptr<yugawara::storage::configurable_provider> arg) noexcept {
+    storage_provider_ = std::move(arg);
+}
+
+maybe_shared_ptr<yugawara::storage::configurable_provider> const& request_context::storage_provider() const noexcept {
+    return storage_provider_;
+}
+
 void prepare_scheduler(request_context& rctx) {
     std::shared_ptr<scheduler::task_scheduler> sched{};
     if(rctx.configuration()->single_thread()) {

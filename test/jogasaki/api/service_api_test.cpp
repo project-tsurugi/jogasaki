@@ -112,7 +112,7 @@ public:
     void test_commit(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
-    void test_query();
+    void test_query(std::string_view query = "select * from T0");
 
     void test_query(
         std::string_view sql,
@@ -353,11 +353,11 @@ void service_api_test::test_query(
     }
 }
 
-void service_api_test::test_query() {
+void service_api_test::test_query(std::string_view query) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_query(
-        "select * from T0",
+        query,
         tx_handle,
         {
             ::common::DataType::INT8,
@@ -885,5 +885,11 @@ TEST_F(service_api_test, long_tx_simple) {
         );
         test_commit(tx_handle);
     }
+}
+
+TEST_F(service_api_test, execute_ddl) {
+    test_statement("create table MYTABLE(C0 bigint primary key, C1 double)");
+    test_statement("insert into MYTABLE(C0, C1) values (1, 10.0)");
+    test_query("select * from MYTABLE");
 }
 }

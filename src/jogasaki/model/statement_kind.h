@@ -26,6 +26,8 @@ namespace jogasaki::model {
 enum class statement_kind : std::size_t {
     execute,
     write,
+    create_table,
+    drop_table,
 };
 
 /**
@@ -39,6 +41,8 @@ enum class statement_kind : std::size_t {
     switch (value) {
         case kind::execute: return "execute"sv;
         case kind::write: return "write"sv;
+        case kind::create_table: return "create_table"sv;
+        case kind::drop_table: return "drop_table"sv;
     }
     std::abort();
 }

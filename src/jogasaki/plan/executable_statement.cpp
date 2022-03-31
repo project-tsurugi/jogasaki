@@ -66,4 +66,15 @@ std::shared_ptr<mirror_container> const& executable_statement::mirrors() const n
     return mirrors_;
 }
 
+bool executable_statement::is_ddl() const noexcept {
+    if (! statement_) return false;
+    auto k = statement_->kind();
+    using takatori::statement::statement_kind;
+    return
+        k == statement_kind::create_table ||
+        k == statement_kind::drop_table ||
+        k == statement_kind::create_index ||
+        k == statement_kind::drop_index;
+}
+
 }

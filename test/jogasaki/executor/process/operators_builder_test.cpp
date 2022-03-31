@@ -59,6 +59,8 @@
 #include <jogasaki/test_root.h>
 
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/plan/storage_processor.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 using namespace std::string_literals;
@@ -176,9 +178,11 @@ TEST_F(operators_builder_test, temp) {
     yugawara::storage::column const& t0c0 = t0->columns()[0];
     yugawara::storage::column const& t0c1 = t0->columns()[1];
 
+    auto sp = std::make_shared<jogasaki::plan::storage_processor>();
     yugawara::compiler_options c_options{
-        indices,
         runtime_features,
+        sp,
+        indices,
     };
     auto result = yugawara::compiler()(c_options, std::move(graph)); //FIXME construct compiler info manually
     ASSERT_TRUE(result);

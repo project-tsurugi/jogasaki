@@ -179,10 +179,11 @@ void api_test_base::execute_statement(
 void api_test_base::execute_statement(
     std::string_view query,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
-    api::parameter_set const& params
+    api::parameter_set const& params,
+    status expected
 ) {
     auto tx = utils::create_transaction(*db_);
-    execute_statement(query, variables, params, *tx);
+    execute_statement(query, variables, params, *tx, expected);
     tx->commit();
 }
 
@@ -192,10 +193,10 @@ void api_test_base::execute_statement(std::string_view query, api::transaction_h
     execute_statement(query, variables, params, tx, expected);
 }
 
-void api_test_base::execute_statement(std::string_view query) {
+void api_test_base::execute_statement(std::string_view query, status expected) {
     api::impl::parameter_set params{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(query, variables, params);
+    execute_statement(query, variables, params, expected);
 }
 
 void api_test_base::resolve(std::string& query, std::string_view place_holder, std::string value) {

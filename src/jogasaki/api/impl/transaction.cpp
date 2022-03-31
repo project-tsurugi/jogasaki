@@ -68,6 +68,7 @@ status transaction::execute(
             *database_->task_scheduler()
         )
     );
+    request_ctx->storage_provider(database_->tables());
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -90,9 +91,9 @@ status transaction::execute(
         );
         return request_ctx->status_code();
     }
-    auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
+    // write or DDL
     scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
-    sched.schedule(*stmt, *request_ctx);
+    sched.schedule(*e->operators(), *request_ctx);
     return request_ctx->status_code();
 }
 
@@ -163,6 +164,7 @@ bool transaction::execute_async_common(
             *database_->task_scheduler()
         )
     );
+    rctx->storage_provider(database_->tables());
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -187,7 +189,7 @@ bool transaction::execute_async_common(
         ts.wait_for_progress(*job);
         return true;
     }
-    if(c->tasked_write()) {
+    if(!e->is_ddl() && c->tasked_write()) {
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         std::size_t cpu = sched_getcpu();
         auto job = std::make_shared<scheduler::job_context>(cpu);
@@ -208,9 +210,9 @@ bool transaction::execute_async_common(
         ts.wait_for_progress(*job);
         return true;
     }
-    auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
+    // write on non-tasked mode or DDL
     scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
-    sched.schedule(*stmt, *rctx);
+    sched.schedule(*e->operators(), *rctx);
     on_completion(rctx->status_code(), rctx->status_message());
     return true;
 }

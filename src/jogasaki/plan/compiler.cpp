@@ -36,6 +36,8 @@
 
 #include <takatori/statement/statement_kind.h>
 #include <takatori/statement/write.h>
+#include <takatori/statement/create_table.h>
+#include <takatori/statement/drop_table.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
@@ -61,9 +63,12 @@
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/common/create_table.h>
+#include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/plan/parameter_set.h>
 #include <jogasaki/model/statement_kind.h>
+#include <jogasaki/plan/storage_processor.h>
 
 namespace jogasaki::plan {
 
@@ -141,6 +146,10 @@ std::shared_ptr<mirror_container> preprocess_mirror(
             break;
         case statement::statement_kind::write:
             break;
+        case statement::statement_kind::create_table:
+            break;
+        case statement::statement_kind::drop_table:
+            break;
         default:
             fail();
     }
@@ -208,9 +217,11 @@ status prepare(
     };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
+    auto sp = std::make_shared<storage_processor>();
     yugawara::compiler_options c_options{
-        indices,
         runtime_features,
+        sp,
+        indices,
     };
 
     ::takatori::document::document_map documents;
@@ -510,6 +521,52 @@ void create_mirror_for_write(
     );
 }
 
+// TODO simplify
+void create_mirror_for_create_table(
+    compiler_context& ctx,
+    maybe_shared_ptr<statement::statement> statement,
+    compiled_info info,
+    std::shared_ptr<mirror_container> const& mirrors,
+    parameter_set const* parameters
+) {
+    auto& node = unsafe_downcast<statement::create_table>(*statement);
+    auto ct = std::make_shared<executor::common::create_table>(node);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
+    ctx.executable_statement(
+        std::make_shared<executable_statement>(
+            std::move(statement),
+            std::move(info),
+            std::move(ct),
+            mirrors->host_variable_info(),
+            std::move(vars),
+            mirrors
+        )
+    );
+}
+
+// TODO simplify
+void create_mirror_for_drop_table(
+    compiler_context& ctx,
+    maybe_shared_ptr<statement::statement> statement,
+    compiled_info info,
+    std::shared_ptr<mirror_container> const& mirrors,
+    parameter_set const* parameters
+) {
+    auto& node = unsafe_downcast<statement::drop_table>(*statement);
+    auto ct = std::make_shared<executor::common::drop_table>(node);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
+    ctx.executable_statement(
+        std::make_shared<executable_statement>(
+            std::move(statement),
+            std::move(info),
+            std::move(ct),
+            mirrors->host_variable_info(),
+            std::move(vars),
+            mirrors
+        )
+    );
+}
+
 void create_mirror_for_execute(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
@@ -622,6 +679,12 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             break;
         case statement_kind::execute:
             create_mirror_for_execute(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::create_table:
+            create_mirror_for_create_table(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::drop_table:
+            create_mirror_for_drop_table(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
             fail();

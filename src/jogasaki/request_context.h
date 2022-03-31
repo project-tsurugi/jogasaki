@@ -189,6 +189,17 @@ public:
      */
     [[nodiscard]] maybe_shared_ptr<scheduler::statement_scheduler> const& stmt_scheduler() const noexcept;
 
+    /**
+     * @brief setter for the storage configuration provider
+     */
+    void storage_provider(maybe_shared_ptr<yugawara::storage::configurable_provider> arg) noexcept;
+
+    /**
+     * @brief accessor for the storage configuration provider
+     * @return storage configuration provider
+     */
+    [[nodiscard]] maybe_shared_ptr<yugawara::storage::configurable_provider> const& storage_provider() const noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -200,6 +211,7 @@ private:
     maybe_shared_ptr<model::flow_repository> flows_{};
     maybe_shared_ptr<scheduler::task_scheduler> scheduler_{};
     maybe_shared_ptr<scheduler::statement_scheduler> statement_scheduler_{};
+    maybe_shared_ptr<yugawara::storage::configurable_provider> storage_provider_{};
 
     data::result_store* result_{};
     maybe_shared_ptr<api::data_channel> data_channel_{};

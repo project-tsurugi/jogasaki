@@ -168,11 +168,7 @@ void api_test_base::execute_statement(
 ) {
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-
-    std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
-    explain(*stmt);
-    ASSERT_EQ(expected, tx.execute(*stmt));
+    execute_statement(prepared, variables, params, tx, expected);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
@@ -182,21 +178,62 @@ void api_test_base::execute_statement(
     api::parameter_set const& params,
     status expected
 ) {
-    auto tx = utils::create_transaction(*db_);
-    execute_statement(query, variables, params, *tx, expected);
-    tx->commit();
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
+    execute_statement(prepared, variables, params, expected);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
 void api_test_base::execute_statement(std::string_view query, api::transaction_handle& tx, status expected) {
-    api::impl::parameter_set params{};
+    api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(query, variables, params, tx, expected);
+    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
+    execute_statement(prepared, tx, expected);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
 void api_test_base::execute_statement(std::string_view query, status expected) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
+    execute_statement(prepared, expected);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+}
+
+void api_test_base::execute_statement(
+    api::statement_handle prepared,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    api::parameter_set const& params,
+    api::transaction_handle& tx,
+    status expected
+) {
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
+    explain(*stmt);
+    ASSERT_EQ(expected, tx.execute(*stmt));
+}
+
+void api_test_base::execute_statement(
+    api::statement_handle prepared,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    api::parameter_set const& params,
+    status expected
+) {
+    auto tx = utils::create_transaction(*db_);
+    execute_statement(prepared, variables, params, *tx, expected);
+    tx->commit();
+}
+
+void api_test_base::execute_statement(api::statement_handle prepared, api::transaction_handle& tx, status expected) {
     api::impl::parameter_set params{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(query, variables, params, expected);
+    execute_statement(prepared, variables, params, tx, expected);
+}
+
+void api_test_base::execute_statement(api::statement_handle prepared, status expected) {
+    api::impl::parameter_set params{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    execute_statement(prepared, variables, params, expected);
 }
 
 void api_test_base::resolve(std::string& query, std::string_view place_holder, std::string value) {

@@ -112,6 +112,29 @@ public:
         status expected = status::ok
     );
 
+    void execute_statement(
+        api::statement_handle prepared,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::parameter_set const& params,
+        api::transaction_handle& tx,
+        status expected = status::ok
+    );
+    void execute_statement(
+        api::statement_handle prepared,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::parameter_set const& params,
+        status expected = status::ok
+    );
+    void execute_statement(
+        api::statement_handle prepared,
+        api::transaction_handle& tx,
+        status expected = status::ok
+    );
+
+    void execute_statement(
+        api::statement_handle prepared,
+        status expected = status::ok
+    );
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 
     template <class T>

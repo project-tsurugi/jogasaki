@@ -148,9 +148,109 @@ TEST_F(ddl_test, existing_table) {
     ASSERT_EQ(status::err_translator_error,db_->prepare("CREATE TABLE T0 (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", variables, prepared));
 }
 
+TEST_F(ddl_test, duplicate_table_name) {
+    // test compile time error and runtime error with existing table
+    api::statement_handle prepared0{}, prepared1{}, prepared2{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared0));
+    ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared1));
+    execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
+    ASSERT_EQ(status::err_translator_error, db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared2));
+    execute_statement(prepared1, status::err_already_exists);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared0));
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared1));
+}
+
 TEST_F(ddl_test, drop_missing_table) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     ASSERT_EQ(status::err_translator_error,db_->prepare("DROP TABLE DUMMY111", variables, prepared));
+}
+
+TEST_F(ddl_test, drop_missing_table_runtime) {
+    // test runtime error with missing table
+    execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    ASSERT_EQ(status::ok,db_->prepare("DROP TABLE TTT", variables, prepared));
+    execute_statement( "DROP TABLE TTT");
+    execute_statement(prepared, status::err_not_found);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+}
+
+TEST_F(ddl_test, complex_primary_key) {
+    execute_statement( "CREATE TABLE T (C0 INT NOT NULL, C1 INT NOT NULL, C2 INT, C3 INT, PRIMARY KEY(C0,C1))");
+    execute_statement( "INSERT INTO T (C0, C1, C2, C3) VALUES(1, 1, 10, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        auto exp = mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(
+            std::forward_as_tuple(1, 1, 10, 10),
+            {false, false, false, false}
+        );
+        EXPECT_EQ(exp, result[0]);
+    }
+}
+
+TEST_F(ddl_test, primary_key_column_only) {
+    execute_statement( "CREATE TABLE T (C0 INT NOT NULL, PRIMARY KEY(C0))");
+    execute_statement( "INSERT INTO T (C0) VALUES(1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        auto exp = mock::create_nullable_record<kind::int4>(
+            std::forward_as_tuple(1),
+            {false}
+        );
+        EXPECT_EQ(exp, result[0]);
+    }
+}
+TEST_F(ddl_test, primary_key_columns_only) {
+    execute_statement( "CREATE TABLE T (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES(1, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        auto& rec = result[0];
+        auto exp = mock::create_nullable_record<kind::int4, kind::int4>(
+            std::forward_as_tuple(1, 10),
+            {false, false}
+        );
+        EXPECT_EQ(exp, result[0]);
+    }
+}
+
+TEST_F(ddl_test, missing_primary_key) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    ASSERT_EQ(status::err_compiler_error, db_->prepare("CREATE TABLE T (C0 BIGINT NOT NULL, C1 DOUBLE)", variables, prepared));
+}
+
+TEST_F(ddl_test, type_name_variants) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE DBLPREC (C0 DOUBLE PRECISION PRIMARY KEY)", variables, prepared));
+}
+
+TEST_F(ddl_test, unsupported_types) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TINYINT PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 SMALLINT PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 REAL PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 DATE PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TIME PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TIMESTAMP PRIMARY KEY)", variables, prepared));
+}
+
+TEST_F(ddl_test, default_value) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)", variables, prepared));
 }
 }

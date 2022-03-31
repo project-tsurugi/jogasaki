@@ -34,11 +34,23 @@ bool create_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
-    auto t = provider.add_table(c, false);
-
+    std::shared_ptr<yugawara::storage::table const> t{};
+    try {
+        t = provider.add_table(c, false);
+    } catch(std::invalid_argument& e) {
+        VLOG(log_error) << "table " << c->simple_name() << " already exists";
+        context.status_code(status::err_already_exists);
+        return false;
+    }
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
     BOOST_ASSERT(i.ownership());  //NOLINT
-    provider.add_index(i.ownership(), false);
+    try {
+        provider.add_index(i.ownership(), false);
+    } catch(std::invalid_argument& e) {
+        VLOG(log_error) << "primary index " << i->simple_name() << " already exists";
+        context.status_code(status::err_already_exists);
+        return false;
+    }
     if(auto stg = context.database()->get_or_create_storage(c->simple_name());! stg) {
         VLOG(log_error) << "storage " << c->simple_name() << " already exists ";
     }

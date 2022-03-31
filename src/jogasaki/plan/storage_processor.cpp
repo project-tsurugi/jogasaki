@@ -26,13 +26,36 @@ using ::yugawara::storage::index;
 using ::yugawara::storage::table;
 namespace schema = ::yugawara::schema;
 
-bool
-storage_processor::ensure(schema::declaration const& location, table& table_prototype, index& primary_index_prototype,
-    yugawara::storage::prototype_processor::diagnostic_consumer_type const& diagnostic_consumer) {
+bool contains(std::vector<index::key>& keys, yugawara::storage::column& c) {
+    bool contained = false;
+    for(auto&& tc : keys) {
+        if(tc == c) {
+            contained = true;
+            break;
+        }
+    }
+    return contained;
+}
+
+bool storage_processor::ensure(
+    schema::declaration const& location,
+    table& table_prototype,
+    index& primary_index_prototype,
+    yugawara::storage::prototype_processor::diagnostic_consumer_type const& diagnostic_consumer
+) {
     (void)location;
-    (void)table_prototype;
-    (void)primary_index_prototype;
     (void)diagnostic_consumer;
+
+    if(primary_index_prototype.keys().empty()) {
+        diagnostic_consumer(
+            diagnostic_type{
+                yugawara::compiler_code::unsupported_type,
+                "missing primary key definition",
+                takatori::document::region{}
+            }
+        );
+        return false;
+    }
 
     yugawara::storage::index_feature_set index_features{
         ::yugawara::storage::index_feature::find,
@@ -40,19 +63,12 @@ storage_processor::ensure(schema::declaration const& location, table& table_prot
         ::yugawara::storage::index_feature::unique,
         ::yugawara::storage::index_feature::primary,
     };
+
     std::vector<yugawara::storage::index::column_ref> cols{};
     for(auto&& cc : table_prototype.columns()) {
-        bool contained = false;
-        for(auto tc : primary_index_prototype.keys()) {
-            if(tc == cc) {
-                contained = true;
-                break;
-            }
+        if(! contains(primary_index_prototype.keys(), cc)) {
+            cols.emplace_back(cc);
         }
-        if (contained) {
-            continue;
-        }
-        cols.emplace_back(cc);
     }
 
     primary_index_prototype.simple_name(std::string{table_prototype.simple_name()});
@@ -61,8 +77,11 @@ storage_processor::ensure(schema::declaration const& location, table& table_prot
     return true;
 }
 
-bool storage_processor::ensure(schema::declaration const& location, index& secondary_index_prototype,
-    yugawara::storage::prototype_processor::diagnostic_consumer_type const& diagnostic_consumer) {
+bool storage_processor::ensure(
+    schema::declaration const& location,
+    index& secondary_index_prototype,
+    yugawara::storage::prototype_processor::diagnostic_consumer_type const& diagnostic_consumer
+) {
     (void)location;
     (void)secondary_index_prototype;
     (void)diagnostic_consumer;

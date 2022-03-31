@@ -39,9 +39,11 @@ bool drop_table::operator()(request_context& context) const {
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     if(auto res = provider.remove_index(c.simple_name());! res) {
         VLOG(log_error) << "primary index for table " << c.simple_name() << " not found";
+        context.status_code(status::err_not_found);
     }
     if(auto res = provider.remove_relation(c.simple_name());! res) {
         VLOG(log_error) << "table " << c.simple_name() << " not found";
+        context.status_code(status::err_not_found);
     }
     if(auto stg = context.database()->get_storage(c.simple_name())) {
         if(auto res = stg->delete_storage(); res != status::ok) {

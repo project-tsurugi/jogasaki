@@ -19,13 +19,9 @@
 #include <chrono>
 
 #include <takatori/statement/drop_table.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/binding/extract.h>
 
-#include <jogasaki/logging.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/executor/common/step.h>
 
 namespace jogasaki::executor::common {
 

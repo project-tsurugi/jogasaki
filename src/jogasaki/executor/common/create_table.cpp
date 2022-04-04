@@ -17,7 +17,6 @@
 
 #include <yugawara/binding/extract.h>
 
-#include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 
 namespace jogasaki::executor::common {
@@ -35,23 +34,6 @@ bool create_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
-    auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
-    auto rh = std::any_cast<plan::storage_processor_result>(ct_->runtime_hint());
-    if(rh.primary_key_generated()) {
-        auto p = rh.primary_key_sequence();
-        BOOST_ASSERT(p->definition_id()); //NOLINT
-        context.sequence_manager()->register_sequence(
-            *p->definition_id(),
-            p->simple_name(),
-            p->initial_value(),
-            p->increment_value(),
-            p->min_value(),
-            p->max_value(),
-            p->cycle(),
-            true
-        );
-        provider.add_sequence(p);
-    }
     std::shared_ptr<yugawara::storage::table const> t{};
     try {
         t = provider.add_table(c, false);
@@ -60,6 +42,7 @@ bool create_table::operator()(request_context& context) const {
         context.status_code(status::err_already_exists);
         return false;
     }
+    auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
     BOOST_ASSERT(i.ownership());  //NOLINT
     try {
         provider.add_index(i.ownership(), false);

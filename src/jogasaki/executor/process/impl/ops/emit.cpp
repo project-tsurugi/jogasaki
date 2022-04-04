@@ -19,7 +19,6 @@
 
 #include <takatori/relation/emit.h>
 
-#include <jogasaki/constants.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
@@ -86,17 +85,6 @@ const maybe_shared_ptr<meta::record_meta> &emit::meta() const noexcept {
     return meta_;
 }
 
-bool is_prefix(std::string_view target, std::string_view prefix) noexcept {
-    if (target.size() < prefix.size()) {
-        return false;
-    }
-    for(std::size_t i=0, n=prefix.size(); i < n; ++i) {
-        if(prefix[i] != target[i]) {
-            return false;
-        }
-    }
-    return true;
-}
 std::shared_ptr<meta::record_meta> emit::create_meta(
     processor_info const& info,
     sequence_view<column const> columns
@@ -106,11 +94,6 @@ std::shared_ptr<meta::record_meta> emit::create_meta(
     auto sz = columns.size();
     fields.reserve(sz);
     for(auto&& c : columns) {
-        // temporarily remove the generated pk column. It should be invisible to client. TODO
-        if(c.name() && is_prefix(*c.name(), generated_pkey_column_prefix)) {
-            --sz;
-            continue;
-        }
         fields.emplace_back(utils::type_for(info.compiled_info(), c.source()));
     }
     return std::make_shared<meta::record_meta>(

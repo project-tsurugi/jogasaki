@@ -158,33 +158,14 @@ std::shared_ptr<mirror_container> preprocess_mirror(
 }
 
 template <result_kind Kind>
-yugawara::compiler_result compile_internal(
-    shakujo_translator::result_type& r,
-    yugawara::compiler_options& c_options) {
-    auto ptr = r.release<Kind>();
-    return yugawara::compiler()(c_options, std::move(*ptr));
-}
-
 status create_prepared_statement(
     shakujo_translator::result_type& r,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     yugawara::compiler_options& c_options,
-    std::shared_ptr<storage_processor> sp,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
-    yugawara::compiler_result result{};
-    switch(r.kind()) {
-        case result_kind::execution_plan: {
-            result = compile_internal<result_kind::execution_plan>(r, c_options);
-            break;
-        }
-        case result_kind::statement: {
-            result = compile_internal<result_kind::statement>(r, c_options);
-            break;
-        }
-        default:
-            fail();
-    }
+    auto ptr = r.release<Kind>();
+    auto result = yugawara::compiler()(c_options, std::move(*ptr));
     if(!result.success()) {
         for (auto&& d : result.diagnostics()) {
             VLOG(log_error) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
@@ -192,7 +173,6 @@ status create_prepared_statement(
         return status::err_compiler_error;
     }
     auto stmt = result.release_statement();
-    stmt->runtime_hint() = sp->result();
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
     out = std::make_shared<plan::prepared_statement>(
         s,
@@ -253,7 +233,17 @@ status prepare(
         }
         return status::err_translator_error;
     }
-    return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, out);
+    switch(r.kind()) {
+        case result_kind::execution_plan: {
+            return create_prepared_statement<result_kind::execution_plan>(r, ctx.variable_provider(), c_options, out);
+        }
+        case result_kind::statement: {
+            return create_prepared_statement<result_kind::statement>(r, ctx.variable_provider(), c_options, out);
+        }
+        default:
+            fail();
+    }
+    return status::ok;
 }
 
 executor::process::step create(
@@ -531,34 +521,45 @@ void create_mirror_for_write(
     );
 }
 
-void create_mirror_for_ddl(
+// TODO simplify
+void create_mirror_for_create_table(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
     std::shared_ptr<mirror_container> const& mirrors,
     parameter_set const* parameters
 ) {
-    maybe_shared_ptr<model::statement> ops{};
-    switch(statement->kind()) {
-        case statement::statement_kind::create_table: {
-            auto& node = unsafe_downcast<statement::create_table>(*statement);
-            ops = std::make_shared<executor::common::create_table>(node);
-            break;
-        }
-        case statement::statement_kind::drop_table: {
-            auto& node = unsafe_downcast<statement::drop_table>(*statement);
-            ops = std::make_shared<executor::common::drop_table>(node);
-            break;
-        }
-        default:
-            fail();
-    }
+    auto& node = unsafe_downcast<statement::create_table>(*statement);
+    auto ct = std::make_shared<executor::common::create_table>(node);
     auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     ctx.executable_statement(
         std::make_shared<executable_statement>(
             std::move(statement),
             std::move(info),
-            std::move(ops),
+            std::move(ct),
+            mirrors->host_variable_info(),
+            std::move(vars),
+            mirrors
+        )
+    );
+}
+
+// TODO simplify
+void create_mirror_for_drop_table(
+    compiler_context& ctx,
+    maybe_shared_ptr<statement::statement> statement,
+    compiled_info info,
+    std::shared_ptr<mirror_container> const& mirrors,
+    parameter_set const* parameters
+) {
+    auto& node = unsafe_downcast<statement::drop_table>(*statement);
+    auto ct = std::make_shared<executor::common::drop_table>(node);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
+    ctx.executable_statement(
+        std::make_shared<executable_statement>(
+            std::move(statement),
+            std::move(info),
+            std::move(ct),
             mirrors->host_variable_info(),
             std::move(vars),
             mirrors
@@ -680,10 +681,10 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             create_mirror_for_execute(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::create_table:
-            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            create_mirror_for_create_table(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::drop_table:
-            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            create_mirror_for_drop_table(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
             fail();

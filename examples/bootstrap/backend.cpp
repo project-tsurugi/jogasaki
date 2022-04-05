@@ -38,6 +38,7 @@ DEFINE_uint32(threads, 5, "thread pool size");  //NOLINT
 DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  //NOLINT
+DEFINE_bool(lazy_worker, false, "(experimental) worker sleeps frequently to wait for queue content");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 
@@ -71,6 +72,7 @@ int backend_main(int argc, char **argv) {
         cfg->prepare_analytics_benchmark_tables(true);
     }
     cfg->thread_pool_size(FLAGS_threads);
+    cfg->lazy_worker(FLAGS_lazy_worker);
 
     auto db = jogasaki::api::create_database(cfg);
     db->start();

@@ -209,6 +209,7 @@ TEST_F(long_tx_test, reading_others_wp_prep_by_stx) {
 }
 
 TEST_F(long_tx_test, reading_others_wp_after_commit) {
+    // TODO currently working fine.
     {
         auto tx = utils::create_transaction(*db_, false, true, {"T0"});
         execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx);
@@ -217,15 +218,15 @@ TEST_F(long_tx_test, reading_others_wp_after_commit) {
     }
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
-    execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx1);
+    execute_statement("UPDATE T0 SET C1=C1+10.0 WHERE C0=1", *tx1);
     ASSERT_EQ(status::ok, tx1->commit());
 
-    execute_statement("UPDATE T0 SET C1=100.0 WHERE C0=1", *tx2);
+    execute_statement("UPDATE T0 SET C1=C1+10.0 WHERE C0=1", *tx2);
     ASSERT_EQ(status::ok, tx2->commit());
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());
-    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 21.0)), result[0]);
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[1]);
 }
 
@@ -268,5 +269,96 @@ TEST_F(long_tx_test, update_delete_ltx) {
         EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[0]);
     }
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+}
+
+TEST_F(long_tx_test, update_primary_key) {
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {"T0"});
+        execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx);
+        execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+        execute_statement("UPDATE T0 SET C0=10 WHERE C0=1", *tx1);
+        ASSERT_EQ(status::ok, tx1->commit());
+    }
+    {
+        auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
+        execute_statement("UPDATE T0 SET C0=100 WHERE C0=10", *tx2);
+        ASSERT_EQ(status::ok, tx2->commit());
+    }
+    wait_epochs(2); // TODO update contains delete op. shirakami delete delays to be visible
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0=100", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(100, 1.0)), result[0]);
+        result.clear();
+        execute_query("SELECT * FROM T0 WHERE C0=2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[0]);
+    }
+    {
+        auto tx3 = utils::create_transaction(*db_, false, true, {"T0"});
+        execute_statement("DELETE FROM T0 WHERE C0=100", *tx3);
+        ASSERT_EQ(status::ok, tx3->commit());
+    }
+    {
+        wait_epochs(2); // TODO shirakami delete delays to be visible
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 WHERE C0=100", result);
+        ASSERT_EQ(0, result.size());
+        execute_query("SELECT * FROM T0 WHERE C0=2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[0]);
+    }
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (100, 1.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+}
+
+TEST_F(long_tx_test, update_secondary_key) {
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {"TSECONDARY"});
+        execute_statement("INSERT INTO TSECONDARY (C0, C1) VALUES (1, 1)", *tx);
+        execute_statement("INSERT INTO TSECONDARY (C0, C1) VALUES (2, 2)", *tx);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        auto tx1 = utils::create_transaction(*db_, false, true, {"TSECONDARY"});
+        execute_statement("UPDATE TSECONDARY SET C1=10 WHERE C1=1", *tx1);
+        ASSERT_EQ(status::ok, tx1->commit());
+    }
+    {
+        auto tx2 = utils::create_transaction(*db_, false, true, {"TSECONDARY"});
+        execute_statement("UPDATE TSECONDARY SET C1=100 WHERE C1=10", *tx2);
+        ASSERT_EQ(status::ok, tx2->commit());
+    }
+    wait_epochs(2); // TODO update contains delete op. shirakami delete delays to be visible
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TSECONDARY WHERE C1=100", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::int8>(1, 100)), result[0]);
+        result.clear();
+        execute_query("SELECT * FROM TSECONDARY WHERE C1=2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::int8>(2, 2)), result[0]);
+    }
+    {
+        auto tx3 = utils::create_transaction(*db_, false, true, {"TSECONDARY"});
+        execute_statement("DELETE FROM TSECONDARY WHERE C1=100", *tx3);
+        ASSERT_EQ(status::ok, tx3->commit());
+    }
+    {
+        wait_epochs(2); // TODO shirakami delete delays to be visible
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TSECONDARY WHERE C1=100", result);
+        ASSERT_EQ(0, result.size());
+        execute_query("SELECT * FROM TSECONDARY WHERE C1=2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::int8>(2, 2.0)), result[0]);
+    }
+    execute_statement("INSERT INTO TSECONDARY (C0, C1) VALUES (1, 100)");
 }
 }

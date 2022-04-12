@@ -361,4 +361,53 @@ TEST_F(long_tx_test, update_secondary_key) {
     }
     execute_statement("INSERT INTO TSECONDARY (C0, C1) VALUES (1, 100)");
 }
+
+TEST_F(long_tx_test, scan) {
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 3.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    auto tx2 = utils::create_transaction(*db_, false, true, {});
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 ORDER BY C0", *tx1, result);
+    ASSERT_EQ(status::ok, tx1->commit());
+    ASSERT_EQ(status::ok, tx2->commit());
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[2]);
+}
+
+TEST_F(long_tx_test, scan_and_delete) {
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 3.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    execute_statement("DELETE FROM T0 WHERE C0=2", *tx1);
+    ASSERT_EQ(status::ok, tx1->commit());
+    auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 ORDER BY C0", *tx2, result);
+    ASSERT_EQ(status::ok, tx2->commit());
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[1]);
+}
+
+TEST_F(long_tx_test, scan_and_delete2) {
+    // concurrent delete sometimes cauase zero length key
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 3.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
+    execute_statement("DELETE FROM T0 WHERE C0=2", *tx1);
+    ASSERT_EQ(status::ok, tx1->commit());
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 ORDER BY C0", *tx2, result);
+    ASSERT_EQ(status::ok, tx2->commit());
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[1]);
+}
 }

@@ -81,10 +81,17 @@ std::string kvs_test_utils::put(
             std::string_view{key_buf.data(), key_stream.size()},
             std::string_view{val_buf.data(), val_stream.size()}
         ); res != status::ok) {
+        LOG(ERROR) << "put returned: " << res;
         fail();
     }
-    if(auto res = tx->commit(true); res != status::ok) fail();
-    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) fail();
+    if(auto res = tx->commit(true); res != status::ok) {
+        LOG(ERROR) << "commit returned: " << res;
+        fail();
+    }
+    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) {
+        LOG(ERROR) << "wait_for_commit returned: " << res;
+        fail();
+    }
     return std::string{key_buf.data(), key_stream.size()};
 }
 
@@ -116,10 +123,17 @@ void kvs_test_utils::put_secondary(
             std::string_view{key_buf.data(), key_stream.size()},
             std::string_view{}
         ); res != status::ok) {
+        LOG(ERROR) << "put returned: " << res;
         fail();
     }
-    if(auto res = tx->commit(true); res != status::ok) fail();
-    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) fail();
+    if(auto res = tx->commit(true); res != status::ok) {
+        LOG(ERROR) << "commit returned: " << res;
+        fail();
+    }
+    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) {
+        LOG(ERROR) << "wait_for_commit returned: " << res;
+        fail();
+    }
 }
 
 void kvs_test_utils::get(
@@ -138,6 +152,7 @@ void kvs_test_utils::get(
             "", kvs::end_point_kind::unbound,
             it
         ); res != status::ok) {
+        LOG(ERROR) << "scan returned: " << res;
         fail();
     }
     std::string key_buf(1000, '\0');
@@ -150,9 +165,11 @@ void kvs_test_utils::get(
         std::string_view k{};
         std::string_view v{};
         if (auto r = it->key(k); r != status::ok) {
+            LOG(ERROR) << "key returned: " << r;
             fail();
         }
         if (auto r = it->value(v); r != status::ok) {
+            LOG(ERROR) << "value returned: " << r;
             fail();
         }
         std::string key_buf(k);
@@ -202,8 +219,14 @@ void kvs_test_utils::get(
         }
         result.emplace_back(key_model, value_model);
     }
-    if(auto res = tx->commit(true); res != status::ok) fail();
-    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) fail();
+    if(auto res = tx->commit(true); res != status::ok) {
+        LOG(ERROR) << "commit returned: " << res;
+        fail();
+    }
+    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) {
+        LOG(ERROR) << "wait_for_commit returned: " << res;
+        fail();
+    }
 }
 
 std::unique_ptr<kvs::storage> kvs_test_utils::get_storage(

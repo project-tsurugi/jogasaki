@@ -228,7 +228,7 @@ TEST_F(async_api_test, async_query_multi_thread) {
                 if(auto rc = db_->create_executable("SELECT * FROM T0", stmt); rc != status::ok) {
                     std::abort();
                 }
-                transactions[i] = utils::create_transaction(*db_);
+                transactions[i] = utils::create_transaction(*db_, false, false); // TODO this tests only stx now
                 status s{};
                 std::string message{"message"};
                 std::shared_ptr<api::executable_statement> shd(std::move(stmt));

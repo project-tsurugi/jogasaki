@@ -3,6 +3,7 @@ file(GLOB SOURCES
         "jogasaki/executor/process/mock/*.cpp"
         "jogasaki/mock/*.cpp"
         "tateyama/api/endpoint/mock/*.cpp"
+        "jogasaki/utils/*.cpp"
 )
 
 set_source_files_properties(

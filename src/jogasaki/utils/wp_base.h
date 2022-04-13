@@ -15,19 +15,8 @@
  */
 #pragma once
 
-#include <thread>
-#include <chrono>
-#include <jogasaki/utils/wp_base.h>
-
-namespace jogasaki {
-
-class test_base {
-public:
-
-    void wait_epochs(std::size_t unit = 1) {
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(unit * 200ms);
-    }
-};
-
-}
+#ifdef BUILD_SHIRAKAMI_WP
+static constexpr bool BUILD_WP = true;
+#else
+static constexpr bool BUILD_WP = false;
+#endif

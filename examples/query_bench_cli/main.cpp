@@ -167,7 +167,7 @@ static bool query(
         }
     }
 
-    auto tx = utils::create_transaction(db, readonly);
+    auto tx = utils::create_transaction(db, readonly, false);
     std::unique_ptr<api::result_set> rs{};
     {
         trace_scope_name("execute");  //NOLINT

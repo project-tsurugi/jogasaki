@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <algorithm>
+#include <optional>
 #include <type_traits>
 
 #include <jogasaki/api/field_type.h>
@@ -69,6 +70,12 @@ public:
      */
     [[nodiscard]] virtual std::size_t field_count() const noexcept = 0;
 
+    /**
+     * @brief retrieve the field name
+     * @param index field index. Must be equal to, or greater than 0. Must be less than the field count.
+     * @return the field name
+     */
+    [[nodiscard]] virtual std::optional<std::string_view> field_name(field_index_type index) const noexcept = 0;
 };
 
 } // namespace

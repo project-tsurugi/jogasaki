@@ -24,10 +24,12 @@ namespace jogasaki::api::impl {
 
 result_set::result_set(std::unique_ptr<data::result_store> store) noexcept:
     store_(std::move(store)),
-    meta_(store_->meta() ?
+    meta_(std::make_shared<meta::external_record_meta>(
+        store_->meta() ?
         store_->meta() :
-        std::make_shared<meta::record_meta>() // it's possible store has no result and no metadata
-    )
+        std::make_shared<meta::record_meta>(), // it's possible store has no result and no metadata
+        std::vector<std::optional<std::string>>{}
+    ))
 {}
 
 api::record_meta const* result_set::meta() const noexcept {

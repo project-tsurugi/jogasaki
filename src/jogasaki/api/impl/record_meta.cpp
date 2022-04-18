@@ -21,14 +21,13 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/impl/field_type.h>
-#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::api::impl {
 
 using takatori::util::maybe_shared_ptr;
 
 
-record_meta::record_meta(maybe_shared_ptr<meta::record_meta> meta) :
+record_meta::record_meta(maybe_shared_ptr<meta::external_record_meta> meta) :
     meta_(std::move(meta))
 {
     fields_.reserve(meta_->field_count());
@@ -50,7 +49,11 @@ std::size_t record_meta::field_count() const noexcept {
 }
 
 maybe_shared_ptr<meta::record_meta> const& record_meta::meta() const noexcept {
-    return meta_;
+    return meta_->origin();
+}
+
+std::optional<std::string_view> record_meta::field_name(record_meta::field_index_type index) const noexcept {
+    return meta_->field_name(index);
 }
 } // namespace
 

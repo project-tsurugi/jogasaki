@@ -119,7 +119,8 @@ public:
         std::uint64_t tx_handle,
         std::vector<::common::DataType> const& column_types,
         std::vector<bool> const& nullabilities,
-        std::vector<mock::basic_record> const& expected
+        std::vector<mock::basic_record> const& expected,
+        std::vector<std::string> const& exp_colnames
     );
 
     bool wait_completion(tateyama::api::endpoint::mock::test_response& res, std::size_t timeout_ms = 2000) {
@@ -311,7 +312,8 @@ void service_api_test::test_query(
     std::uint64_t tx_handle,
     std::vector<::common::DataType> const& column_types,
     std::vector<bool> const& nullabilities,
-    std::vector<mock::basic_record> const& expected
+    std::vector<mock::basic_record> const& expected,
+    std::vector<std::string> const& exp_colnames
 ) {
     auto s = encode_execute_query(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
@@ -331,6 +333,7 @@ void service_api_test::test_query(
         for(std::size_t i=0, n=cols.size(); i<n; ++i) {
             EXPECT_EQ(column_types[i], cols[i].type_);
             EXPECT_EQ(nullabilities[i], cols[i].nullable_);
+            EXPECT_EQ(exp_colnames[i], cols[i].name_);
         }
         {
             ASSERT_TRUE(res->channel_);
@@ -367,7 +370,8 @@ void service_api_test::test_query(std::string_view query) {
             true,
             true
         },
-        {mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)}
+        {mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)},
+        {"C0", "C1"}
     );
     test_commit(tx_handle);
 }
@@ -881,7 +885,8 @@ TEST_F(service_api_test, long_tx_simple) {
                 true,
                 true
             },
-            {mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)}
+            {mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)},
+            {"C0", "C1"}
         );
         test_commit(tx_handle);
     }

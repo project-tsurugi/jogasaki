@@ -23,7 +23,7 @@
 
 #include <jogasaki/api/impl/field_type.h>
 #include <jogasaki/api/record_meta.h>
-#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::api::impl {
 
@@ -45,7 +45,7 @@ public:
     /**
      * @brief construct new object
      */
-    explicit record_meta(maybe_shared_ptr<meta::record_meta> meta);
+    explicit record_meta(maybe_shared_ptr<meta::external_record_meta> meta);
 
     /**
      * @brief getter for field type - same as operator[] but friendly style for pointers
@@ -76,8 +76,14 @@ public:
      */
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
 
+    /**
+     * @brief accessor to the field name
+     * @return the field name
+     */
+    [[nodiscard]] std::optional<std::string_view> field_name(field_index_type index) const noexcept override;
+
 private:
-    maybe_shared_ptr<meta::record_meta> meta_{};
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::vector<impl::field_type> fields_{};
 };
 

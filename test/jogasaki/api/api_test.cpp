@@ -546,4 +546,25 @@ TEST_F(api_test, empty_result) {
     }
 }
 
+TEST_F(api_test, column_name) {
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("select C0, C1 from T0", stmt));
+    EXPECT_EQ("C0", stmt->meta()->field_name(0));
+    EXPECT_EQ("C1", stmt->meta()->field_name(1));
+
+    api::statement_handle handle{};
+    ASSERT_EQ(status::ok, db_->prepare("select C0, C1 from T0", handle));
+    EXPECT_EQ("C0", handle.meta()->field_name(0));
+    EXPECT_EQ("C1", handle.meta()->field_name(1));
+}
+
+TEST_F(api_test, empty_column_name) {
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("select max(C0) from T0", stmt));
+    EXPECT_FALSE(stmt->meta()->field_name(0));
+
+    api::statement_handle handle{};
+    ASSERT_EQ(status::ok, db_->prepare("select min(C1) from T0", handle));
+    EXPECT_FALSE(handle.meta()->field_name(0));
+}
 }

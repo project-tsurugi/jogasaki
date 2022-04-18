@@ -36,4 +36,12 @@ mirror_container::host_variable_info() const noexcept {
     return host_variable_info_;
 }
 
+void mirror_container::external_writer_meta(std::shared_ptr<meta::external_record_meta> meta) noexcept {
+    external_writer_meta_ = std::move(meta);
+}
+
+std::shared_ptr<meta::external_record_meta> const& mirror_container::external_writer_meta() const noexcept {
+    return external_writer_meta_;
+}
+
 }

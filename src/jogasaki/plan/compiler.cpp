@@ -50,6 +50,7 @@
 
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/process/step.h>
@@ -88,19 +89,26 @@ namespace relation = takatori::relation;
 
 using takatori::util::unsafe_downcast;
 
-std::shared_ptr<meta::record_meta> create_emit_meta(
+std::shared_ptr<meta::external_record_meta> create_emit_meta(
     yugawara::compiled_info const& info,
     takatori::relation::emit const& e
 ) {
+    std::vector<std::optional<std::string>> field_names{};
     std::vector<meta::field_type> fields{};
     auto sz = e.columns().size();
     fields.reserve(sz);
+    field_names.reserve(sz);
     for(auto&& c : e.columns()) {
         fields.emplace_back(utils::type_for(info, c.source()));
+        // c.name() can accidentally return empty string - fall back to nulloopt then. TODO remove if takatori is fixed
+        field_names.emplace_back(c.name() && c.name()->empty() ? std::nullopt : c.name());
     }
-    return std::make_shared<meta::record_meta>(
-        std::move(fields),
-        boost::dynamic_bitset<std::uint64_t>(sz).flip()
+    return std::make_shared<meta::external_record_meta>(
+        std::make_shared<meta::record_meta>(
+            std::move(fields),
+            boost::dynamic_bitset<std::uint64_t>(sz).flip()
+        ),
+        std::move(field_names)
     ); // assuming all fields nullable
 }
 

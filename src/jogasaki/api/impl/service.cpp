@@ -620,6 +620,9 @@ void details::set_metadata(channel_info const& info, schema::RecordMeta& meta) {
 
     for (std::size_t i = 0; i < n; i++) {
         auto column = std::make_unique<::schema::RecordMeta_Column>();
+        if(auto name = metadata->field_name(i); name.has_value()) {
+            column->set_name(std::string{*name});
+        }
         switch(metadata->at(i).kind()) {
             case jogasaki::api::field_type_kind::int4:
                 column->set_type(::common::DataType::INT4);

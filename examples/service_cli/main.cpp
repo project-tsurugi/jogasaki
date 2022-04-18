@@ -824,7 +824,7 @@ private:
             query_meta_ = jogasaki::utils::create_record_meta(columns);
             std::size_t ind{};
             for(auto&& f : query_meta_) {
-                std::cout << "column " << ind << ": " << f << std::endl;
+                std::cout << "column " << ind << ": " << f << " (\"" << columns[ind].name_ << "\")" << std::endl;
                 ++ind;
             }
         }

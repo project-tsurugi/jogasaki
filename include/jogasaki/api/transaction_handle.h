@@ -117,6 +117,7 @@ public:
      * completes using the result records.
      * @return status::ok when successful
      * @return error code otherwise
+     * @deprecated kept for testing purpose. record_meta from result doesn't provide column names
      */
     status execute(executable_statement& statement, std::unique_ptr<result_set>& result);
 

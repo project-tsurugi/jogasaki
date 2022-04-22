@@ -897,4 +897,97 @@ TEST_F(service_api_test, execute_ddl) {
     test_statement("insert into MYTABLE(C0, C1) values (1, 10.0)");
     test_query("select * from MYTABLE");
 }
+
+TEST_F(service_api_test, execute_dump) {
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+        };
+        auto s = encode_execute_dump(tx_handle, query_handle, parameters, "/mydirectory/");
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        EXPECT_TRUE(res->all_released());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::cout << "name : " << name << std::endl;
+            ASSERT_EQ(1, cols.size());
+            EXPECT_EQ(::common::DataType::CHARACTER, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                ASSERT_LT(0, ch.buffers_.size());
+                ASSERT_TRUE(ch.buffers_[0]);
+                auto& buf = *ch.buffers_[0];
+                ASSERT_LT(0, buf.view().size());
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(buf.view(), m);
+                ASSERT_EQ(2, v.size());
+                LOG(INFO) << v[0];
+                LOG(INFO) << v[1];
+                EXPECT_TRUE(ch.all_released());
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, execute_load) {
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
+        std::pair{"c0"s, ::common::DataType::INT8},
+        std::pair{"c1"s, ::common::DataType::FLOAT8}
+    );
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{
+            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+        };
+        auto s = encode_execute_load(tx_handle, query_handle, parameters, "/mydirectory/file1", "/mydirectory/file2");
+
+        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        EXPECT_TRUE(res->all_released());
+        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_EQ(response_code::success, res->code_);
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
 }

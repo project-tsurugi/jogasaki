@@ -288,6 +288,14 @@ private:
         ::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
+    void command_execute_dump(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+    void command_execute_load(
+        ::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
 
     void command_commit(
         ::request::Request const& proto_req,
@@ -320,6 +328,18 @@ private:
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx
+    );
+    void execute_dump(
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::query_info const& q,
+        jogasaki::api::transaction_handle tx,
+        std::string_view directory
+    );
+    void execute_load(
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::query_info const& q,
+        jogasaki::api::transaction_handle tx,
+        std::vector<std::string> files
     );
     void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;

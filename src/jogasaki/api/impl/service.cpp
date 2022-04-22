@@ -28,6 +28,8 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
+#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
@@ -262,6 +264,7 @@ void service::command_execute_prepared_query(
     set_params(pq.parameters(), params);
     execute_query(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx);
 }
+
 void service::command_commit(
     ::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
@@ -359,6 +362,52 @@ void service::command_explain(
     }
 }
 
+void service::command_execute_dump(
+    ::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res
+) {
+    // beware asynchronous call : stack will be released soon after submitting request
+    auto& ed = proto_req.execute_dump();
+    auto tx = validate_transaction_handle(ed, *res);
+    if(! tx) {
+        return;
+    }
+    auto handle = validate_statement_handle<::response::ResultOnly>(ed, *res);
+    if(! handle) {
+        return;
+    }
+
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(ed.parameters(), params);
+    auto dir = ed.directory();
+    execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, dir);
+}
+
+void service::command_execute_load(
+    ::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res
+) {
+    // beware asynchronous call : stack will be released soon after submitting request
+    auto& ed = proto_req.execute_load();
+    auto tx = validate_transaction_handle(ed, *res);
+    if(! tx) {
+        return;
+    }
+    auto handle = validate_statement_handle<::response::ResultOnly>(ed, *res);
+    if(! handle) {
+        return;
+    }
+
+    auto params = jogasaki::api::create_parameter_set();
+    set_params(ed.parameters(), params);
+    auto list = ed.file();
+    std::vector<std::string> files{};
+    for(auto&& f : list) {
+        files.emplace_back(f);
+    }
+    execute_load(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, files);
+}
+
 tateyama::status service::operator()(
     std::shared_ptr<tateyama::api::server::request const> req,
     std::shared_ptr<tateyama::api::server::response> res
@@ -438,6 +487,16 @@ tateyama::status service::operator()(
         case ::request::Request::RequestCase::kExplain: {
             trace_scope_name("cmd-explain");  //NOLINT
             command_explain(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kExecuteDump: {
+            trace_scope_name("cmd-dump");  //NOLINT
+            command_execute_dump(proto_req, res);
+            break;
+        }
+        case ::request::Request::RequestCase::kExecuteLoad: {
+            trace_scope_name("cmd-load");  //NOLINT
+            command_execute_load(proto_req, res);
             break;
         }
         default:
@@ -656,6 +715,88 @@ void details::set_metadata(channel_info const& info, schema::RecordMeta& meta) {
     }
 }
 
+void service::execute_dump(
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    details::query_info const& q,
+    jogasaki::api::transaction_handle tx,
+    std::string_view directory
+) {
+    // mock implementation TODO
+    (void)q;
+    LOG(INFO) << "dump processing directory: " << directory;
+
+    // beware asynchronous call : stack will be released soon after submitting request
+    BOOST_ASSERT(tx);  //NOLINT
+    auto c = std::make_shared<callback_control>(res);
+    auto& info = c->channel_info_;
+    info = std::make_unique<details::channel_info>();
+    info->name_ = std::string("resultset-");
+    info->name_ += std::to_string(new_resultset_id());
+    std::shared_ptr<tateyama::api::server::data_channel> ch{};
+    {
+        trace_scope_name("acquire_channel");  //NOLINT
+        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+            fail();
+        }
+    }
+    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);
+
+    auto m = std::make_shared<meta::record_meta>(
+        std::vector<meta::field_type>{
+            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{1}.flip()
+    );
+    api::impl::record_meta meta{
+        std::make_shared<meta::external_record_meta>(m, std::vector<std::optional<std::string>>{"file_name"} )
+    };
+
+    info->meta_ = &meta;
+    details::send_body_head(*res, *info);
+
+    auto* cbp = c.get();
+
+    std::vector<std::shared_ptr<tateyama::api::server::writer>> writers(10);
+    for(std::size_t i=0, n=writers.size(); i< n; ++i) {
+        ch->acquire(writers[i]);
+    }
+    msgpack::sbuffer buf{1024};
+
+    std::size_t cnt = 0;
+    for(std::size_t i=0, n=writers.size(); i< n; ++i) {
+        {
+            std::string out0{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
+            msgpack::pack(buf, static_cast<std::string_view>(out0));
+            writers[i]->write(static_cast<char const*>(buf.data()), buf.size());
+            buf.clear();
+        }
+        {
+            std::string out1{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
+            msgpack::pack(buf, static_cast<std::string_view>(out1));
+            writers[i]->write(static_cast<char const*>(buf.data()), buf.size());
+        }
+        writers[i]->commit();
+        ch->release(*writers[i]);
+    }
+    cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
+    details::success<::response::ResultOnly>(*cbp->response_);
+}
+
+void service::execute_load(
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    details::query_info const& q,
+    jogasaki::api::transaction_handle tx,
+    std::vector<std::string> files
+) {
+    // mock implementation TODO
+    (void) res;
+    (void) q;
+    (void) tx;
+    for(auto&& f : files) {
+        LOG(INFO) << "load processing file: " << f;
+    }
+    details::success<::response::ResultOnly>(*res);
+}
 }
 
 register_component(server, tateyama::api::server::service, jogasaki, jogasaki::api::impl::service::create);  //NOLINT

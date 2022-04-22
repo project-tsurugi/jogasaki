@@ -338,14 +338,32 @@ void fill_parameters(std::vector<parameter> const& parameters, ::request::Parame
     }
 }
 
-template<class T>
-std::string encode_execute_prepared_statement_or_query(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
+template<class T, class ...Args>
+std::string encode_execute_prepared_statement_or_query(
+    std::uint64_t tx_handle,
+    std::uint64_t stmt_handle,
+    std::vector<parameter> const& parameters,
+    Args...args
+) {
     ::request::Request r{};
     T* stmt{};
     if constexpr (std::is_same_v<T, ::request::ExecutePreparedQuery>) {
         stmt = r.mutable_execute_prepared_query();
     } else if constexpr (std::is_same_v<T, ::request::ExecutePreparedStatement>) {
         stmt = r.mutable_execute_prepared_statement();
+    } else if constexpr (std::is_same_v<T, ::request::ExecuteDump>) {
+        stmt = r.mutable_execute_dump();
+        std::vector<std::string> v{args...};
+        static_assert(sizeof...(args)==1);
+        stmt->mutable_directory()->assign(v[0]);
+    } else if constexpr (std::is_same_v<T, ::request::ExecuteLoad>) {
+        stmt = r.mutable_execute_load();
+        std::vector<std::string> v{args...};
+        static_assert(sizeof...(args)>=1);
+        auto f = stmt->mutable_file();
+        for(auto&& s : v) {
+            f->Add()->assign(s);
+        }
     } else {
         std::abort();
     }
@@ -361,6 +379,10 @@ std::string encode_execute_prepared_statement_or_query(std::uint64_t tx_handle, 
         r.clear_execute_prepared_query();
     } else if constexpr (std::is_same_v<T, ::request::ExecutePreparedStatement>) {
         r.clear_execute_prepared_statement();
+    } else if constexpr (std::is_same_v<T, ::request::ExecuteDump>) {
+        r.clear_execute_dump();
+    } else if constexpr (std::is_same_v<T, ::request::ExecuteLoad>) {
+        r.clear_execute_load();
     } else {
         std::abort();
     }
@@ -372,6 +394,15 @@ inline std::string encode_execute_prepared_statement(std::uint64_t tx_handle, st
 }
 inline std::string encode_execute_prepared_query(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
     return encode_execute_prepared_statement_or_query<::request::ExecutePreparedQuery>(tx_handle, stmt_handle, parameters);
+}
+template <class ... Args>
+std::string encode_execute_dump(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters, Args...args) {
+    return encode_execute_prepared_statement_or_query<::request::ExecuteDump>(tx_handle, stmt_handle, parameters, args...);
+}
+
+template <class ... Args>
+std::string encode_execute_load(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters, Args...args) {
+    return encode_execute_prepared_statement_or_query<::request::ExecuteLoad>(tx_handle, stmt_handle, parameters, args...);
 }
 
 std::string encode_explain(std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {

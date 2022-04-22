@@ -339,7 +339,7 @@ private:
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
-        std::vector<std::string> files
+        std::vector<std::string> const& files
     );
     void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;

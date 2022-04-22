@@ -379,8 +379,7 @@ void service::command_execute_dump(
 
     auto params = jogasaki::api::create_parameter_set();
     set_params(ed.parameters(), params);
-    auto dir = ed.directory();
-    execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, dir);
+    execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, ed.directory());
 }
 
 void service::command_execute_load(
@@ -757,26 +756,26 @@ void service::execute_dump(
     auto* cbp = c.get();
 
     std::vector<std::shared_ptr<tateyama::api::server::writer>> writers(10);
-    for(std::size_t i=0, n=writers.size(); i< n; ++i) {
-        ch->acquire(writers[i]);
+    for(auto & writer : writers) {
+        ch->acquire(writer);
     }
     msgpack::sbuffer buf{1024};
 
     std::size_t cnt = 0;
-    for(std::size_t i=0, n=writers.size(); i< n; ++i) {
+    for(auto & writer : writers) {
         {
             std::string out0{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
             msgpack::pack(buf, static_cast<std::string_view>(out0));
-            writers[i]->write(static_cast<char const*>(buf.data()), buf.size());
+            writer->write(static_cast<char const*>(buf.data()), buf.size());
             buf.clear();
         }
         {
             std::string out1{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
             msgpack::pack(buf, static_cast<std::string_view>(out1));
-            writers[i]->write(static_cast<char const*>(buf.data()), buf.size());
+            writer->write(static_cast<char const*>(buf.data()), buf.size());
         }
-        writers[i]->commit();
-        ch->release(*writers[i]);
+        writer->commit();
+        ch->release(*writer);
     }
     cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
     details::success<::response::ResultOnly>(*cbp->response_);
@@ -786,7 +785,7 @@ void service::execute_load(
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
-    std::vector<std::string> files
+    std::vector<std::string> const& files
 ) {
     // mock implementation TODO
     (void) res;

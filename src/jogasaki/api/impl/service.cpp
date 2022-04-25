@@ -757,7 +757,9 @@ void service::execute_dump(
 
     std::vector<std::shared_ptr<tateyama::api::server::writer>> writers(10);
     for(auto & writer : writers) {
-        ch->acquire(writer);
+        if(auto rc = ch->acquire(writer); rc != tateyama::status::ok) {
+            fail();
+        }
     }
     msgpack::sbuffer buf{1024};
 
@@ -766,18 +768,28 @@ void service::execute_dump(
         {
             std::string out0{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
             msgpack::pack(buf, static_cast<std::string_view>(out0));
-            writer->write(static_cast<char const*>(buf.data()), buf.size());
+            if(auto rc = writer->write(static_cast<char const*>(buf.data()), buf.size()); rc != tateyama::status::ok) {
+                fail();
+            }
             buf.clear();
         }
         {
             std::string out1{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
             msgpack::pack(buf, static_cast<std::string_view>(out1));
-            writer->write(static_cast<char const*>(buf.data()), buf.size());
+            if(auto rc = writer->write(static_cast<char const*>(buf.data()), buf.size()); rc != tateyama::status::ok) {
+                fail();
+            }
         }
-        writer->commit();
-        ch->release(*writer);
+        if(auto rc = writer->commit(); rc != tateyama::status::ok) {
+            fail();
+        }
+        if(auto rc = ch->release(*writer); rc != tateyama::status::ok) {
+            fail();
+        }
     }
-    cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
+    if(auto rc = cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin()); rc != tateyama::status::ok) {
+        fail();
+    }
     details::success<::response::ResultOnly>(*cbp->response_);
 }
 

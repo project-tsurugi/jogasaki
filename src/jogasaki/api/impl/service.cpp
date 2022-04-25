@@ -722,6 +722,7 @@ void service::execute_dump(
 ) {
     // mock implementation TODO
     (void)q;
+    (void)tx;
     LOG(INFO) << "dump processing directory: " << directory;
 
     // beware asynchronous call : stack will be released soon after submitting request

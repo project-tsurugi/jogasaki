@@ -638,7 +638,7 @@ std::size_t service::new_resultset_id() const noexcept {
 
 tateyama::status service::shutdown(bool force) {
     (void) force;
-    db_ = nullptr;
+    db_->stop();
     LIKWID_MARKER_CLOSE;
     return tateyama::status::ok;
 }
@@ -808,13 +808,6 @@ std::shared_ptr<jogasaki::configuration> service::convert_config(tateyama::api::
         return ret;
     }
 
-    bool arg{};
-    if (jogasaki_config->get<>("prepare_benchmark_tables", arg)) {
-        ret->prepare_benchmark_tables(arg);
-    }
-    if (jogasaki_config->get<>("prepare_analytics_benchmark_tables", arg)) {
-        ret->prepare_analytics_benchmark_tables(arg);
-    }
     std::size_t thread_pool_size{};
     if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
         ret->thread_pool_size(thread_pool_size);
@@ -835,5 +828,19 @@ std::shared_ptr<jogasaki::configuration> service::convert_config(tateyama::api::
         ret->db_location(log_location);
     }
     return ret;
+}
+
+service::service(std::shared_ptr<tateyama::api::configuration::whole> cfg) :
+    cfg_(std::move(cfg)),
+    db_(jogasaki::api::create_database(convert_config(*cfg_)))
+{}
+
+tateyama::status service::start() {
+    db_->start();
+    return tateyama::status::ok;
+}
+
+jogasaki::api::database* service::database() const noexcept {
+    return db_.get();
 }
 }

@@ -44,6 +44,7 @@ framework::component::id_type bridge::id() const noexcept {
 }
 
 void bridge::setup(framework::environment& env) {
+    if (core_) return;
     core_ = std::make_unique<jogasaki::api::impl::service>(env.configuration());
 }
 
@@ -53,6 +54,7 @@ void bridge::start(framework::environment&) {
 
 void bridge::shutdown(framework::environment&) {
     core_->shutdown();
+    deactivated_ = true;
 }
 
 void bridge::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
@@ -65,8 +67,8 @@ bridge::~bridge() {
     }
 }
 
-jogasaki::api::impl::service* bridge::core_object() const noexcept {
-    return core_.get();
+jogasaki::api::database* bridge::database() const noexcept {
+    return core_->database();
 }
 
 }

@@ -33,4 +33,6 @@
 #include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/transaction_option.h>
 #include <jogasaki/api/writer.h>
+#include <jogasaki/api/service/bridge.h>

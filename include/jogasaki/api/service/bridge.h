@@ -26,6 +26,8 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/ids.h>
 
+#include <jogasaki/api/database.h>
+
 namespace jogasaki::api::impl {
 class service;
 }
@@ -75,9 +77,9 @@ public:
     ~bridge() override;
 
     /**
-     * @brief accessor to the core object
+     * @brief accessor to the database
      */
-    [[nodiscard]] jogasaki::api::impl::service* core_object() const noexcept;
+    [[nodiscard]] jogasaki::api::database* database() const noexcept;
 
 private:
     std::unique_ptr<jogasaki::api::impl::service> core_;  // to use incomplete object, do not add {} after var. name.

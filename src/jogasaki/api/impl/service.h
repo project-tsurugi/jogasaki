@@ -232,26 +232,18 @@ class service {
 public:
     service() = default;
 
-    explicit service(std::shared_ptr<tateyama::api::configuration::whole> cfg) :
-        cfg_(std::move(cfg)),
-        db_(jogasaki::api::create_database(convert_config(*cfg_)))
-    {}
+    explicit service(std::shared_ptr<tateyama::api::configuration::whole> cfg);
 
     tateyama::status operator()(
         std::shared_ptr<tateyama::api::server::request const> req,
         std::shared_ptr<tateyama::api::server::response> res
     );
 
-    tateyama::status start() {
-        db_->start();
-        return tateyama::status::ok;
-    }
+    tateyama::status start();
 
     tateyama::status shutdown(bool force = false);
 
-    [[nodiscard]] jogasaki::api::database* database() const noexcept {
-        return db_.get();
-    }
+    [[nodiscard]] jogasaki::api::database* database() const noexcept;
 private:
 
     struct cache_align callback_control {

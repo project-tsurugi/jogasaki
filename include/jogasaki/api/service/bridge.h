@@ -26,15 +26,16 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/ids.h>
 
-namespace jogasaki::api {
+namespace jogasaki::api::impl {
+class service;
+}
+
+namespace jogasaki::api::service {
 
 using tateyama::api::server::request;
 using tateyama::api::server::response;
 namespace framework = tateyama::framework;
 
-namespace impl {
-class service;
-}
 
 /**
  * @brief datastore resource bridge for tateyama framework
@@ -44,6 +45,8 @@ class service;
 class bridge : public framework::service {
 public:
     static constexpr id_type tag = framework::service_id_sql;
+
+    bridge();
 
     [[nodiscard]] id_type id() const noexcept override;
 
@@ -77,7 +80,7 @@ public:
     [[nodiscard]] jogasaki::api::impl::service* core_object() const noexcept;
 
 private:
-    std::unique_ptr<jogasaki::api::impl::service> core_{};
+    std::unique_ptr<jogasaki::api::impl::service> core_;  // to use incomplete object, do not add {} after var. name.
     bool deactivated_{false};
 };
 

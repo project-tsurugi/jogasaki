@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/bridge.h>
+#include <jogasaki/api/service/bridge.h>
 
 #include <functional>
 #include <memory>
@@ -31,11 +31,13 @@
 
 #include <jogasaki/api/impl/service.h>
 
-namespace jogasaki::api {
+namespace jogasaki::api::service {
 
 using tateyama::api::server::request;
 using tateyama::api::server::response;
 namespace framework = tateyama::framework;
+
+bridge::bridge() = default;
 
 framework::component::id_type bridge::id() const noexcept {
     return tag;

@@ -7,6 +7,7 @@ file(GLOB SOURCES
         "jogasaki/accessor/*.cpp"
         "jogasaki/api/*.cpp"
         "jogasaki/api/impl/*.cpp"
+        "jogasaki/api/service/*.cpp"
         "jogasaki/data/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"

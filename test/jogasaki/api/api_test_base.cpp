@@ -47,10 +47,18 @@ using namespace jogasaki::scheduler;
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
-void api_test_base::db_setup(std::shared_ptr<configuration> cfg) {
+void api_test_base::set_dbpath(configuration& cfg) {
     temporary_.prepare();
-    cfg->db_location(path());
-    db_ = api::create_database(cfg);
+    cfg.db_location(path());
+}
+
+void api_test_base::db_create(std::shared_ptr<configuration> cfg) {
+    set_dbpath(*cfg);
+    db_ = std::shared_ptr{api::create_database(cfg)};
+}
+
+void api_test_base::db_setup(std::shared_ptr<configuration> cfg) {
+    db_create(cfg);
     db_->start();
 }
 

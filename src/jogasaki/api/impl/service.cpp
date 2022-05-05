@@ -41,7 +41,6 @@ namespace jogasaki::api::impl {
 using takatori::util::fail;
 using takatori::util::maybe_shared_ptr;
 using namespace tateyama::api::server;
-using respose_code = tateyama::api::endpoint::response_code;
 
 namespace details {
 
@@ -632,23 +631,13 @@ void service::execute_query(
     }
 }
 
-service::service(jogasaki::api::database& db) :
-    db_(std::addressof(db))
-{}
-
 std::size_t service::new_resultset_id() const noexcept {
     static std::atomic_size_t resultset_id{};
     return ++resultset_id;
 }
 
-tateyama::status service::initialize(tateyama::api::environment& env, void* context) {
-    (void)env;
-    db_ = reinterpret_cast<jogasaki::api::database*>(context);  //NOLINT
-    LIKWID_MARKER_INIT;
-    return tateyama::status::ok;
-}
-
-tateyama::status service::shutdown() {
+tateyama::status service::shutdown(bool force) {
+    (void) force;
     db_ = nullptr;
     LIKWID_MARKER_CLOSE;
     return tateyama::status::ok;
@@ -809,6 +798,42 @@ void service::execute_load(
     }
     details::success<::response::ResultOnly>(*res);
 }
-}
 
-register_component(server, tateyama::api::server::service, jogasaki, jogasaki::api::impl::service::create);  //NOLINT
+std::shared_ptr<jogasaki::configuration> service::convert_config(tateyama::api::configuration::whole& cfg) {
+    auto ret = std::make_shared<jogasaki::configuration>();
+
+    auto jogasaki_config = cfg.get_section("sql");
+    if (jogasaki_config == nullptr) {
+        LOG(ERROR) << "cannot find sql section in the configuration";
+        return ret;
+    }
+
+    bool arg{};
+    if (jogasaki_config->get<>("prepare_benchmark_tables", arg)) {
+        ret->prepare_benchmark_tables(arg);
+    }
+    if (jogasaki_config->get<>("prepare_analytics_benchmark_tables", arg)) {
+        ret->prepare_analytics_benchmark_tables(arg);
+    }
+    std::size_t thread_pool_size{};
+    if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
+        ret->thread_pool_size(thread_pool_size);
+    }
+    bool lazy_worker{};
+    if (jogasaki_config->get<>("lazy_worker", lazy_worker)) {
+        ret->lazy_worker(lazy_worker);
+    }
+
+    // data_store
+    auto data_store_config = cfg.get_section("data_store");
+    if (data_store_config == nullptr) {
+        LOG(ERROR) << "cannot find data_store section in the configuration";
+        return ret;
+    }
+    std::string log_location{};
+    if (data_store_config->get<std::string>("log_location", log_location)) {
+        ret->db_location(log_location);
+    }
+    return ret;
+}
+}

@@ -58,6 +58,7 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 }
 
 status database::start() {
+    init();
     if (! kvs_db_) {
         static constexpr std::string_view KEY_LOCATION{"location"};
         auto loc = cfg_->db_location();
@@ -105,6 +106,15 @@ database::database(
 ) :
     cfg_(std::move(cfg))
 {
+}
+
+std::shared_ptr<class configuration> const& database::configuration() const noexcept {
+    return cfg_;
+}
+
+database::database() : database(std::make_shared<class configuration>()) {}
+
+void database::init() {
     executor::add_builtin_tables(*tables_);
     executor::add_test_tables(*tables_);  //TODO remove on production environment
     executor::add_qa_tables(*tables_);
@@ -124,12 +134,6 @@ database::database(
     }
     global::config_pool(cfg_);
 }
-
-std::shared_ptr<class configuration> const& database::configuration() const noexcept {
-    return cfg_;
-}
-
-database::database() : database(std::make_shared<class configuration>()) {}
 
 void add_variable(
     yugawara::variable::configurable_provider& provider,
@@ -491,6 +495,10 @@ status database::initialize_from_providers() {
 
 std::shared_ptr<scheduler::task_scheduler> const& database::scheduler() const noexcept {
     return task_scheduler_;
+}
+
+std::shared_ptr<class configuration>& database::config() noexcept {
+    return cfg_;
 }
 
 }

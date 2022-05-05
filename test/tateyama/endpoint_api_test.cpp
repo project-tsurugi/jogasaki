@@ -18,7 +18,7 @@
 #include <regex>
 #include <gtest/gtest.h>
 
-#include <tateyama/api/endpoint/mock/endpoint_impls.h>
+#include <tateyama/api/endpoint/mock/request_response.h>
 
 namespace tateyama::api::endpoint {
 

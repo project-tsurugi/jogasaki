@@ -116,6 +116,9 @@ public:
 
     [[nodiscard]] std::shared_ptr<scheduler::task_scheduler> const& scheduler() const noexcept;
 
+    std::shared_ptr<class configuration>& config() noexcept override;
+
+    void init();
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

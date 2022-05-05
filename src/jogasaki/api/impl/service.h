@@ -25,6 +25,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/data_channel.h>
@@ -32,8 +33,9 @@
 #include <jogasaki/utils/interference_size.h>
 
 #include <tateyama/status.h>
-#include <tateyama/api/environment.h>
-#include <tateyama/api/server/service.h>
+
+#include <tateyama/framework/service.h>
+#include <tateyama/api/configuration.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/writer.h>
 #include <tateyama/api/server/data_channel.h>
@@ -226,23 +228,29 @@ inline void send_body_head(tateyama::api::server::response& res, channel_info co
 
 }
 
-class service : public tateyama::api::server::service {
+class service {
 public:
     service() = default;
 
-    explicit service(jogasaki::api::database& db);
+    explicit service(std::shared_ptr<tateyama::api::configuration::whole> cfg) :
+        cfg_(std::move(cfg)),
+        db_(jogasaki::api::create_database(convert_config(*cfg_)))
+    {}
 
     tateyama::status operator()(
         std::shared_ptr<tateyama::api::server::request const> req,
         std::shared_ptr<tateyama::api::server::response> res
-    ) override;
+    );
 
-    tateyama::status initialize(tateyama::api::environment& env, void* context) override;
+    tateyama::status start() {
+        db_->start();
+        return tateyama::status::ok;
+    }
 
-    tateyama::status shutdown() override;
+    tateyama::status shutdown(bool force = false);
 
-    static std::shared_ptr<service> create() {
-        return std::make_shared<service>();
+    [[nodiscard]] jogasaki::api::database* database() const noexcept {
+        return db_.get();
     }
 private:
 
@@ -259,8 +267,11 @@ private:
         static inline std::atomic_size_t id_src_{0};
     };
 
-    jogasaki::api::database* db_{};
+    std::shared_ptr<tateyama::api::configuration::whole> cfg_{};
+    std::unique_ptr<jogasaki::api::database> db_{};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
+
+    [[nodiscard]] std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg);
 
     void command_begin(
         ::request::Request const& proto_req,
@@ -344,10 +355,6 @@ private:
     void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
-
-inline jogasaki::api::impl::service& get_impl(tateyama::api::server::service& svc) {
-    return unsafe_downcast<jogasaki::api::impl::service>(svc);
-}
 
 }
 

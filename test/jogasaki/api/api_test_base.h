@@ -41,8 +41,9 @@ protected:
 
 public:
 
+    void set_dbpath(configuration& cfg);
     void db_setup(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
-
+    void db_create(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
     void db_teardown();
 
     api::impl::database* db_impl();
@@ -184,7 +185,7 @@ public:
     [[nodiscard]] std::string path() const;
 
     test::temporary_folder temporary_{};  //NOLINT
-    std::unique_ptr<jogasaki::api::database> db_;  //NOLINT
+    takatori::util::maybe_shared_ptr<jogasaki::api::database> db_;  //NOLINT
     std::unordered_map<std::string, api::field_type_kind> host_variables_{};  //NOLINT
 
 private:

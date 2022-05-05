@@ -359,6 +359,8 @@ public:
         return do_drop_sequence(name, schema);
     }
 
+    virtual std::shared_ptr<configuration>& config() noexcept = 0;
+
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
 

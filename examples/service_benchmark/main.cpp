@@ -24,12 +24,13 @@
 
 #include <takatori/util/fail.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <tateyama/api/environment.h>
 #include <tateyama/api/server/service.h>
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/registry.h>
-#include <tateyama/api/endpoint/mock/endpoint_impls.h>
+#include <tateyama/api/server/mock/request_response.h>
 #include <tateyama/utils/thread_affinity.h>
 
 #include <jogasaki/api.h>
@@ -38,6 +39,7 @@
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/service.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/utils/latch.h>
 
@@ -187,9 +189,8 @@ struct data_profile {
 
 
 class cli {
-    std::shared_ptr<jogasaki::api::database> db_{};
-    std::shared_ptr<tateyama::api::endpoint::service> service_{};  //NOLINT
-    std::unique_ptr<tateyama::api::environment> environment_{};  //NOLINT
+    takatori::util::maybe_shared_ptr<jogasaki::api::database> db_{};
+    std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
     bool debug_{}; //NOLINT
     bool verify_query_records_{};
     std::mutex write_buffer_mutex_{};
@@ -546,7 +547,11 @@ public:
         } else {
             cfg->db_location(std::string(FLAGS_location));
         }
-        db_ = jogasaki::api::create_database(cfg);
+
+        auto c = std::make_shared<tateyama::api::configuration::whole>("");
+        service_ = std::make_shared<jogasaki::api::impl::service>(c);
+        db_ = service_->database();
+        db_->config() = cfg;
         db_->start();
 
         auto& impl = jogasaki::api::impl::get_impl(*db_);
@@ -559,32 +564,12 @@ public:
         }
     }
 
-    void setup_env() {
-        environment_ = std::make_unique<tateyama::api::environment>();
-        auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
-        environment_->add_application(app);
-        app->initialize(*environment_, db_.get());
-        service_ = tateyama::api::endpoint::create_service(*environment_);
-        environment_->endpoint_service(service_);
-        auto endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("mock");
-        environment_->add_endpoint(endpoint);
-        endpoint->initialize(*environment_, {});
-        endpoint->start();
-    }
-
-    void finish_env() {
-        environment_->endpoints()[0]->shutdown();
-        environment_->applications()[0]->shutdown();
-        db_->stop();
-    }
-
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
         jogasaki::common_cli::temporary_folder dir{};
         setup_db(cfg, dir);
-        setup_env();
         prepare_statement();
         run_workers(cfg);
-        finish_env();
+        db_->stop();
         dir.clean();
         return 0;
     }
@@ -592,8 +577,8 @@ public:
 private:
     bool begin_tx(std::uint64_t& handle) {
         auto s = jogasaki::utils::encode_begin(false);
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
@@ -622,8 +607,8 @@ private:
 
     bool commit_tx(std::uint64_t handle) {
         auto s = jogasaki::utils::encode_commit(handle);
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
@@ -636,8 +621,8 @@ private:
     bool abort_tx(std::uint64_t handle) {
         wait_for_statements();
         auto s = jogasaki::utils::encode_rollback(handle);
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
@@ -652,8 +637,8 @@ private:
         std::unordered_map<std::string, ::common::DataType> const& place_holders
     ) {
         auto s = jogasaki::utils::encode_prepare_vars(std::string{sql}, place_holders);
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
@@ -679,8 +664,8 @@ private:
         auto s = query ?
             jogasaki::utils::encode_execute_prepared_query(handle, stmt_handle_, parameters) :
             jogasaki::utils::encode_execute_prepared_statement(handle, stmt_handle_, parameters);
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         if (query) {
             res->set_on_write(std::move(on_write));
         }
@@ -712,7 +697,7 @@ private:
             }
             if (verify_query_records_) {
                 auto recs = jogasaki::utils::deserialize_msg(
-                    tateyama::api::endpoint::mock::view_of(write_buffer_),
+                    tateyama::api::server::mock::view_of(write_buffer_),
                     query_meta_
                 );
                 for(auto&& r : recs) {

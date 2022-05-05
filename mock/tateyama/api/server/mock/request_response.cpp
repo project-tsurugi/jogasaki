@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tateyama/api/endpoint/mock/endpoint_impls.h>
+#include <tateyama/api/server/mock/request_response.h>
 
 #include <memory>
 #include <regex>
 
-namespace tateyama::api::endpoint::mock {
+namespace tateyama::api::server::mock {
 
 using namespace std::literals::string_literals;
 using namespace std::string_view_literals;
@@ -33,12 +33,20 @@ std::string_view test_request::payload() const {
     return payload_;
 }
 
-status test_channel::acquire(writer*& buf) {
+std::size_t test_request::session_id() const {
+    return 100;
+}
+
+std::size_t test_request::service_id() const {
+    return 0;
+}
+
+status test_channel::acquire(std::shared_ptr<writer>& wrt) {
     auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
     if (on_write_) {
         s->set_on_write(on_write_);
     }
-    buf = s.get();
+    wrt = s;
     return status::ok;
 }
 
@@ -63,13 +71,13 @@ status test_response::body_head(std::string_view body_head) {
     return status::ok;
 }
 
-status test_response::acquire_channel(std::string_view name, data_channel*& ch) {
+status test_response::acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch) {
     (void) name;
-    channel_ = std::make_unique<test_channel>();
+    channel_ = std::make_shared<test_channel>();
     if (on_write_) {
         channel_->set_on_write(on_write_);
     }
-    ch = channel_.get();
+    ch = channel_;
     return status::ok;
 }
 
@@ -92,6 +100,10 @@ bool test_response::all_released() const noexcept {
 
 void test_response::set_on_write(std::function<void(std::string_view)> on_write) {
     on_write_ = std::move(on_write);
+}
+
+void test_response::session_id(std::size_t id) {
+    session_id_ = id;
 }
 
 bool test_channel::all_released() const noexcept {

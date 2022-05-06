@@ -139,27 +139,4 @@ public:
     std::function<void(std::string_view)> on_write_{}; //NOLINT
 };
 
-class test_endpoint : public provider {
-public:
-
-    status initialize(environment& env, void* context) {
-        (void)env;
-        (void)context;
-        return tateyama::status::ok;
-    }
-
-    status start() {
-        return tateyama::status::ok;
-    }
-
-    status shutdown() {
-        return tateyama::status::ok;
-    }
-    static std::shared_ptr<provider> create() {
-        return std::make_shared<test_endpoint>();
-    }
-};
-
 }
-
-register_component(endpoint, tateyama::api::endpoint::provider, mock, tateyama::api::endpoint::mock::test_endpoint::create);  //NOLINT

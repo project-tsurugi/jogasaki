@@ -319,7 +319,7 @@ struct parameter {
     std::any value_{};
 };
 
-void fill_parameters(std::vector<parameter> const& parameters, ::request::ParameterSet* ps) {
+inline void fill_parameters(std::vector<parameter> const& parameters, ::request::ParameterSet* ps) {
     for(auto&& p : parameters) {
         auto* c0 = ps->add_parameters();
         c0->set_name(p.name_);
@@ -405,7 +405,7 @@ std::string encode_execute_load(std::uint64_t tx_handle, std::uint64_t stmt_hand
     return encode_execute_prepared_statement_or_query<::request::ExecuteLoad>(tx_handle, stmt_handle, parameters, args...);
 }
 
-std::string encode_explain(std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
+inline std::string encode_explain(std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
     ::request::Request r{};
     auto* explain = r.mutable_explain();
     explain->mutable_prepared_statement_handle()->set_handle(stmt_handle);

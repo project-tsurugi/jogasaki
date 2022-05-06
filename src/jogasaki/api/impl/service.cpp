@@ -638,7 +638,7 @@ std::size_t service::new_resultset_id() const noexcept {
 
 tateyama::status service::shutdown(bool force) {
     (void) force;
-    db_->stop();
+    // db should be shutdown by resource
     LIKWID_MARKER_CLOSE;
     return tateyama::status::ok;
 }
@@ -799,48 +799,18 @@ void service::execute_load(
     details::success<::response::ResultOnly>(*res);
 }
 
-std::shared_ptr<jogasaki::configuration> service::convert_config(tateyama::api::configuration::whole& cfg) {
-    auto ret = std::make_shared<jogasaki::configuration>();
 
-    auto jogasaki_config = cfg.get_section("sql");
-    if (jogasaki_config == nullptr) {
-        LOG(ERROR) << "cannot find sql section in the configuration";
-        return ret;
-    }
-
-    std::size_t thread_pool_size{};
-    if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
-        ret->thread_pool_size(thread_pool_size);
-    }
-    bool lazy_worker{};
-    if (jogasaki_config->get<>("lazy_worker", lazy_worker)) {
-        ret->lazy_worker(lazy_worker);
-    }
-
-    // data_store
-    auto data_store_config = cfg.get_section("data_store");
-    if (data_store_config == nullptr) {
-        LOG(ERROR) << "cannot find data_store section in the configuration";
-        return ret;
-    }
-    std::string log_location{};
-    if (data_store_config->get<std::string>("log_location", log_location)) {
-        ret->db_location(log_location);
-    }
-    return ret;
-}
-
-service::service(std::shared_ptr<tateyama::api::configuration::whole> cfg) :
+service::service(std::shared_ptr<tateyama::api::configuration::whole> cfg, jogasaki::api::database* db) :
     cfg_(std::move(cfg)),
-    db_(jogasaki::api::create_database(convert_config(*cfg_)))
+    db_(db)
 {}
 
 tateyama::status service::start() {
-    db_->start();
+    // db should be started by resource
     return tateyama::status::ok;
 }
 
 jogasaki::api::database* service::database() const noexcept {
-    return db_.get();
+    return db_;
 }
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/service/bridge.h>
+#include <jogasaki/api/resource/bridge.h>
 
 #include <functional>
 #include <memory>
@@ -26,11 +26,12 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/ids.h>
 
+#include <tateyama/datastore/service/core.h>
+#include <tateyama/datastore/resource/core.h>
 
 #include <jogasaki/api/impl/service.h>
-#include <jogasaki/api/resource/bridge.h>
 
-namespace jogasaki::api::service {
+namespace jogasaki::api::resource {
 
 using tateyama::api::server::request;
 using tateyama::api::server::response;
@@ -43,37 +44,58 @@ framework::component::id_type bridge::id() const noexcept {
 }
 
 void bridge::setup(framework::environment& env) {
-    if (core_) return;
-    auto br = env.resource_repository().find<resource::bridge>();
-    if(! br) {
-        LOG(ERROR) << "setup error";
-        return;
-    }
-    core_ = std::make_unique<jogasaki::api::impl::service>(env.configuration(), br->database());
+    if (db_) return;
+    db_ = jogasaki::api::create_database(convert_config(*env.configuration()));
 }
 
 void bridge::start(framework::environment&) {
-    core_->start();
+    db_->start();
 }
 
 void bridge::shutdown(framework::environment&) {
-    core_->shutdown();
+    db_->stop();
     deactivated_ = true;
 }
 
-void bridge::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
-    (*core_)(std::move(req), std::move(res));
-}
-
 bridge::~bridge() {
-    if(core_ && ! deactivated_) {
-        core_->shutdown(true);
+    if(db_ && ! deactivated_) {
+        db_->stop();
     }
 }
 
 jogasaki::api::database* bridge::database() const noexcept {
-    return core_->database();
+    return db_.get();
 }
 
+std::shared_ptr<jogasaki::configuration> bridge::convert_config(tateyama::api::configuration::whole& cfg) {
+    auto ret = std::make_shared<jogasaki::configuration>();
+
+    auto jogasaki_config = cfg.get_section("sql");
+    if (jogasaki_config == nullptr) {
+        LOG(ERROR) << "cannot find sql section in the configuration";
+        return ret;
+    }
+
+    std::size_t thread_pool_size{};
+    if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
+        ret->thread_pool_size(thread_pool_size);
+    }
+    bool lazy_worker{};
+    if (jogasaki_config->get<>("lazy_worker", lazy_worker)) {
+        ret->lazy_worker(lazy_worker);
+    }
+
+    // data_store
+    auto data_store_config = cfg.get_section("data_store");
+    if (data_store_config == nullptr) {
+        LOG(ERROR) << "cannot find data_store section in the configuration";
+        return ret;
+    }
+    std::string log_location{};
+    if (data_store_config->get<std::string>("log_location", log_location)) {
+        ret->db_location(log_location);
+    }
+    return ret;
+}
 }
 

@@ -8,6 +8,7 @@ file(GLOB SOURCES
         "jogasaki/api/*.cpp"
         "jogasaki/api/impl/*.cpp"
         "jogasaki/api/service/*.cpp"
+        "jogasaki/api/resource/*.cpp"
         "jogasaki/data/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"

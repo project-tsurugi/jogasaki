@@ -32,20 +32,20 @@ namespace jogasaki::api::impl {
 class service;
 }
 
-namespace jogasaki::api::service {
+namespace jogasaki::api::resource {
 
 using tateyama::api::server::request;
 using tateyama::api::server::response;
 namespace framework = tateyama::framework;
 
 /**
- * @brief sql service bridge for tateyama framework
- * @details This object bridges sql engine as a service component in tateyama framework.
+ * @brief sql resource bridge for tateyama framework
+ * @details This object bridges sql engine as a resource component in tateyama framework.
  * This object should be responsible only for life-cycle management.
  */
-class bridge : public framework::service {
+class bridge : public framework::resource {
 public:
-    static constexpr id_type tag = framework::service_id_sql;
+    static constexpr id_type tag = framework::resource_id_sql;
 
     bridge();
 
@@ -66,10 +66,6 @@ public:
      */
     void shutdown(framework::environment&) override;
 
-    void operator()(
-        std::shared_ptr<request> req,
-        std::shared_ptr<response> res) override;
-
     /**
      * @brief destructor the object
      */
@@ -81,8 +77,11 @@ public:
     [[nodiscard]] jogasaki::api::database* database() const noexcept;
 
 private:
-    std::unique_ptr<jogasaki::api::impl::service> core_;  // to use incomplete object, do not add {} after var. name.
+    std::unique_ptr<jogasaki::api::database> db_;  // to use incomplete object, do not add {} after var. name.
     bool deactivated_{false};
+
+    [[nodiscard]] std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg);
+
 };
 
 }

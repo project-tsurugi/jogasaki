@@ -548,10 +548,9 @@ public:
             cfg->db_location(std::string(FLAGS_location));
         }
 
+        db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};
         auto c = std::make_shared<tateyama::api::configuration::whole>("");
-        service_ = std::make_shared<jogasaki::api::impl::service>(c);
-        db_ = service_->database();
-        db_->config() = cfg;
+        service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
 
         auto& impl = jogasaki::api::impl::get_impl(*db_);

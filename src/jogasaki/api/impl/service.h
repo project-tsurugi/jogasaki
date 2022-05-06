@@ -232,7 +232,7 @@ class service {
 public:
     service() = default;
 
-    explicit service(std::shared_ptr<tateyama::api::configuration::whole> cfg);
+    service(std::shared_ptr<tateyama::api::configuration::whole> cfg, jogasaki::api::database* db);
 
     tateyama::status operator()(
         std::shared_ptr<tateyama::api::server::request const> req,
@@ -260,10 +260,8 @@ private:
     };
 
     std::shared_ptr<tateyama::api::configuration::whole> cfg_{};
-    std::unique_ptr<jogasaki::api::database> db_{};
+    jogasaki::api::database* db_{};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
-
-    [[nodiscard]] std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg);
 
     void command_begin(
         ::request::Request const& proto_req,

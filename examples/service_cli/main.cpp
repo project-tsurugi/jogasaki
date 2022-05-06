@@ -170,12 +170,11 @@ public:
     }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
+        db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};
         auto c = std::make_shared<tateyama::api::configuration::whole>("");
-        service_ = std::make_shared<jogasaki::api::impl::service>(c);
-        db_ = service_->database();
-        db_->config() = cfg;
-
+        service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
+
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify_record;
         auto_commit_ = FLAGS_auto_commit;

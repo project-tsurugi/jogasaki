@@ -417,6 +417,10 @@ tateyama::status service::operator()(
         enable_performance_counter = true;
         LIKWID_MARKER_START("service");
     }
+    if(req->session_id() != 0) {
+        // TODO temporary fix : not to send back header if request doesn't add session_id, which means legacy request
+        res->session_id(req->session_id());
+    }
     {
         trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();

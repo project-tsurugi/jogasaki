@@ -46,6 +46,7 @@ std::unique_ptr<database> database::open(std::map<std::string, std::string> cons
 }
 
 bool database::close() {
+    if(handle_borrowed_) return true;
     if(auto res = sharksfin::database_close(handle_); res != sharksfin::StatusCode::OK) {
         LOG(ERROR) << "database_close failed with " << res;
         return false;

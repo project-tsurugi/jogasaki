@@ -92,7 +92,7 @@ status database::stop() {
     task_scheduler_->stop();
     sequence_manager_.reset();
 
-    if (kvs_db_ && !db_provided_) {
+    if (kvs_db_) {
         if(! kvs_db_->close()) {
             return status::err_io_error;
         }
@@ -503,8 +503,7 @@ std::shared_ptr<class configuration>& database::config() noexcept {
 
 database::database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db) :
     cfg_(std::move(cfg)),
-    kvs_db_(std::make_unique<kvs::database>(db)),
-    db_provided_(true)
+    kvs_db_(std::make_unique<kvs::database>(db))
 {}
 
 }

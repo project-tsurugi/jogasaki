@@ -55,8 +55,21 @@ class database : public api::database {
 public:
     database();
 
+    /**
+     * @brief create new object with new kvs instance (sharksfin)
+     * @param cfg the database configuration
+     * @details the newly created kvs instance is owned and managed by this object.
+     * Its life-cycle management functions such as open, close, and dispose will be called from this object.
+     */
     explicit database(std::shared_ptr<class configuration> cfg);
 
+    /**
+     * @brief create new object with existing kvs instance (sharksfin)
+     * @param cfg the database configuration
+     * @param db sharksfin database handle already opened.
+     * @details the existing opened kvs database instance is borrowed and its reference is held by this object.
+     * Its life-cycle management functions such as open, close, and dispose will *NOT* be called from this object.
+     */
     database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db);
 
     [[nodiscard]] status start() override;
@@ -180,7 +193,6 @@ private:
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<impl::transaction>> transactions_{};
-    bool db_provided_{false};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

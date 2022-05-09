@@ -426,12 +426,11 @@ std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = s
  * @brief factory method for database passing kvs (sharksfin)
  * @param cfg configuration for the database
  * @param db sharksfin db handle which has been opened
+ * @details contrary to the create_database() above, sharksfin instance is simply borrowed and no close/dispose will
+ * be called to the sharksfin::DatabaseHandle even if this object is closed or destructed.
  * @return database api object
  * @return nullptr if error occurs on creation
  */
-std::unique_ptr<database> create_database(
-    std::shared_ptr<configuration> cfg,
-    sharksfin::DatabaseHandle db
-);
+std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db);
 
 }

@@ -47,7 +47,9 @@ public:
     database() = default;
 
     /**
-     * @brief create new object
+     * @brief create new object with existing db handle
+     * @details the DatabaseHandle is simply borrowed by default, and no close/dispose calls will be made even if
+     * this object is closed or destructed.
      */
     explicit database(DatabaseHandle handle) : handle_(handle) {}
 
@@ -62,7 +64,10 @@ public:
     database& operator=(database&& other) noexcept = delete;
 
     /**
-     * @brief create new object
+     * @brief create new object with new kvs instance
+     * @details contrary to constructor `database(DatabaseHandle handle)`, opened kvs db instance will be owned by the
+     * returned object, and close/dispose calls to DatabaseHandle will be made when the returned object is closed or
+     * destructed.
      */
     [[nodiscard]] static std::unique_ptr<database> open(std::map<std::string, std::string> const& options = {});
 

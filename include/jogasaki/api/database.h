@@ -23,10 +23,14 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <sharksfin/api.h>
+#include <tateyama/api/task_scheduler/scheduler.h>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/transaction_option.h>
+
 
 namespace jogasaki::api {
 
@@ -417,5 +421,12 @@ protected:
  * @return nullptr if error occurs on creation
  */
 std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
+
+template<class T>
+std::unique_ptr<database> create_database(
+    std::shared_ptr<configuration> cfg,
+    sharksfin::DatabaseHandle db,
+    tateyama::api::task_scheduler::scheduler<T> sched
+);
 
 }

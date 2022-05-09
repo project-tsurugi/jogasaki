@@ -406,7 +406,7 @@ void service::command_execute_load(
     execute_load(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, files);
 }
 
-tateyama::status service::operator()(
+bool service::operator()(
     std::shared_ptr<tateyama::api::server::request const> req,
     std::shared_ptr<tateyama::api::server::response> res
 ) {
@@ -430,7 +430,7 @@ tateyama::status service::operator()(
             std::string msg{"parse error with request body"};
             VLOG(log_info) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
             res->body(msg);
-            return tateyama::status::ok;
+            return true;
         }
         VLOG(log_info) << "request received (len=" << s.size() << "):" << std::endl << proto_req.Utf8DebugString();
     }
@@ -512,7 +512,7 @@ tateyama::status service::operator()(
     if (enable_performance_counter) {
         LIKWID_MARKER_STOP("service");
     }
-    return tateyama::status::ok;
+    return true;
 }
 
 void service::execute_statement(
@@ -640,11 +640,11 @@ std::size_t service::new_resultset_id() const noexcept {
     return ++resultset_id;
 }
 
-tateyama::status service::shutdown(bool force) {
+bool service::shutdown(bool force) {
     (void) force;
     // db should be shutdown by resource
     LIKWID_MARKER_CLOSE;
-    return tateyama::status::ok;
+    return true;
 }
 
 void details::reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head) {
@@ -809,9 +809,9 @@ service::service(std::shared_ptr<tateyama::api::configuration::whole> cfg, jogas
     db_(db)
 {}
 
-tateyama::status service::start() {
+bool service::start() {
     // db should be started by resource
-    return tateyama::status::ok;
+    return true;
 }
 
 jogasaki::api::database* service::database() const noexcept {

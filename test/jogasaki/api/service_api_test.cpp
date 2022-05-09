@@ -138,7 +138,7 @@ public:
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
         handle = decode_prepare(res->body_);
     }
@@ -158,7 +158,7 @@ void service_api_test::test_begin(std::uint64_t& handle,
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
     handle = decode_begin(res->body_);
 }
@@ -169,7 +169,7 @@ void service_api_test::test_commit(std::uint64_t& handle) {
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_TRUE(success);
@@ -188,7 +188,7 @@ TEST_F(service_api_test, error_on_commit) {
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
@@ -206,7 +206,7 @@ TEST_F(service_api_test, rollback) {
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_TRUE(success);
@@ -220,7 +220,7 @@ TEST_F(service_api_test, error_on_rollback) {
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
@@ -235,7 +235,7 @@ void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_TRUE(success);
@@ -255,7 +255,7 @@ TEST_F(service_api_test, error_on_dispose) {
     auto st = (*service_)(req, res);
 
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
@@ -272,7 +272,7 @@ TEST_F(service_api_test, disconnect) {
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_TRUE(success);
@@ -286,7 +286,7 @@ void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_han
     auto st = (*service_)(req, res);
     EXPECT_TRUE(wait_completion(*res));
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
     EXPECT_TRUE(res->all_released());
 
@@ -315,7 +315,7 @@ void service_api_test::test_query(
     auto st = (*service_)(req, res);
     EXPECT_TRUE(wait_completion(*res));
     EXPECT_TRUE(res->completed());
-    ASSERT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
     EXPECT_TRUE(res->all_released());
 
@@ -397,7 +397,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error] = decode_result_only(res->body_);
@@ -426,7 +426,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         {
@@ -547,7 +547,7 @@ TEST_F(service_api_test, data_types) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error] = decode_result_only(res->body_);
@@ -577,7 +577,7 @@ TEST_F(service_api_test, data_types) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         {
@@ -648,7 +648,7 @@ TEST_F(service_api_test, invalid_request) {
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    EXPECT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
     EXPECT_NE(response_code::success, res->code_);
 }
 
@@ -658,7 +658,8 @@ TEST_F(service_api_test, empty_request) {
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
-    EXPECT_EQ(tateyama::status::ok, st);
+    ASSERT_TRUE(st);
+    EXPECT_NE(response_code::success, res->code_);
     EXPECT_NE(response_code::success, res->code_);
 }
 
@@ -675,7 +676,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::application_error, res->code_);
 
         auto [success, error] = decode_result_only(res->body_);
@@ -692,7 +693,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::application_error, res->code_);
 
         auto [success, error] = decode_result_only(res->body_);
@@ -723,7 +724,7 @@ TEST_F(service_api_test, explain_insert) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         auto [result, error] = decode_explain(res->body_);
@@ -753,7 +754,7 @@ TEST_F(service_api_test, explain_query) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         auto [result, error] = decode_explain(res->body_);
@@ -772,7 +773,7 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_NE(response_code::success, res->code_);
 
         auto [result, error] = decode_explain(res->body_);
@@ -800,7 +801,7 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::application_error, res->code_);
 
         auto [explained, error] = decode_explain(res->body_);
@@ -832,7 +833,7 @@ TEST_F(service_api_test, null_host_variable) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error] = decode_result_only(res->body_);
@@ -916,7 +917,7 @@ TEST_F(service_api_test, execute_dump) {
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
         {
@@ -973,7 +974,7 @@ TEST_F(service_api_test, execute_load) {
         EXPECT_TRUE(wait_completion(*res));
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
-        ASSERT_EQ(tateyama::status::ok, st);
+        ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
         {
             auto [success, error] = decode_result_only(res->body_);

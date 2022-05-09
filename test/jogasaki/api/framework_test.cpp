@@ -89,7 +89,7 @@ TEST_F(framework_test, server_to_start_sql_engine) {
     auto conf = tateyama::api::configuration::create_configuration("");
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
-    framework::install_core_components(sv);
+    framework::add_core_components(sv);
     auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
     sv.add_resource(sqlres);
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
@@ -104,16 +104,17 @@ TEST_F(framework_test, server_to_start_sql_engine) {
 class test_endpoint : public framework::endpoint {
 public:
 
-    void setup(framework::environment& env) override {
+    bool setup(framework::environment& env) override {
         broker_ = env.service_repository().find<framework::endpoint_broker>();
+        return true;
     }
 
-    void start(framework::environment&) override {
-
+    bool start(framework::environment&) override {
+        return true;
     }
 
-    void shutdown(framework::environment&) override {
-
+    bool shutdown(framework::environment&) override {
+        return true;
     }
 
     std::string send(std::string_view data) {
@@ -129,7 +130,7 @@ TEST_F(framework_test, send_sql_via_endpoint) {
     auto conf = tateyama::api::configuration::create_configuration("");
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
-    framework::install_core_components(sv);
+    framework::add_core_components(sv);
     auto ep = std::make_shared<test_endpoint>();
     sv.add_endpoint(ep);
     auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
@@ -159,7 +160,7 @@ TEST_F(framework_test, send_request_with_header) {
     auto conf = tateyama::api::configuration::create_configuration("");
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
-    framework::install_core_components(sv);
+    framework::add_core_components(sv);
     auto ep = std::make_shared<test_endpoint>();
     sv.add_endpoint(ep);
     auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();

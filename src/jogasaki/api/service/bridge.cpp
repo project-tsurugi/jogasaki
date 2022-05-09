@@ -24,8 +24,7 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/framework/environment.h>
-#include <tateyama/framework/ids.h>
-
+#include <tateyama/framework/component_ids.h>
 
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/api/resource/bridge.h>
@@ -42,27 +41,29 @@ framework::component::id_type bridge::id() const noexcept {
     return tag;
 }
 
-void bridge::setup(framework::environment& env) {
-    if (core_) return;
+bool bridge::setup(framework::environment& env) {
+    if (core_) return true;
     auto br = env.resource_repository().find<resource::bridge>();
     if(! br) {
         LOG(ERROR) << "setup error";
-        return;
+        return false;
     }
     core_ = std::make_unique<jogasaki::api::impl::service>(env.configuration(), br->database());
+    return true;
 }
 
-void bridge::start(framework::environment&) {
-    core_->start();
+bool bridge::start(framework::environment&) {
+    return core_->start();
 }
 
-void bridge::shutdown(framework::environment&) {
-    core_->shutdown();
-    deactivated_ = true;
+bool bridge::shutdown(framework::environment&) {
+    auto ret = core_->shutdown();
+    deactivated_ = ret;
+    return ret;
 }
 
-void bridge::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
-    (*core_)(std::move(req), std::move(res));
+bool bridge::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
+    return (*core_)(std::move(req), std::move(res));
 }
 
 bridge::~bridge() {

@@ -410,7 +410,7 @@ private:
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         bool error{false};
-        if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
+        if(! st || !res->completed() || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
@@ -453,7 +453,7 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
+        if(! st || !res->completed() || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_, for_autocommit);
@@ -474,7 +474,7 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
+        if(! st || !res->completed() || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_);
@@ -629,7 +629,7 @@ private:
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         bool error{false};
-        if(st != tateyama::status::ok || !res->completed() || res->code_ != response_code::success) {
+        if(! st || !res->completed() || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
@@ -804,7 +804,7 @@ private:
         );
         reset_write_buffer();
         auto st = (*service_)(req, res);
-        if(st != tateyama::status::ok) {
+        if(! st) {
             std::cerr << "service invocation failed" << std::endl;
             return false;
         }
@@ -861,7 +861,7 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(st != tateyama::status::ok) {
+        if(! st) {
             std::cerr << "service invocation failed" << std::endl;
             return false;
         }

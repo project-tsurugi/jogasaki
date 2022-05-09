@@ -234,14 +234,14 @@ public:
 
     service(std::shared_ptr<tateyama::api::configuration::whole> cfg, jogasaki::api::database* db);
 
-    tateyama::status operator()(
+    bool operator()(
         std::shared_ptr<tateyama::api::server::request const> req,
         std::shared_ptr<tateyama::api::server::response> res
     );
 
-    tateyama::status start();
+    bool start();
 
-    tateyama::status shutdown(bool force = false);
+    bool shutdown(bool force = false);
 
     [[nodiscard]] jogasaki::api::database* database() const noexcept;
 private:

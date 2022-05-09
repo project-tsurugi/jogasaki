@@ -24,7 +24,7 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/framework/environment.h>
-#include <tateyama/framework/ids.h>
+#include <tateyama/framework/component_ids.h>
 
 #include <tateyama/datastore/service/core.h>
 #include <tateyama/datastore/resource/core.h>
@@ -43,18 +43,20 @@ framework::component::id_type bridge::id() const noexcept {
     return tag;
 }
 
-void bridge::setup(framework::environment& env) {
-    if (db_) return;
+bool bridge::setup(framework::environment& env) {
+    if (db_) return true;
     db_ = jogasaki::api::create_database(convert_config(*env.configuration()));
+    return true;
 }
 
-void bridge::start(framework::environment&) {
-    db_->start();
+bool bridge::start(framework::environment&) {
+    return db_->start() == status::ok;
 }
 
-void bridge::shutdown(framework::environment&) {
-    db_->stop();
-    deactivated_ = true;
+bool bridge::shutdown(framework::environment&) {
+    auto ret = db_->stop() == status::ok;
+    deactivated_ = ret;
+    return ret;
 }
 
 bridge::~bridge() {

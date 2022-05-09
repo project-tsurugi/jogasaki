@@ -24,7 +24,7 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/framework/environment.h>
-#include <tateyama/framework/ids.h>
+#include <tateyama/framework/component_ids.h>
 
 #include <jogasaki/api/database.h>
 
@@ -54,17 +54,17 @@ public:
     /**
      * @brief setup the component (the state will be `ready`)
      */
-    void setup(framework::environment& env) override;
+    bool setup(framework::environment& env) override;
 
     /**
      * @brief start the component (the state will be `activated`)
      */
-    void start(framework::environment& env) override;
+    bool start(framework::environment& env) override;
 
     /**
      * @brief shutdown the component (the state will be `deactivated`)
      */
-    void shutdown(framework::environment&) override;
+    bool shutdown(framework::environment&) override;
 
     /**
      * @brief destructor the object

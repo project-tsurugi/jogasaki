@@ -23,7 +23,7 @@ namespace jogasaki::kvs {
 using namespace sharksfin;
 
 database::~database() noexcept {
-    if (handle_) {
+    if (handle_ && ! handle_borrowed_) {
         if(auto res = database_dispose(handle_); res != StatusCode::OK) {
             fail();
         }
@@ -40,7 +40,9 @@ std::unique_ptr<database> database::open(std::map<std::string, std::string> cons
         LOG(ERROR) << "database_open failed with " << res;
         return {};
     }
-    return std::make_unique<database>(handle);
+    auto ret = std::make_unique<database>(handle);
+    ret->handle_borrowed_ = false;
+    return ret;
 }
 
 bool database::close() {

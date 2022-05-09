@@ -422,11 +422,16 @@ protected:
  */
 std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
 
-template<class T>
+/**
+ * @brief factory method for database passing kvs (sharksfin)
+ * @param cfg configuration for the database
+ * @param db sharksfin db handle which has been opened
+ * @return database api object
+ * @return nullptr if error occurs on creation
+ */
 std::unique_ptr<database> create_database(
     std::shared_ptr<configuration> cfg,
-    sharksfin::DatabaseHandle db,
-    tateyama::api::task_scheduler::scheduler<T> sched
+    sharksfin::DatabaseHandle db
 );
 
 }

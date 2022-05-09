@@ -172,6 +172,7 @@ public:
 
 private:
     sharksfin::DatabaseHandle handle_{};
+    bool handle_borrowed_{true};
 };
 
 /**

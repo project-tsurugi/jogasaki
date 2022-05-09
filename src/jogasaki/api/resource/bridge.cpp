@@ -25,9 +25,7 @@
 #include <tateyama/api/server/response.h>
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/component_ids.h>
-
-#include <tateyama/datastore/service/core.h>
-#include <tateyama/datastore/resource/core.h>
+#include <tateyama/framework/transactional_kvs_resource.h>
 
 #include <jogasaki/api/impl/service.h>
 
@@ -45,7 +43,12 @@ framework::component::id_type bridge::id() const noexcept {
 
 bool bridge::setup(framework::environment& env) {
     if (db_) return true;
-    db_ = jogasaki::api::create_database(convert_config(*env.configuration()));
+    auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
+    if(! kvs) {
+        LOG(ERROR) << "failed to find transactional kvs";
+        return false;
+    }
+    db_ = jogasaki::api::create_database(convert_config(*env.configuration()), kvs->core_object());
     return true;
 }
 

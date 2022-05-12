@@ -503,7 +503,7 @@ private:
         if(map.count(std::string(str)) != 0) {
             return map.at(std::string(str));
         }
-        return ::common::DataType::PADDING; //unsupported type
+        return ::common::DataType::TYPE_UNSPECIFIED; //unsupported type
     }
 
     bool is_alphanumeric(char c) {
@@ -603,7 +603,7 @@ private:
                 return false;
             }
             auto t = from(var[1]);
-            if(t == ::common::DataType::PADDING) {
+            if(t == ::common::DataType::TYPE_UNSPECIFIED) {
                 std::cerr << "type is not supported : " << s << std::endl;
                 return false;
             }

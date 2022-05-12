@@ -115,6 +115,8 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 database::database() : database(std::make_shared<class configuration>()) {}
 
 void database::init() {
+    global::config_pool(cfg_);
+    if(initialized_) return;
     executor::add_builtin_tables(*tables_);
     executor::add_test_tables(*tables_);  //TODO remove on production environment
     executor::add_qa_tables(*tables_);
@@ -132,7 +134,7 @@ void database::init() {
     if(cfg_->prepare_analytics_benchmark_tables()) {
         executor::add_analytics_benchmark_tables(*tables_);
     }
-    global::config_pool(cfg_);
+    initialized_ = true;
 }
 
 void add_variable(

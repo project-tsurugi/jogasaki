@@ -47,8 +47,19 @@ class bridge : public framework::resource {
 public:
     static constexpr id_type tag = framework::resource_id_sql;
 
+    /**
+     * @brief create new object
+     */
     bridge();
 
+    bridge(bridge const& other) = delete;
+    bridge& operator=(bridge const& other) = delete;
+    bridge(bridge&& other) noexcept = delete;
+    bridge& operator=(bridge&& other) noexcept = delete;
+
+    /**
+     * @brief accessor to the resource id
+     */
     [[nodiscard]] id_type id() const noexcept override;
 
     /**

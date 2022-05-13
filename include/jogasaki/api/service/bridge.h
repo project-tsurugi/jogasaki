@@ -47,8 +47,19 @@ class bridge : public framework::service {
 public:
     static constexpr id_type tag = framework::service_id_sql;
 
+    /**
+     * @brief create new object
+     */
     bridge();
 
+    bridge(bridge const& other) = delete;
+    bridge& operator=(bridge const& other) = delete;
+    bridge(bridge&& other) noexcept = delete;
+    bridge& operator=(bridge&& other) noexcept = delete;
+
+    /**
+     * @brief accessor to the service id
+     */
     [[nodiscard]] id_type id() const noexcept override;
 
     /**
@@ -66,6 +77,9 @@ public:
      */
     bool shutdown(framework::environment&) override;
 
+    /**
+     * @brief interface to exchange request and response
+     */
     bool operator()(
         std::shared_ptr<request> req,
         std::shared_ptr<response> res) override;

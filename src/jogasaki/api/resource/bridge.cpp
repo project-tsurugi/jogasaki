@@ -31,8 +31,6 @@
 
 namespace jogasaki::api::resource {
 
-using tateyama::api::server::request;
-using tateyama::api::server::response;
 namespace framework = tateyama::framework;
 
 bridge::bridge() = default;

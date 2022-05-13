@@ -407,8 +407,8 @@ void service::command_execute_load(
 }
 
 bool service::operator()(
-    std::shared_ptr<tateyama::api::server::request const> req,
-    std::shared_ptr<tateyama::api::server::response> res
+    std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
     ::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;

@@ -502,8 +502,8 @@ bool service::operator()(
             break;
         }
         default:
-            std::string msg{"invalid request code"};
-            VLOG(log_error) << msg;
+            std::string msg{"invalid request code: "};
+            VLOG(log_error) << msg << proto_req.request_case();
             res->code(response_code::io_error);
             VLOG(log_info) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
             res->body(msg);

@@ -79,7 +79,7 @@ using namespace std::string_view_literals;
 using namespace tateyama;
 
 TEST_F(framework_test, server_to_start_sql_engine) {
-    auto conf = tateyama::api::configuration::create_configuration("");
+    auto conf = tateyama::api::configuration::create_configuration();
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
@@ -120,7 +120,7 @@ public:
 };
 
 TEST_F(framework_test, send_sql_via_endpoint) {
-    auto conf = tateyama::api::configuration::create_configuration("");
+    auto conf = tateyama::api::configuration::create_configuration();
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
@@ -150,7 +150,7 @@ TEST_F(framework_test, send_sql_via_endpoint) {
 }
 
 TEST_F(framework_test, send_request_with_header) {
-    auto conf = tateyama::api::configuration::create_configuration("");
+    auto conf = tateyama::api::configuration::create_configuration();
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);

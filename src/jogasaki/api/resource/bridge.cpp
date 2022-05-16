@@ -79,13 +79,11 @@ std::shared_ptr<jogasaki::configuration> bridge::convert_config(tateyama::api::c
         return ret;
     }
 
-    std::size_t thread_pool_size{};
-    if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
-        ret->thread_pool_size(thread_pool_size);
+    if (auto thread_pool_size = jogasaki_config->get<std::size_t>("thread_pool_size")) {
+        ret->thread_pool_size(thread_pool_size.value());
     }
-    bool lazy_worker{};
-    if (jogasaki_config->get<>("lazy_worker", lazy_worker)) {
-        ret->lazy_worker(lazy_worker);
+    if (auto lazy_worker = jogasaki_config->get<bool>("lazy_worker")) {
+        ret->lazy_worker(lazy_worker.value());
     }
 
     // data_store
@@ -94,9 +92,8 @@ std::shared_ptr<jogasaki::configuration> bridge::convert_config(tateyama::api::c
         LOG(ERROR) << "cannot find data_store section in the configuration";
         return ret;
     }
-    std::string log_location{};
-    if (data_store_config->get<std::string>("log_location", log_location)) {
-        ret->db_location(log_location);
+    if (auto log_location = data_store_config->get<std::string>("log_location")) {
+        ret->db_location(log_location.value());
     }
     return ret;
 }

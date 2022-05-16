@@ -80,7 +80,7 @@ private:
 }
 
 void service::command_begin(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     std::vector<std::string> storages{};
@@ -89,49 +89,49 @@ void service::command_begin(
     auto& bg = proto_req.begin();
     if(bg.has_option()) {
         auto& op = bg.option();
-        if(op.type() == ::request::TransactionOption_TransactionType_TRANSACTION_TYPE_READ_ONLY) {
+        if(op.type() == sql::request::TransactionType::READ_ONLY) {
             readonly = true;
         }
-        if(op.type() == :: request::TransactionOption_TransactionType_TRANSACTION_TYPE_LONG) {
+        if(op.type() == sql::request::TransactionType::LONG) {
             is_long = true;
             storages.reserve(op.write_preserves().size());
             for(auto&& x : op.write_preserves()) {
-                storages.emplace_back(x.name());
+                storages.emplace_back(x.table_name());
             }
         }
     }
     transaction_option opts{ readonly, is_long, std::move(storages) };
     jogasaki::api::transaction_handle tx{};
     if (auto st = db_->create_transaction(tx, opts); st == jogasaki::status::ok) {
-        details::success<::response::Begin>(*res, tx);
+        details::success<sql::response::Begin>(*res, tx);
     } else {
-        details::error<::response::Begin>(*res, st, "error in db_->create_transaction()");
+        details::error<sql::response::Begin>(*res, st, "error in db_->create_transaction()");
     }
 }
 
 void service::command_prepare(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& pp = proto_req.prepare();
-    auto& hvs = pp.host_variables();
+    auto& phs = pp.placeholders();
     auto& sql = pp.sql();
     if(sql.empty()) {
         VLOG(log_error) << "missing sql";
-        details::error<::response::Prepare>(*res, status::err_invalid_argument, "missing sql");
+        details::error<sql::response::Prepare>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
 
     std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
-    for(std::size_t i = 0; i < static_cast<std::size_t>(hvs.variables_size()) ;i++) {
-        auto& hv = hvs.variables(i);
-        variables.emplace(hv.name(), jogasaki::utils::type_for(hv.type()));
+    for(std::size_t i=0, n=static_cast<std::size_t>(phs.size()); i < n ; ++i) {
+        auto& ph = phs.Get(i);
+        variables.emplace(ph.name(), jogasaki::utils::type_for(ph.type()));
     }
     jogasaki::api::statement_handle statement{};
     if(auto rc = db_->prepare(sql, variables, statement); rc == jogasaki::status::ok) {
-        details::success<::response::Prepare>(*res, statement);
+        details::success<sql::response::Prepare>(*res, statement);
     } else {
-        details::error<::response::Prepare>(*res, rc, "error in db_->prepare()");
+        details::error<sql::response::Prepare>(*res, rc, "error in db_->prepare()");
     }
 }
 
@@ -142,19 +142,19 @@ jogasaki::api::transaction_handle validate_transaction_handle(
 ) {
     if(! msg.has_transaction_handle()) {
         VLOG(log_error) << "missing transaction_handle";
-        details::error<::response::ResultOnly>(res, status::err_invalid_argument, "missing transaction_handle");
+        details::error<sql::response::ResultOnly>(res, status::err_invalid_argument, "missing transaction_handle");
         return {};
     }
     jogasaki::api::transaction_handle tx{msg.transaction_handle().handle()};
     if(! tx) {
-        details::error<::response::ResultOnly>(res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
+        details::error<sql::response::ResultOnly>(res, jogasaki::status::err_invalid_argument, "invalid transaction handle");
         return {};
     }
     return tx;
 }
 
 void service::command_execute_statement(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -166,20 +166,20 @@ void service::command_execute_statement(
     auto& sql = eq.sql();
     if(sql.empty()) {
         VLOG(log_error) << "missing sql";
-        details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
+        details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
         VLOG(log_error) << "error in db_->create_executable()";
-        details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
+        details::error<sql::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx);
 }
 
 void service::command_execute_query(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -191,7 +191,7 @@ void service::command_execute_query(
     auto& sql = eq.sql();
     if(sql.empty()) {
         VLOG(log_error) << "missing sql";
-        details::error<::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
+        details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
     execute_query(res, details::query_info{sql}, tx);
@@ -220,7 +220,7 @@ jogasaki::api::statement_handle validate_statement_handle(
 }
 
 void service::command_execute_prepared_statement(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -229,7 +229,7 @@ void service::command_execute_prepared_statement(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<::response::ResultOnly>(pq, *res);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res);
     if(! handle) {
         return;
     }
@@ -239,14 +239,14 @@ void service::command_execute_prepared_statement(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
         VLOG(log_error) << "error in db_->resolve()";
-        details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+        details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx);
 }
 
 void service::command_execute_prepared_query(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -255,7 +255,7 @@ void service::command_execute_prepared_query(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<::response::ResultOnly>(pq, *res);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res);
     if(! handle) {
         return;
     }
@@ -265,7 +265,7 @@ void service::command_execute_prepared_query(
 }
 
 void service::command_commit(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& cm = proto_req.commit();
@@ -274,10 +274,10 @@ void service::command_commit(
         return;
     }
     if(auto rc = tx.commit(); rc == jogasaki::status::ok) {
-        details::success<::response::ResultOnly>(*res);
+        details::success<sql::response::ResultOnly>(*res);
     } else {
         VLOG(log_error) << "error in transaction_->commit()";
-        details::error<::response::ResultOnly>(*res, rc, "error in transaction_->commit()");
+        details::error<sql::response::ResultOnly>(*res, rc, "error in transaction_->commit()");
         // currently, commit failure is assumed to abort the transaction anyway.
         // So let's proceed to destroy the transaction.
     }
@@ -286,7 +286,7 @@ void service::command_commit(
     }
 }
 void service::command_rollback(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& rb = proto_req.rollback();
@@ -295,10 +295,10 @@ void service::command_rollback(
         return;
     }
     if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
-        details::success<::response::ResultOnly>(*res);
+        details::success<sql::response::ResultOnly>(*res);
     } else {
         VLOG(log_error) << "error in transaction_->abort()";
-        details::error<::response::ResultOnly>(*res, rc, "error in transaction_->abort()");
+        details::error<sql::response::ResultOnly>(*res, rc, "error in transaction_->abort()");
         // currently, we assume this won't happen or the transaction is aborted anyway.
         // So let's proceed to destroy the transaction.
     }
@@ -308,38 +308,38 @@ void service::command_rollback(
 }
 
 void service::command_dispose_prepared_statement(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
 
-    auto handle = validate_statement_handle<::response::ResultOnly>(ds, *res);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ds, *res);
     if(! handle) {
         return;
     }
     if(auto st = db_->destroy_statement(handle);
         st == jogasaki::status::ok) {
-        details::success<::response::ResultOnly>(*res);
+        details::success<sql::response::ResultOnly>(*res);
     } else {
         VLOG(log_error) << "error destroying statement";
-        details::error<::response::ResultOnly>(*res, st, "error destroying statement");
+        details::error<sql::response::ResultOnly>(*res, st, "error destroying statement");
     }
 }
 void service::command_disconnect(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     (void)proto_req;
-    details::success<::response::ResultOnly>(*res);
+    details::success<sql::response::ResultOnly>(*res);
     res->close_session(); //TODO re-visit when the notion of session is finalized
 }
 
 void service::command_explain(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     auto& ex = proto_req.explain();
-    auto handle = validate_statement_handle<::response::Explain>(ex, *res);
+    auto handle = validate_statement_handle<sql::response::Explain>(ex, *res);
     if(! handle) {
         return;
     }
@@ -350,19 +350,19 @@ void service::command_explain(
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e);
         rc != jogasaki::status::ok) {
         VLOG(log_error) << "error in db_->resolve() : " << rc;
-        details::error<::response::Explain>(*res, rc, "error in db_->resolve()");
+        details::error<sql::response::Explain>(*res, rc, "error in db_->resolve()");
         return;
     }
     std::stringstream ss{};
     if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
-        details::success<::response::Explain>(*res, ss.str());
+        details::success<sql::response::Explain>(*res, ss.str());
     } else {
-        details::error<::response::Explain>(*res, st, "error in db_->explain()");
+        details::error<sql::response::Explain>(*res, st, "error in db_->explain()");
     }
 }
 
 void service::command_execute_dump(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -371,7 +371,7 @@ void service::command_execute_dump(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<::response::ResultOnly>(ed, *res);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, *res);
     if(! handle) {
         return;
     }
@@ -382,7 +382,7 @@ void service::command_execute_dump(
 }
 
 void service::command_execute_load(
-    ::request::Request const& proto_req,
+    sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -391,7 +391,7 @@ void service::command_execute_load(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<::response::ResultOnly>(ed, *res);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, *res);
     if(! handle) {
         return;
     }
@@ -410,7 +410,7 @@ bool service::operator()(
     std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
-    ::request::Request proto_req{};
+    sql::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
     bool enable_performance_counter = false;
     if (++cnt > 0 && cnt % 1000 == 0) { // measure with performance counter on every 1000 invocations
@@ -436,67 +436,67 @@ bool service::operator()(
     }
 
     switch (proto_req.request_case()) {
-        case ::request::Request::RequestCase::kBegin: {
+        case sql::request::Request::RequestCase::kBegin: {
             trace_scope_name("cmd-begin");  //NOLINT
             command_begin(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kPrepare: {
+        case sql::request::Request::RequestCase::kPrepare: {
             trace_scope_name("cmd-prepare");  //NOLINT
             command_prepare(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExecuteStatement: {
+        case sql::request::Request::RequestCase::kExecuteStatement: {
             trace_scope_name("cmd-execute_statement");  //NOLINT
             command_execute_statement(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExecuteQuery: {
+        case sql::request::Request::RequestCase::kExecuteQuery: {
             trace_scope_name("cmd-execute_query");  //NOLINT
             command_execute_query(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExecutePreparedStatement: {
+        case sql::request::Request::RequestCase::kExecutePreparedStatement: {
             trace_scope_name("cmd-execute_prepared_statement");  //NOLINT
             command_execute_prepared_statement(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExecutePreparedQuery: {
+        case sql::request::Request::RequestCase::kExecutePreparedQuery: {
             trace_scope_name("cmd-execute_prepared_query");  //NOLINT
             command_execute_prepared_query(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kCommit: {
+        case sql::request::Request::RequestCase::kCommit: {
             trace_scope_name("cmd-commit");  //NOLINT
             command_commit(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kRollback: {
+        case sql::request::Request::RequestCase::kRollback: {
             trace_scope_name("cmd-rollback");  //NOLINT
             command_rollback(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kDisposePreparedStatement: {
+        case sql::request::Request::RequestCase::kDisposePreparedStatement: {
             trace_scope_name("cmd-dispose_prepared_statement");  //NOLINT
             command_dispose_prepared_statement(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kDisconnect: {
+        case sql::request::Request::RequestCase::kDisconnect: {
             trace_scope_name("cmd-disconnect");  //NOLINT
             command_disconnect(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExplain: {
+        case sql::request::Request::RequestCase::kExplain: {
             trace_scope_name("cmd-explain");  //NOLINT
             command_explain(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExecuteDump: {
+        case sql::request::Request::RequestCase::kExecuteDump: {
             trace_scope_name("cmd-dump");  //NOLINT
             command_execute_dump(proto_req, res);
             break;
         }
-        case ::request::Request::RequestCase::kExecuteLoad: {
+        case sql::request::Request::RequestCase::kExecuteLoad: {
             trace_scope_name("cmd-load");  //NOLINT
             command_execute_load(proto_req, res);
             break;
@@ -531,9 +531,9 @@ void service::execute_statement(
             std::move(stmt),
             [cbp, this](status s, std::string_view message){
                 if (s == jogasaki::status::ok) {
-                    details::success<::response::ResultOnly>(*cbp->response_);
+                    details::success<sql::response::ResultOnly>(*cbp->response_);
                 } else {
-                    details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     fail();
@@ -545,23 +545,23 @@ void service::execute_statement(
     }
 }
 
-void service::set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params) {
-    for (std::size_t i = 0; i < static_cast<std::size_t>(ps.parameters_size()) ;i++) {
-        auto& p = ps.parameters(i);
+void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params) {
+    for (std::size_t i=0, n=static_cast<std::size_t>(ps.size()); i < n; ++i) {
+        auto& p = ps.Get(i);
         switch (p.value_case()) {
-            case ::request::ParameterSet::Parameter::ValueCase::kInt4Value:
+            case sql::request::Parameter::ValueCase::kInt4Value:
                 params->set_int4(p.name(), p.int4_value());
                 break;
-            case ::request::ParameterSet::Parameter::ValueCase::kInt8Value:
+            case sql::request::Parameter::ValueCase::kInt8Value:
                 params->set_int8(p.name(), p.int8_value());
                 break;
-            case ::request::ParameterSet::Parameter::ValueCase::kFloat4Value:
+            case sql::request::Parameter::ValueCase::kFloat4Value:
                 params->set_float4(p.name(), p.float4_value());
                 break;
-            case ::request::ParameterSet::Parameter::ValueCase::kFloat8Value:
+            case sql::request::Parameter::ValueCase::kFloat8Value:
                 params->set_float8(p.name(), p.float8_value());
                 break;
-            case ::request::ParameterSet::Parameter::ValueCase::kCharacterValue:
+            case sql::request::Parameter::ValueCase::kCharacterValue:
                 params->set_character(p.name(), p.character_value());
                 break;
             default:
@@ -596,14 +596,14 @@ void service::execute_query(
     if(q.has_sql()) {
         if(auto rc = db_->create_executable(q.sql(), e); rc != jogasaki::status::ok) {
             VLOG(log_error) << "error in db_->create_executable() : " << rc;
-            details::error<::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
+            details::error<sql::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
             return;
         }
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
         if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
             VLOG(log_error) << "error in db_->resolve() : " << rc;
-            details::error<::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+            details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
             return;
         }
     }
@@ -621,9 +621,9 @@ void service::execute_query(
                     cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
                 }
                 if (s == jogasaki::status::ok) {
-                    details::success<::response::ResultOnly>(*cbp->response_);
+                    details::success<sql::response::ResultOnly>(*cbp->response_);
                 } else {
-                    details::error<::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     fail();
@@ -647,7 +647,7 @@ bool service::shutdown(bool force) {
     return true;
 }
 
-void details::reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head) {
+void details::reply(tateyama::api::server::response& res, sql::response::Response& r, bool body_head) {
     std::stringstream ss{};
     if (!r.SerializeToOstream(&ss)) {
         fail();
@@ -665,38 +665,38 @@ void details::reply(tateyama::api::server::response& res, ::response::Response& 
     }
 }
 
-void details::set_metadata(channel_info const& info, schema::RecordMeta& meta) {
+void details::set_metadata(channel_info const& info, sql::schema::RecordMeta& meta) {
     auto* metadata = info.meta_;
     std::size_t n = metadata->field_count();
 
     for (std::size_t i = 0; i < n; i++) {
-        auto column = std::make_unique<::schema::RecordMeta_Column>();
+        auto column = std::make_unique<sql::schema::RecordMeta_Column>();
         if(auto name = metadata->field_name(i); name.has_value()) {
             column->set_name(std::string{*name});
         }
         switch(metadata->at(i).kind()) {
             case jogasaki::api::field_type_kind::int4:
-                column->set_type(::common::DataType::INT4);
+                column->set_type(sql::common::AtomType::INT4);
                 column->set_nullable(metadata->nullable(i));
                 *meta.add_columns() = *column;
                 break;
             case jogasaki::api::field_type_kind::int8:
-                column->set_type(::common::DataType::INT8);
+                column->set_type(sql::common::AtomType::INT8);
                 column->set_nullable(metadata->nullable(i));
                 *meta.add_columns() = *column;
                 break;
             case jogasaki::api::field_type_kind::float4:
-                column->set_type(::common::DataType::FLOAT4);
+                column->set_type(sql::common::AtomType::FLOAT4);
                 column->set_nullable(metadata->nullable(i));
                 *meta.add_columns() = *column;
                 break;
             case jogasaki::api::field_type_kind::float8:
-                column->set_type(::common::DataType::FLOAT8);
+                column->set_type(sql::common::AtomType::FLOAT8);
                 column->set_nullable(metadata->nullable(i));
                 *meta.add_columns() = *column;
                 break;
             case jogasaki::api::field_type_kind::character:
-                column->set_type(::common::DataType::CHARACTER);
+                column->set_type(sql::common::AtomType::CHARACTER);
                 column->set_nullable(metadata->nullable(i));
                 *meta.add_columns() = *column;
                 break;
@@ -784,7 +784,7 @@ void service::execute_dump(
     if(auto rc = cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin()); rc != tateyama::status::ok) {
         fail();
     }
-    details::success<::response::ResultOnly>(*cbp->response_);
+    details::success<sql::response::ResultOnly>(*cbp->response_);
 }
 
 void service::execute_load(
@@ -800,7 +800,7 @@ void service::execute_load(
     for(auto&& f : files) {
         LOG(INFO) << "load processing file: " << f;
     }
-    details::success<::response::ResultOnly>(*res);
+    details::success<sql::response::ResultOnly>(*res);
 }
 
 

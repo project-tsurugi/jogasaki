@@ -63,11 +63,12 @@ using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace tateyama::api::endpoint;
+namespace sql = jogasaki::proto::sql;
 
 using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
-std::string serialize(::request::Request& r);
-void deserialize(std::string_view s, ::response::Response& res);
+std::string serialize(sql::request::Request& r);
+void deserialize(std::string_view s, sql::response::Response& res);
 
 class service_api_test :
     public ::testing::Test,
@@ -112,7 +113,7 @@ public:
     void test_query(
         std::string_view sql,
         std::uint64_t tx_handle,
-        std::vector<::common::DataType> const& column_types,
+        std::vector<sql::common::AtomType> const& column_types,
         std::vector<bool> const& nullabilities,
         std::vector<mock::basic_record> const& expected,
         std::vector<std::string> const& exp_colnames
@@ -193,7 +194,7 @@ TEST_F(service_api_test, error_on_commit) {
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
     ASSERT_FALSE(error.message_.empty());
 }
 
@@ -225,7 +226,7 @@ TEST_F(service_api_test, error_on_rollback) {
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
     ASSERT_FALSE(error.message_.empty());
 }
 
@@ -260,7 +261,7 @@ TEST_F(service_api_test, error_on_dispose) {
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
     ASSERT_FALSE(error.message_.empty());
 }
 
@@ -304,7 +305,7 @@ void service_api_test::test_statement(std::string_view sql) {
 void service_api_test::test_query(
     std::string_view sql,
     std::uint64_t tx_handle,
-    std::vector<::common::DataType> const& column_types,
+    std::vector<sql::common::AtomType> const& column_types,
     std::vector<bool> const& nullabilities,
     std::vector<mock::basic_record> const& expected,
     std::vector<std::string> const& exp_colnames
@@ -357,8 +358,8 @@ void service_api_test::test_query(std::string_view query) {
         query,
         tx_handle,
         {
-            ::common::DataType::INT8,
-            ::common::DataType::FLOAT8
+            sql::common::AtomType::INT8,
+            sql::common::AtomType::FLOAT8
         },
         {
             true,
@@ -382,13 +383,13 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     test_prepare(
         stmt_handle,
         "insert into T0(C0, C1) values (:c0, :c1)",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -408,14 +409,14 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     test_prepare(
         query_handle,
         "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     test_begin(tx_handle);
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
@@ -434,9 +435,9 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
             std::cout << "name : " << name << std::endl;
             ASSERT_EQ(2, cols.size());
 
-            EXPECT_EQ(::common::DataType::INT8, cols[0].type_);
+            EXPECT_EQ(sql::common::AtomType::INT8, cols[0].type_);
             EXPECT_TRUE(cols[0].nullable_);
-            EXPECT_EQ(::common::DataType::FLOAT8, cols[1].type_);
+            EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[1].type_);
             EXPECT_TRUE(cols[1].nullable_);
             {
                 ASSERT_TRUE(res->channel_);
@@ -525,19 +526,19 @@ TEST_F(service_api_test, data_types) {
     test_prepare(
         stmt_handle,
         "insert into T1(C0, C1, C2, C3, C4) values (:c0, :c1, :c2, :c3, c4)",
-        std::pair{"c0"s, ::common::DataType::INT4},
-        std::pair{"c1"s, ::common::DataType::INT8},
-        std::pair{"c2"s, ::common::DataType::FLOAT8},
-        std::pair{"c3"s, ::common::DataType::FLOAT4},
-        std::pair{"c4"s, ::common::DataType::CHARACTER}
+        std::pair{"c0"s, sql::common::AtomType::INT4},
+        std::pair{"c1"s, sql::common::AtomType::INT8},
+        std::pair{"c2"s, sql::common::AtomType::FLOAT8},
+        std::pair{"c3"s, sql::common::AtomType::FLOAT4},
+        std::pair{"c4"s, sql::common::AtomType::CHARACTER}
     );
     for(std::size_t i=0; i < 3; ++i) {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT4, std::any{std::in_place_type<std::int32_t>, i}},
-            {"c1"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, i}},
-            {"c2"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, i}},
-            {"c3"s, ::common::DataType::FLOAT4, std::any{std::in_place_type<float>, i}},
-            {"c4"s, ::common::DataType::CHARACTER, std::any{std::in_place_type<std::string>, std::to_string(i)}},
+            {"c0"s, sql::common::AtomType::INT4, std::any{std::in_place_type<std::int32_t>, i}},
+            {"c1"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, i}},
+            {"c2"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, i}},
+            {"c3"s, sql::common::AtomType::FLOAT4, std::any{std::in_place_type<float>, i}},
+            {"c4"s, sql::common::AtomType::CHARACTER, std::any{std::in_place_type<std::string>, std::to_string(i)}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -558,16 +559,16 @@ TEST_F(service_api_test, data_types) {
     test_prepare(
         query_handle,
         "select C0, C1, C2, C3, C4 from T1 where C1 > :c1 and C2 > :c2 and C4 > :c4 order by C0",
-        std::pair{"c1"s, ::common::DataType::INT8},
-        std::pair{"c2"s, ::common::DataType::FLOAT8},
-        std::pair{"c4"s, ::common::DataType::CHARACTER}
+        std::pair{"c1"s, sql::common::AtomType::INT8},
+        std::pair{"c2"s, sql::common::AtomType::FLOAT8},
+        std::pair{"c4"s, sql::common::AtomType::CHARACTER}
     );
     test_begin(tx_handle);
     {
         std::vector<parameter> parameters{
-            {"c1"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 0}},
-            {"c2"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 0.0}},
-            {"c4"s, ::common::DataType::CHARACTER, std::any{std::in_place_type<std::string>, "0"}},
+            {"c1"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 0}},
+            {"c2"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 0.0}},
+            {"c4"s, sql::common::AtomType::CHARACTER, std::any{std::in_place_type<std::string>, "0"}},
         };
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
@@ -585,15 +586,15 @@ TEST_F(service_api_test, data_types) {
             std::cout << "name : " << name << std::endl;
             ASSERT_EQ(5, cols.size());
 
-            EXPECT_EQ(::common::DataType::INT4, cols[0].type_);
+            EXPECT_EQ(sql::common::AtomType::INT4, cols[0].type_);
             EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
-            EXPECT_EQ(::common::DataType::INT8, cols[1].type_);
+            EXPECT_EQ(sql::common::AtomType::INT8, cols[1].type_);
             EXPECT_TRUE(cols[1].nullable_);
-            EXPECT_EQ(::common::DataType::FLOAT8, cols[2].type_);
+            EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[2].type_);
             EXPECT_TRUE(cols[2].nullable_);
-            EXPECT_EQ(::common::DataType::FLOAT4, cols[3].type_);
+            EXPECT_EQ(sql::common::AtomType::FLOAT4, cols[3].type_);
             EXPECT_TRUE(cols[3].nullable_);
-            EXPECT_EQ(::common::DataType::CHARACTER, cols[4].type_);
+            EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[4].type_);
             EXPECT_TRUE(cols[4].nullable_);
             {
                 ASSERT_TRUE(res->channel_);
@@ -626,7 +627,7 @@ TEST_F(service_api_test, protobuf1) {
     // verify protobuf behavior
     using namespace std::string_view_literals;
     std::stringstream ss;
-    ::request::Request req{};
+    sql::request::Request req{};
     EXPECT_FALSE(req.has_begin());
     EXPECT_FALSE(req.has_session_handle());
     auto& h = req.session_handle();
@@ -636,7 +637,7 @@ TEST_F(service_api_test, protobuf1) {
     req.clear_session_handle();
     EXPECT_FALSE(req.has_session_handle());
 
-    ::common::Session s;
+    sql::common::Session s;
     req.set_allocated_session_handle(&s);
     EXPECT_TRUE(req.has_session_handle());
     req.release_session_handle();
@@ -681,7 +682,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
 
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_FALSE(success);
-        ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
     }
     {
@@ -698,7 +699,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
 
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_FALSE(success);
-        ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
     }
     test_commit(tx_handle);
@@ -709,13 +710,13 @@ TEST_F(service_api_test, explain_insert) {
     test_prepare(
         stmt_handle,
         "insert into T0(C0, C1) values (:c0, :c1)",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_explain(stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -739,13 +740,13 @@ TEST_F(service_api_test, explain_query) {
     test_prepare(
         stmt_handle,
         "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_explain(stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -778,7 +779,7 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
 
         auto [result, error] = decode_explain(res->body_);
         ASSERT_TRUE(result.empty());
-        ASSERT_EQ(::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
         LOG(INFO) << error.message_;
     }
@@ -790,8 +791,8 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
     test_prepare(
         stmt_handle,
         "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     {
         auto s = encode_explain(stmt_handle, {});
@@ -806,7 +807,7 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
 
         auto [explained, error] = decode_explain(res->body_);
         ASSERT_TRUE(explained.empty());
-        ASSERT_EQ(::status::Status::ERR_UNRESOLVED_HOST_VARIABLE, error.status_);
+        ASSERT_EQ(sql::status::Status::ERR_UNRESOLVED_HOST_VARIABLE, error.status_);
         ASSERT_FALSE(error.message_.empty());
     }
 }
@@ -818,13 +819,13 @@ TEST_F(service_api_test, null_host_variable) {
     test_prepare(
         stmt_handle,
         "insert into T0(C0, C1) values (:c0, :c1)",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -873,8 +874,8 @@ TEST_F(service_api_test, long_tx_simple) {
             "select * from T0 where C0=1",
             tx_handle,
             {
-                ::common::DataType::INT8,
-                ::common::DataType::FLOAT8
+                sql::common::AtomType::INT8,
+                sql::common::AtomType::FLOAT8
             },
             {
                 true,
@@ -898,15 +899,15 @@ TEST_F(service_api_test, execute_dump) {
     test_prepare(
         query_handle,
         "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_execute_dump(tx_handle, query_handle, parameters, "/mydirectory/");
 
@@ -924,7 +925,7 @@ TEST_F(service_api_test, execute_dump) {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::cout << "name : " << name << std::endl;
             ASSERT_EQ(1, cols.size());
-            EXPECT_EQ(::common::DataType::CHARACTER, cols[0].type_);
+            EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[0].type_);
             EXPECT_TRUE(cols[0].nullable_);
             {
                 ASSERT_TRUE(res->channel_);
@@ -955,15 +956,15 @@ TEST_F(service_api_test, execute_load) {
     test_prepare(
         query_handle,
         "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
-        std::pair{"c0"s, ::common::DataType::INT8},
-        std::pair{"c1"s, ::common::DataType::FLOAT8}
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     {
         std::vector<parameter> parameters{
-            {"c0"s, ::common::DataType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, ::common::DataType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_execute_load(tx_handle, query_handle, parameters, "/mydirectory/file1", "/mydirectory/file2");
 

@@ -53,6 +53,8 @@ using takatori::util::fail;
 
 using response_code = tateyama::api::endpoint::response_code;
 
+namespace sql = jogasaki::proto::sql;
+
 namespace details {
 
 class query_info;
@@ -63,24 +65,24 @@ struct cache_align channel_info {
     std::shared_ptr<jogasaki::api::impl::data_channel> data_channel_{};  //NOLINT
 };
 
-void reply(tateyama::api::server::response& res, ::response::Response& r, bool body_head = false);
-void set_metadata(channel_info const& info, ::schema::RecordMeta& meta);
+void reply(tateyama::api::server::response& res, sql::response::Response& r, bool body_head = false);
+void set_metadata(channel_info const& info, sql::schema::RecordMeta& meta);
 
 template<bool flag = false> void static_fail() {
     static_assert(flag);
 }
 
 template<typename T>
-void set_allocated_object(::response::Response& r, T& p) {
-    if constexpr (std::is_same_v<T, ::response::Begin>) {  //NOLINT
+void set_allocated_object(sql::response::Response& r, T& p) {
+    if constexpr (std::is_same_v<T, sql::response::Begin>) {  //NOLINT
         r.set_allocated_begin(&p);
-    } else if constexpr (std::is_same_v<T, ::response::Prepare>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::Prepare>) {  //NOLINT
         r.set_allocated_prepare(&p);
-    } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::ResultOnly>) {  //NOLINT
         r.set_allocated_result_only(&p);
-    } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::ExecuteQuery>) {  //NOLINT
         r.set_allocated_execute_query(&p);
-    } else if constexpr (std::is_same_v<T, ::response::Explain>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
         r.set_allocated_explain(&p);
     } else {
         static_fail();
@@ -88,60 +90,60 @@ void set_allocated_object(::response::Response& r, T& p) {
 }
 
 template<typename T>
-void release_object(::response::Response& r, T&) {
-    if constexpr (std::is_same_v<T, ::response::Begin>) {  //NOLINT
+void release_object(sql::response::Response& r, T&) {
+    if constexpr (std::is_same_v<T, sql::response::Begin>) {  //NOLINT
         r.release_begin();
-    } else if constexpr (std::is_same_v<T, ::response::Prepare>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::Prepare>) {  //NOLINT
         r.release_prepare();
-    } else if constexpr (std::is_same_v<T, ::response::ResultOnly>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::ResultOnly>) {  //NOLINT
         r.release_result_only();
-    } else if constexpr (std::is_same_v<T, ::response::ExecuteQuery>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::ExecuteQuery>) {  //NOLINT
         r.release_execute_query();
-    } else if constexpr (std::is_same_v<T, ::response::Explain>) {  //NOLINT
+    } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
         r.release_explain();
     } else {
         static_fail();
     }
 }
 
-inline ::status::Status map_status(jogasaki::status s) {
+inline sql::status::Status map_status(jogasaki::status s) {
     switch(s) {
-        case jogasaki::status::ok: return ::status::Status::OK;
-        case jogasaki::status::not_found: return ::status::Status::NOT_FOUND;
-        case jogasaki::status::already_exists: return ::status::Status::ALREADY_EXISTS;
-        case jogasaki::status::user_rollback: return ::status::Status::USER_ROLLBACK;
-        case jogasaki::status::err_unknown: return ::status::Status::ERR_UNKNOWN;
-        case jogasaki::status::err_io_error: return ::status::Status::ERR_IO_ERROR;
-        case jogasaki::status::err_parse_error: return ::status::Status::ERR_PARSE_ERROR;
-        case jogasaki::status::err_translator_error: return ::status::Status::ERR_TRANSLATOR_ERROR;
-        case jogasaki::status::err_compiler_error: return ::status::Status::ERR_COMPILER_ERROR;
-        case jogasaki::status::err_invalid_argument: return ::status::Status::ERR_INVALID_ARGUMENT;
-        case jogasaki::status::err_invalid_state: return ::status::Status::ERR_INVALID_STATE;
-        case jogasaki::status::err_unsupported: return ::status::Status::ERR_UNSUPPORTED;
-        case jogasaki::status::err_user_error: return ::status::Status::ERR_USER_ERROR;
-        case jogasaki::status::err_aborted: return ::status::Status::ERR_ABORTED;
-        case jogasaki::status::err_aborted_retryable: return ::status::Status::ERR_ABORTED_RETRYABLE;
-        case jogasaki::status::err_not_found: return ::status::Status::ERR_NOT_FOUND;
-        case jogasaki::status::err_already_exists: return ::status::Status::ERR_ALREADY_EXISTS;
-        case jogasaki::status::err_inconsistent_index: return ::status::Status::ERR_INCONSISTENT_INDEX;
-        case jogasaki::status::err_time_out: return ::status::Status::ERR_TIME_OUT;
-        case jogasaki::status::err_integrity_constraint_violation: return ::status::Status::ERR_INTEGRITY_CONSTRAINT_VIOLATION;
-        case jogasaki::status::err_expression_evaluation_failure: return ::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE;
-        case jogasaki::status::err_unresolved_host_variable: return ::status::Status::ERR_UNRESOLVED_HOST_VARIABLE;
-        case jogasaki::status::err_type_mismatch: return ::status::Status::ERR_TYPE_MISMATCH;
-        case jogasaki::status::err_not_implemented: return ::status::Status::ERR_NOT_IMPLEMENTED;
-        case jogasaki::status::err_illegal_operation: return ::status::Status::ERR_ILLEGAL_OPERATION;
-        case jogasaki::status::err_missing_operation_target: return ::status::Status::ERR_MISSING_OPERATION_TARGET;
-        case jogasaki::status::err_conflict_on_write_preserve: return ::status::Status::ERR_CONFLICT_ON_WRITE_PRESERVE;
+        case jogasaki::status::ok: return sql::status::Status::OK;
+        case jogasaki::status::not_found: return sql::status::Status::NOT_FOUND;
+        case jogasaki::status::already_exists: return sql::status::Status::ALREADY_EXISTS;
+        case jogasaki::status::user_rollback: return sql::status::Status::USER_ROLLBACK;
+        case jogasaki::status::err_unknown: return sql::status::Status::ERR_UNKNOWN;
+        case jogasaki::status::err_io_error: return sql::status::Status::ERR_IO_ERROR;
+        case jogasaki::status::err_parse_error: return sql::status::Status::ERR_PARSE_ERROR;
+        case jogasaki::status::err_translator_error: return sql::status::Status::ERR_TRANSLATOR_ERROR;
+        case jogasaki::status::err_compiler_error: return sql::status::Status::ERR_COMPILER_ERROR;
+        case jogasaki::status::err_invalid_argument: return sql::status::Status::ERR_INVALID_ARGUMENT;
+        case jogasaki::status::err_invalid_state: return sql::status::Status::ERR_INVALID_STATE;
+        case jogasaki::status::err_unsupported: return sql::status::Status::ERR_UNSUPPORTED;
+        case jogasaki::status::err_user_error: return sql::status::Status::ERR_USER_ERROR;
+        case jogasaki::status::err_aborted: return sql::status::Status::ERR_ABORTED;
+        case jogasaki::status::err_aborted_retryable: return sql::status::Status::ERR_ABORTED_RETRYABLE;
+        case jogasaki::status::err_not_found: return sql::status::Status::ERR_NOT_FOUND;
+        case jogasaki::status::err_already_exists: return sql::status::Status::ERR_ALREADY_EXISTS;
+        case jogasaki::status::err_inconsistent_index: return sql::status::Status::ERR_INCONSISTENT_INDEX;
+        case jogasaki::status::err_time_out: return sql::status::Status::ERR_TIME_OUT;
+        case jogasaki::status::err_integrity_constraint_violation: return sql::status::Status::ERR_INTEGRITY_CONSTRAINT_VIOLATION;
+        case jogasaki::status::err_expression_evaluation_failure: return sql::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE;
+        case jogasaki::status::err_unresolved_host_variable: return sql::status::Status::ERR_UNRESOLVED_HOST_VARIABLE;
+        case jogasaki::status::err_type_mismatch: return sql::status::Status::ERR_TYPE_MISMATCH;
+        case jogasaki::status::err_not_implemented: return sql::status::Status::ERR_NOT_IMPLEMENTED;
+        case jogasaki::status::err_illegal_operation: return sql::status::Status::ERR_ILLEGAL_OPERATION;
+        case jogasaki::status::err_missing_operation_target: return sql::status::Status::ERR_MISSING_OPERATION_TARGET;
+        case jogasaki::status::err_conflict_on_write_preserve: return sql::status::Status::ERR_CONFLICT_ON_WRITE_PRESERVE;
     }
     fail();
 }
 
 template<typename T>
 void error(tateyama::api::server::response& res, jogasaki::status s, std::string msg) { //NOLINT(performance-unnecessary-value-param)
-    ::response::Error e{};
+    sql::response::Error e{};
     T p{};
-    ::response::Response r{};
+    sql::response::Response r{};
     e.set_status(map_status(s));
     e.set_detail(msg);
     p.set_allocated_error(&e);
@@ -156,10 +158,10 @@ template<typename T, typename... Args>
 void success(tateyama::api::server::response& res, Args...) = delete; //NOLINT(performance-unnecessary-value-param)
 
 template<>
-inline void success<::response::ResultOnly>(tateyama::api::server::response& res) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Success s{};
-    ::response::ResultOnly ro{};
-    ::response::Response r{};
+inline void success<sql::response::ResultOnly>(tateyama::api::server::response& res) {  //NOLINT(performance-unnecessary-value-param)
+    sql::response::Success s{};
+    sql::response::ResultOnly ro{};
+    sql::response::Response r{};
 
     ro.set_allocated_success(&s);
     r.set_allocated_result_only(&ro);
@@ -170,10 +172,10 @@ inline void success<::response::ResultOnly>(tateyama::api::server::response& res
 }
 
 template<>
-inline void success<::response::Begin>(tateyama::api::server::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
-    ::common::Transaction t{};
-    ::response::Begin b{};
-    ::response::Response r{};
+inline void success<sql::response::Begin>(tateyama::api::server::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
+    sql::common::Transaction t{};
+    sql::response::Begin b{};
+    sql::response::Response r{};
 
     t.set_handle(static_cast<std::size_t>(tx));
     b.set_allocated_transaction_handle(&t);
@@ -185,10 +187,10 @@ inline void success<::response::Begin>(tateyama::api::server::response& res, jog
 }
 
 template<>
-inline void success<::response::Prepare>(tateyama::api::server::response& res, jogasaki::api::statement_handle statement) {  //NOLINT(performance-unnecessary-value-param)
-    ::common::PreparedStatement ps{};
-    ::response::Prepare p{};
-    ::response::Response r{};
+inline void success<sql::response::Prepare>(tateyama::api::server::response& res, jogasaki::api::statement_handle statement) {  //NOLINT(performance-unnecessary-value-param)
+    sql::common::PreparedStatement ps{};
+    sql::response::Prepare p{};
+    sql::response::Response r{};
 
     ps.set_handle(static_cast<std::size_t>(statement));
     p.set_allocated_prepared_statement_handle(&ps);
@@ -200,9 +202,9 @@ inline void success<::response::Prepare>(tateyama::api::server::response& res, j
 }
 
 template<>
-inline void success<::response::Explain>(tateyama::api::server::response& res, std::string output) {  //NOLINT(performance-unnecessary-value-param)
-    ::response::Explain explain{};
-    ::response::Response r{};
+inline void success<sql::response::Explain>(tateyama::api::server::response& res, std::string output) {  //NOLINT(performance-unnecessary-value-param)
+    sql::response::Explain explain{};
+    sql::response::Response r{};
 
     explain.set_allocated_output(&output);
     r.set_allocated_explain(&explain);
@@ -213,9 +215,9 @@ inline void success<::response::Explain>(tateyama::api::server::response& res, s
 }
 
 inline void send_body_head(tateyama::api::server::response& res, channel_info const& info) {  //NOLINT(performance-unnecessary-value-param)
-    ::schema::RecordMeta meta{};
-    ::response::ExecuteQuery e{};
-    ::response::Response r{};
+    sql::schema::RecordMeta meta{};
+    sql::response::ExecuteQuery e{};
+    sql::response::Response r{};
 
     set_metadata(info, meta);
     e.set_name(info.name_);
@@ -264,59 +266,59 @@ private:
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
 
     void command_begin(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
 
     void command_prepare(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_execute_statement(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
 
     void command_execute_query(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_execute_prepared_statement(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_execute_prepared_query(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_execute_dump(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_execute_load(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
 
     void command_commit(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
 
     void command_rollback(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_dispose_prepared_statement(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_disconnect(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_explain(
-        ::request::Request const& proto_req,
+        sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );
 
@@ -342,7 +344,7 @@ private:
         jogasaki::api::transaction_handle tx,
         std::vector<std::string> const& files
     );
-    void set_params(::request::ParameterSet const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
+    void set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
 

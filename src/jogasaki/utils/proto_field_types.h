@@ -21,13 +21,15 @@
 
 namespace jogasaki::utils {
 
-[[nodiscard]] inline api::field_type_kind type_for(::common::DataType type) {
+namespace sql = proto::sql;
+
+[[nodiscard]] inline api::field_type_kind type_for(sql::common::AtomType type) {
     switch(type) {
-        case ::common::DataType::INT4: return jogasaki::api::field_type_kind::int4;
-        case ::common::DataType::INT8: return jogasaki::api::field_type_kind::int8;
-        case ::common::DataType::FLOAT4: return jogasaki::api::field_type_kind::float4;
-        case ::common::DataType::FLOAT8: return jogasaki::api::field_type_kind::float8;
-        case ::common::DataType::CHARACTER: return jogasaki::api::field_type_kind::character;
+        case sql::common::AtomType::INT4: return jogasaki::api::field_type_kind::int4;
+        case sql::common::AtomType::INT8: return jogasaki::api::field_type_kind::int8;
+        case sql::common::AtomType::FLOAT4: return jogasaki::api::field_type_kind::float4;
+        case sql::common::AtomType::FLOAT8: return jogasaki::api::field_type_kind::float8;
+        case sql::common::AtomType::CHARACTER: return jogasaki::api::field_type_kind::character;
         default:
             std::abort();
     }

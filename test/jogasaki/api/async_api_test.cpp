@@ -57,8 +57,9 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+namespace sql = jogasaki::proto::sql;
 
-inline jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const& proto) {
+inline jogasaki::meta::record_meta create_record_meta(sql::schema::RecordMeta const& proto) {
     std::vector<meta::field_type> fields{};
     boost::dynamic_bitset<std::uint64_t> nullities;
     for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
@@ -68,11 +69,11 @@ inline jogasaki::meta::record_meta create_record_meta(::schema::RecordMeta const
         nullities.push_back(nullable);
         switch(c.type()) {
             using kind = meta::field_type_kind;
-            case ::common::DataType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
-            case ::common::DataType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
-            case ::common::DataType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
-            case ::common::DataType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case ::common::DataType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+            case sql::common::AtomType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
+            case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
+            case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
+            case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
+            case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
         }
     }
     jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};

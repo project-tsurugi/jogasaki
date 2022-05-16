@@ -85,6 +85,7 @@ using tateyama::api::endpoint::response_code;
 using takatori::util::unsafe_downcast;
 
 using clock = std::chrono::high_resolution_clock;
+namespace sql = jogasaki::proto::sql;
 
 struct result_info {
     std::int64_t transactions_{};
@@ -199,7 +200,7 @@ class cli {
     std::vector<std::future<bool>> on_going_statements_{};
     jogasaki::meta::record_meta query_meta_{};
     jogasaki::common_cli::temporary_folder temporary_{};
-    std::map<std::string, ::common::DataType> host_variables_{};
+    std::map<std::string, sql::common::AtomType> host_variables_{};
 
     mode mode_{mode::undefined};
     data_profile profile_{profile_v<profile::normal>};
@@ -328,34 +329,34 @@ public:
             case mode::insert:
                 res = prepare_sql("INSERT INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
                     {
-                        {"no_o_id", ::common::DataType::INT8},
-                        {"no_d_id", ::common::DataType::INT8},
-                        {"no_w_id", ::common::DataType::INT8},
+                        {"no_o_id", sql::common::AtomType::INT8},
+                        {"no_d_id", sql::common::AtomType::INT8},
+                        {"no_w_id", sql::common::AtomType::INT8},
                     }
                 );
                 break;
             case mode::update:
                 res = prepare_sql("UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s_w_id",
                     {
-                        {"s_quantity", ::common::DataType::FLOAT8},
-                        {"s_i_id", ::common::DataType::INT8},
-                        {"s_w_id", ::common::DataType::INT8},
+                        {"s_quantity", sql::common::AtomType::FLOAT8},
+                        {"s_i_id", sql::common::AtomType::INT8},
+                        {"s_w_id", sql::common::AtomType::INT8},
                     }
                 );
                 break;
             case mode::query:
                 res = prepare_sql("SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id",
                     {
-                        {"d_w_id", ::common::DataType::INT8},
-                        {"d_id", ::common::DataType::INT8},
+                        {"d_w_id", sql::common::AtomType::INT8},
+                        {"d_id", sql::common::AtomType::INT8},
                     }
                 );
                 break;
             case mode::query2:
                 res = prepare_sql("SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id",
                     {
-                        {"no_d_id", ::common::DataType::INT8},
-                        {"no_w_id", ::common::DataType::INT8},
+                        {"no_d_id", sql::common::AtomType::INT8},
+                        {"no_w_id", sql::common::AtomType::INT8},
                     }
                 );
                 break;
@@ -380,9 +381,9 @@ public:
                 res = issue_common(false,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"no_o_id", ::common::DataType::INT8, id},
-                        {"no_d_id", ::common::DataType::INT8, static_cast<int64_t>(1)},
-                        {"no_w_id", ::common::DataType::INT8, static_cast<int64_t>(client+1)},
+                        {"no_o_id", sql::common::AtomType::INT8, id},
+                        {"no_d_id", sql::common::AtomType::INT8, static_cast<int64_t>(1)},
+                        {"no_w_id", sql::common::AtomType::INT8, static_cast<int64_t>(client+1)},
                     },
                     {}
                 );
@@ -396,9 +397,9 @@ public:
                 res = issue_common(false,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"s_quantity", ::common::DataType::FLOAT8, static_cast<double>(seed.rnd_())}, //NOLINT
-                        {"s_i_id", ::common::DataType::INT8, id},
-                        {"s_w_id", ::common::DataType::INT8, static_cast<std::int64_t>(client+1)},
+                        {"s_quantity", sql::common::AtomType::FLOAT8, static_cast<double>(seed.rnd_())}, //NOLINT
+                        {"s_i_id", sql::common::AtomType::INT8, id},
+                        {"s_w_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(client+1)},
                     },
                     {}
                 );
@@ -411,8 +412,8 @@ public:
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"d_w_id", ::common::DataType::INT8, static_cast<std::int64_t>(client+1)},
-                        {"d_id", ::common::DataType::INT8, static_cast<std::int64_t>(id)},
+                        {"d_w_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(client+1)},
+                        {"d_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(id)},
                     },
                     [&](std::string_view data) {
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
@@ -429,8 +430,8 @@ public:
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"no_d_id", ::common::DataType::INT8, static_cast<std::int64_t>(1)},
-                        {"no_w_id", ::common::DataType::INT8, static_cast<std::int64_t>(client+1)},
+                        {"no_d_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(1)},
+                        {"no_w_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(client+1)},
                     },
                     [&](std::string_view data) {
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
@@ -592,7 +593,7 @@ private:
         if (success) {
             return true;
         }
-        LOG(ERROR) << "command returned " << ::status::Status_Name(error.status_) << ": " << error.message_;
+        LOG(ERROR) << "command returned " << sql::status::Status_Name(error.status_) << ": " << error.message_;
         return false;
     }
 
@@ -633,7 +634,7 @@ private:
 
     bool prepare_sql(
         std::string_view sql,
-        std::unordered_map<std::string, ::common::DataType> const& place_holders
+        std::unordered_map<std::string, sql::common::AtomType> const& place_holders
     ) {
         auto s = jogasaki::utils::encode_prepare_vars(std::string{sql}, place_holders);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);

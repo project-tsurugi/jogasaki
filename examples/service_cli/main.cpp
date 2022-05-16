@@ -72,14 +72,16 @@ using tateyama::api::endpoint::response_code;
 
 using takatori::util::unsafe_downcast;
 
+namespace sql = jogasaki::proto::sql;
+
 struct stmt_info {
     stmt_info() = default;
-    stmt_info(std::string_view sql, std::unordered_map<std::string, ::common::DataType> vars) :
+    stmt_info(std::string_view sql, std::unordered_map<std::string, sql::common::AtomType> vars) :
         sql_(sql),
         host_variables_(std::move(vars))
     {}
     std::string sql_{};
-    std::unordered_map<std::string, ::common::DataType> host_variables_{};
+    std::unordered_map<std::string, sql::common::AtomType> host_variables_{};
 };
 
 class cli {
@@ -96,7 +98,7 @@ class cli {
     std::vector<std::future<bool>> on_going_statements_{};
     jogasaki::meta::record_meta query_meta_{};
     jogasaki::common_cli::temporary_folder temporary_{};
-    std::map<std::string, ::common::DataType> host_variables_{};
+    std::map<std::string, sql::common::AtomType> host_variables_{};
     std::int32_t exit_on_idle_{};
     std::ifstream input_file_stream_{};
 
@@ -430,7 +432,7 @@ private:
             }
             return true;
         }
-        std::cerr << "command returned " << ::status::Status_Name(error.status_) << ": " << error.message_ << std::endl;
+        std::cerr << "command returned " << sql::status::Status_Name(error.status_) << ": " << error.message_ << std::endl;
         return false;
     }
 
@@ -485,25 +487,25 @@ private:
         wait_for_statements(); // just for cleanup
         return ret;
     }
-    ::common::DataType from(std::string_view str) {
-        static const std::unordered_map<std::string, ::common::DataType> map{
-            {"int4", ::common::DataType::INT4},
-            {"int8", ::common::DataType::INT8},
-            {"float4", ::common::DataType::FLOAT4},
-            {"float8", ::common::DataType::FLOAT8},
-            {"character", ::common::DataType::CHARACTER},
+    sql::common::AtomType from(std::string_view str) {
+        static const std::unordered_map<std::string, sql::common::AtomType> map{
+            {"int4", sql::common::AtomType::INT4},
+            {"int8", sql::common::AtomType::INT8},
+            {"float4", sql::common::AtomType::FLOAT4},
+            {"float8", sql::common::AtomType::FLOAT8},
+            {"character", sql::common::AtomType::CHARACTER},
 
-            {"i4", ::common::DataType::INT4},
-            {"i8", ::common::DataType::INT8},
-            {"f4", ::common::DataType::FLOAT4},
-            {"f8", ::common::DataType::FLOAT8},
-            {"ch", ::common::DataType::CHARACTER},
+            {"i4", sql::common::AtomType::INT4},
+            {"i8", sql::common::AtomType::INT8},
+            {"f4", sql::common::AtomType::FLOAT4},
+            {"f8", sql::common::AtomType::FLOAT8},
+            {"ch", sql::common::AtomType::CHARACTER},
         };
 
         if(map.count(std::string(str)) != 0) {
             return map.at(std::string(str));
         }
-        return ::common::DataType::TYPE_UNSPECIFIED; //unsupported type
+        return sql::common::AtomType::TYPE_UNSPECIFIED; //unsupported type
     }
 
     bool is_alphanumeric(char c) {
@@ -592,7 +594,7 @@ private:
         if (args.empty()) {
             std::cout << "list host variables" << std::endl;
             for(auto&& v : host_variables_) {
-                std::cout << v.first << " : " << common::DataType_Name(v.second) << std::endl;
+                std::cout << v.first << " : " << sql::common::AtomType_Name(v.second) << std::endl;
             }
             return true;
         }
@@ -603,7 +605,7 @@ private:
                 return false;
             }
             auto t = from(var[1]);
-            if(t == ::common::DataType::TYPE_UNSPECIFIED) {
+            if(t == sql::common::AtomType::TYPE_UNSPECIFIED) {
                 std::cerr << "type is not supported : " << s << std::endl;
                 return false;
             }
@@ -618,7 +620,7 @@ private:
         }
         std::string sql{args[0]};
         auto vars = extract_variable_names(sql);
-        std::unordered_map<std::string, ::common::DataType> types{};
+        std::unordered_map<std::string, sql::common::AtomType> types{};
         for(auto&& v: vars) {
             if(host_variables_.count(std::string{v}) != 0) {
                 types[std::string{v}] = host_variables_.at(std::string{v});
@@ -698,11 +700,11 @@ private:
             }
             auto type = types.at(name);
             switch (type) {
-                case ::common::DataType::INT4: parameters.emplace_back(name, type, to_value<std::int32_t>(val)); break;
-                case ::common::DataType::INT8: parameters.emplace_back(name, type, to_value<std::int64_t>(val)); break;
-                case ::common::DataType::FLOAT4: parameters.emplace_back(name, type, to_value<float>(val)); break;
-                case ::common::DataType::FLOAT8: parameters.emplace_back(name, type, to_value<double>(val)); break;
-                case ::common::DataType::CHARACTER: parameters.emplace_back(name, type, to_value<std::string>(val)); break;
+                case sql::common::AtomType::INT4: parameters.emplace_back(name, type, to_value<std::int32_t>(val)); break;
+                case sql::common::AtomType::INT8: parameters.emplace_back(name, type, to_value<std::int64_t>(val)); break;
+                case sql::common::AtomType::FLOAT4: parameters.emplace_back(name, type, to_value<float>(val)); break;
+                case sql::common::AtomType::FLOAT8: parameters.emplace_back(name, type, to_value<double>(val)); break;
+                case sql::common::AtomType::CHARACTER: parameters.emplace_back(name, type, to_value<std::string>(val)); break;
                 default:
                     std::cerr << "invalid type" << std::endl;
                     return false;

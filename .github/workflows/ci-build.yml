@@ -217,3 +217,11 @@ jobs:
           status: ${{ job.status }}
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
+
+  Integration_Test:
+    uses: ./.github/workflows/integration-test.yml
+    needs: Build
+    secrets:
+      GHA_PAT: ${{ secrets.GHA_PAT }}
+      GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

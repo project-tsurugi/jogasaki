@@ -1,0 +1,183 @@
+name: Jogasaki-Integration-Test
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      GHA_PAT:
+        required: true
+      GHCR_PAT:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  Integration-Test:
+    runs-on: [self-hosted, docker]
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/project-tsurugi/oltp-sandbox:ubuntu-20.04
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GHCR_PAT }}
+      volumes:
+        - /work/docker-cache/.gradle:/root/.gradle
+    defaults:
+      run:
+        shell: bash
+    env:
+      TG_PATH: itest/tg
+      TG_IT_INSTALL_PATH: itest/dist
+      TG_IT_RESULT_PATH: itest/result
+      TG_IT_TSUBAKURO_PATH: itest/tsubakuro
+      TG_IT_JOGASAKI_PATH: .
+      TG_IT_TATEYAMA_BOOTSTRAP_PATH: itest/tateyama-bootstrap
+      TG_IT_EISEN_PATH: itest/eisen
+
+      TG_IT_DBNAME: eisen-${{ github.run_id }}
+      TG_IT_COMMON_CMAKE_OPTIONS: '-- -j'
+
+    steps:
+      - id: Setup_Java
+        name: Setup_Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - id: Checkout
+        name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          token: ${{ secrets.GHA_PAT }}
+          clean: false
+
+      - id: Checkout_Eisen
+        name: Checkout_Eisen
+        uses: actions/checkout@v2
+        with:
+          repository: project-tsurugi/eisen
+          path: ${{ env.TG_IT_EISEN_PATH }}
+          ref: master
+          submodules: recursive
+          token: ${{ secrets.GHA_PAT }}
+          clean: false
+
+      - id: Clean_Workspace
+        name: Clean_Workspace
+        run: ${{ env.TG_IT_EISEN_PATH }}/scripts/clean-workspace.sh
+        env:
+          TGDIR: ${{ github.workspace }}/${{ env.TG_PATH }}
+          TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
+
+      - id: Checkout_Tsubakuro
+        name: Checkout_Tsubakuro
+        uses: actions/checkout@v2
+        with:
+          repository: project-tsurugi/tsubakuro
+          path: ${{ env.TG_IT_TSUBAKURO_PATH }}
+          ref: master
+          token: ${{ secrets.GHA_PAT }}
+          clean: false
+
+      - id: Checkout_Tateyama_Bootstrap
+        name: Checkout_Tateyama_Bootstrap
+        uses: actions/checkout@v2
+        with:
+          repository: project-tsurugi/tateyama-bootstrap
+          path: ${{ env.TG_IT_TATEYAMA_BOOTSTRAP_PATH }}
+          ref: master
+          token: ${{ secrets.GHA_PAT }}
+          clean: false
+
+      - id: Install_Tsubakuro
+        name: Install_Tsubakuro
+        run: ${{ env.TG_IT_EISEN_PATH }}/scripts/install-tsubakuro.sh 2>&1 | tee ${TG_IT_RESULT_DIR}/install-tsubakuro.log
+        env:
+          TG_IT_TSUBAKURO_DIR: ${{ github.workspace }}/${{ env.TG_IT_TSUBAKURO_PATH }}
+          TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
+
+      - id: Install_Jogasaki
+        name: Install_Jogasaki
+        run: ${{ env.TG_IT_EISEN_PATH }}/scripts/install-jogasaki.sh 2>&1 | tee ${TG_IT_RESULT_DIR}/install-jogasaki.log
+        env:
+          TG_IT_JOGASAKI_DIR: ${{ github.workspace }}/${{ env.TG_IT_JOGASAKI_PATH }}
+          TG_IT_INSTALL_DIR: ${{ github.workspace }}/${{ env.TG_IT_INSTALL_PATH }}
+          TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
+
+      - id: Install_Tateyama_Bootstrap
+        name: Install_Tateyama_Bootstrap
+        run: ${{ env.TG_IT_EISEN_PATH }}/scripts/install-tateyama-bootstrap.sh 2>&1 | tee ${TG_IT_RESULT_DIR}/install-tateyama-bootstrap.log
+        env:
+          TG_IT_TATEYAMA_BOOTSTRAP_DIR: ${{ github.workspace }}/${{ env.TG_IT_TATEYAMA_BOOTSTRAP_PATH }}
+          TG_IT_INSTALL_DIR: ${{ github.workspace }}/${{ env.TG_IT_INSTALL_PATH }}
+          TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
+
+      - id: Generate_Tsurugi_Config
+        name: Generate_Tsurugi_Config
+        run: |
+          cat <<EOF > ${TGDIR}/tsurugi.ini
+          [ipc_endpoint]
+              database_name=${TG_IT_DBNAME}
+
+          EOF
+        env:
+          TGDIR: ${{ github.workspace }}/${{ env.TG_PATH }}
+
+      - id: Integration_Test
+        name: Integration_Test
+        shell: bash --noprofile --norc -x {0}
+        run: ${{ env.TG_IT_EISEN_PATH }}/scripts/integration-test.sh
+        env:
+          TGDIR: ${{ github.workspace }}/${{ env.TG_PATH }}
+          TG_IT_EISEN_DIR: ${{ github.workspace }}/${{ env.TG_IT_EISEN_PATH }}
+          TG_IT_INSTALL_DIR: ${{ github.workspace }}/${{ env.TG_IT_INSTALL_PATH }}
+          TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
+          GLOG_logtostderr: 1
+
+      - id: Prepare_Upload
+        name: Prepare_Upload
+        shell: bash --noprofile --norc -x {0}
+        run: ${{ env.TG_IT_EISEN_PATH }}/scripts/prepare-upload.sh
+        env:
+          TG_IT_TSUBAKURO_DIR: ${{ github.workspace }}/${{ env.TG_IT_TSUBAKURO_PATH }}
+          TG_IT_JOGASAKI_DIR: ${{ github.workspace }}/${{ env.TG_IT_JOGASAKI_PATH }}
+          TG_IT_TATEYAMA_BOOTSTRAP_DIR: ${{ github.workspace }}/${{ env.TG_IT_TATEYAMA_BOOTSTRAP_PATH }}
+          TG_IT_EISEN_DIR: ${{ github.workspace }}/${{ env.TG_IT_EISEN_PATH }}
+          TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
+        if: always()
+
+      - id: Upload_Artifact
+        name: Upload_Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: eisen-integration-test
+          path: ${{ env.TG_IT_RESULT_PATH }}/eisen_it_result.zip
+          retention-days: 7
+        if: always()
+
+      - id: Generate_Annotations
+        name: Generate_Annotations
+        uses: ./.github/actions/tsurugi-annotations-action
+        if: always()
+        with:
+          junit_input: |
+            ${{ env.TG_IT_EISEN_PATH }}/tests/basic/build/test-results/**/TEST-*.xml
+            ${{ env.TG_IT_EISEN_PATH }}/tests/transaction/build/test-results/**/TEST-*.xml
+
+      - id: Notify_Slack
+        name: Notify_Slack
+        uses: ./.github/actions/tsurugi-slack-action
+        if: always() && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
+
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        with:
+          kind: 'job-result'
+          channel: 'tsurugi-ci'
+          status: ${{ job.status }}
+          step_context: ${{ toJson(steps) }}
+          username: ${{ github.workflow }}
+          appendix_file: ${{ env.TG_IT_RESULT_PATH }}/BUILDINFO.txt

@@ -218,7 +218,7 @@ jobs:
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
 
-  Integration_Test:
+  IT:
     uses: ./.github/workflows/integration-test.yml
     if: always() && (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
     needs: Build

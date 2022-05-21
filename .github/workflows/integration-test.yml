@@ -181,3 +181,4 @@ jobs:
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
           appendix_file: ${{ env.TG_IT_RESULT_PATH }}/BUILDINFO.txt
+          job_name: 'IT / Integration-Test'

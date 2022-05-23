@@ -34,6 +34,16 @@ result_store::store_type const& result_store::store(std::size_t index) const noe
     return *stores_[index];
 }
 
+void result_store::add_store_internal(maybe_shared_ptr<meta::record_meta> const& meta) {
+    auto& res = result_record_resources_.emplace_back(
+        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
+    );
+    auto& varlen = result_varlen_resources_.emplace_back(
+        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
+    );
+    stores_.emplace_back(std::make_unique<data::iterable_record_store>( res.get(), varlen.get(), meta));
+}
+
 void result_store::initialize(std::size_t partitions, maybe_shared_ptr<meta::record_meta> const& meta) {
     BOOST_ASSERT(stores_.empty());  //NOLINT
     meta_ = meta;
@@ -41,14 +51,13 @@ void result_store::initialize(std::size_t partitions, maybe_shared_ptr<meta::rec
     result_record_resources_.reserve(partitions);
     result_varlen_resources_.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
-        auto& res = result_record_resources_.emplace_back(
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
-        );
-        auto& varlen = result_varlen_resources_.emplace_back(
-            std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
-        );
-        stores_.emplace_back(std::make_unique<data::iterable_record_store>( res.get(), varlen.get(), meta));
+        add_store_internal(meta);
     }
+}
+
+std::size_t result_store::add_store() {
+    add_store_internal(meta_);
+    return stores_.size()-1;
 }
 
 maybe_shared_ptr<meta::record_meta> const& result_store::meta() const noexcept {
@@ -110,6 +119,15 @@ result_store::iterator result_store::end() const noexcept {
         0,
         store(0).end()
     };
+}
+
+void result_store::clear_store(std::size_t index) {
+    if(index >= stores_.size()) {
+        return;
+    }
+    stores_[index].reset();
+    result_record_resources_[index].reset();
+    result_varlen_resources_[index].reset();
 }
 
 result_store::iterator::iterator(

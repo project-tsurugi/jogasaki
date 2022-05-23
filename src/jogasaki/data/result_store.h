@@ -46,6 +46,13 @@ public:
     result_store& operator=(result_store&& other) noexcept = default;
 
     /**
+     * @brief create new object
+     */
+    result_store(maybe_shared_ptr<meta::record_meta> const& meta) :
+        meta_(meta)
+    {}
+
+    /**
      * @brief iterator of result store
      * @detail This iterates on merged results from internal stores that hold records from each partition.
      */
@@ -169,6 +176,18 @@ public:
     void initialize(std::size_t partitions, maybe_shared_ptr<meta::record_meta> const& meta);
 
     /**
+     * @brief add new internal store to hold data for new partition
+     * @returns internal store index (0-origin)
+     */
+    std::size_t add_store();
+
+    /**
+     * @brief clear the internal store for the given index. The index is reserved, and will not be recycled.
+     * @param index internal store index (0-origin)
+     */
+    void clear_store(std::size_t index);
+
+    /**
      * @brief accessor to the metadata of the result record
      * @return record metadata
      */
@@ -203,6 +222,8 @@ private:
     resources_type result_record_resources_{};
     resources_type result_varlen_resources_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
+
+    void add_store_internal(maybe_shared_ptr<meta::record_meta> const& meta);
 };
 
 }

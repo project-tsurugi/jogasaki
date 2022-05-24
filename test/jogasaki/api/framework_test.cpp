@@ -119,36 +119,6 @@ public:
     std::shared_ptr<framework::endpoint_broker> broker_{};
 };
 
-TEST_F(framework_test, send_sql_via_endpoint) {
-    auto conf = tateyama::api::configuration::create_configuration();
-    framework::boot_mode mode = framework::boot_mode::database_server;
-    framework::server sv{mode, conf};
-    framework::add_core_components(sv);
-    auto ep = std::make_shared<test_endpoint>();
-    sv.add_endpoint(ep);
-    auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
-    sv.add_resource(sqlres);
-    auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
-    sv.add_service(sqlsvc);
-    sv.setup();
-    auto* db = sqlsvc->database();
-    db->config()->prepare_benchmark_tables(true);
-    sv.start();
-    std::uint64_t handle{};
-    {
-        auto s = utils::encode_begin(false, false, std::vector<std::string>{});
-        auto result = ep->send(s);
-        handle = utils::decode_begin(result);
-    }
-    {
-        auto s = utils::encode_commit(handle);
-        auto result = ep->send(s);
-        auto [success, error] = utils::decode_result_only(result);
-        ASSERT_TRUE(success);
-    }
-    sv.shutdown();
-}
-
 TEST_F(framework_test, send_request_with_header) {
     auto conf = tateyama::api::configuration::create_configuration();
     framework::boot_mode mode = framework::boot_mode::database_server;

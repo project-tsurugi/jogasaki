@@ -84,6 +84,8 @@ void set_allocated_object(sql::response::Response& r, T& p) {
         r.set_allocated_execute_query(&p);
     } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
         r.set_allocated_explain(&p);
+    } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
+        r.set_allocated_describe_table(&p);
     } else {
         static_fail();
     }
@@ -101,6 +103,8 @@ void release_object(sql::response::Response& r, T&) {
         r.release_execute_query();
     } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
         r.release_explain();
+    } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
+        r.release_describe_table();
     } else {
         static_fail();
     }
@@ -214,6 +218,52 @@ inline void success<sql::response::Explain>(tateyama::api::server::response& res
     explain.release_output();
 }
 
+inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::data const& type) {
+    using k = takatori::type::type_kind;
+    using AtomType = ::jogasaki::proto::sql::common::AtomType;
+    switch(type.kind()) {
+        case k::boolean: return AtomType::BOOLEAN;
+        case k::int4: return AtomType::INT4;
+        case k::int8: return AtomType::INT8;
+        case k::float4: return AtomType::FLOAT4;
+        case k::float8: return AtomType::FLOAT8;
+        case k::decimal: return AtomType::DECIMAL;
+        case k::character: return AtomType::CHARACTER;
+        case k::octet: return AtomType::OCTET;
+        case k::bit: return AtomType::BIT;
+        case k::date: return AtomType::DATE;
+        case k::time_of_day: return AtomType::TIME_OF_DAY;
+        case k::time_point: return AtomType::TIME_POINT;
+        case k::datetime_interval: return AtomType::DATETIME_INTERVAL;
+        default:
+            return AtomType::UNKNOWN;
+    }
+}
+
+template<>
+inline void success<sql::response::DescribeTable>(tateyama::api::server::response& res, yugawara::storage::table const* tbl) {  //NOLINT(performance-unnecessary-value-param)
+    BOOST_ASSERT(tbl != nullptr); //NOLINT
+    sql::response::Response r{};
+    sql::response::DescribeTable dt{};
+    r.set_allocated_describe_table(&dt);
+    sql::response::DescribeTable_Success success{};
+    dt.set_allocated_success(&success);
+    success.set_table_name(std::string{tbl->simple_name()});
+    success.set_schema_name("");  //FIXME schema resolution
+    success.set_database_name("");  //FIXME database name resolution
+    auto* cols = success.mutable_columns();
+    for(auto&& col : tbl->columns()) {
+        auto* c = cols->Add();
+        c->set_name(std::string{col.simple_name()});
+        c->set_atom_type(to_atom_type(col.type()));
+    }
+    res.code(response_code::success);
+    reply(res, r);
+    success.clear_columns();
+    dt.release_success();
+    r.release_describe_table();
+}
+
 inline void send_body_head(tateyama::api::server::response& res, channel_info const& info) {  //NOLINT(performance-unnecessary-value-param)
     sql::schema::RecordMeta meta{};
     sql::response::ExecuteQuery e{};
@@ -318,6 +368,11 @@ private:
         std::shared_ptr<tateyama::api::server::response> const& res
     );
     void command_explain(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res
+    );
+
+    void command_describe_table(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res
     );

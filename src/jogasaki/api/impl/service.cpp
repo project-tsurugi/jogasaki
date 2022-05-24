@@ -406,6 +406,22 @@ void service::command_execute_load(
     execute_load(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, files);
 }
 
+void service::command_describe_table(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res
+) {
+    auto& dt = proto_req.describe_table();
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    auto table = db_->find_table(dt.name());
+    if(! table) {
+        VLOG(log_error) << "table noe found : " << dt.name();
+        details::error<sql::response::DescribeTable>(*res, status::err_not_found, "table not found");
+        return;
+    }
+    details::success<sql::response::DescribeTable>(*res, table.get());
+}
+
 bool service::operator()(
     std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
@@ -499,6 +515,11 @@ bool service::operator()(
         case sql::request::Request::RequestCase::kExecuteLoad: {
             trace_scope_name("cmd-load");  //NOLINT
             command_execute_load(proto_req, res);
+            break;
+        }
+        case sql::request::Request::RequestCase::kDescribeTable: {
+            trace_scope_name("cmd-describe_table");  //NOLINT
+            command_describe_table(proto_req, res);
             break;
         }
         default:

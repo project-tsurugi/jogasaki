@@ -986,4 +986,41 @@ TEST_F(service_api_test, execute_load) {
     test_dispose_prepare(query_handle);
 }
 
+TEST_F(service_api_test, describe_table) {
+    auto s = encode_describe_table("T0");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(wait_completion(*res));
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ("T0", result.table_name_);
+    ASSERT_EQ("", result.schema_name_);
+    ASSERT_EQ("", result.database_name_);
+    ASSERT_EQ(2, result.columns_.size());
+    EXPECT_EQ("C0", result.columns_[0].name_);
+    EXPECT_EQ(sql::common::AtomType::INT8, result.columns_[0].atom_type_);
+    EXPECT_EQ("C1", result.columns_[1].name_);
+    EXPECT_EQ(sql::common::AtomType::FLOAT8, result.columns_[1].atom_type_);
+}
+
+TEST_F(service_api_test, describe_table_not_found) {
+    auto s = encode_describe_table("DUMMY");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(wait_completion(*res));
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::application_error, res->code_);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ(sql::status::ERR_NOT_FOUND, error.status_);
+    LOG(INFO) << "error: " << error.message_;
+}
 }

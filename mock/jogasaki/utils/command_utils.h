@@ -437,4 +437,60 @@ inline std::pair<std::string, error> decode_explain(std::string_view res) {
     return {explain.output(), {}};
 }
 
+inline std::string encode_describe_table(std::string_view name) {
+    sql::request::Request r{};
+    auto* dt = r.mutable_describe_table();
+    dt->set_name(std::string{name});
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_describe_table();
+    return s;
+}
+
+struct column_info {
+    column_info(
+        std::string_view name,
+        sql::common::AtomType atom_type
+    ) :
+        name_(name),
+        atom_type_(atom_type)
+    {}
+    std::string name_{};
+    sql::common::AtomType atom_type_{};
+};
+
+struct table_info {
+    std::string database_name_{};
+    std::string schema_name_{};
+    std::string table_name_{};
+    std::vector<column_info> columns_{};
+};
+
+inline std::pair<table_info, error> decode_describe_table(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_describe_table())  {
+        LOG(ERROR) << "**** missing describe_table **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {{}, {}};
+    }
+    auto& dt = resp.describe_table();
+    if (dt.has_error()) {
+        auto& er = dt.error();
+        return {{}, {er.status(), er.detail()}};
+    }
+
+    std::vector<column_info> cols{};
+    for(auto&& c : dt.success().columns()) {
+        cols.emplace_back(c.name(), c.atom_type());
+    }
+
+    table_info info{
+        dt.success().database_name(),
+        dt.success().schema_name(),
+        dt.success().table_name(),
+        std::move(cols)
+    };
+    return {info, {}};
+}
 }

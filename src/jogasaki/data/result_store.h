@@ -48,7 +48,7 @@ public:
     /**
      * @brief create new object
      */
-    result_store(maybe_shared_ptr<meta::record_meta> const& meta) :
+    explicit result_store(maybe_shared_ptr<meta::record_meta> const& meta) :
         meta_(meta)
     {}
 

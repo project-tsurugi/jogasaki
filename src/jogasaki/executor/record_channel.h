@@ -58,19 +58,6 @@ public:
      */
     virtual status acquire(std::shared_ptr<record_writer>& wrt) = 0;
 
-    /**
-     * @brief declare to finish using the writer and return it to channel
-     * @param wrt the writer to release
-     * @details by releasing the writer, the caller declares to finish using the writer and passes it back.
-     * The caller must not call any of the writer function any more.
-     * @warning if writer::commit() has not been called after some data is written by writer::write(), it's not ensured
-     * that the uncommitted data is consumed by or visible to others. So writer::commit() should be appropriately called before releasing the writer.
-     * @note this function is thread-safe and multiple threads can invoke simultaneously.
-     * @return status::ok when successful
-     * @return other status code when error occurs
-     */
-    virtual status release(record_writer& wrt) = 0;
-
 };
 
 }

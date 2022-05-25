@@ -34,13 +34,9 @@ public:
 
     bool write(accessor::record_ref rec) override;
 
-    void flush() override {
+    void flush() override;
 
-    }
-
-    void release() override {
-
-    }
+    void release() override;
 
     std::size_t index() const noexcept;
 
@@ -57,11 +53,7 @@ public:
 
     status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
 
-    status release(executor::record_writer& wrt) override;
-
-    data::result_store& store() {
-        return *store_;
-    }
+    data::result_store& store();
 private:
     maybe_shared_ptr<data::result_store> store_{};
     impl::record_meta meta_{};

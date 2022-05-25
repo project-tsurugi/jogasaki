@@ -37,6 +37,14 @@ std::size_t result_store_channel_writer::index() const noexcept {
     return index_;
 }
 
+void result_store_channel_writer::release() {
+    parent_->store().clear_store(index_);
+}
+
+void result_store_channel_writer::flush() {
+    // no-op
+}
+
 result_store_channel::result_store_channel(maybe_shared_ptr<data::result_store> store) noexcept:
     store_(std::move(store))
 {}
@@ -47,9 +55,8 @@ status result_store_channel::acquire(std::shared_ptr<executor::record_writer>& w
     return status::ok;
 }
 
-status result_store_channel::release(executor::record_writer& wrt) {
-    auto& w = static_cast<result_store_channel_writer&>(wrt);
-    store_->clear_store(w.index());
-    return status::ok;
+data::result_store& result_store_channel::store() {
+    return *store_;
 }
+
 }

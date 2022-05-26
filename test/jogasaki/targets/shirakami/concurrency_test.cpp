@@ -113,7 +113,8 @@ TEST_F(shirakami_concurrency_test, reading_uncomitted) {
     auto tx1 = utils::create_transaction(*db_);
     execute_statement( *tx0, "INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     std::vector<mock::basic_record> result{};
-    ASSERT_EQ(status::err_aborted_retryable, execute_query(*tx1, "SELECT * FROM T0", result));
+    ASSERT_EQ(status::ok, execute_query(*tx1, "SELECT * FROM T0", result));
+    EXPECT_EQ(0, result.size());
     execute_statement( *tx0, "INSERT INTO T10 (C0, C1) VALUES (1, 10.0)");
     EXPECT_EQ(status::ok , tx0->commit());
 }

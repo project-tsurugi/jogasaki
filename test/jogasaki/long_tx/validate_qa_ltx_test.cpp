@@ -101,11 +101,10 @@ TEST_F(validate_qa_ltx_test, reading_others_wp) {
     execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (2, 20, 200, 2000.0, 20000.0, '200000')");
     auto tx1 = utils::create_transaction(*db_, false, true, {"qa_t1"});
     auto tx2 = utils::create_transaction(*db_, false, true, {});
-    execute_statement("SELECT * FROM qa_t1 WHERE c_pk=2", *tx2, status::err_aborted); // WP-0+alpha raises ERR_FAIL_WP when reading into WP whose tx is not yet committed TODO
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c_i8, c_f8 FROM qa_t1 ORDER BY c_pk", *tx2, result);
     ASSERT_EQ(status::ok, tx1->commit());
     ASSERT_EQ(status::ok, tx2->commit());
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT c_i8, c_f8 FROM qa_t1 ORDER BY c_pk", result);
     ASSERT_EQ(2, result.size());
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(100, 10000.0)), result[0]);
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(200, 20000.0)), result[1]);

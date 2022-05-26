@@ -39,7 +39,7 @@ option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 option(TRACY_ENABLE "enable tracy profiler" OFF)
 option(INSTALL_API_ONLY "configure cmake build dir. just to install public api files. No build runs. This is used to provide api files to components outside jogasaki" OFF)
 option(LIKWID_ENABLE "enable likwid hardware counter profiling" OFF)
-option(BUILD_SHIRAKAMI_WP "Build transaction engine with shirakami enabling write preserve" OFF)
+option(BUILD_SHIRAKAMI_WP "Build transaction engine with shirakami enabling write preserve" ON)
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")

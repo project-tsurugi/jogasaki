@@ -52,7 +52,10 @@ bool bridge::setup(framework::environment& env) {
     return true;
 }
 
-bool bridge::start(framework::environment&) {
+bool bridge::start(framework::environment& env) {
+    if (env.mode() == tateyama::framework::boot_mode::quiescent_server) {
+        quiescent_ = true;
+    }
     return core_->start();
 }
 
@@ -63,6 +66,10 @@ bool bridge::shutdown(framework::environment&) {
 }
 
 bool bridge::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
+    if(quiescent_) {
+        LOG(ERROR) << "service is running on quiescent mode - no request is allowed";
+        return false;
+    }
     return (*core_)(std::move(req), std::move(res));
 }
 

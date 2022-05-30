@@ -172,6 +172,36 @@ public:
         lazy_worker_ = arg;
     }
 
+    /**
+     * @brief setter for activate scheduler flag
+     */
+    void activate_scheduler(bool arg) noexcept {
+        activate_scheduler_ = arg;
+    }
+
+    /**
+     * @brief accessor for activate scheduler flag
+     * @return whether task scheduler should be started together with sql engine
+     */
+    [[nodiscard]] bool activate_scheduler() const noexcept {
+        return activate_scheduler_;
+    }
+
+    /**
+     * @brief setter for quiescent flag
+     */
+    void quiescent(bool arg) noexcept {
+        quiescent_ = arg;
+    }
+
+    /**
+     * @brief accessor for quiescent flag
+     * @return whether the engine should be on quiescent mode, where no request is allowed
+     */
+    [[nodiscard]] bool quiescent() const noexcept {
+        return quiescent_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -185,6 +215,8 @@ public:
             "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
             "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
             "lazy_worker:" << cfg.lazy_worker() << " " <<
+            "activate_scheduler:" << cfg.activate_scheduler() << " " <<
+            "quiescent:" << cfg.quiescent() << " " <<
             "";
     }
 
@@ -206,6 +238,8 @@ private:
     bool tasked_write_ = false;
     bool scheduler_rr_workers_ = false;
     bool lazy_worker_ = false;
+    bool activate_scheduler_ = true;
+    bool quiescent_ = false;
 };
 
 }

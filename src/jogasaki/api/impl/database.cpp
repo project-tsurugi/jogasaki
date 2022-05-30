@@ -58,6 +58,9 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 }
 
 status database::start() {
+    if (cfg_->quiescent()) {
+        return status::ok;
+    }
     init();
     if (! kvs_db_) {
         static constexpr std::string_view KEY_LOCATION{"location"};
@@ -77,19 +80,26 @@ status database::start() {
         return res;
     }
 
-    if (! task_scheduler_) {
-        if (cfg_->single_thread()) {
-            task_scheduler_ = std::make_shared<scheduler::serial_task_scheduler>();
-        } else {
-            task_scheduler_ = std::make_shared<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
+    if (cfg_->activate_scheduler()) {
+        if (! task_scheduler_) {
+            if (cfg_->single_thread()) {
+                task_scheduler_ = std::make_shared<scheduler::serial_task_scheduler>();
+            } else {
+                task_scheduler_ = std::make_shared<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
+            }
         }
+        task_scheduler_->start();
     }
-    task_scheduler_->start();
     return status::ok;
 }
 
 status database::stop() {
-    task_scheduler_->stop();
+    if (cfg_->quiescent()) {
+        return status::ok;
+    }
+    if (cfg_->activate_scheduler()) {
+        task_scheduler_->stop();
+    }
     sequence_manager_.reset();
 
     if (kvs_db_) {

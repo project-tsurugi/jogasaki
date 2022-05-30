@@ -19,6 +19,7 @@
 #include <memory>
 #include <type_traits>
 
+#include <tateyama/framework/boot_mode.h>
 #include <tateyama/framework/service.h>
 #include <tateyama/framework/repository.h>
 #include <tateyama/api/server/request.h>
@@ -46,7 +47,16 @@ bool bridge::setup(framework::environment& env) {
         LOG(ERROR) << "failed to find transactional kvs";
         return false;
     }
-    db_ = jogasaki::api::create_database(convert_config(*env.configuration()), kvs->core_object());
+    auto cfg = convert_config(*env.configuration());
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+        env.mode() == framework::boot_mode::maintenance_server ||
+        env.mode() == framework::boot_mode::quiescent_server) {
+        cfg->activate_scheduler(false);
+    }
+    if(env.mode() == framework::boot_mode::quiescent_server) {
+        cfg->quiescent(true);
+    }
+    db_ = jogasaki::api::create_database(cfg, kvs->core_object());
     return true;
 }
 

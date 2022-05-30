@@ -97,6 +97,7 @@ public:
 private:
     std::unique_ptr<jogasaki::api::impl::service> core_;  // to use incomplete object, do not add {} after var. name.
     bool deactivated_{false};
+    bool quiescent_{false};
 };
 
 }

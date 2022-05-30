@@ -187,4 +187,21 @@ TEST_F(framework_test, send_request_with_header) {
     }
     sv.shutdown();
 }
+
+TEST_F(framework_test, quiescent_mode) {
+    auto conf = tateyama::api::configuration::create_configuration();
+    framework::boot_mode mode = framework::boot_mode::quiescent_server;
+    framework::server sv{mode, conf};
+    framework::add_core_components(sv);
+    auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
+    sv.add_resource(sqlres);
+    auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
+    sv.add_service(sqlsvc);
+    sv.setup();
+    auto* db = sqlsvc->database();
+    db->config()->prepare_benchmark_tables(true);
+    sv.start();
+    ASSERT_FALSE(sqlsvc->operator()(nullptr, nullptr));
+    sv.shutdown();
+}
 }

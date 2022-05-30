@@ -53,15 +53,14 @@ public:
      * @param partition the index of partition assigned to this object
      * @param io_exchange_map mapping from input/output indices to exchanges
      * @param scan_info the scan information, nullptr if the task doesn't contain scan
-     * @param result the store to keep the result data
+     * @param channel the record channel to write the result data
      */
     task_context(
         request_context& rctx,
         partition_index partition,
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
-        data::iterable_record_store* result,
-        api::data_channel* channel
+        executor::record_channel* channel
     );
 
     reader_container reader(reader_index idx) override;
@@ -74,7 +73,7 @@ public:
 
     [[nodiscard]] std::size_t partition() const noexcept;
 
-    [[nodiscard]] api::data_channel* channel() const noexcept {
+    [[nodiscard]] executor::record_channel* channel() const noexcept {
         return channel_;
     }
 private:
@@ -82,8 +81,7 @@ private:
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
-    data::iterable_record_store* result_{};
-    api::data_channel* channel_{};
+    executor::record_channel* channel_{};
     std::shared_ptr<record_writer> external_writer_{};
 };
 

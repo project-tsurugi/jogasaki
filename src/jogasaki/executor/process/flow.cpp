@@ -75,12 +75,6 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
     auto partitions = check_if_empty_input_from_shuffle();
     auto& operators = proc->operators();
-    auto external_output = operators.io_exchange_map().external_output();
-    auto* result = context_->result();
-    if (result && external_output != nullptr) {
-        auto& emit = unsafe_downcast<impl::ops::emit>(*external_output);
-        result->initialize(partitions, emit.meta());
-    }
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {
         contexts.emplace_back(create_task_context(i, operators));
@@ -126,8 +120,7 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
         partition,
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
-        (context_->result() && external_output != nullptr) ? &context_->result()->store(partition) : nullptr,
-        (context_->data_channel() && external_output != nullptr) ? context_->data_channel().get() : nullptr
+        (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr
     );
 
     ctx->work_context(

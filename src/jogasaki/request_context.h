@@ -27,10 +27,10 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/model/flow_repository.h>
-#include <jogasaki/api/data_channel.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/executor/record_channel.h>
 
 namespace jogasaki {
 
@@ -60,8 +60,7 @@ public:
      * @param request_resource the memory resource used to construct request wide objects such as
      * processors and operators
      * @param database the kvs database shared within the request. Pass nullptr if the request doesn't access kvs.
-     * @param result store to hold the result records, nullptr is allowed if the request doesn't create result set
-     * @param data_channel data channel to write the data
+     * @param record_channel record channel to write the data
      */
     explicit request_context(
         std::shared_ptr<class configuration> config,
@@ -69,8 +68,7 @@ public:
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<transaction_context> transaction = {},
         executor::sequence::manager* sequence_manager = {},
-        data::result_store* result = {},
-        maybe_shared_ptr<api::data_channel> data_channel = {}
+        maybe_shared_ptr<executor::record_channel> record_channel = {}
     );
 
     /**
@@ -78,12 +76,6 @@ public:
      * @return global configuration
      */
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const;
-
-    /**
-     * @brief accessor for the result store
-     * @return result store
-     */
-    [[nodiscard]] data::result_store* result();
 
     /**
      * @brief accessor for the request resource
@@ -151,10 +143,10 @@ public:
     [[nodiscard]] maybe_shared_ptr<scheduler::job_context> const& job() const noexcept;
 
     /**
-     * @brief accessor for the data channel
-     * @return data channel
+     * @brief accessor for the record channel
+     * @return record channel
      */
-    [[nodiscard]] maybe_shared_ptr<api::data_channel> const& data_channel() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<executor::record_channel> const&  record_channel() const noexcept;
 
     /**
      * @brief setter for the flow repository
@@ -213,8 +205,8 @@ private:
     maybe_shared_ptr<scheduler::statement_scheduler> statement_scheduler_{};
     maybe_shared_ptr<yugawara::storage::configurable_provider> storage_provider_{};
 
-    data::result_store* result_{};
-    maybe_shared_ptr<api::data_channel> data_channel_{};
+    maybe_shared_ptr<executor::record_channel> record_channel_{};
+
     std::atomic<status> status_code_{status::ok};
     std::string status_message_{};
 };

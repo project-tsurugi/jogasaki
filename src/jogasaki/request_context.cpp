@@ -35,24 +35,18 @@ request_context::request_context(
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<transaction_context> transaction,
     executor::sequence::manager* sequence_manager,
-    data::result_store* result,
-    maybe_shared_ptr<api::data_channel> data_channel
+    maybe_shared_ptr<executor::record_channel> record_channel
 ) :
     config_(std::move(config)),
     request_resource_(std::move(request_resource)),
     database_(std::move(database)),
     transaction_(std::move(transaction)),
     sequence_manager_(sequence_manager),
-    result_(result),
-    data_channel_(std::move(data_channel))
+    record_channel_(std::move(record_channel))
 {}
 
 std::shared_ptr<class configuration> const& request_context::configuration() const {
     return config_;
-}
-
-[[nodiscard]] data::result_store* request_context::result() {
-    return result_;
 }
 
 [[nodiscard]] std::shared_ptr<kvs::database> const& request_context::database() const {
@@ -99,8 +93,8 @@ std::string_view request_context::status_message() const noexcept {
     return status_message_;
 }
 
-maybe_shared_ptr<api::data_channel> const&  request_context::data_channel() const noexcept {
-    return data_channel_;
+maybe_shared_ptr<executor::record_channel> const&  request_context::record_channel() const noexcept {
+    return record_channel_;
 }
 
 void request_context::flows(maybe_shared_ptr<model::flow_repository> arg) noexcept {

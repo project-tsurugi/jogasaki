@@ -18,7 +18,6 @@
 #include "record_writer.h"
 
 #include <jogasaki/status.h>
-#include <jogasaki/api/record_meta.h>
 
 namespace jogasaki::executor {
 

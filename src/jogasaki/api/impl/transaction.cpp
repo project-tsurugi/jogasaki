@@ -27,6 +27,8 @@
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/api/impl/result_store_channel.h>
+#include <jogasaki/api/impl/record_channel_adapter.h>
 
 namespace jogasaki::api::impl {
 
@@ -53,13 +55,14 @@ status transaction::execute(
     auto& e = s.body();
     auto& c = database_->configuration();
     auto store = std::make_unique<data::result_store>();
+    auto ch = std::make_shared<result_store_channel>(maybe_shared_ptr{store.get()});
     auto request_ctx = std::make_shared<request_context>(
         c,
         s.resource(),
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
-        store.get()
+        ch
     );
     request_ctx->scheduler(database_->scheduler());
     request_ctx->stmt_scheduler(
@@ -154,8 +157,7 @@ bool transaction::execute_async_common(
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
-        nullptr,
-        channel
+        std::make_shared<record_channel_adapter>(channel)
     );
     rctx->scheduler(database_->scheduler());
     rctx->stmt_scheduler(

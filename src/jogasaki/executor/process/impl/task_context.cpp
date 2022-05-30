@@ -29,14 +29,12 @@ process::impl::task_context::task_context(
     std::size_t partition,
     io_exchange_map const& io_exchange_map,
     std::shared_ptr<impl::scan_info> scan_info,
-    data::iterable_record_store* result,
-    api::data_channel* channel
+    executor::record_channel* channel
 ) :
     request_context_(std::addressof(rctx)),
     partition_(partition),
     io_exchange_map_(std::addressof(io_exchange_map)),
     scan_info_(std::move(scan_info)),
-    result_(result),
     channel_(channel)
 {}
 
@@ -75,14 +73,10 @@ record_writer* task_context::downstream_writer(task_context::writer_index idx) {
 }
 
 record_writer* task_context::external_writer() {
-    BOOST_ASSERT(io_exchange_map_->external_output() != nullptr);  //NOLINT
-    BOOST_ASSERT(result_ != nullptr || channel_ != nullptr);  //NOLINT
-    auto& op = *unsafe_downcast<ops::emit>(io_exchange_map_->external_output());
+    BOOST_ASSERT(channel_ != nullptr);  //NOLINT
     if (! external_writer_) {
-        if (result_) {
-            external_writer_ = std::make_shared<result_store_writer>(*result_, op.meta());
-        } else {
-            external_writer_ = std::make_shared<data_channel_writer>(*channel_, op.meta());
+        if(auto res = channel_->acquire(external_writer_); res != status::ok) {
+            fail();
         }
     }
     return external_writer_.get();

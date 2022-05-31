@@ -23,7 +23,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/api/data_channel.h>
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor {
 
 using takatori::util::maybe_shared_ptr;
 

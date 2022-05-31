@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/data_channel_writer.h>
+#include <jogasaki/executor/io/data_channel_writer.h>
 
 #include <string>
 

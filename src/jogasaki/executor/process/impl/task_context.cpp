@@ -16,7 +16,7 @@
 #include "task_context.h"
 
 #include <jogasaki/executor/process/result_store_writer.h>
-#include <jogasaki/executor/process/data_channel_writer.h>
+#include <jogasaki/executor/io/data_channel_writer.h>
 
 namespace jogasaki::executor::process::impl {
 

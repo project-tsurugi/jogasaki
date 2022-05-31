@@ -18,7 +18,7 @@
 #include <takatori/util/fail.h>
 #include <jogasaki/common.h>
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor {
 
 using takatori::util::fail;
 

@@ -17,7 +17,7 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/exchange/sink.h>
 #include "input_partition.h"
 #include "group_info.h"

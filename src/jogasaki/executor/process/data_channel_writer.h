@@ -18,7 +18,7 @@
 #include <msgpack.hpp>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/api/data_channel.h>

@@ -22,8 +22,8 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>

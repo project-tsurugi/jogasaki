@@ -24,7 +24,7 @@
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/hash.h>

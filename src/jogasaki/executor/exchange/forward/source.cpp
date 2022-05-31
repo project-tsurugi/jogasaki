@@ -16,7 +16,7 @@
 #include "source.h"
 #include "reader.h"
 
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 
 namespace jogasaki::executor::exchange::forward {
 

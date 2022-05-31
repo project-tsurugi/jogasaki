@@ -23,7 +23,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/executor/hash.h>

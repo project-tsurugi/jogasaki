@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <jogasaki/executor/record_channel.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>

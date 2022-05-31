@@ -30,7 +30,7 @@
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/executor/record_channel.h>
+#include <jogasaki/executor/io/record_channel.h>
 
 namespace jogasaki {
 

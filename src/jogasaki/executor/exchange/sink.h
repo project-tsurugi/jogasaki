@@ -17,7 +17,7 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 
 namespace jogasaki::executor::exchange {
 

@@ -21,7 +21,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/record_reader.h>
+#include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/utils/copy_field_data.h>

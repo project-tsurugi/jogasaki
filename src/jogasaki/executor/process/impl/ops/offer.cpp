@@ -18,7 +18,7 @@
 #include <vector>
 
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>

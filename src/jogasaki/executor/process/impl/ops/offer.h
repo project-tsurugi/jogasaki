@@ -21,7 +21,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/relation/step/offer.h>
 
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/meta/variable_order.h>
 #include "operator_base.h"
 #include "offer_context.h"

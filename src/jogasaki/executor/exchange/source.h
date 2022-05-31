@@ -17,7 +17,7 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 
 namespace jogasaki::executor::exchange {
 

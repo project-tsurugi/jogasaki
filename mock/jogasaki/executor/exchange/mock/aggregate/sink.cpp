@@ -16,7 +16,7 @@
 #include "sink.h"
 
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include "input_partition.h"
 #include "shuffle_info.h"
 #include "writer.h"

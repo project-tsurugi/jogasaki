@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <jogasaki/executor/record_reader.h>
+#include <jogasaki/executor/io/record_reader.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

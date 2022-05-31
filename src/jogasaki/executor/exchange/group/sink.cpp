@@ -17,7 +17,7 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include "input_partition.h"
 #include "group_info.h"
 #include "writer.h"

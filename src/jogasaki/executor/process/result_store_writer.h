@@ -20,7 +20,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/data/iterable_record_store.h>

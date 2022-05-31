@@ -16,7 +16,7 @@
 #pragma once
 
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

@@ -17,8 +17,8 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>

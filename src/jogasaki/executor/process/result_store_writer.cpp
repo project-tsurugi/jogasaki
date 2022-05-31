@@ -17,7 +17,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process {

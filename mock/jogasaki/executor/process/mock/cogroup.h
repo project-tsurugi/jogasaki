@@ -26,7 +26,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/comparator.h>

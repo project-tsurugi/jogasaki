@@ -16,7 +16,7 @@
 #pragma once
 
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include "input_partition.h"
 #include "group_info.h"
 #include "sink.h"

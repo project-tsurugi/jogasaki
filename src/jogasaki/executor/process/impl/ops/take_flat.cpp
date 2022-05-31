@@ -19,7 +19,7 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/validation.h>

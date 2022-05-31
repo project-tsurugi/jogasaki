@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <jogasaki/executor/reader_container.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include "work_context.h"
 #include "scan_info.h"
 

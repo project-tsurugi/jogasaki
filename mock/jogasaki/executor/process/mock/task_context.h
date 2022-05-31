@@ -22,7 +22,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 
 #include "record_reader.h"
 #include "record_writer.h"

@@ -15,7 +15,7 @@
  */
 #include "source.h"
 
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 #include "priority_queue_reader.h"
 #include "sorted_vector_reader.h"
 

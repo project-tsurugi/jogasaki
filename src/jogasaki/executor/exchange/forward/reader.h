@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <jogasaki/executor/record_reader.h>
+#include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::forward {

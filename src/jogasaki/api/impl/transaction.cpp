@@ -28,7 +28,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/api/impl/result_store_channel.h>
-#include <jogasaki/api/impl/record_channel_adapter.h>
+#include <jogasaki/executor/io/record_channel_adapter.h>
 
 namespace jogasaki::api::impl {
 

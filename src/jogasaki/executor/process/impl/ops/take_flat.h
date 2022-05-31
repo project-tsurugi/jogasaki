@@ -21,7 +21,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/relation/step/take_flat.h>
 
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/meta/variable_order.h>
 #include "operator_base.h"
 #include "take_flat_context.h"

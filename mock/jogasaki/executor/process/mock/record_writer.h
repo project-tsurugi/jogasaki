@@ -28,7 +28,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/record_writer.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 

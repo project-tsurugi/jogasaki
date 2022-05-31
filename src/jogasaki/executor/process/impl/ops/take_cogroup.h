@@ -31,7 +31,7 @@
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/group_reader.h>
-#include <jogasaki/executor/reader_container.h>
+#include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/utils/iterator_pair.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include "take_cogroup_context.h"

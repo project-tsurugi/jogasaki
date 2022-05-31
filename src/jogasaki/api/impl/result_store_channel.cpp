@@ -38,7 +38,7 @@ std::size_t result_store_channel_writer::index() const noexcept {
 }
 
 void result_store_channel_writer::release() {
-    parent_->store().clear_store(index_);
+    //no-op
 }
 
 void result_store_channel_writer::flush() {

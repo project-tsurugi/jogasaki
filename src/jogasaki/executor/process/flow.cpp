@@ -75,6 +75,12 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
     auto partitions = check_if_empty_input_from_shuffle();
     auto& operators = proc->operators();
+    auto external_output = operators.io_exchange_map().external_output();
+    auto ch = context_->record_channel();
+    if (ch && external_output != nullptr) {
+        auto& emit = unsafe_downcast<impl::ops::emit>(*external_output);
+        ch->meta(emit.meta());
+    }
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {
         contexts.emplace_back(create_task_context(i, operators));

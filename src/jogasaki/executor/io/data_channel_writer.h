@@ -38,6 +38,7 @@ public:
 
     data_channel_writer(
         api::data_channel& channel,
+        std::shared_ptr<api::writer> writer,
         maybe_shared_ptr<meta::record_meta> meta
     );
 

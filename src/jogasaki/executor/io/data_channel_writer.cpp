@@ -25,13 +25,7 @@ using takatori::util::fail;
 constexpr static std::size_t writer_work_buffer_size = 4096;
 
 bool data_channel_writer::write(accessor::record_ref rec) {
-    if (! writer_) {
-        {
-            trace_scope_name("data_channel::acquire");  //NOLINT
-            if(auto rc = channel_->acquire(writer_); rc != status::ok) {
-                fail();
-            }
-        }
+    if(buf_.size() == 0) {
         buf_ = msgpack::sbuffer{writer_work_buffer_size}; // automatically expands when capacity is not sufficient
     }
     buf_.clear();
@@ -83,9 +77,11 @@ void data_channel_writer::release() {
 
 data_channel_writer::data_channel_writer(
     api::data_channel& channel,
+    std::shared_ptr<api::writer> writer,
     maybe_shared_ptr<meta::record_meta> meta
 ) :
     channel_(std::addressof(channel)),
+    writer_(std::move(writer)),
     meta_(std::move(meta))
 {}
 

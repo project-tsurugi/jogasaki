@@ -157,7 +157,7 @@ bool transaction::execute_async_common(
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
-        std::make_shared<record_channel_adapter>(channel)
+        std::make_shared<executor::record_channel_adapter>(channel)
     );
     rctx->scheduler(database_->scheduler());
     rctx->stmt_scheduler(

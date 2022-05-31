@@ -22,36 +22,11 @@
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-namespace jogasaki::api::impl {
+namespace jogasaki::executor {
 
-class record_channel_adapter;
-
-class record_channel_adapter_writer : public executor::record_writer {
-public:
-    record_channel_adapter_writer(
-        record_channel_adapter& parent,
-        std::shared_ptr<writer> writer
-    ) noexcept :
-        parent_(std::addressof(parent)),
-        writer_(std::move(writer))
-    {}
-
-    bool write(accessor::record_ref rec) override {
-        writer_->write(static_cast<char*>(rec.data()), rec.size());
-        return false; //TODO
-    }
-
-    void flush() override {
-        //no-op //TODO
-    }
-
-    void release() override;
-
-private:
-    record_channel_adapter* parent_{};
-    std::shared_ptr<writer> writer_{};
-};
-
+/**
+ * @brief adaptor to adapt data_channel to record_channel
+ */
 class record_channel_adapter : public executor::record_channel {
 public:
     explicit record_channel_adapter(
@@ -61,11 +36,11 @@ public:
     {}
 
     status acquire(std::shared_ptr<executor::record_writer>& wrt) override {
-        std::shared_ptr<writer> writer;
+        std::shared_ptr<api::writer> writer;
         if(auto res = channel_->acquire(writer); res != status::ok) {
             return res;
         }
-        wrt = std::make_shared<record_channel_adapter_writer>(*this, std::move(writer));
+        wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_);
         return status::ok;
     }
 

@@ -42,7 +42,9 @@ TEST_F(data_channel_writer_test, basic) {
     auto meta = create_meta<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>();
 
     api::test_channel ch{};
-    data_channel_writer writer{ch, meta};
+    std::shared_ptr<api::writer> wr{};
+    ASSERT_EQ(status::ok, ch.acquire(wr));
+    data_channel_writer writer{ch, std::move(wr), meta};
 
     auto rec1 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(1, 10.0, 100, 1000.0, accessor::text{"111"});
     auto rec2 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(2, 20.0, 200, 2000.0, accessor::text{"222"});

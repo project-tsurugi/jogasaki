@@ -23,13 +23,8 @@
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-namespace jogasaki::api::impl {
+namespace jogasaki::executor {
 
 using takatori::util::fail;
 
-void record_channel_adapter_writer::release() {
-    if(auto res = parent_->channel().release(*writer_); res != status::ok) {
-        fail();
-    }
-}
 }

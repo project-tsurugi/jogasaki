@@ -17,9 +17,14 @@
 
 #include "record_writer.h"
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/status.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief data channel interface
@@ -57,6 +62,10 @@ public:
      */
     virtual status acquire(std::shared_ptr<record_writer>& wrt) = 0;
 
+    /**
+     * @brief metadata setter
+     */
+    virtual status meta(maybe_shared_ptr<meta::record_meta> m) = 0;
 };
 
 }

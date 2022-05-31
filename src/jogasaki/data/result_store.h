@@ -48,9 +48,9 @@ public:
     /**
      * @brief create new object
      */
-    explicit result_store(maybe_shared_ptr<meta::record_meta> const& meta) :
-        meta_(meta)
-    {}
+    void initialize(maybe_shared_ptr<meta::record_meta> meta) {
+        meta_ = std::move(meta);
+    }
 
     /**
      * @brief iterator of result store

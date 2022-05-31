@@ -54,9 +54,13 @@ public:
     status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
 
     data::result_store& store();
+
+    status meta(maybe_shared_ptr<meta::record_meta> m) override {
+        store_->initialize(std::move(m));
+        return status::ok;
+    }
 private:
     maybe_shared_ptr<data::result_store> store_{};
-    impl::record_meta meta_{};
 };
 
 }

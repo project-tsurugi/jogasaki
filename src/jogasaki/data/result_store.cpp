@@ -130,6 +130,10 @@ void result_store::clear_store(std::size_t index) {
     result_varlen_resources_[index].reset();
 }
 
+void result_store::initialize(maybe_shared_ptr<meta::record_meta> meta) {
+    meta_ = std::move(meta);
+}
+
 result_store::iterator::iterator(
     result_store const& container,
     std::size_t store_index,

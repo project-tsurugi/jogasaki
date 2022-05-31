@@ -73,9 +73,8 @@ public:
 
     [[nodiscard]] std::size_t partition() const noexcept;
 
-    [[nodiscard]] executor::record_channel* channel() const noexcept {
-        return channel_;
-    }
+    [[nodiscard]] executor::record_channel* channel() const noexcept;
+
 private:
     request_context* request_context_{};
     std::size_t partition_{};

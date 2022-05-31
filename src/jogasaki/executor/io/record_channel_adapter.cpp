@@ -27,4 +27,25 @@ namespace jogasaki::executor {
 
 using takatori::util::fail;
 
+record_channel_adapter::record_channel_adapter(maybe_shared_ptr<api::data_channel> channel) noexcept:
+    channel_(std::move(channel))
+{}
+
+status record_channel_adapter::acquire(std::shared_ptr<executor::record_writer>& wrt) {
+    std::shared_ptr<api::writer> writer;
+    if(auto res = channel_->acquire(writer); res != status::ok) {
+        return res;
+    }
+    wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_);
+    return status::ok;
+}
+
+api::data_channel& record_channel_adapter::channel() {
+    return *channel_;
+}
+
+status record_channel_adapter::meta(maybe_shared_ptr<meta::record_meta> m) {
+    meta_ = std::move(m);
+    return status::ok;
+}
 }

@@ -27,9 +27,9 @@ namespace jogasaki::executor {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief data channel interface
- * @details this object represents a channel for application output.
- * The data channel provides a series of writers to write application output.
+ * @brief record data channel interface
+ * @details like api::data_channel, this object represents a channel for application output. The difference is
+ * this channel handles records while data_channel does binary bytes.
  */
 class record_channel {
 public:
@@ -57,6 +57,7 @@ public:
      * are not managed by this object. Currently, ordered application output is assumed to be written by one writer.
      * (e.g. SELECT statement with ORDER BY clause)
      * @note this function is thread-safe and multiple threads can invoke simultaneously.
+     * @pre metadata must be set with `meta()` function before new writer is acquired
      * @return status::ok when successful
      * @return other status code when error occurs
      */
@@ -64,6 +65,7 @@ public:
 
     /**
      * @brief metadata setter
+     * @param m the metadata with that the writer uses for the output data
      */
     virtual status meta(maybe_shared_ptr<meta::record_meta> m) = 0;
 };

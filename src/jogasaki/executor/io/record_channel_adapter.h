@@ -25,33 +25,38 @@
 namespace jogasaki::executor {
 
 /**
- * @brief adaptor to adapt data_channel to record_channel
+ * @brief adaptor to adapt api::data_channel to executor::record_channel
  */
 class record_channel_adapter : public executor::record_channel {
 public:
-    explicit record_channel_adapter(
-        maybe_shared_ptr<api::data_channel> channel
-    ) noexcept :
-        channel_(std::move(channel))
-    {}
+    /**
+     * @brief create new object
+     * @param channel the source channel object to adapt
+     */
+    explicit record_channel_adapter(maybe_shared_ptr<api::data_channel> channel) noexcept;
 
-    status acquire(std::shared_ptr<executor::record_writer>& wrt) override {
-        std::shared_ptr<api::writer> writer;
-        if(auto res = channel_->acquire(writer); res != status::ok) {
-            return res;
-        }
-        wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_);
-        return status::ok;
-    }
+    /**
+     * @brief acquire record writer
+     * @param wrt [out] the acquired writer
+     * @return status::ok when successful
+     * @return any other error
+     */
+    status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
 
-    api::data_channel& channel() {
-        return *channel_;
-    }
+    /**
+     * @brief accessor to original channel object
+     * @return the source channel
+     */
+    api::data_channel& channel();
 
-    status meta(maybe_shared_ptr<meta::record_meta> m) override {
-        meta_ = std::move(m);
-        return status::ok;
-    }
+    /**
+     * @brief setter of the metadata
+     * @param m metadata of the channel output
+     * @return status::ok when successful
+     * @return any other error
+     */
+    status meta(maybe_shared_ptr<meta::record_meta> m) override;
+
 private:
     maybe_shared_ptr<api::data_channel> channel_{};
     maybe_shared_ptr<meta::record_meta> meta_{};

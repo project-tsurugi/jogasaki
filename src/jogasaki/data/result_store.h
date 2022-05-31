@@ -46,11 +46,11 @@ public:
     result_store& operator=(result_store&& other) noexcept = default;
 
     /**
-     * @brief create new object
+     * @brief initialize the result store
+     * @details the number of partitions are not passed and partitions are later added with add_store()
+     * @param meta the record metadata stored in the store
      */
-    void initialize(maybe_shared_ptr<meta::record_meta> meta) {
-        meta_ = std::move(meta);
-    }
+    void initialize(maybe_shared_ptr<meta::record_meta> meta);
 
     /**
      * @brief iterator of result store

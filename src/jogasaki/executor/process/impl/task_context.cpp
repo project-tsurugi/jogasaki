@@ -90,4 +90,8 @@ std::size_t task_context::partition() const noexcept {
     return partition_;
 }
 
+executor::record_channel* task_context::channel() const noexcept {
+    return channel_;
+}
+
 }

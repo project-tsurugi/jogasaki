@@ -59,4 +59,9 @@ data::result_store& result_store_channel::store() {
     return *store_;
 }
 
+status result_store_channel::meta(maybe_shared_ptr<meta::record_meta> m) {
+    store_->initialize(std::move(m));
+    return status::ok;
+}
+
 }

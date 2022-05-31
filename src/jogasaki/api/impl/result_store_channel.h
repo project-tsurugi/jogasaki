@@ -25,40 +25,85 @@ namespace jogasaki::api::impl {
 
 class result_store_channel;
 
+/**
+ * @brief writer to write to result_store
+ */
 class result_store_channel_writer : public executor::record_writer {
 public:
+    /**
+     * @brief create new object
+     * @param parent parent result store channel
+     * @param index the partition index (0-origin) that the writer belongs to.
+     */
     result_store_channel_writer(
         result_store_channel& parent,
         std::size_t index
     ) noexcept;
 
+    /**
+     * @brief write the record
+     * @param rec the record to write
+     * @return true if flushed
+     * @return false otherwise
+     */
     bool write(accessor::record_ref rec) override;
 
+    /**
+     * @brief flush the writer
+     */
     void flush() override;
 
+    /**
+     * @brief release the writer
+     */
     void release() override;
 
-    std::size_t index() const noexcept;
+    /**
+     * @brief accessor to the partition index that the writer belongs
+     * @return the partition index
+     */
+    [[nodiscard]] std::size_t index() const noexcept;
 
 private:
     result_store_channel* parent_{};
     std::size_t index_{};
 };
 
+/**
+ * @brief the channel based on result_store
+ */
 class result_store_channel : public executor::record_channel {
 public:
+    /**
+     * @brief create new object
+     * @param store the base result store
+     */
     explicit result_store_channel(
         maybe_shared_ptr<data::result_store> store
     ) noexcept;
 
+    /**
+     * @brief acquire writer
+     * @param wrt [out] the writer to acquire
+     * @return status::ok when successful
+     * @return any other error
+     */
     status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
 
+    /**
+     * @brief accessor to the base result_store
+     * @return the result_store that the channel is based on
+     */
     data::result_store& store();
 
-    status meta(maybe_shared_ptr<meta::record_meta> m) override {
-        store_->initialize(std::move(m));
-        return status::ok;
-    }
+    /**
+     * @brief metadata setter
+     * @param m the metadata that the writer use
+     * @return status::ok when successful
+     * @return any other error
+     */
+    status meta(maybe_shared_ptr<meta::record_meta> m) override;
+
 private:
     maybe_shared_ptr<data::result_store> store_{};
 };

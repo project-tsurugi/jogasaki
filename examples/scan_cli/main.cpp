@@ -523,7 +523,7 @@ public:
     void dump_result_data(data::result_store const& result, params const& param) {
         for(std::size_t i=0, n=result.partitions(); i < n; ++i) {
             LOG(INFO) << "dumping result for partition " << i;
-            auto& store = result.store(i);
+            auto& store = result.partition(i);
             auto record_meta = store.meta();
             auto it = store.begin();
             std::size_t count = 0;

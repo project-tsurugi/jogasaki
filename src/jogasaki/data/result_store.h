@@ -30,8 +30,8 @@ namespace jogasaki::data {
  */
 class cache_align result_store {
 public:
-    using store_type = data::iterable_record_store;
-    using stores_type = std::vector<std::unique_ptr<store_type>>;
+    using partition_type = data::iterable_record_store;
+    using partitions_type = std::vector<std::unique_ptr<partition_type>>;
     using resources_type = std::vector<std::unique_ptr<memory::paged_memory_resource>>;
 
     /**
@@ -47,14 +47,14 @@ public:
 
     /**
      * @brief initialize the result store
-     * @details the number of partitions are not passed and partitions are later added with add_store()
+     * @details the number of partitions are not passed and partitions are later added with add_partition()
      * @param meta the record metadata stored in the store
      */
     void initialize(maybe_shared_ptr<meta::record_meta> meta);
 
     /**
      * @brief iterator of result store
-     * @detail This iterates on merged results from internal stores that hold records from each partition.
+     * @detail This iterates on merged results from partitions
      */
     class iterator {
     public:
@@ -63,7 +63,7 @@ public:
         using iterator_category = std::input_iterator_tag;
 
         /// @brief type of value
-        using value_type = store_type::value_type;
+        using value_type = partition_type::value_type;
 
         /// @brief type of difference
         using difference_type = std::ptrdiff_t;
@@ -89,8 +89,8 @@ public:
          */
         iterator(
             result_store const& container,
-            std::size_t store_index,
-            store_type::iterator it
+            std::size_t partition_index,
+            partition_type::iterator it
         ) noexcept;
 
         /**
@@ -120,7 +120,7 @@ public:
         /// @brief equivalent comparison
         constexpr bool operator==(iterator const& r) const noexcept {
             return this->container_ == r.container_ &&
-                this->store_index_ == r.store_index_ &&
+                this->partition_index_ == r.partition_index_ &&
                 this->it_ == r.it_;
         }
 
@@ -138,14 +138,14 @@ public:
         friend inline std::ostream& operator<<(std::ostream& out, iterator value) {
             return out << std::hex
                 << "container [" << value.container_
-                <<"] store_index [" << value.store_index_
+                <<"] partition_index [" << value.partition_index_
                 << "] iterator [" << value.it_ << "]";
         }
 
     private:
         result_store const* container_{};
-        std::size_t store_index_{};
-        store_type::iterator it_;
+        std::size_t partition_index_{};
+        partition_type::iterator it_;
 
         [[nodiscard]] bool valid() const noexcept;
     };
@@ -156,16 +156,16 @@ public:
     [[nodiscard]] bool exists(std::size_t index) const noexcept;
 
     /**
-     * @brief accessor for n-th internal store
+     * @brief accessor for n-th partition
      * @pre the existence should be ensured beforehand (e.g. by exists() call), otherwise the call causes UB
      */
-    [[nodiscard]] store_type& store(std::size_t index) noexcept;
+    [[nodiscard]] partition_type& partition(std::size_t index) noexcept;
 
     /**
-     * @brief accessor for n-th internal store
+     * @brief accessor for n-th partition
      * @pre the existence should be ensured beforehand (e.g. by exists() call), otherwise the call causes UB
      */
-    [[nodiscard]] store_type const& store(std::size_t index) const noexcept;
+    [[nodiscard]] partition_type const& partition(std::size_t index) const noexcept;
 
     /**
      * @brief initialize and set the capacity so that the store holds data from multiple partitions
@@ -176,16 +176,16 @@ public:
     void initialize(std::size_t partitions, maybe_shared_ptr<meta::record_meta> const& meta);
 
     /**
-     * @brief add new internal store to hold data for new partition
-     * @returns internal store index (0-origin)
+     * @brief add new partition to hold data
+     * @returns partition index (0-origin)
      */
-    std::size_t add_store();
+    std::size_t add_partition();
 
     /**
-     * @brief clear the internal store for the given index. The index is reserved, and will not be recycled.
-     * @param index internal store index (0-origin)
+     * @brief clear the partition for the given index. The index is reserved, and will not be recycled.
+     * @param index partition index (0-origin)
      */
-    void clear_store(std::size_t index);
+    void clear_partition(std::size_t index);
 
     /**
      * @brief accessor to the metadata of the result record
@@ -218,12 +218,12 @@ public:
     [[nodiscard]] iterator end() const noexcept;
 
 private:
-    stores_type stores_{};
+    partitions_type partitions_{};
     resources_type result_record_resources_{};
     resources_type result_varlen_resources_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
 
-    void add_store_internal(maybe_shared_ptr<meta::record_meta> const& meta);
+    void add_partition_internal(maybe_shared_ptr<meta::record_meta> const& meta);
 };
 
 }

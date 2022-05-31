@@ -26,38 +26,38 @@ namespace jogasaki::data {
 
 using takatori::util::fail;
 
-result_store::store_type & result_store::store(std::size_t index) noexcept {
-    return *stores_[index];
+result_store::partition_type & result_store::partition(std::size_t index) noexcept {
+    return *partitions_[index];
 }
 
-result_store::store_type const& result_store::store(std::size_t index) const noexcept {
-    return *stores_[index];
+result_store::partition_type const& result_store::partition(std::size_t index) const noexcept {
+    return *partitions_[index];
 }
 
-void result_store::add_store_internal(maybe_shared_ptr<meta::record_meta> const& meta) {
+void result_store::add_partition_internal(maybe_shared_ptr<meta::record_meta> const& meta) {
     auto& res = result_record_resources_.emplace_back(
         std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
     );
     auto& varlen = result_varlen_resources_.emplace_back(
         std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool())
     );
-    stores_.emplace_back(std::make_unique<data::iterable_record_store>( res.get(), varlen.get(), meta));
+    partitions_.emplace_back(std::make_unique<data::iterable_record_store>( res.get(), varlen.get(), meta));
 }
 
 void result_store::initialize(std::size_t partitions, maybe_shared_ptr<meta::record_meta> const& meta) {
-    BOOST_ASSERT(stores_.empty());  //NOLINT
+    BOOST_ASSERT(partitions_.empty());  //NOLINT
     meta_ = meta;
-    stores_.reserve(partitions);
+    partitions_.reserve(partitions);
     result_record_resources_.reserve(partitions);
     result_varlen_resources_.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
-        add_store_internal(meta);
+        add_partition_internal(meta);
     }
 }
 
-std::size_t result_store::add_store() {
-    add_store_internal(meta_);
-    return stores_.size()-1;
+std::size_t result_store::add_partition() {
+    add_partition_internal(meta_);
+    return partitions_.size()-1;
 }
 
 maybe_shared_ptr<meta::record_meta> const& result_store::meta() const noexcept {
@@ -65,15 +65,15 @@ maybe_shared_ptr<meta::record_meta> const& result_store::meta() const noexcept {
 }
 
 std::size_t result_store::partitions() const noexcept {
-    return stores_.size();
+    return partitions_.size();
 }
 
 bool result_store::exists(std::size_t index) const noexcept {
-    return index < stores_.size() && stores_[index] != nullptr;
+    return index < partitions_.size() && partitions_[index] != nullptr;
 }
 
 bool result_store::empty() const noexcept {
-    for(auto&& p : stores_) {
+    for(auto&& p : partitions_) {
         if(p && p->begin() != p->end()) {
             return false;
         }
@@ -86,12 +86,12 @@ result_store::iterator result_store::begin() const noexcept {
         return {};
     }
     std::size_t idx = 0;
-    while(idx < stores_.size()) {
-        if (exists(idx) && store(idx).begin() != store(idx).end()) {
+    while(idx < partitions_.size()) {
+        if (exists(idx) && partition(idx).begin() != partition(idx).end()) {
             return iterator{
                 *this,
                 idx,
-                store(idx).begin()
+                partition(idx).begin()
             };
         }
         ++idx;
@@ -103,13 +103,13 @@ result_store::iterator result_store::end() const noexcept {
     if (empty()) {
         return {};
     }
-    std::size_t idx = stores_.size()-1;
+    std::size_t idx = partitions_.size()-1;
     while(idx > 0) {
-        if (exists(idx) && store(idx).begin() != store(idx).end()) {
+        if (exists(idx) && partition(idx).begin() != partition(idx).end()) {
             return {
                 *this,
                 idx,
-                store(idx).end()
+                partition(idx).end()
             };
         }
         --idx;
@@ -117,15 +117,15 @@ result_store::iterator result_store::end() const noexcept {
     return {
         *this,
         0,
-        store(0).end()
+        partition(0).end()
     };
 }
 
-void result_store::clear_store(std::size_t index) {
-    if(index >= stores_.size()) {
+void result_store::clear_partition(std::size_t index) {
+    if(index >= partitions_.size()) {
         return;
     }
-    stores_[index].reset();
+    partitions_[index].reset();
     result_record_resources_[index].reset();
     result_varlen_resources_[index].reset();
 }
@@ -136,24 +136,24 @@ void result_store::initialize(maybe_shared_ptr<meta::record_meta> meta) {
 
 result_store::iterator::iterator(
     result_store const& container,
-    std::size_t store_index,
+    std::size_t partition_index,
     iterable_record_store::iterator it
 ) noexcept:
     container_(std::addressof(container)),
-    store_index_(store_index),
+    partition_index_(partition_index),
     it_(it)
 {}
 
 result_store::iterator& result_store::iterator::operator++() {
     BOOST_ASSERT(valid());  //NOLINT
     ++it_;
-    if (it_ == container_->store(store_index_).end()) {
-        auto idx = store_index_;
+    if (it_ == container_->partition(partition_index_).end()) {
+        auto idx = partition_index_;
         while(++idx < container_->partitions()) {
             if (container_->exists(idx) &&
-            container_->store(idx).begin() != container_->store(idx).end()) {
-                it_ = container_->store(idx).begin();
-                store_index_ = idx;
+            container_->partition(idx).begin() != container_->partition(idx).end()) {
+                it_ = container_->partition(idx).begin();
+                partition_index_ = idx;
                 return *this;
             }
         }

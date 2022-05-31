@@ -28,7 +28,7 @@ result_store_channel_writer::result_store_channel_writer(result_store_channel& p
 {}
 
 bool result_store_channel_writer::write(accessor::record_ref rec) {
-    auto& st = parent_->store().store(index_);
+    auto& st = parent_->store().partition(index_);
     st.append(rec);
     return false;
 }
@@ -50,7 +50,7 @@ result_store_channel::result_store_channel(maybe_shared_ptr<data::result_store> 
 {}
 
 status result_store_channel::acquire(std::shared_ptr<executor::record_writer>& wrt) {
-    auto idx = store_->add_store();
+    auto idx = store_->add_partition();
     wrt = std::make_shared<result_store_channel_writer>(*this, idx);
     return status::ok;
 }

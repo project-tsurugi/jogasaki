@@ -44,7 +44,7 @@ TEST_F(result_store_test, basic) {
     ASSERT_EQ(3, result.partitions());
     ASSERT_TRUE(result.empty());
     ASSERT_TRUE(result.exists(0));
-    result.store(0).append(rec.ref());
+    result.partition(0).append(rec.ref());
     ASSERT_FALSE(result.empty());
 
     auto it = result.begin();
@@ -60,10 +60,10 @@ TEST_F(result_store_test, iterator) {
     auto meta = rec0.record_meta();
     result.initialize(3, meta);
     ASSERT_TRUE(result.exists(1));
-    result.store(1).append(rec1.ref());
+    result.partition(1).append(rec1.ref());
     ASSERT_FALSE(result.empty());
     ASSERT_TRUE(result.exists(0));
-    result.store(0).append(rec0.ref());
+    result.partition(0).append(rec0.ref());
     auto it = result.begin();
     ASSERT_NE(result.end(), it);
     ASSERT_EQ(rec0, mock::basic_record(*it, meta));
@@ -81,9 +81,9 @@ TEST_F(result_store_test, empty_internal_store) {
     test::record rec2{2, 2.0};
     auto meta = rec0.record_meta();
     result.initialize(3, meta);
-    result.store(2).append(rec1.ref());
-    result.store(2).append(rec2.ref());
-    result.store(0).append(rec0.ref());
+    result.partition(2).append(rec1.ref());
+    result.partition(2).append(rec2.ref());
+    result.partition(0).append(rec0.ref());
     auto it = result.begin();
     ASSERT_NE(result.end(), it);
     ASSERT_EQ(rec0, mock::basic_record(*it, meta));

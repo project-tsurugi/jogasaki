@@ -70,6 +70,13 @@ private:
         maybe_shared_ptr<api::data_channel> const& channel,
         callback on_completion
     );
+
+    bool execute_common(
+        maybe_shared_ptr<api::executable_statement> const& statement,
+        maybe_shared_ptr<executor::record_channel> const& channel,
+        callback on_completion,  //NOLINT(performance-unnecessary-value-param)
+        bool sync
+    );
 };
 
 }

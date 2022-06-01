@@ -47,57 +47,26 @@ status transaction::execute(api::executable_statement& statement) {
     return execute(statement, result);
 }
 
+
+
+
 status transaction::execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
 ) {
-    auto& s = unsafe_downcast<impl::executable_statement&>(statement);
-    auto& e = s.body();
-    auto& c = database_->configuration();
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<result_store_channel>(maybe_shared_ptr{store.get()});
-    auto request_ctx = std::make_shared<request_context>(
-        c,
-        s.resource(),
-        database_->kvs_db(),
-        tx_,
-        database_->sequence_manager(),
-        ch
-    );
-    request_ctx->scheduler(database_->scheduler());
-    request_ctx->stmt_scheduler(
-        std::make_shared<scheduler::statement_scheduler>(
-            database_->configuration(),
-            *database_->task_scheduler()
-        )
-    );
-    request_ctx->storage_provider(database_->tables());
-    if (e->is_execute()) {
-        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
-        auto& g = stmt->operators();
-        std::size_t cpu = sched_getcpu();
-        auto job = std::make_shared<scheduler::job_context>(cpu);
-        request_ctx->job(maybe_shared_ptr{job.get()});
-
-        auto& ts = *request_ctx->scheduler();
-        ts.register_job(job);
-        ts.schedule_task(scheduler::flat_task{
-            scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
-            request_ctx.get(),
-            g
-        });
-        ts.wait_for_progress(*job);
-
-        // for now, assume only one result is returned
-        result = std::make_unique<impl::result_set>(
-            std::move(store)
-        );
-        return request_ctx->status_code();
+    status ret{};
+    std::string msg{};
+    execute_common(maybe_shared_ptr{std::addressof(statement)}, ch, [&](status st, std::string_view m){
+        ret = st;
+        msg = m;
+    }, true);
+    auto& s = unsafe_downcast<impl::executable_statement&>(statement);
+    if (s.body()->is_execute()) {
+        result = std::make_unique<impl::result_set>(std::move(store));
     }
-    // write or DDL
-    scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
-    sched.schedule(*e->operators(), *request_ctx);
-    return request_ctx->status_code();
+    return ret;
 }
 
 impl::database& transaction::database() {
@@ -148,6 +117,20 @@ bool transaction::execute_async_common(
     maybe_shared_ptr<api::data_channel> const& channel,
     callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
+    return execute_common(
+        statement,
+        std::make_shared<executor::record_channel_adapter>(channel),
+        std::move(on_completion),
+        false
+    );
+}
+
+bool transaction::execute_common(
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<executor::record_channel> const& channel,
+    callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    bool sync
+) {
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     auto& e = s.body();
     auto& c = database_->configuration();
@@ -157,7 +140,7 @@ bool transaction::execute_async_common(
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
-        std::make_shared<executor::record_channel_adapter>(channel)
+        channel
     );
     rctx->scheduler(database_->scheduler());
     rctx->stmt_scheduler(
@@ -174,6 +157,7 @@ bool transaction::execute_async_common(
 
         auto job = std::make_shared<scheduler::job_context>(cpu);
         rctx->job(maybe_shared_ptr{job.get()});
+
         job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
@@ -188,10 +172,13 @@ bool transaction::execute_async_common(
             rctx.get(),
             g
         });
-        ts.wait_for_progress(*job);
+        if(ts.kind() == scheduler::task_scheduler_kind::serial || sync) {
+            ts.wait_for_progress(*job);
+        }
         return true;
     }
     if(!e->is_ddl() && c->tasked_write()) {
+        // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         std::size_t cpu = sched_getcpu();
         auto job = std::make_shared<scheduler::job_context>(cpu);
@@ -209,7 +196,9 @@ bool transaction::execute_async_common(
             rctx.get(),
             stmt,
         });
-        ts.wait_for_progress(*job);
+        if(ts.kind() == scheduler::task_scheduler_kind::serial || sync) {
+            ts.wait_for_progress(*job);
+        }
         return true;
     }
     // write on non-tasked mode or DDL

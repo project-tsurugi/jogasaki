@@ -59,6 +59,7 @@
 #include <jogasaki/utils/performance_tools.h>
 #include <jogasaki/utils/latch_set.h>
 
+#include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
@@ -313,7 +314,7 @@ public:
             std::shared_ptr<kvs::database>{},
             std::shared_ptr<transaction_context>{},
             nullptr,
-            &result
+            std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{&result})
         );
         prepare_scheduler(*context);
         create_compiled_info(compiler_context, s);

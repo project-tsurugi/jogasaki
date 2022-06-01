@@ -60,6 +60,7 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/api/impl/result_store_channel.h>
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"
@@ -485,7 +486,7 @@ public:
             std::move(db),
             std::make_shared<transaction_context>(std::move(tx)),
             nullptr,
-            &result
+            std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{&result})
         );
         prepare_scheduler(*context);
         common::graph g{};

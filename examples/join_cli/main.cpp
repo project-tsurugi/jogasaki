@@ -55,6 +55,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/performance_tools.h>
+#include <jogasaki/api/impl/result_store_channel.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/plan/compiler.h>
@@ -344,7 +345,7 @@ public:
             std::shared_ptr<kvs::database>{},
             std::shared_ptr<transaction_context>{},
             nullptr,
-            &result
+            std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{&result})
         );
         prepare_scheduler(*context);
         auto& g0 = unsafe_downcast<takatori::plan::group>(*input_exchanges_[0]);

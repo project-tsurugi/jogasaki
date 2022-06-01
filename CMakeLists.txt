@@ -82,6 +82,11 @@ find_package(Protobuf REQUIRED)
 find_package(msgpack REQUIRED)
 find_package(likwid)
 
+# Parquet dependencies
+find_package(Arrow REQUIRED)
+get_filename_component(MY_SEARCH_DIR ${Arrow_CONFIG} DIRECTORY)
+find_package(Parquet REQUIRED HINTS ${MY_SEARCH_DIR})
+
 add_subdirectory(third_party) # should be before enable_testing()
 endif()
 

@@ -61,6 +61,12 @@ public:
         callback on_completion
     );
 
+    bool execute_dump(
+        maybe_shared_ptr<api::executable_statement> const& statement,
+        maybe_shared_ptr<api::data_channel> const& channel,
+        std::string_view directory,
+        callback on_completion
+    );
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};

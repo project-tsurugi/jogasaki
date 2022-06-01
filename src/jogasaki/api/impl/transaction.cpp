@@ -29,6 +29,7 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
+#include <jogasaki/executor/io/dump_channel.h>
 
 namespace jogasaki::api::impl {
 
@@ -120,6 +121,23 @@ bool transaction::execute_async_common(
     return execute_common(
         statement,
         std::make_shared<executor::record_channel_adapter>(channel),
+        std::move(on_completion),
+        false
+    );
+}
+
+bool transaction::execute_dump(
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<api::data_channel> const& channel,
+    std::string_view directory,
+    callback on_completion
+) {
+    return execute_common(
+        statement,
+        std::make_shared<executor::dump_channel>(
+            std::make_shared<executor::record_channel_adapter>(channel),
+            directory
+        ),
         std::move(on_completion),
         false
     );

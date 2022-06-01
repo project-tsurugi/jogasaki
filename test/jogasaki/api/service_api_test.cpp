@@ -895,6 +895,7 @@ TEST_F(service_api_test, execute_ddl) {
 }
 
 TEST_F(service_api_test, execute_dump) {
+    test_statement("insert into T0(C0, C1) values (1, 10.0)");
     std::uint64_t query_handle{};
     test_prepare(
         query_handle,

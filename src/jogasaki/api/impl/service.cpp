@@ -29,7 +29,9 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/executor/io/record_channel_adapter.h>
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
@@ -734,11 +736,6 @@ void service::execute_dump(
     jogasaki::api::transaction_handle tx,
     std::string_view directory
 ) {
-    // mock implementation TODO
-    (void)q;
-    (void)tx;
-    LOG(INFO) << "dump processing directory: " << directory;
-
     // beware asynchronous call : stack will be released soon after submitting request
     BOOST_ASSERT(tx);  //NOLINT
     auto c = std::make_shared<callback_control>(res);
@@ -755,57 +752,55 @@ void service::execute_dump(
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);
 
-    auto m = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{1}.flip()
-    );
-    api::impl::record_meta meta{
-        std::make_shared<meta::external_record_meta>(m, std::vector<std::optional<std::string>>{"file_name"} )
-    };
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    BOOST_ASSERT(! q.has_sql());  //NOLINT
+    jogasaki::api::statement_handle statement{q.sid()};
+    if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
+        VLOG(log_error) << "error in db_->resolve() : " << rc;
+        details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+        return;
+    }
 
-    info->meta_ = &meta;
-    details::send_body_head(*res, *info);
+    {
+        auto m = std::make_shared<meta::record_meta>(
+            std::vector<meta::field_type>{
+                meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
+            },
+            boost::dynamic_bitset<std::uint64_t>{1}.flip()
+        );
+        api::impl::record_meta meta{
+            std::make_shared<meta::external_record_meta>(m, std::vector<std::optional<std::string>>{"file_name"} )
+        };
+        info->meta_ = &meta;
+        details::send_body_head(*res, *info);
+    }
 
     auto* cbp = c.get();
+    auto cid = c->id_;
+    callbacks_.emplace(cid, std::move(c));
 
-    std::vector<std::shared_ptr<tateyama::api::server::writer>> writers(10);
-    for(auto & writer : writers) {
-        if(auto rc = ch->acquire(writer); rc != tateyama::status::ok) {
-            fail();
-        }
-    }
-    msgpack::sbuffer buf{1024};
-
-    std::size_t cnt = 0;
-    for(auto & writer : writers) {
-        {
-            std::string out0{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
-            msgpack::pack(buf, static_cast<std::string_view>(out0));
-            if(auto rc = writer->write(static_cast<char const*>(buf.data()), buf.size()); rc != tateyama::status::ok) {
-                fail();
+    if(auto rc = reinterpret_cast<api::impl::transaction*>(tx.get())->execute_dump(  //NOLINT
+            std::shared_ptr{std::move(e)},
+            info->data_channel_,
+            directory,
+            [cbp, this](status s, std::string_view message){
+                {
+                    trace_scope_name("release_channel");  //NOLINT
+                    cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
+                }
+                if (s == jogasaki::status::ok) {
+                    details::success<sql::response::ResultOnly>(*cbp->response_);
+                } else {
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                }
+                if(! callbacks_.erase(cbp->id_)) {
+                    fail();
+                }
             }
-            buf.clear();
-        }
-        {
-            std::string out1{std::string{directory}+"/dump_output_file_"+std::to_string(++cnt)};
-            msgpack::pack(buf, static_cast<std::string_view>(out1));
-            if(auto rc = writer->write(static_cast<char const*>(buf.data()), buf.size()); rc != tateyama::status::ok) {
-                fail();
-            }
-        }
-        if(auto rc = writer->commit(); rc != tateyama::status::ok) {
-            fail();
-        }
-        if(auto rc = ch->release(*writer); rc != tateyama::status::ok) {
-            fail();
-        }
-    }
-    if(auto rc = cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin()); rc != tateyama::status::ok) {
+    ); ! rc) {
+        // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();
     }
-    details::success<sql::response::ResultOnly>(*cbp->response_);
 }
 
 void service::execute_load(

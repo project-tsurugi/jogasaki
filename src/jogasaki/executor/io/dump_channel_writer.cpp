@@ -40,7 +40,7 @@ void dump_channel_writer::release() {
 
 bool dump_channel_writer::write(accessor::record_ref rec) {
     auto& meta = *parent_->meta();
-    LOG(INFO) << rec << meta;
+    LOG(INFO) << rec << *meta.origin();
     std::size_t cnt = 0;
     std::string out0{std::string{parent_->directory()}+"/dump_output_file_"+std::to_string(++cnt)};
 

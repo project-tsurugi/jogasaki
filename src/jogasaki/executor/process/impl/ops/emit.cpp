@@ -35,10 +35,10 @@ emit::emit(
     sequence_view<const column> columns
 ) :
     record_operator(index, info, block_index),
-    meta_(create_meta(info, columns)),
-    fields_(create_fields(meta_, columns))
+    meta_(create_meta(info.compiled_info(), columns)),
+    fields_(create_fields(meta_->origin(), columns))
 {
-    utils::assert_all_fields_nullable(*meta_);
+    utils::assert_all_fields_nullable(*meta_->origin());
 }
 
 operation_status emit::process_record(abstract::task_context *context) {
@@ -49,7 +49,7 @@ operation_status emit::process_record(abstract::task_context *context) {
         p = ctx.make_context<emit_context>(
             index(),
             ctx.variable_table(block_index()),
-            meta(),
+            meta()->origin(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -81,24 +81,30 @@ operation_status emit::operator()(emit_context &ctx) {
     return {};
 }
 
-const maybe_shared_ptr<meta::record_meta> &emit::meta() const noexcept {
+maybe_shared_ptr<meta::external_record_meta> const& emit::meta() const noexcept {
     return meta_;
 }
 
-std::shared_ptr<meta::record_meta> emit::create_meta(
-    processor_info const& info,
-    sequence_view<column const> columns
+std::shared_ptr<meta::external_record_meta> emit::create_meta(
+    yugawara::compiled_info const& info,
+    sequence_view<const column> columns
 ) {
-    // FIXME currently respect the column order coming from takatori
+    std::vector<std::optional<std::string>> field_names{};
     std::vector<meta::field_type> fields{};
     auto sz = columns.size();
     fields.reserve(sz);
+    field_names.reserve(sz);
     for(auto&& c : columns) {
-        fields.emplace_back(utils::type_for(info.compiled_info(), c.source()));
+        fields.emplace_back(utils::type_for(info, c.source()));
+        // c.name() can accidentally return empty string - fall back to nulloopt then. TODO remove if takatori is fixed
+        field_names.emplace_back(c.name() && c.name()->empty() ? std::nullopt : c.name());
     }
-    return std::make_shared<meta::record_meta>(
-        std::move(fields),
-        boost::dynamic_bitset<std::uint64_t>(sz).flip()
+    return std::make_shared<meta::external_record_meta>(
+        std::make_shared<meta::record_meta>(
+            std::move(fields),
+            boost::dynamic_bitset<std::uint64_t>(sz).flip()
+        ),
+        std::move(field_names)
     ); // assuming all fields nullable
 }
 

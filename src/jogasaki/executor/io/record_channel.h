@@ -20,7 +20,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/status.h>
-#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::executor {
 
@@ -67,7 +67,7 @@ public:
      * @brief metadata setter
      * @param m the metadata with that the writer uses for the output data
      */
-    virtual status meta(maybe_shared_ptr<meta::record_meta> m) = 0;
+    virtual status meta(maybe_shared_ptr<meta::external_record_meta> m) = 0;
 };
 
 }

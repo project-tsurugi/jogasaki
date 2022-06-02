@@ -90,21 +90,20 @@ public:
     /**
      * @brief access to the record metadata
      */
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& meta() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() const noexcept;
 
     /**
      * @see operator_base::finish()
      */
     void finish(abstract::task_context* context) override;
 
-private:
-    maybe_shared_ptr<meta::record_meta> meta_{};
-    std::vector<details::emit_field> fields_{};
-
-    [[nodiscard]] std::shared_ptr<meta::record_meta> create_meta(
-        processor_info const& info,
-        sequence_view<column const> columns
+    static std::shared_ptr<meta::external_record_meta> create_meta(
+        yugawara::compiled_info const& info,
+        sequence_view<const column> columns
     );
+private:
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
+    std::vector<details::emit_field> fields_{};
 
     [[nodiscard]] std::vector<details::emit_field> create_fields(
         maybe_shared_ptr<meta::record_meta> const& meta,

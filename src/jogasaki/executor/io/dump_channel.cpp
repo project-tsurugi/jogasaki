@@ -31,11 +31,14 @@ dump_channel::dump_channel(
 ) noexcept:
     channel_(std::move(channel)),
     file_name_record_meta_(
-        std::make_shared<meta::record_meta>(
-            std::vector<meta::field_type>{
-                meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-            },
-            boost::dynamic_bitset<std::uint64_t>{1}.flip()
+        std::make_shared<meta::external_record_meta>(
+            std::make_shared<meta::record_meta>(
+                std::vector<meta::field_type>{
+                    meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
+                },
+                boost::dynamic_bitset<std::uint64_t>{1}.flip()
+            ),
+            std::vector<std::optional<std::string>>{"file_name"}
         )
     ),
     directory_(directory)
@@ -52,7 +55,7 @@ executor::record_channel& dump_channel::channel() {
     return *channel_;
 }
 
-status dump_channel::meta(maybe_shared_ptr<meta::record_meta> m) {
+status dump_channel::meta(maybe_shared_ptr<meta::external_record_meta> m) {
     meta_ = std::move(m);
     channel_->meta(file_name_record_meta_);
     return status::ok;

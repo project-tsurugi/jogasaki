@@ -64,6 +64,7 @@
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/execute.h>
@@ -89,29 +90,6 @@ namespace relation = takatori::relation;
 
 using takatori::util::unsafe_downcast;
 
-std::shared_ptr<meta::external_record_meta> create_emit_meta(
-    yugawara::compiled_info const& info,
-    takatori::relation::emit const& e
-) {
-    std::vector<std::optional<std::string>> field_names{};
-    std::vector<meta::field_type> fields{};
-    auto sz = e.columns().size();
-    fields.reserve(sz);
-    field_names.reserve(sz);
-    for(auto&& c : e.columns()) {
-        fields.emplace_back(utils::type_for(info, c.source()));
-        // c.name() can accidentally return empty string - fall back to nulloopt then. TODO remove if takatori is fixed
-        field_names.emplace_back(c.name() && c.name()->empty() ? std::nullopt : c.name());
-    }
-    return std::make_shared<meta::external_record_meta>(
-        std::make_shared<meta::record_meta>(
-            std::move(fields),
-            boost::dynamic_bitset<std::uint64_t>(sz).flip()
-        ),
-        std::move(field_names)
-    ); // assuming all fields nullable
-}
-
 void preprocess(
     takatori::plan::process const& process,
     compiled_info const& info,
@@ -124,7 +102,7 @@ void preprocess(
     takatori::relation::enumerate_bottom(process.operators(), [&container, &info](takatori::relation::expression const& op){
         if (op.kind() == takatori::relation::expression_kind::emit) {
             auto& e = unsafe_downcast<takatori::relation::emit>(op);
-            container->external_writer_meta(create_emit_meta(info, e));
+            container->external_writer_meta(executor::process::impl::ops::emit::create_meta(info, e.columns()));
         }
     });
 }

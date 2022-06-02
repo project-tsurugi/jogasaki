@@ -17,6 +17,7 @@
 
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
@@ -102,7 +103,7 @@ public:
      * @return status::ok when successful
      * @return any other error
      */
-    status meta(maybe_shared_ptr<meta::record_meta> m) override;
+    status meta(maybe_shared_ptr<meta::external_record_meta> m) override;
 
 private:
     maybe_shared_ptr<data::result_store> store_{};

@@ -36,7 +36,7 @@ status record_channel_adapter::acquire(std::shared_ptr<executor::record_writer>&
     if(auto res = channel_->acquire(writer); res != status::ok) {
         return res;
     }
-    wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_);
+    wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_->origin());
     return status::ok;
 }
 
@@ -44,7 +44,7 @@ api::data_channel& record_channel_adapter::channel() {
     return *channel_;
 }
 
-status record_channel_adapter::meta(maybe_shared_ptr<meta::record_meta> m) {
+status record_channel_adapter::meta(maybe_shared_ptr<meta::external_record_meta> m) {
     meta_ = std::move(m);
     return status::ok;
 }

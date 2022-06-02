@@ -130,13 +130,17 @@ bool transaction::execute_dump(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
-    callback on_completion
+    callback on_completion,
+    std::size_t max_records_per_file
 ) {
+    executor::dump_cfg cfg{};
+    cfg.max_records_per_file_ = max_records_per_file;
     return execute_common(
         statement,
         std::make_shared<executor::dump_channel>(
             std::make_shared<executor::record_channel_adapter>(channel),
-            directory
+            directory,
+            cfg
         ),
         std::move(on_completion),
         false

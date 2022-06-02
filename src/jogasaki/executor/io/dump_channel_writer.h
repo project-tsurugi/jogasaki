@@ -23,6 +23,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/utils/parquet_writer.h>
+#include <jogasaki/executor/io/dump_channel.h>
 
 namespace jogasaki::executor {
 
@@ -55,7 +56,8 @@ public:
     dump_channel_writer(
         dump_channel& parent,
         maybe_shared_ptr<executor::record_writer> writer,
-        std::size_t writer_index
+        std::size_t writer_index,
+        dump_cfg cfg = {}
     );
 
     /**
@@ -84,6 +86,7 @@ private:
     std::shared_ptr<utils::parquet_writer> parquet_writer_{};
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};
+    dump_cfg cfg_{};
 
     [[nodiscard]] std::string create_file_name(std::string_view prefix) const;
     void write_file_path(std::string_view path);

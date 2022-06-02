@@ -61,11 +61,14 @@ public:
         callback on_completion
     );
 
+    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
+
     bool execute_dump(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<api::data_channel> const& channel,
         std::string_view directory,
-        callback on_completion
+        callback on_completion,
+        std::size_t max_records_per_file = undefined
     );
 private:
     impl::database* database_{};

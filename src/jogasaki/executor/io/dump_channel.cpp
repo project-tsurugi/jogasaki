@@ -27,7 +27,8 @@ namespace jogasaki::executor {
 
 dump_channel::dump_channel(
     maybe_shared_ptr<executor::record_channel> channel,
-    std::string_view directory
+    std::string_view directory,
+    dump_cfg cfg
 ) noexcept:
     channel_(std::move(channel)),
     file_name_record_meta_(
@@ -41,7 +42,8 @@ dump_channel::dump_channel(
             std::vector<std::optional<std::string>>{"file_name"}
         )
     ),
-    directory_(directory)
+    directory_(directory),
+    cfg_(cfg)
 {
     auto now = std::chrono::system_clock::now();
     auto secs_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
@@ -52,7 +54,7 @@ status dump_channel::acquire(std::shared_ptr<executor::record_writer>& wrt) {
     std::shared_ptr<executor::record_writer> w{};
     channel_->acquire(w);
     auto wid = writer_id_src_++;
-    wrt = std::make_shared<dump_channel_writer>(*this, w, wid);
+    wrt = std::make_shared<dump_channel_writer>(*this, w, wid, cfg_);
     return status::ok;
 }
 

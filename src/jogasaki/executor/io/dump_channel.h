@@ -24,6 +24,13 @@
 
 namespace jogasaki::executor {
 
+struct dump_cfg {
+    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
+
+    std::size_t max_records_per_file_{undefined};
+    std::size_t max_file_byte_size_{undefined};
+};
+
 /**
  * @brief record channel to execute dump
  */
@@ -36,7 +43,8 @@ public:
      */
     explicit dump_channel(
         maybe_shared_ptr<executor::record_channel> channel,
-        std::string_view directory
+        std::string_view directory,
+        dump_cfg cfg = {}
     ) noexcept;
 
     /**
@@ -91,6 +99,7 @@ private:
     maybe_shared_ptr<meta::external_record_meta> file_name_record_meta_{};
     std::string directory_{};
     std::string prefix_{};
+    dump_cfg cfg_{};
     std::atomic_size_t writer_id_src_{0};
 };
 

@@ -83,6 +83,7 @@ bool parquet_writer::write(accessor::record_ref ref) {
         VLOG(log_error) << "Parquet writer write error: " << e.what();
         return false;
     }
+    ++write_count_;
     return true;
 }
 
@@ -205,6 +206,10 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
 
 std::string parquet_writer::path() const noexcept {
     return path_.string();
+}
+
+std::size_t parquet_writer::write_count() const noexcept {
+    return write_count_;
 }
 
 }

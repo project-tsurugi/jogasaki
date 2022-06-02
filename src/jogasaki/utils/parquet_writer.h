@@ -66,6 +66,11 @@ public:
     [[nodiscard]] std::string path() const noexcept;
 
     /**
+     * @brief accessor to the number of successful write
+     */
+    [[nodiscard]] std::size_t write_count() const noexcept;
+
+    /**
      * @brief factory function to construct the new parquet_writer object
      * @param meta metadata of the written records
      * @param path the file path that is to be written
@@ -80,6 +85,7 @@ private:
     std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
     std::vector<parquet::ColumnWriter*> column_writers_{};
     boost::filesystem::path path_{};
+    std::size_t write_count_{};
 
     std::shared_ptr<parquet::schema::GroupNode> create_schema();
     void write_int4(std::size_t colidx, std::int32_t v, bool null = false);

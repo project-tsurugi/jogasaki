@@ -730,6 +730,9 @@ void details::set_metadata(channel_info const& info, sql::schema::RecordMeta& me
     }
 }
 
+//TODO put global constant file
+constexpr static std::size_t max_records_per_file = 10000;
+
 void service::execute_dump(
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::query_info const& q,
@@ -760,7 +763,6 @@ void service::execute_dump(
         details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
         return;
     }
-
     {
         auto m = std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{
@@ -796,7 +798,8 @@ void service::execute_dump(
                 if(! callbacks_.erase(cbp->id_)) {
                     fail();
                 }
-            }
+            },
+            max_records_per_file
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();

@@ -33,11 +33,13 @@ using takatori::util::maybe_shared_ptr;
 dump_channel_writer::dump_channel_writer(
     dump_channel& parent,
     maybe_shared_ptr<executor::record_writer> writer,
-    std::size_t writer_index
+    std::size_t writer_index,
+    dump_cfg cfg
 ) :
     parent_(std::addressof(parent)),
     writer_(std::move(writer)),
-    writer_index_(writer_index)
+    writer_index_(writer_index),
+    cfg_(cfg)
 {}
 
 void dump_channel_writer::release() {
@@ -66,6 +68,10 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
     }
     if(auto res = parquet_writer_->write(rec); ! res) {
         //TODO handle error
+    }
+    if(cfg_.max_records_per_file_ != dump_cfg::undefined && parquet_writer_->write_count() >= cfg_.max_records_per_file_) {
+        flush();
+        return true;
     }
     return false;
 }

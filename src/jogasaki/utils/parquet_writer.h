@@ -50,14 +50,11 @@ public:
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
-    std::string path_{};
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
-    std::shared_ptr<parquet::schema::GroupNode> schema_{};
     std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
-    parquet::RowGroupWriter* rgwriter_{};
     std::vector<parquet::ColumnWriter*> column_writers_{};
-    std::shared_ptr<parquet::schema::GroupNode> create_schema();
 
+    std::shared_ptr<parquet::schema::GroupNode> create_schema();
     void write_int4(std::size_t colidx, std::int32_t v, bool null = false);
     void write_int8(std::size_t colidx, std::int64_t v, bool null = false);
     void write_float4(std::size_t colidx, float v, bool null = false);

@@ -48,17 +48,15 @@ parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta
 
 bool parquet_writer::init(std::string_view path) {
     try {
-        path_ = path;
-
-        PARQUET_ASSIGN_OR_THROW(fs_ , ::arrow::io::FileOutputStream::Open(path_));
-        schema_ = create_schema();
+        PARQUET_ASSIGN_OR_THROW(fs_ , ::arrow::io::FileOutputStream::Open(std::string{path}));
+        auto schema = create_schema();
         parquet::WriterProperties::Builder builder;
         builder.compression(parquet::Compression::SNAPPY);
-        file_writer_ = parquet::ParquetFileWriter::Open(fs_, schema_, builder.build());
-        rgwriter_ = file_writer_->AppendBufferedRowGroup();
+        file_writer_ = parquet::ParquetFileWriter::Open(fs_, schema, builder.build());
+        auto* rgwriter = file_writer_->AppendBufferedRowGroup();
         column_writers_.reserve(meta_->field_count());
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-            column_writers_.emplace_back(rgwriter_->column(i));
+            column_writers_.emplace_back(rgwriter->column(i));
         }
     } catch (std::exception const& e) {
         VLOG(log_error) << "Parquet write error: " << e.what();

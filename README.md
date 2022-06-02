@@ -25,8 +25,9 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:18.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libparquet-dev libparquet-glib-dev
 ```
+(see "Additional file installation for Apache Parquet" below if installing `libparquet-dev`, `libparquet-glib-dev` fails)
 
 optional packages:
 
@@ -34,6 +35,21 @@ optional packages:
 * `graphviz`
 * `clang-tidy-8`
 * [`linenoise-ng`](https://github.com/arangodb/linenoise-ng.git)
+
+## Additional file installation for Apache Parquet
+
+Installing Apache Paquet packages `libparquet-dev`, `libparquet-glib-dev` requires additional files installation. 
+If installing these packages from `apt install` command fails, issue below commands to install required files.
+
+```
+wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+sudo apt update
+sudo apt install -y -V libparquet-dev
+sudo apt install -y -V libparquet-glib-dev
+```
+
+(You can see [here](https://arrow.apache.org/install/) for full instruction. )
 
 ## How to build
 

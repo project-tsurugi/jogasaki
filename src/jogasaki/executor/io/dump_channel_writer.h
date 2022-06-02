@@ -81,7 +81,7 @@ private:
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};
 
-    std::string create_file_name(std::string_view prefix) const;
+    [[nodiscard]] std::string create_file_name(std::string_view prefix) const;
     void write_file_path(std::string_view path);
 };
 

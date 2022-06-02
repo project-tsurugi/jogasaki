@@ -17,15 +17,11 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/data_channel.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::executor {
-
-using takatori::util::fail;
 
 record_channel_adapter::record_channel_adapter(maybe_shared_ptr<api::data_channel> channel) noexcept:
     channel_(std::move(channel))

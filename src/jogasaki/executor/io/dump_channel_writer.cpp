@@ -47,7 +47,9 @@ void dump_channel_writer::release() {
 
 
 std::string dump_channel_writer::create_file_name(std::string_view prefix) const {
-    return std::string{prefix} + "_" + std::to_string(writer_index_) + "_" + std::to_string(current_sequence_number_);
+    return
+        std::string{prefix} + "_" + std::to_string(writer_index_) + "_" +
+        std::to_string(current_sequence_number_) + ".parquet";
 }
 
 bool dump_channel_writer::write(accessor::record_ref rec) {
@@ -70,9 +72,10 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
 }
 
 void dump_channel_writer::write_file_path(std::string_view path) {
-    char buf[1024] = {0};
     auto& meta = *parent_->file_name_record_meta();
-    accessor::record_ref ref{buf, meta.record_size()};
+    auto sz = meta.record_size();
+    std::vector<char> buf(sz, 0);
+    accessor::record_ref ref{std::addressof(buf[0]), sz};
     ref.set_value(meta.value_offset(0), accessor::text(path));
     ref.set_null(meta.nullity_offset(0), false);
     writer_->write(ref);

@@ -42,6 +42,7 @@ Installing Apache Paquet packages `libparquet-dev`, `libparquet-glib-dev` requir
 If installing these packages from `apt install` command fails, issue below commands to install required files.
 
 ```
+sudo apt install -y -V lsb-release
 wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt update

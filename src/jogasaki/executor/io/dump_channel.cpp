@@ -42,12 +42,17 @@ dump_channel::dump_channel(
         )
     ),
     directory_(directory)
-{}
+{
+    auto now = std::chrono::system_clock::now();
+    auto secs_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    prefix_ = std::string("d") + std::to_string(secs_since_epoch);
+}
 
 status dump_channel::acquire(std::shared_ptr<executor::record_writer>& wrt) {
     std::shared_ptr<executor::record_writer> w{};
     channel_->acquire(w);
-    wrt = std::make_shared<dump_channel_writer>(*this, w);
+    auto wid = writer_id_src_++;
+    wrt = std::make_shared<dump_channel_writer>(*this, w, wid);
     return status::ok;
 }
 
@@ -63,6 +68,18 @@ status dump_channel::meta(maybe_shared_ptr<meta::external_record_meta> m) {
 
 std::string_view dump_channel::directory() const noexcept {
     return directory_;
+}
+
+maybe_shared_ptr<meta::external_record_meta> const& dump_channel::meta() const noexcept {
+    return meta_;
+}
+
+maybe_shared_ptr<meta::external_record_meta> const& dump_channel::file_name_record_meta() const noexcept {
+    return file_name_record_meta_;
+}
+
+std::string_view dump_channel::prefix() const noexcept {
+    return prefix_;
 }
 
 }

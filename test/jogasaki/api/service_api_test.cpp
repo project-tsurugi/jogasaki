@@ -37,6 +37,7 @@
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/latch.h>
+#include <jogasaki/test_utils/temporary_folder.h>
 
 #include <tateyama/api/server/mock/request_response.h>
 #include <tateyama/api/endpoint/service.h>
@@ -95,10 +96,12 @@ public:
         register_kvs_storage(*impl->kvs_db(), *impl->tables());
 
         utils::utils_raise_exception_on_error = true;
+        temporary_.prepare();
     }
 
     void TearDown() override {
         db_teardown();
+        temporary_.clean();
     }
     void test_begin(std::uint64_t& handle,
         bool readonly = false,
@@ -146,6 +149,7 @@ public:
     void test_dispose_prepare(std::uint64_t& handle);
 
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
+    test::temporary_folder temporary_{};
 };
 
 
@@ -895,11 +899,21 @@ TEST_F(service_api_test, execute_ddl) {
 }
 
 TEST_F(service_api_test, execute_dump) {
+    test_statement("insert into T0(C0, C1) values (0, 0.0)");
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
+    test_statement("insert into T0(C0, C1) values (2, 20.0)");
+    test_statement("insert into T0(C0, C1) values (3, 30.0)");
+    test_statement("insert into T0(C0, C1) values (4, 40.0)");
+    test_statement("insert into T0(C0, C1) values (5, 50.0)");
+    test_statement("insert into T0(C0, C1) values (6, 60.0)");
+    test_statement("insert into T0(C0, C1) values (7, 70.0)");
+    test_statement("insert into T0(C0, C1) values (8, 80.0)");
+    test_statement("insert into T0(C0, C1) values (9, 90.0)");
+    test_statement("insert into T0(C0, C1) values (10, 100.0)");
     std::uint64_t query_handle{};
     test_prepare(
         query_handle,
-        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
+        "select C0, C1 from T0 where C0 > :c0 and C1 > :c1",
         std::pair{"c0"s, sql::common::AtomType::INT8},
         std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
@@ -907,10 +921,10 @@ TEST_F(service_api_test, execute_dump) {
     test_begin(tx_handle);
     {
         std::vector<parameter> parameters{
-            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 1}},
-            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 10.0}},
+            {"c0"s, sql::common::AtomType::INT8, std::any{std::in_place_type<std::int64_t>, 0}},
+            {"c1"s, sql::common::AtomType::FLOAT8, std::any{std::in_place_type<double>, 0.0}},
         };
-        auto s = encode_execute_dump(tx_handle, query_handle, parameters, "/mydirectory/");
+        auto s = encode_execute_dump(tx_handle, query_handle, parameters, service_api_test::temporary_.path());
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -937,9 +951,8 @@ TEST_F(service_api_test, execute_dump) {
                 ASSERT_LT(0, buf.view().size());
                 auto m = create_record_meta(cols);
                 auto v = deserialize_msg(buf.view(), m);
-                ASSERT_EQ(2, v.size());
+                ASSERT_EQ(1, v.size());
                 LOG(INFO) << v[0];
-                LOG(INFO) << v[1];
                 EXPECT_TRUE(ch.all_released());
             }
         }

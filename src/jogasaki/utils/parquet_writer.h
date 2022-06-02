@@ -17,6 +17,7 @@
 
 #include <iomanip>
 
+#include <boost/filesystem.hpp>
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
@@ -46,6 +47,11 @@ public:
 
     bool close();
 
+    /**
+     * @brief accessor to the written file path
+     */
+    [[nodiscard]] std::string path() const noexcept;
+
     static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
 
 private:
@@ -53,6 +59,7 @@ private:
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
     std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
     std::vector<parquet::ColumnWriter*> column_writers_{};
+    boost::filesystem::path path_{};
 
     std::shared_ptr<parquet::schema::GroupNode> create_schema();
     void write_int4(std::size_t colidx, std::int32_t v, bool null = false);

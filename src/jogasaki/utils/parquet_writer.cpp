@@ -48,7 +48,8 @@ parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta
 
 bool parquet_writer::init(std::string_view path) {
     try {
-        PARQUET_ASSIGN_OR_THROW(fs_ , ::arrow::io::FileOutputStream::Open(std::string{path}));
+        path_ = std::string{path};
+        PARQUET_ASSIGN_OR_THROW(fs_ , ::arrow::io::FileOutputStream::Open(path_.string()));
         auto schema = create_schema();
         parquet::WriterProperties::Builder builder;
         builder.compression(parquet::Compression::SNAPPY);
@@ -202,6 +203,10 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
         }
     }
     return std::static_pointer_cast<GroupNode>(GroupNode::Make("schema", Repetition::REQUIRED, fields));
+}
+
+std::string parquet_writer::path() const noexcept {
+    return path_.string();
 }
 
 }

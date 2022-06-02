@@ -16,9 +16,11 @@
 #include "dump_channel_writer.h"
 
 #include <glog/logging.h>
+#include <boost/filesystem.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/utils/interference_size.h>
@@ -29,29 +31,61 @@ namespace jogasaki::executor {
 
 using takatori::util::maybe_shared_ptr;
 
-dump_channel_writer::dump_channel_writer(dump_channel& parent, maybe_shared_ptr<executor::record_writer> writer) :
+dump_channel_writer::dump_channel_writer(
+    dump_channel& parent,
+    maybe_shared_ptr<executor::record_writer> writer,
+    std::size_t writer_index
+) :
     parent_(std::addressof(parent)),
-    writer_(std::move(writer))
+    writer_(std::move(writer)),
+    writer_index_(writer_index)
 {}
 
 void dump_channel_writer::release() {
     writer_->release();
 }
 
+
+std::string dump_channel_writer::create_file_name(std::string_view prefix) const {
+    return std::string{prefix} + "_" + std::to_string(writer_index_) + "_" + std::to_string(current_sequence_number_);
+}
+
 bool dump_channel_writer::write(accessor::record_ref rec) {
+    if (! parquet_writer_) {
+        auto fn = create_file_name(parent_->prefix());
+        boost::filesystem::path p(std::string{parent_->directory()});
+        p = p / fn;
+        parquet_writer_ = utils::parquet_writer::open(parent_->meta(), p.string());
+        if (! parquet_writer_) {
+            VLOG(log_error) << "parquet file creation failed on path " << p.string();
+            return false;
+        }
+    }
+    parquet_writer_->write(rec);
+
     auto& meta = *parent_->meta();
     LOG(INFO) << rec << *meta.origin();
-    std::size_t cnt = 0;
-    std::string out0{std::string{parent_->directory()}+"/dump_output_file_"+std::to_string(++cnt)};
 
+    return false;
+}
+
+void dump_channel_writer::write_file_path(std::string_view path) {
     char buf[1024] = {0};
+    auto& meta = *parent_->file_name_record_meta();
     accessor::record_ref ref{buf, meta.record_size()};
-    ref.set_value(meta.value_offset(0), accessor::text(out0));
+    ref.set_value(meta.value_offset(0), accessor::text(path));
     ref.set_null(meta.nullity_offset(0), false);
     writer_->write(ref);
-    writer_->write(ref);
     writer_->flush();
-    return false;
+}
+
+void dump_channel_writer::flush() {
+    if (parquet_writer_) {
+        parquet_writer_->close();
+        write_file_path(parquet_writer_->path());
+        parquet_writer_.reset();
+        ++current_sequence_number_;
+    }
 }
 
 }

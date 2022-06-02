@@ -62,18 +62,19 @@ public:
 
     [[nodiscard]] std::string_view directory() const noexcept;
 
-    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() const noexcept {
-        return meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() const noexcept;
 
-    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& file_name_record_meta() const noexcept {
-        return file_name_record_meta_;
-    }
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& file_name_record_meta() const noexcept;
+
+    [[nodiscard]] std::string_view prefix() const noexcept;
+
 private:
     maybe_shared_ptr<executor::record_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     maybe_shared_ptr<meta::external_record_meta> file_name_record_meta_{};
     std::string directory_{};
+    std::string prefix_{};
+    std::atomic_size_t writer_id_src_{0};
 };
 
 }

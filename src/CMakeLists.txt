@@ -86,7 +86,8 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-)
+        PRIVATE parquet_shared
+        )
 
 if(LIKWID_ENABLE)
     target_link_libraries(${ENGINE}
@@ -140,6 +141,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         INTERFACE protobuf::libprotobuf
+        INTERFACE parquet_shared
         )
 
 if(MC_QUEUE)

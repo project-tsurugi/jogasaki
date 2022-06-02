@@ -38,37 +38,31 @@ using takatori::util::maybe_shared_ptr;
  */
 class parquet_writer {
 public:
-    explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta) :
-        meta_(std::move(meta))
-    {}
+    explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta);
 
-    bool init(std::string_view path) {
-        path_ = path;
-        return true;
-    }
+    bool init(std::string_view path);
 
-    bool write(accessor::record_ref ref) {
+    bool write(accessor::record_ref ref);
 
-    }
+    bool close();
 
-    bool close() {
-
-    }
-
-    static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path) {
-        auto ret = std::make_shared<parquet_writer>(std::move(meta));
-        if(ret->init(path)) {
-            return ret;
-        }
-        return {};
-    }
+    static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::string path_{};
+    std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
+    std::shared_ptr<parquet::schema::GroupNode> schema_{};
+    std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
+    parquet::RowGroupWriter* rgwriter_{};
+    std::vector<parquet::ColumnWriter*> column_writers_{};
+    std::shared_ptr<parquet::schema::GroupNode> create_schema();
+
+    void write_int4(std::size_t colidx, std::int32_t v, bool null = false);
+    void write_int8(std::size_t colidx, std::int64_t v, bool null = false);
+    void write_float4(std::size_t colidx, float v, bool null = false);
+    void write_float8(std::size_t colidx, double v, bool null = false);
+    void write_character(std::size_t colidx, accessor::text v, bool null = false);
 };
-
-
-}
 
 }

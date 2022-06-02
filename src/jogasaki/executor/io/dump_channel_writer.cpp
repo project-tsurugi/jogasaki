@@ -25,7 +25,6 @@
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/accessor/record_printer.h>
 
 namespace jogasaki::executor {
 
@@ -42,9 +41,11 @@ dump_channel_writer::dump_channel_writer(
 {}
 
 void dump_channel_writer::release() {
+    if (parquet_writer_) {
+        close_parquet_writer();
+    }
     writer_->release();
 }
-
 
 std::string dump_channel_writer::create_file_name(std::string_view prefix) const {
     return
@@ -63,11 +64,9 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
             return false;
         }
     }
-    parquet_writer_->write(rec);
-
-    auto& meta = *parent_->meta();
-    LOG(INFO) << rec << *meta.origin();
-
+    if(auto res = parquet_writer_->write(rec); ! res) {
+        //TODO handle error
+    }
     return false;
 }
 
@@ -82,12 +81,16 @@ void dump_channel_writer::write_file_path(std::string_view path) {
     writer_->flush();
 }
 
+void dump_channel_writer::close_parquet_writer() {
+    parquet_writer_->close();
+    write_file_path(parquet_writer_->path());
+    parquet_writer_.reset();
+    ++current_sequence_number_;
+}
+
 void dump_channel_writer::flush() {
     if (parquet_writer_) {
-        parquet_writer_->close();
-        write_file_path(parquet_writer_->path());
-        parquet_writer_.reset();
-        ++current_sequence_number_;
+        close_parquet_writer();
     }
 }
 

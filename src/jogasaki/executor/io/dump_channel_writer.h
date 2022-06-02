@@ -31,7 +31,8 @@ using takatori::util::maybe_shared_ptr;
 class dump_channel;
 
 /**
- * @brief the writer writes output records into api::data_channel in msgpack encoding
+ * @brief writer to execute dump
+ * @details this writer save the query output into files and write down those files names to downstream writer
  */
 class cache_align dump_channel_writer : public record_writer {
 public:
@@ -47,6 +48,9 @@ public:
 
     /**
      * @brief create new object
+     * @param parent the owner channel of this object
+     * @param writer output writer to send file name record
+     * @param writer_index the unique 0-origin index of this writer among parent channel
      */
     dump_channel_writer(
         dump_channel& parent,
@@ -60,7 +64,7 @@ public:
     ~dump_channel_writer() override = default;
 
     /**
-     * @brief write output record
+     * @brief write query output record
      */
     bool write(accessor::record_ref rec) override;
 
@@ -83,6 +87,7 @@ private:
 
     [[nodiscard]] std::string create_file_name(std::string_view prefix) const;
     void write_file_path(std::string_view path);
+    void close_parquet_writer();
 };
 
 }

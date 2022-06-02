@@ -58,7 +58,7 @@ bool parquet_writer::init(std::string_view path) {
             column_writers_.emplace_back(rgwriter->column(i));
         }
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet write error: " << e.what();
+        VLOG(log_error) << "Parquet writer init error: " << e.what();
         return false;
     }
     return true;
@@ -80,7 +80,7 @@ bool parquet_writer::write(accessor::record_ref ref) {
             }
         }
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet write error: " << e.what();
+        VLOG(log_error) << "Parquet writer write error: " << e.what();
         return false;
     }
     return true;
@@ -152,7 +152,7 @@ bool parquet_writer::close() {
         // Write the bytes to file
         DCHECK(fs_->Close().ok());
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet write error: " << e.what();
+        VLOG(log_error) << "Parquet writer close error: " << e.what();
         return false;
     }
     return true;

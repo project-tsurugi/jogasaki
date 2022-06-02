@@ -23,7 +23,6 @@
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/meta/external_record_meta.h>
@@ -31,7 +30,6 @@
 
 namespace jogasaki::utils {
 
-using takatori::util::fail;
 using takatori::util::maybe_shared_ptr;
 
 /**
@@ -39,12 +37,27 @@ using takatori::util::maybe_shared_ptr;
  */
 class parquet_writer {
 public:
+    /**
+     * @brief create new object
+     * @param meta record meta with column names
+     * @details this function is intended to be called from open(). Use open() function because it can report error
+     * during initialization.
+     */
     explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta);
 
-    bool init(std::string_view path);
-
+    /**
+     * @brief write the record
+     * @param ref the record reference written by the writer
+     * @return true when successful
+     * @return false otherwise
+     */
     bool write(accessor::record_ref ref);
 
+    /**
+     * @brief close the writer and finish the output file
+     * @return true when successful
+     * @return false otherwise
+     */
     bool close();
 
     /**
@@ -52,6 +65,13 @@ public:
      */
     [[nodiscard]] std::string path() const noexcept;
 
+    /**
+     * @brief factory function to construct the new parquet_writer object
+     * @param meta metadata of the written records
+     * @param path the file path that is to be written
+     * @return newly created object on success
+     * @return nullptr otherwise
+     */
     static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
 
 private:
@@ -67,6 +87,7 @@ private:
     void write_float4(std::size_t colidx, float v, bool null = false);
     void write_float8(std::size_t colidx, double v, bool null = false);
     void write_character(std::size_t colidx, accessor::text v, bool null = false);
+    bool init(std::string_view path);
 };
 
 }

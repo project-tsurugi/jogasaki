@@ -25,13 +25,14 @@
 namespace jogasaki::executor {
 
 /**
- * @brief adaptor to adapt api::data_channel to executor::record_channel
+ * @brief record channel to execute dump
  */
 class dump_channel : public executor::record_channel {
 public:
     /**
      * @brief create new object
-     * @param channel the source channel object to adapt
+     * @param channel the output channel to send out dump file names
+     * @param directory the directory path to dump the data into
      */
     explicit dump_channel(
         maybe_shared_ptr<executor::record_channel> channel,
@@ -47,8 +48,8 @@ public:
     status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
 
     /**
-     * @brief accessor to original channel object
-     * @return the source channel
+     * @brief accessor to filename output channel object
+     * @return the output channel
      */
     executor::record_channel& channel();
 
@@ -60,12 +61,28 @@ public:
      */
     status meta(maybe_shared_ptr<meta::external_record_meta> m) override;
 
+    /**
+     * @brief accessor to dump directory
+     * @return the directory path
+     */
     [[nodiscard]] std::string_view directory() const noexcept;
 
+    /**
+     * @brief accessor to query metadata
+     * @return the metadata of the executed query output
+     */
     [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() const noexcept;
 
+    /**
+     * @brief accessor to file name output record metadata
+     * @return the metadata used for the filename output
+     */
     [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& file_name_record_meta() const noexcept;
 
+    /**
+     * @brief accessor to dump file name prefix
+     * @return the prefix
+     */
     [[nodiscard]] std::string_view prefix() const noexcept;
 
 private:

@@ -23,7 +23,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/small_record_store.h>
@@ -42,8 +42,8 @@ public:
     consumer_task(
             request_context* context,
             model::step* src,
-            executor::reader_container left_reader,
-            executor::reader_container right_reader,
+            io::reader_container left_reader,
+            io::reader_container right_reader,
             maybe_shared_ptr<meta::group_meta> l_meta,
             maybe_shared_ptr<meta::group_meta> r_meta
     ) :
@@ -80,7 +80,7 @@ public:
             r_store_varlen_resource_last_checkpoint_(r_store_varlen_resource_->get_checkpoint())
     {}
 
-    void consume_member(group_reader* reader,
+    void consume_member(io::group_reader* reader,
             std::size_t& record_counter,
             std::size_t& key_counter,
             std::unique_ptr<data::iterable_record_store>& store) {
@@ -155,12 +155,12 @@ public:
     }
 
     void next_left_key() {
-        auto* l_reader = left_reader_.reader<executor::group_reader>();
+        auto* l_reader = left_reader_.reader<io::group_reader>();
         auto key = l_reader->get_group();
         l_key_.set(key);
     }
     void next_right_key() {
-        auto* r_reader = right_reader_.reader<executor::group_reader>();
+        auto* r_reader = right_reader_.reader<io::group_reader>();
         auto key = r_reader->get_group();
         r_key_.set(key);
     }
@@ -170,8 +170,8 @@ public:
         utils::get_watch().set_point(time_point_consume, id());
         key_offset_ = l_meta_->key().value_offset(0);
         value_offset_ = l_meta_->value().value_offset(0);
-        auto* l_reader = left_reader_.reader<executor::group_reader>();
-        auto* r_reader = right_reader_.reader<executor::group_reader>();
+        auto* l_reader = left_reader_.reader<io::group_reader>();
+        auto* r_reader = right_reader_.reader<io::group_reader>();
         l_records_ = 0;
         r_records_ = 0;
         l_keys_ = 0;
@@ -341,8 +341,8 @@ private:
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_varlen_resource_{};
     std::unique_ptr<data::iterable_record_store> l_store_{};
     std::unique_ptr<data::iterable_record_store> r_store_{};
-    executor::reader_container left_reader_{};
-    executor::reader_container right_reader_{};
+    io::reader_container left_reader_{};
+    io::reader_container right_reader_{};
     data::small_record_store l_key_;
     data::small_record_store r_key_;
 

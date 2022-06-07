@@ -25,7 +25,7 @@
 #include <jogasaki/utils/parquet_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 using takatori::util::maybe_shared_ptr;
 
@@ -55,7 +55,7 @@ public:
      */
     dump_channel_writer(
         dump_channel& parent,
-        maybe_shared_ptr<executor::record_writer> writer,
+        maybe_shared_ptr<record_writer> writer,
         std::size_t writer_index,
         dump_cfg cfg = {}
     );
@@ -82,7 +82,7 @@ public:
 
 private:
     dump_channel* parent_{};
-    maybe_shared_ptr<executor::record_writer> writer_{};
+    maybe_shared_ptr<record_writer> writer_{};
     std::shared_ptr<utils::parquet_writer> parquet_writer_{};
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};

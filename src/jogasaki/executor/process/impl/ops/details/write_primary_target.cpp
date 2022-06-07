@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <takatori/relation/write.h>
+#include <takatori/util/fail.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
@@ -33,6 +34,7 @@
 namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::fail;
 
 write_primary_target::write_primary_target(
     yugawara::storage::index const& idx,

@@ -20,11 +20,11 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-reader_container source::acquire_reader() {
+io::reader_container source::acquire_reader() {
     if (! reader_) {
         reader_ = std::make_unique<reader>();
     }
-    return reader_container{reader_.get()};
+    return io::reader_container{reader_.get()};
 }
 
 }

@@ -23,7 +23,7 @@
 
 namespace jogasaki::executor::exchange::group {
 
-class cache_align writer : public record_writer {
+class cache_align writer : public io::record_writer {
 public:
     ~writer() override = default;
     writer(writer const& other) = delete;

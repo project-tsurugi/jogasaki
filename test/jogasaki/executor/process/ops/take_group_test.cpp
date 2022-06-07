@@ -207,7 +207,7 @@ TEST_F(take_group_test, simple) {
         s_info.group_meta()
     );
     mock::task_context task_ctx{
-        {reader_container{r.get()}},
+        {io::reader_container{r.get()}},
         {},
         {},
         {},

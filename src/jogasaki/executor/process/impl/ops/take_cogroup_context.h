@@ -22,7 +22,7 @@
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/comparator.h>
 #include "context_base.h"
@@ -43,7 +43,7 @@ public:
     using iterator = data::iterable_record_store::iterator;
 
     group_input(
-        executor::group_reader& reader,
+        io::group_reader& reader,
         std::unique_ptr<data::iterable_record_store> store,
         memory::lifo_paged_memory_resource* resource,
         memory::lifo_paged_memory_resource* varlen_resource,
@@ -81,7 +81,7 @@ public:
 
 private:
 
-    executor::group_reader* reader_{};
+    io::group_reader* reader_{};
     std::unique_ptr<data::iterable_record_store> store_{};
     memory::lifo_paged_memory_resource* resource_{};
     memory::lifo_paged_memory_resource* varlen_resource_{};
@@ -157,7 +157,7 @@ public:
     void release() override;
 
 private:
-    std::vector<executor::group_reader*> readers_{};
+    std::vector<io::group_reader*> readers_{};
     std::vector<details::group_input> inputs_{};
     queue_type queue_{};
 };

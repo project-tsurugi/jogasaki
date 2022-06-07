@@ -15,10 +15,14 @@
  */
 #include "task_context.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/executor/process/result_store_writer.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
 
 namespace jogasaki::executor::process::impl {
+
+using takatori::util::fail;
 
 task_context::task_context(std::size_t partition) :
     partition_(partition)
@@ -29,7 +33,7 @@ process::impl::task_context::task_context(
     std::size_t partition,
     io_exchange_map const& io_exchange_map,
     std::shared_ptr<impl::scan_info> scan_info,
-    executor::record_channel* channel
+    io::record_channel* channel
 ) :
     request_context_(std::addressof(rctx)),
     partition_(partition),
@@ -38,7 +42,7 @@ process::impl::task_context::task_context(
     channel_(channel)
 {}
 
-reader_container task_context::reader(task_context::reader_index idx) {
+io::reader_container task_context::reader(task_context::reader_index idx) {
     auto& flow = io_exchange_map_->input_at(idx)->data_flow_object(*request_context_);
     using step_kind = model::step_kind;
     switch(flow.kind()) {
@@ -55,7 +59,7 @@ reader_container task_context::reader(task_context::reader_index idx) {
     return {};
 }
 
-record_writer* task_context::downstream_writer(task_context::writer_index idx) {
+io::record_writer* task_context::downstream_writer(task_context::writer_index idx) {
     auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
     using step_kind = model::step_kind;
     switch(flow.kind()) {
@@ -72,7 +76,7 @@ record_writer* task_context::downstream_writer(task_context::writer_index idx) {
     return {};
 }
 
-record_writer* task_context::external_writer() {
+io::record_writer* task_context::external_writer() {
     BOOST_ASSERT(channel_ != nullptr);  //NOLINT
     if (! external_writer_) {
         if(auto res = channel_->acquire(external_writer_); res != status::ok) {
@@ -90,7 +94,7 @@ std::size_t task_context::partition() const noexcept {
     return partition_;
 }
 
-executor::record_channel* task_context::channel() const noexcept {
+io::record_channel* task_context::channel() const noexcept {
     return channel_;
 }
 

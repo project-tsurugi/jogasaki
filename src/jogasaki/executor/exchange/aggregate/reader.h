@@ -18,7 +18,7 @@
 #include <queue>
 
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/iterator_pair.h>
@@ -76,7 +76,7 @@ private:
 /**
  * @brief reader for aggregate exchange
  */
-class cache_align reader : public group_reader {
+class cache_align reader : public io::group_reader {
 public:
     using reader_state = impl::reader_state;
     ~reader() override = default;

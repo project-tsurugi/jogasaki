@@ -32,7 +32,7 @@ namespace jogasaki::executor::process::mock {
 using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
 
-class cache_align basic_record_reader : public executor::record_reader {
+class cache_align basic_record_reader : public io::record_reader {
 public:
     using record_type = jogasaki::mock::basic_record;
     using records_type = boost::container::pmr::vector<record_type>;

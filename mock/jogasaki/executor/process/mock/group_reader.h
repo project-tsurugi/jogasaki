@@ -21,7 +21,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
@@ -58,7 +58,7 @@ private:
  * @details this object holds group entries internally and provide them on demand.
  * External metadata is supported, that allows receiver to get the key/value record as they want.
  */
-class cache_align basic_group_reader : public executor::group_reader {
+class cache_align basic_group_reader : public io::group_reader {
 public:
     using group_type = basic_group_entry;
     using groups_type = std::vector<group_type>;

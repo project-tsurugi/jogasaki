@@ -29,7 +29,7 @@ namespace jogasaki::executor::process {
 
 using takatori::util::maybe_shared_ptr;
 
-class cache_align result_store_writer : public record_writer {
+class cache_align result_store_writer : public io::record_writer {
 public:
     ~result_store_writer() override = default;
     result_store_writer(result_store_writer const& other) = delete;

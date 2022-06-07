@@ -16,6 +16,8 @@
 #include "step.h"
 
 #include <memory>
+#include <takatori/util/fail.h>
+
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
@@ -27,6 +29,7 @@ namespace jogasaki::executor::process {
 
 using jogasaki::executor::process::impl::ops::io_info;
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
 
 std::shared_ptr<io_info> step::create_io_info() {
     auto io = std::make_shared<class io_info>();

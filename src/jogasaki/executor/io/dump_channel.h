@@ -22,7 +22,7 @@
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 struct dump_cfg {
     constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
@@ -34,7 +34,7 @@ struct dump_cfg {
 /**
  * @brief record channel to execute dump
  */
-class dump_channel : public executor::record_channel {
+class dump_channel : public record_channel {
 public:
     /**
      * @brief create new object
@@ -42,7 +42,7 @@ public:
      * @param directory the directory path to dump the data into
      */
     explicit dump_channel(
-        maybe_shared_ptr<executor::record_channel> channel,
+        maybe_shared_ptr<record_channel> channel,
         std::string_view directory,
         dump_cfg cfg = {}
     ) noexcept;
@@ -53,13 +53,13 @@ public:
      * @return status::ok when successful
      * @return any other error
      */
-    status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
+    status acquire(std::shared_ptr<record_writer>& wrt) override;
 
     /**
      * @brief accessor to filename output channel object
      * @return the output channel
      */
-    executor::record_channel& channel();
+    record_channel& channel();
 
     /**
      * @brief setter of the metadata
@@ -94,7 +94,7 @@ public:
     [[nodiscard]] std::string_view prefix() const noexcept;
 
 private:
-    maybe_shared_ptr<executor::record_channel> channel_{};
+    maybe_shared_ptr<record_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     maybe_shared_ptr<meta::external_record_meta> file_name_record_meta_{};
     std::string directory_{};

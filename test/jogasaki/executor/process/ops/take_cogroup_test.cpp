@@ -307,8 +307,8 @@ TEST_F(take_cogroup_test, simple) {
     };
     mock::task_context task_ctx{
         {
-            reader_container{&reader0},
-            reader_container{&reader1}
+            io::reader_container{&reader0},
+            io::reader_container{&reader1}
         },
         {},
         {},

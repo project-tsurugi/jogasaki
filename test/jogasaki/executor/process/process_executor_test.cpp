@@ -47,12 +47,12 @@ public:
     using kind = meta::field_type_kind;
     void SetUp() override {
         reader_ = std::make_shared<mock::basic_record_reader>(records_, records_[0].record_meta());
-        reader_container r{reader_.get()};
+        io::reader_container r{reader_.get()};
         downstream_writer_ = mock::create_writer_shared<kind::int8, kind::float8>();
         external_writer_ = mock::create_writer_shared<kind::int8, kind::float8>();
         contexts_.emplace_back(std::make_shared<mock::task_context>(
-            std::vector<reader_container>{r},
-            std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
+            std::vector<io::reader_container>{r},
+            std::vector<std::shared_ptr<io::record_writer>>{downstream_writer_},
             external_writer_,
             std::shared_ptr<abstract::scan_info>{}
         ));
@@ -104,11 +104,11 @@ TEST_F(process_executor_test, custom_factory) {
         create_record<kind::int8, kind::float8>(1, 1.0),
     };
     auto reader = std::make_shared<mock::basic_record_reader>(records, records[0].record_meta());
-    reader_container r{reader.get()};
+    io::reader_container r{reader.get()};
     std::vector<std::shared_ptr<abstract::task_context>> custom_contexts{};
     custom_contexts.emplace_back(std::make_shared<mock::task_context>(
-        std::vector<reader_container>{r},
-        std::vector<std::shared_ptr<executor::record_writer>>{downstream_writer_},
+        std::vector<io::reader_container>{r},
+        std::vector<std::shared_ptr<io::record_writer>>{downstream_writer_},
         external_writer_,
         std::shared_ptr<abstract::scan_info>{}
     ));

@@ -101,19 +101,19 @@ public:
         }
     );
 
-    std::function<std::int64_t(group_reader&)> get_key = [this](group_reader& r) {
+    std::function<std::int64_t(io::group_reader&)> get_key = [this](io::group_reader& r) {
         return r.get_group().get_value<std::int64_t>(sum_info->post().group_meta()->key().value_offset(0));
     };
 
-    std::function<double(group_reader&)> get_value = [this](group_reader& r) {
+    std::function<double(io::group_reader&)> get_value = [this](io::group_reader& r) {
         return r.get_member().get_value<double>(sum_info->post().group_meta()->value().value_offset(0));
     };
 
-    std::function<accessor::record_ref(group_reader&)> get_key_record = [](group_reader& r) {
+    std::function<accessor::record_ref(io::group_reader&)> get_key_record = [](io::group_reader& r) {
         return r.get_group();
     };
 
-    std::function<accessor::record_ref(group_reader&)> get_value_record = [](group_reader& r) {
+    std::function<accessor::record_ref(io::group_reader&)> get_value_record = [](io::group_reader& r) {
         return r.get_member();
     };
 

@@ -70,7 +70,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
     auto target = ctx.output_variables().store().ref();
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
-        ctx.reader_ = r.reader<record_reader>();
+        ctx.reader_ = r.reader<io::record_reader>();
     }
     auto resource = ctx.varlen_resource();
     while(ctx.reader_->next_record()) {

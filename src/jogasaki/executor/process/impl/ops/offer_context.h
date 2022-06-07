@@ -54,7 +54,7 @@ public:
 
 private:
     data::small_record_store store_{};
-    record_writer* writer_{};
+    io::record_writer* writer_{};
 };
 
 

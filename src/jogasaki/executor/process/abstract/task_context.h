@@ -68,7 +68,7 @@ public:
      * only one reader/input exists.
      * @return reader corresponding to the given index
      */
-    [[nodiscard]] virtual reader_container reader(reader_index idx) = 0;
+    [[nodiscard]] virtual io::reader_container reader(reader_index idx) = 0;
 
     /**
      * @brief accessor to main output writers
@@ -79,7 +79,7 @@ public:
      * @return writer corresponding to the given index
      * @attention for the task processing sub input, this
      */
-    [[nodiscard]] virtual record_writer* downstream_writer(writer_index idx) = 0;
+    [[nodiscard]] virtual io::record_writer* downstream_writer(writer_index idx) = 0;
 
     /**
      * @brief accessor to external writer (e.g. one writing out record from Emit)
@@ -89,7 +89,7 @@ public:
      * @return external writer to output result records when the task supports output
      * @return nullptr if the task has no external writer supported
      */
-    [[nodiscard]] virtual record_writer* external_writer() = 0;
+    [[nodiscard]] virtual io::record_writer* external_writer() = 0;
 
     /**
      * @brief accessor to scan information that defines scan specification for the task

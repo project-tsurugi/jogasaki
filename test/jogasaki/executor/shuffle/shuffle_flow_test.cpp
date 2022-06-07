@@ -76,7 +76,7 @@ TEST_F(shuffle_flow_test, writers) {
     writer.flush();
     f.transfer();
     auto reader_container = source.acquire_reader();
-    auto& reader = *reader_container.reader<group_reader>();
+    auto& reader = *reader_container.reader<io::group_reader>();
     std::size_t count = 0;
     while(reader.next_group()) {
         while(reader.next_member()) {

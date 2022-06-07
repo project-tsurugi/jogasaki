@@ -36,13 +36,13 @@ void source::receive(std::unique_ptr<input_partition> in) {
     partitions_.emplace_back(std::move(in));
 }
 
-reader_container source::acquire_reader() {
+io::reader_container source::acquire_reader() {
     if (context_->configuration()->use_sorted_vector()) {
-        return reader_container(
+        return io::reader_container(
             readers_.emplace_back(std::make_unique<sorted_vector_reader>(info_, partitions_)).get()
         );
     }
-    return reader_container(
+    return io::reader_container(
         readers_.emplace_back(std::make_unique<priority_queue_reader>(info_, partitions_)).get()
     );
 }

@@ -18,6 +18,8 @@
 #include <vector>
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+
 #include <takatori/relation/join_find.h>
 #include <yugawara/binding/factory.h>
 
@@ -35,6 +37,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
 
 namespace details {
 

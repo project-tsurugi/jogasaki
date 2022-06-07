@@ -15,6 +15,8 @@
  */
 #include "aggregate_group.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/utils/field_types.h>
 #include "context_helper.h"
@@ -25,6 +27,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
 
 aggregate_group::aggregate_group(
     operator_base::operator_index_type index,

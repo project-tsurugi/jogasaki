@@ -42,9 +42,9 @@ public:
             request_context* context
             );
 
-    [[nodiscard]] record_writer& acquire_writer() override;
+    [[nodiscard]] io::record_writer& acquire_writer() override;
 
-    void release_writer(record_writer& writer);
+    void release_writer(io::record_writer& writer);
 
     [[nodiscard]] std::vector<std::unique_ptr<input_partition>>& input_partitions();
 

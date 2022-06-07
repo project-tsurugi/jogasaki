@@ -21,14 +21,14 @@ namespace jogasaki::executor::exchange::forward {
 
 sink::sink() noexcept : writer_(std::make_unique<writer>()) {}
 
-record_writer& sink::acquire_writer() {
+io::record_writer& sink::acquire_writer() {
     if (! writer_) {
         writer_ = std::make_unique<writer>();
     }
     return *writer_;
 }
 
-void sink::release_writer(record_writer& writer) {
+void sink::release_writer(io::record_writer& writer) {
     (void)writer;
 }
 

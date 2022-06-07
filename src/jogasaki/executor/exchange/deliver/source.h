@@ -17,7 +17,7 @@
 
 #include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 
 namespace jogasaki::executor::exchange::deliver {
 
@@ -25,7 +25,7 @@ class reader;
 
 class source : public exchange::source {
 public:
-    [[nodiscard]] reader_container acquire_reader() override;
+    [[nodiscard]] io::reader_container acquire_reader() override;
 
 private:
 };

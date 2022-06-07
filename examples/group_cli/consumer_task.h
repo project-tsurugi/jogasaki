@@ -38,12 +38,12 @@ public:
     consumer_task(
             request_context* context,
             model::step* src,
-            executor::reader_container reader,
+            executor::io::reader_container reader,
             maybe_shared_ptr<meta::group_meta> meta,
             params& c
     ) : task_base(context, src), meta_(std::move(meta)), reader_(reader), params_(&c) {}
 
-    void consume_record(executor::group_reader* reader) {
+    void consume_record(executor::io::group_reader* reader) {
         while(reader->next_group()) {
             DVLOG(log_trace) << *this << " key : " << reader->get_group().get_value<std::int64_t>(key_offset_);
             total_key_ += reader->get_group().get_value<std::int64_t>(key_offset_);
@@ -56,7 +56,7 @@ public:
         }
     }
 
-    void aggregate_group(executor::group_reader* reader) {
+    void aggregate_group(executor::io::group_reader* reader) {
         auto aggregator = common_cli::create_aggregator();
         data::small_record_store key{meta_->key_shared()};
         data::small_record_store value{meta_->value_shared()};
@@ -81,7 +81,7 @@ public:
     void execute() override {
         VLOG(log_debug) << *this << " consumer_task executed. count: " << count_;
         utils::get_watch().set_point(time_point_consume, id());
-        auto* reader = reader_.reader<executor::group_reader>();
+        auto* reader = reader_.reader<executor::io::group_reader>();
         key_offset_ = meta_->key().value_offset(0);
         value_offset_ = meta_->value().value_offset(0);
         records_ = 0;
@@ -100,7 +100,7 @@ public:
 
 private:
     maybe_shared_ptr<meta::group_meta> meta_{};
-    executor::reader_container reader_{};
+    executor::io::reader_container reader_{};
     params* params_{};
     std::size_t key_offset_{};
     std::size_t value_offset_{};

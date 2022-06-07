@@ -22,6 +22,8 @@
 
 namespace jogasaki::api::impl {
 
+using namespace jogasaki::executor;
+
 result_store_channel_writer::result_store_channel_writer(result_store_channel& parent, std::size_t index) noexcept:
     parent_(std::addressof(parent)),
     index_(index)
@@ -49,7 +51,7 @@ result_store_channel::result_store_channel(maybe_shared_ptr<data::result_store> 
     store_(std::move(store))
 {}
 
-status result_store_channel::acquire(std::shared_ptr<executor::record_writer>& wrt) {
+status result_store_channel::acquire(std::shared_ptr<io::record_writer>& wrt) {
     auto idx = store_->add_partition();
     wrt = std::make_shared<result_store_channel_writer>(*this, idx);
     return status::ok;

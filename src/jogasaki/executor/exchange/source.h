@@ -30,7 +30,7 @@ public:
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
 
-    [[nodiscard]] virtual reader_container acquire_reader() = 0;
+    [[nodiscard]] virtual io::reader_container acquire_reader() = 0;
 };
 
 }

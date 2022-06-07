@@ -23,7 +23,7 @@
 
 namespace jogasaki::executor::exchange::deliver {
 
-class writer : public record_writer {
+class writer : public io::record_writer {
 public:
     writer() = default;
     ~writer() override = default;

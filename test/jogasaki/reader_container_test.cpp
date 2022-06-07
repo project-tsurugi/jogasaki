@@ -25,14 +25,14 @@ using namespace takatori::util;
 
 class reader_container_test : public ::testing::Test {};
 
-class test_record_reader : public record_reader {
+class test_record_reader : public io::record_reader {
     bool available() const override { return true; };
     bool next_record() override { return true; };
     accessor::record_ref get_record() const override { return {}; }
     void release() override {}
 };
 
-class test_group_reader : public group_reader {
+class test_group_reader : public io::group_reader {
     bool next_group() override { return true; };
     accessor::record_ref get_group() const override { return {}; }
     bool next_member() override { return true; }
@@ -40,38 +40,38 @@ class test_group_reader : public group_reader {
     void release() override {}
 };
 
-using kind = reader_kind;
+using kind = io::reader_kind;
 
 TEST_F(reader_container_test, simple) {
     test_record_reader rr{};
     test_group_reader gr{};
     {
-        reader_container c{&rr};
+        io::reader_container c{&rr};
         EXPECT_EQ(kind::record, c.kind());
-        auto* r = c.reader<record_reader>();
-        static_assert(std::is_same_v<record_reader*, decltype(r)>);
+        auto* r = c.reader<io::record_reader>();
+        static_assert(std::is_same_v<io::record_reader*, decltype(r)>);
         EXPECT_TRUE(c);
     }
     {
-        reader_container c{&gr};
+        io::reader_container c{&gr};
         EXPECT_EQ(kind::group, c.kind());
-        auto* r = c.reader<group_reader>();
-        static_assert(std::is_same_v<group_reader*, decltype(r)>);
+        auto* r = c.reader<io::group_reader>();
+        static_assert(std::is_same_v<io::group_reader*, decltype(r)>);
         EXPECT_TRUE(c);
     }
 }
 
 TEST_F(reader_container_test, empty_container) {
     {
-        reader_container c{};
+        io::reader_container c{};
         EXPECT_FALSE(c);
     }
     {
-        reader_container c{static_cast<record_reader*>(nullptr)};
+        io::reader_container c{static_cast<io::record_reader*>(nullptr)};
         EXPECT_FALSE(c);
     }
     {
-        reader_container c{static_cast<group_reader*>(nullptr)};
+        io::reader_container c{static_cast<io::group_reader*>(nullptr)};
         EXPECT_FALSE(c);
     }
 }

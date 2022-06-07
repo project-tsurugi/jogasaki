@@ -23,7 +23,7 @@
 #include <jogasaki/mock/test_channel.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 
-namespace jogasaki::executor::process {
+namespace jogasaki::executor::io {
 
 using namespace executor;
 using namespace accessor;

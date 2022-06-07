@@ -16,6 +16,7 @@
 #include <jogasaki/executor/common/step.h>
 
 #include <gtest/gtest.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/exchange/deliver/step.h>
@@ -26,6 +27,7 @@
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::executor {
+using takatori::util::fail;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;

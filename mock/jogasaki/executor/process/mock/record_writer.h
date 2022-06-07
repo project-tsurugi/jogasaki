@@ -37,7 +37,7 @@ namespace jogasaki::executor::process::mock {
 using takatori::util::maybe_shared_ptr;
 using kind = meta::field_type_kind;
 
-class cache_align basic_record_writer : public executor::record_writer {
+class cache_align basic_record_writer : public io::record_writer {
 public:
 
     using record_type = jogasaki::mock::basic_record;

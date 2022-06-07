@@ -28,8 +28,8 @@ namespace jogasaki::executor {
 
 class mock_task : public common::task {
 public:
-    using writers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<record_writer>>;
-    using readers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<group_reader>>;
+    using writers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<io::record_writer>>;
+    using readers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<io::group_reader>>;
 
     mock_task() = default;
     ~mock_task() override = default;

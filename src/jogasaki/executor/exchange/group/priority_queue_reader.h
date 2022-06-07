@@ -19,7 +19,7 @@
 
 #include <glog/logging.h>
 
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/utils/iterator_pair.h>
@@ -69,7 +69,7 @@ private:
  * @details pregrouped pointer tables are k-way merged using priority queue
  * @attention readers for shuffle should be acquired after transfer completed
  */
-class cache_align priority_queue_reader : public group_reader {
+class cache_align priority_queue_reader : public io::group_reader {
 public:
     ~priority_queue_reader() override = default;
     priority_queue_reader(priority_queue_reader const& other) = delete;

@@ -25,7 +25,7 @@ namespace details {
 using checkpoint = memory::lifo_paged_memory_resource::checkpoint;
 
 group_input::group_input(
-    group_reader& reader,
+    io::group_reader& reader,
     std::unique_ptr<data::iterable_record_store> store,
     memory::lifo_paged_memory_resource* resource,
     memory::lifo_paged_memory_resource* varlen_resource,

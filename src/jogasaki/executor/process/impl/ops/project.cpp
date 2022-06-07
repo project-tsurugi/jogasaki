@@ -17,6 +17,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
 #include <takatori/relation/project.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 
@@ -27,6 +28,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::fail;
 
 project::project(
     operator_base::operator_index_type index,

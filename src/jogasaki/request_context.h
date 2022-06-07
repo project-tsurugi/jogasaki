@@ -68,7 +68,7 @@ public:
         std::shared_ptr<kvs::database> database = {},
         std::shared_ptr<transaction_context> transaction = {},
         executor::sequence::manager* sequence_manager = {},
-        maybe_shared_ptr<executor::record_channel> record_channel = {}
+        maybe_shared_ptr<executor::io::record_channel> record_channel = {}
     );
 
     /**
@@ -146,7 +146,7 @@ public:
      * @brief accessor for the record channel
      * @return record channel
      */
-    [[nodiscard]] maybe_shared_ptr<executor::record_channel> const&  record_channel() const noexcept;
+    [[nodiscard]] maybe_shared_ptr<executor::io::record_channel> const&  record_channel() const noexcept;
 
     /**
      * @brief setter for the flow repository
@@ -205,7 +205,7 @@ private:
     maybe_shared_ptr<scheduler::statement_scheduler> statement_scheduler_{};
     maybe_shared_ptr<yugawara::storage::configurable_provider> storage_provider_{};
 
-    maybe_shared_ptr<executor::record_channel> record_channel_{};
+    maybe_shared_ptr<executor::io::record_channel> record_channel_{};
 
     std::atomic<status> status_code_{status::ok};
     std::string status_message_{};

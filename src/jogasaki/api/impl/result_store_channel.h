@@ -29,7 +29,7 @@ class result_store_channel;
 /**
  * @brief writer to write to result_store
  */
-class result_store_channel_writer : public executor::record_writer {
+class result_store_channel_writer : public executor::io::record_writer {
 public:
     /**
      * @brief create new object
@@ -73,7 +73,7 @@ private:
 /**
  * @brief the channel based on result_store
  */
-class result_store_channel : public executor::record_channel {
+class result_store_channel : public executor::io::record_channel {
 public:
     /**
      * @brief create new object
@@ -89,7 +89,7 @@ public:
      * @return status::ok when successful
      * @return any other error
      */
-    status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
+    status acquire(std::shared_ptr<executor::io::record_writer>& wrt) override;
 
     /**
      * @brief accessor to the base result_store

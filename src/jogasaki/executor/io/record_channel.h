@@ -22,7 +22,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/meta/external_record_meta.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 using takatori::util::maybe_shared_ptr;
 

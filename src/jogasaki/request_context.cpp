@@ -35,7 +35,7 @@ request_context::request_context(
     std::shared_ptr<kvs::database> database,
     std::shared_ptr<transaction_context> transaction,
     executor::sequence::manager* sequence_manager,
-    maybe_shared_ptr<executor::record_channel> record_channel
+    maybe_shared_ptr<executor::io::record_channel> record_channel
 ) :
     config_(std::move(config)),
     request_resource_(std::move(request_resource)),
@@ -93,7 +93,7 @@ std::string_view request_context::status_message() const noexcept {
     return status_message_;
 }
 
-maybe_shared_ptr<executor::record_channel> const&  request_context::record_channel() const noexcept {
+maybe_shared_ptr<executor::io::record_channel> const&  request_context::record_channel() const noexcept {
     return record_channel_;
 }
 

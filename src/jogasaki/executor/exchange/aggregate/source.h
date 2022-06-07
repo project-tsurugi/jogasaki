@@ -19,7 +19,7 @@
 #include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -37,10 +37,10 @@ public:
             );
     void receive(std::unique_ptr<input_partition> in);
 
-    [[nodiscard]] reader_container acquire_reader() override;
+    [[nodiscard]] io::reader_container acquire_reader() override;
 
 private:
-    std::vector<std::unique_ptr<group_reader>> readers_;
+    std::vector<std::unique_ptr<io::group_reader>> readers_;
     std::shared_ptr<aggregate_info> info_{};
     request_context* context_{};
     std::vector<std::unique_ptr<input_partition>> partitions_{};

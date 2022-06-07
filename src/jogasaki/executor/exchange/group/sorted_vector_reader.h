@@ -20,7 +20,7 @@
 
 #include <glog/logging.h>
 
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
 
 namespace jogasaki::executor::exchange::group {
@@ -30,7 +30,7 @@ namespace jogasaki::executor::exchange::group {
  * @details no pregroup is needed and all pointer tables are merged and sorted at once
  * @attention readers for shuffle should be acquired after transfer completed
  */
-class cache_align sorted_vector_reader : public group_reader {
+class cache_align sorted_vector_reader : public io::group_reader {
 public:
     enum class reader_state {
         init,

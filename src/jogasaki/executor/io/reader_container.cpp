@@ -22,9 +22,9 @@
 
 #include <jogasaki/utils/variant.h>
 #include <jogasaki/executor/io/record_reader.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 using takatori::util::fail;
 

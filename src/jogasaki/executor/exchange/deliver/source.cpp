@@ -19,7 +19,7 @@
 
 namespace jogasaki::executor::exchange::deliver {
 
-reader_container source::acquire_reader() {
+io::reader_container source::acquire_reader() {
     return {};
 }
 

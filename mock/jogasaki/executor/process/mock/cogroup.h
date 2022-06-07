@@ -25,7 +25,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -101,7 +101,7 @@ public:
     using iterator = cogroup_record_store::iterator;
 
     cogroup_input(
-            executor::group_reader& reader,
+            io::group_reader& reader,
             std::unique_ptr<cogroup_record_store> store,
             maybe_shared_ptr<meta::group_meta> meta
     ) :
@@ -170,7 +170,7 @@ public:
     }
 
 private:
-    executor::group_reader* reader_{};
+    io::group_reader* reader_{};
     std::unique_ptr<cogroup_record_store> store_;
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::size_t key_size_ = 0;
@@ -227,7 +227,7 @@ public:
     using consumer_type = std::function<void(accessor::record_ref, std::vector<iterator_pair>&)>;
 
     cogroup(
-            std::vector<executor::group_reader*> readers,
+            std::vector<io::group_reader*> readers,
             std::vector<maybe_shared_ptr<meta::group_meta>> groups_meta
     ) :
         readers_(std::move(readers)),
@@ -323,7 +323,7 @@ public:
     }
 
 private:
-    std::vector<executor::group_reader*> readers_{};
+    std::vector<io::group_reader*> readers_{};
     std::vector<maybe_shared_ptr<meta::group_meta>> groups_meta_{};
     compare_info compare_info_{};
     std::vector<impl::cogroup_input> inputs_{};

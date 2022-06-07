@@ -60,28 +60,28 @@ public:
         partition_index partition,
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
-        executor::record_channel* channel
+        io::record_channel* channel
     );
 
-    reader_container reader(reader_index idx) override;
+    io::reader_container reader(reader_index idx) override;
 
-    record_writer* downstream_writer(writer_index idx) override;
+    io::record_writer* downstream_writer(writer_index idx) override;
 
-    record_writer* external_writer() override;
+    io::record_writer* external_writer() override;
 
     class abstract::scan_info const* scan_info() override;
 
     [[nodiscard]] std::size_t partition() const noexcept;
 
-    [[nodiscard]] executor::record_channel* channel() const noexcept;
+    [[nodiscard]] io::record_channel* channel() const noexcept;
 
 private:
     request_context* request_context_{};
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
-    executor::record_channel* channel_{};
-    std::shared_ptr<record_writer> external_writer_{};
+    io::record_channel* channel_{};
+    std::shared_ptr<io::record_writer> external_writer_{};
 };
 
 }

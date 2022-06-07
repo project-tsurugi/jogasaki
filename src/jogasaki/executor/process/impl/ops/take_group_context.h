@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -46,7 +46,7 @@ public:
     void release() override;
 
 private:
-    group_reader* reader_{};
+    io::group_reader* reader_{};
 };
 
 }

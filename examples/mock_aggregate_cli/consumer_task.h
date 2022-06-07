@@ -36,7 +36,7 @@ public:
     consumer_task(
             request_context* context,
             model::step* src,
-            executor::reader_container reader,
+            executor::io::reader_container reader,
             maybe_shared_ptr<meta::group_meta> meta
     ) : task_base(context, src), meta_(std::move(meta)), reader_(reader) {}
 
@@ -45,7 +45,7 @@ public:
         utils::get_watch().set_point(time_point_consume, id());
         auto key_offset = meta_->key().value_offset(0);
         auto value_offset = meta_->value().value_offset(0);
-        auto* reader = reader_.reader<executor::group_reader>();
+        auto* reader = reader_.reader<executor::io::group_reader>();
         std::size_t records = 0;
         std::size_t keys = 0;
         std::size_t total_key = 0;
@@ -67,7 +67,7 @@ public:
 
 private:
     maybe_shared_ptr<meta::group_meta> meta_{};
-    executor::reader_container reader_{};
+    executor::io::reader_container reader_{};
 };
 
 }

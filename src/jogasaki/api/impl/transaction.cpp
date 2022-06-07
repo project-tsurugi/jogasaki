@@ -120,7 +120,7 @@ bool transaction::execute_async_common(
 ) {
     return execute_common(
         statement,
-        std::make_shared<executor::record_channel_adapter>(channel),
+        std::make_shared<executor::io::record_channel_adapter>(channel),
         std::move(on_completion),
         false
     );
@@ -133,12 +133,12 @@ bool transaction::execute_dump(
     callback on_completion,
     std::size_t max_records_per_file
 ) {
-    executor::dump_cfg cfg{};
+    executor::io::dump_cfg cfg{};
     cfg.max_records_per_file_ = max_records_per_file;
     return execute_common(
         statement,
-        std::make_shared<executor::dump_channel>(
-            std::make_shared<executor::record_channel_adapter>(channel),
+        std::make_shared<executor::io::dump_channel>(
+            std::make_shared<executor::io::record_channel_adapter>(channel),
             directory,
             cfg
         ),
@@ -149,7 +149,7 @@ bool transaction::execute_dump(
 
 bool transaction::execute_common(
     maybe_shared_ptr<api::executable_statement> const& statement,
-    maybe_shared_ptr<executor::record_channel> const& channel,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {

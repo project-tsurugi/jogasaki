@@ -70,7 +70,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
     auto target = ctx.output_variables().store().ref();
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
-        ctx.reader_ = r.reader<group_reader>();
+        ctx.reader_ = r.reader<io::group_reader>();
     }
     auto resource = ctx.varlen_resource();
     while(ctx.reader_->next_group()) {

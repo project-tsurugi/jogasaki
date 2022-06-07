@@ -314,7 +314,7 @@ private:
                 reader_resource
                 )
             );
-            reader_container r{reader.get()};
+            io::reader_container r{reader.get()};
             pmr::memory_resource* writer_resource =
                 param.std_allocator ?
                     static_cast<pmr::memory_resource*>(pmr::get_default_resource()) :
@@ -325,9 +325,9 @@ private:
             ));
             auto ctx =
                 std::make_shared<process::mock::task_context>(
-                    std::vector<reader_container>{r},
-                    std::vector<std::shared_ptr<executor::record_writer>>{writer},
-                    std::shared_ptr<executor::record_writer>{},
+                    std::vector<io::reader_container>{r},
+                    std::vector<std::shared_ptr<executor::io::record_writer>>{writer},
+                    std::shared_ptr<executor::io::record_writer>{},
                     std::shared_ptr<abstract::scan_info>{}
                 );
 

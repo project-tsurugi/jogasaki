@@ -23,7 +23,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/process/mock/cogroup.h>
@@ -42,8 +42,8 @@ public:
     priority_queue_consumer_task(
             request_context* context,
             model::step* src,
-            executor::reader_container left_reader,
-            executor::reader_container right_reader,
+            io::reader_container left_reader,
+            io::reader_container right_reader,
             maybe_shared_ptr<meta::group_meta> l_meta,
             maybe_shared_ptr<meta::group_meta> r_meta
     ) :
@@ -63,7 +63,7 @@ public:
             key_size_(l_meta_->key().record_size())
     {}
 
-    void consume_member(group_reader* reader,
+    void consume_member(io::group_reader* reader,
             std::size_t& record_counter,
             std::size_t& key_counter,
             std::unique_ptr<data::iterable_record_store>& store) {
@@ -85,8 +85,8 @@ public:
         key_offset_ = l_meta_->key().value_offset(0);
         value_offset_ = l_meta_->value().value_offset(0);
 
-        auto* l_reader = left_reader_.reader<executor::group_reader>();
-        auto* r_reader = right_reader_.reader<executor::group_reader>();
+        auto* l_reader = left_reader_.reader<io::group_reader>();
+        auto* r_reader = right_reader_.reader<io::group_reader>();
         using cogroup = process::mock::cogroup;
         cogroup cgrp{{l_reader, r_reader}, {l_meta_, r_meta_}};
 
@@ -97,7 +97,6 @@ public:
         total_key_ = 0;
         total_val_ = 0;
 
-        using namespace jogasaki::executor;
         cogroup::consumer_type consumer = [&](accessor::record_ref key, std::vector<cogroup::iterator_pair>& values) {
             auto r_value_offset = r_meta_->value().value_offset(0);
             auto l_value_offset = l_meta_->value().value_offset(0);
@@ -161,8 +160,8 @@ private:
     std::unique_ptr<memory::lifo_paged_memory_resource> l_store_varlen_resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_resource_{};
     std::unique_ptr<memory::lifo_paged_memory_resource> r_store_varlen_resource_{};
-    executor::reader_container left_reader_{};
-    executor::reader_container right_reader_{};
+    io::reader_container left_reader_{};
+    io::reader_container right_reader_{};
 
     std::size_t key_offset_;
     std::size_t value_offset_;

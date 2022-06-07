@@ -21,6 +21,7 @@
 #include <yugawara/binding/factory.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/details/field_info.h>
@@ -30,6 +31,7 @@
 namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::fail;
 
 /**
  * @brief field info of the update operation

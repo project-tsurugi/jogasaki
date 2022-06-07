@@ -95,7 +95,7 @@ public:
 private:
     executor::exchange::sink* sink_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
-    executor::record_writer* writer_{};
+    executor::io::record_writer* writer_{};
     Params* params_{};
     memory::monotonic_paged_memory_resource* resource_{};
 

@@ -17,7 +17,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 /**
  * @brief record reader interface for the process to retrieve record data

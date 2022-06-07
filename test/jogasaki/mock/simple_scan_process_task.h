@@ -33,9 +33,9 @@ public:
     ~simple_scan_process_task() override = default;
     simple_scan_process_task(simple_scan_process_task&& other) noexcept = default;
     simple_scan_process_task& operator=(simple_scan_process_task&& other) noexcept = default;
-    simple_scan_process_task(request_context* context, model::step* src, record_writer* writer) : mock_task(context,  src), writer_(writer) {}
+    simple_scan_process_task(request_context* context, model::step* src, io::record_writer* writer) : mock_task(context,  src), writer_(writer) {}
 
-    record_writer* writer_{};
+    io::record_writer* writer_{};
 
     void execute() override {
         LOG(INFO) << *this << " simple_scan_process_main_task executed. count: " << count_;

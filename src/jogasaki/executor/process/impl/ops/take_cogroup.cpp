@@ -29,7 +29,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/group_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/utils/iterator_pair.h>
@@ -259,7 +259,7 @@ void take_cogroup::finish(abstract::task_context* context) {
 void take_cogroup::create_readers(take_cogroup_context& ctx) {
     for(auto&& g: groups_) {
         auto idx = g.reader_index_;
-        auto* reader = ctx.task_context().reader(idx).reader<group_reader>();
+        auto* reader = ctx.task_context().reader(idx).reader<io::group_reader>();
         ctx.readers_.emplace_back(reader);
         ctx.queue_ = queue_type{
             details::group_input_comparator(&ctx.inputs_)

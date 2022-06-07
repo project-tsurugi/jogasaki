@@ -26,13 +26,13 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 using takatori::util::maybe_shared_ptr;
 
 dump_channel_writer::dump_channel_writer(
     dump_channel& parent,
-    maybe_shared_ptr<executor::record_writer> writer,
+    maybe_shared_ptr<record_writer> writer,
     std::size_t writer_index,
     dump_cfg cfg
 ) :

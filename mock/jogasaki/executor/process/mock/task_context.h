@@ -35,9 +35,9 @@ class task_context : public abstract::task_context {
 public:
 
     explicit task_context(
-        std::vector<reader_container> readers = {},
-        std::vector<std::shared_ptr<executor::record_writer>> downstream_writers = {},
-        std::shared_ptr<executor::record_writer> external_writer = {},
+        std::vector<io::reader_container> readers = {},
+        std::vector<std::shared_ptr<io::record_writer>> downstream_writers = {},
+        std::shared_ptr<io::record_writer> external_writer = {},
         std::shared_ptr<abstract::scan_info> info = {}
     ) :
         readers_(std::move(readers)),
@@ -46,15 +46,15 @@ public:
         scan_info_(std::move(info))
     {}
 
-    reader_container reader(reader_index idx) override {
+    io::reader_container reader(reader_index idx) override {
         return readers_.at(idx);
     }
 
-    executor::record_writer* downstream_writer(writer_index idx) override {
+    io::record_writer* downstream_writer(writer_index idx) override {
         return downstream_writers_.at(idx).get();
     }
 
-    executor::record_writer* external_writer() override {
+    io::record_writer* external_writer() override {
         return external_writer_.get();
     }
 
@@ -83,9 +83,9 @@ public:
     }
 private:
     std::size_t partition_{};
-    std::vector<reader_container> readers_{};
-    std::vector<std::shared_ptr<executor::record_writer>> downstream_writers_{};
-    std::shared_ptr<executor::record_writer> external_writer_{};
+    std::vector<io::reader_container> readers_{};
+    std::vector<std::shared_ptr<io::record_writer>> downstream_writers_{};
+    std::shared_ptr<io::record_writer> external_writer_{};
     std::shared_ptr<abstract::scan_info> scan_info_{};
 };
 

@@ -150,7 +150,7 @@ TEST_F(take_flat_test, simple) {
     auto reader = std::make_shared<mock::basic_record_reader>(records, meta);
 
     mock::task_context task_ctx{
-        {reader_container{reader.get()}},
+        {io::reader_container{reader.get()}},
         {},
         {},
         {},

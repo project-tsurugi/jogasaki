@@ -25,7 +25,7 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-class cache_align writer : public record_writer {
+class cache_align writer : public io::record_writer {
 public:
     writer() = default;
 

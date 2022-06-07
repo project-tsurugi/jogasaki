@@ -32,7 +32,7 @@ class processor : public abstract::processor {
     using status = abstract::status;
 public:
     [[nodiscard]] status run(abstract::task_context* ctx) override {
-        auto* r = ctx->reader(0).reader<executor::record_reader>();
+        auto* r = ctx->reader(0).reader<io::record_reader>();
         auto* w = ctx->downstream_writer(0);
         auto* e = ctx->external_writer();
         while(r->next_record()) {

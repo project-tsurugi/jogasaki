@@ -23,10 +23,10 @@
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 dump_channel::dump_channel(
-    maybe_shared_ptr<executor::record_channel> channel,
+    maybe_shared_ptr<record_channel> channel,
     std::string_view directory,
     dump_cfg cfg
 ) noexcept:
@@ -50,15 +50,15 @@ dump_channel::dump_channel(
     prefix_ = std::string("d") + std::to_string(secs_since_epoch);
 }
 
-status dump_channel::acquire(std::shared_ptr<executor::record_writer>& wrt) {
-    std::shared_ptr<executor::record_writer> w{};
+status dump_channel::acquire(std::shared_ptr<record_writer>& wrt) {
+    std::shared_ptr<record_writer> w{};
     channel_->acquire(w);
     auto wid = writer_id_src_++;
     wrt = std::make_shared<dump_channel_writer>(*this, w, wid, cfg_);
     return status::ok;
 }
 
-executor::record_channel& dump_channel::channel() {
+record_channel& dump_channel::channel() {
     return *channel_;
 }
 

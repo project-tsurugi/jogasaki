@@ -28,12 +28,12 @@ class sink : public exchange::sink {
 public:
     sink() noexcept;
 
-    [[nodiscard]] record_writer& acquire_writer() override;
+    [[nodiscard]] io::record_writer& acquire_writer() override;
 
-    void release_writer(record_writer& writer);
+    void release_writer(io::record_writer& writer);
 
 private:
-    std::unique_ptr<record_writer> writer_;
+    std::unique_ptr<io::record_writer> writer_;
 };
 
 }

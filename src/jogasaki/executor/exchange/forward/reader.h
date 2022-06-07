@@ -20,7 +20,7 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-class cache_align reader : public record_reader {
+class cache_align reader : public io::record_reader {
 public:
     reader() = default;
 

@@ -33,8 +33,8 @@ void source::receive(std::unique_ptr<input_partition> in) {
     partitions_.emplace_back(std::move(in));
 }
 
-reader_container source::acquire_reader() {
-    return reader_container(readers_.emplace_back(std::make_unique<reader>(info_, partitions_)).get());
+io::reader_container source::acquire_reader() {
+    return io::reader_container(readers_.emplace_back(std::make_unique<reader>(info_, partitions_)).get());
 }
 
 }

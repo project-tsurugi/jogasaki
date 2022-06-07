@@ -22,12 +22,12 @@
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 /**
  * @brief adaptor to adapt api::data_channel to executor::record_channel
  */
-class record_channel_adapter : public executor::record_channel {
+class record_channel_adapter : public executor::io::record_channel {
 public:
     /**
      * @brief create new object
@@ -41,7 +41,7 @@ public:
      * @return status::ok when successful
      * @return any other error
      */
-    status acquire(std::shared_ptr<executor::record_writer>& wrt) override;
+    status acquire(std::shared_ptr<record_writer>& wrt) override;
 
     /**
      * @brief accessor to original channel object

@@ -21,13 +21,13 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/data_channel.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::io {
 
 record_channel_adapter::record_channel_adapter(maybe_shared_ptr<api::data_channel> channel) noexcept:
     channel_(std::move(channel))
 {}
 
-status record_channel_adapter::acquire(std::shared_ptr<executor::record_writer>& wrt) {
+status record_channel_adapter::acquire(std::shared_ptr<record_writer>& wrt) {
     std::shared_ptr<api::writer> writer;
     if(auto res = channel_->acquire(writer); res != status::ok) {
         return res;

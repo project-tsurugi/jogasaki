@@ -47,7 +47,7 @@ public:
     void release() override;
 
 private:
-    record_reader* reader_{};
+    io::record_reader* reader_{};
 };
 
 }

@@ -15,13 +15,9 @@
  */
 #include "transaction_context.h"
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/kvs/database.h>
 
 namespace jogasaki {
-
-using takatori::util::fail;
 
 transaction_context::transaction_context(std::shared_ptr<kvs::transaction> transaction) :
     transaction_(std::move(transaction)),

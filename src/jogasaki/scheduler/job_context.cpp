@@ -42,20 +42,6 @@ void job_context::reset() noexcept {
     index_.store(undefined_index);
 }
 
-job_context::job_context(
-    std::size_t invoker_thread_cpu_id
-) noexcept:
-    invoker_thread_cpu_id_(invoker_thread_cpu_id)
-{}
-
-void job_context::invoker_thread_cpu_id(std::size_t arg) noexcept {
-    invoker_thread_cpu_id_ = arg;
-}
-
-std::size_t job_context::invoker_thread_cpu_id() const noexcept {
-    return invoker_thread_cpu_id_;
-}
-
 void job_context::callback(job_context::job_completion_callback callback) noexcept {
     callback_ = std::move(callback);
 }

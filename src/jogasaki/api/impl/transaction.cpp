@@ -175,9 +175,7 @@ bool transaction::execute_common(
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        std::size_t cpu = sched_getcpu();
-
-        auto job = std::make_shared<scheduler::job_context>(cpu);
+        auto job = std::make_shared<scheduler::job_context>();
         rctx->job(maybe_shared_ptr{job.get()});
 
         job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
@@ -202,8 +200,7 @@ bool transaction::execute_common(
     if(!e->is_ddl() && c->tasked_write()) {
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
-        std::size_t cpu = sched_getcpu();
-        auto job = std::make_shared<scheduler::job_context>(cpu);
+        auto job = std::make_shared<scheduler::job_context>();
         rctx->job(maybe_shared_ptr{job.get()});
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback

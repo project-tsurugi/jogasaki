@@ -345,8 +345,7 @@ job_context& dag_controller::impl::job() noexcept {
 void dag_controller::impl::schedule(model::graph& g, request_context& rctx) {
     init(g, rctx);
     if (! rctx.job()) {
-        std::size_t cpu = sched_getcpu();
-        rctx.job(std::make_shared<job_context>(cpu));
+        rctx.job(std::make_shared<job_context>());
     } else {
         // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
         rctx.job()->reset();

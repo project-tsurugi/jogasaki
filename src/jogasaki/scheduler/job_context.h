@@ -41,13 +41,6 @@ public:
      */
     job_context() = default;
 
-    /**
-     * @brief create default context object
-     */
-    explicit job_context(
-        std::size_t invoker_thread_cpu_id
-    ) noexcept;
-
     ~job_context() = default;
     job_context(job_context const& other) = delete;
     job_context& operator=(job_context const& other) = delete;
@@ -84,17 +77,6 @@ public:
     void reset() noexcept;
 
     /**
-     * @brief setter for the invoker thread cpu
-     */
-    void invoker_thread_cpu_id(std::size_t arg) noexcept;
-
-    /**
-     * @brief accessor for the invoker thread cpu
-     * @return cpu id of the invoker thread
-     */
-    [[nodiscard]] std::size_t invoker_thread_cpu_id() const noexcept;
-
-    /**
      * @brief setter for the callback
      */
     void callback(job_completion_callback callback) noexcept;
@@ -115,7 +97,6 @@ private:
 
     std::size_t id_{id_src_++};
     utils::latch completion_latch_{};
-    std::size_t invoker_thread_cpu_id_{};
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};
     cache_align std::atomic_size_t index_{undefined_index};

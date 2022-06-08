@@ -32,58 +32,41 @@ inline std::uint32_t lower(std::uint64_t arg) {
     return static_cast<std::uint32_t>(arg & ((1UL << 32U)-1));
 }
 
+/**
+ * @brief worker and its use count manager
+ */
 class worker_manager {
 public:
     constexpr static std::uint32_t empty_worker = static_cast<std::uint32_t>(-1);
 
-    bool increment_and_set_on_zero(std::uint32_t& worker_index) {
-        std::size_t cur = use_count_and_worker_id_.load();
-        std::size_t next{};
-        std::uint32_t cnt = 0;
-        std::uint32_t wid = 0;
-        do {
-            cnt = upper(cur);
-            wid = lower(cur);
-            if (cnt == 0) {
-                wid = worker_index;
-            }
-            next = cnt + 1;
-            next <<= 32U;
-            next |= wid;
-        } while(! use_count_and_worker_id_.compare_exchange_strong(cur, next));
-        if(cnt == 0) {
-            return true;
-        }
-        worker_index = wid;
-        return false;
-    }
+    /**
+     * @brief check worker is same as given index and increment use count if no worker is assigned or given worker index is same as one already assigned
+     * @param worker_index [in/out] the worker index to increment use count or assign. If this call returns false, already assigned worker index is returned.
+     * @return true if use count increment is successful (including the case when use count becomes 1 from 0 as new worker is assigned)
+     * @return false if use count increment is not successful (given worker_index is different from one already assigned)
+     */
+    bool increment_and_set_on_zero(std::uint32_t& worker_index);
 
-    bool decrement_and_clear_on_zero() {
-        std::size_t cur = use_count_and_worker_id_.load();
-        std::size_t next{};
-        std::uint32_t cnt = 0;
-        std::uint32_t wid = 0;
-        do {
-            cnt = upper(cur);
-            wid = lower(cur);
-            if (cnt == 1) {
-                wid = empty_worker;
-            }
-            next = cnt - 1;
-            next <<= 32U;
-            next |= wid;
-        } while(! use_count_and_worker_id_.compare_exchange_strong(cur, next));
-        return cnt == 1;
-    }
+    /**
+     * @brief decrement the use count for the currently assigned worker and un-assign if it reaches zero
+     * @return true use count reaches zero and worker is un-assigned
+     * @return false use count decremented, but didn't reach zero
+     */
+    bool decrement_and_clear_on_zero();
 
-    [[nodiscard]] std::uint32_t worker_id() const noexcept {
-        std::size_t cur = use_count_and_worker_id_.load();
-        return lower(cur);
-    }
-    [[nodiscard]] std::uint32_t use_count() const noexcept {
-        std::size_t cur = use_count_and_worker_id_.load();
-        return upper(cur);
-    }
+    /**
+     * @brief accessor to worker id
+     * @return worker id if it's already assigned
+     * @return `empty_worker` otherwise
+     */
+    [[nodiscard]] std::uint32_t worker_id() const noexcept;
+
+    /**
+     * @brief accessor assigned worker's use count
+     * @return use count of the assigned worker
+     * @return zero if no worker is assigned for this manager
+     */
+    [[nodiscard]] std::uint32_t use_count() const noexcept;
 
 private:
     std::atomic_size_t use_count_and_worker_id_{empty_worker & ((1UL << 32U)-1)};
@@ -164,13 +147,21 @@ public:
      */
     [[nodiscard]] kvs::database* database() const noexcept;
 
-    bool increment_worker_count(std::uint32_t& worker_index) {
-        return mgr_.increment_and_set_on_zero(worker_index);
-    }
+    /**
+     * @brief check worker is same as given index and increment use count if no worker is assigned or given worker index is same as one already assigned
+     * @param worker_index [in/out] the worker index to increment use count or assign. If this call returns false, already assigned worker index is returned.
+     * @return true if use count increment is successful (including the case when use count becomes 1 from 0 as new worker is assigned)
+     * @return false if use count increment is not successful (given worker_index is different from one already assigned)
+     */
+    bool increment_worker_count(std::uint32_t& worker_index);
 
-    bool decrement_worker_count() {
-        return mgr_.decrement_and_clear_on_zero();
-    }
+    /**
+     * @brief decrement the use count for the currently assigned worker and un-assign if it reaches zero
+     * @return true use count reaches zero and worker is un-assigned
+     * @return false use count decremented, but didn't reach zero
+     */
+    bool decrement_worker_count();
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};

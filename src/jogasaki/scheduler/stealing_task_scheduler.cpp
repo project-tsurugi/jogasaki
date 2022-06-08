@@ -42,21 +42,21 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     auto& rctx = *t.req_context();
     auto& jctx = *rctx.job();
     auto idx = jctx.index().load();
-    if (idx == job_context::undefined_index) {
-        if(auto& tctx = rctx.transaction(); tctx && t.sticky()) {
-            std::uint32_t preferred_worker(scheduler_.preferred_worker_for_current_thread());
-            if(tctx->increment_worker_count(preferred_worker)) {
-                scheduler_.schedule(std::move(t));
-                return;
-            }
-            // other task is already scheduled to use the tx. schedule at the same worker.
-            scheduler_.schedule_at(std::move(t), preferred_worker);
-            return;
-        }
-        scheduler_.schedule(std::move(t));
+    if (idx != job_context::undefined_index) {
+        scheduler_.schedule_at(std::move(t), idx);
         return;
     }
-    scheduler_.schedule_at(std::move(t), idx);
+    if(auto& tctx = rctx.transaction(); tctx && t.sticky()) {
+        std::uint32_t preferred_worker(scheduler_.preferred_worker_for_current_thread());
+        while(true) {
+            if(tctx->increment_worker_count(preferred_worker)) {
+                scheduler_.schedule_at(std::move(t), preferred_worker);
+                return;
+            }
+            // other task is already scheduled to use the tx. continue loop and schedule at the same worker.
+        }
+    }
+    scheduler_.schedule(std::move(t));
 }
 
 void stealing_task_scheduler::wait_for_progress(job_context& ctx) {

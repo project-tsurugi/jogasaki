@@ -15,9 +15,13 @@
  */
 #include "transaction_context.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/kvs/database.h>
 
 namespace jogasaki {
+
+using takatori::util::fail;
 
 transaction_context::transaction_context(std::shared_ptr<kvs::transaction> transaction) :
     transaction_(std::move(transaction)),
@@ -64,8 +68,70 @@ kvs::database* transaction_context::database() const noexcept {
     return transaction_->database();
 }
 
+bool transaction_context::increment_worker_count(uint32_t& worker_index) {
+    return mgr_.increment_and_set_on_zero(worker_index);
+}
+
+bool transaction_context::decrement_worker_count() {
+    return mgr_.decrement_and_clear_on_zero();
+}
+
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction> arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
+}
+
+bool details::worker_manager::increment_and_set_on_zero(uint32_t& worker_index) {
+    std::size_t cur = use_count_and_worker_id_.load();
+    std::size_t next{};
+    std::uint32_t cnt = 0;
+    std::uint32_t wid = 0;
+    do {
+        cnt = upper(cur);
+        wid = lower(cur);
+        if (cnt == 0) {
+            wid = worker_index;
+        }
+        if (wid != worker_index) {
+            worker_index = wid;
+            return false;
+        }
+        next = cnt + 1;
+        next <<= 32U;
+        next |= wid;
+    } while (! use_count_and_worker_id_.compare_exchange_strong(cur, next));
+    return true;
+}
+
+bool details::worker_manager::decrement_and_clear_on_zero() {
+    std::size_t cur = use_count_and_worker_id_.load();
+    std::size_t next{};
+    std::uint32_t cnt = 0;
+    std::uint32_t wid = 0;
+    do {
+        cnt = upper(cur);
+        if (cnt == 0) {
+            // just ignore
+            return true;
+        }
+        wid = lower(cur);
+        if (cnt == 1) {
+            wid = empty_worker;
+        }
+        next = cnt - 1;
+        next <<= 32U;
+        next |= wid;
+    } while (! use_count_and_worker_id_.compare_exchange_strong(cur, next));
+    return cnt == 1;
+}
+
+std::uint32_t details::worker_manager::worker_id() const noexcept {
+    std::size_t cur = use_count_and_worker_id_.load();
+    return lower(cur);
+}
+
+std::uint32_t details::worker_manager::use_count() const noexcept {
+    std::size_t cur = use_count_and_worker_id_.load();
+    return upper(cur);
 }
 }
 

@@ -235,7 +235,7 @@ private:
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;
     std::string db_location_{};
-    bool tasked_write_ = false;
+    bool tasked_write_ = true;
     bool scheduler_rr_workers_ = false;
     bool lazy_worker_ = false;
     bool activate_scheduler_ = true;

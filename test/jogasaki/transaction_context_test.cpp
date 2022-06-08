@@ -36,6 +36,13 @@ TEST_F(transaction_context_test, basic) {
         std::uint32_t my_worker = 200;
         EXPECT_FALSE(mgr.increment_and_set_on_zero(my_worker));
         EXPECT_EQ(100, mgr.worker_id());
+        EXPECT_EQ(1, mgr.use_count());
+        EXPECT_EQ(100, my_worker);
+    }
+    {
+        std::uint32_t my_worker = 100;
+        EXPECT_TRUE(mgr.increment_and_set_on_zero(my_worker));
+        EXPECT_EQ(100, mgr.worker_id());
         EXPECT_EQ(2, mgr.use_count());
         EXPECT_EQ(100, my_worker);
     }

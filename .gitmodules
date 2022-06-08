@@ -7,12 +7,6 @@
 [submodule "third_party/sharksfin"]
 	path = third_party/sharksfin
 	url = git@github.com:project-tsurugi/sharksfin.git
-[submodule ".github/actions/tsurugi-annotations-action"]
-	path = .github/actions/tsurugi-annotations-action
-	url = git@github.com:project-tsurugi/tsurugi-annotations-action.git
-[submodule ".github/actions/tsurugi-slack-action"]
-	path = .github/actions/tsurugi-slack-action
-	url = git@github.com:project-tsurugi/tsurugi-slack-action.git
 [submodule "third_party/performance-tools"]
 	path = third_party/performance-tools
 	url = git@github.com:project-tsurugi/sandbox-performance-tools.git

@@ -31,15 +31,15 @@ std::atomic_size_t& job_context::task_count() noexcept {
     return job_tasks_;
 }
 
-std::atomic_size_t& job_context::index() noexcept {
-    return index_;
+std::atomic_size_t& job_context::preferred_worker_index() noexcept {
+    return preferred_worker_index_;
 }
 
 void job_context::reset() noexcept {
     completion_latch_.reset();
     completing_.store(false);
     job_tasks_.store(0);
-    index_.store(undefined_index);
+    preferred_worker_index_.store(undefined_index);
 }
 
 void job_context::callback(job_context::job_completion_callback callback) noexcept {

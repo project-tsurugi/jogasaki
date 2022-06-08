@@ -66,10 +66,11 @@ public:
     [[nodiscard]] std::atomic_size_t& task_count() noexcept;
 
     /**
-     * @brief accessor for the atomic task counter used to check the number of remaining tasks
-     * @return atomic task counter
+     * @brief accessor for the preference worker of this job
+     * @return the preferred worker id
+     * @return `undefined_index` if it's not set
      */
-    [[nodiscard]] std::atomic_size_t& index() noexcept;
+    [[nodiscard]] std::atomic_size_t& preferred_worker_index() noexcept;
 
     /**
      * @brief reset the job context mutable variables to re-use
@@ -99,7 +100,7 @@ private:
     utils::latch completion_latch_{};
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};
-    cache_align std::atomic_size_t index_{undefined_index};
+    cache_align std::atomic_size_t preferred_worker_index_{undefined_index};
     job_completion_callback callback_{};
 
     static inline std::atomic_size_t id_src_{0};

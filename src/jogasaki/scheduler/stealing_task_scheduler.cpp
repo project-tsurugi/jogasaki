@@ -41,7 +41,7 @@ std::size_t determine_worker(transaction_context const& tx, std::size_t worker_c
 void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     auto& rctx = *t.req_context();
     auto& jctx = *rctx.job();
-    auto idx = jctx.index().load();
+    auto idx = jctx.preferred_worker_index().load();
     if (idx != job_context::undefined_index) {
         scheduler_.schedule_at(std::move(t), idx);
         return;

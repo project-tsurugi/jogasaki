@@ -30,7 +30,7 @@ using takatori::util::fail;
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(log_trace) << *this << " bootstrap task executed.";
     trace_scope_name("bootstrap");  //NOLINT
-    job()->index().store(ctx.index());
+    job()->preferred_worker_index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_, *req_context_);
@@ -100,7 +100,7 @@ void flat_task::finish_job() {
 
 void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
     auto job_completes = execute(ctx);
-    auto idx = job()->index().load();
+    auto idx = job()->preferred_worker_index().load();
     if (idx == job_context::undefined_index) {
         if(auto& tctx = req_context_->transaction(); tctx && sticky_) {
             tctx->decrement_worker_count();

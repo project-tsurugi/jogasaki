@@ -155,5 +155,21 @@ TEST_F(value_test, bool) {
         ASSERT_FALSE(v.ref<bool>());
     }
 }
+
+TEST_F(value_test, string) {
+    data::value v{};
+    ASSERT_FALSE(v);
+    ASSERT_TRUE(v.empty());
+    v = data::value{std::in_place_type<std::string>, "ABC"};
+    ASSERT_TRUE(v);
+    ASSERT_FALSE(v.empty());
+    ASSERT_EQ("ABC", v.ref<std::string>());
+
+    auto a = v.view();
+    auto t = a.to<accessor::text>();
+    // static_cast to sv requires accessor::text lvalue as sv can reference SSO'ed data in accessor::text.
+    auto sv = static_cast<std::string_view>(t);
+    ASSERT_EQ("ABC", sv);
+}
 }
 

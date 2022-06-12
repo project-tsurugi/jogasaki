@@ -77,6 +77,9 @@ public:
      */
     bool operator()();
 
+    std::atomic_size_t& run_count() noexcept {
+        return running_statements_;
+    }
 private:
     std::vector<std::string> files_{};
     request_context* rctx_{};

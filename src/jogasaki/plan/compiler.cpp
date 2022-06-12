@@ -467,7 +467,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
             target,
             os.value_offset(),
             os.nullity_offset(),
-            e.value()
+            e.as_any()
         );
     }
     return vars;

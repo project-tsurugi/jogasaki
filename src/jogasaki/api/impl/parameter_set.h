@@ -38,6 +38,9 @@ public:
     void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) override;
     void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) override;
 
+    void set_reference_column(std::string_view name, std::size_t position) override;
+    void set_reference_column(std::string_view name, std::string_view column_name) override;
+
     void set_null(std::string_view name) override;
 
     [[nodiscard]] parameter_set* clone() const& override;

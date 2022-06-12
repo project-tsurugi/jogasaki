@@ -39,6 +39,14 @@ void parameter_set::set_character(std::string_view name, field_type_traits<kind:
     body_->set_character(name, accessor::text{const_cast<char*>(value.data()), value.size()});
 }
 
+void parameter_set::set_reference_column(std::string_view name, std::size_t position) {
+    body_->set_reference_column(name, position);
+}
+
+void parameter_set::set_reference_column(std::string_view name, std::string_view column_name) {
+    body_->set_reference_column(name, column_name);
+}
+
 void parameter_set::set_null(std::string_view name) {
     body_->set_null(name);
 }

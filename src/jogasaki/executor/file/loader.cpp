@@ -69,11 +69,12 @@ std::unordered_map<std::string, parameter> create_mapping(
     ret.reserve(body->size());
     for(auto&& [name, e ] : *body) {
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
-            ret[name] = parameter{host_variable_type(*vinfo, name), std::any_cast<std::size_t>(e.value())};
+            ret[name] = parameter{host_variable_type(*vinfo, name), e.as_any().to<std::size_t>()};
             continue;
         }
         if(e.type().kind() == meta::field_type_kind::reference_column_name) {
-            auto referenced = std::any_cast<std::string>(e.value());
+            auto t = e.as_any().to<accessor::text>();
+            auto referenced = static_cast<std::string_view>(t);
             auto idx = meta.field_index(referenced);
             if(idx == meta::external_record_meta::undefined) {
                 fail();
@@ -112,7 +113,11 @@ bool loader::operator()() {
         for(std::size_t i=0; i < slots; ++i) {
             // read records, assign host variables, submit tasks
             auto ps = std::shared_ptr<api::parameter_set>{parameters_->clone()};
-            if(! reader_ && next_file_ != files_.end()) {
+            if(! reader_) {
+                if(next_file_ == files_.end()) {
+                    // reading all files completed
+                    break;
+                }
                 reader_ = parquet_reader::open(*next_file_);
                 ++next_file_;
                 if(! reader_) {

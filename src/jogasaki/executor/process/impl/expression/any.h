@@ -45,7 +45,8 @@ public:
         std::int64_t,
         float,
         double,
-        accessor::text
+        accessor::text,
+        std::size_t
     >;
 
     /**

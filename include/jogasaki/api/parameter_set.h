@@ -49,6 +49,9 @@ public:
     virtual void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) = 0;
     virtual void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) = 0;
 
+    virtual void set_reference_column(std::string_view name, std::size_t position) = 0;
+    virtual void set_reference_column(std::string_view name, std::string_view column_name) = 0;
+
     /**
      * @brief setter for the nullity of the placeholder
      * @param name the name of the placeholder without colon

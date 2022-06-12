@@ -44,7 +44,8 @@ public:
         std::int64_t,
         float,
         double,
-        std::string
+        std::string,
+        std::size_t
     >;
 
     /**

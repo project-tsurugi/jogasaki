@@ -65,6 +65,24 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
     );
 }
 
+void parameter_set::set_reference_column(std::string_view name, std::size_t position) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::reference_column_position>},
+            data::value{std::in_place_type<std::size_t>, position}
+        }
+    );
+}
+
+void parameter_set::set_reference_column(std::string_view name, std::string_view column_name) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::reference_column_name>},
+            data::value{std::in_place_type<std::string>, column_name}
+        }
+    );
+}
+
 void parameter_set::set_null(std::string_view name) {
     add(std::string(name),
         {

@@ -15,6 +15,7 @@
  */
 #include <jogasaki/executor/file/loader.h>
 
+#include <xmmintrin.h>
 #include <gtest/gtest.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 
@@ -27,6 +28,8 @@ namespace jogasaki::executor::file {
 
 using kind = meta::field_type_kind;
 using accessor::text;
+
+using namespace std::chrono_literals;
 
 class loader_test :
     public ::testing::Test,
@@ -41,6 +44,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->single_thread(true);
         db_setup(cfg);
         auto* impl = db_impl();
         temporary_.prepare();
@@ -85,11 +89,12 @@ TEST_F(loader_test, simple) {
 
     auto ps = api::create_parameter_set();
     ps->set_float8("p1", 10.0);
+    ps->set_reference_column("p0", "C0");
     auto trans = utils::create_transaction(*db_);
 
     auto* tx = reinterpret_cast<api::impl::transaction*>(trans->get());
     auto request_ctx = tx->create_request_context(
-        nullptr,
+        nullptr, //channel not needed for load
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
     loader ldr{
@@ -102,6 +107,11 @@ TEST_F(loader_test, simple) {
     };
 
     ldr();
+    while(ldr.run_count() != 0) {
+        _mm_pause();
+    }
+    std::this_thread::sleep_for(2000ms);
+    trans->commit();
 }
 
 }

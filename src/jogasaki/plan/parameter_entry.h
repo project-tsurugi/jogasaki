@@ -50,7 +50,8 @@ public:
     );
 
     [[nodiscard]] meta::field_type const& type() const noexcept;
-    [[nodiscard]] any value() const noexcept;
+    [[nodiscard]] data::value const& value() const noexcept;
+    [[nodiscard]] any as_any() const noexcept;
 
 private:
     meta::field_type type_{};

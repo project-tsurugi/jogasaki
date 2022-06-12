@@ -101,6 +101,45 @@ transaction::transaction(
     ))
 {}
 
+status transaction::execute(
+    api::prepared_statement const& prepared,
+    api::parameter_set const& parameters
+) {
+    std::unique_ptr<api::result_set> result{};
+    return execute(prepared, parameters, result);
+}
+
+status transaction::execute(
+    api::prepared_statement const& prepared,
+    api::parameter_set const& parameters,
+    std::unique_ptr<api::result_set>& result
+) {
+    check_async_execution();
+    auto& ts = scheduler_.get_task_scheduler();
+    auto job = std::make_shared<scheduler::job_context>();
+    job->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
+    std::shared_ptr<request_context> request_ctx{};
+    std::unique_ptr<data::result_store> store{};
+    std::unique_ptr<api::executable_statement> exec{};
+    ts.schedule_task(scheduler::flat_task{
+        scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap_resolving>,
+        job.get(),
+        prepared,
+        parameters,
+        *database_,
+        tx_,
+        request_ctx,
+        store,
+        exec
+    });
+    ts.wait_for_progress(*job);
+
+    result = std::make_unique<impl::result_set>(
+        std::move(store)
+    );
+    return request_ctx->status_code();
+}
+
 bool transaction::execute_async(maybe_shared_ptr<api::executable_statement> const& statement, transaction::callback on_completion) {
     return execute_async_common(statement, nullptr, std::move(on_completion));
 }

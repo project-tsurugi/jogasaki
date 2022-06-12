@@ -54,7 +54,19 @@ public:
     );
     impl::database& database();
 
+    status execute(
+        api::prepared_statement const& prepared,
+        api::parameter_set const& parameters
+    ) override;
+
+    status execute(
+        api::prepared_statement const& prepared,
+        api::parameter_set const& parameters,
+        std::unique_ptr<api::result_set>& result
+    ) override;
+
     bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion);
+
     bool execute_async(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,

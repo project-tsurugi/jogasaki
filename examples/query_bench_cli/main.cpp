@@ -47,6 +47,7 @@ DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all nu
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
+DEFINE_bool(consolidated_api, false, "Use consolidated execute() api that skips creating executable statement");  //NOLINT
 DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 DEFINE_bool(readonly, true, "Specify readonly option when creating transaction");  //NOLINT
@@ -144,6 +145,7 @@ static bool query(
     api::statement_handle& stmt,
     jogasaki::utils::xorshift_random32& rnd,
     std::size_t records,
+    bool consolidated_api,
     bool readonly,
     bool simple,
     std::size_t& result
@@ -160,7 +162,7 @@ static bool query(
     }
 
     std::unique_ptr<api::executable_statement> e{};
-    {
+    if (! consolidated_api) {
         trace_scope_name("resolve");  //NOLINT
         if(auto rc = db.resolve(stmt, std::shared_ptr{std::move(ps)}, e); rc != status::ok) {
             return false;
@@ -171,8 +173,14 @@ static bool query(
     std::unique_ptr<api::result_set> rs{};
     {
         trace_scope_name("execute");  //NOLINT
-        if(auto rc = tx->execute(*e, rs); rc != status::ok) {
-            return false;
+        if (! consolidated_api) {
+            if(auto rc = tx->execute(*e, rs); rc != status::ok) {
+                return false;
+            }
+        } else {
+            if(auto rc = tx->execute(stmt, *ps, rs); rc != status::ok) {
+                return false;
+            }
         }
     }
     {
@@ -246,7 +254,8 @@ static int run(
     std::size_t duration,
     std::int64_t queries,
     std::size_t clients,
-    std::size_t records
+    std::size_t records,
+    bool consolidated_api
 ) {
     auto env = jogasaki::api::create_environment();
     cfg->prepare_benchmark_tables(true);
@@ -301,7 +310,7 @@ static int run(
                 start.count_down_and_wait();
                 jogasaki::utils::xorshift_random32 rnd{static_cast<std::uint32_t>(123456+i)};
                 while((queries == -1 && !stop) || (queries != -1 && count < queries)) {
-                    if(auto res = query(*db, stmt, rnd, records, FLAGS_readonly, simple, result); !res) {
+                    if(auto res = query(*db, stmt, rnd, records, consolidated_api, FLAGS_readonly, simple, result); !res) {
                         LOG(ERROR) << "query error";
                         std::abort();
                     }
@@ -363,7 +372,8 @@ extern "C" int main(int argc, char* argv[]) {
             FLAGS_duration,
             queries,
             clients,
-            FLAGS_records
+            FLAGS_records,
+            FLAGS_consolidated_api
         );  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;

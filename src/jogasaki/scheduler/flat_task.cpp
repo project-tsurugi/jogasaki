@@ -25,6 +25,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/execute.h>
 
 namespace jogasaki::scheduler {
 
@@ -80,6 +81,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             return false;
         }
         case kind::write: write(); return true;
+        case kind::load: load(); return true;
     }
     fail();
 }

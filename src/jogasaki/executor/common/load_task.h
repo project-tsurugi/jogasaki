@@ -59,32 +59,6 @@ public:
 
     [[nodiscard]] model::task_result operator()() override {
         // read records from file
-        std::unique_ptr<api::executable_statement> statement{};
-        db_->resolve(prepared_, parameters_, statement);
-        auto shared = shared_from_this();
-        ++count_;
-        tx_->execute_async(std::shared_ptr{std::move(statement)},
-            [&, shared](status st, std::string_view msg){
-                (void)shared;
-                (void)st;
-                (void)msg;
-                if(count_ < 10) {
-                    auto& ts = *context_->scheduler();
-//                    ts.register_job(context_->job());
-                    ts.schedule_task(scheduler::flat_task{
-                        scheduler::task_enum_tag<scheduler::flat_task_kind::wrapped>,
-                        context_,
-                        std::make_shared<executor::common::load_task>(
-                            context_,
-                            prepared_,
-                            parameters_,
-                            db_,
-                            tx_
-                        )
-                    });
-                }
-            }
-        );
         return model::task_result::complete;
     }
 protected:

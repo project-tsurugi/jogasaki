@@ -25,6 +25,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/common.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/load_context.h>
 #include "thread_params.h"
 
 namespace jogasaki::api::impl {
@@ -42,6 +43,7 @@ enum class flat_task_kind : std::size_t {
     dag_events,
     bootstrap,
     teardown,
+    load,
     write,
     resolve,
 };
@@ -59,6 +61,7 @@ enum class flat_task_kind : std::size_t {
         case kind::dag_events: return "dag_events"sv;
         case kind::bootstrap: return "bootstrap"sv;
         case kind::teardown: return "teardown"sv;
+        case kind::load: return "load"sv;
         case kind::write: return "write"sv;
         case kind::resolve: return "resolve"sv;
     }
@@ -197,6 +200,22 @@ public:
     ) noexcept;
 
     /**
+     * @brief construct new object to load
+     * @param rctx the request context where the task belongs
+     * @param rctx the request context where the task belongs
+     */
+    flat_task(
+        task_enum_tag_t<flat_task_kind::load>,
+        request_context* rctx,
+        std::shared_ptr<load_context> lctx
+    ) noexcept :
+        kind_(flat_task_kind::load),
+        req_context_(rctx),
+        load_context_(std::move(lctx)),
+        sticky_(false)
+    {}
+
+    /**
      * @brief getter for type kind
      */
     [[nodiscard]] constexpr flat_task_kind kind() const noexcept {
@@ -252,6 +271,7 @@ private:
     executor::common::write* write_{};
     bool sticky_{};
     std::shared_ptr<statement_context> sctx_{};
+    std::shared_ptr<load_context> load_context_{};
 
     /**
      * @return true if job completes together with the task
@@ -270,6 +290,9 @@ private:
     void resolve(tateyama::api::task_scheduler::context& ctx);
 
     void write();
+    void load() {
+
+    }
     void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {

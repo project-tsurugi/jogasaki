@@ -18,6 +18,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
@@ -89,6 +90,12 @@ public:
         std::string_view directory,
         callback on_completion,
         std::size_t max_records_per_file = undefined
+    );
+
+    bool execute_load(
+        api::statement_handle prepared,
+        maybe_shared_ptr<api::parameter_set const> parameters,
+        callback on_completion
     );
 
 private:

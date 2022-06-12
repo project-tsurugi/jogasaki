@@ -819,6 +819,25 @@ void service::execute_load(
     for(auto&& f : files) {
         LOG(INFO) << "load processing file: " << f;
     }
+    BOOST_ASSERT(! q.has_sql());  //NOLINT
+    jogasaki::api::statement_handle statement{q.sid()};
+    if(auto rc = reinterpret_cast<api::impl::transaction*>(tx.get())->execute_load(  //NOLINT
+        statement,
+            directory,
+            [cbp, this](status s, std::string_view message){
+                if (s == jogasaki::status::ok) {
+                    details::success<sql::response::ResultOnly>(*cbp->response_);
+                } else {
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                }
+                if(! callbacks_.erase(cbp->id_)) {
+                    fail();
+                }
+            }
+        ); ! rc) {
+        // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
+        fail();
+    }
     details::success<sql::response::ResultOnly>(*res);
 }
 

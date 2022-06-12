@@ -30,6 +30,7 @@
 #include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
+#include <jogasaki/executor/common/load_task.h>
 
 namespace jogasaki::api::impl {
 
@@ -275,6 +276,56 @@ bool transaction::execute_context(
     sched.schedule(*e->operators(), *rctx);
     on_completion(rctx->status_code(), rctx->status_message());
     ts.unregister_job(job->id());
+    return true;
+}
+
+bool transaction::execute_load(
+    api::statement_handle prepared,
+    maybe_shared_ptr<api::parameter_set const> parameters,
+    transaction::callback on_completion
+) {
+    (void)prepared;
+    (void)parameters;
+    auto& c = database_->configuration();
+    auto rctx = std::make_shared<request_context>(
+        c,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        database_->kvs_db(),
+        tx_,
+        database_->sequence_manager()
+    );
+    rctx->scheduler(database_->scheduler());
+    rctx->stmt_scheduler(
+        std::make_shared<scheduler::statement_scheduler>(
+            database_->configuration(),
+            *database_->task_scheduler()
+        )
+    );
+    rctx->storage_provider(database_->tables());
+
+    std::size_t cpu = sched_getcpu();
+    auto job = std::make_shared<scheduler::job_context>(cpu);
+    rctx->job(maybe_shared_ptr{job.get()});
+    job->callback([on_completion, rctx](){  // callback is copy-based
+        on_completion(rctx->status_code(), rctx->status_message());
+    });
+
+    auto& ts = *rctx->scheduler();
+    ts.register_job(job);
+    ts.schedule_task(scheduler::flat_task{
+        scheduler::task_enum_tag<scheduler::flat_task_kind::wrapped>,
+        rctx.get(),
+        std::make_shared<executor::common::load_task>(
+            rctx.get(),
+            prepared,
+            parameters,
+            database_,
+            this
+        )
+    });
+    if(ts.kind() == scheduler::task_scheduler_kind::serial) {
+        ts.wait_for_progress(*job);
+    }
     return true;
 }
 

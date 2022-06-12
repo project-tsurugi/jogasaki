@@ -114,7 +114,7 @@ struct statement_context {
     callback callback_{};
 };
 
-void submit_teardown(request_context& req_context);
+void submit_teardown(request_context& req_context, bool force = false);
 
 /**
  * @brief common task object

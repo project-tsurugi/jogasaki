@@ -72,9 +72,11 @@ void stealing_task_scheduler::wait_for_progress(job_context* ctx) {
         acc->second->completion_latch().wait();
         return;
     }
-    decltype(job_contexts_)::accessor acc{};
-    for(auto&& j : job_contexts_) {
-        j.second->completion_latch().wait();
+
+    // this is for testing purpose
+    // empty() is not thread safe or 100% accurate under concurrency modification
+    while(! job_contexts_.empty()) {
+        _mm_pause();
     }
     DVLOG(log_trace) << "wait_for_progress completed";
 }

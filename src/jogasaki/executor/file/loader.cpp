@@ -22,6 +22,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/impl/parameter_set.h>
+#include <jogasaki/api/impl/prepared_statement.h>
 
 namespace jogasaki::executor::file {
 
@@ -45,10 +46,44 @@ loader::loader(
     next_file_(files_.begin())
 {}
 
-struct parameter {
-    meta::field_type_kind type_{};
-    std::size_t index_{};
-};
+meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
+    if (! vinfo.exists(name)) {
+        fail();
+    }
+    auto idx = vinfo.at(name).index();
+    return vinfo.meta()->at(idx).kind();
+}
+
+std::unordered_map<std::string, parameter> create_mapping(
+    api::parameter_set const& ps,
+    api::statement_handle prepared,
+    meta::external_record_meta const& meta
+) {
+    std::unordered_map<std::string, parameter> ret{};
+    auto& impl = static_cast<api::impl::parameter_set const&>(ps);
+    auto body = impl.body();
+
+    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get());
+    auto vinfo = stmt->body()->mirrors()->host_variable_info();
+
+    ret.reserve(body->size());
+    for(auto&& [name, e ] : *body) {
+        if(e.type().kind() == meta::field_type_kind::reference_column_position) {
+            ret[name] = parameter{host_variable_type(*vinfo, name), std::any_cast<std::size_t>(e.value())};
+            continue;
+        }
+        if(e.type().kind() == meta::field_type_kind::reference_column_name) {
+            auto referenced = std::any_cast<std::string>(e.value());
+            auto idx = meta.field_index(referenced);
+            if(idx == meta::external_record_meta::undefined) {
+                fail();
+            }
+            ret[name] = parameter{host_variable_type(*vinfo, name), idx};
+            continue;
+        }
+    }
+    return ret;
+}
 
 void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, parameter> const& mapping) {
     auto& impl = static_cast<api::impl::parameter_set&>(ps);
@@ -86,6 +121,11 @@ bool loader::operator()() {
                 }
             }
 
+            if (! meta_) {
+                meta_ = reader_->meta();
+                mapping_ = create_mapping(*parameters_, prepared_, *meta_);
+            }
+
             accessor::record_ref ref{};
             if(! reader_->next(ref)) {
                 reader_->close();
@@ -93,7 +133,7 @@ bool loader::operator()() {
                 continue;
             }
 
-            set_parameter(*ps, ref, {});
+            set_parameter(*ps, ref, mapping_);
 
             tx_->execute_async(prepared_,
                 std::move(ps),

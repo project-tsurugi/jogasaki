@@ -68,6 +68,8 @@ public:
     void set_float8(std::string_view name, runtime_t<kind::float8> value);
     void set_character(std::string_view name, runtime_t<kind::character> value);
 
+    void set_reference_column(std::string_view name, std::size_t position);
+    void set_reference_column(std::string_view name, std::string_view column_name);
     /**
      * @brief nullity setter functions for placeholder
      * @param name the place-holder name without colon at the beginning

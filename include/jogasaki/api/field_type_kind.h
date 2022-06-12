@@ -47,6 +47,8 @@ enum class field_type_kind : std::size_t {
     declared,
     extension,
     pointer, // for internal use
+    reference_column_position,
+    reference_column_name,
 };
 
 /**
@@ -81,6 +83,8 @@ enum class field_type_kind : std::size_t {
         case kind::declared: return "declared"sv;
         case kind::extension: return "extension"sv;
         case kind::pointer: return "pointer"sv;
+        case kind::reference_column_position: return "reference_column_position"sv;
+        case kind::reference_column_name: return "reference_column_name"sv;
     }
     std::abort();
 }

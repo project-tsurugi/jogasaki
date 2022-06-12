@@ -79,6 +79,10 @@ void copy_field(
         case k::extension:
             break;
         case k::pointer: target.set_value(target_offset, source.get_value<runtime_t<k::pointer>>(source_offset)); return;
+        case k::reference_column_position:
+            break;
+        case k::reference_column_name:
+            break;
     }
     fail();
 }
@@ -151,6 +155,10 @@ void copy_field(
         case k::extension:
             break;
         case k::pointer:
+            fail();
+        case k::reference_column_position:
+            fail();
+        case k::reference_column_name:
             fail();
     }
     fail();

@@ -62,6 +62,9 @@ public:
     /// @brief the nullity offset table type
     using nullity_offset_table_type = record_meta::nullity_offset_table_type;
 
+    /// @brief the constant to indicate field index is not defined
+    constexpr static field_index_type undefined = static_cast<field_index_type>(-1);
+
     /**
      * @brief construct empty object
      */
@@ -154,6 +157,13 @@ public:
      */
     [[nodiscard]] std::optional<std::string_view> field_name(field_index_type index) const noexcept;
 
+    /**
+     * @brief find field index by field name
+     * @param name the field name to search
+     * @return the field index
+     * @return undefined if not found
+     */
+    [[nodiscard]] field_index_type field_index(std::string_view name) const noexcept;
     /**
      * @brief appends string representation of the given value.
      * @param out the target output

@@ -44,13 +44,16 @@ public:
      * @brief create new object
      * @param value_offset offset of the value
      * @param nullity_offset nullity offset of the value
+     * @param index field index in the record
      */
     constexpr value_info(
         std::size_t value_offset,
-        std::size_t nullity_offset
+        std::size_t nullity_offset,
+        std::size_t index
     ) noexcept :
         value_offset_(value_offset),
-        nullity_offset_(nullity_offset)
+        nullity_offset_(nullity_offset),
+        index_(index)
     {}
 
     /**
@@ -65,9 +68,18 @@ public:
      */
     [[nodiscard]] std::size_t nullity_offset() const noexcept;
 
+    /**
+     * @brief index of the field in the target record or record_meta
+     * @return field index
+     */
+    [[nodiscard]] std::size_t index() const noexcept {
+        return index_;
+    }
+
 private:
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
+    std::size_t index_{};
 };
 
 /**

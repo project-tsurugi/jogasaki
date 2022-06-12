@@ -199,12 +199,12 @@ TEST_F(join_test, simple) {
     auto tmeta = tgt.record_meta();
     variable_table_info block_info{
         {
-            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), } },
-            { g0v1, { tmeta->value_offset(1), tmeta->nullity_offset(1), } },
-            { g0v2, { tmeta->value_offset(2), tmeta->nullity_offset(2), } },
-            { g1v0, { tmeta->value_offset(3), tmeta->nullity_offset(3), } },
-            { g1v1, { tmeta->value_offset(4), tmeta->nullity_offset(4), } },
-            { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), } },
+            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), 0} },
+            { g0v1, { tmeta->value_offset(1), tmeta->nullity_offset(1), 1} },
+            { g0v2, { tmeta->value_offset(2), tmeta->nullity_offset(2), 2} },
+            { g1v0, { tmeta->value_offset(3), tmeta->nullity_offset(3), 3} },
+            { g1v1, { tmeta->value_offset(4), tmeta->nullity_offset(4), 4} },
+            { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), 5} },
         },
         tmeta,
     };

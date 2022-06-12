@@ -33,6 +33,11 @@ namespace executor::file {
 
 using takatori::util::maybe_shared_ptr;
 
+struct parameter {
+    meta::field_type_kind type_{};
+    std::size_t index_{};
+};
+
 /**
  * @brief context object for the job
  * @details this class represents context information in the scope of the job scheduling
@@ -86,8 +91,9 @@ private:
     api::impl::transaction* tx_{};
     std::size_t count_{0};
 
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
     decltype(files_)::const_iterator next_file_{};
-
+    std::unordered_map<std::string, parameter> mapping_{};
 };
 
 }

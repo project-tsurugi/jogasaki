@@ -88,5 +88,14 @@ external_record_meta::field_name(external_record_meta::field_index_type index) c
 maybe_shared_ptr<record_meta> const& external_record_meta::origin() noexcept {
     return record_meta_;
 }
+
+external_record_meta::field_index_type external_record_meta::field_index(std::string_view name) const noexcept {
+    for(std::size_t i=0, n=field_count(); i < n; ++i) {
+        if(field_names_[i] == name) {
+            return i;
+        }
+    }
+    return undefined;
+}
 } // namespace
 

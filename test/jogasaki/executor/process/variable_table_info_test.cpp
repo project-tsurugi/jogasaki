@@ -99,8 +99,8 @@ TEST_F(variable_table_info_test, basic) {
     auto v1 = f.stream_variable("v1");
     auto v2 = f.exchange_column("v2");
     variable_table_info::entity_type map{};
-    map[v1] = value_info{1, 1};
-    map[v2] = value_info{2,2};
+    map[v1] = value_info{1, 1, 0};
+    map[v2] = value_info{2,2, 1};
 
     auto rec = mock::create_nullable_record<kind::int1, kind::int1>();
     variable_table_info m{std::move(map), rec.record_meta()};
@@ -124,8 +124,8 @@ TEST_F(variable_table_info_test, table_column) {
     auto v1 = f.stream_variable("v1");
     auto v2 = f.table_column(cols[0]);
     variable_table_info::entity_type map{};
-    map[v1] = value_info{1, 1};
-    map[v2] = value_info{2,2};
+    map[v1] = value_info{1, 1, 0};
+    map[v2] = value_info{2, 2, 1};
 
     auto rec = mock::create_nullable_record<kind::int1, kind::int1>();
     variable_table_info m{std::move(map), rec.record_meta()};

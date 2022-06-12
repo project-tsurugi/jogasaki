@@ -77,7 +77,9 @@ public:
         std::shared_ptr<row_id_field_option>,
         std::shared_ptr<declared_field_option>,
         std::shared_ptr<extension_field_option>,
-        std::monostate // pointer (internal use)
+        std::monostate, // pointer (internal use)
+        std::monostate, // reference_column_position (internal use)
+        std::monostate // reference_column_name (internal use)
     >;
 
     /**
@@ -282,6 +284,8 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
         case kind::declared: return impl::eq<kind::declared>()(a, b);
         case kind::extension: return impl::eq<kind::extension>()(a, b);
         case kind::pointer: return true; // internal fields are ignored on comparison
+        case kind::reference_column_name: return true; // internal fields are ignored on comparison
+        case kind::reference_column_position: return true; // internal fields are ignored on comparison
         default:
             return true;
     }

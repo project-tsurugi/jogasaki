@@ -54,7 +54,7 @@ variable_table_info::entity_type from_indices(
 ) {
     variable_table_info::entity_type map{};
     for(auto&& [v, i] : indices) {
-        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i)};
+        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i};
     }
     return map;
 }

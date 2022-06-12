@@ -35,40 +35,45 @@ transaction_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
+api::impl::transaction* tx(std::uintptr_t arg) {
+    return reinterpret_cast<api::impl::transaction*>(arg);
+}
+
 status transaction_handle::commit() {  //NOLINT(readability-make-member-function-const)
-    return reinterpret_cast<api::impl::transaction*>(body_)->commit();  //NOLINT
+    return tx(body_)->commit();  //NOLINT
 }
 
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
-    return reinterpret_cast<api::impl::transaction*>(body_)->abort();  //NOLINT
+    return tx(body_)->abort();  //NOLINT
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
     std::unique_ptr<api::result_set> result{};
-    return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement, result);  //NOLINT
+    return tx(body_)->execute(statement, result);  //NOLINT
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
-    return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement, result);  //NOLINT
+    return tx(body_)->execute(statement, result);  //NOLINT
 }
 
 status transaction_handle::execute(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<result_set>& result) {
-    return reinterpret_cast<api::impl::transaction*>(body_)->execute(prepared, std::move(parameters), result);  //NOLINT
+    return tx(body_)->execute(prepared, std::move(parameters), result);  //NOLINT
 }
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     transaction_handle::callback on_completion) {
-    return reinterpret_cast<api::impl::transaction*>(body_)->execute_async(  //NOLINT
+    return tx(body_)->execute_async(  //NOLINT
         statement,
+        nullptr,
         std::move(on_completion)
     );
 }
 
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<data_channel> const& channel, transaction_handle::callback on_completion) {
-    return reinterpret_cast<api::impl::transaction*>(body_)->execute_async(  //NOLINT
+    return tx(body_)->execute_async(  //NOLINT
         statement,
         channel,
         std::move(on_completion)

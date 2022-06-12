@@ -99,6 +99,10 @@ public:
         callback on_completion
     );
 
+    std::shared_ptr<request_context> create_request_context(
+        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        std::shared_ptr<memory::lifo_paged_memory_resource> resource
+    );
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
@@ -108,11 +112,6 @@ private:
         maybe_shared_ptr<executor::io::record_channel> const& channel,
         callback on_completion,  //NOLINT(performance-unnecessary-value-param)
         bool sync
-    );
-
-    std::shared_ptr<request_context> create_request_context(
-        maybe_shared_ptr<executor::io::record_channel> const& channel,
-        std::shared_ptr<memory::lifo_paged_memory_resource> resource
     );
 
 };

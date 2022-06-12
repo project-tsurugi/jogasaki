@@ -134,8 +134,8 @@ bool transaction::execute_async(
             std::move(on_completion)
         )
     });
-    if(ts.kind() == scheduler::task_scheduler_kind::serial || sync) {
-        ts.wait_for_progress(*request_ctx->job());
+    if(sync) {
+        ts.wait_for_progress(request_ctx->job().get());
     }
     return true;
 
@@ -246,8 +246,8 @@ bool transaction::execute_context(
             rctx.get(),
             g
         });
-        if(ts.kind() == scheduler::task_scheduler_kind::serial || sync) {
-            ts.wait_for_progress(*job);
+        if(sync) {
+            ts.wait_for_progress(job.get());
         }
         return true;
     }
@@ -265,8 +265,8 @@ bool transaction::execute_context(
             rctx.get(),
             stmt,
         });
-        if(ts.kind() == scheduler::task_scheduler_kind::serial || sync) {
-            ts.wait_for_progress(*job);
+        if(sync) {
+            ts.wait_for_progress(job.get());
         }
         return true;
     }
@@ -297,16 +297,12 @@ bool transaction::execute_load(
         rctx.get(),
         std::make_shared<executor::file::loader>(
             std::move(files),
-            rctx.get(),
             prepared,
             parameters,
             database_,
             this
         )
     });
-    if(ts.kind() == scheduler::task_scheduler_kind::serial) {
-        ts.wait_for_progress(*rctx->job());
-    }
     return true;
 }
 

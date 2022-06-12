@@ -69,7 +69,13 @@ std::unordered_map<std::string, parameter> create_mapping(
     ret.reserve(body->size());
     for(auto&& [name, e ] : *body) {
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
-            ret[name] = parameter{host_variable_type(*vinfo, name), e.as_any().to<std::size_t>()};
+            auto idx = e.as_any().to<std::size_t>();
+            ret[name] = parameter{
+                host_variable_type(*vinfo, name),
+                idx,
+                meta.value_offset(idx),
+                meta.nullity_offset(idx)
+            };
             continue;
         }
         if(e.type().kind() == meta::field_type_kind::reference_column_name) {
@@ -79,7 +85,12 @@ std::unordered_map<std::string, parameter> create_mapping(
             if(idx == meta::external_record_meta::undefined) {
                 fail();
             }
-            ret[name] = parameter{host_variable_type(*vinfo, name), idx};
+            ret[name] = parameter{
+                host_variable_type(*vinfo, name),
+                idx,
+                meta.value_offset(idx),
+                meta.nullity_offset(idx)
+            };
             continue;
         }
     }
@@ -90,17 +101,17 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
     auto& impl = static_cast<api::impl::parameter_set&>(ps);
     auto body = impl.body();
     for(auto&& [name, param] : mapping) {
-        if(ref.is_null(param.index_)) {
+        if(ref.is_null(param.nullity_offset_)) {
             body->set_null(name);
             continue;
         }
         using kind = meta::field_type_kind;
         switch(param.type_) {
-            case meta::field_type_kind::int4: body->set_int4(name, ref.get_value<runtime_t<kind::int4>>(param.index_)); break;
-            case meta::field_type_kind::int8: body->set_int8(name, ref.get_value<runtime_t<kind::int8>>(param.index_)); break;
-            case meta::field_type_kind::float4: body->set_float4(name, ref.get_value<runtime_t<kind::float4>>(param.index_)); break;
-            case meta::field_type_kind::float8: body->set_float8(name, ref.get_value<runtime_t<kind::float8>>(param.index_)); break;
-            case meta::field_type_kind::character: body->set_character(name, ref.get_value<runtime_t<kind::character>>(param.index_)); break;
+            case meta::field_type_kind::int4: body->set_int4(name, ref.get_value<runtime_t<kind::int4>>(param.value_offset_)); break;
+            case meta::field_type_kind::int8: body->set_int8(name, ref.get_value<runtime_t<kind::int8>>(param.value_offset_)); break;
+            case meta::field_type_kind::float4: body->set_float4(name, ref.get_value<runtime_t<kind::float4>>(param.value_offset_)); break;
+            case meta::field_type_kind::float8: body->set_float8(name, ref.get_value<runtime_t<kind::float8>>(param.value_offset_)); break;
+            case meta::field_type_kind::character: body->set_character(name, ref.get_value<runtime_t<kind::character>>(param.value_offset_)); break;
             default: fail();
         }
     }

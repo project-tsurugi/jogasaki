@@ -44,7 +44,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(true);
+        cfg->single_thread(false);
         db_setup(cfg);
         auto* impl = db_impl();
         temporary_.prepare();
@@ -65,16 +65,17 @@ public:
 TEST_F(loader_test, simple) {
     boost::filesystem::path p{path()};
     p = p / "simple.parquet";
-    auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    auto rec0 = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    auto rec1 = mock::create_nullable_record<kind::int8, kind::float8>(20, 200.0);
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
-            rec.record_meta(),
+            rec0.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
     ), p.string());
     ASSERT_TRUE(writer);
 
-    writer->write(rec.ref());
-    writer->write(rec.ref());
+    writer->write(rec0.ref());
+    writer->write(rec1.ref());
     writer->close();
     ASSERT_LT(0, boost::filesystem::file_size(p));
 
@@ -88,7 +89,7 @@ TEST_F(loader_test, simple) {
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, prepared));
 
     auto ps = api::create_parameter_set();
-    ps->set_float8("p1", 10.0);
+    ps->set_float8("p1", 1000.0);
     ps->set_reference_column("p0", "C0");
     auto trans = utils::create_transaction(*db_);
 
@@ -110,8 +111,17 @@ TEST_F(loader_test, simple) {
     while(ldr.run_count() != 0) {
         _mm_pause();
     }
-    std::this_thread::sleep_for(2000ms);
+    std::this_thread::sleep_for(100ms);
     trans->commit();
+
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,1000.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(20,1000.0)), result[1]);
+    }
+
 }
 
 }

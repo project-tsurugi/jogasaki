@@ -36,6 +36,8 @@ using takatori::util::maybe_shared_ptr;
 struct parameter {
     meta::field_type_kind type_{};
     std::size_t index_{};
+    std::size_t value_offset_{};
+    std::size_t nullity_offset_{};
 };
 
 /**

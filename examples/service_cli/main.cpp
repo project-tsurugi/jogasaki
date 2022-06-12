@@ -700,11 +700,12 @@ private:
             }
             auto type = types.at(name);
             switch (type) {
-                case sql::common::AtomType::INT4: parameters.emplace_back(name, type, to_value<std::int32_t>(val)); break;
-                case sql::common::AtomType::INT8: parameters.emplace_back(name, type, to_value<std::int64_t>(val)); break;
-                case sql::common::AtomType::FLOAT4: parameters.emplace_back(name, type, to_value<float>(val)); break;
-                case sql::common::AtomType::FLOAT8: parameters.emplace_back(name, type, to_value<double>(val)); break;
-                case sql::common::AtomType::CHARACTER: parameters.emplace_back(name, type, to_value<std::string>(val)); break;
+                using ValueCase = sql::request::Parameter::ValueCase;
+                case sql::common::AtomType::INT4: parameters.emplace_back(name, ValueCase::kInt4Value, to_value<std::int32_t>(val)); break;
+                case sql::common::AtomType::INT8: parameters.emplace_back(name, ValueCase::kInt8Value, to_value<std::int64_t>(val)); break;
+                case sql::common::AtomType::FLOAT4: parameters.emplace_back(name, ValueCase::kFloat4Value, to_value<float>(val)); break;
+                case sql::common::AtomType::FLOAT8: parameters.emplace_back(name, ValueCase::kFloat8Value, to_value<double>(val)); break;
+                case sql::common::AtomType::CHARACTER: parameters.emplace_back(name, ValueCase::kCharacterValue, to_value<std::string>(val)); break;
                 default:
                     std::cerr << "invalid type" << std::endl;
                     return false;

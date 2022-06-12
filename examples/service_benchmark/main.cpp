@@ -86,6 +86,7 @@ using takatori::util::unsafe_downcast;
 
 using clock = std::chrono::high_resolution_clock;
 namespace sql = jogasaki::proto::sql;
+using ValueCase = sql::request::Parameter::ValueCase;
 
 struct result_info {
     std::int64_t transactions_{};
@@ -381,9 +382,9 @@ public:
                 res = issue_common(false,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"no_o_id", sql::common::AtomType::INT8, id},
-                        {"no_d_id", sql::common::AtomType::INT8, static_cast<int64_t>(1)},
-                        {"no_w_id", sql::common::AtomType::INT8, static_cast<int64_t>(client+1)},
+                        {"no_o_id", ValueCase::kInt8Value, id},
+                        {"no_d_id", ValueCase::kInt8Value, static_cast<int64_t>(1)},
+                        {"no_w_id", ValueCase::kInt8Value, static_cast<int64_t>(client+1)},
                     },
                     {}
                 );
@@ -397,9 +398,9 @@ public:
                 res = issue_common(false,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"s_quantity", sql::common::AtomType::FLOAT8, static_cast<double>(seed.rnd_())}, //NOLINT
-                        {"s_i_id", sql::common::AtomType::INT8, id},
-                        {"s_w_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(client+1)},
+                        {"s_quantity", ValueCase::kFloat8Value, static_cast<double>(seed.rnd_())}, //NOLINT
+                        {"s_i_id", ValueCase::kInt8Value, id},
+                        {"s_w_id", ValueCase::kInt8Value, static_cast<std::int64_t>(client+1)},
                     },
                     {}
                 );
@@ -412,8 +413,8 @@ public:
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"d_w_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(client+1)},
-                        {"d_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(id)},
+                        {"d_w_id", ValueCase::kInt8Value, static_cast<std::int64_t>(client+1)},
+                        {"d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(id)},
                     },
                     [&](std::string_view data) {
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};
@@ -430,8 +431,8 @@ public:
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"no_d_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(1)},
-                        {"no_w_id", sql::common::AtomType::INT8, static_cast<std::int64_t>(client+1)},
+                        {"no_d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(1)},
+                        {"no_w_id", ValueCase::kInt8Value, static_cast<std::int64_t>(client+1)},
                     },
                     [&](std::string_view data) {
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};

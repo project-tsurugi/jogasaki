@@ -27,48 +27,53 @@
 
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/aligned_buffer.h>
 
-namespace jogasaki::utils {
+namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief parquet file writer
  */
-class parquet_writer {
+class parquet_reader {
 public:
     /**
      * @brief create new object
-     * @param meta record meta with column names
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta);
+    parquet_reader() = default;
 
     /**
      * @brief write the record
-     * @param ref the record reference written by the writer
+     * @param ref [out] the record reference read by the writer
      * @return true when successful
      * @return false otherwise
      */
-    bool write(accessor::record_ref ref);
+    bool next(accessor::record_ref& ref);
 
     /**
-     * @brief close the writer and finish the output file
+     * @brief close the reader
      * @return true when successful
      * @return false otherwise
      */
     bool close();
 
     /**
-     * @brief accessor to the written file path
+     * @brief accessor to the read file path
      */
     [[nodiscard]] std::string path() const noexcept;
 
     /**
      * @brief accessor to the number of successful write
      */
-    [[nodiscard]] std::size_t write_count() const noexcept;
+    [[nodiscard]] std::size_t read_count() const noexcept;
+
+    /**
+     * @brief accessor to the metadata derived from the parquet schema definition
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta();
 
     /**
      * @brief factory function to construct the new parquet_writer object
@@ -77,23 +82,24 @@ public:
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
+    static std::shared_ptr<parquet_reader> open(std::string_view path);
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
-    std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
-    std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
-    std::vector<parquet::ColumnWriter*> column_writers_{};
-    boost::filesystem::path path_{};
-    std::size_t write_count_{};
+    std::unique_ptr<parquet::ParquetFileReader> file_reader_{};
+    std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
+    std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
 
-    std::shared_ptr<parquet::schema::GroupNode> create_schema();
-    void write_int4(std::size_t colidx, std::int32_t v, bool null = false);
-    void write_int8(std::size_t colidx, std::int64_t v, bool null = false);
-    void write_float4(std::size_t colidx, float v, bool null = false);
-    void write_float8(std::size_t colidx, double v, bool null = false);
-    void write_character(std::size_t colidx, accessor::text v, bool null = false);
+    boost::filesystem::path path_{};
+    std::size_t read_count_{};
+
+    std::unordered_map<std::string, std::size_t> column_name_to_index_{};
+    std::unordered_map<std::size_t, std::size_t> external_to_parquet_column_index_{};
+
+    data::aligned_buffer buf_{};
+
     bool init(std::string_view path);
 };
+
 
 }

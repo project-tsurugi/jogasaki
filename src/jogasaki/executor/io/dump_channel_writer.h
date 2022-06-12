@@ -22,7 +22,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/api/data_channel.h>
-#include <jogasaki/utils/parquet_writer.h>
+#include <jogasaki/executor/file/parquet_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 
 namespace jogasaki::executor::io {
@@ -83,7 +83,7 @@ public:
 private:
     dump_channel* parent_{};
     maybe_shared_ptr<record_writer> writer_{};
-    std::shared_ptr<utils::parquet_writer> parquet_writer_{};
+    std::shared_ptr<file::parquet_writer> parquet_writer_{};
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};
     dump_cfg cfg_{};

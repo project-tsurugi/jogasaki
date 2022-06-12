@@ -60,7 +60,7 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         auto fn = create_file_name(parent_->prefix());
         boost::filesystem::path p(std::string{parent_->directory()});
         p = p / fn;
-        parquet_writer_ = utils::parquet_writer::open(parent_->meta(), p.string());
+        parquet_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
         if (! parquet_writer_) {
             VLOG(log_error) << "parquet file creation failed on path " << p.string();
             return false;

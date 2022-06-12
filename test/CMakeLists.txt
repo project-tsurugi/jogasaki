@@ -50,6 +50,7 @@ file(GLOB SRCS
         "jogasaki/data/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"
+        "jogasaki/executor/file/*.cpp"
         "jogasaki/executor/process/*.cpp"
         "jogasaki/executor/process/ops/*.cpp"
         "jogasaki/executor/aggregate/*.cpp"

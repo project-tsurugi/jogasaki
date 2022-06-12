@@ -30,7 +30,6 @@
 #include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
-#include <jogasaki/executor/common/load_task.h>
 
 namespace jogasaki::api::impl {
 
@@ -282,40 +281,22 @@ bool transaction::execute_context(
 bool transaction::execute_load(
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
+    std::vector<std::string> files,
     transaction::callback on_completion
 ) {
-    (void)prepared;
-    (void)parameters;
-    auto& c = database_->configuration();
-    auto rctx = std::make_shared<request_context>(
-        c,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
-        database_->kvs_db(),
-        tx_,
-        database_->sequence_manager()
+    auto rctx = create_request_context(
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
-    rctx->scheduler(database_->scheduler());
-    rctx->stmt_scheduler(
-        std::make_shared<scheduler::statement_scheduler>(
-            database_->configuration(),
-            *database_->task_scheduler()
-        )
-    );
-    rctx->storage_provider(database_->tables());
-
-    std::size_t cpu = sched_getcpu();
-    auto job = std::make_shared<scheduler::job_context>(cpu);
-    rctx->job(maybe_shared_ptr{job.get()});
-    job->callback([on_completion, rctx](){  // callback is copy-based
+    rctx->job()->callback([on_completion, rctx](){  // callback is copy-based
         on_completion(rctx->status_code(), rctx->status_message());
     });
-
     auto& ts = *rctx->scheduler();
-    ts.register_job(job);
     ts.schedule_task(scheduler::flat_task{
-        scheduler::task_enum_tag<scheduler::flat_task_kind::wrapped>,
+        scheduler::task_enum_tag<scheduler::flat_task_kind::load>,
         rctx.get(),
-        std::make_shared<executor::common::load_task>(
+        std::make_shared<executor::file::loader>(
+            std::move(files),
             rctx.get(),
             prepared,
             parameters,
@@ -324,7 +305,7 @@ bool transaction::execute_load(
         )
     });
     if(ts.kind() == scheduler::task_scheduler_kind::serial) {
-        ts.wait_for_progress(*job);
+        ts.wait_for_progress(*rctx->job());
     }
     return true;
 }

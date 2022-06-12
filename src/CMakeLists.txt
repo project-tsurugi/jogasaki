@@ -12,6 +12,7 @@ file(GLOB SOURCES
         "jogasaki/data/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/common/*.cpp"
+        "jogasaki/executor/file/*.cpp"
         "jogasaki/executor/io/*.cpp"
         "jogasaki/executor/process/*.cpp"
         "jogasaki/executor/process/impl/*.cpp"

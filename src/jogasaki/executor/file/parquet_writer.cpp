@@ -29,7 +29,7 @@
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 
-namespace jogasaki::utils {
+namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 

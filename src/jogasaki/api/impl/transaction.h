@@ -95,6 +95,7 @@ public:
     bool execute_load(
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
+        std::vector<std::string> files,
         callback on_completion
     );
 

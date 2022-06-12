@@ -81,7 +81,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             return false;
         }
         case kind::write: write(); return true;
-        case kind::load: load(); return true;
+        case kind::load: return load();
     }
     fail();
 }

@@ -812,18 +812,22 @@ void service::execute_load(
     jogasaki::api::transaction_handle tx,
     std::vector<std::string> const& files
 ) {
-    // mock implementation TODO
-    (void) res;
-    (void) q;
-    (void) tx;
     for(auto&& f : files) {
         LOG(INFO) << "load processing file: " << f;
     }
     BOOST_ASSERT(! q.has_sql());  //NOLINT
     jogasaki::api::statement_handle statement{q.sid()};
+
+    auto c = std::make_shared<callback_control>(res);
+    auto* cbp = c.get();
+    auto cid = c->id_;
+    if(! callbacks_.emplace(cid, std::move(c))) {
+        fail();
+    }
     if(auto rc = reinterpret_cast<api::impl::transaction*>(tx.get())->execute_load(  //NOLINT
-        statement,
-            directory,
+            statement,
+            q.params(),
+            files,
             [cbp, this](status s, std::string_view message){
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_);

@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/parquet_writer.h>
+#include <jogasaki/executor/file/parquet_writer.h>
 
 #include <gtest/gtest.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 
 #include <jogasaki/mock/basic_record.h>
 
-namespace jogasaki::utils {
+namespace jogasaki::executor::file {
 
 using kind = meta::field_type_kind;
 using accessor::text;
@@ -52,10 +52,12 @@ TEST_F(parquet_writer_test, simple) {
     ), p.string());
     ASSERT_TRUE(writer);
 
-    writer->write(rec.ref());
-    writer->write(rec.ref());
-    writer->write(rec.ref());
-    writer->close();
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
+    EXPECT_EQ(p.string(), writer->path());
+    EXPECT_EQ(3, writer->write_count());
 
     ASSERT_LT(0, boost::filesystem::file_size(p));
 }
@@ -71,12 +73,36 @@ TEST_F(parquet_writer_test, basic_types1) {
         ), p.string());
     ASSERT_TRUE(writer);
 
-    writer->write(rec.ref());
-    writer->write(rec.ref());
-    writer->write(rec.ref());
-    writer->close();
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
 
     ASSERT_LT(0, boost::filesystem::file_size(p));
+}
+
+TEST_F(parquet_writer_test, wrong_path) {
+    // directory already exists on the specified path
+    boost::filesystem::path p{path()};
+    auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string());
+    ASSERT_FALSE(writer);
+}
+
+TEST_F(parquet_writer_test, wrong_path2) {
+    // no permission to write
+    boost::filesystem::path p{"/dummy.parquet"};
+    auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string());
+    ASSERT_FALSE(writer);
 }
 }
 

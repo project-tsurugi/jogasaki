@@ -285,12 +285,7 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
         case step_state_kind::deactivated:
             if(all_steps_deactivated(*graph_)) {
                 graph_deactivated_ = true;
-
-                // make sure teardown task is submitted only once
-                auto completing = job().completing().load();
-                if (!completing && job().completing().compare_exchange_strong(completing, true)) {
-                    executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, request_context_.get()});
-                }
+                submit_teardown(*request_context_);
             }
             break;
     }

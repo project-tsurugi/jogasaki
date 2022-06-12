@@ -19,6 +19,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/impl/parameter_set.h>
@@ -135,7 +136,8 @@ bool loader::operator()() {
             ++next_file_;
             if(! reader_) {
                 // error handling TODO
-                fail();
+                VLOG(log_error) << "opening parquet file failed.";
+                return false;
             }
         }
 

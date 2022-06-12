@@ -114,6 +114,8 @@ struct statement_context {
     callback callback_{};
 };
 
+void submit_teardown(request_context& req_context);
+
 /**
  * @brief common task object
  * @details The task object used commonly for the jogasaki::scheduler::task_scheduler.
@@ -290,8 +292,10 @@ private:
     void resolve(tateyama::api::task_scheduler::context& ctx);
 
     void write();
-    bool load() {
-        return (*loader_)();
+    void load() {
+        if (! (*loader_)()) {
+            submit_teardown(*req_context_);
+        }
     }
     void finish_job();
 
@@ -301,5 +305,6 @@ private:
     }
 
 };
+
 
 }

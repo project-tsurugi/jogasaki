@@ -50,13 +50,22 @@ void flat_task::dag_schedule() {
     dc.process_internal_events();
 }
 
+void submit_teardown(request_context& req_context) {
+    // make sure teardown task is submitted only once
+    auto& ts = *req_context.scheduler();
+    auto& job = *req_context.job();
+    auto completing = job.completing().load();
+    if (!completing && job.completing().compare_exchange_strong(completing, true)) {
+        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(req_context)});
+    }
+}
+
 bool flat_task::teardown() {
     DVLOG(log_trace) << *this << " teardown task executed.";
     trace_scope_name("teardown");  //NOLINT
-    auto& ts = *req_context_->scheduler();
     if (job()->task_count() > 1) {
         DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
-        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_.get()});
+        submit_teardown(*req_context_);
         return false;
     }
     return true;
@@ -66,6 +75,7 @@ void flat_task::write() {
     DVLOG(log_trace) << *this << " write task executed.";
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
+    submit_teardown(*req_context_);
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
@@ -80,8 +90,8 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             while((*origin_)() == model::task_result::proceed) {}
             return false;
         }
-        case kind::write: write(); return true;
-        case kind::load: return load();
+        case kind::write: write(); return false;
+        case kind::load: load(); return false;
     }
     fail();
 }
@@ -113,8 +123,8 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
             tctx->decrement_worker_count();
         }
     }
+    --job()->task_count();
     if(! job_completes) {
-        --job()->task_count();
         return;
     }
     finish_job();

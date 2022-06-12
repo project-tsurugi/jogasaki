@@ -93,7 +93,9 @@ public:
         while((*ldr)()) {
             _mm_pause();
         }
-        std::this_thread::sleep_for(100ms);
+        while(ldr->run_count() > 0) {
+            _mm_pause();
+        }
         trans->commit();
     }
 };

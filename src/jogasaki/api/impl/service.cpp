@@ -848,7 +848,6 @@ void service::execute_load(
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();
     }
-    details::success<sql::response::ResultOnly>(*res);
 }
 
 

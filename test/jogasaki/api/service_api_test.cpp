@@ -984,6 +984,14 @@ TEST_F(service_api_test, execute_dump_load) {
     }
     LOG(INFO) << "dump files: " << ss.str();
     test_load(files);
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 ORDER BY C0", result);
+        ASSERT_EQ(10, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1,10.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,100.0)), result[9]);
+    }
 }
 
 void service_api_test::test_load(std::vector<std::string> const& files) {

@@ -39,6 +39,7 @@ any value::view() const {
         case index<float>: return any{std::in_place_type<float>, ref<float>()};
         case index<double>: return any{std::in_place_type<double>, ref<double>()};
         case index<std::string>: return any{std::in_place_type<accessor::text>, accessor::text{ref<std::string>()}};
+        case index<std::size_t>: return any{std::in_place_type<std::size_t>, ref<std::size_t>()};
         default: fail();
     }
     fail();

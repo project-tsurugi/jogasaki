@@ -46,9 +46,8 @@ struct parameter {
  */
 class cache_align loader {
 public:
-    constexpr static std::size_t undefined_index = static_cast<std::size_t>(-1);
 
-    using job_completion_callback = std::function<void(void)>;
+    constexpr static std::size_t default_bulk_size = 10000;
 
     /**
      * @brief create default context object
@@ -67,10 +66,10 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::database* db,
-        api::impl::transaction* tx
+        api::impl::transaction* tx,
+        std::size_t bulk_size = default_bulk_size
     ) noexcept;
 
-    constexpr static std::size_t bulk_size = 100;
 
     /**
      * @brief
@@ -81,6 +80,10 @@ public:
 
     std::atomic_size_t& run_count() noexcept {
         return running_statements_;
+    }
+
+    [[nodiscard]] std::size_t loaded_record_count() const noexcept {
+        return count_.load();
     }
 private:
     std::vector<std::string> files_{};
@@ -94,11 +97,13 @@ private:
 
     api::database* db_{};
     api::impl::transaction* tx_{};
-    std::size_t count_{0};
+    std::atomic_size_t count_{0};
 
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     decltype(files_)::const_iterator next_file_{};
     std::unordered_map<std::string, parameter> mapping_{};
+
+    std::size_t bulk_size_{};
 };
 
 }

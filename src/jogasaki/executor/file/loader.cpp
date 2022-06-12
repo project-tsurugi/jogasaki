@@ -35,7 +35,8 @@ loader::loader(
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     api::database* db,
-    api::impl::transaction* tx
+    api::impl::transaction* tx,
+    std::size_t bulk_size
 ) noexcept:
     files_(std::move(files)),
     rctx_(rctx),
@@ -43,7 +44,8 @@ loader::loader(
     parameters_(std::move(parameters)),
     db_(db),
     tx_(tx),
-    next_file_(files_.begin())
+    next_file_(files_.begin()),
+    bulk_size_(bulk_size)
 {}
 
 meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
@@ -98,70 +100,71 @@ std::unordered_map<std::string, parameter> create_mapping(
 }
 
 void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, parameter> const& mapping) {
-    auto& impl = static_cast<api::impl::parameter_set&>(ps);
-    auto body = impl.body();
+    auto pset = static_cast<api::impl::parameter_set&>(ps).body();
     for(auto&& [name, param] : mapping) {
         if(ref.is_null(param.nullity_offset_)) {
-            body->set_null(name);
+            pset->set_null(name);
             continue;
         }
         using kind = meta::field_type_kind;
         switch(param.type_) {
-            case meta::field_type_kind::int4: body->set_int4(name, ref.get_value<runtime_t<kind::int4>>(param.value_offset_)); break;
-            case meta::field_type_kind::int8: body->set_int8(name, ref.get_value<runtime_t<kind::int8>>(param.value_offset_)); break;
-            case meta::field_type_kind::float4: body->set_float4(name, ref.get_value<runtime_t<kind::float4>>(param.value_offset_)); break;
-            case meta::field_type_kind::float8: body->set_float8(name, ref.get_value<runtime_t<kind::float8>>(param.value_offset_)); break;
-            case meta::field_type_kind::character: body->set_character(name, ref.get_value<runtime_t<kind::character>>(param.value_offset_)); break;
+            case meta::field_type_kind::int4: pset->set_int4(name, ref.get_value<runtime_t<kind::int4>>(param.value_offset_)); break;
+            case meta::field_type_kind::int8: pset->set_int8(name, ref.get_value<runtime_t<kind::int8>>(param.value_offset_)); break;
+            case meta::field_type_kind::float4: pset->set_float4(name, ref.get_value<runtime_t<kind::float4>>(param.value_offset_)); break;
+            case meta::field_type_kind::float8: pset->set_float8(name, ref.get_value<runtime_t<kind::float8>>(param.value_offset_)); break;
+            case meta::field_type_kind::character: pset->set_character(name, ref.get_value<runtime_t<kind::character>>(param.value_offset_)); break;
             default: fail();
         }
     }
 }
 
 bool loader::operator()() {
-    auto slots = bulk_size - running_statements_;
-    if (slots > 0) {
-        ++count_;
-        for(std::size_t i=0; i < slots; ++i) {
-            // read records, assign host variables, submit tasks
-            auto ps = std::shared_ptr<api::parameter_set>{parameters_->clone()};
+    auto slots = bulk_size_ - running_statements_;
+    if (slots == 0) {
+        return true;
+    }
+    for(std::size_t i=0; i < slots; ++i) {
+        // read records, assign host variables, submit tasks
+        auto ps = std::shared_ptr<api::parameter_set>{parameters_->clone()};
+        if(! reader_) {
+            if(next_file_ == files_.end()) {
+                // reading all files completed
+                return false;
+            }
+            reader_ = parquet_reader::open(*next_file_);
+            ++next_file_;
             if(! reader_) {
-                if(next_file_ == files_.end()) {
-                    // reading all files completed
-                    break;
-                }
-                reader_ = parquet_reader::open(*next_file_);
-                ++next_file_;
-                if(! reader_) {
-                    // error handling TODO
-                    fail();
-                }
+                // error handling TODO
+                fail();
             }
-
-            if (! meta_) {
-                meta_ = reader_->meta();
-                mapping_ = create_mapping(*parameters_, prepared_, *meta_);
-            }
-
-            accessor::record_ref ref{};
-            if(! reader_->next(ref)) {
-                reader_->close();
-                reader_.reset();
-                continue;
-            }
-
-            set_parameter(*ps, ref, mapping_);
-
-            tx_->execute_async(prepared_,
-                std::move(ps),
-                nullptr,
-                [&](status st, std::string_view msg){
-                    (void)st;
-                    (void)msg;
-                    --running_statements_;
-                    // TODO error handling
-                }
-            );
         }
+
+        if (! meta_) {
+            meta_ = reader_->meta();
+            mapping_ = create_mapping(*parameters_, prepared_, *meta_);
+        }
+
+        accessor::record_ref ref{};
+        if(! reader_->next(ref)) {
+            reader_->close();
+            reader_.reset();
+            continue;
+        }
+
+        set_parameter(*ps, ref, mapping_);
+
+        ++running_statements_;
+        tx_->execute_async(prepared_,
+            std::move(ps),
+            nullptr,
+            [&](status st, std::string_view msg){
+                (void)st;
+                (void)msg;
+                --running_statements_;
+                ++count_;
+                // TODO error handling
+            }
+        );
     }
     return true;
 }

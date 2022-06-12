@@ -60,69 +60,109 @@ public:
     }
 
     test::temporary_folder temporary_{};  //NOLINT
+
+    void test_load(std::vector<std::string> const& files, std::shared_ptr<loader>& ldr, std::size_t bulk_size = 10000) {
+        auto* impl = db_impl();
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int8},
+            {"p1", api::field_type_kind::float8},
+        };
+        ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, prepared));
+
+        auto ps = api::create_parameter_set();
+        ps->set_float8("p1", 1000.0);
+        ps->set_reference_column("p0", "C0");
+        auto trans = utils::create_transaction(*db_);
+
+        auto* tx = reinterpret_cast<api::impl::transaction*>(trans->get());
+        auto request_ctx = tx->create_request_context(
+            nullptr, //channel not needed for load
+            std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+        );
+        ldr = std::make_shared<loader>(
+            files,
+            request_ctx.get(),
+            prepared,
+            std::shared_ptr{std::move(ps)},
+            db_.get(),
+            tx,
+            bulk_size
+        );
+
+        while((*ldr)()) {
+            _mm_pause();
+        }
+        std::this_thread::sleep_for(100ms);
+        trans->commit();
+    }
 };
+
+void create_test_file(boost::filesystem::path const& p, std::size_t record_count, std::size_t file_index) {
+    auto rec = mock::create_nullable_record<kind::int8, kind::float8>();
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+    for(std::size_t i=0; i< record_count; ++i) {
+        auto j = file_index*record_count + i;
+        auto rec = mock::create_nullable_record<kind::int8, kind::float8>(j*10, j*100.0);
+        writer->write(rec.ref());
+    }
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+}
 
 TEST_F(loader_test, simple) {
     boost::filesystem::path p{path()};
     p = p / "simple.parquet";
-    auto rec0 = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
-    auto rec1 = mock::create_nullable_record<kind::int8, kind::float8>(20, 200.0);
-    auto writer = parquet_writer::open(
-        std::make_shared<meta::external_record_meta>(
-            rec0.record_meta(),
-            std::vector<std::optional<std::string>>{"C0", "C1"}
-    ), p.string());
-    ASSERT_TRUE(writer);
-
-    writer->write(rec0.ref());
-    writer->write(rec1.ref());
-    writer->close();
-    ASSERT_LT(0, boost::filesystem::file_size(p));
-
-    auto* impl = db_impl();
-
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int8},
-        {"p1", api::field_type_kind::float8},
-    };
-    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, prepared));
-
-    auto ps = api::create_parameter_set();
-    ps->set_float8("p1", 1000.0);
-    ps->set_reference_column("p0", "C0");
-    auto trans = utils::create_transaction(*db_);
-
-    auto* tx = reinterpret_cast<api::impl::transaction*>(trans->get());
-    auto request_ctx = tx->create_request_context(
-        nullptr, //channel not needed for load
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
-    );
-    loader ldr{
-        std::vector<std::string>{p.string()},
-        request_ctx.get(),
-        prepared,
-        std::shared_ptr{std::move(ps)},
-        db_.get(),
-        tx
-    };
-
-    ldr();
-    while(ldr.run_count() != 0) {
-        _mm_pause();
-    }
-    std::this_thread::sleep_for(100ms);
-    trans->commit();
-
+    create_test_file(p, 2, 0);
+    std::shared_ptr<loader> ldr{};
+    test_load(std::vector<std::string>{p.string()}, ldr);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,1000.0)), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(20,1000.0)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(0,1000.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,1000.0)), result[1]);
     }
+    EXPECT_EQ(2, ldr->loaded_record_count());
 
 }
 
+TEST_F(loader_test, multiple_files) {
+    std::vector<std::string> files{};
+    for(std::size_t i=0; i < 10; ++i) {
+        boost::filesystem::path p0{path()};
+        p0 = p0 / (std::string{"multiple_files"}+std::to_string(i)+".parquet");
+        create_test_file(p0, 2, i);
+        files.emplace_back(p0.string());
+    }
+    std::shared_ptr<loader> ldr{};
+    test_load(files, ldr);
+
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(20, result.size());
+    }
+    EXPECT_EQ(20, ldr->loaded_record_count());
+}
+
+TEST_F(loader_test, multiple_read) {
+    boost::filesystem::path p{path()};
+    p = p / "multiple_read.parquet";
+    create_test_file(p, 10, 0);
+    std::shared_ptr<loader> ldr{};
+    test_load(std::vector<std::string>{p.string()}, ldr, 3);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(10, result.size());
+    }
+    EXPECT_EQ(10, ldr->loaded_record_count());
+}
 }
 

@@ -127,7 +127,7 @@ bool transaction::execute_async(
         request_ctx,
         std::make_shared<scheduler::statement_context>(
             prepared,
-            parameters,
+            std::move(parameters),
             database_,
             this,
             channel,
@@ -215,13 +215,13 @@ bool transaction::execute_internal(
         create_request_context(channel, s.resource()),
         statement,
         channel,
-        on_completion,
+        std::move(on_completion),
         sync
     );
 }
 
 bool transaction::execute_context(
-    std::shared_ptr<request_context> rctx,
+    std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
@@ -291,10 +291,10 @@ bool transaction::execute_load(
     auto ldr = std::make_shared<executor::file::loader>(
         std::move(files),
         prepared,
-        parameters,
+        std::move(parameters),
         this
     );
-    rctx->job()->callback([on_completion, rctx, ldr](){  // callback is copy-based
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based
         (void)ldr; // to keep ownership
         on_completion(rctx->status_code(), rctx->status_message());
     });

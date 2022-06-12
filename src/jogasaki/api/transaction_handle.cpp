@@ -56,13 +56,14 @@ status transaction_handle::execute(executable_statement& statement, std::unique_
     return tx(body_)->execute(statement, result);
 }
 
-status transaction_handle::execute(
+status transaction_handle::execute( //NOLINT
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<result_set>& result
 ) {
     return tx(body_)->execute(prepared, std::move(parameters), result);
 }
+
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     transaction_handle::callback on_completion) {
     return tx(body_)->execute_async(

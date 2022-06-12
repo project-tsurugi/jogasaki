@@ -116,12 +116,11 @@ bool transaction::execute_async(
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion
 ) {
+    auto request_ctx = create_request_context(
+        channel,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+    );
     auto& ts = *database_->task_scheduler();
-    auto job = std::make_shared<scheduler::job_context>();
-    ts.register_job(job);
-
-    auto request_ctx = create_request_context(channel);
-    request_ctx->job(job);
     ts.schedule_task(scheduler::flat_task{
         scheduler::task_enum_tag<scheduler::flat_task_kind::resolve>,
         request_ctx,
@@ -135,7 +134,7 @@ bool transaction::execute_async(
         )
     });
     if(ts.kind() == scheduler::task_scheduler_kind::serial) {
-        ts.wait_for_progress(*job);
+        ts.wait_for_progress(*request_ctx->job());
     }
     return true;
 
@@ -183,12 +182,13 @@ bool transaction::execute_dump(
     );
 }
 std::shared_ptr<request_context> transaction::create_request_context(
-    maybe_shared_ptr<executor::io::record_channel> const& channel
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource
 ) {
     auto& c = database_->configuration();
     auto rctx = std::make_shared<request_context>(
         c,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        std::move(resource),
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
@@ -202,6 +202,12 @@ std::shared_ptr<request_context> transaction::create_request_context(
         )
     );
     rctx->storage_provider(database_->tables());
+
+    auto job = std::make_shared<scheduler::job_context>();
+    rctx->job(maybe_shared_ptr{job.get()});
+
+    auto& ts = *database_->task_scheduler();
+    ts.register_job(job);
     return rctx;
 }
 
@@ -211,8 +217,9 @@ bool transaction::execute_common(
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
+    auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     return execute_common(
-        create_request_context(channel),
+        create_request_context(channel, s.resource()),
         statement,
         channel,
         on_completion,
@@ -229,12 +236,11 @@ bool transaction::execute_common(
 ) {
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     auto& e = s.body();
+    auto job = rctx->job();
+    auto& ts = *rctx->scheduler();
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        auto job = std::make_shared<scheduler::job_context>();
-        rctx->job(maybe_shared_ptr{job.get()});
-
         job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
@@ -242,8 +248,6 @@ bool transaction::execute_common(
             on_completion(rctx->status_code(), rctx->status_message());
         });
 
-        auto& ts = *rctx->scheduler();
-        ts.register_job(job);
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             rctx.get(),
@@ -257,16 +261,12 @@ bool transaction::execute_common(
     if(!e->is_ddl() && rctx->configuration()->tasked_write()) {
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
-        auto job = std::make_shared<scheduler::job_context>();
-        rctx->job(maybe_shared_ptr{job.get()});
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             on_completion(rctx->status_code(), rctx->status_message());
         });
 
-        auto& ts = *rctx->scheduler();
-        ts.register_job(job);
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
             rctx.get(),
@@ -281,6 +281,7 @@ bool transaction::execute_common(
     scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
     sched.schedule(*e->operators(), *rctx);
     on_completion(rctx->status_code(), rctx->status_message());
+    ts.unregister_job(job->id());
     return true;
 }
 

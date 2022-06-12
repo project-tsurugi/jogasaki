@@ -110,7 +110,8 @@ private:
     );
 
     std::shared_ptr<request_context> create_request_context(
-        maybe_shared_ptr<executor::io::record_channel> const& channel
+        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        std::shared_ptr<memory::lifo_paged_memory_resource> resource
     );
 
 };

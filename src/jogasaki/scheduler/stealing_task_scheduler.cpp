@@ -64,7 +64,11 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
 
 void stealing_task_scheduler::wait_for_progress(job_context& ctx) {
     DVLOG(log_trace) << "wait_for_progress begin";
-    ctx.completion_latch().wait();
+    decltype(job_contexts_)::accessor acc{};
+    if (! job_contexts_.find(acc, ctx.id())) {
+        return;
+    }
+    acc->second->completion_latch().wait();
     DVLOG(log_trace) << "wait_for_progress completed";
 }
 

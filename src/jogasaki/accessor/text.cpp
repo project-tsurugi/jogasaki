@@ -59,7 +59,7 @@ text::text(char const* data, text::size_type size) { //NOLINT
     l_ = long_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)
 }
 
-text::operator std::string_view() const noexcept {
+text::operator std::string_view() const& noexcept {
     if (is_short()) {
         return {s_.data(), s_.size()};  //NOLINT(cppcoreguidelines-pro-type-union-access)
     }
@@ -125,6 +125,11 @@ std::ostream& operator<<(std::ostream& out, text const& value) {
 }
 
 text::text(std::string_view str) : text(str.data(), str.size()) {}
+
+text::operator std::string() const noexcept {
+    auto t = static_cast<std::string_view>(*this);
+    return std::string{t};
+}
 
 text::long_text::long_text(char const* allocated_data, text::size_type size) noexcept
         : data_(allocated_data)

@@ -209,7 +209,7 @@ inline std::string any_to_string(expression::any const& any, meta::field_type ty
         case kind::int8: return std::to_string(any.to<std::int64_t>());
         case kind::float4: return std::to_string(any.to<float>());
         case kind::float8: return std::to_string(any.to<double>());
-        case kind::character: return std::string(1, '\'') + std::string(static_cast<std::string_view>(any.to<accessor::text>())) + std::string(1, '\'');
+        case kind::character: return std::string(1, '\'') + static_cast<std::string>(any.to<accessor::text>()) + std::string(1, '\'');
         default: break;
     }
     fail();

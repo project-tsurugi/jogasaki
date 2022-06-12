@@ -48,9 +48,11 @@ inline void print_field(
         case kind::float4: os << record.get_value<runtime_t<kind::float4>>(offset); break;
         case kind::float8: os << record.get_value<runtime_t<kind::float8>>(offset); break;
         case kind::decimal: os << record.get_value<runtime_t<kind::decimal>>(offset); break;
-        case kind::character:
-            os << static_cast<std::string_view>(record.get_value<runtime_t<kind::character>>(offset));
+        case kind::character: {
+            auto t = record.get_value<runtime_t<kind::character>>(offset);
+            os << static_cast<std::string_view>(t);
             break;
+        }
 //        case kind::bit: os << record.get_value<runtime_t<kind::bit>>(offset); break;
         case kind::date: os << record.get_value<runtime_t<kind::date>>(offset); break;
         case kind::time_of_day: os << record.get_value<runtime_t<kind::time_of_day>>(offset); break;

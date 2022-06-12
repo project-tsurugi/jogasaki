@@ -84,7 +84,7 @@ TEST_F(small_record_store_test, metadata_variation) {
     r.set(record.ref());
     EXPECT_EQ(2.0, r.ref().get_value<double>(c0_offset));
     EXPECT_EQ(2, r.ref().get_value<std::int32_t>(c1_offset));
-    EXPECT_EQ(str, static_cast<std::string_view>(r.ref().get_value<accessor::text>(c2_offset)));
+    EXPECT_EQ(str, static_cast<std::string>(r.ref().get_value<accessor::text>(c2_offset)));
     EXPECT_EQ(20, resource.total_bytes_allocated_);
 }
 

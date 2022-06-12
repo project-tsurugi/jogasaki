@@ -110,9 +110,23 @@ public:
     explicit text(const char (&data)[N]) : text(const_cast<char*>(data), N-1) {} //NOLINT
 
     /**
-     * @brief implicit conversion to string_view
+     * @brief implicit conversion to string_view with lvalue
+     * @warning casting to string_view works only with lvalue because string_view can reference
+     * SSO'ed data stored in the accessor::text.
      */
-    [[nodiscard]] explicit operator std::string_view() const noexcept;
+    [[nodiscard]] explicit operator std::string_view() const & noexcept;
+
+    /**
+     * @brief deleting implicit conversion to string_view with rvalue
+     * @warning this should not be used because string_view can reference SSO'ed data stored in the accessor::text.
+     */
+    [[nodiscard]] explicit operator std::string_view() && noexcept = delete;
+
+    /**
+     * @brief implicit conversion to string
+     * @warning this copies string data and is not very performant compared to casting to string_view
+     */
+    [[nodiscard]] explicit operator std::string() const noexcept;
 
     /**
      * @brief return whether the instance is in short format

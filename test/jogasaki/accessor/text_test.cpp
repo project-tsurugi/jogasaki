@@ -199,5 +199,24 @@ TEST_F(text_test, literal) {
     ASSERT_EQ(t2, t1);
 }
 
+TEST_F(text_test, cast) {
+    text t0{"123"};
+    EXPECT_EQ(3, t0.size());
+    EXPECT_TRUE(t0.is_short());
+    text t1{"123456789012345678901234567890"};
+    EXPECT_FALSE(t1.is_short());
+    mock_memory_resource resource;
+
+    EXPECT_EQ("123", static_cast<std::string_view>(t0));
+    EXPECT_EQ("123456789012345678901234567890", static_cast<std::string_view>(t1));
+
+    auto f0 = [=]() { return t0; };
+    auto f1 = [=]() { return t1; };
+
+//    EXPECT_EQ("123", static_cast<std::string_view>(f0())); // casting to string_view is allowed only for lvalue
+    EXPECT_EQ("123", static_cast<std::string>(f0())); // casting to string_view is allowed only for lvalue
+    EXPECT_EQ("123456789012345678901234567890", static_cast<std::string>(f1())); // casting to string_view is allowed only for lvalue
+
+}
 }
 

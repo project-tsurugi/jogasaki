@@ -80,7 +80,6 @@ public:
             files,
             prepared,
             std::shared_ptr{std::move(ps)},
-            db_.get(),
             tx,
             bulk_size
         );

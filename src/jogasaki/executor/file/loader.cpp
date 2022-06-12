@@ -34,14 +34,12 @@ loader::loader(
     std::vector<std::string> files,
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
-    api::database* db,
     api::impl::transaction* tx,
     std::size_t bulk_size
 ) noexcept:
     files_(std::move(files)),
     prepared_(prepared),
     parameters_(std::move(parameters)),
-    db_(db),
     tx_(tx),
     next_file_(files_.begin()),
     bulk_size_(bulk_size)
@@ -61,10 +59,10 @@ std::unordered_map<std::string, parameter> create_mapping(
     meta::external_record_meta const& meta
 ) {
     std::unordered_map<std::string, parameter> ret{};
-    auto& impl = static_cast<api::impl::parameter_set const&>(ps);
-    auto body = impl.body();
+    auto& impl = static_cast<api::impl::parameter_set const&>(ps);  //NOLINT
+    auto& body = impl.body();
 
-    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get());
+    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
     auto vinfo = stmt->body()->mirrors()->host_variable_info();
 
     ret.reserve(body->size());
@@ -99,7 +97,7 @@ std::unordered_map<std::string, parameter> create_mapping(
 }
 
 void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, parameter> const& mapping) {
-    auto pset = static_cast<api::impl::parameter_set&>(ps).body();
+    auto pset = static_cast<api::impl::parameter_set&>(ps).body();  //NOLINT
     for(auto&& [name, param] : mapping) {
         if(ref.is_null(param.nullity_offset_)) {
             pset->set_null(name);

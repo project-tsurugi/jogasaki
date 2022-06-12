@@ -292,7 +292,6 @@ bool transaction::execute_load(
         std::move(files),
         prepared,
         parameters,
-        database_,
         this
     );
     rctx->job()->callback([on_completion, rctx, ldr](){  // callback is copy-based

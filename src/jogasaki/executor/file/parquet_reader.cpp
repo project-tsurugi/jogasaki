@@ -37,7 +37,7 @@ template <class T, class Reader>
 T read_data(parquet::ColumnReader& reader, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
-    int16_t definition_level;
+    int16_t definition_level = 0;
     null = false;
     nodata = false;
     auto* r = static_cast<Reader*>(std::addressof(reader));
@@ -63,10 +63,10 @@ template <>
 accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::ColumnReader& reader, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
-    int16_t definition_level;
+    int16_t definition_level = 0;
     null = false;
     nodata = false;
-    auto* r = static_cast<parquet::ByteArrayReader*>(std::addressof(reader));
+    auto* r = static_cast<parquet::ByteArrayReader*>(std::addressof(reader));  //NOLINT
     if(! r->HasNext()) {
         nodata = true;
         return {};
@@ -80,7 +80,7 @@ accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::Colu
             return {};
         }
         if (values_read == 1) {
-            return accessor::text{reinterpret_cast<char const*>(value.ptr), value.len};
+            return accessor::text{reinterpret_cast<char const*>(value.ptr), value.len};  //NOLINT
         }
     }
     fail();

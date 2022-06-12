@@ -105,13 +105,13 @@ struct statement_context {
         callback_(std::move(cb))
     {}
 
-    api::statement_handle prepared_{};
-    std::shared_ptr<api::parameter_set const> parameters_{};
-    api::impl::database* database_{};
-    api::impl::transaction* tx_{};
-    std::unique_ptr<api::executable_statement> executable_statement_{};
-    maybe_shared_ptr<executor::io::record_channel> channel_{};
-    callback callback_{};
+    api::statement_handle prepared_{};  //NOLINT
+    std::shared_ptr<api::parameter_set const> parameters_{};  //NOLINT
+    api::impl::database* database_{};  //NOLINT
+    api::impl::transaction* tx_{};  //NOLINT
+    std::unique_ptr<api::executable_statement> executable_statement_{};  //NOLINT
+    maybe_shared_ptr<executor::io::record_channel> channel_{};  //NOLINT
+    callback callback_{};  //NOLINT
 };
 
 void submit_teardown(request_context& req_context, bool force = false);

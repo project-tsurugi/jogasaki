@@ -64,7 +64,6 @@ public:
         std::vector<std::string> files,
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
-        api::database* db,
         api::impl::transaction* tx,
         std::size_t bulk_size = default_bulk_size
     ) noexcept;
@@ -91,7 +90,6 @@ private:
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     std::shared_ptr<parquet_reader> reader_{};
-    api::database* db_{};
     api::impl::transaction* tx_{};
     std::atomic_size_t count_{0};
     maybe_shared_ptr<meta::external_record_meta> meta_{};

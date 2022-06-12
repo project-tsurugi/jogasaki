@@ -288,20 +288,22 @@ bool transaction::execute_load(
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
-    rctx->job()->callback([on_completion, rctx](){  // callback is copy-based
+    auto ldr = std::make_shared<executor::file::loader>(
+        std::move(files),
+        prepared,
+        parameters,
+        database_,
+        this
+    );
+    rctx->job()->callback([on_completion, rctx, ldr](){  // callback is copy-based
+        (void)ldr; // to keep ownership
         on_completion(rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
     ts.schedule_task(scheduler::flat_task{
         scheduler::task_enum_tag<scheduler::flat_task_kind::load>,
         rctx.get(),
-        std::make_shared<executor::file::loader>(
-            std::move(files),
-            prepared,
-            parameters,
-            database_,
-            this
-        )
+        std::move(ldr)
     });
     return true;
 }

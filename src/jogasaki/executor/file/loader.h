@@ -62,7 +62,6 @@ public:
 
     loader(
         std::vector<std::string> files,
-        request_context* rctx,
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::database* db,
@@ -72,9 +71,9 @@ public:
 
 
     /**
-     * @brief
-     * @return true if load completes
-     * @return false if there is more to load
+     * @brief submit load requests
+     * @return true if there is more load requests to submit
+     * @return false if all requests are already made
      */
     bool operator()();
 
@@ -85,24 +84,19 @@ public:
     [[nodiscard]] std::size_t loaded_record_count() const noexcept {
         return count_.load();
     }
+
 private:
     std::vector<std::string> files_{};
-    request_context* rctx_{};
     std::atomic_size_t running_statements_{};
-
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
-
     std::shared_ptr<parquet_reader> reader_{};
-
     api::database* db_{};
     api::impl::transaction* tx_{};
     std::atomic_size_t count_{0};
-
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     decltype(files_)::const_iterator next_file_{};
     std::unordered_map<std::string, parameter> mapping_{};
-
     std::size_t bulk_size_{};
 };
 

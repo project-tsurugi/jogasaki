@@ -64,7 +64,7 @@ bool flat_task::teardown() {
     DVLOG(log_trace) << *this << " teardown task executed.";
     trace_scope_name("teardown");  //NOLINT
     if (job()->task_count() > 1) {
-        DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
+        DVLOG(log_debug) << *this << " other " << job()->task_count() << " tasks remain and teardown is rescheduled.";
         submit_teardown(*req_context_);
         return false;
     }
@@ -124,6 +124,7 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
         }
     }
     --job()->task_count();
+    VLOG(log_debug) << "decremented job " << job()->id() << " task count to " << job()->task_count();
     if(! job_completes) {
         return;
     }
@@ -226,6 +227,19 @@ flat_task::flat_task(
     req_context_(rctx),
     sctx_(std::move(sctx))
 {}
+
+void flat_task::load() {
+    if ((*loader_)()) {
+        auto& ts = *req_context_->scheduler();
+        ts.schedule_task(flat_task{
+            task_enum_tag<flat_task_kind::load>,
+            req_context_.get(),
+            loader_
+        });
+        return;
+    }
+    submit_teardown(*req_context_);
+}
 
 }
 

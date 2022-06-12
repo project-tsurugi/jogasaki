@@ -587,6 +587,12 @@ void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Para
             case sql::request::Parameter::ValueCase::kCharacterValue:
                 params->set_character(p.name(), p.character_value());
                 break;
+            case sql::request::Parameter::ValueCase::kReferenceColumnPosition:
+                params->set_reference_column(p.name(), p.reference_column_position());
+                break;
+            case sql::request::Parameter::ValueCase::kReferenceColumnName:
+                params->set_reference_column(p.name(), p.reference_column_name());
+                break;
             default:
                 params->set_null(p.name());
                 break;

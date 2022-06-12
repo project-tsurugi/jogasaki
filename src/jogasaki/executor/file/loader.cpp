@@ -32,7 +32,6 @@ using takatori::util::fail;
 
 loader::loader(
     std::vector<std::string> files,
-    request_context* rctx,
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     api::database* db,
@@ -40,7 +39,6 @@ loader::loader(
     std::size_t bulk_size
 ) noexcept:
     files_(std::move(files)),
-    rctx_(rctx),
     prepared_(prepared),
     parameters_(std::move(parameters)),
     db_(db),

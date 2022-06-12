@@ -292,11 +292,7 @@ private:
     void resolve(tateyama::api::task_scheduler::context& ctx);
 
     void write();
-    void load() {
-        if (! (*loader_)()) {
-            submit_teardown(*req_context_);
-        }
-    }
+    void load();
     void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {

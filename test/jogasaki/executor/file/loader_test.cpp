@@ -76,13 +76,8 @@ public:
         auto trans = utils::create_transaction(*db_);
 
         auto* tx = reinterpret_cast<api::impl::transaction*>(trans->get());
-        auto request_ctx = tx->create_request_context(
-            nullptr, //channel not needed for load
-            std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
-        );
         ldr = std::make_shared<loader>(
             files,
-            request_ctx.get(),
             prepared,
             std::shared_ptr{std::move(ps)},
             db_.get(),
@@ -90,11 +85,8 @@ public:
             bulk_size
         );
 
-        while((*ldr)()) {
-            _mm_pause();
-        }
-        while(ldr->run_count() > 0) {
-            _mm_pause();
+        while((*ldr)() || ldr->run_count() > 0) {
+            impl->scheduler()->wait_for_progress(nullptr);
         }
         trans->commit();
     }

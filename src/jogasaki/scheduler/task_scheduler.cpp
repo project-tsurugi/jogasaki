@@ -17,6 +17,7 @@
 
 #include <glog/logging.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
@@ -25,13 +26,8 @@
 namespace jogasaki::scheduler {
 
 void task_scheduler::schedule_task(flat_task&& t) {
-    if (t.job()->completing() && t.kind() != flat_task_kind::teardown) {
-        // if the job is already submitted teardown task, the number of task should never grow.
-        // teardown task is only the exception since it can reschedule itself.
-        LOG(ERROR) << "task submitted too late : " << t.kind();
-        return;
-    }
     ++t.job()->task_count();
+    VLOG(log_debug) << "incremended job " << t.job()->id() << " task count to " << t.job()->task_count();
     do_schedule_task(std::move(t));
 }
 }

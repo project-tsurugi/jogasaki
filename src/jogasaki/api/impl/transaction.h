@@ -47,17 +47,12 @@ public:
 
     status commit();
     status abort();
-    status execute(api::executable_statement& statement);
+    impl::database& database();
+
     status execute(
         api::executable_statement& statement,
         std::unique_ptr<api::result_set>& result
     );
-    impl::database& database();
-
-    status execute(
-        api::statement_handle prepared,
-        std::shared_ptr<api::parameter_set> parameters
-    );
 
     status execute(
         api::statement_handle prepared,
@@ -65,27 +60,9 @@ public:
         std::unique_ptr<api::result_set>& result
     );
 
-    bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion);
-
     bool execute_async(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,
-        callback on_completion
-    );
-
-    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
-
-    bool execute_dump(
-        maybe_shared_ptr<api::executable_statement> const& statement,
-        maybe_shared_ptr<api::data_channel> const& channel,
-        std::string_view directory,
-        callback on_completion,
-        std::size_t max_records_per_file = undefined
-    );
-
-    bool execute_async(
-        api::statement_handle prepared,
-        std::shared_ptr<api::parameter_set> parameters,
         callback on_completion
     );
 
@@ -97,24 +74,28 @@ public:
         bool sync = false
     );
 
-    bool execute_common(
+    bool execute_context(
         std::shared_ptr<request_context> rctx,
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<executor::io::record_channel> const& channel,
         callback on_completion, //NOLINT(performance-unnecessary-value-param)
         bool sync
     );
+
+    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
+    bool execute_dump(
+        maybe_shared_ptr<api::executable_statement> const& statement,
+        maybe_shared_ptr<api::data_channel> const& channel,
+        std::string_view directory,
+        callback on_completion,
+        std::size_t max_records_per_file = undefined
+    );
+
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
 
-    bool execute_async_common(
-        maybe_shared_ptr<api::executable_statement> const& statement,
-        maybe_shared_ptr<api::data_channel> const& channel,
-        callback on_completion
-    );
-
-    bool execute_common(
+    bool execute_internal(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<executor::io::record_channel> const& channel,
         callback on_completion,  //NOLINT(performance-unnecessary-value-param)

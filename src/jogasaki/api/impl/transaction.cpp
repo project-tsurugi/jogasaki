@@ -43,11 +43,6 @@ status transaction::abort() {
     return tx_->object()->abort();
 }
 
-status transaction::execute(api::executable_statement& statement) {
-    std::unique_ptr<api::result_set> result{};
-    return execute(statement, result);
-}
-
 status transaction::execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
@@ -56,7 +51,7 @@ status transaction::execute(
     auto ch = std::make_shared<result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
     std::string msg{};
-    execute_common(maybe_shared_ptr{std::addressof(statement)}, ch, [&](status st, std::string_view m){
+    execute_internal(maybe_shared_ptr{std::addressof(statement)}, ch, [&](status st, std::string_view m){
         ret = st;
         msg = m;
     }, true);
@@ -97,13 +92,6 @@ transaction::transaction(
         std::shared_ptr{database_->kvs_db()->create_transaction(readonly, is_long, add_secondary_indices(write_preserves, database))}
     ))
 {}
-status transaction::execute(
-    api::statement_handle prepared,
-    std::shared_ptr<api::parameter_set> parameters
-) {
-    std::unique_ptr<api::result_set> result{};
-    return execute(prepared, std::move(parameters), result);
-}
 
 status transaction::execute(
     api::statement_handle prepared,
@@ -120,18 +108,6 @@ status transaction::execute(
     }, true);
     result = std::make_unique<impl::result_set>(std::move(store));
     return ret;
-}
-
-bool transaction::execute_async(maybe_shared_ptr<api::executable_statement> const& statement, transaction::callback on_completion) {
-    return execute_async_common(statement, nullptr, std::move(on_completion));
-}
-
-bool transaction::execute_async(
-    api::statement_handle prepared,
-    std::shared_ptr<api::parameter_set> parameters,
-    callback on_completion
-) {
-    return execute_async(prepared, std::move(parameters), nullptr, std::move(on_completion));
 }
 
 bool transaction::execute_async(
@@ -167,18 +143,10 @@ bool transaction::execute_async(
 
 bool transaction::execute_async(
     maybe_shared_ptr<api::executable_statement> const& statement,
-    maybe_shared_ptr<data_channel> const& channel,
-    callback on_completion
-) {
-    return execute_async_common(statement, channel, std::move(on_completion));
-}
-
-bool transaction::execute_async_common(
-    maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
-    return execute_common(
+    return execute_internal(
         statement,
         std::make_shared<executor::io::record_channel_adapter>(channel),
         std::move(on_completion),
@@ -195,7 +163,7 @@ bool transaction::execute_dump(
 ) {
     executor::io::dump_cfg cfg{};
     cfg.max_records_per_file_ = max_records_per_file;
-    return execute_common(
+    return execute_internal(
         statement,
         std::make_shared<executor::io::dump_channel>(
             std::make_shared<executor::io::record_channel_adapter>(channel),
@@ -236,14 +204,14 @@ std::shared_ptr<request_context> transaction::create_request_context(
     return rctx;
 }
 
-bool transaction::execute_common(
+bool transaction::execute_internal(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
-    return execute_common(
+    return execute_context(
         create_request_context(channel, s.resource()),
         statement,
         channel,
@@ -252,7 +220,7 @@ bool transaction::execute_common(
     );
 }
 
-bool transaction::execute_common(
+bool transaction::execute_context(
     std::shared_ptr<request_context> rctx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,

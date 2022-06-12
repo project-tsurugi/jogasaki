@@ -44,7 +44,8 @@ status transaction_handle::abort() {  //NOLINT(readability-make-member-function-
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
-    return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement);  //NOLINT
+    std::unique_ptr<api::result_set> result{};
+    return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement, result);  //NOLINT
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)

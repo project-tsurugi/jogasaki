@@ -93,7 +93,8 @@ TEST_F(parquet_writer_test, wrong_path) {
     ASSERT_FALSE(writer);
 }
 
-TEST_F(parquet_writer_test, wrong_path2) {
+// depending on environment, permission error doesn't occur
+TEST_F(parquet_writer_test, DISABLED_wrong_path2) {
     // no permission to write
     boost::filesystem::path p{"/dummy.parquet"};
     auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);

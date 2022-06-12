@@ -44,7 +44,7 @@ public:
     /**
      * @brief wait for the scheduler to proceed
      */
-    void wait_for_progress(job_context& ctx) override;
+    void wait_for_progress(job_context* ctx) override;
 
     /**
      * @brief start the scheduler

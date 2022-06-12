@@ -32,12 +32,12 @@ void serial_task_scheduler::do_schedule_task(
     tasks_.emplace_back(std::move(task));
 }
 
-void serial_task_scheduler::wait_for_progress(job_context&) {
+void serial_task_scheduler::wait_for_progress(job_context*) {
     tateyama::api::task_scheduler::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
     while(! tasks_.empty()) {
-        auto& s = tasks_.front();
-        s(ctx);
+        auto s = std::move(tasks_.front());
         tasks_.pop_front();
+        s(ctx);
     }
 }
 

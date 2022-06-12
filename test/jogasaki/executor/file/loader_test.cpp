@@ -85,7 +85,7 @@ public:
             bulk_size
         );
 
-        while((*ldr)() || ldr->run_count() > 0) {
+        while((*ldr)()) {
             impl->scheduler()->wait_for_progress(nullptr);
         }
         trans->commit();

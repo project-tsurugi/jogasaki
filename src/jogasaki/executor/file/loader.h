@@ -71,9 +71,9 @@ public:
 
 
     /**
-     * @brief submit load requests
-     * @return true if there is more load requests to submit
-     * @return false if all requests are already made
+     * @brief conduct part of the load requests
+     * @return true if there is more to do
+     * @return false if all load requests are done
      */
     bool operator()();
 
@@ -98,6 +98,7 @@ private:
     decltype(files_)::const_iterator next_file_{};
     std::unordered_map<std::string, parameter> mapping_{};
     std::size_t bulk_size_{};
+    bool more_to_read_{true};
 };
 
 }

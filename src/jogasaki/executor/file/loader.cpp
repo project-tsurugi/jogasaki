@@ -118,6 +118,9 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
 }
 
 bool loader::operator()() {
+    if (! more_to_read_) {
+        return running_statements_ != 0;
+    }
     auto slots = bulk_size_ - running_statements_;
     if (slots == 0) {
         return true;
@@ -128,7 +131,8 @@ bool loader::operator()() {
         if(! reader_) {
             if(next_file_ == files_.end()) {
                 // reading all files completed
-                return false;
+                more_to_read_ = false;
+                return running_statements_ != 0;
             }
             reader_ = parquet_reader::open(*next_file_);
             ++next_file_;

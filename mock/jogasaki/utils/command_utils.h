@@ -312,11 +312,11 @@ struct parameter {
     {}
 
     template <class T>
-    parameter(std::string name, sql::common::AtomType type, T value) :
+    parameter(std::string name, sql::request::Parameter::ValueCase type, T value) :
         name_(std::move(name)), type_(type), value_(value)
     {}
     std::string name_{};
-    sql::common::AtomType type_{};
+    sql::request::Parameter::ValueCase type_{};
     std::any value_{};
 };
 
@@ -331,12 +331,15 @@ inline void fill_parameters(
             // null value
             return;
         }
+        using ValueCase = sql::request::Parameter::ValueCase;
         switch (p.type_) {
-            case sql::common::AtomType::INT4: c0->set_int4_value(std::any_cast<std::int32_t>(p.value_)); break;
-            case sql::common::AtomType::INT8: c0->set_int8_value(std::any_cast<std::int64_t>(p.value_)); break;
-            case sql::common::AtomType::FLOAT4: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
-            case sql::common::AtomType::FLOAT8: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
-            case sql::common::AtomType::CHARACTER: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
+            case ValueCase::kInt4Value: c0->set_int4_value(std::any_cast<std::int32_t>(p.value_)); break;
+            case ValueCase::kInt8Value: c0->set_int8_value(std::any_cast<std::int64_t>(p.value_)); break;
+            case ValueCase::kFloat4Value: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
+            case ValueCase::kFloat8Value: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
+            case ValueCase::kCharacterValue: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
+            case ValueCase::kReferenceColumnPosition: c0->set_reference_column_position(std::any_cast<std::uint64_t>(p.value_)); break;
+            case ValueCase::kReferenceColumnName: c0->set_reference_column_name(std::any_cast<std::string>(p.value_)); break;
             default: std::abort();
         }
     }

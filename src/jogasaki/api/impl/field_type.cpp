@@ -48,10 +48,9 @@ api::field_type_kind from(meta::field_type_kind k) noexcept {
         case meta::field_type_kind::row_id: return kind::row_id;
         case meta::field_type_kind::declared: return kind::declared;
         case meta::field_type_kind::extension: return kind::extension;
-        case meta::field_type_kind::pointer: return kind::pointer;
         case meta::field_type_kind::reference_column_position: return kind::reference_column_position;
         case meta::field_type_kind::reference_column_name: return kind::reference_column_name;
-
+        case meta::field_type_kind::pointer: return kind::pointer;
     }
     fail();
 }

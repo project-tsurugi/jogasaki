@@ -72,9 +72,7 @@ public:
      * @brief index of the field in the target record or record_meta
      * @return field index
      */
-    [[nodiscard]] std::size_t index() const noexcept {
-        return index_;
-    }
+    [[nodiscard]] std::size_t index() const noexcept;
 
 private:
     std::size_t value_offset_{};

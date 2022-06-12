@@ -46,7 +46,7 @@ public:
         float,
         double,
         accessor::text,
-        std::size_t
+        std::size_t  // for reference column position
     >;
 
     /**

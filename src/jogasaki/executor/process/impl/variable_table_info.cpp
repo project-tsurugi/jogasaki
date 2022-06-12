@@ -37,6 +37,10 @@ std::size_t value_info::nullity_offset() const noexcept {
     return nullity_offset_;
 }
 
+std::size_t value_info::index() const noexcept {
+    return index_;
+}
+
 variable_table_info::variable_table_info(
     variable_table_info::entity_type map,
     maybe_shared_ptr<meta::record_meta> meta

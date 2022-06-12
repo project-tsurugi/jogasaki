@@ -36,35 +36,36 @@ transaction_handle::operator bool() const noexcept {
 }
 
 api::impl::transaction* tx(std::uintptr_t arg) {
-    return reinterpret_cast<api::impl::transaction*>(arg);
+    return reinterpret_cast<api::impl::transaction*>(arg);  //NOLINT
 }
 
 status transaction_handle::commit() {  //NOLINT(readability-make-member-function-const)
-    return tx(body_)->commit();  //NOLINT
+    return tx(body_)->commit();
 }
 
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
-    return tx(body_)->abort();  //NOLINT
+    return tx(body_)->abort();
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
     std::unique_ptr<api::result_set> result{};
-    return tx(body_)->execute(statement, result);  //NOLINT
+    return tx(body_)->execute(statement, result);
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
-    return tx(body_)->execute(statement, result);  //NOLINT
+    return tx(body_)->execute(statement, result);
 }
 
 status transaction_handle::execute(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
-    std::unique_ptr<result_set>& result) {
-    return tx(body_)->execute(prepared, std::move(parameters), result);  //NOLINT
+    std::unique_ptr<result_set>& result
+) {
+    return tx(body_)->execute(prepared, std::move(parameters), result);
 }
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     transaction_handle::callback on_completion) {
-    return tx(body_)->execute_async(  //NOLINT
+    return tx(body_)->execute_async(
         statement,
         nullptr,
         std::move(on_completion)
@@ -73,7 +74,7 @@ bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> co
 
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<data_channel> const& channel, transaction_handle::callback on_completion) {
-    return tx(body_)->execute_async(  //NOLINT
+    return tx(body_)->execute_async(
         statement,
         channel,
         std::move(on_completion)

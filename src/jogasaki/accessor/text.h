@@ -111,14 +111,14 @@ public:
 
     /**
      * @brief implicit conversion to string_view with lvalue
-     * @warning casting to string_view works only with lvalue because string_view can reference
+     * @note casting to string_view works only with lvalue because string_view can reference
      * SSO'ed data stored in the accessor::text.
      */
     [[nodiscard]] explicit operator std::string_view() const & noexcept;
 
     /**
      * @brief deleting implicit conversion to string_view with rvalue
-     * @warning this should not be used because string_view can reference SSO'ed data stored in the accessor::text.
+     * @note this should not be used because string_view can reference SSO'ed data stored in the accessor::text.
      */
     [[nodiscard]] explicit operator std::string_view() && noexcept = delete;
 

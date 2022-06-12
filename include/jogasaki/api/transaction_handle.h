@@ -124,9 +124,10 @@ public:
     status execute(executable_statement& statement, std::unique_ptr<result_set>& result);
 
     /**
-     * @brief execute the statement in the transaction. The result records are expected.
+     * @brief resolve and execute the statement in the transaction. The result records are expected.
      * from the statement (e.g. query to tables/views).
      * @param prepared the statement to be executed
+     * @param parameters the parameters to assign value for each placeholder
      * @param result [out] the unique ptr to be filled with result set, which must be closed when caller
      * completes using the result records.
      * @return status::ok when successful

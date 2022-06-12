@@ -64,20 +64,20 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
 
 void stealing_task_scheduler::wait_for_progress(job_context* ctx) {
     DVLOG(log_trace) << "wait_for_progress begin";
-    if (ctx) {
-        decltype(job_contexts_)::accessor acc{};
-        if (! job_contexts_.find(acc, ctx->id())) {
-            return;
+    if (! ctx) {
+        // this case is for testing purpose
+        // empty() is not thread safe or 100% accurate under concurrency modification
+        while(! job_contexts_.empty()) {
+            _mm_pause();
         }
-        acc->second->completion_latch().wait();
         return;
     }
 
-    // this is for testing purpose
-    // empty() is not thread safe or 100% accurate under concurrency modification
-    while(! job_contexts_.empty()) {
-        _mm_pause();
+    decltype(job_contexts_)::accessor acc{};
+    if (! job_contexts_.find(acc, ctx->id())) {
+        return;
     }
+    acc->second->completion_latch().wait();
     DVLOG(log_trace) << "wait_for_progress completed";
 }
 

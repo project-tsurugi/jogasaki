@@ -77,9 +77,9 @@ public:
         std::shared_ptr<row_id_field_option>,
         std::shared_ptr<declared_field_option>,
         std::shared_ptr<extension_field_option>,
-        std::monostate, // pointer (internal use)
         std::monostate, // reference_column_position (internal use)
-        std::monostate // reference_column_name (internal use)
+        std::monostate, // reference_column_name (internal use)
+        std::monostate // pointer (internal use)
     >;
 
     /**
@@ -177,6 +177,8 @@ public:
             case k::date: return field_type_traits<k::date>::size;
             case k::time_of_day: return field_type_traits<k::time_of_day>::size;
             case k::time_point: return field_type_traits<k::time_point>::size;
+            case k::reference_column_position: std::abort(); // should not be used as runtime type
+            case k::reference_column_name: std::abort(); // should not be used as runtime type
             case k::pointer: return field_type_traits<k::pointer>::size;
             default:
                 // TODO implement cases for complex types
@@ -203,6 +205,8 @@ public:
             case k::date: return field_type_traits<k::date>::alignment;
             case k::time_of_day: return field_type_traits<k::time_of_day>::alignment;
             case k::time_point: return field_type_traits<k::time_point>::alignment;
+            case k::reference_column_position: std::abort(); // should not be used as runtime type
+            case k::reference_column_name: std::abort(); // should not be used as runtime type
             case k::pointer: return field_type_traits<k::pointer>::alignment;
             default:
                 // TODO implement cases for complex types
@@ -283,9 +287,9 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
         case kind::row_id: return impl::eq<kind::row_id>()(a, b);
         case kind::declared: return impl::eq<kind::declared>()(a, b);
         case kind::extension: return impl::eq<kind::extension>()(a, b);
-        case kind::pointer: return true; // internal fields are ignored on comparison
         case kind::reference_column_name: return true; // internal fields are ignored on comparison
         case kind::reference_column_position: return true; // internal fields are ignored on comparison
+        case kind::pointer: return true; // internal fields are ignored on comparison
         default:
             return true;
     }

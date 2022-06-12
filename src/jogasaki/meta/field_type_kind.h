@@ -46,9 +46,9 @@ enum class field_type_kind : std::size_t {
     row_id,
     declared,
     extension,
+    reference_column_position,  // for internal use - record_ref won't have this field
+    reference_column_name, // for internal use - record_ref won't have this field
     pointer, // for internal use
-    reference_column_position,  // for internal use
-    reference_column_name, // for internal use
 };
 
 /**
@@ -82,9 +82,9 @@ enum class field_type_kind : std::size_t {
         case kind::row_id: return "row_id"sv;
         case kind::declared: return "declared"sv;
         case kind::extension: return "extension"sv;
-        case kind::pointer: return "pointer"sv;
         case kind::reference_column_position: return "reference_column_position"sv;
         case kind::reference_column_name: return "reference_column_name"sv;
+        case kind::pointer: return "pointer"sv;
     }
     std::abort();
 }

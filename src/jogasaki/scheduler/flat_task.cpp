@@ -242,6 +242,14 @@ void flat_task::load() {
     submit_teardown(*req_context_);
 }
 
+flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rctx,
+    std::shared_ptr<executor::file::loader> ldr) noexcept:
+    kind_(flat_task_kind::load),
+    req_context_(rctx),
+    sticky_(false),
+    loader_(std::move(ldr))
+{}
+
 }
 
 

@@ -45,7 +45,7 @@ public:
         float,
         double,
         std::string,
-        std::size_t
+        std::size_t  // for reference column position
     >;
 
     /**

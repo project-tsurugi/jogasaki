@@ -16,16 +16,20 @@
 #include "flat_task.h"
 
 #include <takatori/util/fail.h>
+#include <takatori/util/downcast.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/transaction.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
 
 namespace jogasaki::scheduler {
 
 using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(log_trace) << *this << " bootstrap task executed.";
@@ -51,7 +55,7 @@ bool flat_task::teardown() {
     auto& ts = *req_context_->scheduler();
     if (job()->task_count() > 1) {
         DVLOG(log_debug) << *this << " other tasks remain and teardown is rescheduled.";
-        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_});
+        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, req_context_.get()});
         return false;
     }
     return true;
@@ -68,6 +72,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
         using kind = flat_task_kind;
         case kind::dag_events: dag_schedule(); return false;
         case kind::bootstrap: bootstrap(ctx); return false;
+        case kind::resolve: resolve(ctx); return false;
         case kind::teardown: return teardown();
         case kind::wrapped: {
             trace_scope_name("executor_task");  //NOLINT
@@ -75,7 +80,6 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
             return false;
         }
         case kind::write: write(); return true;
-        case kind::bootstrap_resolving: bootstrap_resolving(ctx); return true;
     }
     fail();
 }
@@ -160,35 +164,18 @@ job_context* flat_task::job() const {
 
 void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
     (void)ctx;
-    auto& e = *executable_statement_container_;
-    if(auto res = database_->resolve(*prepared_, *parameters_, e); res != status::ok) {
-        fail();
+    auto& e = sctx_->executable_statement_;
+    if(auto res = sctx_->database_->resolve(sctx_->prepared_,
+            maybe_shared_ptr{sctx_->parameters_}, e); res != status::ok) {
+        req_context_->status_code(res);
+        return;
     }
-    auto&s = unsafe_downcast<api::impl::executable_statement&>(*e);
-    auto* stmt = unsafe_downcast<executor::common::execute>(
-        s.body()->operators().get()
-    );
-    auto& g = stmt->operators();
-    graph_ = std::addressof(g);
-
-    auto& cfg = database_->configuration();
-    *result_store_container_ = std::make_unique<data::result_store>();
-    auto& request_ctx = *request_context_container_;
-    request_ctx = std::make_shared<request_context>(
-        cfg,
-        s.resource(),
-        database_->kvs_db(),
-        tx_,
-        database_->sequence_manager(),
-        (*result_store_container_).get()
-    );
-    g.context(*request_ctx);
-    request_ctx->job(maybe_shared_ptr<job_context>{job_context_});
-}
-
-void flat_task::bootstrap_resolving(tateyama::api::task_scheduler::context& ctx) {
-    resolve(ctx);
-    bootstrap(ctx);
+    sctx_->tx_->execute_common(
+        req_context_.ownership(),
+        maybe_shared_ptr{e.get()}, sctx_->channel_, [sctx=sctx_](status st, std::string_view msg){
+        (void)sctx;
+        sctx->callback_(st, msg);
+    }, false);
 }
 
 flat_task::flat_task(
@@ -215,29 +202,17 @@ bool flat_task::sticky() const noexcept {
 }
 
 request_context* flat_task::req_context() const noexcept {
-    return req_context_;
+    return req_context_.get();
 }
 
 flat_task::flat_task(
-    task_enum_tag_t<flat_task_kind::bootstrap_resolving>,
-    job_context* jctx,
-    api::prepared_statement const& prepared,
-    api::parameter_set const& parameters,
-    api::impl::database& database,
-    std::shared_ptr<kvs::transaction> tx,
-    std::shared_ptr<request_context>& rctx,
-    std::unique_ptr<data::result_store>& result_store_container,
-    std::unique_ptr<api::executable_statement>& executable_statement_container
+    task_enum_tag_t<flat_task_kind::resolve>,
+    std::shared_ptr<request_context> rctx,
+    std::shared_ptr<statement_context> sctx
 ) noexcept:
-    kind_(flat_task_kind::bootstrap_resolving),
-    job_context_(jctx),
-    prepared_(std::addressof(prepared)),
-    parameters_(std::addressof(parameters)),
-    database_(std::addressof(database)),
-    tx_(std::move(tx)),
-    request_context_container_(std::addressof(rctx)),
-    result_store_container_(std::addressof(result_store_container)),
-    executable_statement_container_(std::addressof(executable_statement_container))
+    kind_(flat_task_kind::resolve),
+    req_context_(rctx),
+    sctx_(std::move(sctx))
 {}
 
 }

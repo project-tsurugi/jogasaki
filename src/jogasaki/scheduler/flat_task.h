@@ -17,12 +17,20 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/graph.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/executor/common/write.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/common.h>
 #include <jogasaki/scheduler/job_context.h>
 #include "thread_params.h"
+
+namespace jogasaki::api::impl {
+class database;
+class transaction;
+}
 
 namespace jogasaki::scheduler {
 
@@ -35,7 +43,7 @@ enum class flat_task_kind : std::size_t {
     bootstrap,
     teardown,
     write,
-    bootstrap_resolving,
+    resolve,
 };
 
 /**
@@ -52,7 +60,7 @@ enum class flat_task_kind : std::size_t {
         case kind::bootstrap: return "bootstrap"sv;
         case kind::teardown: return "teardown"sv;
         case kind::write: return "write"sv;
-        case kind::bootstrap_resolving: return "bootstrap_resolving"sv;
+        case kind::resolve: return "resolve"sv;
     }
     std::abort();
 }
@@ -74,6 +82,34 @@ struct task_enum_tag_t {
 
 template<auto Kind>
 inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
+
+using callback = api::transaction_handle::callback;
+
+struct statement_context {
+    statement_context(
+        api::statement_handle prepared,
+        std::shared_ptr<api::parameter_set const> parameters,
+        api::impl::database* database,
+        api::impl::transaction* tx,
+        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        callback cb
+    ) noexcept :
+        prepared_(prepared),
+        parameters_(std::move(parameters)),
+        database_(database),
+        tx_(tx),
+        channel_(channel),
+        callback_(std::move(cb))
+    {}
+
+    api::statement_handle prepared_{};
+    std::shared_ptr<api::parameter_set const> parameters_{};
+    api::impl::database* database_{};
+    api::impl::transaction* tx_{};
+    std::unique_ptr<api::executable_statement> executable_statement_{};
+    maybe_shared_ptr<executor::io::record_channel> channel_{};
+    callback callback_{};
+};
 
 /**
  * @brief common task object
@@ -151,25 +187,13 @@ public:
 
     /**
      * @brief construct new object to resolve statement and bootstrap the job
-     * @param jctx the job context where the task belongs
-     * @param prepared the prepared statement used to resolve
-     * @param parameters the parameters used to resolve
-     * @param database the database used to resolve
-     * @param tx the transaction to pass to the newly created request context
-     * @param rctx [out] the shared ptr to keep the newly created object
-     * @param result_store_container [out] the shared ptr to keep the newly created object
-     * @param executable_statement_container [out] the shared ptr to keep the newly created object
+     * @param rctx the request context where the task belongs
+     * @param sctx the statement context
      */
     flat_task(
-        task_enum_tag_t<flat_task_kind::bootstrap_resolving>,
-        job_context* jctx,
-        api::prepared_statement const& prepared,
-        api::parameter_set const& parameters,
-        api::impl::database& database,
-        std::shared_ptr<kvs::transaction> tx,
-        std::shared_ptr<request_context>& rctx,
-        std::unique_ptr<data::result_store>& result_store_container,
-        std::unique_ptr<api::executable_statement>& executable_statement_container
+        task_enum_tag_t<flat_task_kind::resolve>,
+        std::shared_ptr<request_context> rctx,
+        std::shared_ptr<statement_context> sctx
     ) noexcept;
 
     /**
@@ -222,20 +246,12 @@ public:
 
 private:
     flat_task_kind kind_{};
-    request_context* req_context_{};
+    maybe_shared_ptr<request_context> req_context_{};
     std::shared_ptr<model::task> origin_{};
     model::graph* graph_{};
     executor::common::write* write_{};
     bool sticky_{};
-
-    // members for resolve
-    api::prepared_statement const* prepared_{};
-    api::parameter_set const* parameters_{};
-    api::impl::database* database_{};
-    std::shared_ptr<kvs::transaction> tx_{};
-    std::shared_ptr<request_context>* request_context_container_{};
-    std::unique_ptr<data::result_store>* result_store_container_{};
-    std::unique_ptr<api::executable_statement>* executable_statement_container_{};
+    std::shared_ptr<statement_context> sctx_{};
 
     /**
      * @return true if job completes together with the task
@@ -251,7 +267,6 @@ private:
      * @return false if the teardown task is rescheduled
      */
     bool teardown();
-    void bootstrap_resolving(tateyama::api::task_scheduler::context& ctx);
     void resolve(tateyama::api::task_scheduler::context& ctx);
 
     void write();

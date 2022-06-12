@@ -48,9 +48,6 @@ status transaction::execute(api::executable_statement& statement) {
     return execute(statement, result);
 }
 
-
-
-
 status transaction::execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
@@ -101,47 +98,47 @@ transaction::transaction(
     ))
 {}
 
-status transaction::execute(
-    api::prepared_statement const& prepared,
-    api::parameter_set const& parameters
-) {
-    std::unique_ptr<api::result_set> result{};
-    return execute(prepared, parameters, result);
-}
-
-status transaction::execute(
-    api::prepared_statement const& prepared,
-    api::parameter_set const& parameters,
-    std::unique_ptr<api::result_set>& result
-) {
-    check_async_execution();
-    auto& ts = scheduler_.get_task_scheduler();
-    auto job = std::make_shared<scheduler::job_context>();
-    job->dag_scheduler(maybe_shared_ptr{std::addressof(scheduler_)});
-    std::shared_ptr<request_context> request_ctx{};
-    std::unique_ptr<data::result_store> store{};
-    std::unique_ptr<api::executable_statement> exec{};
-    ts.schedule_task(scheduler::flat_task{
-        scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap_resolving>,
-        job.get(),
-        prepared,
-        parameters,
-        *database_,
-        tx_,
-        request_ctx,
-        store,
-        exec
-    });
-    ts.wait_for_progress(*job);
-
-    result = std::make_unique<impl::result_set>(
-        std::move(store)
-    );
-    return request_ctx->status_code();
-}
-
 bool transaction::execute_async(maybe_shared_ptr<api::executable_statement> const& statement, transaction::callback on_completion) {
     return execute_async_common(statement, nullptr, std::move(on_completion));
+}
+
+bool transaction::execute_async(
+    api::statement_handle prepared,
+    std::shared_ptr<api::parameter_set> parameters,
+    callback on_completion
+) {
+    return execute_async(prepared, std::move(parameters), nullptr, std::move(on_completion));
+}
+
+bool transaction::execute_async(
+    api::statement_handle prepared,
+    std::shared_ptr<api::parameter_set> parameters,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    callback on_completion
+) {
+    auto& ts = *database_->task_scheduler();
+    auto job = std::make_shared<scheduler::job_context>();
+    ts.register_job(job);
+
+    auto request_ctx = create_request_context(channel);
+    request_ctx->job(job);
+    ts.schedule_task(scheduler::flat_task{
+        scheduler::task_enum_tag<scheduler::flat_task_kind::resolve>,
+        request_ctx,
+        std::make_shared<scheduler::statement_context>(
+            prepared,
+            parameters,
+            database_,
+            this,
+            channel,
+            std::move(on_completion)
+        )
+    });
+    if(ts.kind() == scheduler::task_scheduler_kind::serial) {
+        ts.wait_for_progress(*job);
+    }
+    return true;
+
 }
 
 bool transaction::execute_async(
@@ -185,19 +182,13 @@ bool transaction::execute_dump(
         false
     );
 }
-
-bool transaction::execute_common(
-    maybe_shared_ptr<api::executable_statement> const& statement,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
-    callback on_completion, //NOLINT(performance-unnecessary-value-param)
-    bool sync
+std::shared_ptr<request_context> transaction::create_request_context(
+    maybe_shared_ptr<executor::io::record_channel> const& channel
 ) {
-    auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
-    auto& e = s.body();
     auto& c = database_->configuration();
     auto rctx = std::make_shared<request_context>(
         c,
-        s.resource(),
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         database_->kvs_db(),
         tx_,
         database_->sequence_manager(),
@@ -211,6 +202,33 @@ bool transaction::execute_common(
         )
     );
     rctx->storage_provider(database_->tables());
+    return rctx;
+}
+
+bool transaction::execute_common(
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    bool sync
+) {
+    return execute_common(
+        create_request_context(channel),
+        statement,
+        channel,
+        on_completion,
+        sync
+    );
+}
+
+bool transaction::execute_common(
+    std::shared_ptr<request_context> rctx,
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    bool sync
+) {
+    auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
+    auto& e = s.body();
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -236,7 +254,7 @@ bool transaction::execute_common(
         }
         return true;
     }
-    if(!e->is_ddl() && c->tasked_write()) {
+    if(!e->is_ddl() && rctx->configuration()->tasked_write()) {
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         auto job = std::make_shared<scheduler::job_context>();

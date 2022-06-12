@@ -54,17 +54,6 @@ public:
     );
     impl::database& database();
 
-    status execute(
-        api::prepared_statement const& prepared,
-        api::parameter_set const& parameters
-    ) override;
-
-    status execute(
-        api::prepared_statement const& prepared,
-        api::parameter_set const& parameters,
-        std::unique_ptr<api::result_set>& result
-    ) override;
-
     bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion);
 
     bool execute_async(
@@ -82,6 +71,27 @@ public:
         callback on_completion,
         std::size_t max_records_per_file = undefined
     );
+
+    bool execute_async(
+        api::statement_handle prepared,
+        std::shared_ptr<api::parameter_set> parameters,
+        callback on_completion
+    );
+
+    bool execute_async(
+        api::statement_handle prepared,
+        std::shared_ptr<api::parameter_set> parameters,
+        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        callback on_completion
+    );
+
+    bool execute_common(
+        std::shared_ptr<request_context> rctx,
+        maybe_shared_ptr<api::executable_statement> const& statement,
+        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        callback on_completion, //NOLINT(performance-unnecessary-value-param)
+        bool sync
+    );
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
@@ -98,6 +108,11 @@ private:
         callback on_completion,  //NOLINT(performance-unnecessary-value-param)
         bool sync
     );
+
+    std::shared_ptr<request_context> create_request_context(
+        maybe_shared_ptr<executor::io::record_channel> const& channel
+    );
+
 };
 
 }

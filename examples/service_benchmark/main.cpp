@@ -250,7 +250,7 @@ public:
         cfg.stealing_enabled(FLAGS_steal);
 
         if (FLAGS_minimum) {
-            cfg.single_thread(true);
+            cfg.single_thread(false);
             cfg.thread_pool_size(1);
             cfg.initial_core(1);
             cfg.core_affinity(false);

@@ -54,6 +54,17 @@ public:
     );
     impl::database& database();
 
+    status execute(
+        api::statement_handle prepared,
+        std::shared_ptr<api::parameter_set> parameters
+    );
+
+    status execute(
+        api::statement_handle prepared,
+        std::shared_ptr<api::parameter_set> parameters,
+        std::unique_ptr<api::result_set>& result
+    );
+
     bool execute_async(maybe_shared_ptr<api::executable_statement> const& statement, callback on_completion);
 
     bool execute_async(
@@ -82,7 +93,8 @@ public:
         api::statement_handle prepared,
         std::shared_ptr<api::parameter_set> parameters,
         maybe_shared_ptr<executor::io::record_channel> const& channel,
-        callback on_completion
+        callback on_completion,
+        bool sync = false
     );
 
     bool execute_common(

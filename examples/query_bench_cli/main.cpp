@@ -178,7 +178,7 @@ static bool query(
                 return false;
             }
         } else {
-            if(auto rc = tx->execute(stmt, *ps, rs); rc != status::ok) {
+            if(auto rc = tx->execute(stmt, std::shared_ptr{std::move(ps)}, rs); rc != status::ok) {
                 return false;
             }
         }

@@ -91,14 +91,14 @@ struct statement_context {
         std::shared_ptr<api::parameter_set const> parameters,
         api::impl::database* database,
         api::impl::transaction* tx,
-        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        maybe_shared_ptr<executor::io::record_channel> channel,
         callback cb
     ) noexcept :
         prepared_(prepared),
         parameters_(std::move(parameters)),
         database_(database),
         tx_(tx),
-        channel_(channel),
+        channel_(std::move(channel)),
         callback_(std::move(cb))
     {}
 

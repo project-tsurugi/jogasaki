@@ -51,6 +51,12 @@ status transaction_handle::execute(executable_statement& statement, std::unique_
     return reinterpret_cast<api::impl::transaction*>(body_)->execute(statement, result);  //NOLINT
 }
 
+status transaction_handle::execute(
+    api::statement_handle prepared,
+    std::shared_ptr<api::parameter_set> parameters,
+    std::unique_ptr<result_set>& result) {
+    return reinterpret_cast<api::impl::transaction*>(body_)->execute(prepared, std::move(parameters), result);  //NOLINT
+}
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     transaction_handle::callback on_completion) {
     return reinterpret_cast<api::impl::transaction*>(body_)->execute_async(  //NOLINT

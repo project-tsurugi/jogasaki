@@ -26,6 +26,8 @@
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/data_channel.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/parameter_set.h>
 
 namespace jogasaki::api {
 
@@ -120,6 +122,21 @@ public:
      * @deprecated kept for testing purpose. record_meta from result doesn't provide column names
      */
     status execute(executable_statement& statement, std::unique_ptr<result_set>& result);
+
+    /**
+     * @brief execute the statement in the transaction. The result records are expected.
+     * from the statement (e.g. query to tables/views).
+     * @param prepared the statement to be executed
+     * @param result [out] the unique ptr to be filled with result set, which must be closed when caller
+     * completes using the result records.
+     * @return status::ok when successful
+     * @return error code otherwise
+     * @deprecated kept for testing purpose. record_meta from result doesn't provide column names
+     */
+    status execute(
+        api::statement_handle prepared,
+        std::shared_ptr<api::parameter_set> parameters,
+        std::unique_ptr<result_set>& result);
 
     /**
      * @brief the callback type used for async execution

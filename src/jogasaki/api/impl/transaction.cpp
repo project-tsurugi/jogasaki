@@ -97,6 +97,30 @@ transaction::transaction(
         std::shared_ptr{database_->kvs_db()->create_transaction(readonly, is_long, add_secondary_indices(write_preserves, database))}
     ))
 {}
+status transaction::execute(
+    api::statement_handle prepared,
+    std::shared_ptr<api::parameter_set> parameters
+) {
+    std::unique_ptr<api::result_set> result{};
+    return execute(prepared, std::move(parameters), result);
+}
+
+status transaction::execute(
+    api::statement_handle prepared,
+    std::shared_ptr<api::parameter_set> parameters,
+    std::unique_ptr<api::result_set>& result
+) {
+    auto store = std::make_unique<data::result_store>();
+    auto ch = std::make_shared<result_store_channel>(maybe_shared_ptr{store.get()});
+    status ret{};
+    std::string msg{};
+    execute_async(prepared, std::move(parameters), ch, [&](status st, std::string_view m){
+        ret = st;
+        msg = m;
+    }, true);
+    result = std::make_unique<impl::result_set>(std::move(store));
+    return ret;
+}
 
 bool transaction::execute_async(maybe_shared_ptr<api::executable_statement> const& statement, transaction::callback on_completion) {
     return execute_async_common(statement, nullptr, std::move(on_completion));
@@ -114,7 +138,8 @@ bool transaction::execute_async(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    callback on_completion
+    callback on_completion,
+    bool sync
 ) {
     auto request_ctx = create_request_context(
         channel,
@@ -133,7 +158,7 @@ bool transaction::execute_async(
             std::move(on_completion)
         )
     });
-    if(ts.kind() == scheduler::task_scheduler_kind::serial) {
+    if(ts.kind() == scheduler::task_scheduler_kind::serial || sync) {
         ts.wait_for_progress(*request_ctx->job());
     }
     return true;

@@ -16,7 +16,6 @@
 #include "flat_task.h"
 
 #include <takatori/util/fail.h>
-#include <takatori/util/downcast.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
@@ -30,7 +29,6 @@
 namespace jogasaki::scheduler {
 
 using takatori::util::fail;
-using takatori::util::unsafe_downcast;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     DVLOG(log_trace) << *this << " bootstrap task executed.";
@@ -225,7 +223,7 @@ flat_task::flat_task(
     std::shared_ptr<statement_context> sctx
 ) noexcept:
     kind_(flat_task_kind::resolve),
-    req_context_(rctx),
+    req_context_(std::move(rctx)),
     sctx_(std::move(sctx))
 {}
 
@@ -246,7 +244,6 @@ flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rct
     std::shared_ptr<executor::file::loader> ldr) noexcept:
     kind_(flat_task_kind::load),
     req_context_(rctx),
-    sticky_(false),
     loader_(std::move(ldr))
 {}
 

@@ -50,7 +50,7 @@ DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_bool(consolidated_api, false, "Use consolidated execute() api that skips creating executable statement");  //NOLINT
 DEFINE_int32(records, 100, "Number of records on the target table");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
-DEFINE_bool(readonly, true, "Specify readonly option when creating transaction");  //NOLINT
+DEFINE_bool(readonly, false, "Specify readonly option when creating transaction");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(simple, false, "use simple query");  //NOLINT
 

@@ -96,13 +96,13 @@ std::shared_ptr<jogasaki::configuration> bridge::convert_config(tateyama::api::c
         ret->lazy_worker(lazy_worker.value());
     }
 
-    // data_store
-    auto data_store_config = cfg.get_section("data_store");
-    if (data_store_config == nullptr) {
-        LOG(ERROR) << "cannot find data_store section in the configuration";
+    // datastore
+    auto datastore_config = cfg.get_section("datastore");
+    if (datastore_config == nullptr) {
+        LOG(ERROR) << "cannot find datastore section in the configuration";
         return ret;
     }
-    if (auto log_location = data_store_config->get<std::string>("log_location")) {
+    if (auto log_location = datastore_config->get<std::string>("log_location")) {
         ret->db_location(log_location.value());
     }
     return ret;

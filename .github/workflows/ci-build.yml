@@ -40,7 +40,7 @@ jobs:
       - id: Install_limestone
         name: Install_limestone
         run: |
-          cd third_party/tateyama/third_party/limestone
+          cd third_party/tateyama/third_party/sharksfin/third_party/shirakami/third_party/limestone
           rm -rf build
           mkdir -p build
           cd build
@@ -50,7 +50,7 @@ jobs:
       - id: Install_shirakami
         name: Install_shirakami
         run: |
-          cd third_party/sharksfin/third_party/shirakami
+          cd third_party/tateyama/third_party/sharksfin/third_party/shirakami
           rm -rf build
           mkdir -p build
           cd build
@@ -60,7 +60,7 @@ jobs:
       - id: Install_sharksfin
         name: Install_sharksfin
         run: |
-          cd third_party/sharksfin
+          cd third_party/tateyama/third_party/sharksfin
           rm -rf build
           mkdir -p build
           cd build

@@ -493,7 +493,7 @@ void create_mirror_for_write(
     );
     BOOST_ASSERT( //NOLINT
         node.operator_kind() == relation::write_kind::insert ||
-            node.operator_kind() == relation::write_kind::insert_or_update
+            node.operator_kind() == relation::write_kind::insert_overwrite
     );
     ctx.executable_statement(
         std::make_shared<executable_statement>(

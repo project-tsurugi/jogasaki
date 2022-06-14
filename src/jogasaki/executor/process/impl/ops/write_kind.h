@@ -32,7 +32,8 @@ enum class write_kind : std::size_t {
     insert = 0,
     update,
     delete_,
-    insert_or_update,
+    insert_overwrite,
+    insert_skip,
 };
 
 /**
@@ -47,7 +48,8 @@ enum class write_kind : std::size_t {
         case kind::insert: return "insert"sv;
         case kind::update: return "update"sv;
         case kind::delete_: return "delete_"sv;
-        case kind::insert_or_update: return "insert_or_update"sv;
+        case kind::insert_overwrite: return "insert_overwrite"sv;
+        case kind::insert_skip: return "insert_skip"sv;
     }
     std::abort();
 }
@@ -68,7 +70,8 @@ constexpr inline write_kind write_kind_from(relation::write_kind kind) noexcept 
         case k::insert: return write_kind::insert;
         case k::update: return write_kind::update;
         case k::delete_: return write_kind::delete_;
-        case k::insert_or_update: return write_kind::insert_or_update;
+        case k::insert_overwrite: return write_kind::insert_overwrite;
+        case k::insert_skip: return write_kind::insert_skip;
     }
     std::abort();
 }

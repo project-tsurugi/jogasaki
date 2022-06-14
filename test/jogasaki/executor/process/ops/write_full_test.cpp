@@ -125,7 +125,7 @@ public:
     std::pair<relation::step::take_flat&, relation::write&> create_upsert_take_target_i1() {
         auto& take = add_take(3);
         add_column_types(take, t::int4{}, t::float8{}, t::int8{});
-        auto& target = create_target(take, relation::write_kind::insert_or_update, i1_, t1_, {0}, {1, 2});
+        auto& target = create_target(take, relation::write_kind::insert_overwrite, i1_, t1_, {0}, {1, 2});
         take.output() >> target.input();
         add_key_types(target, t::int4{});
         return {take, target};
@@ -239,7 +239,7 @@ TEST_F(write_full_test, upsert_as_insert) {
         0,
         *processor_info_,
         0,
-        write_kind::insert_or_update,
+        write_kind::insert_overwrite,
         *i1_,
         target.keys(),
         target.columns(),
@@ -291,7 +291,7 @@ TEST_F(write_full_test, upsert_as_update) {
         0,
         *processor_info_,
         0,
-        write_kind::insert_or_update,
+        write_kind::insert_overwrite,
         *i1_,
         target.keys(),
         target.columns(),

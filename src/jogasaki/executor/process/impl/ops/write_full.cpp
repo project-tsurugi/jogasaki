@@ -104,7 +104,7 @@ operation_status write_full::operator()(write_full_context& ctx) {
     switch(kind_) {
         case write_kind::insert:
             return do_insert(ctx);
-        case write_kind::insert_or_update:
+        case write_kind::insert_overwrite:
             return do_insert(ctx);
         case write_kind::delete_:
             return do_delete(ctx);

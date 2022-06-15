@@ -153,7 +153,7 @@ public:
     void test_dump(std::vector<std::string>& files);
 
     template <class ... Args>
-    void test_load(Args ... args);
+    void test_load(status expected, Args ... args);
 
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
     test::temporary_folder temporary_{};
@@ -985,7 +985,7 @@ TEST_F(service_api_test, execute_dump_load) {
         ss << " ";
     }
     LOG(INFO) << "dump files: " << ss.str();
-    test_load(files[0]);
+    test_load(status::ok, files[0]);
     {
         using kind = meta::field_type_kind;
         std::vector<mock::basic_record> result{};
@@ -999,21 +999,21 @@ TEST_F(service_api_test, execute_dump_load) {
 TEST_F(service_api_test, load_no_file) {
     // no file is specified - success
     std::vector<std::string> files{};
-    test_load();
+    test_load(status::ok);
 }
 
 TEST_F(service_api_test, load_empty_file_name) {
     std::vector<std::string> files{};
-    test_load("");
+    test_load(status::err_io_error, "");
 }
 
 TEST_F(service_api_test, load_missing_files) {
     std::vector<std::string> files{};
-    test_load("dummy1.parquet", "dummy2.parquet");
+    test_load(status::err_io_error, "dummy1.parquet", "dummy2.parquet");
 }
 
 template <class ... Args>
-void service_api_test::test_load(Args...files) {
+void service_api_test::test_load(status expected, Args...files) {
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
@@ -1038,10 +1038,15 @@ void service_api_test::test_load(Args...files) {
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
+        ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
         {
             auto [success, error] = decode_result_only(res->body_);
-            ASSERT_TRUE(success);
+            if(expected == status::ok) {
+                ASSERT_TRUE(success);
+            } else {
+                ASSERT_FALSE(success);
+                ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
+            }
         }
     }
     test_commit(tx_handle);

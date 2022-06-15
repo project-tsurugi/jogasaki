@@ -24,7 +24,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
-#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/file/loader.h>
 
 namespace jogasaki::scheduler {
 
@@ -228,7 +228,8 @@ flat_task::flat_task(
 {}
 
 void flat_task::load() {
-    if ((*loader_)()) {
+    auto res = (*loader_)();
+    if(res == executor::file::loader_result::running) {
         auto& ts = *req_context_->scheduler();
         ts.schedule_task(flat_task{
             task_enum_tag<flat_task_kind::load>,
@@ -236,6 +237,11 @@ void flat_task::load() {
             loader_
         });
         return;
+    }
+    if(res == executor::file::loader_result::error) {
+        auto [st, msg] = loader_->error_info();
+        req_context_->status_code(st);
+        req_context_->status_message(std::move(msg));
     }
     submit_teardown(*req_context_);
 }

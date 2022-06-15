@@ -41,6 +41,40 @@ struct parameter {
 };
 
 /**
+ * @brief result of load function
+ */
+enum class loader_result : std::int32_t {
+    ok = 0,
+    running,
+    error,
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(loader_result value) noexcept {
+    using namespace std::string_view_literals;
+    switch (value) {
+        case loader_result::ok: return "ok"sv;
+        case loader_result::running: return "running"sv;
+        case loader_result::error: return "error"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, loader_result value) {
+    return out << to_string_view(value);
+}
+
+/**
  * @brief loader to conduct reading files and executing statements
  */
 class cache_align loader {
@@ -72,10 +106,11 @@ public:
 
     /**
      * @brief conduct part of the load requests
-     * @return true if there is more to do
-     * @return false if all load requests are done
+     * @return running there is more to do
+     * @return ok if all load requests are done
+     * @return error if any error occurs
      */
-    bool operator()();
+    loader_result operator()();
 
     /**
      * @brief accessor to the atomic counter for the currently executed statements
@@ -89,6 +124,11 @@ public:
      */
     [[nodiscard]] std::size_t records_loaded() const noexcept;
 
+    /**
+     * @brief accessor to the error information
+     * @return the error status and message
+     */
+    [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
 private:
     std::vector<std::string> files_{};
     std::atomic_size_t running_statement_count_{};
@@ -102,6 +142,8 @@ private:
     std::unordered_map<std::string, parameter> mapping_{};
     std::size_t bulk_size_{};
     bool more_to_read_{true};
+    status status_{status::ok};
+    std::string msg_{};
 };
 
 }

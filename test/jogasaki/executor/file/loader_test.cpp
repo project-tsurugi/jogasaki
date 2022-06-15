@@ -61,7 +61,7 @@ public:
 
     test::temporary_folder temporary_{};  //NOLINT
 
-    void test_load(std::vector<std::string> const& files, std::shared_ptr<loader>& ldr, std::size_t bulk_size = 10000) {
+    void test_load(std::vector<std::string> const& files, std::shared_ptr<loader>& ldr, std::size_t bulk_size = 10000, bool expect_error = false) {
         auto* impl = db_impl();
         api::statement_handle prepared{};
         std::unordered_map<std::string, api::field_type_kind> variables{
@@ -84,8 +84,16 @@ public:
             bulk_size
         );
 
-        while((*ldr)()) {
+        loader_result res{};
+        while((res = (*ldr)()) == loader_result::running) {
             impl->scheduler()->wait_for_progress(nullptr);
+        }
+        if (expect_error) {
+            ASSERT_EQ(loader_result::error, res);
+            ASSERT_NE(status::ok, ldr->error_info().first);
+        } else {
+            ASSERT_EQ(loader_result::ok, res);
+            ASSERT_EQ(status::ok, ldr->error_info().first);
         }
         trans->commit();
     }
@@ -157,5 +165,16 @@ TEST_F(loader_test, multiple_read) {
     }
     EXPECT_EQ(10, ldr->records_loaded());
 }
+
+TEST_F(loader_test, dummy_file) {
+    std::shared_ptr<loader> ldr{};
+    test_load(std::vector<std::string>{"dummy.parquet"}, ldr, 3, true);
+}
+
+TEST_F(loader_test, empty_file_name) {
+    std::shared_ptr<loader> ldr{};
+    test_load(std::vector<std::string>{""}, ldr, 3, true);
+}
+
 }
 

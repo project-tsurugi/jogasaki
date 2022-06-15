@@ -140,7 +140,7 @@ public:
     }
 
     void test_load(
-        std::vector<std::string> const& files
+        std::vector<std::string> const& files, status expected = status::ok
     ) {
         auto transaction = utils::create_transaction(*db_);
         auto& tx = *reinterpret_cast<impl::transaction*>(transaction->get());
@@ -170,8 +170,7 @@ public:
             }
         ));
         while(! run.load()) {}
-        ASSERT_EQ(status::ok, s);
-        ASSERT_TRUE(message.empty());
+        ASSERT_EQ(expected, s);
         ASSERT_EQ(status::ok, tx.commit());
     }
 };
@@ -197,5 +196,9 @@ TEST_F(load_test, basic) {
     }
 }
 
+TEST_F(load_test, wrong_file) {
+    std::vector<std::string> files{"dummy.parquet"};
+    test_load(files, status::err_io_error);
+}
 
 }

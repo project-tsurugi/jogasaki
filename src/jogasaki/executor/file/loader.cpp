@@ -16,6 +16,8 @@
 #include "loader.h"
 
 #include <atomic>
+#include <glog/logging.h>
+
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
 
@@ -115,13 +117,13 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
     }
 }
 
-bool loader::operator()() {
+loader_result loader::operator()() {
     if (! more_to_read_) {
-        return running_statement_count_ != 0;
+        return running_statement_count_ != 0 ? loader_result::running : loader_result::ok;
     }
     auto slots = bulk_size_ - running_statement_count_;
     if (slots == 0) {
-        return true;
+        return loader_result::running;
     }
     for(std::size_t i=0; i < slots; ++i) {
         // read records, assign host variables, submit tasks
@@ -130,14 +132,15 @@ bool loader::operator()() {
             if(next_file_ == files_.end()) {
                 // reading all files completed
                 more_to_read_ = false;
-                return running_statement_count_ != 0;
+                return running_statement_count_ != 0 ? loader_result::running : loader_result::ok;
             }
             reader_ = parquet_reader::open(*next_file_);
             ++next_file_;
             if(! reader_) {
-                // error handling TODO
-                VLOG(log_error) << "opening parquet file failed.";
-                return false;
+                status_ = status::err_io_error;
+                msg_ = "opening parquet file failed.";
+                VLOG(log_error) << msg_;
+                return loader_result::error;
             }
         }
 
@@ -160,15 +163,19 @@ bool loader::operator()() {
             std::move(ps),
             nullptr,
             [&](status st, std::string_view msg){
-                (void)st;
-                (void)msg;
                 --running_statement_count_;
+                if(st != status::ok) {
+                    std::stringstream ss{};
+                    ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << msg << "\"";
+                    status_ = st;
+                    msg_ = ss.str();
+                    VLOG(log_error) << msg_;
+                }
                 ++records_loaded_;
-                // TODO error handling
             }
         );
     }
-    return true;
+    return loader_result::running;
 }
 
 std::atomic_size_t& loader::running_statement_count() noexcept {
@@ -177,6 +184,10 @@ std::atomic_size_t& loader::running_statement_count() noexcept {
 
 std::size_t loader::records_loaded() const noexcept {
     return records_loaded_.load();
+}
+
+std::pair<status, std::string> loader::error_info() const noexcept {
+    return {status_, msg_};
 }
 
 

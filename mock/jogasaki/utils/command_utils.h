@@ -366,7 +366,6 @@ std::string encode_execute_prepared_statement_or_query(
     } else if constexpr (std::is_same_v<T, sql::request::ExecuteLoad>) {
         stmt = r.mutable_execute_load();
         std::vector<std::string> v{args...};
-        static_assert(sizeof...(args)>=1);
         auto f = stmt->mutable_file();
         for(auto&& s : v) {
             f->Add()->assign(s);

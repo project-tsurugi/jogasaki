@@ -41,8 +41,7 @@ struct parameter {
 };
 
 /**
- * @brief context object for the job
- * @details this class represents context information in the scope of the job scheduling
+ * @brief loader to conduct reading files and executing statements
  */
 class cache_align loader {
 public:
@@ -50,7 +49,7 @@ public:
     constexpr static std::size_t default_bulk_size = 10000;
 
     /**
-     * @brief create default context object
+     * @brief create empty object
      */
     loader() = default;
 
@@ -60,6 +59,9 @@ public:
     loader(loader&& other) noexcept = delete;
     loader& operator=(loader&& other) noexcept = delete;
 
+    /**
+     * @brief create new object
+     */
     loader(
         std::vector<std::string> files,
         api::statement_handle prepared,
@@ -68,7 +70,6 @@ public:
         std::size_t bulk_size = default_bulk_size
     ) noexcept;
 
-
     /**
      * @brief conduct part of the load requests
      * @return true if there is more to do
@@ -76,22 +77,26 @@ public:
      */
     bool operator()();
 
-    std::atomic_size_t& run_count() noexcept {
-        return running_statements_;
-    }
+    /**
+     * @brief accessor to the atomic counter for the currently executed statements
+     * @return the counter
+     */
+    std::atomic_size_t& running_statement_count() noexcept;
 
-    [[nodiscard]] std::size_t loaded_record_count() const noexcept {
-        return count_.load();
-    }
+    /**
+     * @brief accessor to the total number of loaded records
+     * @return the total number
+     */
+    [[nodiscard]] std::size_t records_loaded() const noexcept;
 
 private:
     std::vector<std::string> files_{};
-    std::atomic_size_t running_statements_{};
+    std::atomic_size_t running_statement_count_{};
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     std::shared_ptr<parquet_reader> reader_{};
     api::impl::transaction* tx_{};
-    std::atomic_size_t count_{0};
+    std::atomic_size_t records_loaded_{0};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     decltype(files_)::const_iterator next_file_{};
     std::unordered_map<std::string, parameter> mapping_{};

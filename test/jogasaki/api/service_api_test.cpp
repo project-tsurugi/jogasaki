@@ -151,7 +151,9 @@ public:
 
 
     void test_dump(std::vector<std::string>& files);
-    void test_load(std::vector<std::string> const& files);
+
+    template <class ... Args>
+    void test_load(Args ... args);
 
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
     test::temporary_folder temporary_{};
@@ -983,7 +985,7 @@ TEST_F(service_api_test, execute_dump_load) {
         ss << " ";
     }
     LOG(INFO) << "dump files: " << ss.str();
-    test_load(files);
+    test_load(files[0]);
     {
         using kind = meta::field_type_kind;
         std::vector<mock::basic_record> result{};
@@ -994,7 +996,24 @@ TEST_F(service_api_test, execute_dump_load) {
     }
 }
 
-void service_api_test::test_load(std::vector<std::string> const& files) {
+TEST_F(service_api_test, load_no_file) {
+    // no file is specified - success
+    std::vector<std::string> files{};
+    test_load();
+}
+
+TEST_F(service_api_test, load_empty_file_name) {
+    std::vector<std::string> files{};
+    test_load("");
+}
+
+TEST_F(service_api_test, load_missing_files) {
+    std::vector<std::string> files{};
+    test_load("dummy1.parquet", "dummy2.parquet");
+}
+
+template <class ... Args>
+void service_api_test::test_load(Args...files) {
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
@@ -1009,7 +1028,7 @@ void service_api_test::test_load(std::vector<std::string> const& files) {
             {"p0"s, ValueCase::kReferenceColumnName, std::any{std::in_place_type<std::string>, "C0"}},
             {"p1"s, ValueCase::kReferenceColumnPosition, std::any{std::in_place_type<std::uint64_t>, 1}},
         };
-        auto s = encode_execute_load(tx_handle, stmt_handle, parameters, files[0]);
+        auto s = encode_execute_load(tx_handle, stmt_handle, parameters, files...);
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();

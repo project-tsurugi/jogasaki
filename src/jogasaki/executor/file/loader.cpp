@@ -117,9 +117,9 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
 
 bool loader::operator()() {
     if (! more_to_read_) {
-        return running_statements_ != 0;
+        return running_statement_count_ != 0;
     }
-    auto slots = bulk_size_ - running_statements_;
+    auto slots = bulk_size_ - running_statement_count_;
     if (slots == 0) {
         return true;
     }
@@ -130,7 +130,7 @@ bool loader::operator()() {
             if(next_file_ == files_.end()) {
                 // reading all files completed
                 more_to_read_ = false;
-                return running_statements_ != 0;
+                return running_statement_count_ != 0;
             }
             reader_ = parquet_reader::open(*next_file_);
             ++next_file_;
@@ -155,15 +155,15 @@ bool loader::operator()() {
 
         set_parameter(*ps, ref, mapping_);
 
-        ++running_statements_;
+        ++running_statement_count_;
         tx_->execute_async(prepared_,
             std::move(ps),
             nullptr,
             [&](status st, std::string_view msg){
                 (void)st;
                 (void)msg;
-                --running_statements_;
-                ++count_;
+                --running_statement_count_;
+                ++records_loaded_;
                 // TODO error handling
             }
         );
@@ -171,6 +171,13 @@ bool loader::operator()() {
     return true;
 }
 
+std::atomic_size_t& loader::running_statement_count() noexcept {
+    return running_statement_count_;
+}
+
+std::size_t loader::records_loaded() const noexcept {
+    return records_loaded_.load();
+}
 
 
 }

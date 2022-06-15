@@ -121,7 +121,7 @@ TEST_F(loader_test, simple) {
         EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(0,1000.0)), result[0]);
         EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,1000.0)), result[1]);
     }
-    EXPECT_EQ(2, ldr->loaded_record_count());
+    EXPECT_EQ(2, ldr->records_loaded());
 
 }
 
@@ -141,7 +141,7 @@ TEST_F(loader_test, multiple_files) {
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(20, result.size());
     }
-    EXPECT_EQ(20, ldr->loaded_record_count());
+    EXPECT_EQ(20, ldr->records_loaded());
 }
 
 TEST_F(loader_test, multiple_read) {
@@ -155,7 +155,7 @@ TEST_F(loader_test, multiple_read) {
         execute_query("SELECT * FROM T0", result);
         ASSERT_EQ(10, result.size());
     }
-    EXPECT_EQ(10, ldr->loaded_record_count());
+    EXPECT_EQ(10, ldr->records_loaded());
 }
 }
 

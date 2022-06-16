@@ -20,6 +20,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/kvs/error.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/utils/backoff_waiter.h>
 
 namespace jogasaki::kvs {
 
@@ -61,12 +62,25 @@ transaction::~transaction() noexcept {
 }
 
 status transaction::commit(bool async) {
-    sharksfin::StatusCode rc{};
     // TODO remove retry here when scheduler is ready to handle waiting tasks
-    std::size_t trial = 30;
-    while(trial > 0 && (rc = sharksfin::transaction_commit(tx_, async)) == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TX) {
-        std::this_thread::sleep_for(std::chrono::milliseconds{100});
-        --trial;
+    std::size_t trial = 20;
+    auto rc = sharksfin::transaction_commit(tx_, async);
+    if (rc == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TX) {
+        VLOG(log_debug) << "commit() returns ERR_WAITING_FOR_OTHER_TX - waiting for others to finish";
+        utils::backoff_waiter waiter{};
+        while(trial > 0) {
+            waiter();
+            auto st = check_state().state_kind();
+            VLOG(log_debug) << "checking for waiting transaction state:" << st;
+            if (st != ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT) {
+                rc = sharksfin::transaction_commit(tx_, async);
+                if (rc == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TX) {
+                    fail();
+                }
+                break;
+            }
+            --trial;
+        }
     }
     if (trial == 0) {
         VLOG(log_error) << "commit failed and giving up retries.";
@@ -115,6 +129,15 @@ std::mutex& transaction::mutex() noexcept {
 status transaction::wait_for_commit(std::size_t timeout_ns) {
     auto rc = sharksfin::transaction_wait_commit(tx_, timeout_ns);
     return resolve(rc);
+}
+
+sharksfin::TransactionState transaction::check_state() noexcept {
+    sharksfin::TransactionState result{};
+    auto rc = sharksfin::transaction_check(tx_, result);
+    if(rc != sharksfin::StatusCode::OK) {
+        fail();
+    }
+    return result;
 }
 
 }

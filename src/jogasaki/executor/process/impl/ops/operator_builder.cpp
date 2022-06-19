@@ -35,7 +35,6 @@
 #include "take_flat.h"
 #include "join.h"
 #include "flatten.h"
-#include "write_full.h"
 #include "write_partial.h"
 #include "write_kind.h"
 
@@ -184,16 +183,8 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
             node.columns()
         );
     }
-    return std::make_unique<write_full>(
-        index_++,
-        *info_,
-        block_index,
-        write_kind_from(node.operator_kind()),
-        index,
-        node.keys(),
-        node.columns(),
-        nullptr
-    );
+    // INSERT is handled in other path and should not reach here
+    fail();
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {

@@ -27,7 +27,6 @@
 
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/executor/process/impl/ops/write_full_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>

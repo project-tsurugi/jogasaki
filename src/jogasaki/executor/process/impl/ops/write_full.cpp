@@ -184,7 +184,7 @@ void create_generated_field(
         nullable,
         spec,
         knd,
-        static_cast<std::string_view>(buf),
+        static_cast<std::string_view>(buf),  //FIXME returning sv referencing local object
         def_id
     );
 }

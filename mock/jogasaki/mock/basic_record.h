@@ -172,6 +172,31 @@ public:
      */
     basic_record() = default;
 
+    ~basic_record() = default;
+
+    basic_record(basic_record const& other) :
+        meta_(other.meta_),
+        entity_(other.entity_),
+        varlen_fields_(other.varlen_fields_.size())
+    {
+        for(std::size_t i=0, n=varlen_fields_.size(); i<n; ++i) {
+            varlen_fields_[i].assign(other.varlen_fields_[i]);
+        }
+    }
+
+    basic_record& operator=(basic_record const& other) {
+        meta_ = other.meta_;
+        entity_ = other.entity_;
+        varlen_fields_.resize(other.varlen_fields_.size());
+        for(std::size_t i=0, n=varlen_fields_.size(); i<n; ++i) {
+            varlen_fields_[i].assign(other.varlen_fields_[i]);
+        }
+        return *this;
+    }
+
+    basic_record(basic_record&& other) noexcept = default;
+    basic_record& operator=(basic_record&& other) noexcept = default;
+
     /**
      * @brief create new object
      * @param metadata the stored record meta information

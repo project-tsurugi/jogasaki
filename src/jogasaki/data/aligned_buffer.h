@@ -55,12 +55,12 @@ public:
     /**
      * @brief copy constructor
      */
-    aligned_buffer(aligned_buffer const& other);
+    aligned_buffer(aligned_buffer const& other) = delete;
 
     /**
      * @brief copy assign
      */
-    aligned_buffer& operator=(aligned_buffer const& other);
+    aligned_buffer& operator=(aligned_buffer const& other) = delete;
 
     /**
      * @brief destruct the object
@@ -76,6 +76,11 @@ public:
      * @brief move assign
      */
     aligned_buffer& operator=(aligned_buffer&& other) noexcept = default;
+
+    /**
+     * @brief copy assign
+     */
+    aligned_buffer& assign(aligned_buffer const& other);
 
     /**
      * @brief accessor as string_view

@@ -88,11 +88,12 @@ bool write::operator()(request_context& context) const {
         BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
         for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
             auto& key = e.keys_[i];
-            auto const& value = e.values_.empty() ? details::write_tuple{} : e.values_[i];
+            details::write_tuple empty{};
+            auto const* value = e.values_.empty() ? &empty : &e.values_[i];
             if(auto res = stg->put(
                     *tx,
                     {static_cast<char*>(key.data()), key.size()},
-                    {static_cast<char*>(value.data()), value.size()},
+                    {static_cast<char*>(value->data()), value->size()},
                     kvs::put_option::create  // assuming this class is for Insert only
                 ); ! is_ok(res)) {
                 context.status_code(res);
@@ -145,7 +146,7 @@ status encode_tuple(
                         }
                         break;
                     case process::impl::ops::default_value_kind::immediate: {
-                        auto d = f.default_value_;
+                        auto& d = f.default_value_;
                         if(auto res = s.write(static_cast<char const*>(d.data()), d.size()); res != status::ok) {
                             return res;
                         }
@@ -233,7 +234,7 @@ status create_generated_field(
                 type,
                 nullptr
             );
-            if(auto res = utils::encode_any( buf, t, nullable, spec, {src}); res != status::ok) {
+            if(auto res = utils::encode_any(buf, t, nullable, spec, {src}); res != status::ok) {
                 return res;
             }
             break;

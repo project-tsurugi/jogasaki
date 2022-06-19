@@ -70,15 +70,7 @@ std::ostream& operator<<(std::ostream& out, aligned_buffer const& value) {
     return out;
 }
 
-aligned_buffer::aligned_buffer(aligned_buffer const& other) :
-    capacity_(other.capacity_),
-    alignment_(other.alignment_),
-    data_(utils::make_aligned_array<std::byte>(alignment_, capacity_))
-{
-    std::memcpy(data_.get(), other.data_.get(), capacity_);
-}
-
-aligned_buffer& aligned_buffer::operator=(aligned_buffer const& other) {
+aligned_buffer& aligned_buffer::assign(aligned_buffer const& other) {
     capacity_ = other.capacity_;
     alignment_ = other.alignment_;
     data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);

@@ -254,7 +254,7 @@ status create_generated_field(
         spec,
         nullable,
         knd,
-        static_cast<std::string_view>(buf),
+        std::move(buf),
         def_id
     );
     return status::ok;

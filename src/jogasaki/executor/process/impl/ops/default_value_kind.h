@@ -63,11 +63,11 @@ struct cache_align default_value_property {
      */
     default_value_property(
         default_value_kind kind,
-        std::string_view default_value,
+        data::aligned_buffer default_value,
         sequence_definition_id def_id
     ) :
         kind_(kind),
-        default_value_(default_value),
+        default_value_(std::move(default_value)),
         def_id_(def_id)
     {}
 

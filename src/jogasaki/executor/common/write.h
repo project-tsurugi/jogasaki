@@ -80,12 +80,12 @@ struct write_field : process::impl::ops::default_value_property {
         kvs::coding_spec spec,
         bool nullable,
         process::impl::ops::default_value_kind kind,
-        std::string_view default_value,
+        data::aligned_buffer default_value,
         sequence_definition_id def_id
     ) :
         default_value_property(
             kind,
-            default_value,
+            std::move(default_value),
             def_id
         ),
         index_(index),

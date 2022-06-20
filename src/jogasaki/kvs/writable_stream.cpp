@@ -22,6 +22,7 @@
 
 namespace jogasaki::kvs {
 
+
 writable_stream::writable_stream(void* buffer, std::size_t capacity) :
     base_(static_cast<char*>(buffer)),
     capacity_(capacity)
@@ -30,8 +31,14 @@ writable_stream::writable_stream(void* buffer, std::size_t capacity) :
 writable_stream::writable_stream(std::string& s) : writable_stream(s.data(), s.capacity()) {}
 
 status writable_stream::write(char const* dt, std::size_t sz) {
-    BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
-    if (sz > 0 && capacity_ > 0) {
+    if (sz == 0) {
+        return status::ok;
+    }
+    if (pos_ + sz > capacity_) {
+        if(! ignore_overflow_) {
+            fail();
+        }
+    } else {
         std::memcpy(base_ + pos_, dt, sz);  // NOLINT
     }
     pos_ += sz;
@@ -59,8 +66,14 @@ readable_stream writable_stream::readable() const noexcept {
 }
 
 void writable_stream::do_write(char const* dt, std::size_t sz, order odr) {
-    BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
-    if (sz > 0 && capacity_ > 0) {
+    if (sz == 0) {
+        return;
+    }
+    if (pos_ + sz > capacity_) {
+        if(! ignore_overflow_) {
+            fail();
+        }
+    } else {
         if (odr == order::ascending) {
             std::memcpy(base_ + pos_, dt, sz);  // NOLINT
         } else {
@@ -74,12 +87,24 @@ void writable_stream::do_write(char const* dt, std::size_t sz, order odr) {
 
 void writable_stream::do_write(char ch, std::size_t sz, order odr) {
     BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
-    if (sz > 0 && capacity_ > 0) {
+    if (sz == 0) {
+        return;
+    }
+    if (pos_ + sz > capacity_) {
+        if(! ignore_overflow_) {
+            fail();
+        }
+    } else {
         for (std::size_t i = 0; i < sz; ++i) {
             *(base_ + pos_ + i) = odr == order::ascending ? ch : ~ch;  // NOLINT
         }
     }
     pos_ += sz;
 }
+
+void writable_stream::ignore_overflow(bool arg) noexcept {
+    ignore_overflow_ = arg;
+}
+
 }
 

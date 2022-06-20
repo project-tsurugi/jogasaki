@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cmath>
+#include <takatori/util/fail.h>
 #include <boost/endian/conversion.hpp>
 
 #include <jogasaki/logging.h>
@@ -23,6 +24,8 @@
 #include "readable_stream.h"
 
 namespace jogasaki::kvs {
+
+using takatori::util::fail;
 
 static constexpr char padding_character = '\x20';
 
@@ -156,16 +159,26 @@ public:
      */
     [[nodiscard]] readable_stream readable() const noexcept;
 
+    /**
+     * @brief setter of the ignore overflow flag
+     * @details when set to true, writing longer data than capacity is ignored, otherwise the behavior is UB
+     */
+    void ignore_overflow(bool arg) noexcept;
+
 private:
     char* base_{};
     std::size_t pos_{};
     std::size_t capacity_{};
+    bool ignore_overflow_{false};
 
     template<std::size_t N>
     void do_write(details::uint_t<N> data) {
         auto sz = N/bits_per_byte;
-        BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  //NOLINT
-        if (capacity_ > 0) {
+        if (pos_ + sz > capacity_) {
+            if(! ignore_overflow_) {
+                fail();
+            }
+        } else {
             std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), sz); //NOLINT
         }
         pos_ += sz;

@@ -45,4 +45,11 @@ constexpr static std::string_view system_sequences_name = "system_sequences";
  */
 constexpr static std::size_t approx_index_count_per_table = 5;
 
+/**
+ * @brief default size in bytes for record buffer
+ * @details Used to prepare the write buffer for record.
+ * This is expected value for typical use case. Should be used for estimation, not limitation.
+ */
+constexpr std::size_t default_record_buffer_size = 1024;
+
 }

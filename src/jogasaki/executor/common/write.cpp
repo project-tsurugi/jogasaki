@@ -129,9 +129,8 @@ status encode_tuple(
 ) {
     utils::checkpoint_holder cph(std::addressof(resource));
     length = 0;
-    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-        auto capacity = loop == 0 ? 0 : buf.size(); // capacity 0 makes stream empty write to calc. length
-        kvs::writable_stream s{buf.data(), capacity};
+    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
+        kvs::writable_stream s{buf.data(), buf.size()};
         for(auto&& f : fields) {
             if (f.index_ == npos) {
                 // value not specified for the field use default value or null
@@ -153,8 +152,8 @@ status encode_tuple(
                         break;
                     }
                     case process::impl::ops::default_value_kind::sequence:
-                        // increment sequence only in the second loop
-                        auto v = loop == 1 ? next_sequence_value(ctx, f.def_id_) : sequence_value{};
+                        // increment sequence - loop might increment the sequence twice
+                        auto v = next_sequence_value(ctx, f.def_id_);
                         executor::process::impl::expression::any a{std::in_place_type<std::int64_t>, v};
                         if (f.nullable_) {
                             if(auto res = kvs::encode_nullable(a, f.type_, f.spec_, s); res != status::ok) {
@@ -203,9 +202,11 @@ status encode_tuple(
         }
         if (loop == 0) {
             length = s.size();
-            if (buf.size() < length) {
-                buf.resize(length);
+            if (length <= buf.size()) {
+                break;
             }
+            buf.resize(length);
+            s.ignore_overflow(false);
         }
     }
     return status::ok;
@@ -344,7 +345,7 @@ status write::create_tuples(
     if(auto res = create_fields(idx, columns, key, fields); res != status::ok) {
         return res;
     }
-    data::aligned_buffer buf{};
+    data::aligned_buffer buf{default_record_buffer_size};
     std::size_t count = 0;
     out.clear();
     out.reserve(tuples.size());

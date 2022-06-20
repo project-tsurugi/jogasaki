@@ -191,12 +191,6 @@ private:
     std::vector<details::field_info> extracted_values_{};
     std::vector<details::update_field> updates_{};
 
-    status encode_fields(
-        std::vector<details::field_info> const& fields,
-        kvs::writable_stream& target,
-        accessor::record_ref source
-    ) const;
-
     std::vector<details::field_info> create_input_key_fields(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,

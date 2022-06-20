@@ -36,6 +36,19 @@ namespace jogasaki::executor::process::impl::ops::details {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
 
+status encode_fields(
+    std::vector<details::field_info> const& fields,
+    kvs::writable_stream& target,
+    accessor::record_ref source
+);
+
+status do_encode(
+    data::aligned_buffer& buf,
+    std::vector<details::field_info> const& info,
+    accessor::record_ref source,
+    std::string_view& out
+);
+
 write_primary_target::write_primary_target(
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
@@ -96,44 +109,52 @@ status write_primary_target::find_record_and_remove(
     return status::ok;
 }
 
-status write_primary_target::prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const {
-    // calculate length first, and then put
-    if(auto res = check_length_and_extend_buffer(input_keys_, ctx.key_buf_, source); res != status::ok) {
+status write_primary_target::prepare_encoded_key(
+    write_primary_context& ctx,
+    accessor::record_ref source,
+    std::string_view& out
+) const {
+    if(auto res = do_encode(ctx.key_buf_, input_keys_, source, out); res != status::ok) {
         return res;
     }
-    kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
-    if(auto res = encode_fields(input_keys_, keys, source); res != status::ok) {
-        return res;
-    }
-    out = {keys.data(), keys.size()};
-    ctx.key_len_ = keys.size();
+    ctx.key_len_ = out.size();
     return status::ok;
 }
 
+status do_encode(
+    data::aligned_buffer& buf,
+    std::vector<details::field_info> const& info,
+    accessor::record_ref source,
+    std::string_view& out
+) {
+    std::size_t length{};
+    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
+        kvs::writable_stream keys{buf.data(), buf.size(), loop == 0};
+        if(auto res = encode_fields(info, keys, source); res != status::ok) {
+            return res;
+        }
+        length = keys.size();
+        if (loop == 0) {
+            if (length <= buf.size()) {
+                break;
+            }
+            buf.resize(length);
+        }
+    }
+    out = {static_cast<char*>(buf.data()), length};
+    return status::ok;
+}
 status write_primary_target::encode_and_put(write_primary_context& ctx, transaction_context& tx) const {
-    auto key_source = ctx.key_store_.ref();
-    auto val_source = ctx.value_store_.ref();
-    // calculate length first, then put
-    if(auto res = check_length_and_extend_buffer(extracted_keys_, ctx.key_buf_, key_source); res != status::ok) {
+    std::string_view k{};
+    std::string_view v{};
+    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, ctx.key_store_.ref(), k); res != status::ok) {
         return res;
     }
-    if(auto res = check_length_and_extend_buffer(extracted_values_, ctx.value_buf_, val_source); res != status::ok) {
+    ctx.key_len_ = k.size();
+    if(auto res = do_encode(ctx.value_buf_, extracted_values_, ctx.value_store_.ref(), v); res != status::ok) {
         return res;
     }
-    kvs::writable_stream keys{ctx.key_buf_.data(), ctx.key_buf_.size()};
-    kvs::writable_stream values{ctx.value_buf_.data(), ctx.value_buf_.size()};
-    if(auto res = encode_fields(extracted_keys_, keys, key_source); res != status::ok) {
-        return res;
-    }
-    ctx.key_len_ = keys.size();
-    if(auto res = encode_fields(extracted_values_, values, val_source); res != status::ok) {
-        return res;
-    }
-    if(auto res = ctx.stg_->put(
-            tx,
-            {keys.data(), keys.size()},
-            {values.data(), values.size()}
-        ); res != status::ok) {
+    if(auto res = ctx.stg_->put(tx, k, v); res != status::ok) {
         return res;
     }
     return status::ok;
@@ -205,11 +226,11 @@ status write_primary_target::check_length_and_extend_buffer(
     return status::ok;
 }
 
-status write_primary_target::encode_fields(
+status encode_fields(
     std::vector<details::field_info> const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
-) const {
+) {
     for(auto const& f : fields) {
         if(f.nullable_) {
             if(auto res = kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, target);

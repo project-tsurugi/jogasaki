@@ -39,9 +39,8 @@ inline status encode_any(
     std::initializer_list<executor::process::impl::expression::any> sources
 ) {
     std::size_t length = 0;
-    for(int loop = 0; loop < 2; ++loop) { // first calculate buffer length, and then allocate/fill
-        auto capacity = loop == 0 ? 0 : target.size(); // capacity 0 makes stream empty write to calc. length
-        kvs::writable_stream s{target.data(), capacity};
+    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
+        kvs::writable_stream s{target.data(), target.size(), loop == 0};
         for(auto&& f : sources) {
             if (f.empty()) {
                 // value not specified for the field
@@ -65,9 +64,10 @@ inline status encode_any(
         }
         if (loop == 0) {
             length = s.size();
-            if (target.size() < length) {
-                target.resize(length);
+            if (length <= target.size()) {
+                break;
             }
+            target.resize(length);
         }
     }
     return status::ok;

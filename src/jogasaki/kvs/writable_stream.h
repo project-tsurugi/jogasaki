@@ -72,14 +72,18 @@ public:
      * @brief create new object
      * @param buffer pointer to buffer that this instance can use
      * @param capacity length of the buffer
+     * @param ignore_overflow when set to true, writing longer data than capacity is ignored,
+     * otherwise the behavior is UB
      */
-    writable_stream(void* buffer, std::size_t capacity);
+    writable_stream(void* buffer, std::size_t capacity, bool ignore_overflow = false);
 
     /**
      * @brief construct stream using string as its buffer
      * @param s string to use stream buffer
+     * @param ignore_overflow when set to true, writing longer data than capacity is ignored,
+     * otherwise the behavior is UB
      */
-    explicit writable_stream(std::string& s);
+    explicit writable_stream(std::string& s, bool ignore_overflow = false);
 
     /**
      * @brief write the typed field data respecting order to the stream

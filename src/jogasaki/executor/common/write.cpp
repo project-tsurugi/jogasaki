@@ -129,8 +129,9 @@ status encode_tuple(
 ) {
     utils::checkpoint_holder cph(std::addressof(resource));
     length = 0;
+
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{buf.data(), buf.size()};
+        kvs::writable_stream s{buf.data(), buf.size(), loop == 0};
         for(auto&& f : fields) {
             if (f.index_ == npos) {
                 // value not specified for the field use default value or null
@@ -206,7 +207,6 @@ status encode_tuple(
                 break;
             }
             buf.resize(length);
-            s.ignore_overflow(false);
         }
     }
     return status::ok;

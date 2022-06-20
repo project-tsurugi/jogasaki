@@ -23,12 +23,15 @@
 namespace jogasaki::kvs {
 
 
-writable_stream::writable_stream(void* buffer, std::size_t capacity) :
+writable_stream::writable_stream(void* buffer, std::size_t capacity, bool ignore_overflow) :
     base_(static_cast<char*>(buffer)),
-    capacity_(capacity)
+    capacity_(capacity),
+    ignore_overflow_(ignore_overflow)
 {}
 
-writable_stream::writable_stream(std::string& s) : writable_stream(s.data(), s.capacity()) {}
+writable_stream::writable_stream(std::string& s, bool ignore_overflow) :
+    writable_stream(s.data(), s.capacity(), ignore_overflow)
+{}
 
 status writable_stream::write(char const* dt, std::size_t sz) {
     if (sz == 0) {

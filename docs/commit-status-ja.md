@@ -37,9 +37,11 @@
 * `CommitStatus.COMMIT_STATUS_UNSPECIFIED` が指定された場合、ほかのいずれかの `CommitStatus` に読み替えて待ち合わせを行う
 * 読み替える先は以下の方法で定義できる (優先度が高い順)
   * トランザクション内の設定
-    * `SET TRANSACTION_COMMIT_NOTIFICATION XXX`
+    * `SET LOCAL TRANSACTION_COMMIT_NOTIFICATION TO XXX`
+    * 未指定の場合はセッションの設定を利用
   * セッション内の設定
-    * `SET TRANSACTION_COMMIT_NOTIFICATION XXX`
+    * `SET TRANSACTION_COMMIT_NOTIFICATION TO XXX`
+    * 未指定の場合はデータベースの設定を利用
   * データベース内の設定
     * `transaction` セクションの `commit_notification` 属性
     * 既定値は `STORED`

@@ -52,6 +52,17 @@ transaction::transaction(
     if(auto res = sharksfin::transaction_begin(db.handle(), options, &tx_); res != sharksfin::StatusCode::OK) {
         fail();
     }
+    if(is_long) {
+        utils::backoff_waiter waiter{};
+        while(true) {
+            waiter();
+            auto st = check_state().state_kind();
+            VLOG(log_debug) << "checking for waiting transaction state:" << st;
+            if (st != ::sharksfin::TransactionState::StateKind::WAITING_START) {
+                break;
+            }
+        }
+    }
 }
 
 transaction::~transaction() noexcept {
@@ -63,12 +74,11 @@ transaction::~transaction() noexcept {
 
 status transaction::commit(bool async) {
     // TODO remove retry here when scheduler is ready to handle waiting tasks
-    std::size_t trial = 20;
     auto rc = sharksfin::transaction_commit(tx_, async);
     if (rc == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TX) {
         VLOG(log_debug) << "commit() returns ERR_WAITING_FOR_OTHER_TX - waiting for others to finish";
         utils::backoff_waiter waiter{};
-        while(trial > 0) {
+        while(true) {
             waiter();
             auto st = check_state().state_kind();
             VLOG(log_debug) << "checking for waiting transaction state:" << st;
@@ -79,14 +89,7 @@ status transaction::commit(bool async) {
                 }
                 break;
             }
-            --trial;
         }
-    }
-    if (trial == 0) {
-        VLOG(log_error) << "commit failed and giving up retries.";
-        auto res = abort();
-        VLOG(log_warning) << "abort returns:" << res;
-        return status::err_aborted;
     }
     if(rc == sharksfin::StatusCode::OK ||
         rc == sharksfin::StatusCode::ERR_ABORTED ||

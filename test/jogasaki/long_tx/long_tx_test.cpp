@@ -16,6 +16,7 @@
 
 #include <regex>
 #include <gtest/gtest.h>
+#include <future>
 
 #include <takatori/util/downcast.h>
 
@@ -86,13 +87,38 @@ TEST_F(long_tx_test, long_insert_long_insert1) {
     ASSERT_EQ(status::ok, tx2->commit());
 }
 
+class block_verifier {
+public:
+    auto exec(std::function<void(void)> f) {
+        using namespace std::chrono_literals;
+        std::atomic_bool finished{false};
+        auto g = std::async(std::launch::async, [&](){
+            f();
+            finished_ = true;
+        });
+        g.wait_for(10ms);
+        return g;
+    }
+
+    bool finished() {
+        return finished_;
+    }
+private:
+    std::atomic_bool finished_{false};
+};
+
+
 TEST_F(long_tx_test, long_insert_long_insert2) {
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx1);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
-    ASSERT_EQ(status::err_aborted, tx2->commit()); // WP1 waits tx with higher priority TODO
+    block_verifier vf{};
+    auto f = vf.exec([&](){ tx2->commit(); });
+    ASSERT_FALSE(vf.finished());
     ASSERT_EQ(status::ok, tx1->commit());
+    f.get();
+    ASSERT_TRUE(vf.finished());
 }
 
 TEST_F(long_tx_test, long_insert_long_insert3) {
@@ -100,8 +126,12 @@ TEST_F(long_tx_test, long_insert_long_insert3) {
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx1);
-    ASSERT_EQ(status::err_aborted, tx2->commit()); // WP1 waits tx with higher priority TODO
+    block_verifier vf{};
+    auto f = vf.exec([&](){ tx2->commit(); });
+    ASSERT_FALSE(vf.finished());
     ASSERT_EQ(status::ok, tx1->commit());
+    f.get();
+    ASSERT_TRUE(vf.finished());
 }
 
 TEST_F(long_tx_test, short_update) {
@@ -409,5 +439,26 @@ TEST_F(long_tx_test, scan_and_delete2) {
     ASSERT_EQ(2, result.size());
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[1]);
+}
+
+TEST_F(long_tx_test, commit_wait) {
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 3.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
+
+    block_verifier vf{};
+    auto f = vf.exec([&](){ tx2->commit(); });
+    ASSERT_FALSE(vf.finished());
+    ASSERT_EQ(status::ok, tx1->commit());
+    f.get();
+    ASSERT_TRUE(vf.finished());
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 ORDER BY C0", result);
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[2]);
 }
 }

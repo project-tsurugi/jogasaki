@@ -22,15 +22,15 @@
 namespace jogasaki::data {
 
 aligned_buffer::aligned_buffer(
-    std::size_t size,
+    std::size_t capacity,
     std::size_t align
 ) noexcept :
-    capacity_(size),
+    capacity_(capacity),
     alignment_(align)
 {}
 
 std::size_t aligned_buffer::size() const noexcept {
-    return capacity_;
+    return size_;
 }
 
 void* aligned_buffer::data() const noexcept {
@@ -42,13 +42,20 @@ aligned_buffer::operator bool() const noexcept {
 }
 
 [[nodiscard]] bool aligned_buffer::empty() const noexcept {
-    return capacity_ == 0;
+    return size_ == 0;
 }
 
 void aligned_buffer::resize(std::size_t sz) {
+    if(sz <= capacity_) {
+        size_ = sz;
+        return;
+    }
     auto n = utils::make_aligned_array<std::byte>(alignment_, sz);
+    std::memset(n.get(), 0, sz);
+    std::memcpy(n.get(), data_.get(), capacity_);
     data_.swap(n);
     capacity_ = sz;
+    size_ = sz;
 }
 
 std::size_t aligned_buffer::alignment() const noexcept {
@@ -64,22 +71,24 @@ bool operator!=(aligned_buffer const& a, aligned_buffer const& b) noexcept {
 }
 
 std::ostream& operator<<(std::ostream& out, aligned_buffer const& value) {
-    out << " capacity: " << value.size()
+    out << " size: " << value.size()
+        << " capacity: " << value.capacity()
         << " alignment: " << value.alignment()
         << " data: " << utils::binary_printer{value.data_.get(), value.size()};
     return out;
 }
 
 aligned_buffer& aligned_buffer::assign(aligned_buffer const& other) {
+    size_ = other.size_;
     capacity_ = other.capacity_;
     alignment_ = other.alignment_;
     data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);
-    std::memcpy(data_.get(), other.data_.get(), capacity_);
+    std::memcpy(data_.get(), other.data_.get(), size_);
     return *this;
 }
 
 aligned_buffer::operator std::string_view() const noexcept {
-    return {reinterpret_cast<char*>(data_.get()), capacity_};  //NOLINT
+    return {reinterpret_cast<char*>(data_.get()), size_};  //NOLINT
 }
 
 aligned_buffer::aligned_buffer(std::string_view s) :
@@ -88,6 +97,20 @@ aligned_buffer::aligned_buffer(std::string_view s) :
     if (! s.empty()) {
         std::memcpy(data_.get(), s.data(), s.size());
     }
+}
+
+void aligned_buffer::shrink_to_fit() {
+    if (size_ == capacity_) {
+        return;
+    }
+    auto n = utils::make_aligned_array<std::byte>(alignment_, size_);
+    std::memcpy(n.get(), data_.get(), size_);
+    data_.swap(n);
+    capacity_ = size_;
+}
+
+std::size_t aligned_buffer::capacity() const noexcept {
+    return capacity_;
 }
 
 } // namespace

@@ -38,11 +38,11 @@ public:
 
     /**
      * @brief create new instance
-     * @param size the size(capacity) of the buffer
+     * @param capacity the capacity of the buffer
      * @param align the alignment of the buffer
      */
     explicit aligned_buffer(
-        std::size_t size,
+        std::size_t capacity,
         std::size_t align = default_alignment
     ) noexcept;
 
@@ -88,9 +88,14 @@ public:
     [[nodiscard]] operator std::string_view() const noexcept;  //NOLINT
 
     /**
-     * @brief getter for the capacity of the buffer
+     * @brief getter for the size of the data stored in the buffer
      */
     [[nodiscard]] std::size_t size() const noexcept;
+
+    /**
+     * @brief getter for the capacity of the buffer
+     */
+    [[nodiscard]] std::size_t capacity() const noexcept;
 
     /**
      * @brief getter for the buffer pointer
@@ -110,11 +115,20 @@ public:
     [[nodiscard]] bool empty() const noexcept;
 
     /**
-     * @brief relocate the buffer for different capacity
-     * @param sz the new buffer capacity
-     * @details the new buffer is allocated and old one will be released. The alignment is not changed.
+     * @brief set the data size, extend the capacity by relocating the data if needed
+     * @param sz the new data size
+     * @details If the new data size is equal to or smaller than the capacity, simply size is set to the given one and
+     * capacity is not changed. If the new data size is larger than the capacity, the new buffer is allocated and old
+     * one will be released. The alignment is not changed.
      */
     void resize(std::size_t sz);
+
+    /**
+     * @brief shrink the buffer size to the current data size by relocating
+     * @details if data size is smaller than the capacity, the new buffer is allocated and old one will be released.
+     * The alignment is not changed.
+     */
+    void shrink_to_fit();
 
     /**
      * @brief return alignment of the buffer
@@ -143,6 +157,7 @@ private:
     std::size_t capacity_{};
     std::size_t alignment_{default_alignment};
     utils::aligned_array<std::byte> data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);
+    std::size_t size_{};
 };
 
 } // namespace

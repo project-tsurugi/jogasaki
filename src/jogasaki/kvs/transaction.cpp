@@ -55,12 +55,12 @@ transaction::transaction(
     if(is_long) {
         utils::backoff_waiter waiter{};
         while(true) {
-            waiter();
             auto st = check_state().state_kind();
             VLOG(log_debug) << "checking for waiting transaction state:" << st;
             if (st != ::sharksfin::TransactionState::StateKind::WAITING_START) {
                 break;
             }
+            waiter();
         }
     }
 }
@@ -79,7 +79,6 @@ status transaction::commit(bool async) {
         VLOG(log_debug) << "commit() returns ERR_WAITING_FOR_OTHER_TX - waiting for others to finish";
         utils::backoff_waiter waiter{};
         while(true) {
-            waiter();
             auto st = check_state().state_kind();
             VLOG(log_debug) << "checking for waiting transaction state:" << st;
             if (st != ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT) {
@@ -89,6 +88,7 @@ status transaction::commit(bool async) {
                 }
                 break;
             }
+            waiter();
         }
     }
     if(rc == sharksfin::StatusCode::OK ||

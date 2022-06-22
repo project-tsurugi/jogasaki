@@ -115,9 +115,8 @@ public:
     [[nodiscard]] std::mutex& mutex() noexcept;
 
     /**
-     * @brief return the native handle in the transaction layer
-     * @note this is expected to be package private (i.e. callable from code in kvs namespace)
-     * @return the handle held by this object
+     * @brief return the tx state
+     * @return the tx state of this object
      */
     [[nodiscard]] sharksfin::TransactionState check_state() noexcept;
 

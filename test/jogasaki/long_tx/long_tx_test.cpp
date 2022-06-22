@@ -89,14 +89,15 @@ TEST_F(long_tx_test, long_insert_long_insert1) {
 
 class block_verifier {
 public:
-    auto exec(std::function<void(void)> f) {
+
+    auto exec(std::function<void(void)> f, std::size_t wait_ns = 10*1000*1000) {
         using namespace std::chrono_literals;
         std::atomic_bool finished{false};
-        auto g = std::async(std::launch::async, [&](){
+        auto g = std::async(std::launch::async, [=](){
             f();
             finished_ = true;
         });
-        g.wait_for(10ms);
+        g.wait_for(std::chrono::nanoseconds{wait_ns});
         return g;
     }
 
@@ -460,5 +461,19 @@ TEST_F(long_tx_test, commit_wait) {
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[1]);
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[2]);
+}
+
+TEST_F(long_tx_test, start_wait) {
+    block_verifier vf{};
+    std::shared_ptr<api::transaction_handle> tx1{};
+    auto f = vf.exec([&](){
+        //debug log shows WAITING_START messages
+        tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    }, 1000*1000); // = 1ms. Waiting epoch takes 10-40 ms, so we expect this will not complete in 1ms.
+    ASSERT_FALSE(vf.finished());
+    wait_epochs(1);
+    f.get();
+    ASSERT_TRUE(vf.finished());
+    ASSERT_EQ(status::ok, tx1->commit());
 }
 }

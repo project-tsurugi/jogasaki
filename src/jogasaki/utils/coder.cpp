@@ -29,7 +29,7 @@ status encode_any(
     meta::field_type const& type,
     bool nullable,
     kvs::coding_spec spec,
-    std::initializer_list<executor::process::impl::expression::any> sources
+    std::initializer_list<data::any> sources
 ) {
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry

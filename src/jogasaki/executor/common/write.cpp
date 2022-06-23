@@ -19,6 +19,7 @@
 #include <takatori/statement/write.h>
 #include <yugawara/binding/factory.h>
 
+#include <jogasaki/data/any.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/error.h>
 #include <jogasaki/logging.h>
@@ -46,8 +47,8 @@ using jogasaki::executor::process::impl::expression::evaluator;
 using yugawara::compiled_info;
 
 using takatori::util::fail;
-using executor::process::impl::expression::any;
-using executor::process::impl::expression::index;
+using data::any;
+using data::index;
 
 write::write(
     write_kind kind,
@@ -155,7 +156,7 @@ status encode_tuple(
                     case process::impl::ops::default_value_kind::sequence:
                         // increment sequence - loop might increment the sequence twice
                         auto v = next_sequence_value(ctx, f.def_id_);
-                        executor::process::impl::expression::any a{std::in_place_type<std::int64_t>, v};
+                        any a{std::in_place_type<std::int64_t>, v};
                         if (f.nullable_) {
                             if(auto res = kvs::encode_nullable(a, f.type_, f.spec_, s); res != status::ok) {
                                 return res;

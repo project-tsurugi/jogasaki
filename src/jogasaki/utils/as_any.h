@@ -60,7 +60,7 @@ inline static typename T::view_type value_of(
     }
 }
 
-executor::process::impl::expression::any as_any(
+data::any as_any(
     takatori::value::data const& arg,
     takatori::type::data const& type,
     memory::paged_memory_resource* resource

@@ -27,7 +27,7 @@
 namespace jogasaki::data {
 
 using takatori::util::fail;
-using jogasaki::executor::process::impl::expression::any;
+using jogasaki::data::any;
 
 /**
  * @brief value store with ownership

@@ -79,7 +79,7 @@ void copy_field(
     meta::field_type const& type,
     accessor::record_ref target,
     std::size_t target_offset,
-    executor::process::impl::expression::any const& source,
+    data::any const& source,
     memory::paged_memory_resource* resource = nullptr
 );
 
@@ -98,7 +98,7 @@ void copy_nullable_field(
     accessor::record_ref target,
     std::size_t target_offset,
     std::size_t target_nullity_offset,
-    executor::process::impl::expression::any const& source,
+    data::any const& source,
     memory::paged_memory_resource* resource = nullptr
 );
 

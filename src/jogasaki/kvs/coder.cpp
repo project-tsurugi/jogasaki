@@ -68,7 +68,7 @@ status encode_nullable(
 }
 
 status encode(
-    executor::process::impl::expression::any const& src,
+    data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
     writable_stream& dest
@@ -92,7 +92,7 @@ status encode(
 }
 
 status encode_nullable(
-    executor::process::impl::expression::any const& src,
+    data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
     writable_stream& dest
@@ -113,11 +113,11 @@ status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
-    executor::process::impl::expression::any& dest,
+    data::any& dest,
     memory::paged_memory_resource* resource
 ) {
     using kind = meta::field_type_kind;
-    using any = executor::process::impl::expression::any;
+    using any = data::any;
     auto odr = spec.ordering();
     switch(type.kind()) {
         case kind::boolean: dest = any{std::in_place_type<runtime_t<kind::boolean>>, src.read<runtime_t<kind::boolean>>(odr, false)}; break;
@@ -184,7 +184,7 @@ status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
-    executor::process::impl::expression::any& dest,
+    data::any& dest,
     memory::paged_memory_resource* resource
 ) {
     using kind = meta::field_type_kind;

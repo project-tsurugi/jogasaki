@@ -17,10 +17,11 @@
 
 #include <jogasaki/data/value.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/data/any.h>
 
 namespace jogasaki::plan {
 
-using jogasaki::executor::process::impl::expression::any;
+using jogasaki::data::any;
 
 /**
  * @brief parameters for place holders

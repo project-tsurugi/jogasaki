@@ -456,8 +456,8 @@ TEST_F(coder_test, encode_decode_any) {
     test::record target_record{1, 1.0};
     auto src_meta = source_record.record_meta();
 
-    executor::process::impl::expression::any src0{std::in_place_type<std::int64_t>, 2};
-    executor::process::impl::expression::any src1{std::in_place_type<double>, 2.0};
+    data::any src0{std::in_place_type<std::int64_t>, 2};
+    data::any src1{std::in_place_type<double>, 2.0};
     EXPECT_EQ(status::ok, encode(src0, src_meta->at(0), spec_asc, s));
     EXPECT_EQ(status::ok, encode(src1, src_meta->at(1), spec_asc, s));
     auto rs = s.readable();
@@ -469,7 +469,7 @@ TEST_F(coder_test, encode_decode_any) {
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
 
     rs = s.readable();
-    executor::process::impl::expression::any res{};
+    data::any res{};
     EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, res, &resource));
     EXPECT_EQ(2, res.to<std::int64_t>());
     EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, res, &resource));
@@ -532,10 +532,10 @@ TEST_F(coder_test, encode_decode_any_nullable) {
     mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(1, 1, 1.0, 1.0), {false, false, false, false})};
 
     auto src_meta = source_record.record_meta();
-    executor::process::impl::expression::any src0{std::in_place_type<std::int32_t>, 2};
-    executor::process::impl::expression::any src1{};
-    executor::process::impl::expression::any src2{std::in_place_type<double>, 2.0};
-    executor::process::impl::expression::any src3{};
+    data::any src0{std::in_place_type<std::int32_t>, 2};
+    data::any src1{};
+    data::any src2{std::in_place_type<double>, 2.0};
+    data::any src3{};
 
     EXPECT_EQ(status::ok, encode_nullable(src0, src_meta->at(0), spec_asc, s));
     EXPECT_EQ(status::ok, encode_nullable(src1, src_meta->at(1), spec_asc, s));
@@ -554,7 +554,7 @@ TEST_F(coder_test, encode_decode_any_nullable) {
     ASSERT_FALSE(target_record.ref().get_if<double>(tgt_meta->nullity_offset(3), tgt_meta->value_offset(3)));
 
     rs = s.readable();
-    executor::process::impl::expression::any res{};
+    data::any res{};
     EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, res, &resource));
     EXPECT_EQ(2, res.to<std::int32_t>());
     EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, res, &resource));
@@ -609,9 +609,9 @@ void test_ordering() {
     kvs::writable_stream s1{src1};
     kvs::writable_stream s2{src2};
     kvs::writable_stream s3{src3};
-    executor::process::impl::expression::any n1{std::in_place_type<runtime_t<Kind>>, -1};
-    executor::process::impl::expression::any z0{std::in_place_type<runtime_t<Kind>>, 0};
-    executor::process::impl::expression::any p1{std::in_place_type<runtime_t<Kind>>, 1};
+    data::any n1{std::in_place_type<runtime_t<Kind>>, -1};
+    data::any z0{std::in_place_type<runtime_t<Kind>>, 0};
+    data::any p1{std::in_place_type<runtime_t<Kind>>, 1};
     {
         // ascending non nullable
         EXPECT_EQ(status::ok, encode(n1, meta::field_type{meta::field_enum_tag<Kind>}, spec_asc, s1));
@@ -699,11 +699,11 @@ TEST_F(coder_test, text_ordering) {
     kvs::writable_stream s3{src3};
     kvs::writable_stream s4{src4};
     kvs::writable_stream s5{src5};
-    executor::process::impl::expression::any c0{std::in_place_type<accessor::text>, text{""}};
-    executor::process::impl::expression::any c2{std::in_place_type<accessor::text>, text{"AA"}};
-    executor::process::impl::expression::any c3a{std::in_place_type<accessor::text>, text{"AAA"}};
-    executor::process::impl::expression::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
-    executor::process::impl::expression::any c5{std::in_place_type<accessor::text>, text{"BB"}};
+    data::any c0{std::in_place_type<accessor::text>, text{""}};
+    data::any c2{std::in_place_type<accessor::text>, text{"AA"}};
+    data::any c3a{std::in_place_type<accessor::text>, text{"AAA"}};
+    data::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
+    data::any c5{std::in_place_type<accessor::text>, text{"BB"}};
     {
         // ascending non nullable
         EXPECT_EQ(status::ok, encode(c0, meta::field_type{meta::field_enum_tag<kind::character>}, spec_asc, s1));

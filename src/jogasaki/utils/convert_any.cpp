@@ -19,8 +19,8 @@
 
 namespace jogasaki::utils {
 
-using executor::process::impl::expression::any;
-using executor::process::impl::expression::index;
+using data::any;
+using data::index;
 
 bool convert_any(any& a, meta::field_type const& type) {
     //TODO validation about type compatibility is not strict for now

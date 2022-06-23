@@ -40,6 +40,8 @@
 
 namespace jogasaki::executor::process::impl::expression {
 
+using any = jogasaki::data::any;
+
 namespace details {
 
 class engine {

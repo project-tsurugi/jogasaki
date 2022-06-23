@@ -36,6 +36,9 @@
 
 namespace jogasaki::executor::process::impl::expression {
 
+using jogasaki::data::any;
+using jogasaki::data::index;
+
 using takatori::util::fail;
 
 namespace details {

@@ -15,7 +15,7 @@
  */
 #include "any.h"
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::data {
 
 any::operator bool() const noexcept {
     return !empty() && !error();

@@ -51,10 +51,12 @@ constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;
 constexpr kvs::order undef = kvs::order::undefined;
 
+using any = data::any;
+
 namespace {
 
 inline void encode_field(
-    expression::any const& a,
+    data::any const& a,
     meta::field_type f,
     kvs::coding_spec spec,
     bool nullable,
@@ -76,7 +78,7 @@ any create_value(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return expression::any{std::in_place_type<T>, val};
+    return data::any{std::in_place_type<T>, val};
 }
 
 static void fill_fields(
@@ -98,22 +100,22 @@ static void fill_fields(
         std::size_t val = (sequential ? record_count : rnd()) % modulo;
         switch(f.kind()) {
             case kind::int4: {
-                expression::any a{create_value<std::int32_t>(val, record_count, nullable)};
+                data::any a{create_value<std::int32_t>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::int4>), spec, nullable, target);
                 break;
             }
             case kind::int8: {
-                expression::any a{create_value<std::int64_t>(val, record_count, nullable)};
+                data::any a{create_value<std::int64_t>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::int8>), spec, nullable, target);
                 break;
             }
             case kind::float4: {
-                expression::any a{create_value<float>(val, record_count, nullable)};
+                data::any a{create_value<float>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::float4>), spec, nullable, target);
                 break;
             }
             case kind::float8: {
-                expression::any a{create_value<double>(val, record_count, nullable)};
+                data::any a{create_value<double>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
@@ -122,7 +124,7 @@ static void fill_fields(
                 std::size_t len = 1 + (sequential ? record_count : rnd()) % 70;
                 len = record_count % 2 == 1 ? len + 20 : len;
                 std::string d(len, c);
-                expression::any a{create_value<accessor::text>(
+                data::any a{create_value<accessor::text>(
                     accessor::text{d.data(), d.size()}, record_count, nullable)
                 };
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::character>), spec, nullable, target);
@@ -200,7 +202,7 @@ inline void populate_storage_data(
     }
 }
 
-inline std::string any_to_string(expression::any const& any, meta::field_type type) {
+inline std::string any_to_string(data::any const& any, meta::field_type type) {
     if (! any) {
         return "NULL";
     }
@@ -244,22 +246,22 @@ inline void load_storage_data(
             auto type = utils::type_for(k.type());
             switch(type.kind()) {
                 case kind::int4: {
-                    expression::any a{create_value<std::int32_t>(val, record_count, nullable)};
+                    data::any a{create_value<std::int32_t>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::int8: {
-                    expression::any a{create_value<std::int64_t>(val, record_count, nullable)};
+                    data::any a{create_value<std::int64_t>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::float4: {
-                    expression::any a{create_value<float>(val, record_count, nullable)};
+                    data::any a{create_value<float>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::float8: {
-                    expression::any a{create_value<double>(val, record_count, nullable)};
+                    data::any a{create_value<double>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
@@ -268,7 +270,7 @@ inline void load_storage_data(
                     auto& ct = takatori::util::unsafe_downcast<takatori::type::character>(k.type());
                     auto len = ct.length() ? *ct.length() : 1;
                     std::string d(len, c);
-                    expression::any a{create_value<accessor::text>(
+                    data::any a{create_value<accessor::text>(
                         accessor::text{d.data(), d.size()}, record_count, nullable)
                     };
                     values.emplace_back(any_to_string(a, type));

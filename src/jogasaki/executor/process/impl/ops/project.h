@@ -88,7 +88,7 @@ private:
     std::unique_ptr<operator_base> downstream_{};
 
     template <typename T>
-    void copy_to(accessor::record_ref target_ref, std::size_t target_offset, expression::any src) {
+    void copy_to(accessor::record_ref target_ref, std::size_t target_offset, data::any src) {
         target_ref.set_value<T>(target_offset, src.to<T>());
     }
 };

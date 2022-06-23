@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "value.h"
+#include "any.h"
 
 namespace jogasaki::data {
 

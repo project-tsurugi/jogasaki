@@ -21,8 +21,6 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/process/impl/expression/any.h>
-
 #include <jogasaki/utils/random.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>

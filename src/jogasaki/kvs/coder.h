@@ -248,7 +248,7 @@ status encode_nullable(
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
-status encode(executor::process::impl::expression::any const& src,
+status encode(data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
     writable_stream& dest);
@@ -264,7 +264,7 @@ status encode(executor::process::impl::expression::any const& src,
  * so the destination stream should be reset or discarded.
  */
 status encode_nullable(
-    executor::process::impl::expression::any const& src,
+    data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
     writable_stream& dest
@@ -285,7 +285,7 @@ status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
-    executor::process::impl::expression::any& dest,
+    data::any& dest,
     memory::paged_memory_resource* resource = nullptr
 );
 
@@ -349,7 +349,7 @@ status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
-    executor::process::impl::expression::any& dest,
+    data::any& dest,
     memory::paged_memory_resource* resource = nullptr
 );
 

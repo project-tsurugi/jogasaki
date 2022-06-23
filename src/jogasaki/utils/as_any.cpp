@@ -29,7 +29,7 @@ namespace jogasaki::utils {
 
 using takatori::util::fail;
 
-executor::process::impl::expression::any as_any(
+data::any as_any(
     takatori::value::data const& arg,
     takatori::type::data const& type,
     memory::paged_memory_resource* resource

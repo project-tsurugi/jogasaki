@@ -27,9 +27,10 @@
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/utils/variant.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::data {
 
 using takatori::util::fail;
+using jogasaki::executor::process::impl::expression::error;
 
 /**
  * @brief value store for any type

@@ -15,65 +15,22 @@
  */
 #pragma once
 
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
+#include <initializer_list>
 
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/kvs/coder.h>
 #include <jogasaki/executor/process/impl/expression/any.h>
 
 namespace jogasaki::utils {
 
-using takatori::util::unsafe_downcast;
-using takatori::util::fail;
-
-inline status encode_any(
+status encode_any(
     data::aligned_buffer& target,
     meta::field_type const& type,
     bool nullable,
     kvs::coding_spec spec,
     std::initializer_list<executor::process::impl::expression::any> sources
-) {
-    std::size_t length = 0;
-    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{target.data(), target.capacity(), loop == 0};
-        for(auto&& f : sources) {
-            if (f.empty()) {
-                // value not specified for the field
-                if (! nullable) {
-                    fail();
-                }
-                if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
-                    return res;
-                }
-            } else {
-                if (nullable) {
-                    if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
-                        return res;
-                    }
-                } else {
-                    if(auto res = kvs::encode(f, type, spec, s); res != status::ok) {
-                        return res;
-                    }
-                }
-            }
-        }
-        length = s.size();
-        bool fit = length <= target.capacity();
-        target.resize(length);
-        if (loop == 0) {
-            if (fit) {
-                break;
-            }
-            target.resize(0); // set data size 0 and start from beginning
-        }
-    }
-    return status::ok;
-}
+);
 
 }
 

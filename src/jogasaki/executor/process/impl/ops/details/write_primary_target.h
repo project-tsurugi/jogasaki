@@ -210,12 +210,6 @@ private:
         variable_table_info const& input_variable_info
     );
 
-    status check_length_and_extend_buffer(
-        std::vector<details::field_info> const& fields,
-        data::aligned_buffer& buffer,
-        accessor::record_ref source
-    ) const;
-
     status decode_fields(
         std::vector<details::field_info> const& fields,
         kvs::readable_stream& stream,

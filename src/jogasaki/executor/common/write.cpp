@@ -131,7 +131,7 @@ status encode_tuple(
     length = 0;
 
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{buf.data(), buf.size(), loop == 0};
+        kvs::writable_stream s{buf.data(), buf.capacity(), loop == 0};
         for(auto&& f : fields) {
             if (f.index_ == npos) {
                 // value not specified for the field use default value or null
@@ -201,12 +201,14 @@ status encode_tuple(
                 return res;
             }
         }
+        length = s.size();
+        bool fit = length <= buf.capacity();
+        buf.resize(length);
         if (loop == 0) {
-            length = s.size();
-            if (length <= buf.size()) {
+            if (fit) {
                 break;
             }
-            buf.resize(length);
+            buf.resize(0); // set data size 0 and start from beginning
         }
     }
     return status::ok;
@@ -417,6 +419,7 @@ details::write_tuple::write_tuple(std::string_view data) :
     buf_(data.size())
 {
     std::memcpy(buf_.data(), data.data(), data.size());
+    buf_.resize(data.size());
 }
 
 void* details::write_tuple::data() const noexcept {
@@ -425,6 +428,10 @@ void* details::write_tuple::data() const noexcept {
 
 std::size_t details::write_tuple::size() const noexcept {
     return buf_.size();
+}
+
+details::write_tuple::operator std::string_view() const noexcept {
+    return static_cast<std::string_view>(buf_);
 }
 
 }

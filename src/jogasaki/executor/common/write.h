@@ -50,9 +50,7 @@ public:
 
     [[nodiscard]] std::size_t size() const noexcept;
 
-    [[nodiscard]] explicit operator std::string_view() const noexcept {
-        return {static_cast<char*>(buf_.data()), buf_.size()};
-    }
+    [[nodiscard]] explicit operator std::string_view() const noexcept;
 
 private:
     data::aligned_buffer buf_{};

@@ -79,8 +79,17 @@ public:
 
     /**
      * @brief copy assign
+     * @details content of `other` is copied to this object. The capacity is expanded if needed. No alignment
+     * is changed.
      */
     aligned_buffer& assign(aligned_buffer const& other);
+
+    /**
+     * @brief assign from string_view
+     * @details content of the string view is copied to this object. The capacity is expanded if needed. No alignment
+     * is changed.
+     */
+    aligned_buffer& assign(std::string_view sv);
 
     /**
      * @brief accessor as string_view
@@ -158,6 +167,8 @@ private:
     std::size_t alignment_{default_alignment};
     utils::aligned_array<std::byte> data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);
     std::size_t size_{};
+
+    void resize_internal(std::size_t sz, bool copydata);
 };
 
 } // namespace

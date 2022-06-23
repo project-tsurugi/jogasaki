@@ -222,8 +222,8 @@ void manager::save_id_map() {
     data::aligned_buffer val_buf{10};
     for(auto& [def_id, element] : sequences_) {
         auto id = element.id();
-        kvs::writable_stream key{key_buf.data(), key_buf.size()};
-        kvs::writable_stream value{val_buf.data(), val_buf.size()};
+        kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
+        kvs::writable_stream value{val_buf.data(), val_buf.capacity()};
         executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
         executor::process::impl::expression::any v{std::in_place_type<std::int64_t>, id};
         kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
@@ -250,7 +250,7 @@ void manager::remove_id_map(sequence_definition_id def_id) {
     auto tx = db_->create_transaction();
 
     data::aligned_buffer key_buf{10};
-    kvs::writable_stream key{key_buf.data(), key_buf.size()};
+    kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
     executor::process::impl::expression::any k{std::in_place_type<std::int64_t>, def_id};
     kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
     if (auto res = stg->remove(

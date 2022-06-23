@@ -40,7 +40,7 @@ inline status encode_any(
 ) {
     std::size_t length = 0;
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{target.data(), target.size(), loop == 0};
+        kvs::writable_stream s{target.data(), target.capacity(), loop == 0};
         for(auto&& f : sources) {
             if (f.empty()) {
                 // value not specified for the field
@@ -62,12 +62,14 @@ inline status encode_any(
                 }
             }
         }
+        length = s.size();
+        bool fit = length <= target.capacity();
+        target.resize(length);
         if (loop == 0) {
-            length = s.size();
-            if (length <= target.size()) {
+            if (fit) {
                 break;
             }
-            target.resize(length);
+            target.resize(0); // set data size 0 and start from beginning
         }
     }
     return status::ok;

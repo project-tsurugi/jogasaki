@@ -87,7 +87,7 @@ accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::Colu
 }
 
 bool parquet_reader::next(accessor::record_ref& ref) {
-    ref = accessor::record_ref{buf_.data(), buf_.size()};
+    ref = accessor::record_ref{buf_.data(), buf_.capacity()};
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
         auto& reader = *column_readers_[i];
         bool null{false};
@@ -197,6 +197,7 @@ bool parquet_reader::init(std::string_view path) {
         }
         meta_ = create_meta(*file_metadata);
         buf_ = data::aligned_buffer{meta_->record_size(), meta_->record_alignment()};
+        buf_.resize(meta_->record_size());
         row_group_reader_ = file_reader_->RowGroup(0);
         column_readers_.reserve(meta_->field_count());
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {

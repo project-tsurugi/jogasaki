@@ -35,17 +35,28 @@ class aligned_buffer_test : public test_root {};
 TEST_F(aligned_buffer_test, basic) {
     aligned_buffer buf{10};
     EXPECT_EQ(1, buf.alignment());
-    EXPECT_EQ(10, buf.size());
+    EXPECT_EQ(10, buf.capacity());
     EXPECT_TRUE(buf);
-    EXPECT_FALSE(buf.empty());
+    EXPECT_TRUE(buf.empty());
 }
 
 TEST_F(aligned_buffer_test, construct) {
     aligned_buffer buf{};
     EXPECT_EQ(1, buf.alignment());
     EXPECT_EQ(0, buf.size());
+    EXPECT_EQ(0, buf.capacity());
     EXPECT_FALSE(buf);
     EXPECT_TRUE(buf.empty());
+}
+
+TEST_F(aligned_buffer_test, construct_from_sv) {
+    aligned_buffer buf{"ABCDE"};
+    EXPECT_EQ(1, buf.alignment());
+    EXPECT_EQ(5, buf.size());
+    EXPECT_EQ(5, buf.capacity());
+    EXPECT_TRUE(buf);
+    EXPECT_FALSE(buf.empty());
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABCDE");
 }
 
 TEST_F(aligned_buffer_test, compare) {
@@ -63,16 +74,22 @@ TEST_F(aligned_buffer_test, print) {
     std::cout << buf0 << std::endl;
     aligned_buffer buf1{10, 2};
     std::cout << buf1 << std::endl;
+    aligned_buffer buf2{"ABCDE"};
+    std::cout << buf2 << std::endl;
 }
 
 TEST_F(aligned_buffer_test, resize) {
     aligned_buffer buf{5, 1};
     auto p = buf.data();
     EXPECT_EQ(1, buf.alignment());
-    EXPECT_EQ(5, buf.size());
+    EXPECT_EQ(5, buf.capacity());
+    EXPECT_EQ(0, buf.size());
+    EXPECT_TRUE(buf.empty());
     buf.resize(10);
     EXPECT_EQ(1, buf.alignment());
+    EXPECT_EQ(10, buf.capacity());
     EXPECT_EQ(10, buf.size());
+    EXPECT_FALSE(buf.empty());
     EXPECT_NE(p, buf.data());
 }
 
@@ -80,6 +97,7 @@ TEST_F(aligned_buffer_test, alignment) {
     aligned_buffer buf{5, 16};
     auto p = buf.data();
     EXPECT_EQ(16, buf.alignment());
+    // check data address is multiple of 16
     EXPECT_EQ(0, reinterpret_cast<std::size_t>(buf.data()) % 16U );
     buf.resize(10);
     EXPECT_EQ(0, reinterpret_cast<std::size_t>(buf.data()) % 16U );
@@ -88,13 +106,48 @@ TEST_F(aligned_buffer_test, alignment) {
 TEST_F(aligned_buffer_test, copy) {
     aligned_buffer buf{5, 2};
     std::memcpy(buf.data(), "ABCDE", 5);
+    buf.resize(5);
     EXPECT_EQ(static_cast<std::string_view>(buf), "ABCDE");
     aligned_buffer copy{};
     copy.assign(buf);
     EXPECT_EQ(static_cast<std::string_view>(copy), "ABCDE");
-    EXPECT_EQ(2, copy.alignment());
-    EXPECT_EQ(5, copy.size());
+    EXPECT_EQ(1, copy.alignment());  // assign doesn't change alignment
+    EXPECT_EQ(5, copy.capacity());
 }
 
+TEST_F(aligned_buffer_test, assign_from_sv) {
+    aligned_buffer buf{5, 2};
+    std::memcpy(buf.data(), "ABCDE", 5);
+    buf.resize(5);
+    EXPECT_EQ(2, buf.alignment());
+    EXPECT_EQ(5, buf.capacity());
+    EXPECT_EQ(5, buf.size());
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABCDE");
+
+    buf.assign("ABCDEF");
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABCDEF");
+    EXPECT_EQ(2, buf.alignment());
+    EXPECT_EQ(6, buf.capacity());
+    EXPECT_EQ(6, buf.size());
+}
+
+TEST_F(aligned_buffer_test, shirink) {
+    aligned_buffer buf{0, 2};
+    buf.assign("ABCDE");
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABCDE");
+    EXPECT_EQ(2, buf.alignment());
+    EXPECT_EQ(5, buf.capacity());
+    EXPECT_EQ(5, buf.size());
+    buf.resize(3);
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABC");
+    EXPECT_EQ(2, buf.alignment());
+    EXPECT_EQ(5, buf.capacity());
+    EXPECT_EQ(3, buf.size());
+    buf.shrink_to_fit();
+    EXPECT_EQ(static_cast<std::string_view>(buf), "ABC");
+    EXPECT_EQ(2, buf.alignment());
+    EXPECT_EQ(3, buf.capacity());
+    EXPECT_EQ(3, buf.size());
+}
 }
 

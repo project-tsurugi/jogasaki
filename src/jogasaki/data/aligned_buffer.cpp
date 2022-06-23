@@ -27,7 +27,9 @@ aligned_buffer::aligned_buffer(
 ) noexcept :
     capacity_(capacity),
     alignment_(align)
-{}
+{
+    std::memset(data_.get(), 0, capacity_);
+}
 
 std::size_t aligned_buffer::size() const noexcept {
     return size_;
@@ -38,24 +40,30 @@ void* aligned_buffer::data() const noexcept {
 }
 
 aligned_buffer::operator bool() const noexcept {
-    return !empty();
+    return capacity_ != 0;
 }
 
 [[nodiscard]] bool aligned_buffer::empty() const noexcept {
     return size_ == 0;
 }
 
-void aligned_buffer::resize(std::size_t sz) {
+void aligned_buffer::resize_internal(std::size_t sz, bool copydata) {
     if(sz <= capacity_) {
         size_ = sz;
         return;
     }
     auto n = utils::make_aligned_array<std::byte>(alignment_, sz);
     std::memset(n.get(), 0, sz);
-    std::memcpy(n.get(), data_.get(), capacity_);
+    if (copydata) {
+        std::memcpy(n.get(), data_.get(), size_);
+    }
     data_.swap(n);
     capacity_ = sz;
     size_ = sz;
+}
+
+void aligned_buffer::resize(std::size_t sz) {
+    resize_internal(sz, true);
 }
 
 std::size_t aligned_buffer::alignment() const noexcept {
@@ -79,11 +87,8 @@ std::ostream& operator<<(std::ostream& out, aligned_buffer const& value) {
 }
 
 aligned_buffer& aligned_buffer::assign(aligned_buffer const& other) {
-    size_ = other.size_;
-    capacity_ = other.capacity_;
-    alignment_ = other.alignment_;
-    data_ = utils::make_aligned_array<std::byte>(alignment_, capacity_);
-    std::memcpy(data_.get(), other.data_.get(), size_);
+    resize_internal(other.size_, false);
+    std::memcpy(data_.get(), other.data_.get(), other.size_);
     return *this;
 }
 
@@ -96,6 +101,7 @@ aligned_buffer::aligned_buffer(std::string_view s) :
 {
     if (! s.empty()) {
         std::memcpy(data_.get(), s.data(), s.size());
+        size_ = s.size();
     }
 }
 
@@ -111,6 +117,10 @@ void aligned_buffer::shrink_to_fit() {
 
 std::size_t aligned_buffer::capacity() const noexcept {
     return capacity_;
+}
+
+aligned_buffer& aligned_buffer::assign(std::string_view sv) {
+    return assign(aligned_buffer{sv});
 }
 
 } // namespace

@@ -37,7 +37,7 @@ status details::write_secondary_target::encode_key(
     std::size_t length{};
     auto& buf = ctx.key_buf_;
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{buf.data(), buf.size(), loop == 0};
+        kvs::writable_stream s{buf.data(), buf.capacity(), loop == 0};
         for(auto&& f : secondary_key_fields_) {
             auto src = f.key_ ? source_key : source_value;
             if (f.nullable_) {
@@ -54,15 +54,17 @@ status details::write_secondary_target::encode_key(
         if (auto res = s.write(primary_key.data(), primary_key.size()); res != status::ok) {
             return res;
         }
+        length = s.size();
+        bool fit = length <= buf.capacity();
+        buf.resize(length);
         if (loop == 0) {
-            length = s.size();
-            if (length <= buf.size()) {
+            if (fit) {
                 break;
             }
-            buf.resize(length);
+            buf.resize(0); // set data size 0 and start from beginning
         }
     }
-    out = {static_cast<char*>(buf.data()), length};
+    out = {static_cast<std::string_view>(buf)};
     return status::ok;
 }
 

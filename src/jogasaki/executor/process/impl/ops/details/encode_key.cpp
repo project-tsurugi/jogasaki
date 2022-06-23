@@ -33,7 +33,7 @@ status encode_key(
     utils::checkpoint_holder cph(std::addressof(resource));
     length = 0;
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{out.data(), out.size(), loop == 0};
+        kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
         for(auto&& k : keys) {
             auto a = k.evaluator_(input_variables, &resource);
             if (a.error()) {
@@ -56,10 +56,14 @@ status encode_key(
             cph.reset();
         }
         length = s.size();
-        if (length <= out.size()) {
-            break;
-        }
+        bool fit = length <= out.capacity();
         out.resize(length);
+        if (loop == 0) {
+            if (fit) {
+                break;
+            }
+            out.resize(0); // set data size 0 and start from beginning
+        }
     }
     return status::ok;
 }

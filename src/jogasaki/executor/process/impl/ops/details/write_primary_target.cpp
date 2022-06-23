@@ -129,19 +129,21 @@ status do_encode(
 ) {
     std::size_t length{};
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream keys{buf.data(), buf.size(), loop == 0};
+        kvs::writable_stream keys{buf.data(), buf.capacity(), loop == 0};
         if(auto res = encode_fields(info, keys, source); res != status::ok) {
             return res;
         }
         length = keys.size();
+        bool fit = length <= buf.capacity();
+        buf.resize(length);
         if (loop == 0) {
-            if (length <= buf.size()) {
+            if (fit) {
                 break;
             }
-            buf.resize(length);
+            buf.resize(0); // set data size 0 and start from beginning
         }
     }
-    out = {static_cast<char*>(buf.data()), length};
+    out = static_cast<std::string_view>(buf);
     return status::ok;
 }
 status write_primary_target::encode_and_put(write_primary_context& ctx, transaction_context& tx) const {
@@ -207,21 +209,6 @@ status write_primary_target::decode_fields(
         target.set_null(f.nullity_offset_, false); // currently assuming fields are nullable and
         // f.nullity_offset_ is valid even if f.nullable_
         // is false
-    }
-    return status::ok;
-}
-
-status write_primary_target::check_length_and_extend_buffer(
-    std::vector<details::field_info> const& fields,
-    data::aligned_buffer& buffer,
-    accessor::record_ref source
-) const {
-    kvs::writable_stream null_stream{};
-    if(auto res = encode_fields(fields, null_stream, source); res != status::ok) {
-        return res;
-    }
-    if (null_stream.size() > buffer.size()) {
-        buffer.resize(null_stream.size());
     }
     return status::ok;
 }

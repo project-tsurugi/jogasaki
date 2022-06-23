@@ -22,7 +22,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/utils/variant.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 
 namespace jogasaki::data {
 

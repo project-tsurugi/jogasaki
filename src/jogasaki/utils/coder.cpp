@@ -18,7 +18,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 
 namespace jogasaki::utils {
 

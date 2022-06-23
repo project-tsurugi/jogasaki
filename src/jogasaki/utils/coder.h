@@ -20,7 +20,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/kvs/coder.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 
 namespace jogasaki::utils {
 

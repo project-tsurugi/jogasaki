@@ -23,7 +23,7 @@
 #include <takatori/type/character.h>
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 
 namespace jogasaki::utils {
 

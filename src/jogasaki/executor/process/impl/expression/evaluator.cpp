@@ -27,7 +27,7 @@
 #include <takatori/type/character.h>
 
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/variant.h>

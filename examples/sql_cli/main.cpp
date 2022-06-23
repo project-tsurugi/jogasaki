@@ -20,7 +20,7 @@
 #include <takatori/util/fail.h>
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/executor/sequence/sequence.h>
 
 #include <jogasaki/kvs/database.h>

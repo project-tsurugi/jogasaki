@@ -17,7 +17,7 @@
 
 #include <cstddef>
 
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/memory/paged_memory_resource.h>

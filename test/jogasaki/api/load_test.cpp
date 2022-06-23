@@ -22,7 +22,7 @@
 
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>

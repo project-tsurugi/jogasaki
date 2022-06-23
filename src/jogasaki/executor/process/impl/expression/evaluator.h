@@ -34,7 +34,7 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 

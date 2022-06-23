@@ -25,7 +25,7 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/kvs/environment.h>
 
 #include <jogasaki/mock_memory_resource.h>

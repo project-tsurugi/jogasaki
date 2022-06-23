@@ -18,7 +18,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 
 namespace jogasaki::kvs {
 

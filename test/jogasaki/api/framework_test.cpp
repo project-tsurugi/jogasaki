@@ -28,7 +28,7 @@
 
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/api/service/bridge.h>
 

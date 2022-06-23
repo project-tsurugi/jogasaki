@@ -24,7 +24,7 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/logging.h>
-#include <jogasaki/executor/process/impl/expression/any.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/field_types.h>

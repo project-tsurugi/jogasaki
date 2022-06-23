@@ -16,7 +16,6 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/process/impl/expression/any.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>

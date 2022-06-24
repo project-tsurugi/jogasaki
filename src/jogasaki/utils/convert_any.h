@@ -22,7 +22,6 @@
 namespace jogasaki::utils {
 
 using data::any;
-using data::index;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 

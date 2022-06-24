@@ -48,7 +48,6 @@ using yugawara::compiled_info;
 
 using takatori::util::fail;
 using data::any;
-using data::index;
 
 write::write(
     write_kind kind,

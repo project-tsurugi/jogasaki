@@ -20,7 +20,6 @@
 namespace jogasaki::utils {
 
 using data::any;
-using data::index;
 
 bool convert_any(any& a, meta::field_type const& type) {
     //TODO validation about type compatibility is not strict for now
@@ -29,47 +28,47 @@ bool convert_any(any& a, meta::field_type const& type) {
     switch(type.kind()) {
         case k::int4: {
             switch(a.type_index()) {
-                case index<std::int32_t>: break;
-                case index<std::int64_t>: a = any{std::in_place_type<std::int32_t>, a.to<std::int64_t>()}; break;
-                case index<float>: a = any{std::in_place_type<std::int32_t>, a.to<float>()}; break;
-                case index<double>: a = any{std::in_place_type<std::int32_t>, a.to<double>()}; break;
+                case any::index<std::int32_t>: break;
+                case any::index<std::int64_t>: a = any{std::in_place_type<std::int32_t>, a.to<std::int64_t>()}; break;
+                case any::index<float>: a = any{std::in_place_type<std::int32_t>, a.to<float>()}; break;
+                case any::index<double>: a = any{std::in_place_type<std::int32_t>, a.to<double>()}; break;
                 default: return false;
             }
             break;
         }
         case k::int8: {
             switch(a.type_index()) {
-                case index<std::int32_t>: a = any{std::in_place_type<std::int64_t>, a.to<std::int32_t>()}; break;
-                case index<std::int64_t>: break;
-                case index<float>: a = any{std::in_place_type<std::int64_t>, a.to<float>()}; break;
-                case index<double>: a = any{std::in_place_type<std::int64_t>, a.to<double>()}; break;
+                case any::index<std::int32_t>: a = any{std::in_place_type<std::int64_t>, a.to<std::int32_t>()}; break;
+                case any::index<std::int64_t>: break;
+                case any::index<float>: a = any{std::in_place_type<std::int64_t>, a.to<float>()}; break;
+                case any::index<double>: a = any{std::in_place_type<std::int64_t>, a.to<double>()}; break;
                 default: return false;
             }
             break;
         }
         case k::float4: {
             switch(a.type_index()) {
-                case index<std::int32_t>: a = any{std::in_place_type<float>, a.to<std::int32_t>()}; break;
-                case index<std::int64_t>: a = any{std::in_place_type<float>, a.to<std::int64_t>()}; break;
-                case index<float>: break;
-                case index<double>: a = any{std::in_place_type<float>, a.to<double>()}; break;
+                case any::index<std::int32_t>: a = any{std::in_place_type<float>, a.to<std::int32_t>()}; break;
+                case any::index<std::int64_t>: a = any{std::in_place_type<float>, a.to<std::int64_t>()}; break;
+                case any::index<float>: break;
+                case any::index<double>: a = any{std::in_place_type<float>, a.to<double>()}; break;
                 default: return false;
             }
             break;
         }
         case k::float8: {
             switch(a.type_index()) {
-                case index<std::int32_t>: a = any{std::in_place_type<double>, a.to<std::int32_t>()}; break;
-                case index<std::int64_t>: a = any{std::in_place_type<double>, a.to<std::int64_t>()}; break;
-                case index<float>: a = any{std::in_place_type<double>, a.to<float>()}; break;
-                case index<double>: break;
+                case any::index<std::int32_t>: a = any{std::in_place_type<double>, a.to<std::int32_t>()}; break;
+                case any::index<std::int64_t>: a = any{std::in_place_type<double>, a.to<std::int64_t>()}; break;
+                case any::index<float>: a = any{std::in_place_type<double>, a.to<float>()}; break;
+                case any::index<double>: break;
                 default: return false;
             }
             break;
         }
         case k::character: {
             switch(a.type_index()) {
-                case index<accessor::text>: break;
+                case any::index<accessor::text>: break;
                 default: return false;
             }
             break;

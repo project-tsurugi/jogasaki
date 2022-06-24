@@ -105,9 +105,4 @@ inline value::value(std::in_place_type_t<bool>, bool arg) : body_(std::in_place_
 template<>
 inline value::value(std::in_place_type_t<bool>, std::int8_t arg) : body_(std::in_place_type<std::int8_t>, arg != 0 ? 1 : 0) {}
 
-// variant index in value - treat bool as std::int8_t
-template <class T>
-static constexpr std::size_t index =
-    alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, value::base_type>();
-
 }

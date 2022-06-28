@@ -12,7 +12,7 @@ on:
         required: true
 
 jobs:
-  Integration-Test:
+  Build:
     runs-on: [self-hosted, docker]
     timeout-minutes: 30
     container:
@@ -154,6 +154,7 @@ jobs:
         uses: ./.github/actions/tsurugi-annotations-action
         if: always()
         with:
+          checker: junit
           junit_input: |
             ${{ env.TG_IT_EISEN_PATH }}/tests/basic/build/test-results/**/TEST-*.xml
             ${{ env.TG_IT_EISEN_PATH }}/tests/transaction/build/test-results/**/TEST-*.xml
@@ -168,8 +169,8 @@ jobs:
           MATRIX_CONTEXT: ${{ toJson(matrix) }}
         with:
           kind: 'job-result'
-          channel: 'tsurugi-ci'
+          channel: 'tsurugi-build'
           status: ${{ job.status }}
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
-          job_name: 'IT / Integration-Test'
+          job_name: 'IT / Build'

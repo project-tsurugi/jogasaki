@@ -240,7 +240,7 @@ jobs:
 
   IT:
     uses: ./.github/workflows/integration-test.yml
-    if: always() && (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
+    if: (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
     needs: Build
     secrets:
       GHA_PAT: ${{ secrets.GHA_PAT }}

@@ -363,6 +363,9 @@ void service::command_explain(
     }
 }
 
+//TODO put global constant file
+constexpr static std::size_t max_records_per_file = 10000;
+
 void service::command_execute_dump(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
@@ -380,7 +383,12 @@ void service::command_execute_dump(
 
     auto params = jogasaki::api::create_parameter_set();
     set_params(ed.parameters(), params);
-    execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, ed.directory());
+
+    dump_option opts{};
+    opts.max_records_per_file_ = (ed.has_option() && ed.option().max_record_count_per_file() > 0) ?
+        ed.option().max_record_count_per_file() :
+        max_records_per_file;
+    execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, ed.directory(), opts);
 }
 
 void service::command_execute_load(
@@ -736,14 +744,12 @@ void details::set_metadata(channel_info const& info, sql::schema::RecordMeta& me
     }
 }
 
-//TODO put global constant file
-constexpr static std::size_t max_records_per_file = 10000;
-
 void service::execute_dump(
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
-    std::string_view directory
+    std::string_view directory,
+    dump_option const& opts
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     BOOST_ASSERT(tx);  //NOLINT
@@ -805,7 +811,7 @@ void service::execute_dump(
                     fail();
                 }
             },
-            max_records_per_file
+            opts.max_records_per_file_ == 0 ? max_records_per_file : opts.max_records_per_file_
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();

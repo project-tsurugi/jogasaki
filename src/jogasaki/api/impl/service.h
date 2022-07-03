@@ -387,11 +387,17 @@ private:
         details::query_info const& q,
         jogasaki::api::transaction_handle tx
     );
+
+    struct dump_option {
+        std::size_t max_records_per_file_{};
+    };
+
     void execute_dump(
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
-        std::string_view directory
+        std::string_view directory,
+        dump_option const& opts
     );
     void execute_load(
         std::shared_ptr<tateyama::api::server::response> const& res,

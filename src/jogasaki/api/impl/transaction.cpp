@@ -173,7 +173,7 @@ bool transaction::execute_dump(
     return execute_internal(
         statement,
         dump_ch,
-        [on_completion, dump_ch, cfg](status st, std::string_view msg) {
+        [on_completion=std::move(on_completion), dump_ch, cfg](status st, std::string_view msg) {
             if(st != status::ok) {
                 if (! cfg.keep_files_on_error_) {
                     dump_ch->clean_output_files();

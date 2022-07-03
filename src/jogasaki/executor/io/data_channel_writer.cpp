@@ -58,7 +58,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
         trace_scope_name("writer::commit");  //NOLINT
         writer_->commit();
     }
-    return false;
+    return true;
 }
 
 void data_channel_writer::flush() {

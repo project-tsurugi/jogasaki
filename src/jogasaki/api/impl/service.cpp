@@ -388,6 +388,7 @@ void service::command_execute_dump(
     opts.max_records_per_file_ = (ed.has_option() && ed.option().max_record_count_per_file() > 0) ?
         ed.option().max_record_count_per_file() :
         max_records_per_file;
+    opts.keep_files_on_error_ = ed.has_option() && ed.option().fail_behavior() == proto::sql::request::KEEP_FILES;
     execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, ed.directory(), opts);
 }
 

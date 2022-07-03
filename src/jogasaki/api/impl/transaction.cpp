@@ -159,18 +159,28 @@ bool transaction::execute_dump(
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
     callback on_completion,
-    std::size_t max_records_per_file
+    std::size_t max_records_per_file,
+    bool keep_files_on_error
 ) {
     executor::io::dump_cfg cfg{};
     cfg.max_records_per_file_ = max_records_per_file;
+    cfg.keep_files_on_error_ = keep_files_on_error;
+    auto dump_ch = std::make_shared<executor::io::dump_channel>(
+        std::make_shared<executor::io::record_channel_adapter>(channel),
+        directory,
+        cfg
+    );
     return execute_internal(
         statement,
-        std::make_shared<executor::io::dump_channel>(
-            std::make_shared<executor::io::record_channel_adapter>(channel),
-            directory,
-            cfg
-        ),
-        std::move(on_completion),
+        dump_ch,
+        [on_completion, dump_ch, cfg](status st, std::string_view msg) {
+            if(st != status::ok) {
+                if (! cfg.keep_files_on_error_) {
+                    dump_ch->clean_output_files();
+                }
+            }
+            on_completion(st, msg);
+        },
         false
     );
 }

@@ -56,7 +56,7 @@ public:
     bool write(accessor::record_ref rec) override {
         record_type r{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}, resource_.get()};
         records_.emplace_back(r);
-        return false;
+        return true;
     }
 
     void flush() override {

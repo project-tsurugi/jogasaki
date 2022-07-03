@@ -26,7 +26,7 @@ using takatori::util::maybe_shared_ptr;
 
 bool result_store_writer::write(accessor::record_ref rec) {
     store_->append(rec);
-    return false;
+    return true;
 }
 
 void result_store_writer::flush() {

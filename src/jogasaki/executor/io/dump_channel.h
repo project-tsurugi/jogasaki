@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <tbb/concurrent_hash_map.h>
+#include <boost/filesystem.hpp>
+
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
@@ -29,6 +32,7 @@ struct dump_cfg {
 
     std::size_t max_records_per_file_{undefined};
     std::size_t max_file_byte_size_{undefined};
+    bool keep_files_on_error_{false};
 };
 
 /**
@@ -93,6 +97,24 @@ public:
      */
     [[nodiscard]] std::string_view prefix() const noexcept;
 
+    void add_output_file(std::string_view path) {
+        output_files_.push(std::string{path});
+    }
+
+    auto output_file_begin() {
+        return output_files_.unsafe_begin();
+    }
+
+    auto output_file_end() {
+        return output_files_.unsafe_end();
+    }
+
+    void clean_output_files() {
+        for(auto it = output_files_.unsafe_begin(), end = output_files_.unsafe_end(); it != end; ++it) {
+            boost::filesystem::path p(*it);
+            boost::filesystem::remove(p);
+        }
+    }
 private:
     maybe_shared_ptr<record_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
@@ -101,6 +123,7 @@ private:
     std::string prefix_{};
     dump_cfg cfg_{};
     std::atomic_size_t writer_id_src_{0};
+    tbb::concurrent_queue<std::string> output_files_{};
 };
 
 }

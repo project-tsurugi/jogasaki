@@ -31,7 +31,7 @@ public:
 
     bool write(accessor::record_ref rec) override {
         (void)rec;
-        return false;
+        return true;
     }
 
     void flush() override {

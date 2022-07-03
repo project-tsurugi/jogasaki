@@ -23,6 +23,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
+#include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include "operator_base.h"
 #include "emit_context.h"
 
@@ -77,7 +78,9 @@ operation_status emit::operator()(emit_context &ctx) {
     if (! ctx.writer_) {
         ctx.writer_ = ctx.task_context().external_writer();
     }
-    ctx.writer_->write(target);
+    if(! ctx.writer_->write(target)) {
+        return details::error_abort(ctx, status::err_io_error);
+    }
     return {};
 }
 

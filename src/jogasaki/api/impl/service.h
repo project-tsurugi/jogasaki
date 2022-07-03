@@ -390,6 +390,7 @@ private:
 
     struct dump_option {
         std::size_t max_records_per_file_{};
+        bool keep_files_on_error_{};
     };
 
     void execute_dump(

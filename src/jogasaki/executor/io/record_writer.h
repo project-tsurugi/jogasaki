@@ -30,7 +30,7 @@ public:
 
     /**
      * @brief write the record and flush the current buffer if it's full
-     * @return true if buffer is flushed
+     * @return true if successful
      * @return false otherwise
      */
     virtual bool write(accessor::record_ref rec) = 0;

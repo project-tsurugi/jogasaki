@@ -48,7 +48,7 @@ bool basic_record_writer::write(accessor::record_ref rec) {
         ++pos_;
     }
     ++write_count_;
-    return false;
+    return true;
 }
 
 void basic_record_writer::flush() {

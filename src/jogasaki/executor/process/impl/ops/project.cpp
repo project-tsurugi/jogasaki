@@ -19,7 +19,9 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 #include <takatori/relation/project.h>
+#include <jogasaki/logging.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 
 #include "operator_base.h"
 #include "project_context.h"
@@ -76,7 +78,8 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto result = ev(vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {
-            LOG(ERROR) << "evaluation error: " << result.to<expression::error>();
+            VLOG(log_error) << "evaluation error: " << result.to<expression::error>();
+            return details::error_abort(ctx, status::err_expression_evaluation_failure);
         }
         using t = takatori::type::type_kind;
         ref.set_null(info.nullity_offset(), result.empty());

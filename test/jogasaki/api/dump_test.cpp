@@ -99,7 +99,10 @@ public:
 
     void test_dump(
         std::string_view sql,
-        std::size_t max_records_per_file = -1
+        std::string_view path,
+        std::size_t max_records_per_file = -1,
+        bool keep_files_on_error = false,
+        status expected = status::ok
     ) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(sql, stmt));
@@ -113,27 +116,37 @@ public:
         ASSERT_TRUE(tx.execute_dump(
             maybe_shared_ptr{stmt.get()},
             maybe_shared_ptr{&ch},
-            path(),
+            path,
             [&](status st, std::string_view msg){
                 s = st;
                 message = msg;
                 run.store(true);
             },
-            max_records_per_file
+            max_records_per_file,
+            keep_files_on_error
         ));
         while(! run.load()) {}
-        ASSERT_EQ(status::ok, s);
+        ASSERT_EQ(expected, s);
         ASSERT_TRUE(message.empty());
         auto& wrt = ch.writers_[0];
         ASSERT_TRUE(stmt->meta());
         auto m = create_file_meta();
         auto recs = deserialize_msg({wrt->data_.data(), wrt->size_}, *m->origin());
-        ASSERT_LT(0, recs.size());
+        if(expected == status::ok) {
+            ASSERT_LT(0, recs.size());
+        }
         for(auto&& x : recs) {
             LOG(INFO) << x;
         }
         EXPECT_TRUE(ch.all_writers_released());
         ASSERT_EQ(status::ok, tx.commit());
+    }
+
+    void test_dump(
+        std::string_view sql,
+        std::size_t max_records_per_file = -1
+    ) {
+        return test_dump(sql, path(), max_records_per_file);
     }
 };
 
@@ -173,7 +186,51 @@ TEST_F(dump_test, large_output) {
     test_dump(
         "select T00.C0 as T00C0, T01.C0 as T01C0, T02.C0 as T02C0, T03.C0 as T03C0, T04.C0 as T04C0 from T0 T00, T0 T01, T0 T02, T0 T03, T0 T04",
         10000
-        );
+    );
+}
+
+TEST_F(dump_test, bad_path) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    test_dump("select * from T0", "/dummy_directory_name", -1, false, status::err_io_error);
+}
+
+TEST_F(dump_test, dump_error) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 0.0)");
+    test_dump("select 20/C1 from T0", path(), -1, false, status::err_expression_evaluation_failure);
+}
+
+std::size_t dir_file_count(std::string path) {
+    boost::filesystem::path p{path};
+    if (! boost::filesystem::is_directory(p) || ! boost::filesystem::exists(p)) {
+        return 0;
+    }
+    boost::filesystem::directory_iterator it{p};
+    boost::filesystem::directory_iterator end{};
+    std::size_t ret = 0;
+    while(it != end) {
+        if(boost::filesystem::is_regular_file(it->path())) {
+            ++ret;
+        }
+        ++it;
+    }
+    return ret;
+}
+
+TEST_F(dump_test, dump_error_delete_files_on_failure) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 0.0)");
+    test_dump("select 20/C1 from T0", path(), 1, false, status::err_expression_evaluation_failure);
+    ASSERT_EQ(0, dir_file_count(path()));
+}
+
+TEST_F(dump_test, dump_error_keep_files_on_failure) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 0.0)");
+    test_dump("select 20/C1 from T0", path(), 1, true, status::err_expression_evaluation_failure);
+    ASSERT_EQ(2, dir_file_count(path()));
 }
 
 }

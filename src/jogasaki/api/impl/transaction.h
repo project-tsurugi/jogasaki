@@ -89,7 +89,8 @@ public:
         maybe_shared_ptr<api::data_channel> const& channel,
         std::string_view directory,
         callback on_completion,
-        std::size_t max_records_per_file = undefined
+        std::size_t max_records_per_file = undefined,
+        bool keep_files_on_error = false
     );
 
     bool execute_load(

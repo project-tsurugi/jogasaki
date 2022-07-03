@@ -51,7 +51,7 @@ public:
         auto partition = partitioner_(info_->extract_key(rec));
         initialize_lazy(partition);
         partitions_[partition]->write(rec);
-        return false;
+        return true;
     }
 
     void flush() override {

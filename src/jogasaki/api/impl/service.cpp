@@ -812,7 +812,8 @@ void service::execute_dump(
                     fail();
                 }
             },
-            opts.max_records_per_file_ == 0 ? max_records_per_file : opts.max_records_per_file_
+            opts.max_records_per_file_ == 0 ? max_records_per_file : opts.max_records_per_file_,
+            opts.keep_files_on_error_
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         fail();

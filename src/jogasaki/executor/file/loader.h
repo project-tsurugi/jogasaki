@@ -145,6 +145,7 @@ private:
     status status_{status::ok};
     std::string msg_{};
     bool error_aborting_{false};
+    bool error_aborted_{false};
 };
 
 }

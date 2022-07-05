@@ -41,12 +41,6 @@
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/create_tx.h>
 
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
-#include "schema.pb.h"
-#include "status.pb.h"
-
 namespace jogasaki::api {
 
 using namespace std::chrono_literals;
@@ -58,7 +52,6 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
-namespace sql = jogasaki::proto::sql;
 
 inline std::shared_ptr<jogasaki::meta::external_record_meta> create_file_meta() {
     return std::make_shared<meta::external_record_meta>(
@@ -83,13 +76,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->tasked_write(true);
         db_setup(cfg);
-
-        auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
-
         temporary_.prepare();
     }
 
@@ -169,6 +156,7 @@ public:
                 run.store(true);
             }
         ));
+
         while(! run.load()) {}
         ASSERT_EQ(expected, s);
         if (expected == status::ok) {

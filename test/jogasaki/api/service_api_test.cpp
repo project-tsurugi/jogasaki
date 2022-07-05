@@ -1109,13 +1109,13 @@ void service_api_test::test_load(status expected, Args...files) {
             auto [success, error] = decode_result_only(res->body_);
             if(expected == status::ok) {
                 ASSERT_TRUE(success);
+                test_commit(tx_handle);
             } else {
                 ASSERT_FALSE(success);
                 ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
             }
         }
     }
-    test_commit(tx_handle);
     test_dispose_prepare(stmt_handle);
 }
 

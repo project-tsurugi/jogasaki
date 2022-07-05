@@ -118,6 +118,9 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
 }
 
 loader_result loader::operator()() {
+    if (error_aborted_) {
+        return loader_result::error;
+    }
     if (error_aborting_) {
         if (running_statement_count_ == 0) {
             VLOG(log_error) << "transaction is aborted due to the error during loading";
@@ -125,6 +128,8 @@ loader_result loader::operator()() {
             // in different channel, original status code should be passed. TODO
             status_ = status::err_aborted;
             tx_->abort();
+            VLOG(log_info) << "transaction aborted";
+            error_aborted_ = true;
             return loader_result::error;
         }
         return loader_result::running;

@@ -48,9 +48,12 @@ create_transaction(api::database& db, bool readonly, bool is_long, std::vector<s
     return tx;
 }
 
-std::shared_ptr<api::transaction_handle> create_transaction(api::database& db) {
+std::shared_ptr<api::transaction_handle> create_transaction(
+    api::database& db,
+    bool force_ltx
+) {
     // until LTX build becomes stables, test mainly with LTX //TODO
-    if(BUILD_WP) {
+    if(BUILD_WP || force_ltx) {
         auto& impl = jogasaki::api::impl::get_impl(db);
         std::vector<std::string> wp{};
         impl.tables()->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& entry) {

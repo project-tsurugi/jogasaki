@@ -66,12 +66,18 @@ file(GLOB SRCS
 
 # long tx specific testcases
 if(BUILD_SHIRAKAMI_WP AND ${SHARKSFIN_IMPLEMENTATION} STREQUAL "shirakami")
-list(APPEND SRCS
-        "jogasaki/long_tx/long_tx_api_test.cpp"
-        "jogasaki/long_tx/long_tx_test.cpp"
-        "jogasaki/long_tx/reorder_test.cpp"
-        "jogasaki/long_tx/validate_qa_ltx_test.cpp"
-        )
+    file(GLOB CC_TESTS
+            "jogasaki/cc/*.cpp"
+            )
+    foreach(file ${CC_TESTS})
+        list(APPEND SRCS ${file})
+    endforeach()
+    file(GLOB LONG_TX_TESTS
+            "jogasaki/long_tx/*.cpp"
+            )
+    foreach(file ${LONG_TX_TESTS})
+        list(APPEND SRCS ${file})
+    endforeach()
 endif()
 
 # add implementation specific testcases

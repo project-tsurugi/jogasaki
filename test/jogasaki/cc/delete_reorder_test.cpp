@@ -43,7 +43,7 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
 
-class reorder_test :
+class delete_reorder_test :
     public ::testing::Test,
     public api_test_base {
 
@@ -89,7 +89,7 @@ private:
     std::atomic_bool finished_{false};
 };
 
-TEST_F(reorder_test, delete_forwarded_before_insert) {
+TEST_F(delete_reorder_test, insert_delete) {
     // low priority tx1 is forwarded before high priority tx0
     // high priority tx insert sees existing record (read operation), and low priority delete conflicts with it and its commit aborts
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
@@ -115,4 +115,29 @@ TEST_F(reorder_test, delete_forwarded_before_insert) {
     }
 }
 
+TEST_F(delete_reorder_test, delete_insert) {
+    // low priority tx1 is forwarded before high priority tx0
+    // high priority tx insert sees existing record (read operation), and low priority delete conflicts with it and its commit aborts
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    {
+        // tx1 key based access
+        auto tx0 = utils::create_transaction(*db_, false, true, {"T0"});
+        auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+        execute_statement("SELECT * FROM T0 WHERE C0=1", *tx1);
+        execute_statement("DELETE FROM T0 WHERE C0=1", *tx1);
+        execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx0, status::err_already_exists); //TOOD correct?
+        ASSERT_EQ(status::ok, tx0->commit());
+        ASSERT_EQ(status::err_aborted_retryable, tx1->commit());
+    }
+    {
+        // tx1 scan based access
+        auto tx0 = utils::create_transaction(*db_, false, true, {"T0"});
+        auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+        execute_statement("SELECT * FROM T0", *tx1);
+        execute_statement("DELETE FROM T0", *tx1);
+        execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx0, status::err_already_exists); //TOOD correct?
+        ASSERT_EQ(status::ok, tx0->commit());
+        ASSERT_EQ(status::err_aborted_retryable, tx1->commit());
+    }
+}
 }

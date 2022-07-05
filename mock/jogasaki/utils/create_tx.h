@@ -32,7 +32,8 @@ std::shared_ptr<api::transaction_handle> create_transaction(
 );
 
 std::shared_ptr<api::transaction_handle> create_transaction(
-    api::database& db
+    api::database& db,
+    bool force_ltx = false
 );
 
 }

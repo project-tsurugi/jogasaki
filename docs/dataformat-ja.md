@@ -1,6 +1,7 @@
 # データフォーマット案
 
 version: 1 (umikongo)
+
 version: 2 (2020-11 kurosawa jogasaki用に修正)
 
 ## この文書について
@@ -72,8 +73,7 @@ version: 2 (2020-11 kurosawa jogasaki用に修正)
 ### character strings
 
 * エンコード形式
-  * 先頭2バイトがu2で長さを表す
-  * 長さ分のバイト列が後続
+  * 文字列データのバイト列に既定の終端文字列を連接して格納する
 
 ### nullable values
 

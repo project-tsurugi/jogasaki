@@ -156,7 +156,7 @@ TEST_F(own_update_test, select_can_see_own_range_update) {
     );
 }
 
-TEST_F(own_update_test, insert_can_see_own_point_pk_update) {
+TEST_F(own_update_test, DISABLED_insert_can_see_own_point_pk_update) {
     run(*db_,
         [&]() {
             execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
@@ -228,7 +228,7 @@ TEST_F(own_update_test, point_update_can_see_point_pk_update) {
     );
 }
 
-TEST_F(own_update_test, range_update_can_see_point_pk_update) {
+TEST_F(own_update_test, DISABLED_range_update_can_see_point_pk_update) {
     run(*db_,
         [&]() {
             execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");

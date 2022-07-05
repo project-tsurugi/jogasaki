@@ -144,6 +144,7 @@ private:
     bool more_to_read_{true};
     status status_{status::ok};
     std::string msg_{};
+    bool error_aborting_{false};
 };
 
 }

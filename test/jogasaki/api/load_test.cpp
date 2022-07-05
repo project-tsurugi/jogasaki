@@ -171,7 +171,11 @@ public:
         ));
         while(! run.load()) {}
         ASSERT_EQ(expected, s);
-        ASSERT_EQ(status::ok, tx.commit());
+        if (expected == status::ok) {
+            ASSERT_EQ(status::ok, tx.commit());
+        } else {
+            ASSERT_EQ(status::ok, tx.abort());
+        }
     }
 };
 
@@ -198,7 +202,25 @@ TEST_F(load_test, basic) {
 
 TEST_F(load_test, wrong_file) {
     std::vector<std::string> files{"dummy.parquet"};
-    test_load(files, status::err_io_error);
+    test_load(files, status::err_aborted);
+}
+
+TEST_F(load_test, existing_file_and_missing_file) {
+    // verify load failed with missing file and transaction abort, no records are loaded eventually
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    std::vector<std::string> files{};
+    test_dump("select * from T0", files);
+    execute_statement( "DELETE FROM T0");
+    files.emplace_back("dummy.parquet");
+    test_load(files, status::err_aborted);
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 ORDER BY C0", result);
+        ASSERT_EQ(0, result.size());
+    }
 }
 
 }

@@ -67,7 +67,6 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         }
     }
     if(auto res = parquet_writer_->write(rec); ! res) {
-        //TODO handle error
         return false;
     }
     if(cfg_.max_records_per_file_ != dump_cfg::undefined && parquet_writer_->write_count() >= cfg_.max_records_per_file_) {

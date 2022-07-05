@@ -118,6 +118,17 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
 }
 
 loader_result loader::operator()() {
+    if (error_aborting_) {
+        if (running_statement_count_ == 0) {
+            VLOG(log_error) << "transaction is aborted due to the error during loading";
+            // currently err_aborted should be used in order to report tx aborted. When abort can be reported
+            // in different channel, original status code should be passed. TODO
+            status_ = status::err_aborted;
+            tx_->abort();
+            return loader_result::error;
+        }
+        return loader_result::running;
+    }
     if (! more_to_read_) {
         return running_statement_count_ != 0 ? loader_result::running : loader_result::ok;
     }
@@ -140,7 +151,8 @@ loader_result loader::operator()() {
                 status_ = status::err_io_error;
                 msg_ = "opening parquet file failed.";
                 VLOG(log_error) << msg_;
-                return loader_result::error;
+                error_aborting_ = true;
+                return loader_result::running;
             }
         }
 
@@ -170,6 +182,8 @@ loader_result loader::operator()() {
                     status_ = st;
                     msg_ = ss.str();
                     VLOG(log_error) << msg_;
+                    error_aborting_ = true;
+                    return;
                 }
                 ++records_loaded_;
             }

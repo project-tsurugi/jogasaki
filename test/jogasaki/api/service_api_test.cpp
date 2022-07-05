@@ -150,7 +150,7 @@ public:
     void test_dispose_prepare(std::uint64_t& handle);
 
 
-    void test_dump(std::vector<std::string>& files);
+    void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
 
     template <class ... Args>
     void test_load(status expected, Args ... args);
@@ -907,7 +907,8 @@ TEST_F(service_api_test, execute_ddl) {
     test_query("select * from MYTABLE");
 }
 
-void service_api_test::test_dump(std::vector<std::string>& files) {
+void service_api_test::test_dump(std::vector<std::string>& files, std::string_view dir, status expected) {
+    std::string p{dir.empty() ? service_api_test::temporary_.path() : std::string{dir}};
     test_statement("insert into T0(C0, C1) values (0, 0.0)");
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
     test_statement("insert into T0(C0, C1) values (2, 20.0)");
@@ -928,12 +929,12 @@ void service_api_test::test_dump(std::vector<std::string>& files) {
     );
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
-    {
+    do {
         std::vector<parameter> parameters{
             {"c0"s, ValueCase::kInt8Value, std::any{std::in_place_type<std::int64_t>, 0}},
             {"c1"s, ValueCase::kFloat8Value, std::any{std::in_place_type<double>, 0.0}},
         };
-        auto s = encode_execute_dump(tx_handle, query_handle, parameters, service_api_test::temporary_.path());
+        auto s = encode_execute_dump(tx_handle, query_handle, parameters, p);
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -943,8 +944,11 @@ void service_api_test::test_dump(std::vector<std::string>& files) {
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
         ASSERT_TRUE(st);
+        if (expected != status::ok) {
+            ASSERT_EQ(response_code::application_error, res->code_);
+            break;
+        }
         ASSERT_EQ(response_code::success, res->code_);
-
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::cout << "name : " << name << std::endl;
@@ -970,7 +974,7 @@ void service_api_test::test_dump(std::vector<std::string>& files) {
             auto [success, error] = decode_result_only(res->body_);
             ASSERT_TRUE(success);
         }
-    }
+    } while(0);
     test_commit(tx_handle);
     test_dispose_prepare(query_handle);
 }
@@ -996,6 +1000,68 @@ TEST_F(service_api_test, execute_dump_load) {
     }
 }
 
+TEST_F(service_api_test, dump_bad_path) {
+    // check if error code is returned correctly
+    std::vector<std::string> files{};
+    test_dump(files, "/dummy_path", status::err_io_error);
+}
+
+TEST_F(service_api_test, dump_error_with_query_result) {
+    // test if error in the middle of query processing is handled correctly
+    test_statement("insert into T0(C0, C1) values (1, 10.0)");
+    test_statement("insert into T0(C0, C1) values (2, 0.0)");
+    test_statement("insert into T0(C0, C1) values (3, 30.0)");
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select C0, 1.0/C1 from T0"
+    );
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    do {
+        auto s = encode_execute_dump(tx_handle, query_handle, {}, std::string{service_api_test::temporary_.path()});
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        EXPECT_TRUE(res->all_released());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::application_error, res->code_);
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::cout << "name : " << name << std::endl;
+            ASSERT_EQ(1, cols.size());
+            EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                ASSERT_LT(0, ch.buffers_.size());
+                ASSERT_TRUE(ch.buffers_[0]);
+                auto& buf = *ch.buffers_[0];
+                ASSERT_LT(0, buf.view().size());
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(buf.view(), m);
+                ASSERT_EQ(1, v.size());
+                LOG(INFO) << v[0];
+                boost::filesystem::path p{static_cast<std::string>(v[0].get_value<accessor::text>(0))};
+                ASSERT_FALSE(boost::filesystem::exists(p)); // by default, file is deleted on error
+                EXPECT_TRUE(ch.all_released());
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_FALSE(success);
+            ASSERT_EQ(sql::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE, error.status_);
+        }
+    } while(0);
+    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
 TEST_F(service_api_test, load_no_file) {
     // no file is specified - success
     std::vector<std::string> files{};
@@ -1004,12 +1070,12 @@ TEST_F(service_api_test, load_no_file) {
 
 TEST_F(service_api_test, load_empty_file_name) {
     std::vector<std::string> files{};
-    test_load(status::err_io_error, "");
+    test_load(status::err_aborted, "");
 }
 
 TEST_F(service_api_test, load_missing_files) {
     std::vector<std::string> files{};
-    test_load(status::err_io_error, "dummy1.parquet", "dummy2.parquet");
+    test_load(status::err_aborted, "dummy1.parquet", "dummy2.parquet");
 }
 
 template <class ... Args>

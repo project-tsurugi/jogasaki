@@ -138,7 +138,9 @@ status test_writer::write(char const* data, std::size_t length) {
 }
 
 test_writer::~test_writer() {
-    buffer_manager_.release(buf_);
+    if (buf_) {
+        buffer_manager_.release(buf_);
+    }
 }
 
 status test_writer::commit() {

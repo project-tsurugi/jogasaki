@@ -127,7 +127,8 @@ loader_result loader::operator()() {
             // currently err_aborted should be used in order to report tx aborted. When abort can be reported
             // in different channel, original status code should be passed. TODO
             status_ = status::err_aborted;
-            tx_->abort();
+            // TODO temporarily disable abort due to problem with memory bridge
+            //tx_->abort();
             VLOG(log_info) << "transaction aborted";
             error_aborted_ = true;
             return loader_result::error;

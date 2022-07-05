@@ -193,7 +193,7 @@ TEST_F(load_test, wrong_file) {
     test_load(files, status::err_aborted);
 }
 
-TEST_F(load_test, existing_file_and_missing_file) {
+TEST_F(load_test, DISABLED_existing_file_and_missing_file) {
     // verify load failed with missing file and transaction abort, no records are loaded eventually
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");

@@ -91,11 +91,12 @@ public:
         if (expect_error) {
             ASSERT_EQ(loader_result::error, res);
             ASSERT_NE(status::ok, ldr->error_info().first);
+            trans->abort(); // tx already aborted on error. This is to verify repeat does no harm.
         } else {
             ASSERT_EQ(loader_result::ok, res);
             ASSERT_EQ(status::ok, ldr->error_info().first);
+            trans->commit();
         }
-        trans->commit();
     }
 };
 

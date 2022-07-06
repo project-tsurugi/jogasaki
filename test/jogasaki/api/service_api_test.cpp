@@ -23,6 +23,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/utils/command_utils.h>
@@ -1069,11 +1070,17 @@ TEST_F(service_api_test, load_no_file) {
 }
 
 TEST_F(service_api_test, load_empty_file_name) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
+    }
     std::vector<std::string> files{};
     test_load(status::err_aborted, "");
 }
 
 TEST_F(service_api_test, load_missing_files) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
+    }
     std::vector<std::string> files{};
     test_load(status::err_aborted, "dummy1.parquet", "dummy2.parquet");
 }

@@ -455,11 +455,11 @@ bool service::operator()(
             VLOG(log_error) << "parse error";
             res->code(response_code::io_error);
             std::string msg{"parse error with request body"};
-            VLOG(log_info) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
+            VLOG(log_trace) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
             res->body(msg);
             return true;
         }
-        VLOG(log_info) << "request received (len=" << s.size() << "):" << std::endl << proto_req.Utf8DebugString();
+        VLOG(log_trace) << "request received (len=" << s.size() << "):" << std::endl << proto_req.Utf8DebugString();
     }
 
     switch (proto_req.request_case()) {
@@ -537,7 +537,7 @@ bool service::operator()(
             std::string msg{"invalid request code: "};
             VLOG(log_error) << msg << proto_req.request_case();
             res->code(response_code::io_error);
-            VLOG(log_info) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
+            VLOG(log_trace) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
             res->body(msg);
             break;
     }
@@ -692,13 +692,13 @@ void details::reply(tateyama::api::server::response& res, sql::response::Respons
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_info) << "respond with body_head (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
+        VLOG(log_trace) << "respond with body_head (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
         res.body_head(ss.str());
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_info) << "respond with body (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
+        VLOG(log_trace) << "respond with body (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
         res.body(ss.str());
     }
 }

@@ -182,7 +182,7 @@ private:
     std::unordered_map<kvs::transaction*, std::unordered_set<sequence*>> used_sequences_{};
 
     void mark_sequence_used_by(kvs::transaction& tx, sequence& seq);
-    std::pair<sequence_definition_id, sequence_id> read_entry(std::unique_ptr<kvs::iterator>& it);
+    std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr<kvs::iterator>& it);
     void save_id_map();
     void remove_id_map(sequence_definition_id def_id);
 };

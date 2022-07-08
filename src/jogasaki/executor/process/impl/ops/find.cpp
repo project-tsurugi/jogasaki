@@ -187,11 +187,12 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             return details::error_abort(ctx, res);
         }
         if(auto res = it->key(k); res != status::ok) {
-            finish(context);
-            // shirakami returns not_found here even if next() above returns ok. TODO confirm contract
+            // shirakami returns not_found here even if next() above returns ok (e.g. concurrently deleted entry)
+            // skip the record and continue to next
             if (res == status::not_found) {
-                return {};
+                continue;
             }
+            finish(context);
             return details::error_abort(ctx, res);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {

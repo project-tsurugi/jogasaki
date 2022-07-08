@@ -72,7 +72,8 @@ std::size_t manager::load_id_map() {
     }
     std::size_t ret{};
     while(status::ok == it->next()) {
-        auto [def_id, seq_id] = read_entry(it);
+        auto [def_id, seq_id, found] = read_entry(it);
+        if (! found) continue;
         sequences_[def_id] = details::sequence_element(seq_id);
         ++ret;
     }
@@ -189,13 +190,19 @@ void manager::mark_sequence_used_by(kvs::transaction& tx, sequence& seq) {
 
 using kind = meta::field_type_kind;
 
-std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_ptr<kvs::iterator>& it) {
+std::tuple<sequence_definition_id, sequence_id, bool> manager::read_entry(std::unique_ptr<kvs::iterator>& it) {
     std::string_view k{};
     std::string_view v{};
     if (auto r = it->key(k); r != status::ok) {
+        if(r == status::not_found) {
+            return {{}, {}, false};
+        }
         fail();
     }
     if (auto r = it->value(v); r != status::ok) {
+        if(r == status::not_found) {
+            return {{}, {}, false};
+        }
         fail();
     }
     kvs::readable_stream key{k.data(), k.size()};
@@ -213,7 +220,7 @@ std::pair<sequence_definition_id, sequence_id> manager::read_entry(std::unique_p
         fail();
     }
     id = dest.to<std::int64_t>();
-    return {def_id, id};
+    return {def_id, id, true};
 }
 
 void manager::save_id_map() {

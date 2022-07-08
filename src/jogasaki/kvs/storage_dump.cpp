@@ -56,8 +56,8 @@ public:
                 it
             ));
         }
-
-        for (std::size_t i = 1;; ++i) {
+        std::size_t i = 1;
+        while(true) {
             auto res = it->next();
             if (res == status::not_found) {
                 eof_ = true;
@@ -71,15 +71,25 @@ public:
             }
             std::string_view key{};
             std::string_view value{};
-            check(it->key(key));
-            check(it->value(value));
+            if (auto r = it->key(key); r != status::ok) {
+                if (r == status::not_found) {
+                    continue;
+                }
+                fail();
+            }
+            if (auto r = it->value(value); r != status::ok) {
+                if (r == status::not_found) {
+                    continue;
+                }
+                fail();
+            }
             storage_dump::append(stream_, key, value);
-
             if (batch_size_ > 0 && i >= batch_size_) {
                 eof_ = false;
                 last_key_ = key;
                 break;
             }
+            ++i;
         }
         return status::ok;
     }

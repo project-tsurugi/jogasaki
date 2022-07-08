@@ -61,6 +61,8 @@ public:
      * @param k[out] the key of the current entry
      * The data pointed by the returned value gets invalidated if the iterator state is changed.
      * @return status::ok if the operation is successful
+     * @return status::not_found if the entry on the iterator position is deleted or not found.
+     * Caller can proceed the iterator with next() to move to next entry.
      * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
@@ -72,6 +74,8 @@ public:
      * @param v[out] the value of the current entry
      * The data pointed by the returned value gets invalidated if the iterator state is changed.
      * @return status::ok if the operation is successful
+     * @return status::not_found if the entry on the iterator position is deleted or not found.
+     * Caller can proceed the iterator with next() to move to next entry.
      * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */

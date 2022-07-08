@@ -122,25 +122,33 @@ bool matcher::next() {
         status_ = status::not_found;
         return false;
     }
-    auto res = it_->next();
-    if(res == status::not_found) {
-        status_ = status::not_found;
-        it_.reset();
-        return false;
+    while(true) {  // loop to skip not_found with key()/value()
+        auto res = it_->next();
+        if(res == status::not_found) {
+            status_ = status::not_found;
+            it_.reset();
+            return false;
+        }
+        std::string_view key{};
+        std::string_view value{};
+        if(auto r = it_->key(key); r != status::ok) {
+            if(r == status::not_found) {
+                continue;
+            }
+            status_ = r;
+            it_.reset();
+            return false;
+        }
+        if(auto r = it_->value(value); r != status::ok) {
+            if(r == status::not_found) {
+                continue;
+            }
+            status_ = r;
+            it_.reset();
+            return false;
+        }
+        return field_mapper_(key, value, output_variables_->store().ref(), *primary_storage_, *tx_, resource_) == status::ok;
     }
-    std::string_view key{};
-    std::string_view value{};
-    if(auto r = it_->key(key); r != status::ok) {
-        status_ = r;
-        it_.reset();
-        return false;
-    }
-    if(auto r = it_->value(value); r != status::ok) {
-        status_ = r;
-        it_.reset();
-        return false;
-    }
-    return field_mapper_(key, value, output_variables_->store().ref(), *primary_storage_, *tx_, resource_) == status::ok;
 }
 
 status matcher::result() const noexcept {

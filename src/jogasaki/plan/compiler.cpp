@@ -178,7 +178,7 @@ status prepare(
     std::unique_ptr<shakujo::model::program::Program> program{};
     try {
         std::stringstream ss{std::string(sql)};
-        program = parser.parse_program("compiler_test", ss);
+        program = parser.parse_program("<input>", ss);
         // TODO analyze for error check
     } catch (shakujo::parser::Parser::Exception &e) {
         VLOG(log_error) << "parse error:" << e.message() << " (" << e.region() << ")";

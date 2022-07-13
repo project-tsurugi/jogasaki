@@ -36,3 +36,4 @@
 #include <jogasaki/api/transaction_option.h>
 #include <jogasaki/api/writer.h>
 #include <jogasaki/api/service/bridge.h>
+#include <jogasaki/api/resource/bridge.h>

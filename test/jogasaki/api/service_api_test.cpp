@@ -42,7 +42,6 @@
 
 #include <tateyama/api/server/mock/request_response.h>
 #include <tateyama/api/endpoint/service.h>
-#include <tateyama/api/registry.h>
 #include <tateyama/api/environment.h>
 #include <tateyama/api/server/service.h>
 #include "api_test_base.h"

@@ -17,7 +17,6 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/data_channel.h>
-#include <tateyama/api/registry.h>
 #include <tateyama/api/endpoint/response_code.h>
 
 #include <memory>

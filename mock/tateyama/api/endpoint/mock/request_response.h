@@ -18,7 +18,6 @@
 #include <tateyama/api/endpoint/response.h>
 #include <tateyama/api/endpoint/data_channel.h>
 #include <tateyama/api/endpoint/provider.h>
-#include <tateyama/api/registry.h>
 
 #include <memory>
 #include <regex>

@@ -26,7 +26,6 @@
 #include <takatori/util/downcast.h>
 
 #include <tateyama/api/server/service.h>
-#include <tateyama/api/registry.h>
 #include <tateyama/api/server/mock/request_response.h>
 
 #include <jogasaki/api.h>

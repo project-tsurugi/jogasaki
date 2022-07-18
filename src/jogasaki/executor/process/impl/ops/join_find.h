@@ -220,13 +220,6 @@ private:
     std::unique_ptr<operator_base> downstream_{};
     expression::evaluator evaluator_{};
 
-    std::vector<index::field_info> create_columns(
-        yugawara::storage::index const& idx,
-        sequence_view<column const> columns,
-        variable_table_info const& output_variables_info,
-        bool key
-    );
-
 };
 
 

@@ -23,6 +23,7 @@
 #include <takatori/relation/join_find.h>
 #include <yugawara/binding/factory.h>
 
+#include <jogasaki/index/field_factory.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/coder.h>
@@ -239,78 +240,6 @@ void join_find::finish(abstract::task_context* context) {
     }
 }
 
-std::vector<index::field_info> join_find::create_columns(
-    yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
-    variable_table_info const& output_variables_info,
-    bool key
-) {
-    std::vector<index::field_info> ret{};
-    using variable = takatori::descriptor::variable;
-    yugawara::binding::factory bindings{};
-    std::unordered_map<variable, variable> table_to_stream{};
-    for(auto&& c : columns) {
-        table_to_stream.emplace(c.source(), c.destination());
-    }
-    if (key) {
-        ret.reserve(idx.keys().size());
-        for(auto&& k : idx.keys()) {
-            auto kc = bindings(k.column());
-            auto t = utils::type_for(k.column().type());
-            auto spec = k.direction() == relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending : kvs::spec_key_descending;
-            if (table_to_stream.count(kc) == 0) {
-                ret.emplace_back(
-                    t,
-                    false,
-                    0,
-                    0,
-                    k.column().criteria().nullity().nullable(),
-                    spec
-                );
-                continue;
-            }
-            auto&& var = table_to_stream.at(kc);
-            ret.emplace_back(
-                t,
-                true,
-                output_variables_info.at(var).value_offset(),
-                output_variables_info.at(var).nullity_offset(),
-                k.column().criteria().nullity().nullable(),
-                spec
-            );
-        }
-        return ret;
-    }
-    ret.reserve(idx.values().size());
-    for(auto&& v : idx.values()) {
-        auto b = bindings(v);
-        auto& c = static_cast<yugawara::storage::column const&>(v);
-        auto t = utils::type_for(c.type());
-        if (table_to_stream.count(b) == 0) {
-            ret.emplace_back(
-                t,
-                false,
-                0,
-                0,
-                c.criteria().nullity().nullable(),
-                kvs::spec_value
-            );
-            continue;
-        }
-        auto&& var = table_to_stream.at(b);
-        ret.emplace_back(
-            t,
-            true,
-            output_variables_info.at(var).value_offset(),
-            output_variables_info.at(var).nullity_offset(),
-            c.criteria().nullity().nullable(),
-            kvs::spec_value
-        );
-    }
-    return ret;
-}
-
 join_find::join_find(
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -359,17 +288,19 @@ join_find::join_find(
         block_index,
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
-        create_columns(
+        index::create_fields(
             primary_idx,
             columns,
             (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+            true,
             true
         ),
-        create_columns(
+        index::create_fields(
             primary_idx,
             columns,
             (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
-            false
+            false,
+            true
         ),
         details::create_search_key_fields(
             secondary_idx != nullptr ? *secondary_idx : primary_idx,

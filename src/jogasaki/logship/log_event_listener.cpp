@@ -127,6 +127,14 @@ bool log_event_listener::deinit() {
     return true;
 }
 
+std::unique_ptr<log_event_listener> create_log_event_listener(configuration& cfg) {
+    auto ret = std::make_unique<log_event_listener>();
+    if(auto rc = ret->init(cfg); ! rc) {
+        VLOG(log_error) << "creating log_event_listener failed.";
+        return {};
+    }
+    return ret;
+}
 }
 
 

@@ -67,11 +67,20 @@ status database::start() {
     }
     init();
     if (! kvs_db_) {
-        static constexpr std::string_view KEY_LOCATION{"location"};
-        auto loc = cfg_->db_location();
         std::map<std::string, std::string> opts{};
-        if (! loc.empty()) {
-            opts.emplace(KEY_LOCATION, loc);
+        {
+            static constexpr std::string_view KEY_LOCATION{"location"};
+            auto loc = cfg_->db_location();
+            if (! loc.empty()) {
+                opts.emplace(KEY_LOCATION, loc);
+            }
+        }
+        {
+            static constexpr std::string_view KEY_LOGGING_MAX_PARALLELISM{"logging_max_parallelism"};
+            auto sz = cfg_->max_logging_parallelism();
+            if (sz > 0) {
+                opts.emplace(KEY_LOGGING_MAX_PARALLELISM, std::to_string(sz));
+            }
         }
         kvs_db_ = kvs::database::open(opts);
     }
@@ -95,7 +104,12 @@ status database::start() {
         task_scheduler_->start();
     }
 
-    kvs_db_->log_event_listener(std::make_unique<logship::log_event_listener>());
+    if (cfg_->enable_logship()) {
+        if (auto l = logship::create_log_event_listener(*cfg_)) {
+            kvs_db_->log_event_listener(std::move(l));
+            // ignore error for now TODO
+        }
+    }
 
     return status::ok;
 }
@@ -122,8 +136,7 @@ database::database(
     std::shared_ptr<class configuration> cfg
 ) :
     cfg_(std::move(cfg))
-{
-}
+{}
 
 std::shared_ptr<class configuration> const& database::configuration() const noexcept {
     return cfg_;

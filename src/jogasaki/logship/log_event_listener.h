@@ -48,6 +48,7 @@ private:
     std::vector<std::unique_ptr<details::buffer>> buffers_{};
 };
 
+std::unique_ptr<log_event_listener> create_log_event_listener(configuration& cfg);
 }
 
 

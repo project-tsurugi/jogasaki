@@ -105,7 +105,7 @@ status database::start() {
     }
 
     if (cfg_->enable_logship()) {
-        if (auto l = logship::create_log_event_listener(*cfg_)) {
+        if (auto l = logship::create_log_event_listener(*cfg_, tables_)) {
             kvs_db_->log_event_listener(std::move(l));
             // ignore error for now TODO
         }

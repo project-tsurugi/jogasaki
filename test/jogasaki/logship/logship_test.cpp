@@ -88,10 +88,10 @@ TEST_F(logship_test, simple) {
         t->definition_id(),
         t,
         t->simple_name(),
-        std::initializer_list<index::key>{
+        std::initializer_list<yugawara::storage::index::key>{
             t->columns()[0],
         },
-        std::initializer_list<index::column_ref>{
+        std::initializer_list<yugawara::storage::index::column_ref>{
             t->columns()[1],
         },
         index_feature_set{
@@ -105,8 +105,63 @@ TEST_F(logship_test, simple) {
     execute_statement("INSERT INTO LOGSHIP (C0, C1) VALUES (1, 1)");
 }
 
-
 TEST_F(logship_test, no_callback) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+}
+
+TEST_F(logship_test, types) {
+    auto t = std::make_shared<table>(
+        100,
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int8(), nullity{false} },
+            column{ "K1", type::character(type::varying), nullity{false} },
+            column{ "K2", type::int8(), nullity{false} },
+            column{ "K3", type::float8 (), nullity{false} },
+            column{ "K4", type::character(~type::varying), nullity{false} },
+            column{ "K5", type::int4(), nullity{true} },
+            column{ "K6", type::float4(), nullity{true} },
+            column{ "V1", type::character(type::varying), nullity{false} },
+            column{ "V2", type::int8(), nullity{false} },
+            column{ "V3", type::float8 (), nullity{false} },
+            column{ "V4", type::character(~type::varying), nullity{false} },
+            column{ "V5", type::int4(), nullity{true} },
+            column{ "V6", type::float4(), nullity{true} },
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t->definition_id(),
+        t,
+        t->simple_name(),
+        std::initializer_list<yugawara::storage::index::key>{
+            t->columns()[0],
+            t->columns()[1],
+            t->columns()[2],
+            t->columns()[3],
+            t->columns()[4],
+            t->columns()[5],
+            t->columns()[6],
+        },
+        std::initializer_list<yugawara::storage::index::column_ref>{
+            t->columns()[7],
+            t->columns()[8],
+            t->columns()[9],
+            t->columns()[10],
+            t->columns()[11],
+            t->columns()[12],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_index(i));
+
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
 }
 }

@@ -15,6 +15,10 @@
  */
 #pragma once
 
+#include <tbb/concurrent_hash_map.h>
+
+#include <yugawara/storage/configurable_provider.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <sharksfin/api.h>
 #include <hayatsuki/collector/shirakami/collector.h>
@@ -22,6 +26,7 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/index/index_accessor.h>
 
 namespace jogasaki::logship {
 
@@ -30,10 +35,19 @@ class buffer;
 }
 
 using LogRecord = ::sharksfin::LogRecord;
+using takatori::util::maybe_shared_ptr;
+
+struct storage_data {
+    std::shared_ptr<index::mapper> mapper_{};
+    maybe_shared_ptr<meta::record_meta> key_meta_{};
+    maybe_shared_ptr<meta::record_meta> value_meta_{};
+};
 
 class log_event_listener {
 public:
     log_event_listener();
+
+    explicit log_event_listener(std::shared_ptr<yugawara::storage::configurable_provider> provider);
 
     ~log_event_listener();
 
@@ -42,13 +56,18 @@ public:
     bool operator()(std::size_t worker, LogRecord* begin, LogRecord* end);
 
     bool deinit();
+
 private:
     std::unique_ptr<::hayatsuki::ShirakamiCollector> collector_{std::make_unique<::hayatsuki::ShirakamiCollector>()};
-    std::unordered_map<sharksfin::LogRecord::storage_id_type, meta::record_meta> meta_{};
+    tbb::concurrent_hash_map<sharksfin::LogRecord::storage_id_type, storage_data> index_mappers_{};
     std::vector<std::unique_ptr<details::buffer>> buffers_{};
+    std::shared_ptr<yugawara::storage::configurable_provider> provider_{};
+
+    storage_data const& find_storage(LogRecord::storage_id_type id);
+    bool convert(bool key, std::string_view data, LogRecord::storage_id_type id, details::buffer& buf, std::string_view& out);
 };
 
-std::unique_ptr<log_event_listener> create_log_event_listener(configuration& cfg);
+std::unique_ptr<log_event_listener> create_log_event_listener(configuration& cfg, std::shared_ptr<yugawara::storage::configurable_provider> provider);
 }
 
 

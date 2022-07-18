@@ -17,38 +17,15 @@
 
 #include <takatori/util/fail.h>
 #include <jogasaki/common.h>
+#include <jogasaki/utils/result_serialization.h>
 
 namespace jogasaki::executor::io {
 
 using takatori::util::fail;
 
-constexpr static std::size_t writer_work_buffer_size = 4096;
-
 bool data_channel_writer::write(accessor::record_ref rec) {
-    if(buf_.size() == 0) {
-        buf_ = msgpack::sbuffer{writer_work_buffer_size}; // automatically expands when capacity is not sufficient
-    }
-    buf_.clear();
-    for (std::size_t i=0, n=meta_->field_count(); i < n; ++i) {
-        if (rec.is_null(meta_->nullity_offset(i))) {
-            msgpack::pack(buf_, msgpack::type::nil_t());
-        } else {
-            using k = jogasaki::meta::field_type_kind;
-            auto os = meta_->value_offset(i);
-            switch (meta_->at(i).kind()) {
-                case k::int4: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::int4>::runtime_type>(os)); break;
-                case k::int8: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::int8>::runtime_type>(os)); break;
-                case k::float4: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::float4>::runtime_type>(os)); break;
-                case k::float8: msgpack::pack(buf_, rec.get_value<meta::field_type_traits<k::float8>::runtime_type>(os)); break;
-                case k::character: {
-                    auto text = rec.get_value<meta::field_type_traits<k::character>::runtime_type>(os);
-                    msgpack::pack(buf_, static_cast<std::string_view>(text));
-                    break;
-                }
-                default:
-                    fail();
-            }
-        }
+    if(! utils::write_msg(rec, buf_, meta_.get())) {
+        return false;
     }
     {
         trace_scope_name("writer::write");  //NOLINT

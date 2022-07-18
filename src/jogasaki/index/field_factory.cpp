@@ -24,7 +24,7 @@
 
 namespace jogasaki::index {
 
-std::vector<field_info> create_extracted_fields(
+std::vector<field_info> index_fields(
     yugawara::storage::index const& idx,
     bool key
 ) {

@@ -197,11 +197,6 @@ private:
         variable_table_info const& input_variable_info
     );
 
-    std::vector<index::field_info> create_extracted_fields(
-        yugawara::storage::index const& idx,
-        bool key
-    );
-
     std::vector<details::update_field> create_update_fields(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,

@@ -29,6 +29,7 @@
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/index/field_factory.h>
 #include <jogasaki/index/utils.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -61,8 +62,8 @@ write_primary_target::write_primary_target(
         index::create_meta(idx, true),
         index::create_meta(idx, false),
         create_input_key_fields(idx, keys, input_variable_info),
-        create_extracted_fields(idx, true),
-        create_extracted_fields(idx, false),
+        index::index_fields(idx, true),
+        index::index_fields(idx, false),
         create_update_fields(idx, keys, columns, host_variable_info, input_variable_info)
     )
 {}
@@ -287,55 +288,6 @@ std::vector<index::field_info> write_primary_target::create_input_key_fields(
             offset,
             nullity_offset,
             k.column().criteria().nullity().nullable(),
-            spec
-        );
-    }
-    return ret;
-}
-
-std::vector<index::field_info> write_primary_target::create_extracted_fields(
-    yugawara::storage::index const& idx,
-    bool key
-) {
-    std::vector<index::field_info> ret{};
-    yugawara::binding::factory bindings{};
-    if (key) {
-        auto meta = index::create_meta(idx, true);
-        ret.reserve(idx.keys().size());
-        for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
-            auto&& k = idx.keys()[i];
-            auto kc = bindings(k.column());
-            auto& type = k.column().type();
-            auto t = utils::type_for(k.column().type());
-            auto spec = k.direction() == relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending : kvs::spec_key_descending;
-            spec.storage(index::extract_storage_spec(type));
-            ret.emplace_back(
-                t,
-                true,
-                meta->value_offset(i),
-                meta->nullity_offset(i),
-                k.column().criteria().nullity().nullable(),
-                spec
-            );
-        }
-        return ret;
-    }
-    auto meta = index::create_meta(idx, false);
-    ret.reserve(idx.values().size());
-    for(std::size_t i=0, n=idx.values().size(); i<n; ++i) {
-        auto&& v = idx.values()[i];
-        auto b = bindings(v);
-        auto& c = static_cast<yugawara::storage::column const&>(v);
-        auto t = utils::type_for(c.type());
-        auto spec = kvs::spec_value;
-        spec.storage(index::extract_storage_spec(c.type()));
-        ret.emplace_back(
-            t,
-            true,
-            meta->value_offset(i),
-            meta->nullity_offset(i),
-            c.criteria().nullity().nullable(),
             spec
         );
     }

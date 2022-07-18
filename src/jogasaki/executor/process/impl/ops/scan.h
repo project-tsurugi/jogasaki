@@ -141,12 +141,6 @@ private:
 
     void close(scan_context& ctx);
 
-    std::vector<index::field_info> create_fields(
-        yugawara::storage::index const& idx,
-        sequence_view<column const> columns,
-        variable_table_info const& output_variable_info,
-        bool key
-    );
     std::vector<details::secondary_index_field_info> create_secondary_key_fields(
         yugawara::storage::index const* idx
     );

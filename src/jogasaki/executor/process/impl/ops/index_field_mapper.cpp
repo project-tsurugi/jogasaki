@@ -18,6 +18,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/index/index_accessor.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -106,48 +107,6 @@ status index_field_mapper::consume_secondary_key_fields(
     return status::ok;
 }
 
-status index_field_mapper::decode_fields(std::vector<index::field_info> const& fields,
-    kvs::readable_stream& stream,
-    accessor::record_ref target,
-    index_field_mapper::memory_resource* resource
-) {
-    for(auto&& f : fields) {
-        if (! f.exists_) {
-            if (f.nullable_) {
-                if(auto res = kvs::consume_stream_nullable(stream, f.type_, f.spec_); res != status::ok) {
-                    return res;
-                }
-                continue;
-            }
-            if(auto res = kvs::consume_stream(stream, f.type_, f.spec_); res != status::ok) {
-                return res;
-            }
-            continue;
-        }
-        if (f.nullable_) {
-            if(auto res = kvs::decode_nullable(
-                    stream,
-                    f.type_,
-                    f.spec_,
-                    target,
-                    f.offset_,
-                    f.nullity_offset_,
-                    resource
-                ); res != status::ok) {
-                return res;
-            }
-            continue;
-        }
-        if(auto res = kvs::decode(stream, f.type_, f.spec_, target, f.offset_, resource); res != status::ok) {
-            return res;
-        }
-        target.set_null(f.nullity_offset_, false); // currently assuming target variable fields are
-        // nullable and f.nullity_offset_ is valid
-        // even if f.nullable_ is false
-    }
-    return status::ok;
-}
-
 std::string_view index_field_mapper::extract_primary_key(std::string_view key) {
     kvs::readable_stream keys{key.data(), key.size()};
     // consume key fields, then the rest is primary key
@@ -182,10 +141,10 @@ status index_field_mapper::populate_field_variables(
 ) {
     kvs::readable_stream keys{key.data(), key.size()};
     kvs::readable_stream values{value.data(), value.size()};
-    if(auto res = decode_fields(primary_key_fields_, keys, target, resource); res != status::ok) {
+    if(auto res = index::decode_fields(primary_key_fields_, keys, target, resource); res != status::ok) {
         return res;
     }
-    if(auto res = decode_fields(primary_value_fields_, values, target, resource); res != status::ok) {
+    if(auto res = index::decode_fields(primary_value_fields_, values, target, resource); res != status::ok) {
         return res;
     }
     return status::ok;

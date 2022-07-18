@@ -23,6 +23,48 @@
 
 namespace jogasaki::index {
 
+status decode_fields(std::vector<index::field_info> const& fields,
+    kvs::readable_stream& stream,
+    accessor::record_ref target,
+    memory::lifo_paged_memory_resource* resource
+) {
+    for(auto&& f : fields) {
+        if (! f.exists_) {
+            if (f.nullable_) {
+                if(auto res = kvs::consume_stream_nullable(stream, f.type_, f.spec_); res != status::ok) {
+                    return res;
+                }
+                continue;
+            }
+            if(auto res = kvs::consume_stream(stream, f.type_, f.spec_); res != status::ok) {
+                return res;
+            }
+            continue;
+        }
+        if (f.nullable_) {
+            if(auto res = kvs::decode_nullable(
+                    stream,
+                    f.type_,
+                    f.spec_,
+                    target,
+                    f.offset_,
+                    f.nullity_offset_,
+                    resource
+                ); res != status::ok) {
+                return res;
+            }
+            continue;
+        }
+        if(auto res = kvs::decode(stream, f.type_, f.spec_, target, f.offset_, resource); res != status::ok) {
+            return res;
+        }
+        target.set_null(f.nullity_offset_, false); // currently assuming target variable fields are
+        // nullable and f.nullity_offset_ is valid
+        // even if f.nullable_ is false
+    }
+    return status::ok;
+}
+
 }
 
 

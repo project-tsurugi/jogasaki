@@ -19,9 +19,17 @@
 
 #include <yugawara/storage/index.h>
 
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/index/field_info.h>
 
 namespace jogasaki::index {
+
+status decode_fields(
+    std::vector<index::field_info> const& fields,
+    kvs::readable_stream& stream,
+    accessor::record_ref target,
+    memory::lifo_paged_memory_resource* resource
+);
 
 class mapper {
 public:

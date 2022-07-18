@@ -117,13 +117,6 @@ private:
         kvs::readable_stream& stream
     );
 
-    status decode_fields(
-        std::vector<index::field_info> const& fields,
-        kvs::readable_stream& stream,
-        accessor::record_ref target,
-        memory_resource* resource
-    );
-
     std::string_view extract_primary_key(
         std::string_view key
     );

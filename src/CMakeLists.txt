@@ -30,6 +30,7 @@ file(GLOB SOURCES
         "jogasaki/executor/function/*.cpp"
         "jogasaki/executor/function/incremental/*.cpp"
         "jogasaki/executor/sequence/*.cpp"
+        "jogasaki/logship/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"
@@ -77,6 +78,7 @@ target_link_libraries(${ENGINE}
         PRIVATE shakujo-model
         PRIVATE shakujo-parser
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
+        PRIVATE hayatsuki-api
         PRIVATE tbb
         PRIVATE numa
         PRIVATE tsl::hopscotch_map

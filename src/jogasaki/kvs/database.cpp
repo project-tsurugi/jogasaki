@@ -144,5 +144,12 @@ bool database::delete_sequence(sequence_id id) noexcept {
     return true;
 }
 
+void database::log_event_listener(std::unique_ptr<logship::log_event_listener> listener) {
+    listener_ = std::move(listener);
+    ::sharksfin::database_set_logging_callback(handle_, [p = listener_.get()](std::size_t worker, LogRecord* begin, LogRecord* end) {
+        (*p)(worker, begin, end);
+    });
+}
+
 }
 

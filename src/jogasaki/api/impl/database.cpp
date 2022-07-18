@@ -22,6 +22,9 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 
+#include <hayatsuki/log_record.h>
+#include <hayatsuki/collector/shirakami/collector.h>
+
 #include <jogasaki/logging.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
@@ -30,6 +33,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/logship/log_event_listener.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
@@ -90,6 +94,9 @@ status database::start() {
         }
         task_scheduler_->start();
     }
+
+    kvs_db_->log_event_listener(std::make_unique<logship::log_event_listener>());
+
     return status::ok;
 }
 

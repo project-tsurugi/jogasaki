@@ -202,6 +202,21 @@ public:
         return quiescent_;
     }
 
+    /**
+     * @brief accessor for max logging parallelism
+     * @return the number of parallel workers for logging
+     */
+    [[nodiscard]] std::size_t max_logging_parallelism() const noexcept {
+        return max_logging_parallelism_;
+    }
+
+    /**
+     * @brief setter for max logging parallelism
+     */
+    void max_logging_parallelism(std::size_t arg) noexcept {
+        max_logging_parallelism_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -217,6 +232,7 @@ public:
             "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
             "quiescent:" << cfg.quiescent() << " " <<
+            "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
             "";
     }
 
@@ -240,6 +256,7 @@ private:
     bool lazy_worker_ = false;
     bool activate_scheduler_ = true;
     bool quiescent_ = false;
+    std::size_t max_logging_parallelism_ = 1;
 };
 
 }

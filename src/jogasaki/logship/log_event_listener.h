@@ -31,6 +31,15 @@ namespace details {
 
 class buffer {
 public:
+    std::vector<hayatsuki::log_record>& records() {
+        return records_;
+    }
+
+    void clear() {
+
+        records_.clear();
+    }
+private:
     std::vector<hayatsuki::log_record> records_{};
 };
 
@@ -42,9 +51,9 @@ public:
 
     bool init(configuration& cfg);
 
-    void operator()(std::size_t worker, LogRecord* begin, LogRecord* end);
+    bool operator()(std::size_t worker, LogRecord* begin, LogRecord* end);
 
-    void deinit();
+    bool deinit();
 private:
     std::unique_ptr<::hayatsuki::ShirakamiCollector> collector_{std::make_unique<::hayatsuki::ShirakamiCollector>()};
     std::unordered_map<sharksfin::LogRecord::storage_id_type, meta::record_meta> meta_{};

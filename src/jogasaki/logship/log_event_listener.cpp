@@ -53,26 +53,26 @@ bool convert(bool key, std::string_view data, details::buffer& buf, std::string_
     return true;
 }
 
-void log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRecord* end) {
+bool log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRecord* end) {
     BOOST_ASSERT(worker < buffers_.size());  //NOLINT
     auto& buf = buffers_[worker];
     if(! buf) {
         buf = std::make_unique<details::buffer>();
     }
-    buf->records_.clear();
+    buf->clear();
     LogRecord* it = begin;
     while(it != end) {
         std::string_view k{};
         if(! convert(true, it->key_, *buf, k)) {
             VLOG(log_error) << "error conversion: " << it->key_;
-            continue;
+            return false;
         }
         std::string_view v{};
         if(! convert(false, it->value_, *buf, v)) {
             VLOG(log_error) << "error conversion: " << it->value_;
-            continue;
+            return false;
         }
-        buf->records_.emplace_back(
+        buf->records().emplace_back(
             from(it->operation_),
             k, // TODO
             v, // TODO
@@ -82,13 +82,19 @@ void log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRec
         );
         ++it;
     }
-    collector_->write_message(worker, buf->records_);
+    if(auto rc = collector_->write_message(worker, buf->records()); rc != 0) {
+        VLOG(log_error) << collector_->get_error_message(rc);
+        return false;
+    }
+    return true;
 }
 
-void log_event_listener::deinit() {
+bool log_event_listener::deinit() {
     if(auto rc = collector_->finish(); rc != 0) {
         VLOG(log_error) << collector_->get_error_message(rc);
+        return false;
     }
+    return true;
 }
 
 }

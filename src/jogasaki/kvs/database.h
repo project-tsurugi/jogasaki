@@ -24,8 +24,10 @@
 
 #include "storage.h"
 #include <jogasaki/common_types.h>
-#include <jogasaki/logship/log_event_listener.h>
 
+namespace jogasaki::logship {
+class log_event_listener;
+}
 namespace jogasaki::kvs {
 
 using takatori::util::fail;
@@ -45,14 +47,14 @@ public:
     /**
      * @brief create empty object
      */
-    database() = default;
+    database();
 
     /**
      * @brief create new object with existing db handle
      * @details the DatabaseHandle is simply borrowed by default, and no close/dispose calls will be made even if
      * this object is closed or destructed.
      */
-    explicit database(DatabaseHandle handle) : handle_(handle) {}
+    explicit database(DatabaseHandle handle);
 
     /**
      * @brief destruct the object

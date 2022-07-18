@@ -74,16 +74,16 @@ TEST_F(logship_test, simple) {
 
     auto cfg = std::make_shared<configuration>();
     cfg->max_logging_parallelism(1);
-    listener.init(*cfg);
+    ASSERT_TRUE(listener.init(*cfg));
 
     std::vector<sharksfin::LogRecord> recs{};
     recs.emplace_back(
         sharksfin::LogRecord{sharksfin::LogOperation::INSERT, "ABC"sv, "XYZ"sv, 0UL, 0UL, 100UL}
     );
 
-    listener(0, &*recs.begin(), &*recs.end());
+    ASSERT_TRUE(listener(0, &*recs.begin(), &*recs.end()));
 
-    listener.deinit();
+    ASSERT_TRUE(listener.deinit());
 }
 
 }

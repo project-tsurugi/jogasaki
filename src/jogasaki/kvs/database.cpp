@@ -15,6 +15,7 @@
  */
 #include <memory>
 
+#include <jogasaki/logship/log_event_listener.h>
 #include "database.h"
 #include "transaction.h"
 
@@ -150,6 +151,10 @@ void database::log_event_listener(std::unique_ptr<logship::log_event_listener> l
         (*p)(worker, begin, end);
     });
 }
+
+database::database(DatabaseHandle handle) : handle_(handle) {}
+
+database::database() = default;
 
 }
 

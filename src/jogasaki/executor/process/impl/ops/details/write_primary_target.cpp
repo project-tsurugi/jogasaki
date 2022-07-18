@@ -61,7 +61,7 @@ write_primary_target::write_primary_target(
         idx.simple_name(),
         index::create_meta(idx, true),
         index::create_meta(idx, false),
-        create_input_key_fields(idx, keys, input_variable_info),
+        index::create_fields(idx, keys, input_variable_info, true, false),
         index::index_fields(idx, true),
         index::index_fields(idx, false),
         create_update_fields(idx, keys, columns, host_variable_info, input_variable_info)
@@ -256,42 +256,6 @@ std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
         host_variables->at(src).nullity_offset(),
         true
     };
-}
-
-std::vector<index::field_info> write_primary_target::create_input_key_fields(
-    yugawara::storage::index const& idx,
-    sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
-    variable_table_info const& input_variable_info
-) {
-    std::vector<index::field_info> ret{};
-    yugawara::binding::factory bindings{};
-    std::unordered_map<variable, variable> key_dest_to_src{};
-    for(auto&& c : keys) {
-        key_dest_to_src.emplace(c.destination(), c.source());
-    }
-    auto meta = index::create_meta(idx, true);
-    ret.reserve(idx.keys().size());
-    for(auto&& k : idx.keys()) {
-        auto kc = bindings(k.column());
-        auto t = utils::type_for(k.column().type());
-        auto spec = k.direction() == relation::sort_direction::ascendant ?
-            kvs::spec_key_ascending : kvs::spec_key_descending;
-        if (key_dest_to_src.count(kc) == 0) {
-            fail(); // TODO update by non-unique keys
-        }
-        auto&& var = key_dest_to_src.at(kc);
-        std::size_t offset{input_variable_info.at(var).value_offset()};
-        std::size_t nullity_offset{input_variable_info.at(var).nullity_offset()};
-        ret.emplace_back(
-            t,
-            true,
-            offset,
-            nullity_offset,
-            k.column().criteria().nullity().nullable(),
-            spec
-        );
-    }
-    return ret;
 }
 
 std::vector<details::update_field> write_primary_target::create_update_fields(

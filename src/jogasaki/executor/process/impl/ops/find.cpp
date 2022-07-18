@@ -25,6 +25,7 @@
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/index/field_info.h>
+#include <jogasaki/index/field_factory.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
@@ -87,8 +88,8 @@ find::find(
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
         details::create_search_key_fields((secondary_idx != nullptr ? *secondary_idx : primary_idx), keys, info),
-        create_fields(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), true),
-        create_fields(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), false),
+        index::create_fields<column>(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), true, true),
+        index::create_fields<column>(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), false, true),
         create_secondary_key_fields(secondary_idx),
         std::move(downstream),
         input_variable_info,
@@ -226,78 +227,6 @@ void find::finish(abstract::task_context* context) {
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
-}
-
-std::vector<index::field_info> find::create_fields(
-    yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
-    variable_table_info const& output_variable_info,
-    bool key
-) {
-    std::vector<index::field_info> ret{};
-    using variable = takatori::descriptor::variable;
-    yugawara::binding::factory bindings{};
-    std::unordered_map<variable, variable> table_to_stream{};
-    for(auto&& c : columns) {
-        table_to_stream.emplace(c.source(), c.destination());
-    }
-    if (key) {
-        ret.reserve(idx.keys().size());
-        for(auto&& k : idx.keys()) {
-            auto kc = bindings(k.column());
-            auto t = utils::type_for(k.column().type());
-            auto spec = k.direction() == relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending : kvs::spec_key_descending;
-            if (table_to_stream.count(kc) == 0) {
-                ret.emplace_back(
-                    t,
-                    false,
-                    0,
-                    0,
-                    k.column().criteria().nullity().nullable(),
-                    spec
-                );
-                continue;
-            }
-            auto&& var = table_to_stream.at(kc);
-            ret.emplace_back(
-                t,
-                true,
-                output_variable_info.at(var).value_offset(),
-                output_variable_info.at(var).nullity_offset(),
-                k.column().criteria().nullity().nullable(),
-                spec
-            );
-        }
-        return ret;
-    }
-    ret.reserve(idx.values().size());
-    for(auto&& v : idx.values()) {
-        auto b = bindings(v);
-        auto& c = static_cast<yugawara::storage::column const&>(v);
-        auto t = utils::type_for(c.type());
-        if (table_to_stream.count(b) == 0) {
-            ret.emplace_back(
-                t,
-                false,
-                0,
-                0,
-                c.criteria().nullity().nullable(),
-                kvs::spec_value
-            );
-            continue;
-        }
-        auto&& var = table_to_stream.at(b);
-        ret.emplace_back(
-            t,
-            true,
-            output_variable_info.at(var).value_offset(),
-            output_variable_info.at(var).nullity_offset(),
-            c.criteria().nullity().nullable(),
-            kvs::spec_value
-        );
-    }
-    return ret;
 }
 
 std::vector<details::secondary_index_field_info> find::create_secondary_key_fields(

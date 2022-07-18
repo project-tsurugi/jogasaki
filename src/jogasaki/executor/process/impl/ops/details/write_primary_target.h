@@ -191,12 +191,6 @@ private:
     std::vector<index::field_info> extracted_values_{};
     std::vector<details::update_field> updates_{};
 
-    std::vector<index::field_info> create_input_key_fields(
-        yugawara::storage::index const& idx,
-        sequence_view<key const> keys,
-        variable_table_info const& input_variable_info
-    );
-
     std::vector<details::update_field> create_update_fields(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,

@@ -82,6 +82,11 @@ find_package(Protobuf REQUIRED)
 find_package(msgpack REQUIRED)
 find_package(likwid)
 
+
+# to suppress not-found warnings
+set(re2Alt_FIND_QUIETLY TRUE)
+set(c-aresAlt_FIND_QUIETLY TRUE)
+
 # Parquet dependencies
 find_package(Arrow REQUIRED)
 get_filename_component(MY_SEARCH_DIR ${Arrow_CONFIG} DIRECTORY)

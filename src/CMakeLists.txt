@@ -78,7 +78,7 @@ target_link_libraries(${ENGINE}
         PRIVATE shakujo-model
         PRIVATE shakujo-parser
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
-        PRIVATE hayatsuki-api
+        PRIVATE hayatsuki-engine
         PRIVATE tbb
         PRIVATE numa
         PRIVATE tsl::hopscotch_map
@@ -135,6 +135,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE shakujo-model
         INTERFACE shakujo-parser
         INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
+        INTERFACE hayatsuki-engine
         INTERFACE tbb
         INTERFACE numa
         INTERFACE tsl::hopscotch_map

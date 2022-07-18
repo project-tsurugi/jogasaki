@@ -15,7 +15,81 @@
  */
 #include "log_event_listener.h"
 
+#include <glog/logging.h>
+#include <jogasaki/logging.h>
+
+#include <takatori/util/fail.h>
+
 namespace jogasaki::logship {
+
+using takatori::util::fail;
+
+bool log_event_listener::init(jogasaki::configuration& cfg) {
+    auto sz = cfg.max_logging_parallelism();
+    if(auto rc = collector_->init(sz); rc != 0) {
+        VLOG(log_error) << collector_->get_error_message(rc);
+        return false;
+    }
+    buffers_.resize(sz);
+    return true;
+}
+
+::hayatsuki::LogOperation from(::sharksfin::LogOperation op) {
+    using s = ::sharksfin::LogOperation;
+    using h = ::hayatsuki::LogOperation;
+    switch(op) {
+        case s::UNKNOWN: return h::UNKNOWN;
+        case s::INSERT: return h::INSERT;
+        case s::UPDATE: return h::UPDATE;
+        case s::DELETE: return h::DELETE;
+    }
+    fail();
+}
+
+bool convert(bool key, std::string_view data, details::buffer& buf, std::string_view& out) {
+    (void)key;
+    (void)buf;
+    out = data;
+    return true;
+}
+
+void log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRecord* end) {
+    BOOST_ASSERT(worker < buffers_.size());  //NOLINT
+    auto& buf = buffers_[worker];
+    if(! buf) {
+        buf = std::make_unique<details::buffer>();
+    }
+    buf->records_.clear();
+    LogRecord* it = begin;
+    while(it != end) {
+        std::string_view k{};
+        if(! convert(true, it->key_, *buf, k)) {
+            VLOG(log_error) << "error conversion: " << it->key_;
+            continue;
+        }
+        std::string_view v{};
+        if(! convert(false, it->value_, *buf, v)) {
+            VLOG(log_error) << "error conversion: " << it->value_;
+            continue;
+        }
+        buf->records_.emplace_back(
+            from(it->operation_),
+            k, // TODO
+            v, // TODO
+            it->major_version_,
+            it->minor_version_,
+            it->storage_id_
+        );
+        ++it;
+    }
+    collector_->write_message(worker, buf->records_);
+}
+
+void log_event_listener::deinit() {
+    if(auto rc = collector_->finish(); rc != 0) {
+        VLOG(log_error) << collector_->get_error_message(rc);
+    }
+}
 
 }
 

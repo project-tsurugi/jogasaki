@@ -19,9 +19,7 @@
 #include <gtest/gtest.h>
 #include <future>
 
-#include <takatori/type/int.h>
 #include <takatori/util/downcast.h>
-#include <yugawara/variable/nullity.h>
 
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
@@ -43,13 +41,10 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
-using namespace takatori;
-using namespace yugawara::storage;
-using nullity = yugawara::variable::nullity;
 
 using takatori::util::unsafe_downcast;
 
-class logship_test :
+class log_event_listener_test :
     public ::testing::Test,
     public testing::api_test_base {
 
@@ -61,10 +56,10 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->enable_logship(true);
-        cfg->max_logging_parallelism(1);
         db_setup(cfg);
         auto* impl = db_impl();
+        add_benchmark_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
@@ -74,39 +69,21 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(logship_test, simple) {
-    auto t = std::make_shared<table>(
-        100,
-        "LOGSHIP",
-        std::initializer_list<column>{
-            column{ "C0", type::int8(), nullity{false} },
-            column{ "C1", type::int8(), nullity{false} },
-        }
+TEST_F(log_event_listener_test, simple) {
+    log_event_listener listener{};
+
+    auto cfg = std::make_shared<configuration>();
+    cfg->max_logging_parallelism(1);
+    ASSERT_TRUE(listener.init(*cfg));
+
+    std::vector<sharksfin::LogRecord> recs{};
+    recs.emplace_back(
+        sharksfin::LogRecord{sharksfin::LogOperation::INSERT, "ABC"sv, "XYZ"sv, 0UL, 0UL, 100UL}
     );
-    ASSERT_EQ(status::ok, db_->create_table(t));
-    auto i = std::make_shared<yugawara::storage::index>(
-        t->definition_id(),
-        t,
-        t->simple_name(),
-        std::initializer_list<index::key>{
-            t->columns()[0],
-        },
-        std::initializer_list<index::column_ref>{
-            t->columns()[1],
-        },
-        index_feature_set{
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-            ::yugawara::storage::index_feature::unique,
-            ::yugawara::storage::index_feature::primary,
-        }
-    );
-    ASSERT_EQ(status::ok, db_->create_index(i));
-    execute_statement("INSERT INTO LOGSHIP (C0, C1) VALUES (1, 1)");
+
+    ASSERT_TRUE(listener(0, &*recs.begin(), &*recs.end()));
+
+    ASSERT_TRUE(listener.deinit());
 }
 
-
-TEST_F(logship_test, no_callback) {
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
-}
 }

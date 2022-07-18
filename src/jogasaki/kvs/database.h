@@ -44,6 +44,8 @@ class transaction;
  */
 class database {
 public:
+    static constexpr std::uint64_t undefined_storage_id = static_cast<std::uint64_t>(-1);
+
     /**
      * @brief create empty object
      */
@@ -112,7 +114,7 @@ public:
      * @attention Concurrent operations for adding/removing storage entries are not strictly controlled for safety.
      * For the time being, storages are expected to be created sequentially before any transactions are started.
      */
-    std::unique_ptr<storage> create_storage(std::string_view name);
+    std::unique_ptr<storage> create_storage(std::string_view name, std::uint64_t storage_id = undefined_storage_id);
 
     /**
      * @brief retrieve the storage on the database
@@ -184,6 +186,11 @@ public:
      */
     void log_event_listener(std::unique_ptr<logship::log_event_listener> listener);
 
+    /**
+     * @brief accessor for log event listener
+     * @return listener object held by this instance
+     */
+    [[nodiscard]] logship::log_event_listener* log_event_listener() noexcept;
 private:
     sharksfin::DatabaseHandle handle_{};
     bool handle_borrowed_{true};

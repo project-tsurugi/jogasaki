@@ -118,6 +118,14 @@ status database::stop() {
     if (cfg_->quiescent()) {
         return status::ok;
     }
+    if (cfg_->enable_logship()) {
+        if (auto* l = kvs_db_->log_event_listener(); l != nullptr) {
+            if(! l->deinit()) {
+                LOG(ERROR) << "shutting down log event listener failed.";
+                // even on error, proceed to shutdown all database
+            }
+        }
+    }
     if (cfg_->activate_scheduler()) {
         task_scheduler_->stop();
     }
@@ -424,6 +432,11 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     (void)schema;
     BOOST_ASSERT(index != nullptr);  //NOLINT
     std::string name{index->simple_name()};
+    std::uint64_t storage_id{kvs::database::undefined_storage_id};
+    if(index->definition_id()) {
+        storage_id = index->definition_id().value();
+    }
+
     if (! kvs_db_) {
         VLOG(log_error) << "db not started";
         return status::err_invalid_state;
@@ -434,7 +447,7 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         VLOG(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
     }
-    kvs_db_->create_storage(name); // Just to ensure existence of the storage. No need to handle return value.
+    kvs_db_->create_storage(name, storage_id);
     return status::ok;
 }
 

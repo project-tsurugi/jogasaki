@@ -67,9 +67,13 @@ std::unique_ptr<transaction> database::create_transaction(
     return std::make_unique<transaction>(*this, readonly, is_long, write_preserve);
 }
 
-std::unique_ptr<storage> database::create_storage(std::string_view name) {
+std::unique_ptr<storage> database::create_storage(std::string_view name, std::uint64_t storage_id) {
     sharksfin::StorageHandle stg{};
-    if (auto res = sharksfin::storage_create(handle_, sharksfin::Slice(name), &stg);
+    StorageOptions options{};
+    if(storage_id != undefined_storage_id) {
+        options.storage_id(storage_id);
+    }
+    if (auto res = sharksfin::storage_create(handle_, sharksfin::Slice(name), options, &stg);
         res == sharksfin::StatusCode::ALREADY_EXISTS) {
         return {};
     } else if (res != sharksfin::StatusCode::OK) { //NOLINT
@@ -150,6 +154,10 @@ void database::log_event_listener(std::unique_ptr<logship::log_event_listener> l
     ::sharksfin::database_set_logging_callback(handle_, [p = listener_.get()](std::size_t worker, LogRecord* begin, LogRecord* end) {
         (*p)(worker, begin, end);
     });
+}
+
+logship::log_event_listener* database::log_event_listener() noexcept {
+    return listener_.get();
 }
 
 database::database(DatabaseHandle handle) : handle_(handle) {}

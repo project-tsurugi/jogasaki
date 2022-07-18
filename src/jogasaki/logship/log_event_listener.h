@@ -25,25 +25,11 @@
 
 namespace jogasaki::logship {
 
-using LogRecord = ::sharksfin::LogRecord;
-
 namespace details {
-
-class buffer {
-public:
-    std::vector<hayatsuki::log_record>& records() {
-        return records_;
-    }
-
-    void clear() {
-
-        records_.clear();
-    }
-private:
-    std::vector<hayatsuki::log_record> records_{};
-};
-
+class buffer;
 }
+
+using LogRecord = ::sharksfin::LogRecord;
 
 class log_event_listener {
 public:

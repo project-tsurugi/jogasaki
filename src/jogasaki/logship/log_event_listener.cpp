@@ -17,12 +17,33 @@
 
 #include <glog/logging.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/data/aligned_buffer.h>
 
 #include <takatori/util/fail.h>
 
 namespace jogasaki::logship {
 
 using takatori::util::fail;
+
+namespace details {
+
+class buffer {
+public:
+    std::vector<hayatsuki::log_record>& records() {
+        return output_;
+    }
+
+    void clear() {
+        output_.clear();
+    }
+private:
+    std::vector<hayatsuki::log_record> output_{};
+    data::aligned_buffer record_{};
+
+
+};
+
+}
 
 bool log_event_listener::init(jogasaki::configuration& cfg) {
     auto sz = cfg.max_logging_parallelism();
@@ -50,6 +71,11 @@ bool convert(bool key, std::string_view data, details::buffer& buf, std::string_
     (void)key;
     (void)buf;
     out = data;
+
+    // create_record();
+
+
+
     return true;
 }
 

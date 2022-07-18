@@ -29,7 +29,7 @@
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/field_types.h>
-#include "write_utils.h"
+#include <jogasaki/index/utils.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
@@ -37,14 +37,14 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
 
 status encode_fields(
-    std::vector<details::field_info> const& fields,
+    std::vector<index::field_info> const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 );
 
 status do_encode(
     data::aligned_buffer& buf,
-    std::vector<details::field_info> const& info,
+    std::vector<index::field_info> const& info,
     accessor::record_ref source,
     std::string_view& out
 );
@@ -58,8 +58,8 @@ write_primary_target::write_primary_target(
 ) :
     write_primary_target(
         idx.simple_name(),
-        create_meta(idx, true),
-        create_meta(idx, false),
+        index::create_meta(idx, true),
+        index::create_meta(idx, false),
         create_input_key_fields(idx, keys, input_variable_info),
         create_extracted_fields(idx, true),
         create_extracted_fields(idx, false),
@@ -71,9 +71,9 @@ write_primary_target::write_primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
-    std::vector<details::field_info> input_keys,
-    std::vector<details::field_info> extracted_keys,
-    std::vector<details::field_info> extracted_values,
+    std::vector<index::field_info> input_keys,
+    std::vector<index::field_info> extracted_keys,
+    std::vector<index::field_info> extracted_values,
     std::vector<details::update_field> updates
 ) :
     storage_name_(storage_name),
@@ -123,7 +123,7 @@ status write_primary_target::prepare_encoded_key(
 
 status do_encode(
     data::aligned_buffer& buf,
-    std::vector<details::field_info> const& info,
+    std::vector<index::field_info> const& info,
     accessor::record_ref source,
     std::string_view& out
 ) {
@@ -183,7 +183,7 @@ void write_primary_target::update_record(
 }
 
 status write_primary_target::decode_fields(
-    std::vector<details::field_info> const& fields,
+    std::vector<index::field_info> const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
     memory::lifo_paged_memory_resource* varlen_resource
@@ -214,7 +214,7 @@ status write_primary_target::decode_fields(
 }
 
 status encode_fields(
-    std::vector<details::field_info> const& fields,
+    std::vector<index::field_info> const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 ) {
@@ -257,18 +257,18 @@ std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
     };
 }
 
-std::vector<details::field_info> write_primary_target::create_input_key_fields(
+std::vector<index::field_info> write_primary_target::create_input_key_fields(
     yugawara::storage::index const& idx,
     sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
     variable_table_info const& input_variable_info
 ) {
-    std::vector<details::field_info> ret{};
+    std::vector<index::field_info> ret{};
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> key_dest_to_src{};
     for(auto&& c : keys) {
         key_dest_to_src.emplace(c.destination(), c.source());
     }
-    auto meta = create_meta(idx, true);
+    auto meta = index::create_meta(idx, true);
     ret.reserve(idx.keys().size());
     for(auto&& k : idx.keys()) {
         auto kc = bindings(k.column());
@@ -293,14 +293,14 @@ std::vector<details::field_info> write_primary_target::create_input_key_fields(
     return ret;
 }
 
-std::vector<details::field_info> write_primary_target::create_extracted_fields(
+std::vector<index::field_info> write_primary_target::create_extracted_fields(
     yugawara::storage::index const& idx,
     bool key
 ) {
-    std::vector<details::field_info> ret{};
+    std::vector<index::field_info> ret{};
     yugawara::binding::factory bindings{};
     if (key) {
-        auto meta = create_meta(idx, true);
+        auto meta = index::create_meta(idx, true);
         ret.reserve(idx.keys().size());
         for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
             auto&& k = idx.keys()[i];
@@ -309,7 +309,7 @@ std::vector<details::field_info> write_primary_target::create_extracted_fields(
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            spec.storage(details::extract_storage_spec(type));
+            spec.storage(index::extract_storage_spec(type));
             ret.emplace_back(
                 t,
                 true,
@@ -321,7 +321,7 @@ std::vector<details::field_info> write_primary_target::create_extracted_fields(
         }
         return ret;
     }
-    auto meta = create_meta(idx, false);
+    auto meta = index::create_meta(idx, false);
     ret.reserve(idx.values().size());
     for(std::size_t i=0, n=idx.values().size(); i<n; ++i) {
         auto&& v = idx.values()[i];
@@ -329,7 +329,7 @@ std::vector<details::field_info> write_primary_target::create_extracted_fields(
         auto& c = static_cast<yugawara::storage::column const&>(v);
         auto t = utils::type_for(c.type());
         auto spec = kvs::spec_value;
-        spec.storage(details::extract_storage_spec(c.type()));
+        spec.storage(index::extract_storage_spec(c.type()));
         ret.emplace_back(
             t,
             true,
@@ -362,7 +362,7 @@ std::vector<details::update_field> write_primary_target::create_update_fields(
 
     ret.reserve(idx.keys().size()+idx.values().size());
     {
-        auto meta = create_meta(idx, true);
+        auto meta = index::create_meta(idx, true);
         for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
             auto&& k = idx.keys()[i];
             auto kc = bindings(k.column());
@@ -386,7 +386,7 @@ std::vector<details::update_field> write_primary_target::create_update_fields(
             }
         }
     }
-    auto meta = create_meta(idx, false);
+    auto meta = index::create_meta(idx, false);
     for(std::size_t i=0, n=idx.values().size(); i<n; ++i) {
         auto&& v = idx.values()[i];
         auto b = bindings(v);

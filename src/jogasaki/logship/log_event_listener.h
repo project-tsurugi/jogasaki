@@ -33,7 +33,9 @@ using LogRecord = ::sharksfin::LogRecord;
 
 class log_event_listener {
 public:
-    log_event_listener() = default;
+    log_event_listener();
+
+    ~log_event_listener();
 
     bool init(configuration& cfg);
 

@@ -21,7 +21,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/utils/interference_size.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 /**
  * @brief primary index field info

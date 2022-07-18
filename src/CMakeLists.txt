@@ -30,6 +30,7 @@ file(GLOB SOURCES
         "jogasaki/executor/function/*.cpp"
         "jogasaki/executor/function/incremental/*.cpp"
         "jogasaki/executor/sequence/*.cpp"
+        "jogasaki/index/*.cpp"
         "jogasaki/logship/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"

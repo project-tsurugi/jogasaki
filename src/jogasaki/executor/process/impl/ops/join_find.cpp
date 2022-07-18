@@ -59,8 +59,8 @@ std::vector<details::secondary_index_field_info> create_secondary_key_fields(
 matcher::matcher(
     bool use_secondary,
     std::vector<details::search_key_field_info> const& key_fields,
-    std::vector<details::field_info> key_columns,
-    std::vector<details::field_info> value_columns
+    std::vector<index::field_info> key_columns,
+    std::vector<index::field_info> value_columns
 ) :
     use_secondary_(use_secondary),
     key_fields_(key_fields),
@@ -239,13 +239,13 @@ void join_find::finish(abstract::task_context* context) {
     }
 }
 
-std::vector<details::field_info> join_find::create_columns(
+std::vector<index::field_info> join_find::create_columns(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     variable_table_info const& output_variables_info,
     bool key
 ) {
-    std::vector<details::field_info> ret{};
+    std::vector<index::field_info> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};
@@ -317,8 +317,8 @@ join_find::join_find(
     operator_base::block_index_type block_index,
     std::string_view primary_storage_name,
     std::string_view secondary_storage_name,
-    std::vector<details::field_info> key_columns,
-    std::vector<details::field_info> value_columns,
+    std::vector<index::field_info> key_columns,
+    std::vector<index::field_info> value_columns,
     std::vector<details::search_key_field_info> search_key_fields,
     takatori::util::optional_ptr<takatori::scalar::expression const> condition,
     std::unique_ptr<operator_base> downstream,
@@ -383,11 +383,11 @@ join_find::join_find(
     )
 {}
 
-std::vector<details::field_info> const& join_find::key_columns() const noexcept {
+std::vector<index::field_info> const& join_find::key_columns() const noexcept {
     return key_columns_;
 }
 
-std::vector<details::field_info> const& join_find::value_columns() const noexcept {
+std::vector<index::field_info> const& join_find::value_columns() const noexcept {
     return value_columns_;
 }
 

@@ -22,7 +22,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/ops/details/field_info.h>
+#include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/coder.h>
 #include "write_primary_context.h"
 
@@ -115,9 +115,9 @@ public:
         std::string_view storage_name,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
-        std::vector<details::field_info> input_keys,
-        std::vector<details::field_info> extracted_keys,
-        std::vector<details::field_info> extracted_values,
+        std::vector<index::field_info> input_keys,
+        std::vector<index::field_info> extracted_keys,
+        std::vector<index::field_info> extracted_values,
         std::vector<details::update_field> updates
     );
 
@@ -186,18 +186,18 @@ private:
     std::string storage_name_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
-    std::vector<details::field_info> input_keys_{};
-    std::vector<details::field_info> extracted_keys_{};
-    std::vector<details::field_info> extracted_values_{};
+    std::vector<index::field_info> input_keys_{};
+    std::vector<index::field_info> extracted_keys_{};
+    std::vector<index::field_info> extracted_values_{};
     std::vector<details::update_field> updates_{};
 
-    std::vector<details::field_info> create_input_key_fields(
+    std::vector<index::field_info> create_input_key_fields(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
         variable_table_info const& input_variable_info
     );
 
-    std::vector<details::field_info> create_extracted_fields(
+    std::vector<index::field_info> create_extracted_fields(
         yugawara::storage::index const& idx,
         bool key
     );
@@ -211,7 +211,7 @@ private:
     );
 
     status decode_fields(
-        std::vector<details::field_info> const& fields,
+        std::vector<index::field_info> const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* varlen_resource

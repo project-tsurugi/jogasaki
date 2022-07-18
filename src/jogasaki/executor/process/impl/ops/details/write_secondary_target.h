@@ -24,7 +24,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/ops/details/field_info.h>
+#include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/coder.h>
 #include "write_secondary_context.h"
 
@@ -40,7 +40,7 @@ using takatori::util::fail;
  * the record (of key/value respectively), updates the record fields by replacing the value with one from variable table
  * record (source), encodes the record and puts into kvs.
  */
-struct cache_align secondary_key_field : field_info {
+struct cache_align secondary_key_field : index::field_info {
     /**
      * @brief create new object
      * @param type type of the field

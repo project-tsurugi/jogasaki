@@ -45,6 +45,10 @@ private:
 
 }
 
+log_event_listener::log_event_listener() = default;
+
+log_event_listener::~log_event_listener() = default;
+
 bool log_event_listener::init(jogasaki::configuration& cfg) {
     auto sz = cfg.max_logging_parallelism();
     if(auto rc = collector_->init(sz); rc != 0) {

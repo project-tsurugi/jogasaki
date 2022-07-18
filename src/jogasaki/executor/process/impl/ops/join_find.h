@@ -21,6 +21,7 @@
 
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/index/field_info.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include "operator_base.h"
 #include "join_find_context.h"
@@ -41,8 +42,8 @@ public:
     matcher(
         bool use_secondary,
         std::vector<details::search_key_field_info> const& key_fields,
-        std::vector<details::field_info> key_columns,
-        std::vector<details::field_info> value_columns
+        std::vector<index::field_info> key_columns,
+        std::vector<index::field_info> value_columns
     );
 
     /**
@@ -127,8 +128,8 @@ public:
         block_index_type block_index,
         std::string_view primary_storage_name,
         std::string_view secondary_storage_name,
-        std::vector<details::field_info> key_columns,
-        std::vector<details::field_info> value_columns,
+        std::vector<index::field_info> key_columns,
+        std::vector<index::field_info> value_columns,
         std::vector<details::search_key_field_info> search_key_fields,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         std::unique_ptr<operator_base> downstream = nullptr,
@@ -196,12 +197,12 @@ public:
     /**
      * @brief accessor to key columns
      */
-    [[nodiscard]] std::vector<details::field_info> const& key_columns() const noexcept;
+    [[nodiscard]] std::vector<index::field_info> const& key_columns() const noexcept;
 
     /**
      * @brief accessor to value columns
      */
-    [[nodiscard]] std::vector<details::field_info> const& value_columns() const noexcept;
+    [[nodiscard]] std::vector<index::field_info> const& value_columns() const noexcept;
 
     /**
      * @brief accessor to key fields
@@ -212,14 +213,14 @@ private:
     bool use_secondary_{};
     std::string primary_storage_name_{};
     std::string secondary_storage_name_{};
-    std::vector<details::field_info> key_columns_{};
-    std::vector<details::field_info> value_columns_{};
+    std::vector<index::field_info> key_columns_{};
+    std::vector<index::field_info> value_columns_{};
     std::vector<details::search_key_field_info> search_key_fields_{};
     takatori::util::optional_ptr<takatori::scalar::expression const> condition_{};
     std::unique_ptr<operator_base> downstream_{};
     expression::evaluator evaluator_{};
 
-    std::vector<details::field_info> create_columns(
+    std::vector<index::field_info> create_columns(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         variable_table_info const& output_variables_info,

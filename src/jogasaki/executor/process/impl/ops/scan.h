@@ -62,8 +62,8 @@ public:
         block_index_type block_index,
         std::string_view storage_name,
         std::string_view secondary_storage_name,
-        std::vector<details::field_info> key_fields,
-        std::vector<details::field_info> value_fields,
+        std::vector<index::field_info> key_fields,
+        std::vector<index::field_info> value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
         std::unique_ptr<operator_base> downstream = nullptr,
         variable_table_info const* input_variable_info = nullptr,
@@ -141,7 +141,7 @@ private:
 
     void close(scan_context& ctx);
 
-    std::vector<details::field_info> create_fields(
+    std::vector<index::field_info> create_fields(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         variable_table_info const& output_variable_info,

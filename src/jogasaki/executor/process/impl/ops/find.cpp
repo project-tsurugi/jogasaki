@@ -24,6 +24,7 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
@@ -46,8 +47,8 @@ find::find(
     std::string_view storage_name,
     std::string_view secondary_storage_name,
     std::vector<details::search_key_field_info> search_key_fields,
-    std::vector<details::field_info> key_fields,
-    std::vector<details::field_info> value_fields,
+    std::vector<index::field_info> key_fields,
+    std::vector<index::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
     std::unique_ptr<operator_base> downstream,
     variable_table_info const* input_variable_info,
@@ -227,13 +228,13 @@ void find::finish(abstract::task_context* context) {
     }
 }
 
-std::vector<details::field_info> find::create_fields(
+std::vector<index::field_info> find::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     variable_table_info const& output_variable_info,
     bool key
 ) {
-    std::vector<details::field_info> ret{};
+    std::vector<index::field_info> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};

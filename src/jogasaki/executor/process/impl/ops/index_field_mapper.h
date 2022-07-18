@@ -22,7 +22,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/status.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include "details/field_info.h"
+#include <jogasaki/index/field_info.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -72,8 +72,8 @@ public:
      */
     index_field_mapper(
         bool use_secondary,
-        std::vector<details::field_info> primary_key_fields,
-        std::vector<details::field_info> primary_value_fields,
+        std::vector<index::field_info> primary_key_fields,
+        std::vector<index::field_info> primary_value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields
     );
 
@@ -81,8 +81,8 @@ public:
      * @brief create new object using secondary
      */
     index_field_mapper(
-        std::vector<details::field_info> primary_key_fields,
-        std::vector<details::field_info> primary_value_fields,
+        std::vector<index::field_info> primary_key_fields,
+        std::vector<index::field_info> primary_value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields
     );
 
@@ -90,8 +90,8 @@ public:
      * @brief create new object without secondary
      */
     index_field_mapper(
-        std::vector<details::field_info> primary_key_fields,
-        std::vector<details::field_info> primary_value_fields
+        std::vector<index::field_info> primary_key_fields,
+        std::vector<index::field_info> primary_value_fields
     );
 
     /**
@@ -108,8 +108,8 @@ public:
 
 private:
     bool use_secondary_{};
-    std::vector<details::field_info> primary_key_fields_{};
-    std::vector<details::field_info> primary_value_fields_{};
+    std::vector<index::field_info> primary_key_fields_{};
+    std::vector<index::field_info> primary_value_fields_{};
     std::vector<details::secondary_index_field_info> secondary_key_fields_{};
 
     status consume_secondary_key_fields(
@@ -118,7 +118,7 @@ private:
     );
 
     status decode_fields(
-        std::vector<details::field_info> const& fields,
+        std::vector<index::field_info> const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* resource

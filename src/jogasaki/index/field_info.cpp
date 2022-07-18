@@ -15,7 +15,7 @@
  */
 #include "field_info.h"
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 field_info::field_info(
     meta::field_type type,

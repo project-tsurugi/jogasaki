@@ -27,7 +27,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 

@@ -68,8 +68,8 @@ public:
         std::string_view storage_name,
         std::string_view secondary_storage_name,
         std::vector<details::search_key_field_info> search_key_fields,
-        std::vector<details::field_info> key_fields,
-        std::vector<details::field_info> value_fields,
+        std::vector<index::field_info> key_fields,
+        std::vector<index::field_info> value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
         std::unique_ptr<operator_base> downstream = nullptr,
         variable_table_info const* input_variable_info = nullptr,
@@ -147,7 +147,7 @@ private:
     std::unique_ptr<operator_base> downstream_{};
     index_field_mapper field_mapper_{};
 
-    std::vector<details::field_info> create_fields(
+    std::vector<index::field_info> create_fields(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
         variable_table_info const& output_variable_info,

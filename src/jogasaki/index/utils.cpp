@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_utils.h"
+#include "utils.h"
 
 #include <vector>
 #include <boost/dynamic_bitset.hpp>
@@ -24,7 +24,7 @@
 #include <jogasaki/error.h>
 #include <jogasaki/utils/field_types.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 

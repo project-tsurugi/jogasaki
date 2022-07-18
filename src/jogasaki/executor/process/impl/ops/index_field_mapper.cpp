@@ -33,8 +33,8 @@ details::secondary_index_field_info::secondary_index_field_info(
 
 index_field_mapper::index_field_mapper(
     bool use_secondary,
-    std::vector<details::field_info> primary_key_fields,
-    std::vector<details::field_info> primary_value_fields,
+    std::vector<index::field_info> primary_key_fields,
+    std::vector<index::field_info> primary_value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields
 ) :
     use_secondary_(use_secondary),
@@ -44,8 +44,8 @@ index_field_mapper::index_field_mapper(
 {}
 
 index_field_mapper::index_field_mapper(
-    std::vector<details::field_info> primary_key_fields,
-    std::vector<details::field_info> primary_value_fields,
+    std::vector<index::field_info> primary_key_fields,
+    std::vector<index::field_info> primary_value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields
 ) :
     index_field_mapper(
@@ -57,8 +57,8 @@ index_field_mapper::index_field_mapper(
 {}
 
 index_field_mapper::index_field_mapper(
-    std::vector<details::field_info> primary_key_fields,
-    std::vector<details::field_info> primary_value_fields
+    std::vector<index::field_info> primary_key_fields,
+    std::vector<index::field_info> primary_value_fields
 ) :
     index_field_mapper(
         false,
@@ -106,7 +106,7 @@ status index_field_mapper::consume_secondary_key_fields(
     return status::ok;
 }
 
-status index_field_mapper::decode_fields(std::vector<details::field_info> const& fields,
+status index_field_mapper::decode_fields(std::vector<index::field_info> const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
     index_field_mapper::memory_resource* resource

@@ -23,6 +23,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/error.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -31,7 +32,6 @@
 #include "operator_base.h"
 #include "context_helper.h"
 #include "details/error_abort.h"
-#include "details/write_utils.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -218,8 +218,8 @@ std::vector<details::write_secondary_target> write_partial::create_secondary_tar
 ) {
     auto& table = idx.table();
     auto& primary = *table.owner()->find_primary_index(table);
-    auto key_meta = details::create_meta(primary, true);
-    auto value_meta = details::create_meta(primary, false);
+    auto key_meta = index::create_meta(primary, true);
+    auto value_meta = index::create_meta(primary, false);
     std::vector<details::write_secondary_target> ret{};
     std::size_t count{};
     table.owner()->each_table_index(table,

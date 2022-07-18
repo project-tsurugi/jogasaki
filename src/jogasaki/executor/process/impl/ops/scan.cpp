@@ -47,8 +47,8 @@ scan::scan(
     operator_base::block_index_type block_index,
     std::string_view storage_name,
     std::string_view secondary_storage_name,
-    std::vector<details::field_info> key_fields,
-    std::vector<details::field_info> value_fields,
+    std::vector<index::field_info> key_fields,
+    std::vector<index::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
     std::unique_ptr<operator_base> downstream,
     variable_table_info const* input_variable_info,
@@ -233,13 +233,13 @@ void scan::close(scan_context& ctx) {
     ctx.it_.reset();
 }
 
-std::vector<details::field_info> scan::create_fields(
+std::vector<index::field_info> scan::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
     variable_table_info const& output_variable_info,
     bool key
 ) {
-    std::vector<details::field_info> ret{};
+    std::vector<index::field_info> ret{};
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
     std::unordered_map<variable, variable> table_to_stream{};

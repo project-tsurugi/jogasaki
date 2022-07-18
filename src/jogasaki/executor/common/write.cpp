@@ -27,10 +27,10 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
-#include <jogasaki/executor/process/impl/ops/details/write_utils.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
@@ -284,7 +284,7 @@ status write::create_fields(
             auto t = utils::type_for(type);
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            spec.storage(process::impl::ops::details::extract_storage_spec(type));
+            spec.storage(index::extract_storage_spec(type));
             bool nullable = k.column().criteria().nullity().nullable();
             if(variable_indices.count(kc.reference()) == 0) {
                 // no column specified - use default value
@@ -311,7 +311,7 @@ status write::create_fields(
             auto t = utils::type_for(type);
             bool nullable = c.criteria().nullity().nullable();
             auto spec = kvs::spec_value;
-            spec.storage(process::impl::ops::details::extract_storage_spec(type));
+            spec.storage(index::extract_storage_spec(type));
             if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = c.default_value();

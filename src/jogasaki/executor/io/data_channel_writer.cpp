@@ -15,13 +15,10 @@
  */
 #include "data_channel_writer.h"
 
-#include <takatori/util/fail.h>
 #include <jogasaki/common.h>
 #include <jogasaki/utils/result_serialization.h>
 
 namespace jogasaki::executor::io {
-
-using takatori::util::fail;
 
 bool data_channel_writer::write(accessor::record_ref rec) {
     if(! utils::write_msg(rec, buf_, meta_.get())) {

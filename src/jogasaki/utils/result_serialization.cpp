@@ -17,7 +17,6 @@
 
 #include <msgpack.hpp>
 
-#include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/accessor/record_ref.h>
@@ -25,7 +24,6 @@
 
 namespace jogasaki::utils {
 
-using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
 bool write_msg(accessor::record_ref rec, msgpack::sbuffer& buf, meta::record_meta* meta) {

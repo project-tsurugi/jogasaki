@@ -197,7 +197,7 @@ bool log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRec
             it->minor_version_,
             it->storage_id_
         );
-        ++it;
+        ++it; //NOLINT
     }
     if(auto rc = collector_->write_message(worker, buf->records()); rc != 0) {
         VLOG(log_error) << collector_->get_error_message(rc);

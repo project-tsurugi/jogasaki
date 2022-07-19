@@ -53,6 +53,11 @@ public:
 
     ~log_event_listener();
 
+    log_event_listener(log_event_listener const& other) = delete;
+    log_event_listener& operator=(log_event_listener const& other) = delete;
+    log_event_listener(log_event_listener&& other) noexcept = default;
+    log_event_listener& operator=(log_event_listener&& other) noexcept = default;
+
     bool init(configuration& cfg);
 
     bool operator()(std::size_t worker, LogRecord* begin, LogRecord* end);

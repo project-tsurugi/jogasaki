@@ -21,12 +21,14 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <sharksfin/api.h>
-#include <hayatsuki/collector/shirakami/collector.h>
-#include <hayatsuki/log_record.h>
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/index/index_accessor.h>
+
+namespace hayatsuki {
+class Collector;
+}
 
 namespace jogasaki::logship {
 
@@ -58,7 +60,7 @@ public:
     bool deinit();
 
 private:
-    std::unique_ptr<::hayatsuki::ShirakamiCollector> collector_{std::make_unique<::hayatsuki::ShirakamiCollector>()};
+    std::unique_ptr<::hayatsuki::Collector> collector_{};
     tbb::concurrent_hash_map<sharksfin::LogRecord::storage_id_type, storage_data> index_mappers_{};
     std::vector<std::unique_ptr<details::buffer>> buffers_{};
     std::shared_ptr<yugawara::storage::configurable_provider> provider_{};

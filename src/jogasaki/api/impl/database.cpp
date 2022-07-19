@@ -22,9 +22,6 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 
-#include <hayatsuki/log_record.h>
-#include <hayatsuki/collector/shirakami/collector.h>
-
 #include <jogasaki/logging.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>

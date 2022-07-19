@@ -56,7 +56,6 @@ file(GLOB SRCS
         "jogasaki/executor/aggregate/*.cpp"
         "jogasaki/executor/shuffle/*.cpp"
         "jogasaki/executor/sequence/*.cpp"
-        "jogasaki/logship/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"
@@ -78,6 +77,15 @@ if(BUILD_SHIRAKAMI_WP AND ${SHARKSFIN_IMPLEMENTATION} STREQUAL "shirakami")
             "jogasaki/long_tx/*.cpp"
             )
     foreach(file ${LONG_TX_TESTS})
+        list(APPEND SRCS ${file})
+    endforeach()
+endif()
+
+if(LOGSHIP)
+    file(GLOB LOGSHIP_TESTS
+            "jogasaki/logship/*.cpp"
+            )
+    foreach(file ${LOGSHIP_TESTS})
         list(APPEND SRCS ${file})
     endforeach()
 endif()

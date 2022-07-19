@@ -79,7 +79,6 @@ target_link_libraries(${ENGINE}
         PRIVATE shakujo-model
         PRIVATE shakujo-parser
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
-        PRIVATE hayatsuki-engine
         PRIVATE tbb
         PRIVATE numa
         PRIVATE tsl::hopscotch_map
@@ -92,6 +91,10 @@ target_link_libraries(${ENGINE}
         PRIVATE protobuf::libprotobuf
         PRIVATE parquet_shared
         )
+
+if(LOGSHIP)
+    target_link_libraries(${ENGINE} PRIVATE hayatsuki-engine)
+endif()
 
 if(LIKWID_ENABLE)
     target_link_libraries(${ENGINE}
@@ -136,7 +139,6 @@ target_link_libraries(jogasaki-impl
         INTERFACE shakujo-model
         INTERFACE shakujo-parser
         INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
-        INTERFACE hayatsuki-engine
         INTERFACE tbb
         INTERFACE numa
         INTERFACE tsl::hopscotch_map
@@ -148,6 +150,10 @@ target_link_libraries(jogasaki-impl
         INTERFACE protobuf::libprotobuf
         INTERFACE parquet_shared
         )
+
+if(LOGSHIP)
+    target_link_libraries(jogasaki-impl INTERFACE hayatsuki-engine)
+endif()
 
 if(MC_QUEUE)
     target_compile_definitions(jogasaki-impl INTERFACE MC_QUEUE)

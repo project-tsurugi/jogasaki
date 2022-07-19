@@ -22,6 +22,13 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
 
+#ifdef LOGSHIP
+#include <hayatsuki/collector/shirakami/collector.h>
+#include <hayatsuki/log_record.h>
+#else
+#include "hayatsuki_mock.h"
+#endif
+
 #include <jogasaki/logging.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/index/index_accessor.h>
@@ -208,6 +215,7 @@ bool log_event_listener::deinit() {
 }
 
 log_event_listener::log_event_listener(std::shared_ptr<yugawara::storage::configurable_provider> provider) :
+    collector_(std::make_unique<::hayatsuki::ShirakamiCollector>()),
     provider_(std::move(provider))
 {}
 

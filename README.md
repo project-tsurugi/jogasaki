@@ -74,6 +74,7 @@ available options:
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.
 * `-DBUILD_SHIRAKAMI_WP=ON` - (temporary) enables building with shirakami build with BUILD_WP=ON/BUILD_CPR=OFF. Use with SHARKSFIN_IMPLEMENTATION=shirakami.
+* `-DLOGSHIP=ON` - enable logshipping integration with hayatsuki. Require installing hayatsuki beforehand.
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
@@ -105,6 +106,36 @@ You can customize logging in the same way as sharksfin. See sharksfin [README.md
 ```sh
 GLOG_minloglevel=0 ./group-cli --minimum 
 ```
+
+### Logshipping integration with hayatsuki
+
+Integrating hayatsuki enable sending jogasaki data to hayatsuki collector for log shipping. To enable log shipping, you need to follow these steps:
+0. build and install [hayatsuki](https://github.com/project-tsurugi/hayatsuki). See hayatsuki [instruction](https://github.com/project-tsurugi/hayatsuki/tree/master/cpp) for detailed steps.
+1. build jogasaki with `-DLOGSHIP=ON` build option.
+2. Setup RabbitMQ service in order for hayatsuki to store shipping data. See hayatsuki [instruction](https://github.com/project-tsurugi/hayatsuki/tree/master/cpp) for detailed steps. Running RabbitMQ on docker is the handy way. For example: 
+```
+$ docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+
+After starting the container, attach to it to execute bash:
+```
+$ docker exec -it <container id> bash
+```
+
+In the console start as root, issue following commands to configure RabbitMQ instance for hayatsuki:
+```
+# rabbitmqctl add_user hayatsuki_user hayatsuki_pass
+# rabbitmqctl delete_vhost /
+# rabbitmqctl add_vhost /
+# rabbitmqctl set_permissions -p / hayatsuki_user ".*" ".*" ".*"
+# rabbitmqctl set_user_tags hayatsuki_user administrator
+# rabbitmq-plugins enable rabbitmq_management
+# rabbitmqadmin -u hayatsuki_user -p hayatsuki_pass declare exchange --vhost=/ name=hayatsuki.fanout type=fanout durable=true auto_delete=false internal=false
+# rabbitmqadmin -u hayatsuki_user -p hayatsuki_pass declare queue --vhost=/ name=hayatsuki durable=true auto_delete=false
+# rabbitmqadmin -u hayatsuki_user -p hayatsuki_pass declare binding --vhost=/  source=hayatsuki.fanout destination_type=queue destination=hayatsuki routing_key=
+```
+
+3. Run test/logship/logship_test.cpp to verify callback from sharksfin and send records to hayatsuki.
 
 ### Multi-thread debugging/profiling with Tracy
 

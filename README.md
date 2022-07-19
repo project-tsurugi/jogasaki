@@ -110,6 +110,7 @@ GLOG_minloglevel=0 ./group-cli --minimum
 ### Logshipping integration with hayatsuki
 
 Integrating hayatsuki enable sending jogasaki data to hayatsuki collector for log shipping. To enable log shipping, you need to follow these steps:
+
 0. build and install [hayatsuki](https://github.com/project-tsurugi/hayatsuki). See hayatsuki [instruction](https://github.com/project-tsurugi/hayatsuki/tree/master/cpp) for detailed steps.
 1. build jogasaki with `-DLOGSHIP=ON` build option.
 2. Setup RabbitMQ service in order for hayatsuki to store shipping data. See hayatsuki [instruction](https://github.com/project-tsurugi/hayatsuki/tree/master/cpp) for detailed steps. Running RabbitMQ on docker is the handy way. For example: 

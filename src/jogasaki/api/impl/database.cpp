@@ -115,14 +115,6 @@ status database::stop() {
     if (cfg_->quiescent()) {
         return status::ok;
     }
-    if (cfg_->enable_logship()) {
-        if (auto* l = kvs_db_->log_event_listener(); l != nullptr) {
-            if(! l->deinit()) {
-                LOG(ERROR) << "shutting down log event listener failed.";
-                // even on error, proceed to shutdown all database
-            }
-        }
-    }
     if (cfg_->activate_scheduler()) {
         task_scheduler_->stop();
     }
@@ -132,6 +124,17 @@ status database::stop() {
         if(! kvs_db_->close()) {
             return status::err_io_error;
         }
+
+        // deinit event listener should come after kvs_db_->close() as it possibly sends last records on db shutdown
+        if (cfg_->enable_logship()) {
+            if (auto* l = kvs_db_->log_event_listener(); l != nullptr) {
+                if(! l->deinit()) {
+                    LOG(ERROR) << "shutting down log event listener failed.";
+                    // even on error, proceed to shutdown all database
+                }
+            }
+        }
+
         kvs_db_ = nullptr;
     }
     return status::ok;

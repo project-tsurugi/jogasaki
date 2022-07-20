@@ -91,9 +91,9 @@ private:
     std::unique_ptr<jogasaki::api::database> db_;  // to use incomplete object, do not add {} after var. name.
     bool deactivated_{false};
 
-    [[nodiscard]] std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg);
-
 };
+
+[[nodiscard]] std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg);
 
 }
 

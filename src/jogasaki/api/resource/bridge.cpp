@@ -80,7 +80,7 @@ jogasaki::api::database* bridge::database() const noexcept {
     return db_.get();
 }
 
-std::shared_ptr<jogasaki::configuration> bridge::convert_config(tateyama::api::configuration::whole& cfg) {
+std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {
     auto ret = std::make_shared<jogasaki::configuration>();
 
     auto jogasaki_config = cfg.get_section("sql");

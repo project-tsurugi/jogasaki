@@ -702,40 +702,30 @@ void details::reply(tateyama::api::server::response& res, sql::response::Respons
     }
 }
 
-void details::set_metadata(channel_info const& info, sql::schema::RecordMeta& meta) {
+void details::set_metadata(channel_info const& info, sql::response::ResultSetMetadata& meta) {
     auto* metadata = info.meta_;
     std::size_t n = metadata->field_count();
 
     for (std::size_t i = 0; i < n; i++) {
-        auto column = std::make_unique<sql::schema::RecordMeta_Column>();
+        auto column = meta.add_columns();
         if(auto name = metadata->field_name(i); name.has_value()) {
             column->set_name(std::string{*name});
         }
         switch(metadata->at(i).kind()) {
             case jogasaki::api::field_type_kind::int4:
-                column->set_type(sql::common::AtomType::INT4);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
+                column->set_atom_type(sql::common::AtomType::INT4);
                 break;
             case jogasaki::api::field_type_kind::int8:
-                column->set_type(sql::common::AtomType::INT8);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
+                column->set_atom_type(sql::common::AtomType::INT8);
                 break;
             case jogasaki::api::field_type_kind::float4:
-                column->set_type(sql::common::AtomType::FLOAT4);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
+                column->set_atom_type(sql::common::AtomType::FLOAT4);
                 break;
             case jogasaki::api::field_type_kind::float8:
-                column->set_type(sql::common::AtomType::FLOAT8);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
+                column->set_atom_type(sql::common::AtomType::FLOAT8);
                 break;
             case jogasaki::api::field_type_kind::character:
-                column->set_type(sql::common::AtomType::CHARACTER);
-                column->set_nullable(metadata->nullable(i));
-                *meta.add_columns() = *column;
+                column->set_atom_type(sql::common::AtomType::CHARACTER);
                 break;
             default:
                 LOG(ERROR) << "unsupported data type at field (" << i << "): " << metadata->at(i).kind();

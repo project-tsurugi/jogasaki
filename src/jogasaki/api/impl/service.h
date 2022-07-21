@@ -66,7 +66,7 @@ struct cache_align channel_info {
 };
 
 void reply(tateyama::api::server::response& res, sql::response::Response& r, bool body_head = false);
-void set_metadata(channel_info const& info, sql::schema::RecordMeta& meta);
+void set_metadata(channel_info const& info, sql::response::ResultSetMetadata& meta);
 
 template<bool flag = false> void static_fail() {
     static_assert(flag);
@@ -265,7 +265,7 @@ inline void success<sql::response::DescribeTable>(tateyama::api::server::respons
 }
 
 inline void send_body_head(tateyama::api::server::response& res, channel_info const& info) {  //NOLINT(performance-unnecessary-value-param)
-    sql::schema::RecordMeta meta{};
+    sql::response::ResultSetMetadata meta{};
     sql::response::ExecuteQuery e{};
     sql::response::Response r{};
 

@@ -26,7 +26,6 @@
 #include "request.pb.h"
 #include "response.pb.h"
 #include "common.pb.h"
-#include "schema.pb.h"
 #include "status.pb.h"
 
 #include <jogasaki/api.h>
@@ -77,15 +76,14 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
     return meta;
 }
 
-inline jogasaki::meta::record_meta create_record_meta(sql::schema::RecordMeta const& proto) {
+inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMetadata const& proto) {
     std::vector<meta::field_type> fields{};
     boost::dynamic_bitset<std::uint64_t> nullities;
     for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
         auto& c = proto.columns(i);
-        bool nullable = c.nullable();
         meta::field_type field{};
-        nullities.push_back(nullable);
-        switch(c.type()) {
+        nullities.push_back(true); // TODO assume all nullable
+        switch(c.atom_type()) {
             using kind = meta::field_type_kind;
             case sql::common::AtomType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
             case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
@@ -300,7 +298,7 @@ inline std::pair<std::string, std::vector<colinfo>> decode_execute_query(std::st
     std::vector<colinfo> cols{};
     for(std::size_t i=0; i < sz; ++i) {
         auto& c = meta.columns(i);
-        cols.emplace_back(c.name(), c.type(), c.nullable());
+        cols.emplace_back(c.name(), c.atom_type(), true);  // all nullable
     }
     return {name, std::move(cols)};
 }

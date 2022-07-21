@@ -50,7 +50,6 @@
 #include "request.pb.h"
 #include "response.pb.h"
 #include "common.pb.h"
-#include "schema.pb.h"
 #include "status.pb.h"
 
 namespace jogasaki::api {

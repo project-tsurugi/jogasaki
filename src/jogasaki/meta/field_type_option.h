@@ -27,7 +27,7 @@ namespace jogasaki::meta {
 // placeholders for optional information for types
 // TODO implement for production
 // add == operators to suppress compile errors
-struct date_field_option { explicit date_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; }; //NOLINT
+struct time_of_day_field_option { explicit time_of_day_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; }; //NOLINT
 struct time_point_field_option { explicit time_point_field_option(std::size_t tz) : tz_(tz) {} std::size_t tz_; }; //NOLINT
 struct array_field_option { explicit array_field_option(std::size_t size) : size_(size) {} std::size_t size_; }; //NOLINT
 struct record_field_option {};
@@ -41,7 +41,7 @@ struct extension_field_option {};
 inline bool operator==(array_field_option const& a, array_field_option const& b) noexcept {
     return a.size_ == b.size_;
 }
-inline bool operator==(date_field_option const& a, date_field_option const& b) noexcept {
+inline bool operator==(time_of_day_field_option const& a, time_of_day_field_option const& b) noexcept {
     return a.tz_ == b.tz_;
 }
 inline bool operator==(time_point_field_option const& a, time_point_field_option const& b) noexcept {

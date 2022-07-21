@@ -65,8 +65,8 @@ public:
         std::monostate, // decimal
         std::monostate, // character
         std::monostate, // bit
-        std::shared_ptr<date_field_option>,
-        std::monostate, // time_of_day
+        std::monostate, // date
+        std::shared_ptr<time_of_day_field_option>, // time_of_day
         std::shared_ptr<time_point_field_option>,
         std::monostate, // time_interval
         std::shared_ptr<array_field_option>,
@@ -223,7 +223,7 @@ public:
         using kind = field_type_kind;
         auto k = value.kind();
         switch (k) {
-            case kind::date: return out << value.option<kind::date>();
+            case kind::time_of_day: return out << value.option<kind::time_of_day>();
             case kind::time_point: return out << value.option<kind::time_point>();
             case kind::array: return out << value.option<kind::array>();
             case kind::record: return out << value.option<kind::record>();

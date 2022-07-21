@@ -72,10 +72,10 @@ template <>
 struct field_type_traits<field_type_kind::character> : simple_field_type_traits<accessor::text> {};
 
 template <>
-struct field_type_traits<field_type_kind::date> : simple_field_type_traits<takatori::datetime::date, date_field_option> {};
+struct field_type_traits<field_type_kind::date> : simple_field_type_traits<takatori::datetime::date> {};
 
 template <>
-struct field_type_traits<field_type_kind::time_of_day> : simple_field_type_traits<takatori::datetime::time_of_day> {};
+struct field_type_traits<field_type_kind::time_of_day> : simple_field_type_traits<takatori::datetime::time_of_day, time_of_day_field_option> {};
 
 template <>
 struct field_type_traits<field_type_kind::time_point> : simple_field_type_traits<takatori::datetime::time_point, time_point_field_option> {};

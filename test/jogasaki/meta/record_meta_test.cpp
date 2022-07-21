@@ -150,15 +150,14 @@ TEST_F(record_meta_test, equality1) {
 }
 
 TEST_F(record_meta_test, equality_with_options) {
-    // FIXME using date_field_option temporal implementation
     record_meta r_date_0{
             std::vector<field_type>{
-                    field_type(std::make_shared<date_field_option>(0)),
+                    field_type(std::make_shared<time_point_field_option>(0)),
             },
             boost::dynamic_bitset<std::uint64_t>{"1"s}};
     record_meta r_date_1{
             std::vector<field_type>{
-                    field_type(std::make_shared<date_field_option>(1)),
+                    field_type(std::make_shared<time_point_field_option>(1)),
             },
             boost::dynamic_bitset<std::uint64_t>{"1"s}};
 

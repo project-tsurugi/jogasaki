@@ -24,6 +24,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_option.h>
 
 namespace jogasaki::utils {
 
@@ -43,9 +44,9 @@ using ::takatori::util::fail;
         case t::decimal: return meta::field_type(meta::field_enum_tag<k::decimal>);
         case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
-        case t::date: takatori::util::fail();
-        case t::time_of_day: return meta::field_type(meta::field_enum_tag<k::time_of_day>);
-        case t::time_point: takatori::util::fail();
+        case t::date: return meta::field_type(meta::field_enum_tag<k::date>);
+        case t::time_of_day: return meta::field_type(std::shared_ptr<meta::time_of_day_field_option>{});
+        case t::time_point: return meta::field_type(std::shared_ptr<meta::time_point_field_option>{});
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
 
         case t::octet:

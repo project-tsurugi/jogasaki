@@ -17,8 +17,8 @@
 
 #include <sstream>
 
-#include <msgpack.hpp>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/serializer/value_input.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
@@ -42,58 +42,36 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::maybe_shared_ptr;
 
-template <typename T>
-static inline bool extract(std::string_view data, T &v, std::size_t &offset) {
-    // msgpack::unpack() may throw msgpack::unpack_error with "parse error" or "insufficient bytes" message.
-    msgpack::unpacked result = msgpack::unpack(data.data(), data.size(), offset);
-    const msgpack::object obj(result.get());
-    if (obj.type == msgpack::type::NIL) {
-        return false;
-    }
-    v = obj.as<T>();
-    return true;
-}
-
 inline void set_null(accessor::record_ref ref, std::size_t index, meta::record_meta& meta) {
     ref.set_null(meta.nullity_offset(index), true);
 }
 
-template <typename T>
-static inline void set_value(
-    std::string_view data,
-    std::size_t &offset,
-    accessor::record_ref ref,
-    std::size_t index,
-    meta::record_meta& meta
-) {
-    T v;
-    if (extract(data, v, offset)) {
-        ref.set_value(meta.value_offset(index), v);
-    } else {
-        set_null(ref, index, meta);
-    }
-}
-
 inline std::vector<mock::basic_record> deserialize_msg(std::string_view data, jogasaki::meta::record_meta& meta) {
+    takatori::util::buffer_view buf{const_cast<char*>(data.data()), data.size()};
     std::vector<mock::basic_record> ret{};
-    std::size_t offset{};
-    while(offset < data.size()) {
+    auto it = buf.cbegin();
+    auto end = buf.cend();
+    while(it < end) {
         auto& record = ret.emplace_back(maybe_shared_ptr{&meta});
         auto ref = record.ref();
         for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
+            auto typ = takatori::serializer::peek_type(it, end);
+            if (typ == takatori::serializer::entry_type::end_of_contents) {
+                break;
+            }
+            if (typ == takatori::serializer::entry_type::null) {
+                set_null(ref, index, meta);
+                continue;
+            }
             switch (meta.at(index).kind()) {
-                case jogasaki::meta::field_type_kind::int4: set_value<std::int32_t>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::int8: set_value<std::int64_t>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::float4: set_value<float>(data, offset, ref, index, meta); break;
-                case jogasaki::meta::field_type_kind::float8: set_value<double>(data, offset, ref, index, meta); break;
+                case jogasaki::meta::field_type_kind::int4: ref.set_value<std::int32_t>(meta.value_offset(index), static_cast<std::int32_t>(takatori::serializer::read_int(it, end))); break;
+                case jogasaki::meta::field_type_kind::int8: ref.set_value<std::int64_t>(meta.value_offset(index), takatori::serializer::read_int(it, end)); break;
+                case jogasaki::meta::field_type_kind::float4: ref.set_value<float>(meta.value_offset(index), takatori::serializer::read_float4(it, end)); break;
+                case jogasaki::meta::field_type_kind::float8: ref.set_value<double>(meta.value_offset(index), takatori::serializer::read_float8(it, end)); break;
                 case jogasaki::meta::field_type_kind::character: {
-                    std::string v{};
-                    if (extract(data, v, offset)) {
-                        auto sv = record.allocate_varlen_data(v);
-                        record.ref().set_value(meta.value_offset(index), accessor::text{sv});
-                    } else {
-                        set_null(record.ref(), index, meta);
-                    }
+                    auto v = takatori::serializer::read_character(it, end);
+                    auto sv = record.allocate_varlen_data(v);
+                    record.ref().set_value(meta.value_offset(index), accessor::text{sv});
                     break;
                 }
                 default:

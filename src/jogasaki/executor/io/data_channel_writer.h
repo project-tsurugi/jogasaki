@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <msgpack.hpp>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/serializer/value_writer.h>
 
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/utils/interference_size.h>
@@ -28,10 +28,12 @@ namespace jogasaki::executor::io {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief the writer writes output records into api::data_channel in msgpack encoding
+ * @brief the writer writes output records into api::data_channel in result set encoding
  */
 class cache_align data_channel_writer : public record_writer {
 public:
+    using value_writer = takatori::serializer::value_writer<api::writer, std::size_t>;
+
     /**
      * @brief create empty object
      */
@@ -75,7 +77,7 @@ private:
     api::data_channel* channel_{};
     std::shared_ptr<api::writer> writer_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
-    msgpack::sbuffer buf_{0};
+    std::shared_ptr<value_writer> value_writer_{};
 };
 
 }

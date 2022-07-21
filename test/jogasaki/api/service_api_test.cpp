@@ -19,7 +19,6 @@
 #include <thread>
 #include <gtest/gtest.h>
 
-#include <msgpack.hpp>
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -494,41 +493,6 @@ TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
     for(auto&& x : vec) {
         (void)x.get();
     }
-}
-
-TEST_F(service_api_test, msgpack1) {
-    // verify msgpack behavior
-    std::stringstream ss;
-    {
-        msgpack::pack(ss, msgpack::type::nil_t()); // nil can be put without specifying the type
-        std::int32_t i32{1};
-        msgpack::pack(ss, i32);
-        i32 = 100000;
-        msgpack::pack(ss, i32);
-        std::int64_t i64{2};
-        msgpack::pack(ss, i64);
-        float f4{10.0};
-        msgpack::pack(ss, f4);
-        float f8{11.0};
-        msgpack::pack(ss, f8);
-        msgpack::pack(ss, "ABC"sv);
-    }
-
-    std::string str{ss.str()};
-    std::size_t offset{};
-    std::int32_t i32{};
-    std::int64_t i64{};
-    EXPECT_FALSE(extract(str, i32, offset));  // nil can be read as any type
-    ASSERT_EQ(1, offset);
-    EXPECT_TRUE(extract(str, i32, offset));
-    EXPECT_EQ(1, i32);
-    ASSERT_EQ(2, offset);
-    EXPECT_TRUE(extract(str, i32, offset));
-    EXPECT_EQ(100000, i32);
-    ASSERT_EQ(7, offset);
-    EXPECT_TRUE(extract(str, i64, offset));
-    EXPECT_EQ(2, i64);
-    ASSERT_EQ(8, offset);
 }
 
 TEST_F(service_api_test, data_types) {

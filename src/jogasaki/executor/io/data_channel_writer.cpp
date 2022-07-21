@@ -15,18 +15,37 @@
  */
 #include "data_channel_writer.h"
 
+#include <memory>
+
+#include <takatori/util/fail.h>
+
 #include <jogasaki/common.h>
-#include <jogasaki/utils/result_serialization.h>
 
 namespace jogasaki::executor::io {
 
+using takatori::util::fail;
+
 bool data_channel_writer::write(accessor::record_ref rec) {
-    if(! utils::write_msg(rec, buf_, meta_.get())) {
-        return false;
-    }
-    {
-        trace_scope_name("writer::write");  //NOLINT
-        writer_->write(buf_.data(), buf_.size());
+    for (std::size_t i=0, n=meta_->field_count(); i < n; ++i) {
+        if (rec.is_null(meta_->nullity_offset(i))) {
+            value_writer_->write_null();
+        } else {
+            using k = jogasaki::meta::field_type_kind;
+            auto os = meta_->value_offset(i);
+            switch (meta_->at(i).kind()) {
+                case k::int4: value_writer_->write_int(rec.get_value<meta::field_type_traits<k::int4>::runtime_type>(os)); break;
+                case k::int8: value_writer_->write_int(rec.get_value<meta::field_type_traits<k::int8>::runtime_type>(os)); break;
+                case k::float4: value_writer_->write_float4(rec.get_value<meta::field_type_traits<k::float4>::runtime_type>(os)); break;
+                case k::float8: value_writer_->write_float8(rec.get_value<meta::field_type_traits<k::float8>::runtime_type>(os)); break;
+                case k::character: {
+                    auto text = rec.get_value<meta::field_type_traits<k::character>::runtime_type>(os);
+                    value_writer_->write_character(static_cast<std::string_view>(text));
+                    break;
+                }
+                default:
+                    fail();
+            }
+        }
     }
     {
         trace_scope_name("writer::commit");  //NOLINT
@@ -47,6 +66,7 @@ void data_channel_writer::release() {
         channel_->release(*writer_);
     }
     writer_ = nullptr;
+    value_writer_.reset();
 }
 
 data_channel_writer::data_channel_writer(
@@ -56,7 +76,8 @@ data_channel_writer::data_channel_writer(
 ) :
     channel_(std::addressof(channel)),
     writer_(std::move(writer)),
-    meta_(std::move(meta))
+    meta_(std::move(meta)),
+    value_writer_(std::make_shared<value_writer>(*writer_))
 {}
 
 }

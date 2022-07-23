@@ -207,7 +207,7 @@ std::shared_ptr<request_context> transaction::create_request_context(
     rctx->storage_provider(database_->tables());
 
     auto job = std::make_shared<scheduler::job_context>();
-    rctx->job(maybe_shared_ptr{job.get()});
+    rctx->job(job);
 
     auto& ts = *database_->task_scheduler();
     ts.register_job(job);

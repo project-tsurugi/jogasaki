@@ -73,11 +73,15 @@ void stealing_task_scheduler::wait_for_progress(job_context* ctx) {
         return;
     }
 
-    decltype(job_contexts_)::accessor acc{};
-    if (! job_contexts_.find(acc, ctx->id())) {
-        return;
+    std::shared_ptr<job_context> holder{};
+    {
+        decltype(job_contexts_)::accessor acc{};
+        if (! job_contexts_.find(acc, ctx->id())) {
+            return;
+        }
+        holder = acc->second;
     }
-    acc->second->completion_latch().wait();
+    holder->completion_latch().wait();
     DVLOG(log_trace) << "wait_for_progress completed";
 }
 

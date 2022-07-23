@@ -293,13 +293,15 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
             option.is_long(),
             option.write_preserves()
         );
-        decltype(transactions_)::accessor acc{};
         api::transaction_handle t{tx.get()};
-        if (transactions_.insert(acc, t)) {
-            acc->second = std::move(tx);
-            handle = t;
-        } else {
-            fail();
+        {
+            decltype(transactions_)::accessor acc{};
+            if (transactions_.insert(acc, t)) {
+                acc->second = std::move(tx);
+                handle = t;
+            } else {
+                fail();
+            }
         }
     }
     return status::ok;

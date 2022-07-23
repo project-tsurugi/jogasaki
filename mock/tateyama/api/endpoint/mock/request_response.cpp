@@ -159,22 +159,26 @@ bool buffer_manager::acquire(std::stringstream*& bufp) {
         bufp = popped;
         return true;
     }
-    decltype(entity_)::accessor acc{};
     auto ss = std::make_shared<std::stringstream>(std::string(1024*1024, '\0'));
     bufp = ss.get();
-    if (! entity_.insert(acc, std::pair{bufp, std::move(ss)})) { //NOLINT
-        std::abort();
+    {
+        decltype(entity_)::accessor acc{};
+        if (! entity_.insert(acc, std::pair{bufp, std::move(ss)})) { //NOLINT
+            std::abort();
+        }
     }
     return true;
 }
 
 bool buffer_manager::release(std::stringstream* bufp) {
     reset_ss(*bufp);
-    decltype(entity_)::accessor acc{};
-    if (entity_.find(acc, bufp)) {
-        queue_.push(bufp);
-    } else {
-        std::abort();
+    {
+        decltype(entity_)::accessor acc{};
+        if (entity_.find(acc, bufp)) {
+            queue_.push(bufp);
+        } else {
+            std::abort();
+        }
     }
     return true;
 }

@@ -108,6 +108,7 @@ bool log_event_listener::init(jogasaki::configuration& cfg) {
         case s::INSERT: return h::INSERT;
         case s::UPDATE: return h::UPDATE;
         case s::DELETE: return h::DELETE;
+        case s::UPSERT: return h::UPSERT;
     }
     fail();
 }

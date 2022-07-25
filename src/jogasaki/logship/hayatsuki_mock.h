@@ -34,6 +34,7 @@ enum class LogOperation : std::uint32_t {
     INSERT,
     UPDATE,
     DELETE,
+    UPSERT,
 };
 
 /**
@@ -51,6 +52,8 @@ inline constexpr std::string_view to_string_view(LogOperation value) {
             return "UPDATE";
         case LogOperation::DELETE:
             return "DELETE";
+        case LogOperation::UPSERT:
+            return "UPSERT";
     }
     std::abort();
 }

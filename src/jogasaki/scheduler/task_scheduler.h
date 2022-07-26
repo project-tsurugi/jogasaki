@@ -64,10 +64,11 @@ public:
 
     /**
      * @brief wait for the scheduler to proceed
-     * @param ctx the context of the job whose completion is waited, pass nullptr (for testing purpose) to wait on all jobs
+     * @param id the job_context id of the job whose completion is waited,
+     * pass job_context::undefined_id (for testing purpose) to wait on all jobs
      * @details the caller blocks until the job completes
      */
-    virtual void wait_for_progress(job_context* ctx) = 0;
+    virtual void wait_for_progress(std::size_t id) = 0;
 
     /**
      * @brief start the scheduler so that it's ready to accept request

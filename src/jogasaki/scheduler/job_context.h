@@ -32,8 +32,19 @@ namespace scheduler {
  */
 class cache_align job_context {
 public:
+    /**
+     * @brief constant to specify worker index is undefined
+     */
     constexpr static std::size_t undefined_index = static_cast<std::size_t>(-1);
 
+    /**
+     * @brief constant to specify job id is undefined
+     */
+    constexpr static std::size_t undefined_id = static_cast<std::size_t>(-1);
+
+    /**
+     * @brief callback type at the end of job
+     */
     using job_completion_callback = std::function<void(void)>;
 
     /**

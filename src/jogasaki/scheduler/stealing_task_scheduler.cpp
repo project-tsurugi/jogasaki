@@ -62,9 +62,9 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     scheduler_.schedule(std::move(t));
 }
 
-void stealing_task_scheduler::wait_for_progress(job_context* ctx) {
+void stealing_task_scheduler::wait_for_progress(std::size_t id) {
     DVLOG(log_trace) << "wait_for_progress begin";
-    if (! ctx) {
+    if (id == job_context::undefined_id) {
         // this case is for testing purpose
         // empty() is not thread safe or 100% accurate under concurrency modification
         while(! job_contexts_.empty()) {
@@ -76,7 +76,8 @@ void stealing_task_scheduler::wait_for_progress(job_context* ctx) {
     std::shared_ptr<job_context> holder{};
     {
         decltype(job_contexts_)::accessor acc{};
-        if (! job_contexts_.find(acc, ctx->id())) {
+        if (! job_contexts_.find(acc, id)) {
+            // job already completed and is erased for this scheduler. Nothing to wait.
             return;
         }
         holder = acc->second;

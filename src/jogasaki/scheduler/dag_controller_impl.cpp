@@ -345,10 +345,12 @@ void dag_controller::impl::schedule(model::graph& g, request_context& rctx) {
         // assuming no latch is used yet (it's done in wait_for_progress below), so it's safe to reset here.
         rctx.job()->reset();
     }
+    auto jobid = job().id();
+
     executor_->schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::dag_events>, request_context_.get()});
 
     // pass serial scheduler the control, or block waiting for parallel schedulers to proceed
-    executor_->wait_for_progress(std::addressof(job()));
+    executor_->wait_for_progress(jobid);
 }
 
 void dag_controller::impl::start_running(step& v) {

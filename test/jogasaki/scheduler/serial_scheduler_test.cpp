@@ -65,8 +65,9 @@ TEST_F(serial_task_scheduler_test, basic) {
     job_context jctx{};
     request_context rctx{};
     rctx.job(maybe_shared_ptr{&jctx});
+    auto jobid = jctx.id();
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task});
-    s.wait_for_progress(&jctx);
+    s.wait_for_progress(jobid);
     ASSERT_TRUE(executed);
 }
 
@@ -85,9 +86,10 @@ TEST_F(serial_task_scheduler_test, multiple_tasks) {
     job_context jctx{};
     request_context rctx{};
     rctx.job(maybe_shared_ptr{&jctx});
+    auto jobid = jctx.id();
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task0});
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task1});
-    s.wait_for_progress(&jctx);
+    s.wait_for_progress(jobid);
     ASSERT_TRUE(pt0);
     ASSERT_TRUE(pt1);
 }

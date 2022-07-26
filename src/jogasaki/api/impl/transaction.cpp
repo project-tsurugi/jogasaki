@@ -122,6 +122,7 @@ bool transaction::execute_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
     auto& ts = *database_->task_scheduler();
+    auto jobid = request_ctx->job()->id();
     ts.schedule_task(scheduler::flat_task{
         scheduler::task_enum_tag<scheduler::flat_task_kind::resolve>,
         request_ctx,
@@ -135,7 +136,7 @@ bool transaction::execute_async(
         )
     });
     if(sync) {
-        ts.wait_for_progress(request_ctx->job().get());
+        ts.wait_for_progress(jobid);
     }
     return true;
 
@@ -251,13 +252,14 @@ bool transaction::execute_context(
             on_completion(rctx->status_code(), rctx->status_message());
         });
 
+        auto jobid = job->id();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             rctx.get(),
             g
         });
         if(sync) {
-            ts.wait_for_progress(job.get());
+            ts.wait_for_progress(jobid);
         }
         return true;
     }
@@ -270,13 +272,14 @@ bool transaction::execute_context(
             on_completion(rctx->status_code(), rctx->status_message());
         });
 
+        auto jobid = job->id();
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
             rctx.get(),
             stmt,
         });
         if(sync) {
-            ts.wait_for_progress(job.get());
+            ts.wait_for_progress(jobid);
         }
         return true;
     }

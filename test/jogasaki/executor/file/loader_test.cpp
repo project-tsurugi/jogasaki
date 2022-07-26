@@ -20,6 +20,7 @@
 #include <jogasaki/test_utils/temporary_folder.h>
 
 #include <jogasaki/executor/file/parquet_writer.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/utils/create_tx.h>
@@ -86,7 +87,7 @@ public:
 
         loader_result res{};
         while((res = (*ldr)()) == loader_result::running) {
-            impl->scheduler()->wait_for_progress(nullptr);
+            impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
         }
         if (expect_error) {
             ASSERT_EQ(loader_result::error, res);

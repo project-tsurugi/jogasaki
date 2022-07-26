@@ -20,6 +20,39 @@
 
 namespace jogasaki {
 
+enum class insert_mode {
+    none = 0,
+    insert,
+    insert_overwrite,
+    insert_skip,
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(insert_mode value) noexcept {
+    using namespace std::string_view_literals;
+    switch (value) {
+        case insert_mode::none: return "none"sv;
+        case insert_mode::insert: return "insert"sv;
+        case insert_mode::insert_skip: return "insert_skip"sv;
+        case insert_mode::insert_overwrite: return "insert_overwrite"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, insert_mode value) {
+    return out << to_string_view(value);
+}
+
 /**
  * @brief database environment global configuration
  * @details getters specified with const are thread safe
@@ -232,6 +265,21 @@ public:
         return enable_logship_;
     }
 
+    /**
+     * @brief setter for enable logship flag
+     */
+    void default_insert_mode(insert_mode arg) noexcept {
+        default_insert_mode_ = arg;
+    }
+
+    /**
+     * @brief accessor for enable logship flag
+     * @return whether logship is enabled or not
+     */
+    [[nodiscard]] insert_mode default_insert_mode() const noexcept {
+        return default_insert_mode_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -249,6 +297,7 @@ public:
             "quiescent:" << cfg.quiescent() << " " <<
             "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
             "enable_logship:" << cfg.enable_logship() << " " <<
+            "default_insert_mode:" << cfg.default_insert_mode() << " " <<
             "";
     }
 
@@ -274,6 +323,7 @@ private:
     bool quiescent_ = false;
     std::size_t max_logging_parallelism_ = 1;
     bool enable_logship_ = false;
+    insert_mode default_insert_mode_ = insert_mode::none;
 };
 
 }

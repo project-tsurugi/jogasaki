@@ -49,6 +49,20 @@ using yugawara::compiled_info;
 using takatori::util::fail;
 using data::any;
 
+write_kind customize(write_kind kind, configuration const& cfg) {
+    auto c = cfg.default_insert_mode();
+    if(c == insert_mode::none || kind != write_kind::insert) {
+        return kind;
+    }
+    switch(c) {
+        case insert_mode::none: fail();
+        case insert_mode::insert: return write_kind::insert;
+        case insert_mode::insert_overwrite: return write_kind::insert_overwrite;
+        case insert_mode::insert_skip: return write_kind::insert_skip;
+    }
+    fail();
+}
+
 write::write(
     write_kind kind,
     yugawara::storage::index const& idx,
@@ -57,7 +71,7 @@ write::write(
     compiled_info info,
     executor::process::impl::variable_table const* host_variables
 ) noexcept:
-    kind_(kind),
+    kind_(customize(kind, *global::config_pool())),
     idx_(std::addressof(idx)),
     wrt_(std::addressof(wrt)),
     resource_(std::addressof(resource)),

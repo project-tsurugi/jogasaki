@@ -16,7 +16,6 @@
 #include "write.h"
 
 #include <takatori/util/fail.h>
-#include <takatori/statement/write.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/data/any.h>
@@ -98,9 +97,10 @@ bool write::operator()(request_context& context) const {
         if(! stg) {
             fail();
         }
-        kvs::put_option opt = (kind_ == write_kind::insert && e.primary_) ?
+        kvs::put_option opt = ((kind_ == write_kind::insert || kind_ == write_kind::insert_skip) && e.primary_) ?
             kvs::put_option::create :
             kvs::put_option::create_or_update;
+        // TODO for insert_overwrite, update secondary first
         BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
         for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
             auto& key = e.keys_[i];
@@ -112,12 +112,22 @@ bool write::operator()(request_context& context) const {
                     {static_cast<char*>(value->data()), value->size()},
                     opt
                 ); res != status::ok) {
-                if (opt == kvs::put_option::create && res == status::already_exists) {
-                    // integrity violation should be handled in SQL layer and forces transaction abort
-                    (void)tx->abort();
+                if (opt == kvs::put_option::create && res == status::err_already_exists) {
+                    if(kind_ == write_kind::insert) {
+                        // integrity violation should be handled in SQL layer and forces transaction abort
+//                        TODO abort requires fix in sharksfin-memory
+//                        (void)tx->abort();
+                    } else {
+                        // write_kind::insert_skip
+                        // duplicated key is simply ignored
+                        res = status::ok;
+                        // currently this is for Load operation and assuming single tuple insert
+                        // TODO skip tuples for secondary index and move to next tuple for primary
+                    }
                 } else {
                     // occ error or serialization error. Transaction has been aborted anyway.
                 }
+                // TODO error handling for secondary index, multiple tuples
                 context.status_code(res);
                 return false;
             }

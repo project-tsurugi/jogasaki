@@ -30,6 +30,7 @@ target_link_libraries(${test_target}
         PRIVATE takatori
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
+        PRIVATE mpdecpp
         )
 
 function (add_test_executable source_file)

@@ -101,16 +101,12 @@ void flat_task::finish_job() {
     auto& cb = j.callback();
     if(cb) {
         cb();
-
-        // we rely on callback to own request_context, but somehow it fails to release.
-        // So temporarily we explicitly release the callback object. TODO investigate more
-        std::function<void(void)>{}.swap(cb);
     }
-
-    // releasing latch should be done at the last step since it starts to release resources such as request context
     j.completion_latch().release();
 
+    // after the unregister, job should not be touched as it's possibly released
     ts.unregister_job(j.id());
+    // here job context is released and objects held by job callback such as request_context are also released
 }
 
 void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
@@ -184,10 +180,11 @@ void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
     }
     sctx_->tx_->execute_context(
         req_context_.ownership(),
-        maybe_shared_ptr{e.get()}, sctx_->channel_, [sctx=sctx_](status st, std::string_view msg){
-        (void)sctx;
-        sctx->callback_(st, msg);
-    }, false);
+        maybe_shared_ptr{e.get()},
+        sctx_->channel_,
+        [sctx=sctx_](status st, std::string_view msg){
+            sctx->callback_(st, msg);
+        }, false);
 }
 
 flat_task::flat_task(

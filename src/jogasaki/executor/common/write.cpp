@@ -70,7 +70,6 @@ model::statement_kind write::kind() const noexcept {
 }
 
 bool write::operator()(request_context& context) const {
-    (void)kind_;
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
@@ -85,6 +84,9 @@ bool write::operator()(request_context& context) const {
         if(! stg) {
             fail();
         }
+        kvs::put_option opt = (kind_ == write_kind::insert && e.primary_) ?
+            kvs::put_option::create :
+            kvs::put_option::create_or_update;
         BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
         for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
             auto& key = e.keys_[i];
@@ -94,8 +96,14 @@ bool write::operator()(request_context& context) const {
                     *tx,
                     {static_cast<char*>(key.data()), key.size()},
                     {static_cast<char*>(value->data()), value->size()},
-                    kvs::put_option::create  // assuming this class is for Insert only
-                ); ! is_ok(res)) {
+                    opt
+                ); res != status::ok) {
+                if (opt == kvs::put_option::create && res == status::already_exists) {
+                    // integrity violation should be handled in SQL layer and forces transaction abort
+                    (void)tx->abort();
+                } else {
+                    // occ error or serialization error. Transaction has been aborted anyway.
+                }
                 context.status_code(res);
                 return false;
             }
@@ -390,7 +398,7 @@ status write::create_targets(
         return res;
     }
     // first entry is primary index
-    out.emplace_back(primary->simple_name(), std::move(ks), std::move(vs));
+    out.emplace_back(true, primary->simple_name(), std::move(ks), std::move(vs));
 
     status ret_status{status::ok};
     table.owner()->each_table_index(table,
@@ -406,6 +414,7 @@ status write::create_targets(
                 return;
             }
             out.emplace_back(
+                false,
                 entry->simple_name(),
                 std::move(ts),
                 std::vector<details::write_tuple>{}

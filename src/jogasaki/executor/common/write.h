@@ -101,15 +101,18 @@ struct write_field : process::impl::ops::default_value_property {
 class write_target {
 public:
     write_target(
+        bool primary,
         std::string_view storage_name,
         std::vector<details::write_tuple> keys,
         std::vector<details::write_tuple> values
     ) :
+        primary_(primary),
         storage_name_(storage_name),
         keys_(std::move(keys)),
         values_(std::move(values))
     {}
 
+    bool primary_{};  //NOLINT
     std::string storage_name_{};  //NOLINT
     std::vector<details::write_tuple> keys_{};  //NOLINT
     std::vector<details::write_tuple> values_{};  //NOLINT

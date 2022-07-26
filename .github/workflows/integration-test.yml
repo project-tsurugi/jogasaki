@@ -162,7 +162,7 @@ jobs:
       - id: Notify_Slack
         name: Notify_Slack
         uses: ./.github/actions/tsurugi-slack-action
-        if: always() && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
+        if: always() && (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
 
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -10,7 +10,8 @@
   * yugawara
   * mizugaki
   * shakujo (until dependency is removed)
-  * fpdecimal
+  * fpdecimal (to be removed)
+  * mpdecimal 2.5.1 (see `Install steps for mpdecimal` section below)
   * tsubakuro (for proto definition)
   * performance-tools (optional)
 * and see *Dockerfile* section
@@ -51,6 +52,27 @@ sudo apt install -y -V libparquet-glib-dev
 ```
 
 (You can see [here](https://arrow.apache.org/install/) for full instruction. )
+
+## Install steps for mpdecimal
+
+The apt command installs slightly old mpdecimal package (2.4) while jogasaki requires newer version(2.5 or later.) 
+Follow these steps in order to install mpdecmal in the custom location.
+
+1. Download [mpdecimal-2.5.1.tar.gz](https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz) listed [here](https://www.bytereef.org/mpdecimal/download.html).
+2. Untar the archive and move into the extracted directory.
+```
+$ cd mpdecimal-2.5.1
+```
+3. run `configure` specifying `--prefix` option with installation target directory.
+```
+./configure --prefix=<install directory>
+```
+
+4. build and install
+```
+make
+make install
+```
 
 ## How to build
 

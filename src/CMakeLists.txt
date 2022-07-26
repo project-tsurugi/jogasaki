@@ -90,6 +90,7 @@ target_link_libraries(${ENGINE}
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
         PRIVATE parquet_shared
+        PRIVATE mpdecpp
         )
 
 if(LOGSHIP)
@@ -149,6 +150,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE glog::glog
         INTERFACE protobuf::libprotobuf
         INTERFACE parquet_shared
+        INTERFACE mpdecpp
         )
 
 if(LOGSHIP)

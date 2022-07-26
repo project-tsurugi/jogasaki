@@ -84,8 +84,8 @@ find_package(TBB REQUIRED)
 find_package(performance-tools REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(msgpack REQUIRED)
+find_package(mpdecpp REQUIRED)
 find_package(likwid)
-
 
 # to suppress not-found warnings
 set(re2Alt_FIND_QUIETLY TRUE)

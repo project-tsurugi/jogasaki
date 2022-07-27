@@ -19,8 +19,6 @@
 #include <type_traits>
 #include <variant>
 
-#include <fpdecimal/decimal.h>
-
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/meta/field_type_kind.h>
 

@@ -19,7 +19,6 @@
 #include <type_traits>
 #include <variant>
 
-#include <fpdecimal/decimal.h>
 #include <takatori/util/comparable_traits.h>
 
 #include <jogasaki/accessor/text.h>

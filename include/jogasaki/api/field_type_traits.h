@@ -19,11 +19,10 @@
 #include <type_traits>
 #include <string_view>
 
-#include <fpdecimal/decimal.h>
-
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
 
 #include <jogasaki/api/field_type_kind.h>
 
@@ -66,7 +65,7 @@ template <>
 struct field_type_traits<field_type_kind::float8> : simple_field_type_traits<double> {};
 
 template <>
-struct field_type_traits<field_type_kind::decimal> : simple_field_type_traits<fpdecimal::Decimal> {};
+struct field_type_traits<field_type_kind::decimal> : simple_field_type_traits<takatori::decimal::triple> {};
 
 template <>
 struct field_type_traits<field_type_kind::character> : simple_field_type_traits<std::string_view> {}; // use string_view for simplicity

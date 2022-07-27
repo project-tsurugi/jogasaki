@@ -152,7 +152,7 @@ TEST_F(record_layout_creator_test, type_variaties) {
             },
             boost::dynamic_bitset<std::uint64_t>{"101010101"s}};
     EXPECT_EQ(8,  c.record_alignment());
-    EXPECT_EQ(72,  c.record_size());
+    EXPECT_EQ(88,  c.record_size());
     EXPECT_EQ(1,  c.value_offset_table()[0]);
     EXPECT_EQ(4,  c.value_offset_table()[1]);
     EXPECT_EQ(8,  c.value_offset_table()[2]);

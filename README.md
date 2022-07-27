@@ -10,7 +10,6 @@
   * yugawara
   * mizugaki
   * shakujo (until dependency is removed)
-  * fpdecimal (to be removed)
   * mpdecimal 2.5.1 (see `Install steps for mpdecimal` section below)
   * tsubakuro (for proto definition)
   * performance-tools (optional)

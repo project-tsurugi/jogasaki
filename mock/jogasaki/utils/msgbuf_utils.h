@@ -52,13 +52,21 @@ inline std::vector<mock::basic_record> deserialize_msg(std::string_view data, jo
     auto it = buf.cbegin();
     auto end = buf.cend();
     while(it < end) {
+        auto typ = takatori::serializer::peek_type(it, end);
+        if (typ == takatori::serializer::entry_type::row) {
+            auto num_columns = takatori::serializer::read_row_begin(it, end);
+            BOOST_ASSERT(num_columns == meta.field_count());
+            continue;
+        }
+        if (typ == takatori::serializer::entry_type::end_of_contents) {
+            takatori::serializer::read_end_of_contents(it, end);
+            BOOST_ASSERT(it == end);
+            break;
+        }
         auto& record = ret.emplace_back(maybe_shared_ptr{&meta});
         auto ref = record.ref();
         for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
             auto typ = takatori::serializer::peek_type(it, end);
-            if (typ == takatori::serializer::entry_type::end_of_contents) {
-                break;
-            }
             if (typ == takatori::serializer::entry_type::null) {
                 set_null(ref, index, meta);
                 continue;

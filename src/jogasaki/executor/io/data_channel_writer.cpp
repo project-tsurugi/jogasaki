@@ -26,7 +26,9 @@ namespace jogasaki::executor::io {
 using takatori::util::fail;
 
 bool data_channel_writer::write(accessor::record_ref rec) {
-    for (std::size_t i=0, n=meta_->field_count(); i < n; ++i) {
+    auto n = meta_->field_count();
+    value_writer_->write_row_begin(n);
+    for (std::size_t i=0; i < n; ++i) {
         if (rec.is_null(meta_->nullity_offset(i))) {
             value_writer_->write_null();
         } else {
@@ -61,6 +63,7 @@ void data_channel_writer::flush() {
 }
 
 void data_channel_writer::release() {
+    value_writer_->write_end_of_contents();
     {
         trace_scope_name("data_channel::release");  //NOLINT
         channel_->release(*writer_);

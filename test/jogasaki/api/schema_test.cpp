@@ -589,7 +589,8 @@ TEST_F(schema_test, null_value) {
     }
 }
 
-TEST_F(schema_test, temporal_types) {
+// TODO temporal type requires modernizing compiler
+TEST_F(schema_test, DISABLED_temporal_types) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{

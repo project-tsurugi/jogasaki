@@ -21,6 +21,10 @@
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
+#include <takatori/type/decimal.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/api/impl/result_set.h>
@@ -191,6 +195,10 @@ void add_variable(
         case field_type_kind::float4: provider.add({name, takatori::type::float4{}}, true); break;
         case field_type_kind::float8: provider.add({name, takatori::type::float8{}}, true); break;
         case field_type_kind::character: provider.add({name, takatori::type::character{takatori::type::varying}}, true); break;
+        case field_type_kind::date: provider.add({name, takatori::type::date{}}, true); break;
+        case field_type_kind::time_of_day: provider.add({name, takatori::type::time_of_day{}}, true); break;
+        case field_type_kind::time_point: provider.add({name, takatori::type::time_point{}}, true); break;
+        case field_type_kind::decimal: provider.add({name, takatori::type::decimal{}}, true); break;
         default: fail();
     }
 }

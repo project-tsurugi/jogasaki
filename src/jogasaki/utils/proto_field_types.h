@@ -30,6 +30,10 @@ namespace sql = proto::sql;
         case sql::common::AtomType::FLOAT4: return jogasaki::api::field_type_kind::float4;
         case sql::common::AtomType::FLOAT8: return jogasaki::api::field_type_kind::float8;
         case sql::common::AtomType::CHARACTER: return jogasaki::api::field_type_kind::character;
+        case sql::common::AtomType::DATE: return jogasaki::api::field_type_kind::date;
+        case sql::common::AtomType::TIME_OF_DAY: return jogasaki::api::field_type_kind::time_of_day;
+        case sql::common::AtomType::TIME_POINT: return jogasaki::api::field_type_kind::time_point;
+        case sql::common::AtomType::DECIMAL: return jogasaki::api::field_type_kind::decimal;
         default:
             std::abort();
     }

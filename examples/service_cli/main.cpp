@@ -504,7 +504,7 @@ private:
             {"f8", sql::common::AtomType::FLOAT8},
             {"ch", sql::common::AtomType::CHARACTER},
             {"dt", sql::common::AtomType::DATE},
-            {"ti", sql::common::AtomType::TIME_OF_DAY},
+            {"td", sql::common::AtomType::TIME_OF_DAY},
             {"tp", sql::common::AtomType::TIME_POINT},
             {"dec", sql::common::AtomType::DECIMAL},
         };
@@ -713,7 +713,10 @@ private:
                 case sql::common::AtomType::FLOAT4: parameters.emplace_back(name, ValueCase::kFloat4Value, to_value<float>(val)); break;
                 case sql::common::AtomType::FLOAT8: parameters.emplace_back(name, ValueCase::kFloat8Value, to_value<double>(val)); break;
                 case sql::common::AtomType::CHARACTER: parameters.emplace_back(name, ValueCase::kCharacterValue, to_value<std::string>(val)); break;
-                case sql::common::AtomType::DATE: parameters.emplace_back(name, ValueCase::kDateValue, to_value<double>(val)); break;
+                case sql::common::AtomType::DATE: parameters.emplace_back(name, ValueCase::kDateValue, to_value<takatori::datetime::time_of_day>(val)); break;
+                case sql::common::AtomType::TIME_OF_DAY: parameters.emplace_back(name, ValueCase::kTimeOfDayValue, to_value<takatori::datetime::time_of_day>(val)); break;
+                case sql::common::AtomType::TIME_POINT: parameters.emplace_back(name, ValueCase::kTimePointValue, to_value<takatori::datetime::time_point>(val)); break;
+                case sql::common::AtomType::DECIMAL: parameters.emplace_back(name, ValueCase::kDecimalValue, to_value<double>(val)); break;
                 default:
                     std::cerr << "invalid type" << std::endl;
                     return false;

@@ -493,12 +493,20 @@ private:
             {"float4", sql::common::AtomType::FLOAT4},
             {"float8", sql::common::AtomType::FLOAT8},
             {"character", sql::common::AtomType::CHARACTER},
+            {"date", sql::common::AtomType::DATE},
+            {"time_of_day", sql::common::AtomType::TIME_OF_DAY},
+            {"time_point", sql::common::AtomType::TIME_POINT},
+            {"decimal", sql::common::AtomType::DECIMAL},
 
             {"i4", sql::common::AtomType::INT4},
             {"i8", sql::common::AtomType::INT8},
             {"f4", sql::common::AtomType::FLOAT4},
             {"f8", sql::common::AtomType::FLOAT8},
             {"ch", sql::common::AtomType::CHARACTER},
+            {"dt", sql::common::AtomType::DATE},
+            {"ti", sql::common::AtomType::TIME_OF_DAY},
+            {"tp", sql::common::AtomType::TIME_POINT},
+            {"dec", sql::common::AtomType::DECIMAL},
         };
 
         if(map.count(std::string(str)) != 0) {
@@ -705,6 +713,7 @@ private:
                 case sql::common::AtomType::FLOAT4: parameters.emplace_back(name, ValueCase::kFloat4Value, to_value<float>(val)); break;
                 case sql::common::AtomType::FLOAT8: parameters.emplace_back(name, ValueCase::kFloat8Value, to_value<double>(val)); break;
                 case sql::common::AtomType::CHARACTER: parameters.emplace_back(name, ValueCase::kCharacterValue, to_value<std::string>(val)); break;
+                case sql::common::AtomType::DATE: parameters.emplace_back(name, ValueCase::kDateValue, to_value<double>(val)); break;
                 default:
                     std::cerr << "invalid type" << std::endl;
                     return false;

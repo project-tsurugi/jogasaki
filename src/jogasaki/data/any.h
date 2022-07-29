@@ -47,6 +47,10 @@ public:
         float,
         double,
         accessor::text,
+        takatori::decimal::triple,
+        takatori::datetime::date,
+        takatori::datetime::time_of_day,
+        takatori::datetime::time_point,
         std::size_t  // for reference column position
     >;
 
@@ -102,17 +106,10 @@ private:
     base_type body_{};
 };
 
-#if defined(__GNUC__) && !defined(__clang__)
-  #include <features.h>
-  #if __GNUC_PREREQ(8,3)
 static_assert(std::is_trivially_copyable_v<any>);
-  #else
-static_assert(!std::is_trivially_copyable_v<any>); //P0602R4 is not available until gcc 8.3
-  #endif
-#endif
 static_assert(std::is_trivially_destructible_v<any>);
 static_assert(std::alignment_of_v<any> == 8);
-static_assert(sizeof(any) == 24);
+static_assert(sizeof(any) == 40);
 
 // bool is the syntax sugar for std::int8_t
 template<>

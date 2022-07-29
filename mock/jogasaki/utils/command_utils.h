@@ -69,6 +69,10 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
             case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+            case sql::common::AtomType::DECIMAL: fields.emplace_back(meta::field_enum_tag<kind::decimal>); break;
+            case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
+            case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>()); break;
+            case sql::common::AtomType::TIME_POINT: fields.emplace_back(std::make_shared<meta::time_point_field_option>()); break;
             default: std::abort();
         }
     }
@@ -90,6 +94,10 @@ inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMe
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
             case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+            case sql::common::AtomType::DECIMAL: fields.emplace_back(meta::field_enum_tag<kind::decimal>); break;
+            case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
+            case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>()); break;
+            case sql::common::AtomType::TIME_POINT: fields.emplace_back(std::make_shared<meta::time_point_field_option>()); break;
             default: std::abort();
         }
     }
@@ -336,6 +344,16 @@ inline void fill_parameters(
             case ValueCase::kFloat4Value: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
             case ValueCase::kFloat8Value: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
             case ValueCase::kCharacterValue: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
+            case ValueCase::kDecimalValue: std::abort(); //FIXME
+            case ValueCase::kDateValue: c0->set_date_value(std::any_cast<runtime_t<meta::field_type_kind::date>>(p.value_).days_since_epoch()); break;
+            case ValueCase::kTimeOfDayValue: c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count()); break;
+            case ValueCase::kTimePointValue: {
+                auto tp = std::any_cast<runtime_t<meta::field_type_kind::time_point>>(p.value_);
+                auto* v = c0->mutable_time_point_value();
+                v->set_offset_seconds(tp.seconds_since_epoch().count());
+                v->set_nano_adjustment(tp.subsecond().count());
+                break;
+            }
             case ValueCase::kReferenceColumnPosition: c0->set_reference_column_position(std::any_cast<std::uint64_t>(p.value_)); break;
             case ValueCase::kReferenceColumnName: c0->set_reference_column_name(std::any_cast<std::string>(p.value_)); break;
             default: std::abort();

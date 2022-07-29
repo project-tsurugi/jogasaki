@@ -15,11 +15,14 @@
  */
 #pragma once
 
+#include <takatori/util/fail.h>
 #include <boost/endian/conversion.hpp>
 
 #include "coder.h"
 
 namespace jogasaki::kvs {
+
+using takatori::util::fail;
 
 namespace details {
 
@@ -143,6 +146,55 @@ public:
         return accessor::text{};
     }
 
+    /**
+     * @brief read next date data in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::date>>, T> read(order odr, bool discard) {
+        auto v = read<std::int64_t>(odr, discard);
+        return takatori::datetime::date{v};
+    }
+
+    /**
+     * @brief read next time_of_day data in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_of_day>>, T> read(order odr, bool discard) {
+        auto v = read<std::int64_t>(odr, discard);
+        return takatori::datetime::time_of_day{std::chrono::duration<std::uint64_t, std::nano>{v}};
+    }
+
+    /**
+     * @brief read next time_point data in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_point>>, T> read(order odr, bool discard) {
+        auto seconds_since_epoch = read<std::int64_t>(odr, discard);
+        auto subsecond_nano = read<std::int32_t>(odr, discard);
+        return takatori::datetime::time_point{
+            std::chrono::duration<std::int64_t>{seconds_since_epoch},
+            std::chrono::nanoseconds{subsecond_nano}
+        };
+    }
+
+    /**
+     * @brief read next decimal data in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, T> read(order odr, bool discard) {
+        (void) odr;
+        (void) discard;
+        // TODO implement
+        fail();
+    }
     /**
      * @brief reset the current position
      */

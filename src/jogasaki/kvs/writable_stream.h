@@ -128,6 +128,62 @@ public:
     }
 
     /**
+     * @brief write the date field data respecting order to the stream
+     * @tparam T the runtime type of the field
+     * @param data the data of the field type
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::date>>, status> write(T data, order odr) {
+        // date is represented as int8
+        write<std::int64_t>(data.days_since_epoch(), odr);
+        return status::ok;
+    }
+
+    /**
+     * @brief write the time_of_day field data respecting order to the stream
+     * @tparam T the runtime type of the field
+     * @param data the data of the field type
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_of_day>>, status>
+    write(T data, order odr) {
+        // time_of_day is represented as int8
+        write<std::int64_t>(data.time_since_epoch().count(), odr);
+        return status::ok;
+    }
+
+    /**
+     * @brief write the time_point field data respecting order to the stream
+     * @tparam T the runtime type of the field
+     * @param data the data of the field type
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_point>>, status>
+    write(T data, order odr) {
+        // time_point is represented as int8 (seconds since epoch) + int4 (subseconds in nano)
+        write<std::int64_t>(data.seconds_since_epoch().count(), odr);
+        write<std::int32_t>(data.subsecond().count(), odr);
+        return status::ok;
+    }
+
+    /**
+     * @brief write the decimal field data respecting order to the stream
+     * @tparam T the runtime type of the field
+     * @param data the data of the field type
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, status>
+    write(T data, order odr) {
+        // TODO implement
+        (void) data;
+        (void) odr;
+        return status::ok;
+    }
+    /**
      * @brief write raw data to the stream buffer
      * @details the raw data is written to the stream. Given binary sequence is used
      * and no ordering or type conversion occurs.

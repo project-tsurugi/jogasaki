@@ -15,6 +15,8 @@
  */
 #include "dump_channel.h"
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
@@ -24,6 +26,8 @@
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::executor::io {
+
+using takatori::util::fail;
 
 dump_channel::dump_channel(
     maybe_shared_ptr<record_channel> channel,
@@ -55,6 +59,7 @@ status dump_channel::acquire(std::shared_ptr<record_writer>& wrt) {
     channel_->acquire(w);
     auto wid = writer_id_src_++;
     wrt = std::make_shared<dump_channel_writer>(*this, w, wid, cfg_);
+    ++acquired_writers_;
     return status::ok;
 }
 
@@ -82,6 +87,19 @@ maybe_shared_ptr<meta::external_record_meta> const& dump_channel::file_name_reco
 
 std::string_view dump_channel::prefix() const noexcept {
     return prefix_;
+}
+
+status dump_channel::close() {
+    if (acquired_writers_ == 0) {
+        // result set requires end-of-contents marker even if there is no output records
+        // so acquire and release here in order to emit the marker by release
+        std::shared_ptr<record_writer> writer{};
+        if(auto res = acquire(writer); res != status::ok) {
+            fail();
+        }
+        writer->release();
+    }
+    return status::ok;
 }
 
 }

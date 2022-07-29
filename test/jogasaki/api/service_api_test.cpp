@@ -1125,4 +1125,25 @@ TEST_F(service_api_test, describe_table_not_found) {
     ASSERT_EQ(sql::status::ERR_NOT_FOUND, error.status_);
     LOG(INFO) << "error: " << error.message_;
 }
+
+TEST_F(service_api_test, empty_result_set) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_query(
+        "select * from T0",
+        tx_handle,
+        {
+            sql::common::AtomType::INT8,
+            sql::common::AtomType::FLOAT8
+        },
+        {
+            true,
+            true
+        },
+        {},
+        {"C0", "C1"}
+    );
+    test_commit(tx_handle);
+}
+
 }

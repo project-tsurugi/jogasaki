@@ -74,6 +74,13 @@ public:
     status meta(maybe_shared_ptr<meta::external_record_meta> m) override;
 
     /**
+     * @brief close the channel
+     * @details channel is open on creation and must be closed when finished. The acquired writers must be released
+     * before closing channel, otherwise the behavior is undefined.
+     */
+    status close() override;
+
+    /**
      * @brief accessor to dump directory
      * @return the directory path
      */
@@ -124,6 +131,7 @@ private:
     dump_cfg cfg_{};
     std::atomic_size_t writer_id_src_{0};
     tbb::concurrent_queue<std::string> output_files_{};
+    std::atomic_size_t acquired_writers_{};
 };
 
 }

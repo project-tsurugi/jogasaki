@@ -40,11 +40,6 @@
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/create_tx.h>
 
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
-#include "status.pb.h"
-
 namespace jogasaki::api {
 
 using namespace std::chrono_literals;
@@ -56,7 +51,6 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
-namespace sql = jogasaki::proto::sql;
 
 inline std::shared_ptr<jogasaki::meta::external_record_meta> create_file_meta() {
     return std::make_shared<meta::external_record_meta>(
@@ -101,7 +95,8 @@ public:
         std::string_view path,
         std::size_t max_records_per_file = -1,
         bool keep_files_on_error = false,
-        status expected = status::ok
+        status expected = status::ok,
+        bool empty_output = false
     ) {
         explain(stmt);
         auto transaction = utils::create_transaction(*db_);
@@ -130,7 +125,11 @@ public:
         auto m = create_file_meta();
         auto recs = deserialize_msg({wrt->data_.data(), wrt->size_}, *m->origin());
         if(expected == status::ok) {
-            ASSERT_LT(0, recs.size());
+            if (empty_output) {
+                ASSERT_EQ(0, recs.size());
+            } else {
+                ASSERT_LT(0, recs.size());
+            }
         }
         for(auto&& x : recs) {
             LOG(INFO) << x;
@@ -143,11 +142,12 @@ public:
         std::string_view path,
         std::size_t max_records_per_file = -1,
         bool keep_files_on_error = false,
-        status expected = status::ok
+        status expected = status::ok,
+        bool empty_output = false
     ) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable(sql, stmt));
-        test_dump(*stmt, path, max_records_per_file, keep_files_on_error, expected);
+        test_dump(*stmt, path, max_records_per_file, keep_files_on_error, expected, empty_output);
     }
 
     void test_dump(
@@ -178,6 +178,10 @@ TEST_F(dump_test, types) {
     execute_statement( "INSERT INTO T20 (C0, C1, C2, C3, C4) VALUES (1, 11, 111.1, 1111.1, '11111111111111111111')");
     execute_statement( "INSERT INTO T20 (C0, C1, C2, C3, C4) VALUES (2, 22, 222.2, 2222.2, '22222222222222222222')");
     test_dump("select * from T20");
+}
+
+TEST_F(dump_test, empty_output) {
+    test_dump("select * from T0", path(), -1, false, status::ok, true);
 }
 
 TEST_F(dump_test, large_output) {

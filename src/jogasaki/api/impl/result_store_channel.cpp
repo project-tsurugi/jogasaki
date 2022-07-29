@@ -66,4 +66,8 @@ status result_store_channel::meta(maybe_shared_ptr<meta::external_record_meta> m
     return status::ok;
 }
 
+status result_store_channel::close() {
+    return status::ok;
+}
+
 }

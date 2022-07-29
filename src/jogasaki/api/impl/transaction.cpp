@@ -19,6 +19,7 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/constants.h>
+#include <jogasaki/logging.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/plan/compiler.h>
@@ -149,7 +150,7 @@ bool transaction::execute_async(
 ) {
     return execute_internal(
         statement,
-        std::make_shared<executor::io::record_channel_adapter>(channel),
+        channel ? std::make_shared<executor::io::record_channel_adapter>(channel) : nullptr,
         std::move(on_completion),
         false
     );
@@ -248,7 +249,11 @@ bool transaction::execute_context(
         job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
-            (void)channel;
+            if(channel) {
+                if(auto res = channel->close(); res != status::ok) {
+                    VLOG(log_error) << "closing channel failed. This should not happen normally: " << res;
+                }
+            }
             on_completion(rctx->status_code(), rctx->status_message());
         });
 

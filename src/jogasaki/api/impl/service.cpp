@@ -126,7 +126,7 @@ void service::command_prepare(
     std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
     for(std::size_t i=0, n=static_cast<std::size_t>(phs.size()); i < n ; ++i) {
         auto& ph = phs.Get(i);
-        variables.emplace(ph.name(), jogasaki::utils::type_for(ph.type()));
+        variables.emplace(ph.name(), jogasaki::utils::type_for(ph.atom_type()));
     }
     jogasaki::api::statement_handle statement{};
     if(auto rc = db_->prepare(sql, variables, statement); rc == jogasaki::status::ok) {

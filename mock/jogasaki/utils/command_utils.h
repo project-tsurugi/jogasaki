@@ -129,7 +129,7 @@ inline std::string encode_prepare_vars(
         for(auto&& [n, t] : place_holders) {
             auto* ph = vars->Add();
             ph->set_name(n);
-            ph->set_type(t);
+            ph->set_atom_type(t);
         }
     }
     return serialize(r);

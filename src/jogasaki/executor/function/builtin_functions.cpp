@@ -24,6 +24,10 @@
 #include <takatori/util/fail.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/type/character.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
@@ -110,6 +114,46 @@ void add_builtin_aggregate_functions(
             t::int8(),
             {
                 t::character(t::varying),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
+                t::decimal(),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
+                t::date(),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
+                t::time_of_day(),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
+                t::time_point(),
             },
             false,
         });

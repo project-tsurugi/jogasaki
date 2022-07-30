@@ -22,6 +22,10 @@
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
 #include <jogasaki/executor/global.h>
@@ -90,6 +94,16 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        repo.add(id, sum);
+        functions.add({
+            id++,
+            "sum",
+            t::decimal(),
+            {
+                t::decimal(),
+            },
+            true,
+        });
     }
 
     /////////
@@ -133,6 +147,46 @@ void add_builtin_aggregate_functions(
             t::int8(),
             {
                 t::float8(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::decimal(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::date(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::time_of_day(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::time_point(),
             },
             true,
         });
@@ -198,6 +252,16 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        repo.add(id, avg);
+        functions.add({
+            id++,
+            "avg",
+            t::decimal(),
+            {
+                t::decimal(),
+            },
+            true,
+        });
     }
     /////////
     // max
@@ -251,6 +315,46 @@ void add_builtin_aggregate_functions(
             t::character(t::varying),
             {
                 t::character(t::varying),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::decimal(),
+            {
+                t::decimal(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::date(),
+            {
+                t::date(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::time_of_day(),
+            {
+                t::time_of_day(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::time_point(),
+            {
+                t::time_point(),
             },
             true,
         });
@@ -310,10 +414,63 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::decimal(),
+            {
+                t::decimal(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::date(),
+            {
+                t::date(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::time_of_day(),
+            {
+                t::time_of_day(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::time_point(),
+            {
+                t::time_point(),
+            },
+            true,
+        });
     }
 }
 
 namespace builtin {
+
+template <class T>
+T plus(T a, T b) {
+    return a + b;
+}
+
+template <>
+runtime_t<kind::decimal> plus(runtime_t<kind::decimal> a, runtime_t<kind::decimal> b) {
+    // TODO use context
+    auto aa = static_cast<decimal::Decimal>(a);
+    auto bb = static_cast<decimal::Decimal>(b);
+    return runtime_t<kind::decimal>{(aa + bb).as_uint128_triple()};
+}
 
 void sum(
     accessor::record_ref target,
@@ -345,10 +502,11 @@ void sum(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(arg_type.kind()) {
-        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, target.get_value<runtime_t<kind::int4>>(target_offset) + source.get_value<runtime_t<kind::int4>>(arg_offset)); break;
-        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, target.get_value<runtime_t<kind::int8>>(target_offset) + source.get_value<runtime_t<kind::int8>>(arg_offset)); break;
-        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, target.get_value<runtime_t<kind::float4>>(target_offset) + source.get_value<runtime_t<kind::float4>>(arg_offset)); break;
-        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, target.get_value<runtime_t<kind::float8>>(target_offset) + source.get_value<runtime_t<kind::float8>>(arg_offset)); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, plus(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, plus(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, plus(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, plus(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, plus(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
         default: fail();
     }
 }
@@ -417,6 +575,18 @@ void count_rows_pre(
     target.set_value<runtime_t<kind::int8>>(target_offset, target.get_value<runtime_t<kind::int8>>(target_offset) + 1);
 }
 
+template <class T>
+T div_by_count(T a, runtime_t<kind::int8> b) {
+    return a / b;
+}
+
+template <>
+runtime_t<kind::decimal> div_by_count(runtime_t<kind::decimal> a, runtime_t<kind::int8> b) {
+    // TODO add context
+    auto aa = static_cast<decimal::Decimal>(a);
+    return runtime_t<kind::decimal>{(aa / b).as_uint128_triple()};
+}
+
 void avg_post(
     accessor::record_ref target,
     field_locator const& target_loc,
@@ -442,67 +612,66 @@ void avg_post(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(sum_type.kind()) {
-        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, source.get_value<runtime_t<kind::int4>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
-        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
-        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
-        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
-        case kind::decimal: {
-            // TODO add context
-            auto x = static_cast<decimal::Decimal>(source.get_value<runtime_t<kind::decimal>>(sum_offset));
-            auto y = x / source.get_value<runtime_t<kind::int8>>(count_offset);
-            target.set_value<runtime_t<kind::decimal>>(target_offset, runtime_t<kind::decimal>{y.as_uint128_triple()});
-            break;
-        }
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, div_by_count(source.get_value<runtime_t<kind::int4>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, div_by_count(source.get_value<runtime_t<kind::int8>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, div_by_count(source.get_value<runtime_t<kind::float4>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, div_by_count(source.get_value<runtime_t<kind::float8>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, div_by_count(source.get_value<runtime_t<kind::decimal>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
         default: fail();
     }
 }
 
 template <class T>
-T max(T a, T b) {
-    return std::max(a, b);
+T max_or_min(bool max, T a, T b) {
+    if (max) {
+        return std::max(a, b);
+    }
+    return std::min(a, b);
 }
 
 template <>
-runtime_t<kind::decimal> max<runtime_t<kind::decimal>>(runtime_t<kind::decimal> a, runtime_t<kind::decimal> b) {
+runtime_t<kind::decimal> max_or_min<runtime_t<kind::decimal>>(bool max, runtime_t<kind::decimal> a, runtime_t<kind::decimal> b) {
     // FIXME use context
     auto aa = static_cast<decimal::Decimal>(a);
     auto bb = static_cast<decimal::Decimal>(b);
     if (aa < bb) {
-        return runtime_t<kind::decimal>{bb.as_uint128_triple()};
+        return runtime_t<kind::decimal>{max ? bb.as_uint128_triple() : aa.as_uint128_triple()};
     }
-    return runtime_t<kind::decimal>{aa.as_uint128_triple()};
+    return runtime_t<kind::decimal>{max ? aa.as_uint128_triple() : bb.as_uint128_triple()};
 }
 
 template <>
-runtime_t<kind::date> max<runtime_t<kind::date>>(runtime_t<kind::date> a, runtime_t<kind::date> b) {
+runtime_t<kind::date> max_or_min<runtime_t<kind::date>>(bool max, runtime_t<kind::date> a, runtime_t<kind::date> b) {
     if (a.days_since_epoch() < b.days_since_epoch()) {
-        return b;
+        return max ? b : a;
     }
-    return a;
+    return max ? a : b;
 }
 
 template <>
-runtime_t<kind::time_of_day> max<runtime_t<kind::time_of_day>>(runtime_t<kind::time_of_day> a, runtime_t<kind::time_of_day> b) {
+runtime_t<kind::time_of_day> max_or_min<runtime_t<kind::time_of_day>>(bool max, runtime_t<kind::time_of_day> a, runtime_t<kind::time_of_day> b) {
     if (a.time_since_epoch() < b.time_since_epoch()) {
-        return b;
+        return max ? b : a;
     }
-    return a;
+    return max ? a : b;
 }
 
 template <>
-runtime_t<kind::time_point> max<runtime_t<kind::time_point>>(runtime_t<kind::time_point> a, runtime_t<kind::time_point> b) {
+runtime_t<kind::time_point> max_or_min<runtime_t<kind::time_point>>(bool max, runtime_t<kind::time_point> a, runtime_t<kind::time_point> b) {
+    auto& aa = max ? a : b;
+    auto& bb = max ? b : a;
     if (a.seconds_since_epoch() < b.seconds_since_epoch()) {
-        return b;
+        return max ? bb : aa;
     }
     if (b.seconds_since_epoch() < a.seconds_since_epoch()) {
-        return a;
+        return max ? aa : bb;
     }
     auto sec = a.seconds_since_epoch().count();
     // subsecond is unsigned, so negate if second part is negative
     if (a.subsecond() < b.subsecond()) {
-        return sec < 0 ? a : b;
+        return sec < 0 ? aa : bb;
     }
-    return sec < 0 ? b : a;
+    return sec < 0 ? bb : aa;
 }
 
 void max(
@@ -535,15 +704,15 @@ void max(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(arg_type.kind()) {
-        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, max(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
-        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
-        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, max(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
-        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, max(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
-        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, max(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
-        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, max(target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
-        case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max(target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
-        case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max(target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
-        case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, max(target.get_value<runtime_t<kind::time_point>>(target_offset), source.get_value<runtime_t<kind::time_point>>(arg_offset))); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
+        case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
+        case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
+        case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::time_point>>(target_offset), source.get_value<runtime_t<kind::time_point>>(arg_offset))); break;
         default: fail();
     }
 }
@@ -578,21 +747,19 @@ void min(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(arg_type.kind()) {
-        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, std::min(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
-        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, std::min(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
-        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, std::min(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
-        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, std::min(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
-        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, std::min(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
-        case kind::decimal: {
-            // TODO add context
-            auto x = static_cast<decimal::Decimal>(target.get_value<runtime_t<kind::decimal>>(target_offset));
-            auto y = static_cast<decimal::Decimal>(source.get_value<runtime_t<kind::decimal>>(arg_offset));
-            target.set_value<runtime_t<kind::decimal>>(target_offset, runtime_t<kind::decimal>{std::min(x, y).as_uint128_triple()});
-            break;
-        }
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
+        case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
+        case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
+        case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::time_point>>(target_offset), source.get_value<runtime_t<kind::time_point>>(arg_offset))); break;
         default: fail();
     }
 }
+
 void identity_post(
     accessor::record_ref target,
     field_locator const& target_loc,
@@ -615,6 +782,10 @@ void identity_post(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(offset)); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(offset)); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(offset)); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, source.get_value<runtime_t<kind::decimal>>(offset)); break;
+        case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, source.get_value<runtime_t<kind::date>>(offset)); break;
+        case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, source.get_value<runtime_t<kind::time_of_day>>(offset)); break;
+        case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, source.get_value<runtime_t<kind::time_point>>(offset)); break;
         default: fail();
     }
 }

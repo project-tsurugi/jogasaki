@@ -65,6 +65,42 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
     );
 }
 
+void parameter_set::set_decimal(std::string_view name, runtime_t<kind::decimal> value) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::decimal>},
+            data::value{std::in_place_type<runtime_t<kind::decimal>>, value}
+        }
+    );
+}
+
+void parameter_set::set_date(std::string_view name, runtime_t<kind::date> value) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::date>},
+            data::value{std::in_place_type<runtime_t<kind::date>>, value}
+        }
+    );
+}
+
+void parameter_set::set_time_of_day(std::string_view name, runtime_t<kind::time_of_day> value) {
+    add(std::string(name),
+        {
+            meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+            data::value{std::in_place_type<runtime_t<kind::time_of_day>>, value}
+        }
+    );
+}
+
+void parameter_set::set_time_point(std::string_view name, runtime_t<kind::time_point> value) {
+    add(std::string(name),
+        {
+            meta::field_type{std::make_shared<meta::time_point_field_option>()},
+            data::value{std::in_place_type<runtime_t<kind::time_point>>, value}
+        }
+    );
+}
+
 void parameter_set::set_reference_column(std::string_view name, std::size_t position) {
     add(std::string(name),
         {

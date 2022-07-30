@@ -79,6 +79,10 @@ public:
     [[nodiscard]] runtime_type<kind::float4> get_float4(std::size_t index) const override;
     [[nodiscard]] runtime_type<kind::float8> get_float8(std::size_t index) const override;
     [[nodiscard]] runtime_type<kind::character> get_character(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::decimal> get_decimal(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::date> get_date(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::time_of_day> get_time_of_day(std::size_t index) const override;
+    [[nodiscard]] runtime_type<kind::time_point> get_time_point(std::size_t index) const override;
 
     [[nodiscard]] bool is_null(size_t index) const noexcept override;
 

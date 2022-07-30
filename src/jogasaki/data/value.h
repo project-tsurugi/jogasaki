@@ -45,6 +45,10 @@ public:
         float,
         double,
         std::string,
+        runtime_t<meta::field_type_kind::decimal>,
+        runtime_t<meta::field_type_kind::date>,
+        runtime_t<meta::field_type_kind::time_of_day>,
+        runtime_t<meta::field_type_kind::time_point>,
         std::size_t  // for reference column position
     >;
 

@@ -48,6 +48,58 @@ struct field_comparator {
     }
 };
 
+template <>
+struct field_comparator<kind::decimal> {
+    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
+        // TODO context
+        using rtype = runtime_t<kind::decimal>;
+        auto l = static_cast<decimal::Decimal>(a.get_value<rtype>(l_offset));
+        auto r = static_cast<decimal::Decimal>(b.get_value<rtype>(r_offset));
+        if (l < r) return -1;
+        if (r < l) return 1;
+        return 0;
+    }
+};
+
+template <>
+struct field_comparator<kind::date> {
+    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
+        using rtype = runtime_t<kind::date>;
+        auto l = a.get_value<rtype>(l_offset).days_since_epoch();
+        auto r = b.get_value<rtype>(r_offset).days_since_epoch();
+        if (l < r) return -1;
+        if (r < l) return 1;
+        return 0;
+    }
+};
+template <>
+struct field_comparator<kind::time_of_day> {
+    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
+        using rtype = runtime_t<kind::time_of_day>;
+        auto l = a.get_value<rtype>(l_offset).time_since_epoch().count();
+        auto r = b.get_value<rtype>(r_offset).time_since_epoch().count();
+        if (l < r) return -1;
+        if (r < l) return 1;
+        return 0;
+    }
+};
+template <>
+struct field_comparator<kind::time_point> {
+    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
+        using rtype = runtime_t<kind::time_point>;
+        auto ls = a.get_value<rtype>(l_offset).seconds_since_epoch().count();
+        auto rs = b.get_value<rtype>(r_offset).seconds_since_epoch().count();
+        if (ls < rs) return -1;
+        if (rs < ls) return 1;
+        auto lss = a.get_value<rtype>(l_offset).subsecond().count();
+        auto rss = b.get_value<rtype>(r_offset).subsecond().count();
+        // subsecond part is unsigned, so negate the result if second part is negative
+        if (lss < rss) return (ls < 0) ? +1 : -1;
+        if (rss < lss) return (ls < 0) ? -1 : +1;
+        return 0;
+    }
+};
+
 int comparator::negate_if(int ret, std::size_t field_index) const noexcept {
     return meta_->opposite(field_index) ? -ret : ret;
 }
@@ -84,6 +136,10 @@ int comparator::compare_field(
         case meta::field_type_kind::float4: return negate_if(field_comparator<kind::float4>{}(a, b, l_offset, r_offset), field_index);
         case meta::field_type_kind::float8: return negate_if(field_comparator<kind::float8>{}(a, b, l_offset, r_offset), field_index);
         case meta::field_type_kind::character: return negate_if(field_comparator<kind::character>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::decimal: return negate_if(field_comparator<kind::decimal>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::date: return negate_if(field_comparator<kind::date>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::time_of_day: return negate_if(field_comparator<kind::time_of_day>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::time_point: return negate_if(field_comparator<kind::time_point>{}(a, b, l_offset, r_offset), field_index);
         default:
             // TODO implement other types
             std::abort();

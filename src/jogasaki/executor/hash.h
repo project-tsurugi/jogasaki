@@ -90,6 +90,10 @@ private:
             case meta::field_type_kind::float4: return hash_calculator<kind::float4>{}(record, offset);
             case meta::field_type_kind::float8: return hash_calculator<kind::float8>{}(record, offset);
             case meta::field_type_kind::character: return hash_calculator<kind::character>{}(record, offset);
+            case meta::field_type_kind::decimal: return hash_calculator<kind::decimal>{}(record, offset);
+            case meta::field_type_kind::date: return hash_calculator<kind::date>{}(record, offset);
+            case meta::field_type_kind::time_of_day: return hash_calculator<kind::time_of_day>{}(record, offset);
+            case meta::field_type_kind::time_point: return hash_calculator<kind::time_point>{}(record, offset);
             case meta::field_type_kind::pointer: return static_cast<hash_value>(-1); // internal field should be ignored
             default:
                 // TODO implement other types

@@ -58,6 +58,22 @@ record::runtime_type<kind::character> impl::record::get_character(std::size_t in
     );
 }
 
+record::runtime_type<kind::decimal> impl::record::get_decimal(std::size_t index) const {
+    return ref_.get_value<runtime_t<k::decimal>>(meta_->value_offset(index));
+}
+
+record::runtime_type<kind::date> impl::record::get_date(std::size_t index) const {
+    return ref_.get_value<runtime_t<k::date>>(meta_->value_offset(index));
+}
+
+record::runtime_type<kind::time_of_day> impl::record::get_time_of_day(std::size_t index) const {
+    return ref_.get_value<runtime_t<k::time_of_day>>(meta_->value_offset(index));
+}
+
+record::runtime_type<kind::time_point> impl::record::get_time_point(std::size_t index) const {
+    return ref_.get_value<runtime_t<k::time_point>>(meta_->value_offset(index));
+}
+
 bool record::is_null(size_t index) const noexcept {
     return ref_.is_null(meta_->nullity_offset(index));
 }

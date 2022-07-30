@@ -48,6 +48,10 @@ public:
     virtual void set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) = 0;
     virtual void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) = 0;
     virtual void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) = 0;
+    virtual void set_decimal(std::string_view name, field_type_traits<kind::decimal>::runtime_type value) = 0;
+    virtual void set_date(std::string_view name, field_type_traits<kind::date>::runtime_type value) = 0;
+    virtual void set_time_of_day(std::string_view name, field_type_traits<kind::time_of_day>::runtime_type value) = 0;
+    virtual void set_time_point(std::string_view name, field_type_traits<kind::time_point>::runtime_type value) = 0;
 
     virtual void set_reference_column(std::string_view name, std::size_t position) = 0;
     virtual void set_reference_column(std::string_view name, std::string_view column_name) = 0;

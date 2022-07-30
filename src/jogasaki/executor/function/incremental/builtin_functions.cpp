@@ -446,8 +446,63 @@ void avg_post(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(sum_offset) / source.get_value<runtime_t<kind::int8>>(count_offset)); break;
+        case kind::decimal: {
+            // TODO add context
+            auto x = static_cast<decimal::Decimal>(source.get_value<runtime_t<kind::decimal>>(sum_offset));
+            auto y = x / source.get_value<runtime_t<kind::int8>>(count_offset);
+            target.set_value<runtime_t<kind::decimal>>(target_offset, runtime_t<kind::decimal>{y.as_uint128_triple()});
+            break;
+        }
         default: fail();
     }
+}
+
+template <class T>
+T max(T a, T b) {
+    return std::max(a, b);
+}
+
+template <>
+runtime_t<kind::decimal> max<runtime_t<kind::decimal>>(runtime_t<kind::decimal> a, runtime_t<kind::decimal> b) {
+    // FIXME use context
+    auto aa = static_cast<decimal::Decimal>(a);
+    auto bb = static_cast<decimal::Decimal>(b);
+    if (aa < bb) {
+        return runtime_t<kind::decimal>{bb.as_uint128_triple()};
+    }
+    return runtime_t<kind::decimal>{aa.as_uint128_triple()};
+}
+
+template <>
+runtime_t<kind::date> max<runtime_t<kind::date>>(runtime_t<kind::date> a, runtime_t<kind::date> b) {
+    if (a.days_since_epoch() < b.days_since_epoch()) {
+        return b;
+    }
+    return a;
+}
+
+template <>
+runtime_t<kind::time_of_day> max<runtime_t<kind::time_of_day>>(runtime_t<kind::time_of_day> a, runtime_t<kind::time_of_day> b) {
+    if (a.time_since_epoch() < b.time_since_epoch()) {
+        return b;
+    }
+    return a;
+}
+
+template <>
+runtime_t<kind::time_point> max<runtime_t<kind::time_point>>(runtime_t<kind::time_point> a, runtime_t<kind::time_point> b) {
+    if (a.seconds_since_epoch() < b.seconds_since_epoch()) {
+        return b;
+    }
+    if (b.seconds_since_epoch() < a.seconds_since_epoch()) {
+        return a;
+    }
+    auto sec = a.seconds_since_epoch().count();
+    // subsecond is unsigned, so negate if second part is negative
+    if (a.subsecond() < b.subsecond()) {
+        return sec < 0 ? a : b;
+    }
+    return sec < 0 ? b : a;
 }
 
 void max(
@@ -480,11 +535,15 @@ void max(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(arg_type.kind()) {
-        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, std::max(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
-        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, std::max(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
-        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, std::max(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
-        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, std::max(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
-        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, std::max(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, max(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
+        case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
+        case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, max(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
+        case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, max(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, max(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, max(target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
+        case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max(target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
+        case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max(target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
+        case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, max(target.get_value<runtime_t<kind::time_point>>(target_offset), source.get_value<runtime_t<kind::time_point>>(arg_offset))); break;
         default: fail();
     }
 }
@@ -524,6 +583,13 @@ void min(
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, std::min(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, std::min(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
         case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, std::min(target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
+        case kind::decimal: {
+            // TODO add context
+            auto x = static_cast<decimal::Decimal>(target.get_value<runtime_t<kind::decimal>>(target_offset));
+            auto y = static_cast<decimal::Decimal>(source.get_value<runtime_t<kind::decimal>>(arg_offset));
+            target.set_value<runtime_t<kind::decimal>>(target_offset, runtime_t<kind::decimal>{std::min(x, y).as_uint128_triple()});
+            break;
+        }
         default: fail();
     }
 }

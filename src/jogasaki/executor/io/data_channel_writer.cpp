@@ -38,15 +38,19 @@ bool data_channel_writer::write(accessor::record_ref rec) {
             using k = jogasaki::meta::field_type_kind;
             auto os = meta_->value_offset(i);
             switch (meta_->at(i).kind()) {
-                case k::int4: value_writer_->write_int(rec.get_value<meta::field_type_traits<k::int4>::runtime_type>(os)); break;
-                case k::int8: value_writer_->write_int(rec.get_value<meta::field_type_traits<k::int8>::runtime_type>(os)); break;
-                case k::float4: value_writer_->write_float4(rec.get_value<meta::field_type_traits<k::float4>::runtime_type>(os)); break;
-                case k::float8: value_writer_->write_float8(rec.get_value<meta::field_type_traits<k::float8>::runtime_type>(os)); break;
+                case k::int4: value_writer_->write_int(rec.get_value<runtime_t<k::int4>>(os)); break;
+                case k::int8: value_writer_->write_int(rec.get_value<runtime_t<k::int8>>(os)); break;
+                case k::float4: value_writer_->write_float4(rec.get_value<runtime_t<k::float4>>(os)); break;
+                case k::float8: value_writer_->write_float8(rec.get_value<runtime_t<k::float8>>(os)); break;
                 case k::character: {
-                    auto text = rec.get_value<meta::field_type_traits<k::character>::runtime_type>(os);
+                    auto text = rec.get_value<runtime_t<k::character>>(os);
                     value_writer_->write_character(static_cast<std::string_view>(text));
                     break;
                 }
+                case k::decimal: value_writer_->write_decimal(rec.get_value<runtime_t<k::decimal>>(os)); break;
+                case k::date: value_writer_->write_date(rec.get_value<runtime_t<k::date>>(os)); break;
+                case k::time_of_day: value_writer_->write_time_of_day(rec.get_value<runtime_t<k::time_of_day>>(os)); break;
+                case k::time_point: value_writer_->write_time_point(rec.get_value<runtime_t<k::time_point>>(os)); break;
                 default:
                     fail();
             }

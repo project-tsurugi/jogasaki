@@ -45,8 +45,7 @@ void copy_field(
         case k::int8: target.set_value(target_offset, source.get_value<runtime_t<k::int8>>(source_offset)); return;
         case k::float4: target.set_value(target_offset, source.get_value<runtime_t<k::float4>>(source_offset)); return;
         case k::float8: target.set_value(target_offset, source.get_value<runtime_t<k::float8>>(source_offset)); return;
-        case k::decimal:
-            break;
+        case k::decimal: target.set_value(target_offset, source.get_value<runtime_t<k::decimal>>(source_offset)); return;
         case k::character: {
             auto text = source.get_value<runtime_t<k::character>>(source_offset);
             target.set_value(target_offset,
@@ -56,12 +55,9 @@ void copy_field(
         }
         case k::bit:
             break;
-        case k::date:
-            break;
-        case k::time_of_day:
-            break;
-        case k::time_point:
-            break;
+        case k::date: target.set_value(target_offset, source.get_value<runtime_t<k::date>>(source_offset)); return;
+        case k::time_of_day: target.set_value(target_offset, source.get_value<runtime_t<k::time_of_day>>(source_offset)); return;
+        case k::time_point: target.set_value(target_offset, source.get_value<runtime_t<k::time_point>>(source_offset)); return;
         case k::time_interval:
             break;
         case k::array:
@@ -121,8 +117,7 @@ void copy_field(
         case k::int8: target.set_value(target_offset, source.to<runtime_t<k::int8>>()); return;
         case k::float4: target.set_value(target_offset, source.to<runtime_t<k::float4>>()); return;
         case k::float8: target.set_value(target_offset, source.to<runtime_t<k::float8>>()); return;
-        case k::decimal:
-            break;
+        case k::decimal: target.set_value(target_offset, source.to<runtime_t<k::decimal>>()); return;
         case k::character: {
             auto text = source.to<runtime_t<k::character>>();
             target.set_value(target_offset,
@@ -132,12 +127,9 @@ void copy_field(
         }
         case k::bit:
             break;
-        case k::date:
-            break;
-        case k::time_of_day:
-            break;
-        case k::time_point:
-            break;
+        case k::date: target.set_value(target_offset, source.to<runtime_t<k::date>>()); return;
+        case k::time_of_day: target.set_value(target_offset, source.to<runtime_t<k::time_of_day>>()); return;
+        case k::time_point: target.set_value(target_offset, source.to<runtime_t<k::time_point>>()); return;
         case k::time_interval:
             break;
         case k::array:

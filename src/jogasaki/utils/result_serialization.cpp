@@ -48,6 +48,7 @@ bool write_msg(accessor::record_ref rec, msgpack::sbuffer& buf, meta::record_met
                     break;
                 }
                 default:
+                    // FIXME decimal, temp. types
                     fail();
             }
         }

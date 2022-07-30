@@ -39,6 +39,22 @@ void parameter_set::set_character(std::string_view name, field_type_traits<kind:
     body_->set_character(name, accessor::text{const_cast<char*>(value.data()), value.size()});
 }
 
+void parameter_set::set_decimal(std::string_view name, field_type_traits<kind::decimal>::runtime_type value) {
+    body_->set_decimal(name, value);
+}
+
+void parameter_set::set_date(std::string_view name, field_type_traits<kind::date>::runtime_type value) {
+    body_->set_date(name, value);
+}
+
+void parameter_set::set_time_of_day(std::string_view name, field_type_traits<kind::time_of_day>::runtime_type value) {
+    body_->set_time_of_day(name, value);
+}
+
+void parameter_set::set_time_point(std::string_view name, field_type_traits<kind::time_point>::runtime_type value) {
+    body_->set_time_point(name, value);
+}
+
 void parameter_set::set_reference_column(std::string_view name, std::size_t position) {
     body_->set_reference_column(name, position);
 }

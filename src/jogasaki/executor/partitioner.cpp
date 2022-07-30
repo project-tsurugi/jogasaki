@@ -57,6 +57,10 @@ std::size_t partitioner::field_hash(accessor::record_ref key, std::size_t field_
         case meta::field_type_kind::float4: return std::hash<runtime_t<kind::float4>>()(key.get_value<runtime_t<kind::float4>>(offset));
         case meta::field_type_kind::float8: return std::hash<runtime_t<kind::float8>>()(key.get_value<runtime_t<kind::float8>>(offset));
         case meta::field_type_kind::character: return std::hash<runtime_t<kind::character>>()(key.get_value<runtime_t<kind::character>>(offset));
+        case meta::field_type_kind::decimal: return std::hash<runtime_t<kind::decimal>>()(key.get_value<runtime_t<kind::decimal>>(offset));
+        case meta::field_type_kind::date: return std::hash<runtime_t<kind::date>>()(key.get_value<runtime_t<kind::date>>(offset));
+        case meta::field_type_kind::time_of_day: return std::hash<runtime_t<kind::time_of_day>>()(key.get_value<runtime_t<kind::time_of_day>>(offset));
+        case meta::field_type_kind::time_point: return std::hash<runtime_t<kind::time_point>>()(key.get_value<runtime_t<kind::time_point>>(offset));
         case meta::field_type_kind::pointer: return static_cast<std::size_t>(-1); // ignore internal field
         default:
             // TODO implement other types

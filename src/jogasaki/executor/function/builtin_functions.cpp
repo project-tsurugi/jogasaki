@@ -169,6 +169,10 @@ void count_distinct(
         case kind::float4: res = details::count_distinct<runtime_t<kind::float4>>(store); break;
         case kind::float8: res = details::count_distinct<runtime_t<kind::float8>>(store); break;
         case kind::character: res = details::count_distinct<runtime_t<kind::character>>(store); break;
+        case kind::decimal: res = details::count_distinct<runtime_t<kind::decimal>>(store); break;
+        case kind::date: res = details::count_distinct<runtime_t<kind::date>>(store); break;
+        case kind::time_of_day: res = details::count_distinct<runtime_t<kind::time_of_day>>(store); break;
+        case kind::time_point: res = details::count_distinct<runtime_t<kind::time_point>>(store); break;
         default: fail();
     }
     target.set_value<runtime_t<kind::int8>>(target_offset, res);

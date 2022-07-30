@@ -98,6 +98,14 @@ public:
      */
     [[nodiscard]] any view() const;
 
+    /**
+     * @brief accessor of the content value in given type
+     */
+    template<typename T>
+    [[nodiscard]] T to() const noexcept {
+        return view().to<T>();
+    }
+
     // variant index in value - treat bool as std::int8_t
     template <class T>
     static constexpr std::size_t index =

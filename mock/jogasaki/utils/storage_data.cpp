@@ -24,7 +24,7 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/logging.h>
-#include <jogasaki/data/any.h>
+#include <jogasaki/data/value.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/field_types.h>
@@ -47,16 +47,12 @@ using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::process::impl::expression;
 
-constexpr kvs::order asc = kvs::order::ascending;
-constexpr kvs::order desc = kvs::order::descending;
-constexpr kvs::order undef = kvs::order::undefined;
-
-using any = data::any;
+using value = data::value;
 
 namespace {
 
 template <class T>
-any create_value(
+value create_value(
     std::size_t val,
     std::size_t record_count,
     bool nullable,
@@ -66,27 +62,26 @@ any create_value(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::any{std::in_place_type<T>, val};
+    return data::value{std::in_place_type<T>, val};
 }
 
 template <>
-any create_value<runtime_t<meta::field_type_kind::character>>(
+value create_value<runtime_t<meta::field_type_kind::character>>(
     std::size_t val,
     std::size_t record_count,
     bool nullable,
     std::size_t len
 ) {
     char c = 'A' + val % 26;
-    len = record_count % 2 == 1 ? len + 20 : len;
     std::string d(len, c);
     if (nullable && record_count % 5 == 0) {
-        return data::any{std::in_place_type<runtime_t<meta::field_type_kind::character>>, {}};
+        return data::value{std::in_place_type<std::string>, {}};
     }
-    return data::any{std::in_place_type<runtime_t<meta::field_type_kind::character>>, accessor::text{d.data(), d.size()}};
+    return data::value{std::in_place_type<std::string>, d};
 }
 
 template <>
-any create_value<runtime_t<meta::field_type_kind::date>>(
+value create_value<runtime_t<meta::field_type_kind::date>>(
     std::size_t val,
     std::size_t record_count,
     bool nullable,
@@ -96,11 +91,11 @@ any create_value<runtime_t<meta::field_type_kind::date>>(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::any{std::in_place_type<runtime_t<meta::field_type_kind::date>>, val};
+    return data::value{std::in_place_type<runtime_t<meta::field_type_kind::date>>, val};
 }
 
 template <>
-any create_value<runtime_t<meta::field_type_kind::time_of_day>>(
+value create_value<runtime_t<meta::field_type_kind::time_of_day>>(
     std::size_t val,
     std::size_t record_count,
     bool nullable,
@@ -110,11 +105,11 @@ any create_value<runtime_t<meta::field_type_kind::time_of_day>>(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::any{std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, std::chrono::nanoseconds{val}};
+    return data::value{std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, std::chrono::nanoseconds{val}};
 }
 
 template <>
-any create_value<runtime_t<meta::field_type_kind::time_point>>(
+value create_value<runtime_t<meta::field_type_kind::time_point>>(
     std::size_t val,
     std::size_t record_count,
     bool nullable,
@@ -124,7 +119,7 @@ any create_value<runtime_t<meta::field_type_kind::time_point>>(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::any{std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, std::chrono::seconds{val}};
+    return data::value{std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, std::chrono::seconds{val}};
 }
 
 template <class T>
@@ -135,17 +130,17 @@ std::string to_string(T arg) {
 }
 
 inline void encode_field(
-    data::any const& a,
+    data::value const& a,
     meta::field_type f,
     kvs::coding_spec spec,
     bool nullable,
     kvs::writable_stream& target
 ) {
     if (nullable) {
-        kvs::encode_nullable(a, f, spec, target);
+        kvs::encode_nullable(a.view(), f, spec, target);
         return;
     }
-    kvs::encode(a, f, spec, target);
+    kvs::encode(a.view(), f, spec, target);
 }
 
 static void fill_fields(
@@ -168,47 +163,47 @@ static void fill_fields(
         std::size_t len = 1 + (sequential ? record_count : rnd()) % 70;
         switch(f.kind()) {
             case kind::int4: {
-                data::any a{create_value<std::int32_t>(val, record_count, nullable)};
+                data::value a{create_value<std::int32_t>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::int4>), spec, nullable, target);
                 break;
             }
             case kind::int8: {
-                data::any a{create_value<std::int64_t>(val, record_count, nullable)};
+                data::value a{create_value<std::int64_t>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::int8>), spec, nullable, target);
                 break;
             }
             case kind::float4: {
-                data::any a{create_value<float>(val, record_count, nullable)};
+                data::value a{create_value<float>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::float4>), spec, nullable, target);
                 break;
             }
             case kind::float8: {
-                data::any a{create_value<double>(val, record_count, nullable)};
+                data::value a{create_value<double>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
             case kind::character: {
-                data::any a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
+                data::value a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::character>), spec, nullable, target);
                 break;
             }
             case kind::decimal: {
-                data::any a{create_value<runtime_t<meta::field_type_kind::decimal>>(val, record_count, nullable)};
+                data::value a{create_value<runtime_t<meta::field_type_kind::decimal>>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::decimal>), spec, nullable, target);
                 break;
             }
             case kind::date: {
-                data::any a{create_value<runtime_t<meta::field_type_kind::date>>(val, record_count, nullable)};
+                data::value a{create_value<runtime_t<meta::field_type_kind::date>>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::date>), spec, nullable, target);
                 break;
             }
             case kind::time_of_day: {
-                data::any a{create_value<runtime_t<meta::field_type_kind::time_of_day>>(val, record_count, nullable)};
+                data::value a{create_value<runtime_t<meta::field_type_kind::time_of_day>>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(std::make_shared<meta::time_point_field_option>()), spec, nullable, target);
                 break;
             }
             case kind::time_point: {
-                data::any a{create_value<runtime_t<meta::field_type_kind::time_point>>(val, record_count, nullable)};
+                data::value a{create_value<runtime_t<meta::field_type_kind::time_point>>(val, record_count, nullable)};
                 encode_field(a, meta::field_type(std::make_shared<meta::time_point_field_option>()), spec, nullable, target);
                 break;
             }
@@ -220,20 +215,20 @@ static void fill_fields(
     }
 }
 
-std::string any_to_string(any const& any, meta::field_type type) {
-    if (! any) {
+std::string any_to_string(value const& value, meta::field_type type) {
+    if (! value) {
         return "NULL";
     }
     switch(type.kind()) {
-        case kind::int4: return std::to_string(any.to<std::int32_t>());
-        case kind::int8: return std::to_string(any.to<std::int64_t>());
-        case kind::float4: return std::to_string(any.to<float>());
-        case kind::float8: return std::to_string(any.to<double>());
-        case kind::character: return std::string(1, '\'') + static_cast<std::string>(any.to<accessor::text>()) + std::string(1, '\'');
-        case kind::decimal: return to_string(any.to<runtime_t<meta::field_type_kind::decimal>>());
-        case kind::date: return to_string(any.to<runtime_t<meta::field_type_kind::date>>());
-        case kind::time_of_day: return to_string(any.to<runtime_t<meta::field_type_kind::time_of_day>>());
-        case kind::time_point: return to_string(any.to<runtime_t<meta::field_type_kind::time_point>>());
+        case kind::int4: return std::to_string(value.to<std::int32_t>());
+        case kind::int8: return std::to_string(value.to<std::int64_t>());
+        case kind::float4: return std::to_string(value.to<float>());
+        case kind::float8: return std::to_string(value.to<double>());
+        case kind::character: return std::string(1, '\'') + static_cast<std::string>(value.to<accessor::text>()) + std::string(1, '\'');
+        case kind::decimal: return to_string(value.to<runtime_t<meta::field_type_kind::decimal>>());
+        case kind::date: return to_string(value.to<runtime_t<meta::field_type_kind::date>>());
+        case kind::time_of_day: return to_string(value.to<runtime_t<meta::field_type_kind::time_of_day>>());
+        case kind::time_point: return to_string(value.to<runtime_t<meta::field_type_kind::time_point>>());
         default: break;
     }
     fail();
@@ -320,44 +315,44 @@ void load_storage_data(api::database& db, std::shared_ptr<configurable_provider>
             auto type = utils::type_for(k.type());
             switch(type.kind()) {
                 case kind::int4: {
-                    data::any a{create_value<std::int32_t>(val, record_count, nullable)};
+                    data::value a{create_value<std::int32_t>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::int8: {
-                    data::any a{create_value<std::int64_t>(val, record_count, nullable)};
+                    data::value a{create_value<std::int64_t>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::float4: {
-                    data::any a{create_value<float>(val, record_count, nullable)};
+                    data::value a{create_value<float>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::float8: {
-                    data::any a{create_value<double>(val, record_count, nullable)};
+                    data::value a{create_value<double>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::character: {
                     auto& ct = takatori::util::unsafe_downcast<takatori::type::character>(k.type());
                     auto len = ct.length() ? *ct.length() : 1;
-                    data::any a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
+                    data::value a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::date: {
-                    data::any a{create_value<runtime_t<meta::field_type_kind::date>>(val, record_count, nullable)};
+                    data::value a{create_value<runtime_t<meta::field_type_kind::date>>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::time_of_day: {
-                    data::any a{create_value<runtime_t<meta::field_type_kind::time_of_day>>(val, record_count, nullable)};
+                    data::value a{create_value<runtime_t<meta::field_type_kind::time_of_day>>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }
                 case kind::time_point: {
-                    data::any a{create_value<runtime_t<meta::field_type_kind::time_point>>(val, record_count, nullable)};
+                    data::value a{create_value<runtime_t<meta::field_type_kind::time_point>>(val, record_count, nullable)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }

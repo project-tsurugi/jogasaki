@@ -29,6 +29,7 @@
 #include <jogasaki/kvs/environment.h>
 
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::kvs {
 
@@ -37,6 +38,7 @@ using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
@@ -771,6 +773,397 @@ TEST_F(coder_test, text_ordering) {
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
         EXPECT_GT(bin(src4.data(), s4.size()), bin(src5.data(), s5.size()));
+    }
+}
+
+TEST_F(coder_test, date_ordering) {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    std::string src4(100, 0);
+    kvs::writable_stream s0{src0};
+    kvs::writable_stream s1{src1};
+    kvs::writable_stream s2{src2};
+    kvs::writable_stream s3{src3};
+    kvs::writable_stream s4{src4};
+    data::any c0{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{-2}};
+    data::any c1{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{-1}};
+    data::any c2{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{0}};
+    data::any c3{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{1}};
+    data::any c4{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{2}};
+    {
+        // ascending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // ascending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{meta::field_enum_tag<kind::date>}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{meta::field_enum_tag<kind::date>}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+}
+
+TEST_F(coder_test, time_of_day_ordering) {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    kvs::writable_stream s0{src0};
+    kvs::writable_stream s1{src1};
+    kvs::writable_stream s2{src2};
+    kvs::writable_stream s3{src3};
+    data::any c0{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{0ns}};
+    data::any c1{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns}};
+    data::any c2{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns*(24L*60*60*1000*1000*1000-2)}};
+    data::any c3{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns*(24L*60*60*1000*1000*1000-1)}};
+    {
+        // ascending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s3));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    {
+        // descending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s3));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    {
+        // ascending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_asc, s3));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    {
+        // descending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_of_day_field_option>()}, spec_desc, s3));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+    }
+}
+
+TEST_F(coder_test, time_point_ordering) {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    std::string src4(100, 0);
+    kvs::writable_stream s0{src0};
+    kvs::writable_stream s1{src1};
+    kvs::writable_stream s2{src2};
+    kvs::writable_stream s3{src3};
+    kvs::writable_stream s4{src4};
+    data::any c0{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-2ns}};
+    data::any c1{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1ns}};
+    data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0ns}};
+    data::any c3{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{1ns}};
+    data::any c4{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{2ns}};
+    {
+        // ascending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // ascending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+}
+
+TEST_F(coder_test, time_point_ordering_with_only_secs) {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    std::string src4(100, 0);
+    kvs::writable_stream s0{src0};
+    kvs::writable_stream s1{src1};
+    kvs::writable_stream s2{src2};
+    kvs::writable_stream s3{src3};
+    kvs::writable_stream s4{src4};
+    data::any c0{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-2s, 0ns}};
+    data::any c1{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 0ns}};
+    data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0s, 0ns}};
+    data::any c3{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{1s, 0ns}};
+    data::any c4{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{2s, 0ns}};
+    {
+        // ascending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // ascending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+}
+
+TEST_F(coder_test, time_point_ordering_with_subsecs) {
+    std::string src0(100, 0);
+    std::string src1(100, 0);
+    std::string src2(100, 0);
+    std::string src3(100, 0);
+    std::string src4(100, 0);
+    kvs::writable_stream s0{src0};
+    kvs::writable_stream s1{src1};
+    kvs::writable_stream s2{src2};
+    kvs::writable_stream s3{src3};
+    kvs::writable_stream s4{src4};
+    data::any c0{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 100ms}};
+    data::any c1{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 200ms}};
+    data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 900ms}};
+    data::any c3{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0s, 0ms}};
+    data::any c4{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0s, 100ms}};
+    {
+        // ascending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending non nullable
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // ascending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_asc, s4));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
+    }
+    s0.reset();
+    s1.reset();
+    s2.reset();
+    s3.reset();
+    s4.reset();
+    {
+        // descending nullable
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::time_point_field_option>()}, spec_desc, s4));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
+        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
+        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
     }
 }
 }

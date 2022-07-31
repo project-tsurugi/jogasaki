@@ -15,6 +15,8 @@
  */
 #include "comparator.h"
 
+#include <jogasaki/executor/less.h>
+
 namespace jogasaki::executor {
 
 comparator::comparator(compare_info const& info) noexcept :
@@ -42,60 +44,8 @@ struct field_comparator {
         using rtype = runtime_t<K>;
         auto l = a.get_value<rtype>(l_offset);
         auto r = b.get_value<rtype>(r_offset);
-        if (std::less<rtype>{}(l, r)) return -1;
-        if (std::less<rtype>{}(r, l)) return 1;
-        return 0;
-    }
-};
-
-template <>
-struct field_comparator<kind::decimal> {
-    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
-        // TODO context
-        using rtype = runtime_t<kind::decimal>;
-        auto l = static_cast<decimal::Decimal>(a.get_value<rtype>(l_offset));
-        auto r = static_cast<decimal::Decimal>(b.get_value<rtype>(r_offset));
-        if (l < r) return -1;
-        if (r < l) return 1;
-        return 0;
-    }
-};
-
-template <>
-struct field_comparator<kind::date> {
-    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
-        using rtype = runtime_t<kind::date>;
-        auto l = a.get_value<rtype>(l_offset).days_since_epoch();
-        auto r = b.get_value<rtype>(r_offset).days_since_epoch();
-        if (l < r) return -1;
-        if (r < l) return 1;
-        return 0;
-    }
-};
-template <>
-struct field_comparator<kind::time_of_day> {
-    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
-        using rtype = runtime_t<kind::time_of_day>;
-        auto l = a.get_value<rtype>(l_offset).time_since_epoch().count();
-        auto r = b.get_value<rtype>(r_offset).time_since_epoch().count();
-        if (l < r) return -1;
-        if (r < l) return 1;
-        return 0;
-    }
-};
-template <>
-struct field_comparator<kind::time_point> {
-    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
-        using rtype = runtime_t<kind::time_point>;
-        auto ls = a.get_value<rtype>(l_offset).seconds_since_epoch().count();
-        auto rs = b.get_value<rtype>(r_offset).seconds_since_epoch().count();
-        if (ls < rs) return -1;
-        if (rs < ls) return 1;
-        auto lss = a.get_value<rtype>(l_offset).subsecond().count();
-        auto rss = b.get_value<rtype>(r_offset).subsecond().count();
-        // subsecond part is unsigned, so negate the result if second part is negative
-        if (lss < rss) return (ls < 0) ? +1 : -1;
-        if (rss < lss) return (ls < 0) ? -1 : +1;
+        if (less<rtype>(l, r)) return -1;
+        if (less<rtype>(r, l)) return 1;
         return 0;
     }
 };

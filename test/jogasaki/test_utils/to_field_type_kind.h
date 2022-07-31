@@ -25,8 +25,10 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
 #include <takatori/type/bit.h>
 #include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/type/datetime_interval.h>
 
 #include <jogasaki/constants.h>
@@ -60,8 +62,12 @@ template <class T>
         return k::decimal;
     } else if constexpr (std::is_same_v<T, takatori::type::bit>) {
         return k::bit;
+    } else if constexpr (std::is_same_v<T, takatori::type::date>) {
+        return k::date;
     } else if constexpr (std::is_same_v<T, takatori::type::time_of_day>) {
         return k::time_of_day;
+    } else if constexpr (std::is_same_v<T, takatori::type::time_point>) {
+        return k::time_point;
     } else if constexpr (std::is_same_v<T, takatori::type::datetime_interval>) {
         return k::time_interval;
     } else {

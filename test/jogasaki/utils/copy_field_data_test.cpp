@@ -19,11 +19,13 @@
 
 #include <gtest/gtest.h>
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::utils {
 
 using namespace testing;
 using namespace jogasaki::mock;
+using namespace std::chrono_literals;
 
 using kind = meta::field_type_kind;
 
@@ -50,6 +52,21 @@ TEST_F(copy_field_data_test, types) {
     using test_record = mock::basic_record;
     test_record src{create_record<kind::boolean, kind::int1, kind::int2, kind::int4, kind::int8, kind::float4, kind::float8>(1, 1, 1, 1, 1, 1.0, 1.0)};
     test_record tgt{create_record<kind::boolean, kind::int1, kind::int2, kind::int4, kind::int8, kind::float4, kind::float8>(2, 2, 2, 2, 2, 2.0, 2.0)};
+    auto src_meta = src.record_meta();
+    auto tgt_meta = tgt.record_meta();
+    auto cnt = src_meta->field_count();
+    for(std::size_t i=0; i < cnt; ++i) {
+        auto& f = src_meta->at(i);
+        auto src_offset = src_meta->value_offset(i);
+        auto tgt_offset = tgt_meta->value_offset(i);
+        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset);
+    }
+    ASSERT_EQ(src, tgt);
+}
+
+TEST_F(copy_field_data_test, temporal_types) {
+    auto src = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(1, rtype<ft::date>{10}, rtype<ft::time_of_day>{100ns}, rtype<ft::time_point>{1000ns});
+    auto tgt = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(2, rtype<ft::date>{20}, rtype<ft::time_of_day>{200ns}, rtype<ft::time_point>{2000ns});
     auto src_meta = src.record_meta();
     auto tgt_meta = tgt.record_meta();
     auto cnt = src_meta->field_count();

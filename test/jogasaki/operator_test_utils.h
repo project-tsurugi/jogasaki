@@ -24,6 +24,10 @@
 #include <takatori/type/character.h>
 #include <takatori/value/character.h>
 #include <takatori/type/int.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/value/int.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
@@ -292,6 +296,10 @@ public:
             case field_type_kind::float4: return variables_->add({name, takatori::type::float4{}}, false);
             case field_type_kind::float8: return variables_->add({name, takatori::type::float8{}}, false);
             case field_type_kind::character: return variables_->add({name, takatori::type::character{takatori::type::varying}}, false);
+            case field_type_kind::decimal: return variables_->add({name, takatori::type::decimal{}}, false);
+            case field_type_kind::date: return variables_->add({name, takatori::type::date{}}, false);
+            case field_type_kind::time_of_day: return variables_->add({name, takatori::type::time_of_day{}}, false);
+            case field_type_kind::time_point: return variables_->add({name, takatori::type::time_point{}}, false);
             default: fail();
         }
         return {};

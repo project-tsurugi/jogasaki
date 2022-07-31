@@ -18,11 +18,13 @@
 #include <gtest/gtest.h>
 #include <takatori/util/string_builder.h>
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::accessor {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+using namespace std::chrono_literals;
 using namespace jogasaki::meta;
 using namespace takatori::util;
 
@@ -244,5 +246,58 @@ TEST_F(record_printer_test, empty_object) {
     ASSERT_EQ("<null record>", ss2.str());
 }
 
+TEST_F(record_printer_test, temporal_types) {
+    struct {
+        rtype<ft::date> date_;
+        rtype<ft::time_of_day> time_of_day_;
+        rtype<ft::time_point> time_point_;
+    } buffer;
+    record_ref r{&buffer, sizeof(buffer)};
+    ASSERT_EQ(32, r.size());
+    buffer.date_ = rtype<ft::date>{1};
+    buffer.time_of_day_ = rtype<ft::time_of_day>{2ns};
+    buffer.time_point_ = rtype<ft::time_point>{3ns};
+
+    using kind = field_type_kind;
+    record_meta meta{
+        std::vector<field_type>{
+            field_type(field_enum_tag<kind::date>),
+            field_type(std::make_shared<time_of_day_field_option>()),
+            field_type(std::make_shared<time_point_field_option>()),
+        },
+        boost::dynamic_bitset<std::uint64_t>{3}};
+    EXPECT_EQ(3, meta.field_count());
+
+    std::stringstream ss{};
+    ss << r << meta;
+    ASSERT_EQ("(0:date)[date(1970-1-2)] (1:time_of_day)[time_of_day(00:00:00.000000002)] (2:time_point)[time_point(1970-1-1 00:00:00.000000003)]", ss.str());
+}
+
+TEST_F(record_printer_test, decimal) {
+    struct {
+        rtype<ft::decimal> decimal0_;
+        rtype<ft::decimal> decimal1_;
+        rtype<ft::decimal> decimal2_;
+    } buffer;
+    record_ref r{&buffer, sizeof(buffer)};
+    ASSERT_EQ(32*3, r.size());
+    buffer.decimal0_ = rtype<ft::decimal>{1};
+    buffer.decimal1_ = rtype<ft::decimal>{100};
+    buffer.decimal2_ = rtype<ft::decimal>{999999, -3};
+
+    using kind = field_type_kind;
+    record_meta meta{
+        std::vector<field_type>{
+            field_type(field_enum_tag<kind::decimal>),
+            field_type(field_enum_tag<kind::decimal>),
+            field_type(field_enum_tag<kind::decimal>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{3}};
+    EXPECT_EQ(3, meta.field_count());
+
+    std::stringstream ss{};
+    ss << r << meta;
+    ASSERT_EQ("(0:decimal)[1] (1:decimal)[100] (2:decimal)[999.999]", ss.str());
+}
 }
 

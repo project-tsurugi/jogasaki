@@ -169,5 +169,23 @@ TEST_F(record_layout_creator_test, type_variaties) {
     EXPECT_EQ(4,  c.nullity_offset_table()[8]);
 }
 
+TEST_F(record_layout_creator_test, temporal_types) {
+    record_layout_creator c{
+        std::vector<field_type>{
+            field_type(field_enum_tag<kind::date>),
+            field_type(std::make_shared<meta::time_of_day_field_option>()),
+            field_type(std::make_shared<meta::time_point_field_option>()),
+            field_type(field_enum_tag<kind::date>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{"0101"s}};
+    EXPECT_EQ(8,  c.record_alignment());
+    EXPECT_EQ(48,  c.record_size());
+    EXPECT_EQ(8,  c.value_offset_table()[0]);
+    EXPECT_EQ(16,  c.value_offset_table()[1]);
+    EXPECT_EQ(24,  c.value_offset_table()[2]);
+    EXPECT_EQ(40,  c.value_offset_table()[3]);
+    EXPECT_EQ(0,  c.nullity_offset_table()[0]);
+    EXPECT_EQ(1,  c.nullity_offset_table()[2]);
+}
 }
 

@@ -21,6 +21,7 @@
 #include <jogasaki/accessor/text.h>
 
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::data {
 
@@ -28,6 +29,7 @@ using namespace testing;
 using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
+using namespace std::chrono_literals;
 
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
@@ -232,6 +234,102 @@ TEST_F(value_store_test, type_character) {
     EXPECT_NE(end, it);
     it++;
     EXPECT_EQ(text{"44444444444444444444"}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(end, it);
+}
+
+TEST_F(value_store_test, type_date) {
+    memory::page_pool pool{};
+    memory::monotonic_paged_memory_resource resource{&pool};
+    memory::monotonic_paged_memory_resource varlen_resource{&pool};
+    value_store store{
+        meta::field_type{meta::field_enum_tag<kind::date>},
+        &resource,
+        &varlen_resource
+    };
+
+    using date = rtype<ft::date>;
+
+    store.append<date>(date{1});
+    store.append<date>(date{2});
+    store.append<date>(date{3});
+
+    auto it = store.begin<date>();
+    EXPECT_TRUE(it.valid());
+    auto end = store.end<date>();
+    EXPECT_FALSE(end.valid());
+    EXPECT_EQ(date{1}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(date{2}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(date{3}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(end, it);
+}
+
+TEST_F(value_store_test, type_time_of_day) {
+    memory::page_pool pool{};
+    memory::monotonic_paged_memory_resource resource{&pool};
+    memory::monotonic_paged_memory_resource varlen_resource{&pool};
+    value_store store{
+        meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+        &resource,
+        &varlen_resource
+    };
+
+    using time_of_day = rtype<ft::time_of_day>;
+
+    store.append<time_of_day>(time_of_day{1ns});
+    store.append<time_of_day>(time_of_day{2ns});
+    store.append<time_of_day>(time_of_day{3ns});
+
+    auto it = store.begin<time_of_day>();
+    EXPECT_TRUE(it.valid());
+    auto end = store.end<time_of_day>();
+    EXPECT_FALSE(end.valid());
+    EXPECT_EQ(time_of_day{1ns}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(time_of_day{2ns}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(time_of_day{3ns}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(end, it);
+}
+
+TEST_F(value_store_test, type_time_point) {
+    memory::page_pool pool{};
+    memory::monotonic_paged_memory_resource resource{&pool};
+    memory::monotonic_paged_memory_resource varlen_resource{&pool};
+    value_store store{
+        meta::field_type{std::make_shared<meta::time_point_field_option>()},
+        &resource,
+        &varlen_resource
+    };
+
+    using time_point = rtype<ft::time_point>;
+
+    store.append(time_point{1ns});
+    store.append(time_point{2ns});
+    store.append(time_point{3ns});
+
+    auto it = store.begin<time_point>();
+    EXPECT_TRUE(it.valid());
+    auto end = store.end<time_point>();
+    EXPECT_FALSE(end.valid());
+    EXPECT_EQ(time_point{1ns}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(time_point{2ns}, *it);
+    EXPECT_NE(end, it);
+    it++;
+    EXPECT_EQ(time_point{3ns}, *it);
     EXPECT_NE(end, it);
     it++;
     EXPECT_EQ(end, it);

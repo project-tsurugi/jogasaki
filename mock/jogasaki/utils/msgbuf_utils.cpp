@@ -78,6 +78,10 @@ std::vector<mock::basic_record> deserialize_msg(
                     record.ref().set_value(meta.value_offset(index), accessor::text{sv});
                     break;
                 }
+                case jogasaki::meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta.value_offset(index), takatori::serializer::read_decimal(it, end)); break;
+                case jogasaki::meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta.value_offset(index), takatori::serializer::read_date(it, end)); break;
+                case jogasaki::meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta.value_offset(index), takatori::serializer::read_time_of_day(it, end)); break;
+                case jogasaki::meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta.value_offset(index), takatori::serializer::read_time_point(it, end)); break;
                 default:
                     std::abort();
             }

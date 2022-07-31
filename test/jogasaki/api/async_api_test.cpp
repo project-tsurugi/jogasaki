@@ -58,27 +58,6 @@ using namespace jogasaki::scheduler;
 using takatori::util::unsafe_downcast;
 namespace sql = jogasaki::proto::sql;
 
-inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMetadata const& proto) {
-    std::vector<meta::field_type> fields{};
-    boost::dynamic_bitset<std::uint64_t> nullities;
-    for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
-        auto& c = proto.columns(i);
-        bool nullable = true;
-        meta::field_type field{};
-        nullities.push_back(nullable);
-        switch(c.atom_type()) {
-            using kind = meta::field_type_kind;
-            case sql::common::AtomType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
-            case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
-            case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
-            case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
-        }
-    }
-    jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
-    return meta;
-}
-
 class async_api_test :
     public ::testing::Test,
     public testing::api_test_base {

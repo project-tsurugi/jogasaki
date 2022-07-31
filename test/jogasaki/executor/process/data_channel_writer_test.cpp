@@ -22,6 +22,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
 #include <jogasaki/utils/msgbuf_utils.h>
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::executor::io {
 
@@ -30,6 +31,7 @@ using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 
 using namespace jogasaki::memory;
 using namespace jogasaki::mock;
@@ -63,5 +65,30 @@ TEST_F(data_channel_writer_test, basic) {
     EXPECT_EQ(rec3, recs[2]);
 }
 
+TEST_F(data_channel_writer_test, temporal_types) {
+    using kind = meta::field_type_kind;
+    auto meta = create_meta<kind::int4, kind::date, kind::time_of_day, kind::time_point>();
+
+    api::test_channel ch{};
+    std::shared_ptr<api::writer> wr{};
+    ASSERT_EQ(status::ok, ch.acquire(wr));
+    data_channel_writer writer{ch, std::move(wr), meta};
+
+    auto rec1 = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(1, rtype<ft::date>{10}, rtype<ft::time_of_day>{100ns}, rtype<ft::time_point>{1000ns});
+    auto rec2 = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(2, rtype<ft::date>{20}, rtype<ft::time_of_day>{200ns}, rtype<ft::time_point>{2000ns});
+    auto rec3 = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(2, rtype<ft::date>{30}, rtype<ft::time_of_day>{300ns}, rtype<ft::time_point>{3000ns});
+    writer.write(rec1.ref());
+    writer.write(rec2.ref());
+    writer.write(rec3.ref());
+    writer.flush();
+
+    ASSERT_EQ(1, ch.writers_.size());
+    auto& w = *ch.writers_[0];
+    auto recs = utils::deserialize_msg({w.data_.data(), w.size_}, *meta);
+    ASSERT_EQ(3, recs.size());
+    EXPECT_EQ(rec1, recs[0]);
+    EXPECT_EQ(rec2, recs[1]);
+    EXPECT_EQ(rec3, recs[2]);
+}
 }
 

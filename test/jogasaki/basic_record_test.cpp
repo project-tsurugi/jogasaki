@@ -16,6 +16,7 @@
 #include <jogasaki/mock/basic_record.h>
 
 #include "test_root.h"
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::testing {
 
@@ -178,4 +179,17 @@ TEST_F(basic_record_test, allocate_varlen) {
     EXPECT_NE(sv.data(), data.data());
 }
 
+TEST_F(basic_record_test, field_size) {
+    EXPECT_LE(sizeof(rtype<ft::int1>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::int2>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::int4>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::int8>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::float4>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::float8>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::character>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::decimal>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::date>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::time_of_day>), mock::basic_record_field_size);
+    EXPECT_LE(sizeof(rtype<ft::time_point>), mock::basic_record_field_size);
+}
 }

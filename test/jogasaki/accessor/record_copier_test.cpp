@@ -22,10 +22,12 @@
 
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::testing {
 
 using namespace std::string_view_literals;
+using namespace std::chrono_literals;
 using namespace accessor;
 using namespace meta;
 using namespace takatori::util;
@@ -189,6 +191,40 @@ TEST_F(record_copier_test, text) {
         EXPECT_EQ(src.t1_, t.get_value<text>(meta->value_offset(1)));
         EXPECT_EQ(src.t2_, t.get_value<text>(meta->value_offset(2)));
     }
+}
+
+TEST_F(record_copier_test, temporal_and_decimal) {
+    using kind = meta::field_type_kind;
+    auto rec = mock::create_record<kind::int4, kind::decimal, kind::date, kind::time_of_day, kind::time_point>(
+        record_meta::nullability_type{"11110"s},
+        0, rtype<ft::decimal>{1}, rtype<ft::date>{2}, rtype<ft::time_of_day>(3ns), rtype<ft::time_point>(4ns));
+    auto r = rec.ref();
+    auto meta = rec.record_meta();
+
+    r.set_null(meta->nullity_offset(0), false);
+    r.set_null(meta->nullity_offset(1), false);
+    r.set_null(meta->nullity_offset(2), false);
+    r.set_null(meta->nullity_offset(3), false);
+    r.set_null(meta->nullity_offset(4), false);
+
+    record_copier copier{meta};
+    auto dst = mock::create_record<kind::int4, kind::decimal, kind::date, kind::time_of_day, kind::time_point>(
+        record_meta::nullability_type{"11110"s},
+        0, rtype<ft::decimal>(), rtype<ft::date>(), rtype<ft::time_of_day>(), rtype<ft::time_point>());
+    record_ref t{dst.ref()};
+    copier(t, r);
+
+    EXPECT_EQ(0, *t.get_if<std::int32_t>(meta->nullity_offset(0), meta->value_offset(0)));
+    EXPECT_EQ(rtype<ft::decimal>{1}, *t.get_if<rtype<ft::decimal>>(meta->nullity_offset(1), meta->value_offset(1)));
+    EXPECT_EQ(rtype<ft::date>{2}, *t.get_if<rtype<ft::date>>(meta->nullity_offset(2), meta->value_offset(2)));
+    EXPECT_EQ(rtype<ft::time_of_day>{3ns}, *t.get_if<rtype<ft::time_of_day>>(meta->nullity_offset(3), meta->value_offset(3)));
+    EXPECT_EQ(rtype<ft::time_point>{4ns}, *t.get_if<rtype<ft::time_point>>(meta->nullity_offset(4), meta->value_offset(4)));
+
+    EXPECT_FALSE(t.is_null(meta->nullity_offset(0)));
+    EXPECT_FALSE(t.is_null(meta->nullity_offset(1)));
+    EXPECT_FALSE(t.is_null(meta->nullity_offset(2)));
+    EXPECT_FALSE(t.is_null(meta->nullity_offset(3)));
+    EXPECT_FALSE(t.is_null(meta->nullity_offset(4)));
 }
 
 }

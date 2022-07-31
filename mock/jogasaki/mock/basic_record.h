@@ -36,12 +36,14 @@ using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
 
-constexpr static std::size_t basic_record_field_size = 16;
+constexpr static std::size_t basic_record_field_size = 32;
 constexpr static std::size_t basic_record_field_alignment = 8;
 constexpr static std::size_t basic_record_max_field_count = 14;
 constexpr static std::size_t basic_record_buffer_size =
     basic_record_field_size * (basic_record_max_field_count + 1); // +1 for nullity bits
 using basic_record_entity_type = std::array<char, basic_record_buffer_size>;
+
+
 
 namespace details {
 
@@ -116,6 +118,21 @@ std::vector<std::size_t> index_vector(std::size_t init, std::index_sequence<Is..
     return std::vector<std::size_t>{(init + Is)...};
 }
 
+template <meta::field_type_kind Kind>
+meta::field_type create_field_type() {
+    return meta::field_type(meta::field_enum_tag<Kind>);
+}
+
+template <>
+inline meta::field_type create_field_type<meta::field_type_kind::time_of_day>() {
+    return meta::field_type(std::make_shared<meta::time_of_day_field_option>());
+}
+
+template <>
+inline meta::field_type create_field_type<meta::field_type_kind::time_point>() {
+    return meta::field_type(std::make_shared<meta::time_point_field_option>());
+}
+
 }  //namespace details
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
@@ -137,7 +154,7 @@ std::shared_ptr<meta::record_meta> create_meta(
     std::vector<std::size_t> offsets{details::offsets<Kinds...>()};
     auto nullity_offset_base = (offsets.back()+basic_record_field_size)*bits_per_byte;
     return std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{meta::field_type(meta::field_enum_tag<Kinds>)...},
+        std::vector<meta::field_type>{details::create_field_type<Kinds>()...},
         std::move(nullability),
         std::move(offsets),
         details::index_vector(nullity_offset_base, std::make_index_sequence<sizeof...(Kinds)>()),

@@ -16,16 +16,19 @@
 #include "data_channel_writer.h"
 
 #include <memory>
+#include <glog/logging.h>
 
 #include <takatori/util/fail.h>
 
 #include <jogasaki/common.h>
+#include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::executor::io {
 
 using takatori::util::fail;
 
 bool data_channel_writer::write(accessor::record_ref rec) {
+    log_entry << "data_channel_writer::write() record_size:" << rec.size();
     auto n = meta_->field_count();
     value_writer_->write_row_begin(n);
     for (std::size_t i=0; i < n; ++i) {
@@ -53,6 +56,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
         trace_scope_name("writer::commit");  //NOLINT
         writer_->commit();
     }
+    log_exit << "data_channel_writer::write()";
     return true;
 }
 

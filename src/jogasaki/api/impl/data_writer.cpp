@@ -18,12 +18,15 @@
 #include <string_view>
 #include <atomic>
 #include <memory>
+#include <glog/logging.h>
 
 #include <takatori/util/fail.h>
 
 #include <tateyama/status.h>
 #include <tateyama/api/server/writer.h>
 #include <jogasaki/api/writer.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::api::impl {
 
@@ -34,16 +37,20 @@ data_writer::data_writer(std::shared_ptr<tateyama::api::server::writer> origin) 
 {}
 
 status data_writer::write(char const* data, std::size_t length) {
+    log_entry << "write()" << binstring(data, length);
     if (auto rc = origin_->write(data, length); rc != tateyama::status::ok) {
         fail();
     }
+    log_exit << "write()";
     return status::ok;
 }
 
 status data_writer::commit() {
+    log_entry << "commit()";
     if (auto rc = origin_->commit(); rc != tateyama::status::ok) {
         fail();
     }
+    log_exit << "commit()";
     return status::ok;
 }
 

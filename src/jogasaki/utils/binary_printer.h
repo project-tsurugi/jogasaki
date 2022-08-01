@@ -38,6 +38,11 @@ public:
         bytes_per_line_(bytes_per_line)
     {}
 
+    constexpr binary_printer(std::string_view s) noexcept :
+        ptr_(s.data()),
+        size_(s.size())
+    {}
+
     friend std::ostream& operator<<(std::ostream& out, binary_printer const& value) {
         std::ios init(nullptr);
         init.copyfmt(out);

@@ -20,28 +20,28 @@
 - 標準SQLとTsurugi、Parquetの型の対応を下表に示す
 - Parquetの型でLogical Type(*0)を持つものはその属性も併せて示す
 
-|  SQL |  Tsurugi | Parquet |  備考 |
-| ---- | ---- | --- | --- |
-|  BOOLEAN | boolean | Primitive Type: BOOLEAN | (*1) |
-|  TINYINT | int1 | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 8 <br> signed: true | (*1) |
-|  SMALLINT| int2 | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 16 <br> signed: true | (*1) |
-|  INT | int4 | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 32 <br> signed: true |  |
-|  BIGINT | int8 | Primitive Type: INT64<br>Logical Type: INT <br> bit width: 64 <br> signed: true |    |
-|  REAL | float4 | Primitive Type: FLOAT |    |
-|  DOUBLE | float8 | Primitive Type: DOUBLE |    |
-|  CHAR | character | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING |    |
-|  VARCHAR | character varying | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING |    |
-|  DECIMAL(p,s)| decimal | Primitive Type: BYTE_ARRAY <br>Logical Type: DECIMAL<br> precision: p <br> scale: s | (*1) |
-|  DATE| date | Primitive Type: INT32 <br>Logical Type: DATE| (*1) |
-|  TIME| time_of_day | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: true<br>unit: MICROS | (*1) |
-|  TIMESTAMP| time_point | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: true<br> unit: MICROS| (*1) |
-|  INTERVAL | datetime_interval | TBD | (*2) |
-|  BIT | bit | TBD |  (*2)  |
-|  BIT VARYING | bit varying | TBD  |  (*2)  |
-|  ARRAY | array | TBD |  (*2)  |
-|  ROW | record | TBD |  (*2)   |
-|  (該当なし) | octet | TBD | (*2)(*3) |
-|  (該当なし) | octet varying | TBD | (*2)(*3) |
+| SQL          | Tsurugi           | Parquet                                                                                      | 備考       |
+|--------------|-------------------|----------------------------------------------------------------------------------------------|----------|
+| BOOLEAN      | boolean           | Primitive Type: BOOLEAN                                                                      | (*1)     |
+| TINYINT      | int1              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 8 <br> signed: true               | (*1)     |
+| SMALLINT     | int2              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 16 <br> signed: true              | (*1)     |
+| INT          | int4              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 32 <br> signed: true              |          |
+| BIGINT       | int8              | Primitive Type: INT64<br>Logical Type: INT <br> bit width: 64 <br> signed: true              |          |
+| REAL         | float4            | Primitive Type: FLOAT                                                                        |          |
+| DOUBLE       | float8            | Primitive Type: DOUBLE                                                                       |          |
+| CHAR         | character         | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |          |
+| VARCHAR      | character varying | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |          |
+| DECIMAL(p,s) | decimal           | Primitive Type: BYTE_ARRAY <br>Logical Type: DECIMAL<br> precision: p <br> scale: s          | (*1)     |
+| DATE         | date              | Primitive Type: INT32 <br>Logical Type: DATE                                                 | (*1)     |
+| TIME         | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: true<br>unit: MICROS       | (*1)     |
+| TIMESTAMP    | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: true<br> unit: MICROS | (*1)     |
+| INTERVAL     | datetime_interval | TBD                                                                                          | (*2)     |
+| BIT          | bit               | TBD                                                                                          | (*2)     |
+| BIT VARYING  | bit varying       | TBD                                                                                          | (*2)     |
+| ARRAY        | array             | TBD                                                                                          | (*2)     |
+| ROW          | record            | TBD                                                                                          | (*2)     |
+| (該当なし)       | octet             | TBD                                                                                          | (*2)(*3) |
+| (該当なし)       | octet varying     | TBD                                                                                          | (*2)(*3) |
 
 (*0) Parquetのデータ型はPrimitive Type([TY])とLogical Type([LT])で表される。詳細はリンク先の文書を参照。
 

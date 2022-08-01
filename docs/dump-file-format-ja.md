@@ -31,10 +31,10 @@
 | DOUBLE       | float8            | Primitive Type: DOUBLE                                                                       |          |
 | CHAR         | character         | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |          |
 | VARCHAR      | character varying | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |          |
-| DECIMAL(p,s) | decimal           | Primitive Type: BYTE_ARRAY <br>Logical Type: DECIMAL<br> precision: p <br> scale: s          | (*1)     |
-| DATE         | date              | Primitive Type: INT32 <br>Logical Type: DATE                                                 | (*1)     |
-| TIME         | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: true<br>unit: MICROS       | (*1)     |
-| TIMESTAMP    | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: true<br> unit: MICROS | (*1)     |
+| DECIMAL(p,s) | decimal           | Primitive Type: BYTE_ARRAY <br>Logical Type: DECIMAL<br> precision: p <br> scale: s          |          |
+| DATE         | date              | Primitive Type: INT32 <br>Logical Type: DATE                                                 |          |
+| TIME         | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: true<br>unit: NANOS        |          |
+| TIMESTAMP    | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: true<br> unit: NANOS  |          |
 | INTERVAL     | datetime_interval | TBD                                                                                          | (*2)     |
 | BIT          | bit               | TBD                                                                                          | (*2)     |
 | BIT VARYING  | bit varying       | TBD                                                                                          | (*2)     |

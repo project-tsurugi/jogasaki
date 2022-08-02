@@ -38,7 +38,7 @@ public:
         bytes_per_line_(bytes_per_line)
     {}
 
-    constexpr binary_printer(std::string_view s) noexcept :
+    constexpr explicit binary_printer(std::string_view s) noexcept :
         ptr_(s.data()),
         size_(s.size())
     {}

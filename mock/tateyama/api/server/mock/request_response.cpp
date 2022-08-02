@@ -114,6 +114,14 @@ void test_channel::set_on_write(std::function<void(std::string_view)> on_write) 
     on_write_ = std::move(on_write);
 }
 
+std::vector<std::string_view> test_channel::view() const {
+    std::vector<std::string_view> ret{};
+    for(auto&& w : buffers_) {
+        ret.emplace_back(w->view());
+    }
+    return ret;
+}
+
 std::string_view view_of(std::stringstream& stream) {
     struct accessor : public std::stringbuf {
         static char const* data(accessor const* p) {
@@ -163,7 +171,7 @@ void test_writer::set_on_write(std::function<void(std::string_view)> on_write) {
     on_write_ = std::move(on_write);
 }
 
-std::string_view test_writer::view() noexcept {
+std::string_view test_writer::view() const noexcept {
     return view_of(*buf_);
 }
 

@@ -65,7 +65,7 @@ public:
 
     void set_on_write(std::function<void(std::string_view)> on_write);
 
-    [[nodiscard]] std::string_view view() noexcept;
+    [[nodiscard]] std::string_view view() const noexcept;
 private:
     std::stringstream* buf_{};
     std::function<void(std::string_view)> on_write_{};
@@ -99,6 +99,8 @@ public:
     [[nodiscard]] bool all_released() const noexcept;
 
     void set_on_write(std::function<void(std::string_view)> on_write);
+
+    std::vector<std::string_view> view() const;
 
     std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
     std::size_t released_{};  //NOLINT

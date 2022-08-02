@@ -48,6 +48,9 @@ public:
 
     void release() override;
 
+    void mark_end_of_contents() override {
+        // no-op
+    }
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>>& partitions_;

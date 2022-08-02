@@ -182,6 +182,12 @@ public:
         for(std::size_t i=0, n=varlen_fields_.size(); i<n; ++i) {
             varlen_fields_[i].assign(other.varlen_fields_[i]);
         }
+        for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
+            auto& f = meta_->at(i);
+            if(f.kind() == meta::field_type_kind::character) {
+
+            }
+        }
     }
 
     basic_record& operator=(basic_record const& other) {

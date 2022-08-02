@@ -78,5 +78,9 @@ bool basic_record_writer::is_released() const noexcept {
 bool basic_record_writer::is_acquired() const noexcept {
     return acquired_;
 }
+
+void basic_record_writer::mark_end_of_contents() {
+    // no-op
+}
 }
 

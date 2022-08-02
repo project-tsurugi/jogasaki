@@ -47,6 +47,10 @@ void result_store_channel_writer::flush() {
     // no-op
 }
 
+void result_store_channel_writer::mark_end_of_contents() {
+    //no-op
+}
+
 result_store_channel::result_store_channel(maybe_shared_ptr<data::result_store> store) noexcept:
     store_(std::move(store))
 {}

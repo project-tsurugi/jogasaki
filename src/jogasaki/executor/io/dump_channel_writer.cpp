@@ -100,4 +100,7 @@ void dump_channel_writer::flush() {
     }
 }
 
+void dump_channel_writer::mark_end_of_contents() {
+    writer_->mark_end_of_contents();
+}
 }

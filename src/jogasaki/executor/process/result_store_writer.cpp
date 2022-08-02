@@ -45,4 +45,8 @@ result_store_writer::result_store_writer(
     meta_(std::move(meta))
 {}
 
+void result_store_writer::mark_end_of_contents() {
+    // no-op
+}
+
 }

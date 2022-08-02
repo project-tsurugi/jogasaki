@@ -80,6 +80,10 @@ public:
      */
     void release() override;
 
+    /**
+     * @brief declare end-of-contents to notify all contents are completed
+     */
+    void mark_end_of_contents() override;
 private:
     dump_channel* parent_{};
     maybe_shared_ptr<record_writer> writer_{};

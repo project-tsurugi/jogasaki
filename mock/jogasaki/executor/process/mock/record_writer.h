@@ -83,6 +83,10 @@ public:
 
     void acquire();
 
+    /**
+     * @brief declare end-of-contents to notify all contents are completed
+     */
+    void mark_end_of_contents() override;
     [[nodiscard]] std::size_t size() const noexcept;
 
     [[nodiscard]] records_type const& records() const noexcept;

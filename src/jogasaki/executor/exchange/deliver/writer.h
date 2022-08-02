@@ -44,6 +44,9 @@ public:
 
     }
 
+    void mark_end_of_contents() override {
+        // no-op
+    }
 private:
 };
 

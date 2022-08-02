@@ -48,6 +48,7 @@ public:
 
     void release() override;
 
+    void mark_end_of_contents() override;
 private:
     data::iterable_record_store* store_{};
     maybe_shared_ptr<meta::record_meta> meta_{};

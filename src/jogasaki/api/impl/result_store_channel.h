@@ -60,6 +60,11 @@ public:
     void release() override;
 
     /**
+     * @brief declare end-of-contents to notify all contents are completed
+     */
+    void mark_end_of_contents() override;
+
+    /**
      * @brief accessor to the partition index that the writer belongs
      * @return the partition index
      */

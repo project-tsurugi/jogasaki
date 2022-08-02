@@ -48,6 +48,11 @@ public:
     virtual void release() = 0;
 
     /**
+     * @brief declare end-of-contents to notify all contents are completed
+     */
+    virtual void mark_end_of_contents() = 0;
+
+    /**
      * @brief creates a new instance.
      */
     record_writer() = default;

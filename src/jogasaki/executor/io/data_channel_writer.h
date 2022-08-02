@@ -73,6 +73,11 @@ public:
      */
     void release() override;
 
+    /**
+     * @brief declare end-of-contents to notify all contents are completed
+     */
+    void mark_end_of_contents() override;
+
 private:
     api::data_channel* channel_{};
     std::shared_ptr<api::writer> writer_{};

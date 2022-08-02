@@ -35,6 +35,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/api/impl/service.h>
+#include <jogasaki/utils/storage_data.h>
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"

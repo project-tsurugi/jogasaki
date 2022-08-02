@@ -67,6 +67,13 @@ public:
         released_ = true;
     }
 
+    /**
+     * @brief declare end-of-contents to notify all contents are completed
+     */
+    void mark_end_of_contents() override {
+        // no-op
+    }
+
     void acquire() {
         acquired_ = true;
     }

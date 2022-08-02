@@ -56,7 +56,7 @@ std::vector<mock::basic_record> deserialize_msg(
     while(it < end) {
         auto typ = takatori::serializer::peek_type(it, end);
         if (typ == takatori::serializer::entry_type::row) {
-            auto num_columns = takatori::serializer::read_row_begin(it, end);
+            [[maybe_unused]] auto num_columns = takatori::serializer::read_row_begin(it, end);
             BOOST_ASSERT(num_columns == meta.field_count());
             continue;
         }

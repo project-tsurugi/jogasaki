@@ -41,6 +41,7 @@
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/utils/latch.h>
+#include <jogasaki/utils/storage_data.h>
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"

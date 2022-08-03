@@ -325,4 +325,4 @@ inline void load_storage_data(
     }
 }
 
-} //namespace
+} //namespace jogasaki::utils

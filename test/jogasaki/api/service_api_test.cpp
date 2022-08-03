@@ -344,11 +344,8 @@ void service_api_test::test_query(
         {
             ASSERT_TRUE(res->channel_);
             auto& ch = *res->channel_;
-            ASSERT_EQ(1, ch.buffers_.size());
-            ASSERT_TRUE(ch.buffers_[0]);
-            auto& buf = *ch.buffers_[0];
             auto m = create_record_meta(cols);
-            auto v = deserialize_msg(buf.view(), m);
+            auto v = deserialize_msg(ch.view(), m);
             ASSERT_EQ(expected.size(), v.size());
             for(std::size_t i=0, n=v.size(); i<n; ++i) {
                 EXPECT_EQ(expected[i], v[i]);
@@ -453,12 +450,8 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
-                ASSERT_EQ(1, ch.buffers_.size());
-                ASSERT_TRUE(ch.buffers_[0]);
-                auto& buf = *ch.buffers_[0];
-                ASSERT_LT(0, buf.view().size());
                 auto m = create_record_meta(cols);
-                auto v = deserialize_msg(buf.view(), m);
+                auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
                 EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), v[0]);
                 EXPECT_TRUE(ch.all_released());
@@ -575,13 +568,8 @@ TEST_F(service_api_test, data_types) {
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
-                ASSERT_EQ(1, ch.buffers_.size());
-                ASSERT_TRUE(ch.buffers_[0]);
-                auto& buf = *ch.buffers_[0];
-                ASSERT_LT(0, buf.view().size());
-                std::cout << "buf size : " << buf.view().size() << std::endl;
                 auto m = create_record_meta(cols);
-                auto v = deserialize_msg(buf.view(), m);
+                auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(2, v.size());
                 auto exp1 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(1, 1, 1.0, 1.0, accessor::text{"1"sv});
                 auto exp2 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(2, 2, 2.0, 2.0, accessor::text{"2"sv});
@@ -921,12 +909,8 @@ void service_api_test::test_dump(std::vector<std::string>& files, std::string_vi
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
-                ASSERT_LT(0, ch.buffers_.size());
-                ASSERT_TRUE(ch.buffers_[0]);
-                auto& buf = *ch.buffers_[0];
-                ASSERT_LT(0, buf.view().size());
                 auto m = create_record_meta(cols);
-                auto v = deserialize_msg(buf.view(), m);
+                auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
                 LOG(INFO) << v[0];
                 files.emplace_back(static_cast<std::string>(v[0].get_value<accessor::text>(0)));
@@ -1002,12 +986,8 @@ TEST_F(service_api_test, dump_error_with_query_result) {
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
-                ASSERT_LT(0, ch.buffers_.size());
-                ASSERT_TRUE(ch.buffers_[0]);
-                auto& buf = *ch.buffers_[0];
-                ASSERT_LT(0, buf.view().size());
                 auto m = create_record_meta(cols);
-                auto v = deserialize_msg(buf.view(), m);
+                auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
                 LOG(INFO) << v[0];
                 boost::filesystem::path p{static_cast<std::string>(v[0].get_value<accessor::text>(0))};

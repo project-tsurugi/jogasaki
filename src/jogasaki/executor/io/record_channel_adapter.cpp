@@ -49,15 +49,7 @@ status record_channel_adapter::meta(maybe_shared_ptr<meta::external_record_meta>
 }
 
 status record_channel_adapter::close() {
-    if (acquired_writers_ == 0) {
-        // result set requires end-of-contents marker even if there is no output records
-        // so acquire and release here in order to emit the marker by release
-        std::shared_ptr<record_writer> writer{};
-        if(auto res = acquire(writer); res != status::ok) {
-            fail();
-        }
-        writer->release();
-    }
+// TODO remove
     return status::ok;
 }
 }

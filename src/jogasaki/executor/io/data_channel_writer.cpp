@@ -67,7 +67,6 @@ void data_channel_writer::flush() {
 }
 
 void data_channel_writer::release() {
-    value_writer_->write_end_of_contents();
     {
         trace_scope_name("data_channel::release");  //NOLINT
         channel_->release(*writer_);

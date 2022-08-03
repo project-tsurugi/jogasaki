@@ -182,6 +182,7 @@ public:
         for(std::size_t i=0, n=varlen_fields_.size(); i<n; ++i) {
             varlen_fields_[i].assign(other.varlen_fields_[i]);
         }
+        // TODO correct varlen field reference from accessor::text fields
     }
 
     basic_record& operator=(basic_record const& other) {

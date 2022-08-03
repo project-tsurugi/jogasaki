@@ -109,6 +109,10 @@
 | `0xfe` | `end_of_contents` | `#fe` | 値の列の明示的な終端
 | `0xff` | _reserved_ | `#ff`
 
+### EOFの取り扱い
+
+* result setの送受信用のストリーム終端には無限個の END_OF_CONTENTS が並んでいるとみなす
+
 ### `int` の取り扱い
 
 * `int` は `takatori` 上の次の型を表すことができる

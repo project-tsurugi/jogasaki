@@ -122,6 +122,7 @@ public:
         ASSERT_TRUE(message.empty());
         if (empty_output) {
             ASSERT_TRUE(ch.writers_.empty());
+            ASSERT_EQ(status::ok, tx.commit());
             return;
         }
         ASSERT_FALSE(ch.writers_.empty());

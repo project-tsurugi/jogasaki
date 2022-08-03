@@ -15,15 +15,11 @@
  */
 #include "record_channel_adapter.h"
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/data_channel.h>
 
 namespace jogasaki::executor::io {
-
-using takatori::util::fail;
 
 record_channel_adapter::record_channel_adapter(maybe_shared_ptr<api::data_channel> channel) noexcept:
     channel_(std::move(channel))
@@ -35,7 +31,6 @@ status record_channel_adapter::acquire(std::shared_ptr<record_writer>& wrt) {
         return res;
     }
     wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_->origin());
-    ++acquired_writers_;
     return status::ok;
 }
 
@@ -48,8 +43,4 @@ status record_channel_adapter::meta(maybe_shared_ptr<meta::external_record_meta>
     return status::ok;
 }
 
-status record_channel_adapter::close() {
-// TODO remove
-    return status::ok;
-}
 }

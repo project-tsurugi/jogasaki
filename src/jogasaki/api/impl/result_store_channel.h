@@ -105,12 +105,6 @@ public:
      */
     status meta(maybe_shared_ptr<meta::external_record_meta> m) override;
 
-    /**
-     * @brief close the channel
-     * @details channel is open on creation and must be closed when finished. The acquired writers must be released
-     * before closing channel, otherwise the behavior is undefined.
-     */
-    status close() override;
 private:
     maybe_shared_ptr<data::result_store> store_{};
 };

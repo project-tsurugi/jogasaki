@@ -68,13 +68,6 @@ public:
      * @param m the metadata with that the writer uses for the output data
      */
     virtual status meta(maybe_shared_ptr<meta::external_record_meta> m) = 0;
-
-    /**
-     * @brief close the channel
-     * @details channel is open on creation and must be closed when finished. The acquired writers must be released
-     * before closing channel, otherwise the behavior is undefined.
-     */
-    virtual status close() = 0;
 };
 
 }

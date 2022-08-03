@@ -249,11 +249,7 @@ bool transaction::execute_context(
         job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
-            if(channel) {
-                if(auto res = channel->close(); res != status::ok) {
-                    VLOG(log_error) << "closing channel failed. This should not happen normally: " << res;
-                }
-            }
+            (void)channel;
             on_completion(rctx->status_code(), rctx->status_message());
         });
 

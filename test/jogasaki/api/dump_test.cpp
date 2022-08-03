@@ -120,16 +120,17 @@ public:
         while(! run.load()) {}
         ASSERT_EQ(expected, s);
         ASSERT_TRUE(message.empty());
+        if (empty_output) {
+            ASSERT_TRUE(ch.writers_.empty());
+            return;
+        }
+        ASSERT_FALSE(ch.writers_.empty());
         auto& wrt = ch.writers_[0];
         ASSERT_TRUE(stmt.meta());
         auto m = create_file_meta();
         auto recs = deserialize_msg({wrt->data_.data(), wrt->size_}, *m->origin());
         if(expected == status::ok) {
-            if (empty_output) {
-                ASSERT_EQ(0, recs.size());
-            } else {
-                ASSERT_LT(0, recs.size());
-            }
+            ASSERT_LT(0, recs.size());
         }
         for(auto&& x : recs) {
             LOG(INFO) << x;

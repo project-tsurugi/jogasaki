@@ -47,8 +47,7 @@ void set_null(accessor::record_ref ref, std::size_t index, meta::record_meta& me
 
 std::vector<mock::basic_record> deserialize_msg(
     std::string_view data,
-    meta::record_meta& meta,
-    deserialize_result& result
+    meta::record_meta& meta
 ) {
     takatori::util::buffer_view buf{const_cast<char*>(data.data()), data.size()};
     std::vector<mock::basic_record> ret{};
@@ -64,7 +63,6 @@ std::vector<mock::basic_record> deserialize_msg(
         if (typ == takatori::serializer::entry_type::end_of_contents) {
             takatori::serializer::read_end_of_contents(it, end);
             BOOST_ASSERT(it == end);
-            result.saw_end_of_contents_ = true;
             break;
         }
         auto& record = ret.emplace_back(maybe_shared_ptr{&meta});
@@ -95,24 +93,15 @@ std::vector<mock::basic_record> deserialize_msg(
 
 std::vector<mock::basic_record> deserialize_msg(
     std::vector<std::string_view> const& data,
-    meta::record_meta& meta,
-    deserialize_result& result
+    meta::record_meta& meta
 ) {
     std::vector<mock::basic_record> ret{};
     for(auto sv : data) {
-        auto res = deserialize_msg(sv, meta, result);
+        auto res = deserialize_msg(sv, meta);
+        // TODO basic_record is move only for now
         ret.insert(ret.end(), std::move_iterator{res.begin()}, std::move_iterator{res.end()});
     }
     return ret;
 }
 
-std::vector<mock::basic_record> deserialize_msg(std::string_view data, meta::record_meta& meta) {
-    deserialize_result result{};
-    return deserialize_msg(data, meta, result);
-}
-
-std::vector<mock::basic_record> deserialize_msg(std::vector<std::string_view> const& data, meta::record_meta& meta) {
-    deserialize_result result{};
-    return deserialize_msg(data, meta, result);
-}
 }

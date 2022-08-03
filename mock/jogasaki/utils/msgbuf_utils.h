@@ -24,10 +24,6 @@
 
 namespace jogasaki::utils {
 
-struct deserialize_result {
-    bool saw_end_of_contents_{false};
-};
-
 void set_null(accessor::record_ref ref, std::size_t index, meta::record_meta& meta);
 
 std::vector<mock::basic_record> deserialize_msg(
@@ -36,20 +32,8 @@ std::vector<mock::basic_record> deserialize_msg(
 );
 
 std::vector<mock::basic_record> deserialize_msg(
-    std::string_view data,
-    jogasaki::meta::record_meta& meta,
-    deserialize_result& result
-);
-
-std::vector<mock::basic_record> deserialize_msg(
     std::vector<std::string_view> const& data,
     jogasaki::meta::record_meta& meta
-);
-
-std::vector<mock::basic_record> deserialize_msg(
-    std::vector<std::string_view> const& data,
-    jogasaki::meta::record_meta& meta,
-    deserialize_result& result
 );
 
 }

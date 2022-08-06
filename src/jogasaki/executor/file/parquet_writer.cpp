@@ -32,6 +32,7 @@
 namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::fail;
 
 using parquet::ConvertedType;
 using parquet::Repetition;
@@ -75,6 +76,10 @@ bool parquet_writer::write(accessor::record_ref ref) {
                 case k::float4: write_float4(i, ref.get_value<float>(meta_->value_offset(i)), null); break;
                 case k::float8: write_float8(i, ref.get_value<double>(meta_->value_offset(i)), null); break;
                 case k::character: write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i)), null); break;
+                case k::decimal: write_decimal(i, ref.get_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i)), null); break;
+                case k::date: write_date(i, ref.get_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i)), null); break;
+                case k::time_of_day: write_time_of_day(i, ref.get_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i)), null); break;
+                case k::time_point: write_time_point(i, ref.get_value<runtime_t<meta::field_type_kind::time_point>>(meta_->value_offset(i)), null); break;
                 default:
                     break;
             }
@@ -147,6 +152,29 @@ void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
     writer->WriteBatch(1, &definition_level, nullptr, &value);
 }
 
+void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null) {
+    (void) colidx;
+    (void) v;
+    (void) null;
+    fail();
+}
+
+void parquet_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null) {
+    auto d = static_cast<std::int32_t>(v.days_since_epoch());
+    write_int4(colidx, d, null);
+}
+
+void parquet_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null) {
+    auto ns = static_cast<std::int64_t>(v.time_since_epoch().count());
+    write_int8(colidx, ns, null);
+}
+
+void parquet_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null) {
+    auto secs = static_cast<std::int64_t>(v.seconds_since_epoch().count());
+    auto subsecs = static_cast<std::int64_t>(v.subsecond().count());
+    write_int8(colidx, secs*1000*1000*1000 + subsecs, null);
+}
+
 bool parquet_writer::close() {
     try {
         file_writer_->Close();
@@ -195,6 +223,22 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
             }
             case meta::field_type_kind::character: {
                 fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::String(), Type::BYTE_ARRAY));
+                break;
+            }
+            case meta::field_type_kind::decimal: {
+                fail();
+                break;
+            }
+            case meta::field_type_kind::date: {
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Date(), Type::INT32));
+                break;
+            }
+            case meta::field_type_kind::time_of_day: {
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Time(true, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
+                break;
+            }
+            case meta::field_type_kind::time_point: {
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Timestamp(true, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
                 break;
             }
             default:

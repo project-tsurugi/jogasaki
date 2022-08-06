@@ -86,6 +86,46 @@ accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::Colu
     fail();
 }
 
+template <>
+runtime_t<meta::field_type_kind::decimal>
+    read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(
+        parquet::ColumnReader& reader,
+        bool& null,
+        bool& nodata
+        ) {
+    (void) reader;
+    (void) null;
+    (void) nodata;
+    fail();
+}
+
+template <>
+runtime_t<meta::field_type_kind::date> read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(
+        parquet::ColumnReader& reader,
+        bool& null,
+        bool& nodata) {
+        auto x = read_data<std::int32_t, parquet::Int32Reader>(reader, null, nodata);
+        return runtime_t<meta::field_type_kind::date>{x};
+}
+
+template <>
+runtime_t<meta::field_type_kind::time_of_day> read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(
+        parquet::ColumnReader& reader,
+        bool& null,
+        bool& nodata) {
+        auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, null, nodata);
+        return runtime_t<meta::field_type_kind::time_of_day>{std::chrono::nanoseconds{x}};
+}
+
+template <>
+runtime_t<meta::field_type_kind::time_point> read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(
+    parquet::ColumnReader& reader,
+    bool& null,
+    bool& nodata) {
+    auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, null, nodata);
+    return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+}
+
 bool parquet_reader::next(accessor::record_ref& ref) {
     ref = accessor::record_ref{buf_.data(), buf_.capacity()};
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {

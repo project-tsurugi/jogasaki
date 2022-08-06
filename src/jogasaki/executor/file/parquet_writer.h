@@ -93,6 +93,10 @@ private:
     void write_float4(std::size_t colidx, float v, bool null = false);
     void write_float8(std::size_t colidx, double v, bool null = false);
     void write_character(std::size_t colidx, accessor::text v, bool null = false);
+    void write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null = false);
+    void write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
+    void write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
+    void write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
     bool init(std::string_view path);
 };
 

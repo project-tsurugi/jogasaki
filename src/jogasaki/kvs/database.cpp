@@ -64,7 +64,12 @@ std::unique_ptr<transaction> database::create_transaction(
     bool is_long,
     std::vector<std::string> const& write_preserve
 ) {
-    return std::make_unique<transaction>(*this, readonly, is_long, write_preserve);
+    kvs::transaction_option opts{
+        readonly ? transaction_option::transaction_type::read_only:
+            (is_long ? transaction_option::transaction_type::ltx : transaction_option::transaction_type::occ),
+            write_preserve
+    };
+    return std::make_unique<transaction>(*this, opts);
 }
 
 std::unique_ptr<storage> database::create_storage(std::string_view name, std::uint64_t storage_id) {

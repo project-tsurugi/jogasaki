@@ -22,6 +22,8 @@
 #include <sharksfin/api.h>
 #include <jogasaki/status.h>
 
+#include <jogasaki/kvs/transaction_option.h>
+
 namespace jogasaki::kvs {
 
 using ::takatori::util::fail;
@@ -41,14 +43,11 @@ public:
     /**
      * @brief create new object
      * @param db the parent database that the transaction runs on
-     * @param readonly whether the transaction is read-only
-     * @param is_long whether the transaction is long batch
-     * @param write_preserves write preserve storage names
+     * @param options the options for newly created transaction
      */
-    explicit transaction(kvs::database& db,
-        bool readonly = false,
-        bool is_long= false,
-        std::vector<std::string> const& write_preserves = {}
+    explicit transaction(
+        kvs::database& db,
+        kvs::transaction_option const& options = {}
     );
 
     /**

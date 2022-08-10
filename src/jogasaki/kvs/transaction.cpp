@@ -24,16 +24,25 @@
 
 namespace jogasaki::kvs {
 
+sharksfin::TransactionOptions::TransactionType type(kvs::transaction_option::transaction_type type) {
+    using k = kvs::transaction_option::transaction_type;
+    using s = sharksfin::TransactionOptions::TransactionType;
+    switch (type) {
+        case k::occ: return s::SHORT;
+        case k::ltx: return s::LONG;
+        case k::read_only: return s::READ_ONLY;
+    }
+    fail();
+}
+
 transaction::transaction(
     kvs::database &db,
-    bool readonly,
-    bool is_long,
-    std::vector<std::string> const& write_preserves
+    kvs::transaction_option const& options
 ) : database_(std::addressof(db)) {
     sharksfin::TransactionOptions::WritePreserves wps{};
     std::vector<std::unique_ptr<kvs::storage>> stgs{}; // to keep storages during transaction_begin call
-    stgs.reserve(write_preserves.size());
-    for(auto&& wp : write_preserves) {
+    stgs.reserve(options.write_preserves().size());
+    for(auto&& wp : options.write_preserves()) {
         auto s = db.get_storage(wp);
         if(! s) {
             VLOG(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
@@ -42,17 +51,14 @@ transaction::transaction(
         wps.emplace_back(s->handle());
         stgs.emplace_back(std::move(s));
     }
-    sharksfin::TransactionOptions options{
-        is_long ? sharksfin::TransactionOptions::TransactionType::LONG : sharksfin::TransactionOptions::TransactionType::SHORT,
-        std::move(wps)
+    sharksfin::TransactionOptions opts{
+        type(options.type()),
+        std::move(wps),
     };
-    if (readonly) {
-        options.transaction_type(sharksfin::TransactionOptions::TransactionType::READ_ONLY);
-    }
-    if(auto res = sharksfin::transaction_begin(db.handle(), options, &tx_); res != sharksfin::StatusCode::OK) {
+    if(auto res = sharksfin::transaction_begin(db.handle(), opts, &tx_); res != sharksfin::StatusCode::OK) {
         fail();
     }
-    if(is_long) {
+    if(options.type() == transaction_option::transaction_type::ltx) {
         utils::backoff_waiter waiter{};
         while(true) {
             auto st = check_state().state_kind();

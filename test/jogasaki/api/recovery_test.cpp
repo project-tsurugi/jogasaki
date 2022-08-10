@@ -267,4 +267,26 @@ TEST_F(recovery_test, recover_create_index) {
         ASSERT_EQ(status::err_already_exists, db_->create_index(i));
     }
 }
+
+TEST_F(recovery_test, recover_ddl) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE TEST (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TEST", result);
+        ASSERT_EQ(1, result.size());
+    }
+    execute_statement("DROP TABLE TEST");
+    execute_statement("CREATE TABLE TEST (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TEST", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

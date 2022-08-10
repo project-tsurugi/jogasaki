@@ -115,8 +115,7 @@ bool write::operator()(request_context& context) const {
                 if (opt == kvs::put_option::create && res == status::err_already_exists) {
                     if(kind_ == write_kind::insert) {
                         // integrity violation should be handled in SQL layer and forces transaction abort
-//                        TODO abort requires fix in sharksfin-memory
-//                        (void)tx->abort();
+                        (void)tx->abort();
                     } else {
                         // write_kind::insert_skip
                         // duplicated key is simply ignored

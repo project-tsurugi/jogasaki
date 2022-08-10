@@ -229,7 +229,11 @@ void api_test_base::execute_statement(
 ) {
     auto tx = utils::create_transaction(*db_);
     execute_statement(prepared, variables, params, *tx, expected);
-    tx->commit();
+    if (expected == status::ok) {
+        ASSERT_EQ(status::ok, tx->commit());
+    } else {
+        ASSERT_EQ(status::ok, tx->abort());
+    }
 }
 
 void api_test_base::execute_statement(api::statement_handle prepared, api::transaction_handle& tx, status expected) {

@@ -170,7 +170,7 @@ TEST_F(recovery_test, system_table) {
     }
 }
 
-// TODO to be investigated
+// TODO recovery currently recovers deleted records
 TEST_F(recovery_test, DISABLED_delete) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";

@@ -117,9 +117,12 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
             tctx->decrement_worker_count();
         }
     }
+    auto jobid = job()->id();
     auto cnt = --job()->task_count();
+    // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown job to finish.
     (void)cnt;
-    VLOG(log_debug) << "decremented job " << job()->id() << " task count to " << cnt;
+    (void)jobid;
+    VLOG(log_debug) << "decremented job " << jobid << " task count to " << cnt;
     if(! job_completes) {
         return;
     }

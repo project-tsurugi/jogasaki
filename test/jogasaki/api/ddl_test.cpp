@@ -225,10 +225,60 @@ TEST_F(ddl_test, primary_key_columns_only) {
     }
 }
 
-TEST_F(ddl_test, missing_primary_key) {
+TEST_F(ddl_test, without_primary_key) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::err_compiler_error, db_->prepare("CREATE TABLE T (C0 BIGINT NOT NULL, C1 DOUBLE)", variables, prepared));
+    execute_statement("CREATE TABLE T (C0 BIGINT NOT NULL, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(1, 1.0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(3, 3.0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(2, 2.0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T ORDER BY C0", result);
+        ASSERT_EQ(3, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 2.0), {false, false})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 3.0), {false, false})), result[2]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0,C1 FROM T ORDER BY C0", result);
+        ASSERT_EQ(3, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 2.0), {false, false})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 3.0), {false, false})), result[2]);
+    }
+}
+
+TEST_F(ddl_test, dml_pkless) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    execute_statement("CREATE TABLE T (C0 BIGINT, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(1, 1.0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
+    }
+    execute_statement("DELETE FROM T");
+    wait_epochs(2);
+    execute_statement("INSERT INTO T (C0) VALUES(2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 0.0), {false, true})), result[0]);
+    }
+    execute_statement("DELETE FROM T WHERE C0=2");
+    wait_epochs(2);
+    execute_statement("INSERT INTO T (C1) VALUES(3.0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(0, 3.0), {true, false})), result[0]);
+    }
 }
 
 TEST_F(ddl_test, type_name_variants) {

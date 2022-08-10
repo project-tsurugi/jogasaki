@@ -27,6 +27,27 @@ using ::yugawara::storage::table;
 namespace schema = ::yugawara::schema;
 
 /**
+ * @brief result information on prototype processing
+ */
+class storage_processor_result {
+public:
+    storage_processor_result() = default;
+
+    explicit storage_processor_result(
+        bool primary_key_generated,
+        std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence
+    );
+
+    [[nodiscard]] bool primary_key_generated() const noexcept;
+
+    [[nodiscard]] std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence() const noexcept;
+
+private:
+    bool primary_key_generated_{};
+    std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence_{};
+};
+
+/**
  * @brief prototype processor to adapt jogasaki specific table/index impl. details
  */
 class storage_processor : public ::yugawara::storage::basic_prototype_processor {
@@ -46,17 +67,33 @@ public:
     storage_processor(storage_processor&& other) noexcept = delete;
     storage_processor& operator=(storage_processor&& other) noexcept = delete;
 
+    /**
+     * @see basic_prototype_processor::ensure()
+     */
     bool ensure(
         schema::declaration const& location,
         table& table_prototype,
         index& primary_index_prototype,
         diagnostic_consumer_type const& diagnostic_consumer
-    ) override;;
+    ) override;
 
+    /**
+     * @see basic_prototype_processor::ensure()
+     */
     bool ensure(
         schema::declaration const& location,
         index& secondary_index_prototype,
         diagnostic_consumer_type const& diagnostic_consumer) override;
+
+    /**
+     * @brief accessor to the prototype processing result
+     * @return the result of ensure()
+     */
+    [[nodiscard]] storage_processor_result result() const noexcept;
+
+private:
+    bool primary_key_generated_{};
+    std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence_;
 };
 
 }

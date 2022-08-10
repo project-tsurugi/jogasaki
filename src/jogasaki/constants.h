@@ -52,4 +52,9 @@ constexpr static std::size_t approx_index_count_per_table = 5;
  */
 constexpr std::size_t default_record_buffer_size = 1024;
 
+/**
+ * @brief prefix used for generated primary key column name and its sequence
+ */
+constexpr static std::string_view generated_pkey_column_prefix = "__generated_rowid_";
+
 }

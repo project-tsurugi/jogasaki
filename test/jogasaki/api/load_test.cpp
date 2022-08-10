@@ -190,9 +190,6 @@ TEST_F(load_test, basic) {
 }
 
 TEST_F(load_test, wrong_file) {
-    if (jogasaki::kvs::implementation_id() == "memory") {
-        GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
-    }
     std::vector<std::string> files{"dummy.parquet"};
     test_load(files, status::err_aborted);
 }

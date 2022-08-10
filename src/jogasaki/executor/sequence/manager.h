@@ -107,7 +107,7 @@ public:
      * @brief load sequence id mapping from system_sequences table and initialize in-memory sequence objects.
      * @returns the number of sequence entries read from the system table
      */
-    std::size_t load_id_map();
+    std::size_t load_id_map(kvs::transaction* tx = nullptr);
 
     /**
      * @brief register the sequence properties for the definition id
@@ -126,6 +126,7 @@ public:
      * @return the in-memory sequence object just registered
      */
     sequence* register_sequence(
+        kvs::transaction* tx,
         sequence_definition_id def_id,
         std::string_view name,
         sequence_value initial_value = 0,
@@ -141,7 +142,10 @@ public:
      * @details this function retrieves sequence definitions from provider and register one by one.
      * @param provider the config. provider that gives sequences definitions.
      */
-    void register_sequences(maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider);
+    void register_sequences(
+        kvs::transaction* tx,
+        maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider
+    );
 
     /**
      * @brief find sequence
@@ -168,7 +172,10 @@ public:
      * @return true if successful
      * @return false otherwise
      */
-    bool remove_sequence(sequence_definition_id def_id);
+    bool remove_sequence(
+        sequence_definition_id def_id,
+        kvs::transaction* tx = nullptr
+    );
 
     /**
      * @brief accessor to the in-memory sequences objects
@@ -183,8 +190,8 @@ private:
 
     void mark_sequence_used_by(kvs::transaction& tx, sequence& seq);
     std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr<kvs::iterator>& it);
-    void save_id_map();
-    void remove_id_map(sequence_definition_id def_id);
+    void save_id_map(kvs::transaction* tx);
+    void remove_id_map(sequence_definition_id def_id, kvs::transaction* tx);
 };
 
 }

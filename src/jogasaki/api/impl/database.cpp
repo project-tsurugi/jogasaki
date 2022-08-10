@@ -543,8 +543,15 @@ status database::initialize_from_providers() {
         return status::err_io_error;
     }
     sequence_manager_ = std::make_unique<executor::sequence::manager>(*kvs_db_);
-    sequence_manager_->load_id_map();
-    sequence_manager_->register_sequences(tables_);
+    {
+        auto tx = kvs_db_->create_transaction();
+        sequence_manager_->load_id_map(tx.get());
+        sequence_manager_->register_sequences(tx.get(), tables_);
+        if(auto res = tx->commit(); res != status::ok) {
+            LOG(ERROR) << "committing table schema entries failed";
+            return status::err_io_error;
+        }
+    }
     return status::ok;
 }
 

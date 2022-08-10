@@ -49,7 +49,7 @@ TEST_F(sequence_manager_test, simple) {
     provider.add_sequence(storage::sequence{0, "SEQ"});
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
     auto* seq = mgr.find_sequence(0);
     ASSERT_TRUE(seq);
     auto cur = seq->get();
@@ -69,7 +69,7 @@ TEST_F(sequence_manager_test, initialize) {
     provider.add_sequence(storage::sequence{1, "SEQ1"});
     manager mgr{ *db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
 
     ASSERT_EQ(1, mgr.sequences().size());
     auto& info0 = *mgr.sequences().at(1).info();
@@ -98,7 +98,7 @@ TEST_F(sequence_manager_test, sequence_spec) {
     manager mgr{*db_};
     // load mapping from kvs if exists
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
 
     ASSERT_EQ(1, mgr.sequences().size());
     auto& info0 = *mgr.sequences().at(111).info();
@@ -116,12 +116,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     provider.add_sequence(storage::sequence{1, "SEQ1"});
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
     wait_epochs(10);
     provider.add_sequence(storage::sequence{2, "SEQ2"});
     manager mgr2{*db_};
     EXPECT_EQ(1, mgr2.load_id_map());
-    mgr2.register_sequences(maybe_shared_ptr{&provider});
+    mgr2.register_sequences(nullptr, maybe_shared_ptr{&provider});
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr2.sequences().size());
@@ -132,7 +132,7 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
 
     manager mgr3{*db_};
     EXPECT_EQ(2, mgr3.load_id_map());
-    mgr3.register_sequences(maybe_shared_ptr{&provider});
+    mgr3.register_sequences(nullptr, maybe_shared_ptr{&provider});
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr3.sequences().size());
@@ -145,9 +145,9 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
 TEST_F(sequence_manager_test, sequence_manipulation) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequence(1, "SEQ1");
-    mgr.register_sequence(2, "SEQ2");
-    mgr.register_sequence(3, "SEQ3");
+    mgr.register_sequence(nullptr, 1, "SEQ1");
+    mgr.register_sequence(nullptr, 2, "SEQ2");
+    mgr.register_sequence(nullptr, 3, "SEQ3");
     auto* s = mgr.find_sequence(2);
     ASSERT_TRUE(s);
     auto& body = mgr.sequences().at(2);
@@ -188,6 +188,7 @@ TEST_F(sequence_manager_test, sequence_manipulation_varieties) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         100,
@@ -230,6 +231,7 @@ TEST_F(sequence_manager_test, cycle_positive_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         6,
@@ -259,6 +261,7 @@ TEST_F(sequence_manager_test, cycle_negative_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         5,
@@ -288,6 +291,7 @@ TEST_F(sequence_manager_test, no_cycle_positive_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         4,
@@ -315,6 +319,7 @@ TEST_F(sequence_manager_test, no_cycle_negative_incr) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         6,
@@ -343,6 +348,7 @@ TEST_F(sequence_manager_test, cycle_positive_incr_around_intmax) {
     EXPECT_EQ(0, mgr.load_id_map());
     constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         mx-2,
@@ -371,6 +377,7 @@ TEST_F(sequence_manager_test, no_cycle_positive_incr_around_intmax) {
     EXPECT_EQ(0, mgr.load_id_map());
     constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         mx-2,
@@ -398,6 +405,7 @@ TEST_F(sequence_manager_test, cycle_negative_incr_around_intmin) {
     EXPECT_EQ(0, mgr.load_id_map());
     constexpr static sequence_value mi = std::numeric_limits<sequence_value>::min();
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         mi+2,
@@ -426,6 +434,7 @@ TEST_F(sequence_manager_test, no_cycle_negative_incr_around_intmin) {
     EXPECT_EQ(0, mgr.load_id_map());
     constexpr static sequence_value mi = std::numeric_limits<sequence_value>::min();
     mgr.register_sequence(
+        nullptr,
         111,
         "SEQ1",
         mi+2,
@@ -452,8 +461,8 @@ TEST_F(sequence_manager_test, drop_sequence) {
     {
         manager mgr{*db_};
         EXPECT_EQ(0, mgr.load_id_map());
-        mgr.register_sequence(1, "SEQ1");
-        mgr.register_sequence(2, "SEQ3");
+        mgr.register_sequence(nullptr, 1, "SEQ1");
+        mgr.register_sequence(nullptr, 2, "SEQ3");
         auto* s = mgr.find_sequence(2);
         ASSERT_TRUE(s);
 
@@ -471,7 +480,7 @@ TEST_F(sequence_manager_test, drop_sequence) {
     {
         manager mgr{*db_};
         EXPECT_EQ(1, mgr.load_id_map());
-        mgr.register_sequence(2, "SEQ3", 100);
+        mgr.register_sequence(nullptr, 2, "SEQ3", 100);
         auto* s = mgr.find_sequence(2);
         ASSERT_TRUE(s);
 
@@ -494,8 +503,8 @@ TEST_F(sequence_manager_test, save_and_recover) {
     {
         manager mgr{*db_};
         EXPECT_EQ(0, mgr.load_id_map());
-        mgr.register_sequence(1, "SEQ1");
-        mgr.register_sequence(2, "SEQ3");
+        mgr.register_sequence(nullptr, 1, "SEQ1");
+        mgr.register_sequence(nullptr, 2, "SEQ3");
         auto* s = mgr.find_sequence(2);
         ASSERT_TRUE(s);
 
@@ -514,7 +523,7 @@ TEST_F(sequence_manager_test, save_and_recover) {
     {
         manager mgr{*db_};
         EXPECT_EQ(2, mgr.load_id_map());
-        mgr.register_sequence(2, "SEQ3");
+        mgr.register_sequence(nullptr, 2, "SEQ3");
         auto* s = mgr.find_sequence(2);
         ASSERT_TRUE(s);
 

@@ -150,8 +150,8 @@ TEST_F(recovery_test, system_table) {
         LOG(INFO) << "built-in sequences: " << sequences;
     }
     jogasaki::executor::sequence::manager mgr{*db_impl()->kvs_db()};
-    mgr.register_sequence(100, "SEQ100");
-    mgr.register_sequence(200, "SEQ200");
+    mgr.register_sequence(nullptr, 100, "SEQ100");
+    mgr.register_sequence(nullptr, 200, "SEQ200");
     {
         SCOPED_TRACE("sequences are registered");
         std::vector<mock::basic_record> result{};

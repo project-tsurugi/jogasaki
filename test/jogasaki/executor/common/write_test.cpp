@@ -426,7 +426,7 @@ TEST_F(write_test, sequence_value) {
     };
 
     auto mgr = std::make_unique<executor::sequence::manager>(*db_);
-    mgr->register_sequences(tables_);
+    mgr->register_sequences(nullptr, tables_);
     auto tx = std::shared_ptr{db_->create_transaction()};
     auto context = std::make_shared<request_context>(
         std::make_shared<configuration>(),

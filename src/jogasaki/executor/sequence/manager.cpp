@@ -55,9 +55,14 @@ manager::manager(
     sequences_(create_sequences(id_map))
 {}
 
-std::size_t manager::load_id_map() {
+std::size_t manager::load_id_map(kvs::transaction* tx) {
     auto stg = db_->get_or_create_storage(system_sequences_name);
-    auto tx = db_->create_transaction();
+    std::unique_ptr<kvs::transaction> created_tx{};
+    if (! tx) {
+        // for testing purpose
+        created_tx = db_->create_transaction();
+        tx = created_tx.get();
+    }
     std::unique_ptr<kvs::iterator> it{};
     if(auto res = stg->scan(
             *tx,
@@ -77,14 +82,15 @@ std::size_t manager::load_id_map() {
         sequences_[def_id] = details::sequence_element(seq_id);
         ++ret;
     }
-    if(tx->commit() != status::ok) {
-        fail();
+    if (created_tx) {
+        (void)created_tx ->commit();
     }
     VLOG(log_debug) << "Sequences loaded from system table : " << ret;
     return ret;
 }
 
 sequence* manager::register_sequence(
+    kvs::transaction* tx,
     sequence_definition_id def_id,
     std::string_view name,
     sequence_value initial_value,
@@ -122,21 +128,23 @@ sequence* manager::register_sequence(
     sequences_[def_id].sequence(std::make_unique<sequence>(*p, *this, version, value));
 
     if (save_id_map_entry) {
-        save_id_map();
+        save_id_map(tx);
     }
     return sequences_[def_id].sequence();
 }
 
 void manager::register_sequences(
+    kvs::transaction* tx,
     maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider
 ) {
     provider->each_sequence(
-        [this](
+        [this, &tx](
             std::string_view,
             std::shared_ptr<yugawara::storage::sequence const> const& entry
         ) {
             auto def_id = *entry->definition_id();
             register_sequence(
+                tx,
                 def_id,
                 entry->simple_name(),
                 entry->initial_value(),
@@ -148,7 +156,7 @@ void manager::register_sequences(
             );
         }
     );
-    save_id_map();
+    save_id_map(tx);
 }
 
 sequence* manager::find_sequence(sequence_definition_id def_id) {
@@ -172,14 +180,17 @@ bool manager::notify_updates(kvs::transaction& tx) {
     return true;
 }
 
-bool manager::remove_sequence(sequence_definition_id def_id) {
+bool manager::remove_sequence(
+    sequence_definition_id def_id,
+    kvs::transaction* tx
+) {
     if (sequences_.count(def_id) == 0) {
         return false;
     }
     if (auto res = db_->delete_sequence(sequences_[def_id].id()); !res) {
         fail();
     }
-    remove_id_map(def_id);
+    remove_id_map(def_id, tx);
     sequences_.erase(def_id);
     return true;
 }
@@ -223,9 +234,14 @@ std::tuple<sequence_definition_id, sequence_id, bool> manager::read_entry(std::u
     return {def_id, id, true};
 }
 
-void manager::save_id_map() {
+void manager::save_id_map(kvs::transaction* tx) {
+    std::unique_ptr<kvs::transaction> created_tx{};
+    if (! tx) {
+        // for testing purpose
+        created_tx = db_->create_transaction();
+        tx = created_tx.get();
+    }
     auto stg = db_->get_or_create_storage(system_sequences_name);
-    auto tx = db_->create_transaction();
     data::aligned_buffer key_buf{10};
     data::aligned_buffer val_buf{10};
     for(auto& [def_id, element] : sequences_) {
@@ -244,8 +260,8 @@ void manager::save_id_map() {
             fail();
         }
     }
-    if(status::ok != tx->commit()) {
-        fail();
+    if (created_tx) {
+        (void) created_tx->commit();
     }
 }
 
@@ -253,10 +269,17 @@ manager::sequences_type const& manager::sequences() const noexcept {
     return sequences_;
 }
 
-void manager::remove_id_map(sequence_definition_id def_id) {
+void manager::remove_id_map(
+    sequence_definition_id def_id,
+    kvs::transaction* tx
+) {
+    std::unique_ptr<kvs::transaction> created_tx{};
+    if (! tx) {
+        // for testing purpose
+        created_tx = db_->create_transaction();
+        tx = created_tx.get();
+    }
     auto stg = db_->get_or_create_storage(system_sequences_name);
-    auto tx = db_->create_transaction();
-
     data::aligned_buffer key_buf{10};
     kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
@@ -267,8 +290,8 @@ void manager::remove_id_map(sequence_definition_id def_id) {
         ); res != status::ok && res != status::not_found) {
         fail();
     }
-    if(tx->commit() != status::ok) {
-        fail();
+    if (created_tx) {
+        (void) created_tx->commit();
     }
 }
 

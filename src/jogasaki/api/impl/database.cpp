@@ -286,6 +286,38 @@ status database::validate_option(transaction_option const& option) {
     }
     return status::ok;
 }
+
+std::vector<std::string> add_secondary_indices(
+    std::vector<std::string> const& write_preserves,
+    yugawara::storage::configurable_provider const& tables
+) {
+    std::vector<std::string> ret{};
+    ret.reserve(write_preserves.size()*approx_index_count_per_table);
+    for(auto&& wp : write_preserves) {
+        auto t = tables.find_table(wp);
+        if(! t) continue;
+        tables.each_index([&](std::string_view , std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if(entry->table() == *t) {
+                ret.emplace_back(entry->simple_name());
+            }
+        });
+    }
+    return ret;
+}
+
+kvs::transaction_option from(transaction_option const& option, yugawara::storage::configurable_provider const& tables) {
+    auto type = kvs::transaction_option::transaction_type::occ;
+    if(option.readonly()) {
+        type = kvs::transaction_option::transaction_type::read_only;
+    } else if (option.is_long()) {
+        type = kvs::transaction_option::transaction_type::ltx;
+    }
+    return kvs::transaction_option{
+        type,
+        add_secondary_indices(option.write_preserves(), tables)
+    };
+}
+
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option) {
     if (! kvs_db_) {
         VLOG(log_error) << "database not started";
@@ -297,9 +329,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
     {
         auto tx = std::make_unique<impl::transaction>(
             *this,
-            option.readonly(),
-            option.is_long(),
-            option.write_preserves()
+            from(option, *tables_)
         );
         api::transaction_handle t{tx.get()};
         {

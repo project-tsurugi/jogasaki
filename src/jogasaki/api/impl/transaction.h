@@ -41,9 +41,7 @@ public:
 
     transaction() = default;
     transaction(impl::database& database,
-        bool readonly,
-        bool is_long,
-        std::vector<std::string> const& write_preserves
+        kvs::transaction_option const& options
     );
 
     status commit();

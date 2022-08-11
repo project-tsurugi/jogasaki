@@ -67,31 +67,12 @@ impl::database& transaction::database() {
     return *database_;
 }
 
-std::vector<std::string> add_secondary_indices(std::vector<std::string> const& write_preserves, impl::database& database) {
-    std::vector<std::string> ret{};
-    ret.reserve(write_preserves.size()*approx_index_count_per_table);
-    for(auto&& wp : write_preserves) {
-        auto t = database.tables()->find_table(wp);
-        if(! t) continue;
-        database.tables()->each_index([&](std::string_view , std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if(entry->table() == *t) {
-                ret.emplace_back(entry->simple_name());
-            }
-        });
-    }
-    return ret;
-}
-
 transaction::transaction(
     impl::database& database,
-    bool readonly,
-    bool is_long,
-    std::vector<std::string> const& write_preserves
+    kvs::transaction_option const& options
 ) :
     database_(std::addressof(database)),
-    tx_(std::make_shared<transaction_context>(
-        std::shared_ptr{database_->kvs_db()->create_transaction(readonly, is_long, add_secondary_indices(write_preserves, database))}
-    ))
+    tx_(wrap(database_->kvs_db()->create_transaction(options)))
 {}
 
 status transaction::execute(

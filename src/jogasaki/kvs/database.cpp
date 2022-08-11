@@ -60,16 +60,9 @@ sharksfin::DatabaseHandle database::handle() const noexcept {
 }
 
 std::unique_ptr<transaction> database::create_transaction(
-    bool readonly,
-    bool is_long,
-    std::vector<std::string> const& write_preserve
+    kvs::transaction_option const& options
 ) {
-    kvs::transaction_option opts{
-        readonly ? transaction_option::transaction_type::read_only:
-            (is_long ? transaction_option::transaction_type::ltx : transaction_option::transaction_type::occ),
-            write_preserve
-    };
-    return std::make_unique<transaction>(*this, opts);
+    return std::make_unique<transaction>(*this, options);
 }
 
 std::unique_ptr<storage> database::create_storage(std::string_view name, std::uint64_t storage_id) {

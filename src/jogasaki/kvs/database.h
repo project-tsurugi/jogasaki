@@ -95,15 +95,11 @@ public:
 
     /**
      * @brief create and start new transaction
-     * @param readonly whether the transaction is read-only
-     * @param is_long whether the transaction is long batch
-     * @param write_preserves write preserve storage names
+     * @param options transaction options
      * @return transaction object
      */
     [[nodiscard]] std::unique_ptr<transaction> create_transaction(
-        bool readonly = false,
-        bool is_long = false,
-        std::vector<std::string> const& write_preserve = {}
+        transaction_option const& options = {}
     );
 
     /**

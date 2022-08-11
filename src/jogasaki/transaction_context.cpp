@@ -72,7 +72,7 @@ bool transaction_context::decrement_worker_count() {
     return mgr_.decrement_and_clear_on_zero();
 }
 
-std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction> arg) noexcept {
+std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
 }
 

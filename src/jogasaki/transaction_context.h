@@ -175,7 +175,7 @@ private:
  * @param arg the kvs::transaction object
  * @return the converted context
  */
-std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction> arg) noexcept;
+std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept;
 
 }
 

@@ -255,29 +255,44 @@ TEST_F(ddl_test, dml_pkless) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     execute_statement("CREATE TABLE T (C0 BIGINT, C1 DOUBLE)");
     execute_statement("INSERT INTO T (C0, C1) VALUES(1, 1.0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(2, 2.0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(3, 3.0)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
-        ASSERT_EQ(1, result.size());
+        ASSERT_EQ(3, result.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 2.0), {false, false})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 3.0), {false, false})), result[2]);
     }
     execute_statement("DELETE FROM T");
     wait_epochs(2);
     execute_statement("INSERT INTO T (C0) VALUES(2)");
+    execute_statement("INSERT INTO T (C0) VALUES(3)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
-        ASSERT_EQ(1, result.size());
+        ASSERT_EQ(2, result.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 0.0), {false, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 0.0), {false, true})), result[1]);
     }
     execute_statement("DELETE FROM T WHERE C0=2");
     wait_epochs(2);
-    execute_statement("INSERT INTO T (C1) VALUES(3.0)");
+    execute_statement("INSERT INTO T (C1) VALUES(1.0)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(0, 3.0), {true, false})), result[0]);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(0, 1.0), {true, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 0.0), {false, true})), result[1]);
+    }
+    execute_statement("UPDATE T SET C0=5, C1=6.0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T ORDER BY C0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(5, 6.0), {false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(5, 6.0), {false, false})), result[1]);
     }
 }
 

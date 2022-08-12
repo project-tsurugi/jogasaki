@@ -87,7 +87,7 @@ public:
      * @return otherwise maximum retry count
      * @see TransactionOperation
      */
-    constexpr std::size_t retry_count() const noexcept {
+    [[nodiscard]] constexpr std::size_t retry_count() const noexcept {
         return retry_count_;
     }
 
@@ -95,7 +95,7 @@ public:
      * @brief returns the transaction type.
      * @return the transaction type
      */
-    constexpr transaction_type type() const noexcept {
+    [[nodiscard]] constexpr transaction_type type() const noexcept {
         return transaction_type_;
     }
 
@@ -104,7 +104,7 @@ public:
      * @return the write preserve objects if set for the transaction
      * @return empty vector otherwise
      */
-    constexpr write_preserves_type const& write_preserves() const noexcept {
+    [[nodiscard]] constexpr write_preserves_type const& write_preserves() const noexcept {
         return write_preserves_;
     }
 

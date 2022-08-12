@@ -47,7 +47,7 @@ status resolve(sharksfin::StatusCode code) noexcept {
         case sharksfin::StatusCode::ERR_CONFLICT_ON_WRITE_PRESERVE: return status::err_conflict_on_write_preserve;
         case sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TX: std::abort(); // internal error should not be here
         case sharksfin::StatusCode::ERR_WRITE_WITHOUT_WP: return status::err_illegal_operation;
-        case sharksfin::StatusCode::ERR_INACTIVE_TRANSACTION: return status::err_aborted; // TODO
+        case sharksfin::StatusCode::ERR_INACTIVE_TRANSACTION: return status::err_inactive_transaction;
     }
     std::abort();
 }

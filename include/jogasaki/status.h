@@ -55,6 +55,7 @@ enum class status : std::int64_t {
     err_illegal_operation = -21,
     err_missing_operation_target = -22,
     err_conflict_on_write_preserve = -23,
+    err_inactive_transaction = -24,
 };
 
 /**
@@ -94,6 +95,7 @@ enum class status : std::int64_t {
         case status::err_illegal_operation: return "err_illegal_operation"sv;
         case status::err_missing_operation_target: return "err_missing_operation_target"sv;
         case status::err_conflict_on_write_preserve: return "err_conflict_on_write_preserve"sv;
+        case status::err_inactive_transaction: return "err_inactive_transaction"sv;
     }
     std::abort();
 }

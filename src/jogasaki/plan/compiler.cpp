@@ -155,7 +155,7 @@ status create_prepared_statement(
     shakujo_translator::result_type& r,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     yugawara::compiler_options& c_options,
-    std::shared_ptr<storage_processor> sp,
+    std::shared_ptr<storage_processor> const& sp,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
     yugawara::compiler_result result{};

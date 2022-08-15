@@ -567,4 +567,17 @@ TEST_F(api_test, empty_column_name) {
     ASSERT_EQ(status::ok, db_->prepare("select min(C1) from T0", handle));
     EXPECT_FALSE(handle.meta()->field_name(0));
 }
+
+TEST_F(api_test, err_inactive_tx) {
+    std::unique_ptr<api::executable_statement> stmt0{};
+    std::unique_ptr<api::executable_statement> stmt1{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt0));
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt1));
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->execute(*stmt0));
+    ASSERT_EQ(status::err_already_exists, tx->execute(*stmt1));
+    ASSERT_EQ(status::err_inactive_transaction, tx->execute(*stmt0));
+    ASSERT_EQ(status::ok, tx->abort());
+}
+
 }

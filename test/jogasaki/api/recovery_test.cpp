@@ -289,4 +289,22 @@ TEST_F(recovery_test, recover_ddl) {
         ASSERT_EQ(0, result.size());
     }
 }
+
+// recoverying sequence is not in place yet TODO
+TEST_F(recovery_test, DISABLED_recover_ddl_without_primary_key) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE TEST (C0 INT, C1 INT)");
+    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");  //TODO insert fails as recoverying seq. fails
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TEST", result);
+        ASSERT_EQ(3, result.size());
+    }
+}
 }

@@ -38,7 +38,6 @@ status storage::get(
     std::string_view key,
     std::string_view& value
 ) {
-    std::unique_lock lock{tx.mutex()};
     Slice v{};
     StatusCode res = sharksfin::content_get(
         tx.handle(),
@@ -62,7 +61,6 @@ status storage::put(
     std::string_view value,
     put_option option
 ) {
-    std::unique_lock lock{tx.mutex()};
     auto res = sharksfin::content_put(
         tx.handle(),
         handle_,
@@ -89,7 +87,6 @@ status storage::remove(
     transaction& tx,
     std::string_view key
 ) {
-    std::unique_lock lock{tx.mutex()};
     auto res = sharksfin::content_delete(
         tx.handle(),
         handle_,
@@ -102,7 +99,6 @@ status storage::scan(transaction &tx,
     std::string_view end_key, end_point_kind end_kind,
     std::unique_ptr<iterator>& it
 ) {
-    std::unique_lock lock{tx.mutex()};
     sharksfin::IteratorHandle handle{};
     auto res = sharksfin::content_scan(
         tx.handle(),

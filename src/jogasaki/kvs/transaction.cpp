@@ -131,10 +131,6 @@ kvs::database* transaction::database() const noexcept {
     return database_;
 }
 
-std::mutex& transaction::mutex() noexcept {
-    return mutex_;
-}
-
 status transaction::wait_for_commit(std::size_t timeout_ns) {
     auto rc = sharksfin::transaction_wait_commit(tx_, timeout_ns);
     return resolve(rc);

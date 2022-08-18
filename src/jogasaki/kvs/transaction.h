@@ -108,12 +108,6 @@ public:
     [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
-     * @brief return the mutex object owned by this transaction
-     * @return the mutex object that can be used to serialize the laned operations for the shared transactin
-     */
-    [[nodiscard]] std::mutex& mutex() noexcept;
-
-    /**
      * @brief return the tx state
      * @return the tx state of this object
      */
@@ -124,7 +118,6 @@ private:
     sharksfin::TransactionHandle handle_{};
     kvs::database* database_{};
     bool active_{true};
-    std::mutex mutex_{};
 };
 
 /**

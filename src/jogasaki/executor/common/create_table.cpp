@@ -41,7 +41,7 @@ bool create_table::operator()(request_context& context) const {
         auto p = rh.primary_key_sequence();
         BOOST_ASSERT(p->definition_id()); //NOLINT
         context.sequence_manager()->register_sequence(
-            std::addressof(static_cast<kvs::transaction&>(*context.transaction())), // TODO pass transaction_context
+            std::addressof(static_cast<kvs::transaction&>(*context.transaction())),
             *p->definition_id(),
             p->simple_name(),
             p->initial_value(),

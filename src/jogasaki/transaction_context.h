@@ -72,14 +72,16 @@ private:
     std::atomic_size_t use_count_and_worker_id_{empty_worker & ((1UL << 32U)-1)};
 };
 
-}
+} // namespace details
 
 /**
  * @brief context object for the transaction scope
  * @details this class represents context information in the scope of the transaction.
  * This contains more state/context than kvs::transaction, which is the low level I/O abstraction.
  * This represents more state information in the jogasaki layer, such as simultaneous requests
- * sharing the kvs::transaction.
+ * sharing the kvs::transaction. Since kvs::transaction is not thread-safe, this object wraps it and provide
+ * accessor to necessary context such as worker count. Using the context, callers need to decide which worker/thread
+ * can use the transaction.
  */
 class transaction_context {
 public:

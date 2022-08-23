@@ -103,7 +103,7 @@ bool matcher::operator()(
             key, kvs::end_point_kind::prefixed_inclusive,
             it_
         ); res != status::ok) {
-        if (res == status::not_found) {
+        if (res == status::not_found || res == status::err_inactive_transaction) {
             status_ = res;
             return false;
         }
@@ -125,8 +125,8 @@ bool matcher::next() {
     }
     while(true) {  // loop to skip not_found with key()/value()
         auto res = it_->next();
-        if(res == status::not_found) {
-            status_ = status::not_found;
+        if(res != status::ok) {
+            status_ = res;
             it_.reset();
             return false;
         }

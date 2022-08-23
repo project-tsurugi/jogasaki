@@ -124,6 +124,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
             finish(context);
             return {};
         }
+        finish(context);
         return details::error_abort(ctx, res);
     }
     auto target = ctx.output_variables().store().ref();

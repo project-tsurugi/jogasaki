@@ -47,8 +47,6 @@
 #include <takatori/plan/aggregate.h>
 #include <takatori/statement/execute.h>
 
-#include <performance-tools/synchronizer.h>
-
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/scheduler/dag_controller.h>

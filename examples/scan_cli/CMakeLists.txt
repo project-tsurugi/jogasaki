@@ -25,10 +25,12 @@ target_link_libraries(scan-cli
         PRIVATE Boost::filesystem
 )
 
-target_link_libraries(scan-cli
-        PRIVATE performance-tools::api
-        PRIVATE performance-tools::lib
-        )
+if(PERFORMANCE_TOOLS)
+	target_link_libraries(scan-cli
+			PRIVATE performance-tools::api
+			PRIVATE performance-tools::lib
+			)
+endif()
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(scan-cli

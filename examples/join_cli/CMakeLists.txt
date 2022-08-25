@@ -25,10 +25,12 @@ target_link_libraries(join-cli
         PRIVATE Threads::Threads
 )
 
-target_link_libraries(join-cli
-        PRIVATE performance-tools::api
-        PRIVATE performance-tools::lib
-        )
+if(PERFORMANCE_TOOLS)
+	target_link_libraries(join-cli
+			PRIVATE performance-tools::api
+			PRIVATE performance-tools::lib
+			)
+endif()
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(join-cli

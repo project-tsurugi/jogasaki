@@ -25,11 +25,6 @@ target_link_libraries(aggregate-cli
         PRIVATE Threads::Threads
 )
 
-target_link_libraries(aggregate-cli
-        PRIVATE performance-tools::api
-        PRIVATE performance-tools::lib
-        )
-
 if (ENABLE_GOOGLE_PERFTOOLS)
     target_link_libraries(aggregate-cli
             PRIVATE gperftools::gperftools

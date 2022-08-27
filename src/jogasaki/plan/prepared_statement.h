@@ -75,6 +75,10 @@ public:
     [[nodiscard]] std::shared_ptr<yugawara::variable::configurable_provider> const& host_variables() const noexcept {
         return host_variables_;
     }
+
+    [[nodiscard]] bool has_result_records() const noexcept {
+        return mirrors_ && mirrors_->external_writer_meta();
+    }
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};

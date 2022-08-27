@@ -36,6 +36,7 @@ public:
 
     [[nodiscard]] api::record_meta const* meta() const noexcept;
 
+    [[nodiscard]] bool has_result_records() const noexcept;
 private:
     std::shared_ptr<plan::prepared_statement> body_{};
     std::unique_ptr<impl::record_meta> meta_{};

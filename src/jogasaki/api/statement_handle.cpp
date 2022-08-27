@@ -48,4 +48,8 @@ statement_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
+bool statement_handle::has_result_records() const noexcept {
+    return reinterpret_cast<impl::prepared_statement*>(body_)->has_result_records();  //NOLINT
+}
+
 }

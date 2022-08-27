@@ -198,7 +198,7 @@ inline void success<sql::response::Prepare>(tateyama::api::server::response& res
     sql::response::Response r{};
 
     ps.set_handle(static_cast<std::size_t>(statement));
-    ps.set_has_result_records(statement.meta() != nullptr);
+    ps.set_has_result_records(statement.has_result_records());
     p.set_allocated_prepared_statement_handle(&ps);
     r.set_allocated_prepare(&p);
     res.code(response_code::success);

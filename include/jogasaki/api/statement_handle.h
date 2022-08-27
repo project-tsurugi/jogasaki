@@ -85,6 +85,12 @@ public:
      */
     [[nodiscard]] api::record_meta const* meta() const noexcept;
 
+    /**
+     * @brief accessor to has-result-records flag
+     * @return whether the prepared statement possibly has result records (e.g. query)
+     */
+    [[nodiscard]] bool has_result_records() const noexcept;
+
 private:
     std::uintptr_t body_{};
 

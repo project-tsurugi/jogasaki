@@ -35,4 +35,8 @@ api::record_meta const* prepared_statement::meta() const noexcept {
     return meta_.get();
 }
 
+bool prepared_statement::has_result_records() const noexcept {
+    return body_->has_result_records();
+}
+
 }

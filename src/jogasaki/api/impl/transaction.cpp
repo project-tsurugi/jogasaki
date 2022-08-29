@@ -31,6 +31,7 @@
 #include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
+#include <jogasaki/executor/io/null_record_channel.h>
 
 namespace jogasaki::api::impl {
 
@@ -131,7 +132,9 @@ bool transaction::execute_async(
 ) {
     return execute_internal(
         statement,
-        channel ? std::make_shared<executor::io::record_channel_adapter>(channel) : nullptr,
+        channel ?
+            maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::record_channel_adapter>(channel)} :
+            maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::null_record_channel>()},
         std::move(on_completion),
         false
     );
@@ -203,6 +206,7 @@ bool transaction::execute_internal(
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
+    BOOST_ASSERT(channel);  //NOLINT
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     return execute_context(
         create_request_context(channel, s.resource()),
@@ -213,6 +217,34 @@ bool transaction::execute_internal(
     );
 }
 
+bool validate_statement(
+    plan::executable_statement const& exec,
+    maybe_shared_ptr<executor::io::record_channel> const& ch,
+    transaction::callback on_completion //NOLINT(performance-unnecessary-value-param)
+) {
+    auto has_result_records = static_cast<bool>(exec.mirrors()->external_writer_meta());
+    if(! has_result_records && ch) {
+        if(dynamic_cast<result_store_channel*>(ch.get())) {
+            // result_store_channel is legacy non-production class, so error check is skipped for testability
+            return true;
+        }
+        if(dynamic_cast<executor::io::null_record_channel*>(ch.get())) {
+            // executing query without receiving result via channel is valid usage
+            return true;
+        }
+        if(dynamic_cast<executor::io::dump_channel*>(ch.get())) {
+            // executing query without receiving result via channel is valid usage
+            return true;
+        }
+        auto msg = "statement has no result records, but called with API expecting result records";
+        VLOG(log_error) << msg;
+        on_completion(status::err_illegal_operation, msg);
+        return false;
+    }
+    // channel receives query
+    return true;
+}
+
 bool transaction::execute_context(
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
@@ -221,6 +253,9 @@ bool transaction::execute_context(
     bool sync
 ) {
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
+    if(! validate_statement(*s.body(), channel, on_completion)) {
+        return false;
+    }
     auto& e = s.body();
     auto job = rctx->job();
     auto& ts = *rctx->scheduler();

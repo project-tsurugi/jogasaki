@@ -76,8 +76,6 @@ TEST_F(transaction_impl_test, resolve_execute_stmt) {
 
     auto hdl = utils::create_transaction(*db_);
     auto tx = reinterpret_cast<api::impl::transaction*>(hdl->get());
-    test_channel ch{};
-    executor::io::record_channel_adapter recch{maybe_shared_ptr{&ch}};
 
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
@@ -87,7 +85,7 @@ TEST_F(transaction_impl_test, resolve_execute_stmt) {
     ASSERT_TRUE(tx->execute_async(
         prepared,
         std::shared_ptr{std::move(ps)},
-        maybe_shared_ptr{&recch},
+        nullptr,
         [&](status st, std::string_view msg){
             if(st != status::ok) {
                 LOG(ERROR) << st;

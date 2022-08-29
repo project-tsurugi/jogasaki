@@ -48,11 +48,28 @@ public:
     status abort();
     impl::database& database();
 
+    /**
+     * @brief execute statement expecting result set
+     * @param statement
+     * @param result
+     * @return status::ok when successful
+     * @return error otherwise
+     * @deprecated This is kept for testing
+     */
     status execute(
         api::executable_statement& statement,
         std::unique_ptr<api::result_set>& result
     );
 
+    /**
+     * @brief execute statement expecting result set
+     * @param prepared prepared statement to execute
+     * @param parameters parameters to fill the place holders
+     * @param result
+     * @return status::ok when successful
+     * @return error otherwise
+     * @deprecated This is kept for testing
+     */
     status execute(
         api::statement_handle prepared,
         std::shared_ptr<api::parameter_set> parameters,

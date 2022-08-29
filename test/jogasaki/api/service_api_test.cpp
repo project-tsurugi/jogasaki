@@ -153,9 +153,10 @@ public:
     template <class ... Args>
     void test_load(status expected, Args ... args);
 
+    void execute_statement_as_query(std::string_view sql);
+
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
     test::temporary_folder temporary_{};
-
 
 };
 
@@ -667,6 +668,37 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         ASSERT_FALSE(error.message_.empty());
     }
     test_commit(tx_handle);
+}
+
+void service_api_test::execute_statement_as_query(std::string_view sql) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    auto s = encode_execute_query(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(wait_completion(*res));
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::application_error, res->code_);
+
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_FALSE(success);
+    ASSERT_EQ(sql::status::Status::ERR_ILLEGAL_OPERATION, error.status_);
+    ASSERT_FALSE(error.message_.empty());
+    test_commit(tx_handle);
+}
+
+TEST_F(service_api_test, execute_statement_as_query) {
+    execute_statement_as_query("insert into T0(C0, C1) values (1, 10.0)");
+    execute_statement_as_query("update T0 set C1=20.0 where C0=1");
+}
+
+TEST_F(service_api_test, execute_query_as_statement) {
+    test_statement("insert into T0(C0, C1) values (1, 10.0)");
+    test_statement("insert into T0(C0, C1) values (2, 20.0)");
+    test_statement("insert into T0(C0, C1) values (3, 30.0)");
+    test_statement("select * from T0");
 }
 
 TEST_F(service_api_test, explain_insert) {

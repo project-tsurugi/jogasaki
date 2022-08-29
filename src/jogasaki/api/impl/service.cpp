@@ -629,6 +629,7 @@ void service::execute_query(
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
 
+    bool has_result_records = false;
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(q.has_sql()) {
         if(auto rc = db_->create_executable(q.sql(), e); rc != jogasaki::status::ok) {
@@ -636,6 +637,7 @@ void service::execute_query(
             details::error<sql::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
             return;
         }
+        has_result_records = e->meta() != nullptr;
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
         if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
@@ -643,6 +645,13 @@ void service::execute_query(
             details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
             return;
         }
+        has_result_records = statement.has_result_records();
+    }
+    if(! has_result_records) {
+        auto msg = "statement has no result records, but called with API expecting result records";
+        VLOG(log_error) << msg;
+        details::error<sql::response::ResultOnly>(*res, status::err_illegal_operation, msg);
+        return;
     }
     info->meta_ = e->meta();
     details::send_body_head(*res, *info);

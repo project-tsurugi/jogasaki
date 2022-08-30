@@ -114,7 +114,6 @@ bool transaction::execute_async(
             std::move(parameters),
             database_,
             this,
-            channel,
             std::move(on_completion)
         )
     });
@@ -208,7 +207,7 @@ bool transaction::execute_internal(
 ) {
     BOOST_ASSERT(channel);  //NOLINT
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
-    return execute_context(
+    return execute_async_on_context(
         create_request_context(channel, s.resource()),
         statement,
         std::move(on_completion),
@@ -244,7 +243,7 @@ bool validate_statement(
     return true;
 }
 
-bool transaction::execute_context(
+bool transaction::execute_async_on_context(
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
@@ -260,10 +259,9 @@ bool transaction::execute_context(
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        job->callback([statement, on_completion, channel = rctx->record_channel(), rctx](){  // callback is copy-based
-            // let lambda own the statement/channel so that they live longer by the end of callback
+        job->callback([statement, on_completion, rctx](){  // callback is copy-based
+            // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
-            (void)channel;
             on_completion(rctx->status_code(), rctx->status_message());
         });
 

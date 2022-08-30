@@ -94,14 +94,12 @@ struct statement_context {
         std::shared_ptr<api::parameter_set const> parameters,
         api::impl::database* database,
         api::impl::transaction* tx,
-        maybe_shared_ptr<executor::io::record_channel> channel,
         callback cb
     ) noexcept :
         prepared_(prepared),
         parameters_(std::move(parameters)),
         database_(database),
         tx_(tx),
-        channel_(std::move(channel)),
         callback_(std::move(cb))
     {}
 
@@ -110,7 +108,6 @@ struct statement_context {
     api::impl::database* database_{};  //NOLINT
     api::impl::transaction* tx_{};  //NOLINT
     std::unique_ptr<api::executable_statement> executable_statement_{};  //NOLINT
-    maybe_shared_ptr<executor::io::record_channel> channel_{};  //NOLINT
     callback callback_{};  //NOLINT
 };
 

@@ -117,7 +117,7 @@ public:
      * @return status::ok when successful
      * @return error otherwise
      */
-    bool execute_context(
+    bool execute_async_on_context(
         std::shared_ptr<request_context> rctx,
         maybe_shared_ptr<api::executable_statement> const& statement,
         callback on_completion, //NOLINT(performance-unnecessary-value-param)

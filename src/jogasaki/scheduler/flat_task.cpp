@@ -181,7 +181,7 @@ void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
         req_context_->status_code(res);
         return;
     }
-    sctx_->tx_->execute_context(
+    sctx_->tx_->execute_async_on_context(
         req_context_.ownership(),
         maybe_shared_ptr{e.get()},
         [sctx=sctx_](status st, std::string_view msg){

@@ -220,26 +220,15 @@ bool validate_statement(
     maybe_shared_ptr<executor::io::record_channel> const& ch,
     transaction::callback on_completion //NOLINT(performance-unnecessary-value-param)
 ) {
-    auto has_result_records = static_cast<bool>(exec.mirrors()->external_writer_meta());
-    if(! has_result_records && ch) {
-        if(dynamic_cast<result_store_channel*>(ch.get())) {
-            // result_store_channel is legacy non-production class, so error check is skipped for testability
-            return true;
-        }
-        if(dynamic_cast<executor::io::null_record_channel*>(ch.get())) {
-            // executing query without receiving result via channel is valid usage
-            return true;
-        }
-        if(dynamic_cast<executor::io::dump_channel*>(ch.get())) {
-            // executing query without receiving result via channel is valid usage
-            return true;
-        }
+    if(!exec.mirrors()->external_writer_meta() &&
+        dynamic_cast<executor::io::record_channel_adapter*>(ch.get())) {
+        // result_store_channel is for testing and error handling is not needed
+        // null_record_channel is to discard the results and is correct usage
         auto msg = "statement has no result records, but called with API expecting result records";
         VLOG(log_error) << msg;
         on_completion(status::err_illegal_operation, msg);
         return false;
     }
-    // channel receives query
     return true;
 }
 

@@ -237,4 +237,56 @@ TEST_F(async_api_test, async_query_multi_thread) {
     }
 }
 
+TEST_F(async_api_test, null_channel) {
+    // you can pass nullptr channel is reading result is not needed
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T0 ORDER BY C0", stmt));
+    auto tx = utils::create_transaction(*db_);
+    status s{};
+    std::string message{"message"};
+    std::atomic_bool run{false};
+    ASSERT_TRUE(tx->execute_async(
+        maybe_shared_ptr{stmt.get()},
+        nullptr,
+        [&](status st, std::string_view msg){
+            s = st;
+            message = msg;
+            run.store(true);
+        }
+    ));
+    while(! run.load()) {}
+    ASSERT_EQ(status::ok, s);
+    ASSERT_TRUE(message.empty());
+    ASSERT_TRUE(stmt->meta());
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(async_api_test, execute_statement_as_query) {
+    // it's illegal operation to execute statement without result records (e.g. UPDATE) as query
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("UPDATE T0 SET C1=100.0 WHERE C0=1", stmt));
+    auto tx = utils::create_transaction(*db_);
+    status s{};
+    std::string message{"message"};
+    std::atomic_bool run{false};
+    test_channel ch{10};
+    ASSERT_FALSE(tx->execute_async(
+        maybe_shared_ptr{stmt.get()},
+        maybe_shared_ptr{&ch},
+        [&](status st, std::string_view msg){
+            s = st;
+            message = msg;
+            run.store(true);
+        }
+    ));
+    while(! run.load()) {}
+    ASSERT_EQ(status::err_illegal_operation, s);
+    ASSERT_FALSE(message.empty());
+    ASSERT_FALSE(stmt->meta());
+    ASSERT_EQ(status::ok, tx->commit());
+}
 }

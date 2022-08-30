@@ -211,7 +211,6 @@ bool transaction::execute_internal(
     return execute_context(
         create_request_context(channel, s.resource()),
         statement,
-        channel,
         std::move(on_completion),
         sync
     );
@@ -248,12 +247,11 @@ bool validate_statement(
 bool transaction::execute_context(
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
-    if(! validate_statement(*s.body(), channel, on_completion)) {
+    if(! validate_statement(*s.body(), rctx->record_channel(), on_completion)) {
         return false;
     }
     auto& e = s.body();
@@ -262,7 +260,7 @@ bool transaction::execute_context(
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        job->callback([statement, on_completion, channel, rctx](){  // callback is copy-based
+        job->callback([statement, on_completion, channel = rctx->record_channel(), rctx](){  // callback is copy-based
             // let lambda own the statement/channel so that they live longer by the end of callback
             (void)statement;
             (void)channel;
@@ -284,7 +282,7 @@ bool transaction::execute_context(
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
-            // let lambda own the statement/channel so that they live longer by the end of callback
+            // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
             on_completion(rctx->status_code(), rctx->status_message());
         });

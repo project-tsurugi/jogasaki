@@ -54,7 +54,7 @@ public:
      * @param result
      * @return status::ok when successful
      * @return error otherwise
-     * @deprecated This is kept for testing
+     * @deprecated This is kept for testing. Use execute_async for production.
      */
     status execute(
         api::executable_statement& statement,
@@ -68,7 +68,7 @@ public:
      * @param result
      * @return status::ok when successful
      * @return error otherwise
-     * @deprecated This is kept for testing
+     * @deprecated This is kept for testing. Use execute_async for production.
      */
     status execute(
         api::statement_handle prepared,
@@ -76,12 +76,30 @@ public:
         std::unique_ptr<api::result_set>& result
     );
 
+    /**
+     * @brief execute statement (or query) asynchronously
+     * @param statement statement to execute
+     * @param channel channel to receive statement result records, pass nullptr if no records are to be received
+     * @param on_completion callback on completion of statement execution
+     * @return status::ok when successful
+     * @return error otherwise
+     */
     bool execute_async(
         maybe_shared_ptr<api::executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,
         callback on_completion
     );
 
+    /**
+     * @brief execute statement (or query) asynchronously
+     * @param prepared prepared statement to execute
+     * @param parameters parameters to fill place holders
+     * @param channel channel to receive statement result records, pass nullptr if no records are to be received
+     * @param on_completion callback on completion of statement execution
+     * @param sync specify true if execution waits for it completion before function finishes. Testing purpose only.
+     * @return status::ok when successful
+     * @return error otherwise
+     */
     bool execute_async(
         api::statement_handle prepared,
         std::shared_ptr<api::parameter_set> parameters,
@@ -90,10 +108,18 @@ public:
         bool sync = false
     );
 
+    /**
+     * @brief execute statement (or query) asynchronously on the given request context
+     * @param rctx the request context to execute statement on
+     * @param statement statement to execute
+     * @param on_completion callback on completion of statement execution
+     * @param sync specify true if execution waits for it completion before function finishes. Testing purpose only.
+     * @return status::ok when successful
+     * @return error otherwise
+     */
     bool execute_context(
         std::shared_ptr<request_context> rctx,
         maybe_shared_ptr<api::executable_statement> const& statement,
-        maybe_shared_ptr<executor::io::record_channel> const& channel,
         callback on_completion, //NOLINT(performance-unnecessary-value-param)
         bool sync
     );
@@ -115,10 +141,6 @@ public:
         callback on_completion
     );
 
-    std::shared_ptr<request_context> create_request_context(
-        maybe_shared_ptr<executor::io::record_channel> const& channel,
-        std::shared_ptr<memory::lifo_paged_memory_resource> resource
-    );
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
@@ -130,6 +152,10 @@ private:
         bool sync
     );
 
+    std::shared_ptr<request_context> create_request_context(
+        maybe_shared_ptr<executor::io::record_channel> const& channel,
+        std::shared_ptr<memory::lifo_paged_memory_resource> resource
+    );
 };
 
 }

@@ -217,8 +217,12 @@ status prepare(
     yugawara::runtime_feature_set runtime_features {
         //TODO enable features
 //        yugawara::runtime_feature::broadcast_exchange,
+
         yugawara::runtime_feature::aggregate_exchange,
-        yugawara::runtime_feature::index_join,
+
+// temporarily disable index_join until join_scan becomes ready
+//        yugawara::runtime_feature::index_join,
+
 //        yugawara::runtime_feature::broadcast_join_scan,
     };
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};

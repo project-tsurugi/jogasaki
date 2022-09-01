@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 
 #include <shakujo/parser/Parser.h>
+#include <shakujo/analyzer/SyntaxValidator.h>
 #include <shakujo/common/core/Type.h>
 
 #include <yugawara/binding/factory.h>
@@ -189,20 +190,46 @@ status create_prepared_statement(
     return status::ok;
 }
 
+status parse_validate(
+    std::string_view sql,
+    std::unique_ptr<shakujo::model::program::Program>& program
+) {
+    shakujo::parser::Parser parser{};
+    try {
+        std::stringstream ss{std::string(sql)};
+        program = parser.parse_program("<input>", ss);
+        shakujo::analyzer::SyntaxValidator validator{};
+        shakujo::analyzer::Reporter reporter{};
+        if(! validator.analyze(reporter, program.get())) {
+            std::stringstream errs{};
+            for(auto&& e : reporter.diagnostics()) {
+                // skip unresolved place holder
+                if(e.code() == shakujo::analyzer::Diagnostic::Code::UNEXPECTED_ELEMENT) {
+                    continue;
+                }
+                errs << e << " ";
+            }
+            if (errs.str().empty()) {
+                return status::ok;
+            }
+            VLOG(log_error) << "syntax validation error:" << errs.str();
+            return status::err_parse_error;
+        }
+    } catch (shakujo::parser::Parser::Exception &e) {
+        VLOG(log_error) << "parse error:" << e.message() << " (" << e.region() << ")";
+        return status::err_parse_error;
+    }
+    return status::ok;
+}
+
 status prepare(
     std::string_view sql,
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
-    shakujo::parser::Parser parser{};
     std::unique_ptr<shakujo::model::program::Program> program{};
-    try {
-        std::stringstream ss{std::string(sql)};
-        program = parser.parse_program("<input>", ss);
-        // TODO analyze for error check
-    } catch (shakujo::parser::Parser::Exception &e) {
-        VLOG(log_error) << "parse error:" << e.message() << " (" << e.region() << ")";
-        return status::err_parse_error;
+    if(auto res = parse_validate(sql, program); res != status::ok) {
+        return res;
     }
 
     shakujo_translator translator;

@@ -736,6 +736,18 @@ void details::set_metadata(channel_info const& info, sql::response::ResultSetMet
             case jogasaki::api::field_type_kind::character:
                 column->set_atom_type(sql::common::AtomType::CHARACTER);
                 break;
+            case jogasaki::api::field_type_kind::decimal:
+                column->set_atom_type(sql::common::AtomType::DECIMAL);
+                break;
+            case jogasaki::api::field_type_kind::date:
+                column->set_atom_type(sql::common::AtomType::DATE);
+                break;
+            case jogasaki::api::field_type_kind::time_of_day:
+                column->set_atom_type(sql::common::AtomType::TIME_OF_DAY);
+                break;
+            case jogasaki::api::field_type_kind::time_point:
+                column->set_atom_type(sql::common::AtomType::TIME_POINT);
+                break;
             default:
                 LOG(ERROR) << "unsupported data type at field (" << i << "): " << metadata->at(i).kind();
                 fail();

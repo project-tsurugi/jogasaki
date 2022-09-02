@@ -47,6 +47,7 @@ void zero_generator(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, 0); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, 0); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, 0); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, {}); break;
         default: fail();
     }
 }

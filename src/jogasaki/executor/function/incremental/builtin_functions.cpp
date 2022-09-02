@@ -506,7 +506,7 @@ void sum(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, plus(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, plus(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, plus(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
-        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, plus(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, plus(target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
         default: fail();
     }
 }

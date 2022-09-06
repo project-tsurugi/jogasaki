@@ -6,6 +6,7 @@
 * C++ Compiler `>= C++17`
 * access to installed dependent modules: 
   * sharksfin
+  * tateyama
   * takatori
   * yugawara
   * mizugaki

@@ -105,18 +105,17 @@ TEST_F(validate_batch_test, join_scan) {
     ASSERT_EQ(1, result.size());
 }
 
-// TODO verify shirakami fix
-TEST_F(validate_batch_test, DISABLED_self_read_after_update) {
+TEST_F(validate_batch_test, self_read_after_update) {
     // test scenario coming from batch verify
     execute_statement("create table test (foo int, bar bigint, zzz varchar(10), primary key(foo))");
-//    execute_statement("INSERT INTO test (foo, bar, zzz) VALUES (0,  0, '000')");
+    execute_statement("INSERT INTO test (foo, bar, zzz) VALUES (0,  0, '000')");
 
     auto tx = utils::create_transaction(*db_, false, false);
     execute_statement("INSERT INTO test (foo, bar, zzz) VALUES (123, 123, '123')", *tx);
     execute_statement("UPDATE test SET bar = 100 where foo = 123", *tx);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT foo, bar, zzz FROM test", *tx, result);
-    EXPECT_EQ(1, result.size());
+    EXPECT_EQ(2, result.size());
     ASSERT_EQ(status::ok, tx->commit());
 }
 }

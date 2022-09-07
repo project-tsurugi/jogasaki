@@ -159,7 +159,8 @@ TEST_F(api_test, violate_not_null_constraint_by_insert) {
 }
 
 TEST_F(api_test, violate_not_null_constraint_by_update) {
-    execute_statement( "INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
+    // update non-pk key and set null
+    execute_statement("INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
     {
         // update to null for non-primary key column
         std::unique_ptr<api::executable_statement> stmt{};
@@ -168,6 +169,18 @@ TEST_F(api_test, violate_not_null_constraint_by_update) {
         ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
         ASSERT_EQ(status::ok, tx->abort());
     }
+
+    if (jogasaki::kvs::implementation_id() != "memory") {
+        // sharksfin-memory doesn't support rollback on abort, so the result records are undefined
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM NON_NULLABLES", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
+TEST_F(api_test, violate_not_null_pk_constraint_by_update) {
+    // update pk key and set null - separated from testcase above since sharksfin-memory abort cannot rollback everything
+    execute_statement( "INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
     {
         // update to null for primary key column
         std::unique_ptr<api::executable_statement> stmt{};
@@ -176,10 +189,12 @@ TEST_F(api_test, violate_not_null_constraint_by_update) {
         ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
         ASSERT_EQ(status::ok, tx->abort());
     }
-
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM NON_NULLABLES", result);
-    ASSERT_EQ(1, result.size());
+    if (jogasaki::kvs::implementation_id() != "memory") {
+        // sharksfin-memory doesn't support rollback on abort, so the result records are undefined
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM NON_NULLABLES", result);
+        ASSERT_EQ(1, result.size());
+    }
 }
 
 TEST_F(api_test, violate_not_null_constraint_by_insert_host_variable) {

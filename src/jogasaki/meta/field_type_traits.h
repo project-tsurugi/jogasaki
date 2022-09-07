@@ -83,6 +83,17 @@ struct field_type_traits<field_type_kind::time_point> : simple_field_type_traits
 template <>
 struct field_type_traits<field_type_kind::pointer> : simple_field_type_traits<void*> {};
 
+template <>
+struct field_type_traits<field_type_kind::unknown> {
+    // unknown is the field type for null literals
+    // This type actually doesn't store real value, but the trait is defined for compatibility.
+    // Treat this type as if it's 0 length character string.
+    using runtime_type = char;
+    using option_type = unknown_field_option;
+    static constexpr std::size_t size = 0;
+    static constexpr std::size_t alignment = 1;
+};
+
 //TODO add specialization for other types
 
 } // namespace

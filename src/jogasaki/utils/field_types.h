@@ -48,11 +48,11 @@ using ::takatori::util::fail;
         case t::time_of_day: return meta::field_type(std::shared_ptr<meta::time_of_day_field_option>{});
         case t::time_point: return meta::field_type(std::shared_ptr<meta::time_point_field_option>{});
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
+        case t::unknown: return meta::field_type(std::shared_ptr<meta::unknown_field_option>{});
 
         case t::octet:
         case t::array:
         case t::record:
-        case t::unknown:
         case t::row_reference:
         case t::row_id:
         case t::declared:

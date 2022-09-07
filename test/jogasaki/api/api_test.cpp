@@ -158,7 +158,7 @@ TEST_F(api_test, violate_not_null_constraint_by_insert) {
     ASSERT_EQ(0, result.size());
 }
 
-TEST_F(api_test, DISABLED_violate_not_null_constraint_by_update) {
+TEST_F(api_test, violate_not_null_constraint_by_update) {
     execute_statement( "INSERT INTO NON_NULLABLES (K0, C0, C1, C2, C3, C4) VALUES (1, 10, 100, 1000.0, 10000.0, '111')");
     {
         // update to null for non-primary key column
@@ -179,7 +179,7 @@ TEST_F(api_test, DISABLED_violate_not_null_constraint_by_update) {
 
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM NON_NULLABLES", result);
-    ASSERT_EQ(0, result.size());
+    ASSERT_EQ(1, result.size());
 }
 
 TEST_F(api_test, violate_not_null_constraint_by_insert_host_variable) {

@@ -82,14 +82,17 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
             return details::error_abort(ctx, status::err_expression_evaluation_failure);
         }
         using t = takatori::type::type_kind;
-        ref.set_null(info.nullity_offset(), result.empty());
-        switch(cinfo.type_of(v).kind()) {
-            case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), result); break;
-            case t::int8: copy_to<std::int64_t>(ref, info.value_offset(), result); break;
-            case t::float4: copy_to<float>(ref, info.value_offset(), result); break;
-            case t::float8: copy_to<double>(ref, info.value_offset(), result); break;
-            case t::character: copy_to<accessor::text>(ref, info.value_offset(), result); break;
-            default: fail();
+        bool is_null = result.empty();
+        ref.set_null(info.nullity_offset(), is_null);
+        if (! is_null) {
+            switch(cinfo.type_of(v).kind()) {
+                case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), result); break;
+                case t::int8: copy_to<std::int64_t>(ref, info.value_offset(), result); break;
+                case t::float4: copy_to<float>(ref, info.value_offset(), result); break;
+                case t::float8: copy_to<double>(ref, info.value_offset(), result); break;
+                case t::character: copy_to<accessor::text>(ref, info.value_offset(), result); break;
+                default: fail();
+            }
         }
     }
     if (downstream_) {

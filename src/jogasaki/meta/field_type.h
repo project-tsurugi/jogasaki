@@ -179,6 +179,7 @@ public:
             case k::reference_column_position: std::abort(); // should not be used as runtime type
             case k::reference_column_name: std::abort(); // should not be used as runtime type
             case k::pointer: return field_type_traits<k::pointer>::size;
+            case k::unknown: return field_type_traits<k::unknown>::size;
             default:
                 // TODO implement cases for complex types
                 std::abort();
@@ -207,6 +208,7 @@ public:
             case k::reference_column_position: std::abort(); // should not be used as runtime type
             case k::reference_column_name: std::abort(); // should not be used as runtime type
             case k::pointer: return field_type_traits<k::pointer>::alignment;
+            case k::unknown: return field_type_traits<k::unknown>::alignment;
             default:
                 // TODO implement cases for complex types
                 std::abort();

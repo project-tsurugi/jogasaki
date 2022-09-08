@@ -23,30 +23,30 @@
 - 標準SQLとTsurugi、Parquetの型の対応を下表に示す
 - Parquetの型でLogical Type(*0)を持つものはその属性も併せて示す
 
-| SQL          | Tsurugi           | Parquet                                                                                      | 備考       |
-|--------------|-------------------|----------------------------------------------------------------------------------------------|----------|
-| BOOLEAN      | boolean           | Primitive Type: BOOLEAN                                                                      |          |
-| TINYINT      | int1              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 8 <br> signed: true               |          |
-| SMALLINT     | int2              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 16 <br> signed: true              |          |
-| INT          | int4              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 32 <br> signed: true              |          |
-| BIGINT       | int8              | Primitive Type: INT64<br>Logical Type: INT <br> bit width: 64 <br> signed: true              |          |
-| REAL         | float4            | Primitive Type: FLOAT                                                                        |          |
-| DOUBLE       | float8            | Primitive Type: DOUBLE                                                                       |          |
-| CHAR         | character         | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |          |
-| VARCHAR      | character varying | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |          |
-| DECIMAL(p,s) | decimal           | Primitive Type: BYTE_ARRAY <br>Logical Type: DECIMAL<br> precision: p <br> scale: s          |          |
-| DATE         | date              | Primitive Type: INT32 <br>Logical Type: DATE                                                 |          |
-| TIME         | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: false<br>unit: NANOS        | (*1) |
-| TIME WITh TIME ZONE        | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: true<br>unit: NANOS        | (*2) |
-| TIMESTAMP    | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: false<br> unit: NANOS  | (*1) |
-| TIMESTAMP WITh TIME ZONE    | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: true<br> unit: NANOS  | (*2) |
-| INTERVAL     | datetime_interval | Primitive Type: fixed_len_byte_array(length=12) <br> Logical Type: INTERVAL                  |          |
-| BIT          | bit               | 対応なし                                                                                     |          |
-| BIT VARYING  | bit varying       | 対応なし                                                                                     |          |
-| BINARY       | octet             | Primitive Type: BYTE_ARRAY <br>Logical Type: (N/A)                                           |          |
-| VARBINARY    | octet varying     | Primitive Type: BYTE_ARRAY <br>Logical Type: (N/A)                                           |          |
-| ARRAY        | array             | Nested Type: LIST                                                                            | (*3)     |
-| ROW          | record            | TBD                                                                                          | (*4)     |
+| SQL                         | Tsurugi           | Parquet                                                                                      | 備考    |
+|-----------------------------|-------------------|----------------------------------------------------------------------------------------------|-------|
+| BOOLEAN                     | boolean           | Primitive Type: BOOLEAN                                                                      |       |
+| TINYINT                     | int1              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 8 <br> signed: true               |       |
+| SMALLINT                    | int2              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 16 <br> signed: true              |       |
+| INT                         | int4              | Primitive Type: INT32<br>Logical Type: INT <br> bit width: 32 <br> signed: true              |       |
+| BIGINT                      | int8              | Primitive Type: INT64<br>Logical Type: INT <br> bit width: 64 <br> signed: true              |       |
+| REAL                        | float4            | Primitive Type: FLOAT                                                                        |       |
+| DOUBLE                      | float8            | Primitive Type: DOUBLE                                                                       |       |
+| CHAR                        | character         | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |       |
+| VARCHAR                     | character varying | Primitive Type: BYTE_ARRAY <br>Logical Type: STRING                                          |       |
+| DECIMAL(p,s)                | decimal           | Primitive Type: BYTE_ARRAY <br>Logical Type: DECIMAL<br> precision: p <br> scale: s          |       |
+| DATE                        | date              | Primitive Type: INT32 <br>Logical Type: DATE                                                 |       |
+| TIME                        | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: false<br>unit: NANOS       | (*1)  |
+| TIME WITH TIME ZONE         | time_of_day       | Primitive Type: INT64 <br>Logical Type: TIME <br> utc adjustment: true<br>unit: NANOS        | (*2)  |
+| TIMESTAMP                   | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: false<br> unit: NANOS | (*1)  |
+| TIMESTAMP WITH TIME ZONE    | time_point        | Primitive Type: INT64 <br>Logical Type: TIMESTAMP <br> utc adjustment: true<br> unit: NANOS  | (*2)  |
+| INTERVAL                    | datetime_interval | Primitive Type: FIXED_LEN_BYTE_ARRAY (length=12) <br> Logical Type: INTERVAL                 |       |
+| BIT                         | bit               | 対応なし                                                                                         |       |
+| BIT VARYING                 | bit varying       | 対応なし                                                                                         |       |
+| BINARY                      | octet             | Primitive Type: BYTE_ARRAY                                                                   |       |
+| VARBINARY                   | octet varying     | Primitive Type: BYTE_ARRAY                                                                   |       |
+| ARRAY                       | array             | LIST                                                                                         | (*3)  |
+| ROW                         | record            | TBD                                                                                          | (*4)  |
 
 (*0) Parquetのデータ型はPrimitive Type([TY])とLogical Type([LT])で表される。詳細はリンク先の文書を参照。
 

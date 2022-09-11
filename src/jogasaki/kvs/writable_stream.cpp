@@ -115,7 +115,7 @@ void writable_stream::ignore_overflow(bool arg) noexcept {
     ignore_overflow_ = arg;
 }
 
-void writable_stream::write_variable_integer(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr) {
+void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr) {
     bool msb_inverted = false;
     if (sz > sizeof(std::uint64_t) * 2) {
         // write sign bit
@@ -209,7 +209,7 @@ status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data,
     takatori::decimal::triple tri{y};
     auto [hi, lo, s] = make_signed_coefficient_full(tri);
     (void)s;
-    write_variable_integer(data.sign(), lo, hi, sz, odr);
+    write_decimal(data.sign(), lo, hi, sz, odr);
     return status::ok;
 }
 

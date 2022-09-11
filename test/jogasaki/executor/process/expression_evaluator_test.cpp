@@ -232,6 +232,7 @@ TEST_F(expression_evaluator_test, add_numeric) {
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::add, 10, 20, 30);
+    test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::add, 10, 20, 30);
 }
 
 TEST_F(expression_evaluator_test, subtract_numeric) {
@@ -239,6 +240,7 @@ TEST_F(expression_evaluator_test, subtract_numeric) {
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::subtract, 20, 5, 15);
     test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::subtract, 20, 5, 15);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::subtract, 20, 5, 15);
+    test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::subtract, 20, 5, 15);
 }
 
 TEST_F(expression_evaluator_test, multiply_numeric) {
@@ -246,6 +248,7 @@ TEST_F(expression_evaluator_test, multiply_numeric) {
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::multiply, 2, 3, 6);
     test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::multiply, 2, 3, 6);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::multiply, 2, 3, 6);
+    test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::multiply, 2, 3, 6);
 }
 
 TEST_F(expression_evaluator_test, divide_numeric) {
@@ -253,11 +256,13 @@ TEST_F(expression_evaluator_test, divide_numeric) {
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::divide, 6, 3, 2);
     test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::divide, 6, 3, 2);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::divide, 6, 3, 2);
+    test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::divide, 6, 3, 2);
 }
 
 TEST_F(expression_evaluator_test, remainder_numeric) {
     test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::remainder, 9, 4, 1);
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::remainder, 9, 4, 1);
+    test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::remainder, 9, 4, 1);
 }
 
 TEST_F(expression_evaluator_test, concat) {
@@ -426,6 +431,7 @@ void expression_evaluator_test::test_compare() {
     test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 1, false);
     test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 2, true);
 }
+
 TEST_F(expression_evaluator_test, compare_numeric) {
     {
         SCOPED_TRACE("int4");
@@ -442,6 +448,10 @@ TEST_F(expression_evaluator_test, compare_numeric) {
     {
         SCOPED_TRACE("float8");
         test_compare<t::float8>();
+    }
+    {
+        SCOPED_TRACE("decimal");
+        test_compare<t::decimal>();
     }
 }
 

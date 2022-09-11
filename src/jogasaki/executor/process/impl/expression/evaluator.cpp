@@ -59,6 +59,11 @@ any add(T const& l, U const& r) {
     return any{std::in_place_type<T>, l+r};
 }
 
+template <>
+any add<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)+static_cast<decimal::Decimal>(r)};
+}
+
 any promote_binary_numeric_left(any const& l, any const& r) {
     switch(l.type_index()) {
         case any::index<std::int32_t>: {
@@ -121,10 +126,11 @@ any engine::add_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l,r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<std::int32_t>: return add(l.to<std::int32_t>(), r.to<std::int32_t>());
-        case any::index<std::int64_t>: return add(l.to<std::int64_t>(), r.to<std::int64_t>());
-        case any::index<float>: return add(l.to<float>(), r.to<float>());
-        case any::index<double>: return add(l.to<double>(), r.to<double>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return add(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return add(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return add(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return add(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return add(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }
@@ -134,14 +140,20 @@ any subtract(T const& l, U const& r) {
     return any{std::in_place_type<T>, l-r};
 }
 
+template <>
+any subtract<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)-static_cast<decimal::Decimal>(r)};
+}
+
 any engine::subtract_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<std::int32_t>: return subtract(l.to<std::int32_t>(), r.to<std::int32_t>());
-        case any::index<std::int64_t>: return subtract(l.to<std::int64_t>(), r.to<std::int64_t>());
-        case any::index<float>: return subtract(l.to<float>(), r.to<float>());
-        case any::index<double>: return subtract(l.to<double>(), r.to<double>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return subtract(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return subtract(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return subtract(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return subtract(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }
@@ -163,14 +175,20 @@ any multiply(T const& l, U const& r) {
     return any{std::in_place_type<T>, l*r};
 }
 
+template <>
+any multiply<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)*static_cast<decimal::Decimal>(r)};
+}
+
 any engine::multiply_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<std::int32_t>: return multiply(l.to<std::int32_t>(), r.to<std::int32_t>());
-        case any::index<std::int64_t>: return multiply(l.to<std::int64_t>(), r.to<std::int64_t>());
-        case any::index<float>: return multiply(l.to<float>(), r.to<float>());
-        case any::index<double>: return multiply(l.to<double>(), r.to<double>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return multiply(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return multiply(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return multiply(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return multiply(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return multiply(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }
@@ -183,14 +201,24 @@ any divide(T const& l, U const& r) {
     return any{std::in_place_type<T>, l/r};
 }
 
+template <>
+any divide<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    // TODO check context status
+    if (r == 0) {
+        return any{std::in_place_type<class error>, error_kind::arithmetic_error};
+    }
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)/static_cast<decimal::Decimal>(r)};
+}
+
 any engine::divide_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<std::int32_t>: return divide(l.to<std::int32_t>(), r.to<std::int32_t>());
-        case any::index<std::int64_t>: return divide(l.to<std::int64_t>(), r.to<std::int64_t>());
-        case any::index<float>: return divide(l.to<float>(), r.to<float>());
-        case any::index<double>: return divide(l.to<double>(), r.to<double>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return divide(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return divide(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return divide(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return divide(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return divide(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }
@@ -203,12 +231,22 @@ any remainder(T const& l, U const& r) {
     return any{std::in_place_type<T>, l%r};
 }
 
+template <>
+any remainder<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    // TODO check context status
+    if (r == 0) {
+        return any{std::in_place_type<class error>, error_kind::arithmetic_error};
+    }
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)%static_cast<decimal::Decimal>(r)};
+}
+
 any engine::remainder_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<std::int32_t>: return remainder(l.to<std::int32_t>(), r.to<std::int32_t>());
-        case any::index<std::int64_t>: return remainder(l.to<std::int64_t>(), r.to<std::int64_t>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return remainder(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return remainder(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return remainder(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }
@@ -296,13 +334,19 @@ any sign_inversion(T const& l) {
     return any{std::in_place_type<T>, -l};
 }
 
+template <>
+any sign_inversion<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l) {
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, -static_cast<decimal::Decimal>(l)};
+}
+
 any engine::sign_inversion_any(any const& exp) {
     BOOST_ASSERT(exp);  //NOLINT
     switch(exp.type_index()) {
-        case any::index<std::int32_t>: return sign_inversion(exp.to<std::int32_t>());
-        case any::index<std::int64_t>: return sign_inversion(exp.to<std::int64_t>());
-        case any::index<float>: return sign_inversion(exp.to<float>());
-        case any::index<double>: return sign_inversion(exp.to<double>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }
@@ -367,15 +411,37 @@ any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
     return any{std::in_place_type<bool>, result};
 }
 
+template <>
+any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    // TODO use context status
+    using optype = takatori::scalar::comparison_operator;
+    bool result = false;
+    decimal::Decimal ll{l};
+    decimal::Decimal rr{r};
+    switch(op) {
+        case optype::equal: result = ll == rr; break;
+        case optype::not_equal: result = ll != rr; break;
+        case optype::greater: result = ll > rr; break;
+        case optype::greater_equal: result = ll >= rr; break;
+        case optype::less: result = ll < rr; break;
+        case optype::less_equal: result = ll <= rr; break;
+        default: fail();
+    }
+    return any{std::in_place_type<bool>, result};
+}
+
+
+
 any engine::compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<std::int32_t>: return compare(optype, l.to<std::int32_t>(), r.to<std::int32_t>());
-        case any::index<std::int64_t>: return compare(optype, l.to<std::int64_t>(), r.to<std::int64_t>());
-        case any::index<float>: return compare(optype, l.to<float>(), r.to<float>());
-        case any::index<double>: return compare(optype, l.to<double>(), r.to<double>());
-        case any::index<accessor::text>: return compare(optype, l.to<accessor::text>(), r.to<accessor::text>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::character>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: fail();
     }
 }

@@ -18,9 +18,17 @@
 #include <takatori/value/int.h>
 #include <takatori/value/float.h>
 #include <takatori/value/character.h>
+#include <takatori/value/decimal.h>
+#include <takatori/value/data.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/data/any.h>
@@ -38,10 +46,10 @@ data::any as_any(
     switch(type.kind()) {
         // TODO create and use traits for types
         case t::boolean: return {std::in_place_type<bool>, value_of<takatori::value::boolean>(arg)};
-        case t::int4: return {std::in_place_type<std::int32_t>, value_of<takatori::value::int4>(arg)};
-        case t::int8: return {std::in_place_type<std::int64_t>, value_of<takatori::value::int8>(arg)};
-        case t::float4: return {std::in_place_type<float>, value_of<takatori::value::float4>(arg)};
-        case t::float8: return {std::in_place_type<double>, value_of<takatori::value::float8>(arg)};
+        case t::int4: return {std::in_place_type<runtime_t<meta::field_type_kind::int4>>, value_of<takatori::value::int4>(arg)};
+        case t::int8: return {std::in_place_type<runtime_t<meta::field_type_kind::int8>>, value_of<takatori::value::int8>(arg)};
+        case t::float4: return {std::in_place_type<runtime_t<meta::field_type_kind::float4>>, value_of<takatori::value::float4>(arg)};
+        case t::float8: return {std::in_place_type<runtime_t<meta::field_type_kind::float8>>, value_of<takatori::value::float8>(arg)};
         case t::character: {
             auto sv = value_of<takatori::value::character>(arg);
             return {
@@ -49,6 +57,10 @@ data::any as_any(
                 resource == nullptr ? accessor::text{sv} : accessor::text{resource, sv}
             };
         }
+        case t::decimal: return {std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, value_of<takatori::value::decimal>(arg)};
+        case t::date: return {std::in_place_type<runtime_t<meta::field_type_kind::date>>, value_of<takatori::value::date>(arg)};
+        case t::time_of_day: return {std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, value_of<takatori::value::time_of_day>(arg)};
+        case t::time_point: return {std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, value_of<takatori::value::time_point>(arg)};
         case t::unknown: return {};
         default: fail();
     }

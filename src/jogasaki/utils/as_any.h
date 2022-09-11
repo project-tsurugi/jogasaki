@@ -18,9 +18,17 @@
 #include <takatori/value/int.h>
 #include <takatori/value/float.h>
 #include <takatori/value/character.h>
+#include <takatori/value/decimal.h>
+#include <takatori/value/date.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
@@ -55,6 +63,14 @@ inline static typename T::view_type value_of(
         fail();
     } else if constexpr (std::is_same_v<T, takatori::value::character>) { //NOLINT
         return unsafe_downcast<takatori::value::character>(arg).get();
+    } else if constexpr (std::is_same_v<T, takatori::value::decimal>) { //NOLINT
+        return unsafe_downcast<takatori::value::decimal>(arg).get();
+    } else if constexpr (std::is_same_v<T, takatori::value::date>) { //NOLINT
+        return unsafe_downcast<takatori::value::date>(arg).get();
+    } else if constexpr (std::is_same_v<T, takatori::value::time_of_day>) { //NOLINT
+        return unsafe_downcast<takatori::value::time_of_day>(arg).get();
+    } else if constexpr (std::is_same_v<T, takatori::value::time_point>) { //NOLINT
+        return unsafe_downcast<takatori::value::time_point>(arg).get();
     } else { //NOLINT
         throw std::domain_error("inconsistent value type");
     }

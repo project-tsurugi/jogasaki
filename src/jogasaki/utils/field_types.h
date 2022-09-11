@@ -44,7 +44,7 @@ using ::takatori::util::fail;
         case t::float8: return meta::field_type(meta::field_enum_tag<k::float8>);
         case t::decimal: {
             auto& typ = static_cast<::takatori::type::decimal const&>(type);  //NOLINT
-            return meta::field_type(std::make_shared<meta::decimal_field_option>(*typ.precision(), typ.scale()));
+            return meta::field_type(std::make_shared<meta::decimal_field_option>(typ.precision(), typ.scale()));
         }
         case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);

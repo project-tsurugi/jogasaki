@@ -86,11 +86,15 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         ref.set_null(info.nullity_offset(), is_null);
         if (! is_null) {
             switch(cinfo.type_of(v).kind()) {
-                case t::int4: copy_to<std::int32_t>(ref, info.value_offset(), result); break;
-                case t::int8: copy_to<std::int64_t>(ref, info.value_offset(), result); break;
-                case t::float4: copy_to<float>(ref, info.value_offset(), result); break;
-                case t::float8: copy_to<double>(ref, info.value_offset(), result); break;
-                case t::character: copy_to<accessor::text>(ref, info.value_offset(), result); break;
+                case t::int4: copy_to<runtime_t<meta::field_type_kind::int4>>(ref, info.value_offset(), result); break;
+                case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), result); break;
+                case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), result); break;
+                case t::float8: copy_to<runtime_t<meta::field_type_kind::float8>>(ref, info.value_offset(), result); break;
+                case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), result); break;
+                case t::decimal: copy_to<runtime_t<meta::field_type_kind::decimal>>(ref, info.value_offset(), result); break;
+                case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), result); break;
+                case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
+                case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
                 default: fail();
             }
         }

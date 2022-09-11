@@ -277,13 +277,16 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
     using t = takatori::type::type_kind;
     auto& type = info_.type_of(exp);
     switch(type.kind()) {
-        // TODO create and use traits for types
-        case t::int4: return create_any<std::int32_t>(ref, info);
-        case t::int8: return create_any<std::int64_t>(ref, info);
-        case t::float4: return create_any<float>(ref, info);
-        case t::float8: return create_any<double>(ref, info);
+        case t::int4: return create_any<runtime_t<meta::field_type_kind::int4>>(ref, info);
+        case t::int8: return create_any<runtime_t<meta::field_type_kind::int8>>(ref, info);
+        case t::float4: return create_any<runtime_t<meta::field_type_kind::float4>>(ref, info);
+        case t::float8: return create_any<runtime_t<meta::field_type_kind::float8>>(ref, info);
         case t::boolean: return create_any<bool, std::int8_t>(ref, info);
-        case t::character: return create_any<accessor::text>(ref, info);
+        case t::character: return create_any<runtime_t<meta::field_type_kind::character>>(ref, info);
+        case t::decimal: return create_any<runtime_t<meta::field_type_kind::decimal>>(ref, info);
+        case t::date: return create_any<runtime_t<meta::field_type_kind::date>>(ref, info);
+        case t::time_of_day: return create_any<runtime_t<meta::field_type_kind::time_of_day>>(ref, info);
+        case t::time_point: return create_any<runtime_t<meta::field_type_kind::time_point>>(ref, info);
         default: fail();
     }
 }

@@ -189,9 +189,10 @@ public:
      * @param discard specify true if the read should not actually happen.
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, T> read(order odr, bool discard) {
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, T> read(order odr, bool discard, meta::decimal_field_option const& option) {
         (void) odr;
         (void) discard;
+        (void) option;
         // TODO implement
         fail();
     }

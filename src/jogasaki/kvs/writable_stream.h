@@ -174,14 +174,12 @@ public:
      * @tparam T the runtime type of the field
      * @param data the data of the field type
      * @param odr the order of the field
+     * @param option the field option
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, status>
-    write(T data, order odr) {
-        // TODO implement
-        (void) data;
-        (void) odr;
-        return status::ok;
+    write(T data, order odr, meta::decimal_field_option const& option) {
+        return do_write(data, odr, *option.precision_, option.scale_);
     }
     /**
      * @brief write raw data to the stream buffer
@@ -246,6 +244,8 @@ private:
 
     void do_write(char const* dt, std::size_t sz, order odr);
     void do_write(char ch, std::size_t sz, order odr);
+    status do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale);
+
 };
 
 }

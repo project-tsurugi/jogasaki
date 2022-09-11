@@ -17,6 +17,7 @@
 
 #include <cmath>
 #include <boost/endian/conversion.hpp>
+#include <decimal.hh>
 
 #include "readable_stream.h"
 
@@ -107,6 +108,29 @@ void writable_stream::do_write(char ch, std::size_t sz, order odr) {
 
 void writable_stream::ignore_overflow(bool arg) noexcept {
     ignore_overflow_ = arg;
+}
+
+std::size_t bytes_required_for_digits(std::size_t digits) {
+    static std::array<std::size_t, 32> arr = {
+        0,
+        1, // -9 ~ 9
+        1, // -99 ~ 99
+
+
+    };
+    return arr[digits];
+}
+
+status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {
+    (void)odr;
+    (void)precision;
+    decimal::Decimal x{data};
+    auto y = x.rescale(-scale).coeff();
+    (void)y;
+
+//    bytes_required_for_digits()
+
+    return status::ok;
 }
 
 }

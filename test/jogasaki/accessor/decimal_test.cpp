@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <decimal.hh>
+#include <takatori/value/decimal.h>
 
 #include <gtest/gtest.h>
 
@@ -29,6 +30,24 @@ TEST_F(decimal_test, build) {
     decimal::Decimal exp{mpd_uint128_triple_t{MPD_TRIPLE_NORMAL, 0, 0, 314, -2} }; // sign=0 means positive
     ASSERT_EQ(exp, d);
 }
+
+TEST_F(decimal_test, from_triple) {
+    auto zero = static_cast<::decimal::Decimal>(takatori::decimal::triple{0, 0, 0, 0});
+    EXPECT_EQ(0, zero);
+
+    auto ten0 = static_cast<::decimal::Decimal>(takatori::decimal::triple{1, 0, 10, 0});
+    auto ten1 = static_cast<::decimal::Decimal>(takatori::decimal::triple{1, 0, 1, 1});
+    EXPECT_EQ(10, ten0);
+    EXPECT_EQ(10, ten1);
+    EXPECT_EQ(ten0, ten1);
+
+    auto nten0 = static_cast<::decimal::Decimal>(takatori::decimal::triple{-1, 0, 10, 0});
+    auto nten1 = static_cast<::decimal::Decimal>(takatori::decimal::triple{-1, 0, 1, 1});
+    EXPECT_EQ(-10, nten0);
+    EXPECT_EQ(-10, nten1);
+    EXPECT_EQ(nten0, nten1);
+}
+
 
 }
 

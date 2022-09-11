@@ -1231,25 +1231,30 @@ TEST_F(coder_test, decimal_simple) {
     EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 1, 2}, asc, *opt)); // 100
 
     ASSERT_EQ(3, utils::bytes_required_for_digits(6));
-    EXPECT_EQ('\x7E', buf[0]);
-    EXPECT_EQ('\x79', buf[1]);
-    EXPECT_EQ('\x60', buf[2]);
+    std::size_t base = 0;
+    EXPECT_EQ('\x7E', buf[base+0]);
+    EXPECT_EQ('\x79', buf[base+1]);
+    EXPECT_EQ('\x60', buf[base+2]);
 
-    EXPECT_EQ('\x7F', buf[3]);
-    EXPECT_EQ('\xD8', buf[4]);
-    EXPECT_EQ('\xF0', buf[5]);
+    base = 3;
+    EXPECT_EQ('\x7F', buf[base+0]);
+    EXPECT_EQ('\xD8', buf[base+1]);
+    EXPECT_EQ('\xF0', buf[base+2]);
 
-    EXPECT_EQ('\x80', buf[6]);
-    EXPECT_EQ('\x00', buf[7]);
-    EXPECT_EQ('\x00', buf[8]);
+    base = 6;
+    EXPECT_EQ('\x80', buf[base+0]);
+    EXPECT_EQ('\x00', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
 
-    EXPECT_EQ('\x80', buf[9]);
-    EXPECT_EQ('\x27', buf[10]);
-    EXPECT_EQ('\x10', buf[11]);
+    base = 9;
+    EXPECT_EQ('\x80', buf[base+0]);
+    EXPECT_EQ('\x27', buf[base+1]);
+    EXPECT_EQ('\x10', buf[base+2]);
 
-    EXPECT_EQ('\x81', buf[12]);
-    EXPECT_EQ('\x86', buf[13]);
-    EXPECT_EQ('\xA0', buf[14]);
+    base = 12;
+    EXPECT_EQ('\x81', buf[base+0]);
+    EXPECT_EQ('\x86', buf[base+1]);
+    EXPECT_EQ('\xA0', buf[base+2]);
 
 //    auto rs = s.readable();
 //    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
@@ -1270,55 +1275,60 @@ TEST_F(coder_test, decimal_64bit_boundary_values) {
     EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 1, 0, 0}, asc, *opt)); // 18446744073709551616
 
     ASSERT_EQ(9, utils::bytes_required_for_digits(20));
-    EXPECT_EQ('\x7F', buf[0]);
-    EXPECT_EQ('\x00', buf[1]);
-    EXPECT_EQ('\x00', buf[2]);
-    EXPECT_EQ('\x00', buf[3]);
-    EXPECT_EQ('\x00', buf[4]);
-    EXPECT_EQ('\x00', buf[5]);
-    EXPECT_EQ('\x00', buf[6]);
-    EXPECT_EQ('\x00', buf[7]);
-    EXPECT_EQ('\x00', buf[8]);
+    std::size_t base = 0;
+    EXPECT_EQ('\x7F', buf[base+0]);
+    EXPECT_EQ('\x00', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x00', buf[base+8]);
 
-    EXPECT_EQ('\x7F', buf[9]);
-    EXPECT_EQ('\x00', buf[10]);
-    EXPECT_EQ('\x00', buf[11]);
-    EXPECT_EQ('\x00', buf[12]);
-    EXPECT_EQ('\x00', buf[13]);
-    EXPECT_EQ('\x00', buf[14]);
-    EXPECT_EQ('\x00', buf[15]);
-    EXPECT_EQ('\x00', buf[16]);
-    EXPECT_EQ('\x01', buf[17]);
+    base = 9;
+    EXPECT_EQ('\x7F', buf[base+0]);
+    EXPECT_EQ('\x00', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x01', buf[base+8]);
 
-    EXPECT_EQ('\x80', buf[18]);
-    EXPECT_EQ('\x7F', buf[19]);
-    EXPECT_EQ('\xFF', buf[20]);
-    EXPECT_EQ('\xFF', buf[21]);
-    EXPECT_EQ('\xFF', buf[22]);
-    EXPECT_EQ('\xFF', buf[23]);
-    EXPECT_EQ('\xFF', buf[24]);
-    EXPECT_EQ('\xFF', buf[25]);
-    EXPECT_EQ('\xFF', buf[26]);
+    base = 18;
+    EXPECT_EQ('\x80', buf[base+0]);
+    EXPECT_EQ('\x7F', buf[base+1]);
+    EXPECT_EQ('\xFF', buf[base+2]);
+    EXPECT_EQ('\xFF', buf[base+3]);
+    EXPECT_EQ('\xFF', buf[base+4]);
+    EXPECT_EQ('\xFF', buf[base+5]);
+    EXPECT_EQ('\xFF', buf[base+6]);
+    EXPECT_EQ('\xFF', buf[base+7]);
+    EXPECT_EQ('\xFF', buf[base+8]);
 
-    EXPECT_EQ('\x80', buf[27]);
-    EXPECT_EQ('\xFF', buf[28]);
-    EXPECT_EQ('\xFF', buf[29]);
-    EXPECT_EQ('\xFF', buf[30]);
-    EXPECT_EQ('\xFF', buf[31]);
-    EXPECT_EQ('\xFF', buf[32]);
-    EXPECT_EQ('\xFF', buf[33]);
-    EXPECT_EQ('\xFF', buf[34]);
-    EXPECT_EQ('\xFF', buf[35]);
+    base = 27;
+    EXPECT_EQ('\x80', buf[base+0]);
+    EXPECT_EQ('\xFF', buf[base+1]);
+    EXPECT_EQ('\xFF', buf[base+2]);
+    EXPECT_EQ('\xFF', buf[base+3]);
+    EXPECT_EQ('\xFF', buf[base+4]);
+    EXPECT_EQ('\xFF', buf[base+5]);
+    EXPECT_EQ('\xFF', buf[base+6]);
+    EXPECT_EQ('\xFF', buf[base+7]);
+    EXPECT_EQ('\xFF', buf[base+8]);
 
-    EXPECT_EQ('\x81', buf[36]);
-    EXPECT_EQ('\x00', buf[37]);
-    EXPECT_EQ('\x00', buf[38]);
-    EXPECT_EQ('\x00', buf[39]);
-    EXPECT_EQ('\x00', buf[40]);
-    EXPECT_EQ('\x00', buf[41]);
-    EXPECT_EQ('\x00', buf[42]);
-    EXPECT_EQ('\x00', buf[43]);
-    EXPECT_EQ('\x00', buf[44]);
+    base = 36;
+    EXPECT_EQ('\x81', buf[base+0]);
+    EXPECT_EQ('\x00', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x00', buf[base+8]);
 //    auto rs = s.readable();
 //    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
 //    ASSERT_EQ(f32, rs.read<float>(asc, false));

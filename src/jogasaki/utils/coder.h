@@ -32,5 +32,7 @@ status encode_any(
     std::initializer_list<data::any> sources
 );
 
+std::size_t bytes_required_for_digits(std::size_t digits);
+
 }
 

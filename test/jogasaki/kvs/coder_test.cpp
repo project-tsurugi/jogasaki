@@ -27,6 +27,7 @@
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/kvs/environment.h>
+#include <jogasaki/utils/coder.h>
 
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_utils/types.h>
@@ -1179,18 +1180,19 @@ TEST_F(coder_test, decimal_ordering) {
     kvs::writable_stream s3{src3};
     kvs::writable_stream s4{src4};
 
-    data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1,0, 1, 2}}; // -100
-    data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1,0, 10, 0}};  // -10
+    auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
+    data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 1, 2}}; // -100
+    data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 10, 0}};  // -10
     data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{0, 0, 0, 0}}; // 0
     data::any c3{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 10, 0}};  // 10
     data::any c4{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 1, 2}}; // 100
     {
         // ascending non nullable
-        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s0));
-        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s1));
-        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s2));
-        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s3));
-        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s4));
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{opt}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{opt}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{opt}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{opt}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{opt}, spec_asc, s4));
         EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -1203,11 +1205,11 @@ TEST_F(coder_test, decimal_ordering) {
     s4.reset();
     {
         // descending non nullable
-        EXPECT_EQ(status::ok, encode(c0, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s0));
-        EXPECT_EQ(status::ok, encode(c1, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s1));
-        EXPECT_EQ(status::ok, encode(c2, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s2));
-        EXPECT_EQ(status::ok, encode(c3, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s3));
-        EXPECT_EQ(status::ok, encode(c4, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s4));
+        EXPECT_EQ(status::ok, encode(c0, meta::field_type{opt}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(c1, meta::field_type{opt}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode(c2, meta::field_type{opt}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode(c3, meta::field_type{opt}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode(c4, meta::field_type{opt}, spec_desc, s4));
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -1220,11 +1222,11 @@ TEST_F(coder_test, decimal_ordering) {
     s4.reset();
     {
         // ascending nullable
-        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s0));
-        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s1));
-        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s2));
-        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s3));
-        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_asc, s4));
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{opt}, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{opt}, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{opt}, spec_asc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{opt}, spec_asc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{opt}, spec_asc, s4));
         EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
@@ -1237,15 +1239,54 @@ TEST_F(coder_test, decimal_ordering) {
     s4.reset();
     {
         // descending nullable
-        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s0));
-        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s1));
-        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s2));
-        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s3));
-        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{std::make_shared<meta::decimal_field_option>()}, spec_desc, s4));
+        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{opt}, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{opt}, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{opt}, spec_desc, s2));
+        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{opt}, spec_desc, s3));
+        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{opt}, spec_desc, s4));
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
         EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
         EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
     }
+}
+
+TEST_F(coder_test, decimal) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0, 1, 2}, asc, *opt)); // -100
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0, 10, 0}, asc, *opt)); // -10
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{0, 0, 0, 0}, asc, *opt)); // 0
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 10, 0}, asc, *opt)); // 10
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 1, 2}, asc, *opt)); // 100
+
+    ASSERT_EQ(3, utils::bytes_required_for_digits(6));
+    EXPECT_EQ('\x7E', buf[0]);
+    EXPECT_EQ('\x79', buf[1]);
+    EXPECT_EQ('\x60', buf[2]);
+
+    EXPECT_EQ('\x7F', buf[3]);
+    EXPECT_EQ('\xD8', buf[4]);
+    EXPECT_EQ('\xF0', buf[5]);
+
+    EXPECT_EQ('\x80', buf[6]);
+    EXPECT_EQ('\x00', buf[7]);
+    EXPECT_EQ('\x00', buf[8]);
+
+    EXPECT_EQ('\x80', buf[9]);
+    EXPECT_EQ('\x27', buf[10]);
+    EXPECT_EQ('\x10', buf[11]);
+
+    EXPECT_EQ('\x81', buf[12]);
+    EXPECT_EQ('\x86', buf[13]);
+    EXPECT_EQ('\xA0', buf[14]);
+
+//    auto rs = s.readable();
+//    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
+//    ASSERT_EQ(f32, rs.read<float>(asc, false));
+//    ASSERT_EQ(i64, rs.read<std::int64_t>(asc, false));
+//    ASSERT_EQ(f64, rs.read<double>(asc, false));
+//    ASSERT_EQ(txt2, rs.read<accessor::text>(asc, false, &resource));
 }
 }

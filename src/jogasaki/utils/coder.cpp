@@ -15,6 +15,9 @@
  */
 #include "coder.h"
 
+#include <cmath>
+#include <map>
+#include <array>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/kvs/writable_stream.h>
@@ -66,6 +69,33 @@ status encode_any(
         }
     }
     return status::ok;
+}
+
+constexpr std::size_t max_decimal_digits = 38;
+
+auto init_digits_map() {
+    std::array<std::size_t, max_decimal_digits+1> ret{};
+    std::map<std::size_t, std::size_t> digits_to_bytes{};
+    auto log2 = std::log10(2.0);
+    digits_to_bytes.emplace(0, 0);
+    for(std::size_t i=1; i < 16+1; ++i) {
+        digits_to_bytes.emplace(std::floor((8*i-1) * log2), i);
+    }
+    for(std::size_t i=0, n=ret.size(); i < n; ++i) {
+        for(auto [a, b]: digits_to_bytes) {
+            if(a >= i) {
+                ret[i] = b;
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
+std::size_t bytes_required_for_digits(std::size_t digits) {
+    static auto arr = init_digits_map();
+    BOOST_ASSERT(digits < arr.size());  //NOLINT
+    return arr[digits];
 }
 
 }

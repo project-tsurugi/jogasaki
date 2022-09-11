@@ -189,7 +189,7 @@ static void fill_fields(
             }
             case kind::decimal: {
                 data::value a{create_value<runtime_t<meta::field_type_kind::decimal>>(val, record_count, nullable)};
-                encode_field(a, meta::field_type(meta::field_enum_tag<kind::decimal>), spec, nullable, target);
+                encode_field(a, meta::field_type(std::make_shared<meta::decimal_field_option>()), spec, nullable, target);
                 break;
             }
             case kind::date: {

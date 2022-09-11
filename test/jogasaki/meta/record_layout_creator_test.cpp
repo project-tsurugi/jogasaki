@@ -148,7 +148,7 @@ TEST_F(record_layout_creator_test, type_variaties) {
                     field_type(field_enum_tag<kind::character>),
                     field_type(field_enum_tag<kind::float4>),
                     field_type(field_enum_tag<kind::float8>),
-                    field_type(field_enum_tag<kind::decimal>),
+                    field_type(std::make_shared<decimal_field_option>()),
             },
             boost::dynamic_bitset<std::uint64_t>{"101010101"s}};
     EXPECT_EQ(8,  c.record_alignment());

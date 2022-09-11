@@ -13,26 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-
-#include <cstddef>
-#include <type_traits>
-#include <variant>
-
-#include <jogasaki/accessor/text.h>
-#include <jogasaki/meta/field_type_kind.h>
+#include "time_of_day_field_option.h"
 
 namespace jogasaki::meta {
 
-// placeholders for optional information for types
-// TODO implement for production
-struct array_field_option {}; //NOLINT
-struct record_field_option {};
-struct unknown_field_option {};
-struct row_reference_field_option {};
-struct row_id_field_option {};
-struct declared_field_option {};
-struct extension_field_option {};
+bool operator==(time_of_day_field_option const& a, time_of_day_field_option const& b) noexcept {
+    return a.tz_min_offset_ == b.tz_min_offset_;
+}
+
+std::ostream& operator<<(std::ostream& out, time_of_day_field_option const& value) {
+    return out << "time_of_day(tz_min_offset=" << value.tz_min_offset_ << ")";
+}
 
 } // namespace
 

@@ -94,7 +94,7 @@ inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMe
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
             case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
-            case sql::common::AtomType::DECIMAL: fields.emplace_back(meta::field_enum_tag<kind::decimal>); break;
+            case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
             case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
             case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>()); break;
             case sql::common::AtomType::TIME_POINT: fields.emplace_back(std::make_shared<meta::time_point_field_option>()); break;

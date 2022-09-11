@@ -15,6 +15,7 @@
  */
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
 
 #include <gtest/gtest.h>
 
@@ -45,6 +46,12 @@ TEST_F(field_type_test, options) {
     EXPECT_NE(0, opt->scale_);
 }
 
+TEST_F(field_type_test, print) {
+    std::cout << decimal_field_option{5,3} << std::endl;
+    std::cout << decimal_field_option{std::nullopt,1} << std::endl;
+    std::cout << decimal_field_option{} << std::endl;
+}
+
 TEST_F(field_type_test, equality_complex_types) {
     field_type t1{std::make_shared<decimal_field_option>(5,3)};
     EXPECT_EQ(t1, t1);
@@ -54,6 +61,10 @@ TEST_F(field_type_test, equality_complex_types) {
     EXPECT_NE(t1, t3);
     field_type t4{std::make_shared<decimal_field_option>(5,3)};
     EXPECT_EQ(t1, t4);
+    field_type t5{std::make_shared<decimal_field_option>(std::nullopt,3)};
+    EXPECT_NE(t1, t5);
+    field_type t6{std::make_shared<decimal_field_option>(std::nullopt,3)};
+    EXPECT_EQ(t5, t6);
 }
 
 TEST_F(field_type_test, pointer_type) {

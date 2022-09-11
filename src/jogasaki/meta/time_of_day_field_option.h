@@ -16,23 +16,23 @@
 #pragma once
 
 #include <cstddef>
-#include <type_traits>
-#include <variant>
-
-#include <jogasaki/accessor/text.h>
-#include <jogasaki/meta/field_type_kind.h>
+#include <ostream>
 
 namespace jogasaki::meta {
 
-// placeholders for optional information for types
-// TODO implement for production
-struct array_field_option {}; //NOLINT
-struct record_field_option {};
-struct unknown_field_option {};
-struct row_reference_field_option {};
-struct row_id_field_option {};
-struct declared_field_option {};
-struct extension_field_option {};
+struct time_of_day_field_option {
+    time_of_day_field_option() = default;
+
+    explicit time_of_day_field_option(std::int64_t tz_min_offset) :
+        tz_min_offset_(tz_min_offset)
+    {}
+
+    std::int64_t tz_min_offset_{};  //NOLINT
+};
+
+bool operator==(time_of_day_field_option const& a, time_of_day_field_option const& b) noexcept;
+
+std::ostream& operator<<(std::ostream& out, time_of_day_field_option const& value);
 
 } // namespace
 

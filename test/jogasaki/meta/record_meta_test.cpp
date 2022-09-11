@@ -88,7 +88,7 @@ TEST_F(record_meta_test, type_variaties) {
             field_type(field_enum_tag<kind::character>),
             field_type(field_enum_tag<kind::float4>),
             field_type(field_enum_tag<kind::float8>),
-            field_type(field_enum_tag<kind::decimal>),
+            field_type(std::make_shared<meta::decimal_field_option>()),
             field_type(field_enum_tag<kind::date>),
             field_type(std::make_shared<meta::time_of_day_field_option>()),
             field_type(std::make_shared<meta::time_point_field_option>()),
@@ -116,7 +116,7 @@ TEST_F(record_meta_test, type_variaties) {
     EXPECT_EQ(field_type(field_enum_tag<kind::character>), meta[5]);
     EXPECT_EQ(field_type(field_enum_tag<kind::float4>), meta[6]);
     EXPECT_EQ(field_type(field_enum_tag<kind::float8>), meta[7]);
-    EXPECT_EQ(field_type(field_enum_tag<kind::decimal>), meta[8]);
+    EXPECT_EQ(field_type(std::make_shared<meta::decimal_field_option>()), meta[8]);
     EXPECT_EQ(field_type(field_enum_tag<kind::date>), meta[9]);
     EXPECT_EQ(field_type(std::make_shared<meta::time_of_day_field_option>()), meta[10]);
     EXPECT_EQ(field_type(std::make_shared<meta::time_point_field_option>()), meta[11]);

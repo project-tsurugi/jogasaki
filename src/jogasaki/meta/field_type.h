@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <type_traits>
 #include <variant>
+#include <ostream>
 
 #include <takatori/util/comparable_traits.h>
 
@@ -25,6 +26,9 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 namespace jogasaki::meta {
 
@@ -225,15 +229,9 @@ public:
         using kind = field_type_kind;
         auto k = value.kind();
         switch (k) {
-            case kind::time_of_day: return out << value.option<kind::time_of_day>();
-            case kind::time_point: return out << value.option<kind::time_point>();
-            case kind::array: return out << value.option<kind::array>();
-            case kind::record: return out << value.option<kind::record>();
-            case kind::unknown: return out << value.option<kind::unknown>();
-            case kind::row_reference: return out << value.option<kind::row_reference>();
-            case kind::row_id: return out << value.option<kind::row_id>();
-            case kind::declared: return out << value.option<kind::declared>();
-            case kind::extension: return out << value.option<kind::extension>();
+            case kind::decimal: return out << *value.option<kind::decimal>();
+            case kind::time_of_day: return out << *value.option<kind::time_of_day>();
+            case kind::time_point: return out << *value.option<kind::time_point>();
             default:
                 return out << k;
         }
@@ -279,6 +277,7 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
     }
     using kind = field_type_kind;
     switch (a.kind()) {
+        case kind::decimal: return impl::eq<kind::decimal>()(a, b);
         case kind::date: return impl::eq<kind::date>()(a, b);
         case kind::time_point: return impl::eq<kind::time_point>()(a, b);
         case kind::array: return impl::eq<kind::array>()(a, b);

@@ -13,26 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-
-#include <cstddef>
-#include <type_traits>
-#include <variant>
-
-#include <jogasaki/accessor/text.h>
-#include <jogasaki/meta/field_type_kind.h>
+#include "decimal_field_option.h"
 
 namespace jogasaki::meta {
 
-// placeholders for optional information for types
-// TODO implement for production
-struct array_field_option {}; //NOLINT
-struct record_field_option {};
-struct unknown_field_option {};
-struct row_reference_field_option {};
-struct row_id_field_option {};
-struct declared_field_option {};
-struct extension_field_option {};
+bool operator==(decimal_field_option const& a, decimal_field_option const& b) noexcept {
+    return a.precision_ == b.precision_ && a.scale_ == b.scale_;
+}
+
+std::ostream& operator<<(std::ostream& out, decimal_field_option const& value) {
+    return out << "decimal(" <<
+        (value.precision_.has_value() ? std::to_string(value.precision_.value()) : "*") <<
+        ", " <<
+        std::to_string(value.scale_) <<
+        ")";
+}
 
 } // namespace
 

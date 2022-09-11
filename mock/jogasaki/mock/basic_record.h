@@ -133,6 +133,11 @@ inline meta::field_type create_field_type<meta::field_type_kind::time_point>() {
     return meta::field_type(std::make_shared<meta::time_point_field_option>());
 }
 
+template <>
+inline meta::field_type create_field_type<meta::field_type_kind::decimal>() {
+    return meta::field_type(std::make_shared<meta::decimal_field_option>());
+}
+
 }  //namespace details
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>

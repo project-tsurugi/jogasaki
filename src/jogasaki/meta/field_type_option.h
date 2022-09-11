@@ -27,7 +27,7 @@ namespace jogasaki::meta {
 // placeholders for optional information for types
 // TODO implement for production
 // add == operators to suppress compile errors
-struct array_field_option { explicit array_field_option(std::size_t size) : size_(size) {} std::size_t size_; }; //NOLINT
+struct array_field_option {}; //NOLINT
 struct record_field_option {};
 struct unknown_field_option {};
 struct row_reference_field_option {};
@@ -55,15 +55,35 @@ struct time_point_field_option {
     std::int64_t tz_min_offset_{};  //NOLINT
 }; //NOLINT
 
-// temporary implementation to test field types with options in general FIXME
-inline bool operator==(array_field_option const& a, array_field_option const& b) noexcept {
-    return a.size_ == b.size_;
-}
+struct decimal_field_option {
+    /**
+     * @brief create default object, that has no precision/scale information
+     */
+    decimal_field_option() = default;
+
+    /**
+     * @brief create new object
+     */
+    decimal_field_option(
+        std::optional<std::size_t> precision,
+        std::size_t scale
+    ) :
+        precision_(precision),
+        scale_(scale)
+    {}
+
+    std::optional<std::size_t> precision_{};  //NOLINT
+    std::size_t scale_{};  //NOLINT
+}; //NOLINT
+
 inline bool operator==(time_of_day_field_option const& a, time_of_day_field_option const& b) noexcept {
     return a.tz_min_offset_ == b.tz_min_offset_;
 }
 inline bool operator==(time_point_field_option const& a, time_point_field_option const& b) noexcept {
     return a.tz_min_offset_ == b.tz_min_offset_;
+}
+inline bool operator==(decimal_field_option const& a, decimal_field_option const& b) noexcept {
+    return a.precision_ == b.precision_ && a.scale_ == b.scale_;
 }
 
 } // namespace

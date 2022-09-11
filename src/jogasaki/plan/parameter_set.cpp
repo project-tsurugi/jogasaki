@@ -68,7 +68,7 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
 void parameter_set::set_decimal(std::string_view name, runtime_t<kind::decimal> value) {
     add(std::string(name),
         {
-            meta::field_type{meta::field_enum_tag<kind::decimal>},
+            meta::field_type{std::make_shared<meta::decimal_field_option>()},
             data::value{std::in_place_type<runtime_t<kind::decimal>>, value}
         }
     );

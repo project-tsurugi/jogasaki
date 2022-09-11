@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_option.h>
 
 #include <gtest/gtest.h>
 
@@ -37,17 +38,22 @@ TEST_F(field_type_test, simple_construct) {
 }
 
 TEST_F(field_type_test, options) {
-    field_type t{std::make_shared<array_field_option>(1)};
+    field_type t{std::make_shared<decimal_field_option>(5,3)};
     EXPECT_TRUE(t);
-    auto opt = t.option<field_type_kind::array>();
-    EXPECT_NE(0, opt->size_);
+    auto opt = t.option<field_type_kind::decimal>();
+    EXPECT_NE(0, opt->precision_);
+    EXPECT_NE(0, opt->scale_);
 }
 
 TEST_F(field_type_test, equality_complex_types) {
-    field_type t1{std::make_shared<array_field_option>(100UL)};
+    field_type t1{std::make_shared<decimal_field_option>(5,3)};
     EXPECT_EQ(t1, t1);
-    field_type t2{std::make_shared<array_field_option>(200UL)};
+    field_type t2{std::make_shared<decimal_field_option>(5,2)};
     EXPECT_NE(t1, t2);
+    field_type t3{std::make_shared<decimal_field_option>(4,3)};
+    EXPECT_NE(t1, t3);
+    field_type t4{std::make_shared<decimal_field_option>(5,3)};
+    EXPECT_EQ(t1, t4);
 }
 
 TEST_F(field_type_test, pointer_type) {

@@ -288,9 +288,9 @@ TEST_F(record_printer_test, decimal) {
     using kind = field_type_kind;
     record_meta meta{
         std::vector<field_type>{
-            field_type(field_enum_tag<kind::decimal>),
-            field_type(field_enum_tag<kind::decimal>),
-            field_type(field_enum_tag<kind::decimal>),
+            field_type(std::make_shared<decimal_field_option>(6,3)),
+            field_type(std::make_shared<decimal_field_option>(6,3)),
+            field_type(std::make_shared<decimal_field_option>(6,3)),
         },
         boost::dynamic_bitset<std::uint64_t>{3}};
     EXPECT_EQ(3, meta.field_count());

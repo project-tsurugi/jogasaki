@@ -25,6 +25,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
+#include <takatori/type/decimal.h>
 
 namespace jogasaki::utils {
 
@@ -41,7 +42,10 @@ using ::takatori::util::fail;
         case t::int8: return meta::field_type(meta::field_enum_tag<k::int8>);
         case t::float4: return meta::field_type(meta::field_enum_tag<k::float4>);
         case t::float8: return meta::field_type(meta::field_enum_tag<k::float8>);
-        case t::decimal: return meta::field_type(meta::field_enum_tag<k::decimal>);
+        case t::decimal: {
+            auto& typ = static_cast<::takatori::type::decimal const&>(type);  //NOLINT
+            return meta::field_type(std::make_shared<meta::decimal_field_option>(*typ.precision(), typ.scale()));
+        }
         case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
         case t::date: return meta::field_type(meta::field_enum_tag<k::date>);

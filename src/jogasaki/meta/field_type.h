@@ -62,7 +62,7 @@ public:
         std::monostate, // int8
         std::monostate, // float4
         std::monostate, // float8
-        std::monostate, // decimal
+        std::shared_ptr<decimal_field_option>, // decimal
         std::monostate, // character
         std::monostate, // bit
         std::monostate, // date

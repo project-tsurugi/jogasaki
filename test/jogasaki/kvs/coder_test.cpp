@@ -20,9 +20,6 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/test_root.h>
-#include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/storage.h>
-#include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/data/any.h>
@@ -845,11 +842,17 @@ TEST_F(coder_test, decimal_simple) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0, 1, 2}, asc, *opt)); // -100
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0, 10, 0}, asc, *opt)); // -10
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{0, 0, 0, 0}, asc, *opt)); // 0
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 10, 0}, asc, *opt)); // 10
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 1, 2}, asc, *opt)); // 100
+    auto v0 = rtype<ft::decimal>{-1, 0, 1, 2}; // -100
+    auto v1 = rtype<ft::decimal>{-1, 0, 10, 0}; // -10
+    auto v2 = rtype<ft::decimal>{0, 0, 0, 0}; // 0
+    auto v3 = rtype<ft::decimal>{1, 0, 10, 0}; // 10
+    auto v4 = rtype<ft::decimal>{1, 0, 1, 2}; // 100
+
+    EXPECT_EQ(status::ok, s.write(v0, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v1, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v2, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v3, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v4, asc, *opt));
 
     ASSERT_EQ(3, utils::bytes_required_for_digits(6));
     std::size_t base = 0;
@@ -877,23 +880,31 @@ TEST_F(coder_test, decimal_simple) {
     EXPECT_EQ('\x86', buf[base+1]);
     EXPECT_EQ('\xA0', buf[base+2]);
 
-//    auto rs = s.readable();
-//    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
-//    ASSERT_EQ(f32, rs.read<float>(asc, false));
-//    ASSERT_EQ(i64, rs.read<std::int64_t>(asc, false));
-//    ASSERT_EQ(f64, rs.read<double>(asc, false));
-//    ASSERT_EQ(txt2, rs.read<accessor::text>(asc, false, &resource));
+    auto rs = s.readable();
+    // writing and reading triple is not round-trip equal. Create Decimal to check equivalence.
+    EXPECT_EQ(decimal::Decimal{v0}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v1}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v2}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v3}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v4}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(0, decimal::context.status());
 }
 
 TEST_F(coder_test, decimal_64bit_boundary_values) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     auto opt = std::make_shared<meta::decimal_field_option>(20, 0);
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 1, 0, 0}, asc, *opt)); // -18446744073709551616
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt)); // -18446744073709551615
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 0x7FFFFFFFFFFFFFFFUL, 0}, asc, *opt)); // 9223372036854775807
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt)); // 18446744073709551615
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 1, 0, 0}, asc, *opt)); // 18446744073709551616
+
+    auto v0 = rtype<ft::decimal>{-1, 1, 0, 0}; // -18446744073709551616
+    auto v1 = rtype<ft::decimal>{-1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}; // -18446744073709551615
+    auto v2 = rtype<ft::decimal>{1, 0, 0x7FFFFFFFFFFFFFFFUL, 0}; // 9223372036854775807
+    auto v3 = rtype<ft::decimal>{1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}; // 18446744073709551615
+    auto v4 = rtype<ft::decimal>{1, 1, 0, 0}; // 18446744073709551616
+    EXPECT_EQ(status::ok, s.write(v0, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v1, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v2, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v3, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v4, asc, *opt));
 
     ASSERT_EQ(9, utils::bytes_required_for_digits(20));
     std::size_t base = 0;
@@ -950,12 +961,15 @@ TEST_F(coder_test, decimal_64bit_boundary_values) {
     EXPECT_EQ('\x00', buf[base+6]);
     EXPECT_EQ('\x00', buf[base+7]);
     EXPECT_EQ('\x00', buf[base+8]);
-//    auto rs = s.readable();
-//    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
-//    ASSERT_EQ(f32, rs.read<float>(asc, false));
-//    ASSERT_EQ(i64, rs.read<std::int64_t>(asc, false));
-//    ASSERT_EQ(f64, rs.read<double>(asc, false));
-//    ASSERT_EQ(txt2, rs.read<accessor::text>(asc, false, &resource));
+
+    auto rs = s.readable();
+    // writing and reading triple is not round-trip equal. Create Decimal to check equivalence.
+    EXPECT_EQ(decimal::Decimal{v0}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v1}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v2}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v3}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v4}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(0, decimal::context.status());
 }
 
 TEST_F(coder_test, decimal_ordering_64bit_boundary_values) {
@@ -1019,11 +1033,18 @@ TEST_F(coder_test, decimal_128bit_boundary_values) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     auto opt = std::make_shared<meta::decimal_field_option>(39, 0);
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt));
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0x8000000000000000UL, 0x0000000000000000UL, 0}, asc, *opt));
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt));
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0x8000000000000000UL,  0x0000000000000000UL, 0}, asc, *opt));
-    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt));
+
+    auto v0 = rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
+    auto v1 = rtype<ft::decimal>{-1, 0x8000000000000000UL, 0x0000000000000000UL, 0};
+    auto v2 = rtype<ft::decimal>{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
+    auto v3 = rtype<ft::decimal>{1, 0x8000000000000000UL,  0x0000000000000000UL, 0};
+    auto v4 = rtype<ft::decimal>{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
+
+    EXPECT_EQ(status::ok, s.write(v0, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v1, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v2, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v3, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v4, asc, *opt));
 
     std::size_t base = 0;
     ASSERT_EQ(17, utils::bytes_required_for_digits(39));
@@ -1120,11 +1141,42 @@ TEST_F(coder_test, decimal_128bit_boundary_values) {
     EXPECT_EQ('\xFF', buf[base+14]);
     EXPECT_EQ('\xFF', buf[base+15]);
     EXPECT_EQ('\xFF', buf[base+16]);
-//    auto rs = s.readable();
-//    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
-//    ASSERT_EQ(f32, rs.read<float>(asc, false));
-//    ASSERT_EQ(i64, rs.read<std::int64_t>(asc, false));
-//    ASSERT_EQ(f64, rs.read<double>(asc, false));
-//    ASSERT_EQ(txt2, rs.read<accessor::text>(asc, false, &resource));
+
+    auto rs = s.readable();
+    // writing and reading triple is not round-trip equal. Create Decimal to check equivalence.
+    EXPECT_EQ(decimal::Decimal{v0}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v1}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v2}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v3}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v4}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(0, decimal::context.status());
+}
+
+TEST_F(coder_test, decimal_max_boundary_values) {
+    // test boundary values around 38-digits decimal maximum
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto opt = std::make_shared<meta::decimal_field_option>(38, 0);
+
+    auto v0 = rtype<ft::decimal>{-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, 0}; // -999....9 (38 digits)
+    auto v1 = rtype<ft::decimal>{-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, 0}; // -999....8 (38 digits)
+    auto v2 = rtype<ft::decimal>{0, 0, 0, 0}; // 0
+    auto v3 = rtype<ft::decimal>{1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, 0}; // +999....8 (38 digits)
+    auto v4 = rtype<ft::decimal>{1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, 0}; // +999....9 (38 digits)
+
+    EXPECT_EQ(status::ok, s.write(v0, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v1, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v2, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v3, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v4, asc, *opt));
+
+    auto rs = s.readable();
+    // writing and reading triple is not round-trip equal. Create Decimal to check equivalence.
+    EXPECT_EQ(decimal::Decimal{v0}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v1}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v2}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v3}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(decimal::Decimal{v4}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    EXPECT_EQ(0, decimal::context.status());
 }
 }

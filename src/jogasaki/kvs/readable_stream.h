@@ -190,11 +190,7 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, T> read(order odr, bool discard, meta::decimal_field_option const& option) {
-        (void) odr;
-        (void) discard;
-        (void) option;
-        // TODO implement
-        fail();
+        return do_read(odr, discard, *option.precision_, option.scale_);
     }
     /**
      * @brief reset the current position
@@ -229,6 +225,8 @@ private:
     char const* base_{};
     std::size_t pos_{};
     std::size_t capacity_{};
+
+    runtime_t<meta::field_type_kind::decimal> do_read(order odr, bool discard, std::size_t precision, std::size_t scale);
 };
 
 }

@@ -245,7 +245,7 @@ private:
     void do_write(char const* dt, std::size_t sz, order odr);
     void do_write(char ch, std::size_t sz, order odr);
     status do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale);
-    void write_variable_integer(std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr);
+    void write_variable_integer(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr);
 };
 
 }

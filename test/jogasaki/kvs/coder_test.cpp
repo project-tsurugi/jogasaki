@@ -1168,90 +1168,59 @@ TEST_F(coder_test, time_point_ordering_with_subsecs) {
     }
 }
 
-TEST_F(coder_test, decimal_ordering) {
+void verify_order(meta::field_type type, data::any a, data::any b) {
     std::string src0(100, 0);
     std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    std::string src4(100, 0);
     kvs::writable_stream s0{src0};
     kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
-    kvs::writable_stream s4{src4};
+    {
+        // ascending non nullable
+        EXPECT_EQ(status::ok, encode(a, type, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode(b, type, spec_asc, s1));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+    }
+    s0.reset();
+    s1.reset();
+    {
+        // descending non nullable
+        EXPECT_EQ(status::ok, encode(a, type, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode(b, type, spec_desc, s1));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+    }
+    s0.reset();
+    s1.reset();
+    {
+        // ascending nullable
+        EXPECT_EQ(status::ok, encode_nullable(a, type, spec_asc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(b, type, spec_asc, s1));
+        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+    }
+    s0.reset();
+    s1.reset();
+    {
+        // descending nullable
+        EXPECT_EQ(status::ok, encode_nullable(a, type, spec_desc, s0));
+        EXPECT_EQ(status::ok, encode_nullable(b, type, spec_desc, s1));
+        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
+    }
+}
 
+TEST_F(coder_test, decimal_ordering_simple) {
     auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
+    meta::field_type type{opt};
     data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 1, 2}}; // -100
     data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 10, 0}};  // -10
     data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{0, 0, 0, 0}}; // 0
     data::any c3{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 10, 0}};  // 10
     data::any c4{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 1, 2}}; // 100
-    {
-        // ascending non nullable
-        EXPECT_EQ(status::ok, encode(c0, meta::field_type{opt}, spec_asc, s0));
-        EXPECT_EQ(status::ok, encode(c1, meta::field_type{opt}, spec_asc, s1));
-        EXPECT_EQ(status::ok, encode(c2, meta::field_type{opt}, spec_asc, s2));
-        EXPECT_EQ(status::ok, encode(c3, meta::field_type{opt}, spec_asc, s3));
-        EXPECT_EQ(status::ok, encode(c4, meta::field_type{opt}, spec_asc, s4));
-        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
-        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
-        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
-        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
-    }
-    s0.reset();
-    s1.reset();
-    s2.reset();
-    s3.reset();
-    s4.reset();
-    {
-        // descending non nullable
-        EXPECT_EQ(status::ok, encode(c0, meta::field_type{opt}, spec_desc, s0));
-        EXPECT_EQ(status::ok, encode(c1, meta::field_type{opt}, spec_desc, s1));
-        EXPECT_EQ(status::ok, encode(c2, meta::field_type{opt}, spec_desc, s2));
-        EXPECT_EQ(status::ok, encode(c3, meta::field_type{opt}, spec_desc, s3));
-        EXPECT_EQ(status::ok, encode(c4, meta::field_type{opt}, spec_desc, s4));
-        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
-        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
-        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
-        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
-    }
-    s0.reset();
-    s1.reset();
-    s2.reset();
-    s3.reset();
-    s4.reset();
-    {
-        // ascending nullable
-        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{opt}, spec_asc, s0));
-        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{opt}, spec_asc, s1));
-        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{opt}, spec_asc, s2));
-        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{opt}, spec_asc, s3));
-        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{opt}, spec_asc, s4));
-        EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
-        EXPECT_LT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
-        EXPECT_LT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
-        EXPECT_LT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
-    }
-    s0.reset();
-    s1.reset();
-    s2.reset();
-    s3.reset();
-    s4.reset();
-    {
-        // descending nullable
-        EXPECT_EQ(status::ok, encode_nullable(c0, meta::field_type{opt}, spec_desc, s0));
-        EXPECT_EQ(status::ok, encode_nullable(c1, meta::field_type{opt}, spec_desc, s1));
-        EXPECT_EQ(status::ok, encode_nullable(c2, meta::field_type{opt}, spec_desc, s2));
-        EXPECT_EQ(status::ok, encode_nullable(c3, meta::field_type{opt}, spec_desc, s3));
-        EXPECT_EQ(status::ok, encode_nullable(c4, meta::field_type{opt}, spec_desc, s4));
-        EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
-        EXPECT_GT(bin(src1.data(), s1.size()), bin(src2.data(), s2.size()));
-        EXPECT_GT(bin(src2.data(), s2.size()), bin(src3.data(), s3.size()));
-        EXPECT_GT(bin(src3.data(), s3.size()), bin(src4.data(), s4.size()));
-    }
+
+    { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
+    { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
+    { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
+    { SCOPED_TRACE("c3 < c4"); verify_order(type, c3, c4); }
 }
 
-TEST_F(coder_test, decimal) {
+TEST_F(coder_test, decimal_simple) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
@@ -1282,6 +1251,244 @@ TEST_F(coder_test, decimal) {
     EXPECT_EQ('\x86', buf[13]);
     EXPECT_EQ('\xA0', buf[14]);
 
+//    auto rs = s.readable();
+//    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
+//    ASSERT_EQ(f32, rs.read<float>(asc, false));
+//    ASSERT_EQ(i64, rs.read<std::int64_t>(asc, false));
+//    ASSERT_EQ(f64, rs.read<double>(asc, false));
+//    ASSERT_EQ(txt2, rs.read<accessor::text>(asc, false, &resource));
+}
+
+TEST_F(coder_test, decimal_64bit_boundary_values) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto opt = std::make_shared<meta::decimal_field_option>(20, 0);
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 1, 0, 0}, asc, *opt)); // -18446744073709551616
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt)); // -18446744073709551615
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 0x7FFFFFFFFFFFFFFFUL, 0}, asc, *opt)); // 9223372036854775807
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt)); // 18446744073709551615
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 1, 0, 0}, asc, *opt)); // 18446744073709551616
+
+    ASSERT_EQ(9, utils::bytes_required_for_digits(20));
+    EXPECT_EQ('\x7F', buf[0]);
+    EXPECT_EQ('\x00', buf[1]);
+    EXPECT_EQ('\x00', buf[2]);
+    EXPECT_EQ('\x00', buf[3]);
+    EXPECT_EQ('\x00', buf[4]);
+    EXPECT_EQ('\x00', buf[5]);
+    EXPECT_EQ('\x00', buf[6]);
+    EXPECT_EQ('\x00', buf[7]);
+    EXPECT_EQ('\x00', buf[8]);
+
+    EXPECT_EQ('\x7F', buf[9]);
+    EXPECT_EQ('\x00', buf[10]);
+    EXPECT_EQ('\x00', buf[11]);
+    EXPECT_EQ('\x00', buf[12]);
+    EXPECT_EQ('\x00', buf[13]);
+    EXPECT_EQ('\x00', buf[14]);
+    EXPECT_EQ('\x00', buf[15]);
+    EXPECT_EQ('\x00', buf[16]);
+    EXPECT_EQ('\x01', buf[17]);
+
+    EXPECT_EQ('\x80', buf[18]);
+    EXPECT_EQ('\x7F', buf[19]);
+    EXPECT_EQ('\xFF', buf[20]);
+    EXPECT_EQ('\xFF', buf[21]);
+    EXPECT_EQ('\xFF', buf[22]);
+    EXPECT_EQ('\xFF', buf[23]);
+    EXPECT_EQ('\xFF', buf[24]);
+    EXPECT_EQ('\xFF', buf[25]);
+    EXPECT_EQ('\xFF', buf[26]);
+
+    EXPECT_EQ('\x80', buf[27]);
+    EXPECT_EQ('\xFF', buf[28]);
+    EXPECT_EQ('\xFF', buf[29]);
+    EXPECT_EQ('\xFF', buf[30]);
+    EXPECT_EQ('\xFF', buf[31]);
+    EXPECT_EQ('\xFF', buf[32]);
+    EXPECT_EQ('\xFF', buf[33]);
+    EXPECT_EQ('\xFF', buf[34]);
+    EXPECT_EQ('\xFF', buf[35]);
+
+    EXPECT_EQ('\x81', buf[36]);
+    EXPECT_EQ('\x00', buf[37]);
+    EXPECT_EQ('\x00', buf[38]);
+    EXPECT_EQ('\x00', buf[39]);
+    EXPECT_EQ('\x00', buf[40]);
+    EXPECT_EQ('\x00', buf[41]);
+    EXPECT_EQ('\x00', buf[42]);
+    EXPECT_EQ('\x00', buf[43]);
+    EXPECT_EQ('\x00', buf[44]);
+//    auto rs = s.readable();
+//    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
+//    ASSERT_EQ(f32, rs.read<float>(asc, false));
+//    ASSERT_EQ(i64, rs.read<std::int64_t>(asc, false));
+//    ASSERT_EQ(f64, rs.read<double>(asc, false));
+//    ASSERT_EQ(txt2, rs.read<accessor::text>(asc, false, &resource));
+}
+
+TEST_F(coder_test, decimal_ordering_64bit_boundary_values) {
+    auto opt = std::make_shared<meta::decimal_field_option>(20, 0);
+    meta::field_type type{opt};
+    data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 1, 1, 0}}; // -18446744073709551617
+    data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 1, 0, 0}}; // -18446744073709551616
+    data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}};  // -18446744073709551615
+    data::any c3{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 0xFFFFFFFFFFFFFFFEUL, 0}};  // -18446744073709551614
+    data::any c4{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 0, 0}};  // 0
+    data::any c5{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 0x7FFFFFFFFFFFFFFFUL, 0}}; // 9223372036854775807
+    data::any c6{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 0x8000000000000000UL, 0}}; // 9223372036854775808
+    data::any c7{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 0xFFFFFFFFFFFFFFFEUL, 0}};  // 18446744073709551614
+    data::any c8{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}};  // 18446744073709551615
+    data::any c9{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 1, 0, 0}}; // 18446744073709551616
+    data::any c10{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 1, 1, 0}}; // 18446744073709551617
+
+    { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
+    { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
+    { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
+    { SCOPED_TRACE("c3 < c4"); verify_order(type, c3, c4); }
+    { SCOPED_TRACE("c4 < c5"); verify_order(type, c4, c5); }
+    { SCOPED_TRACE("c5 < c6"); verify_order(type, c5, c6); }
+    { SCOPED_TRACE("c6 < c7"); verify_order(type, c6, c7); }
+    { SCOPED_TRACE("c7 < c8"); verify_order(type, c7, c8); }
+    { SCOPED_TRACE("c8 < c9"); verify_order(type, c8, c9); }
+    { SCOPED_TRACE("c9 < c10"); verify_order(type, c9, c10); }
+}
+
+TEST_F(coder_test, decimal_ordering_128bit_boundary_values) {
+    auto opt = std::make_shared<meta::decimal_field_option>(39, 0);
+    meta::field_type type{opt};
+    data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}};
+    data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFEUL, 0}};
+    data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0x8000000000000000UL, 0x0000000000000001UL, 0}};
+    data::any c3{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0x8000000000000000UL, 0x0000000000000000UL, 0}};
+    data::any c4{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}};
+    data::any c5{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFEUL, 0}};
+    data::any c6{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1,  0, 0, 0}};
+    data::any c7{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1,  0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFEUL, 0}};
+    data::any c8{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1,  0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}};
+    data::any c9{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1,  0x8000000000000000UL, 0x0000000000000000UL, 0}};
+    data::any c10{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFEUL, 0}};
+    data::any c11{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}};
+    { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
+    { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
+    { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
+    { SCOPED_TRACE("c3 < c4"); verify_order(type, c3, c4); }
+    { SCOPED_TRACE("c4 < c5"); verify_order(type, c4, c5); }
+    { SCOPED_TRACE("c5 < c6"); verify_order(type, c5, c6); }
+    { SCOPED_TRACE("c6 < c7"); verify_order(type, c6, c7); }
+    { SCOPED_TRACE("c7 < c8"); verify_order(type, c7, c8); }
+    { SCOPED_TRACE("c8 < c9"); verify_order(type, c8, c9); }
+    { SCOPED_TRACE("c9 < c10"); verify_order(type, c9, c10); }
+    { SCOPED_TRACE("c10 < c11"); verify_order(type, c10, c11); }
+}
+
+TEST_F(coder_test, decimal_128bit_boundary_values) {
+    // not all 39-digit values are supported, but part of them can be realized by decimal triple
+    // these values are internal use for now
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto opt = std::make_shared<meta::decimal_field_option>(39, 0);
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0x8000000000000000UL, 0x0000000000000000UL, 0}, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0x8000000000000000UL,  0x0000000000000000UL, 0}, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(rtype<ft::decimal>{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}, asc, *opt));
+
+    std::size_t base = 0;
+    ASSERT_EQ(17, utils::bytes_required_for_digits(39));
+    EXPECT_EQ('\x7F', buf[base+0]);
+    EXPECT_EQ('\x00', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x00', buf[base+8]);
+    EXPECT_EQ('\x00', buf[base+9]);
+    EXPECT_EQ('\x00', buf[base+10]);
+    EXPECT_EQ('\x00', buf[base+11]);
+    EXPECT_EQ('\x00', buf[base+12]);
+    EXPECT_EQ('\x00', buf[base+13]);
+    EXPECT_EQ('\x00', buf[base+14]);
+    EXPECT_EQ('\x00', buf[base+15]);
+    EXPECT_EQ('\x01', buf[base+16]);
+
+    base = 17;
+    EXPECT_EQ('\x7F', buf[base+0]);
+    EXPECT_EQ('\x80', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x00', buf[base+8]);
+    EXPECT_EQ('\x00', buf[base+9]);
+    EXPECT_EQ('\x00', buf[base+10]);
+    EXPECT_EQ('\x00', buf[base+11]);
+    EXPECT_EQ('\x00', buf[base+12]);
+    EXPECT_EQ('\x00', buf[base+13]);
+    EXPECT_EQ('\x00', buf[base+14]);
+    EXPECT_EQ('\x00', buf[base+15]);
+    EXPECT_EQ('\x00', buf[base+16]);
+
+    base = 34;
+    EXPECT_EQ('\x7F', buf[base+0]);
+    EXPECT_EQ('\x80', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x00', buf[base+8]);
+    EXPECT_EQ('\x00', buf[base+9]);
+    EXPECT_EQ('\x00', buf[base+10]);
+    EXPECT_EQ('\x00', buf[base+11]);
+    EXPECT_EQ('\x00', buf[base+12]);
+    EXPECT_EQ('\x00', buf[base+13]);
+    EXPECT_EQ('\x00', buf[base+14]);
+    EXPECT_EQ('\x00', buf[base+15]);
+    EXPECT_EQ('\x01', buf[base+16]);
+
+    base = 51;
+    EXPECT_EQ('\x80', buf[base+0]);
+    EXPECT_EQ('\x80', buf[base+1]);
+    EXPECT_EQ('\x00', buf[base+2]);
+    EXPECT_EQ('\x00', buf[base+3]);
+    EXPECT_EQ('\x00', buf[base+4]);
+    EXPECT_EQ('\x00', buf[base+5]);
+    EXPECT_EQ('\x00', buf[base+6]);
+    EXPECT_EQ('\x00', buf[base+7]);
+    EXPECT_EQ('\x00', buf[base+8]);
+    EXPECT_EQ('\x00', buf[base+9]);
+    EXPECT_EQ('\x00', buf[base+10]);
+    EXPECT_EQ('\x00', buf[base+11]);
+    EXPECT_EQ('\x00', buf[base+12]);
+    EXPECT_EQ('\x00', buf[base+13]);
+    EXPECT_EQ('\x00', buf[base+14]);
+    EXPECT_EQ('\x00', buf[base+15]);
+    EXPECT_EQ('\x00', buf[base+16]);
+
+    base = 68;
+    EXPECT_EQ('\x80', buf[base+0]);
+    EXPECT_EQ('\xFF', buf[base+1]);
+    EXPECT_EQ('\xFF', buf[base+2]);
+    EXPECT_EQ('\xFF', buf[base+3]);
+    EXPECT_EQ('\xFF', buf[base+4]);
+    EXPECT_EQ('\xFF', buf[base+5]);
+    EXPECT_EQ('\xFF', buf[base+6]);
+    EXPECT_EQ('\xFF', buf[base+7]);
+    EXPECT_EQ('\xFF', buf[base+8]);
+    EXPECT_EQ('\xFF', buf[base+9]);
+    EXPECT_EQ('\xFF', buf[base+10]);
+    EXPECT_EQ('\xFF', buf[base+11]);
+    EXPECT_EQ('\xFF', buf[base+12]);
+    EXPECT_EQ('\xFF', buf[base+13]);
+    EXPECT_EQ('\xFF', buf[base+14]);
+    EXPECT_EQ('\xFF', buf[base+15]);
+    EXPECT_EQ('\xFF', buf[base+16]);
 //    auto rs = s.readable();
 //    ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
 //    ASSERT_EQ(f32, rs.read<float>(asc, false));

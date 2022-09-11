@@ -22,6 +22,8 @@
 #include <takatori/decimal/triple.h>
 #include <decimal.hh>
 
+#include <jogasaki/utils/coder.h>
+
 #include "readable_stream.h"
 
 namespace jogasaki::kvs {
@@ -113,45 +115,32 @@ void writable_stream::ignore_overflow(bool arg) noexcept {
     ignore_overflow_ = arg;
 }
 
-constexpr std::size_t max_decimal_digits = 38;
-
-std::array<std::size_t, max_decimal_digits> init_digits_map() {
-    std::array<std::size_t, max_decimal_digits> ret{};
-    std::map<std::size_t, std::size_t> digits_to_bytes{};
-    auto log2 = std::log10(2.0);
-    digits_to_bytes.emplace(0, 0);
-    for(std::size_t i=1; i < max_decimal_digits; ++i) {
-        digits_to_bytes.emplace(std::floor((8*i-1) * log2), i);
+void writable_stream::write_variable_integer(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr) {
+    bool msb_inverted = false;
+    if (sz > sizeof(std::uint64_t) * 2) {
+        // write sign bit
+        char ch{sign >= 0 ? '\x00' : '\xFF'};
+        ch ^= details::SIGN_BIT<8>;
+        *(base_ + pos_) = odr == order::ascending ? ch : ~ch;  // NOLINT
+        ++pos_;
+        --sz;
+        msb_inverted = true;
     }
-    for(std::size_t i=0; i < max_decimal_digits; ++i) {
-        for(auto [a, b]: digits_to_bytes) {
-            if(a >= i) {
-                ret[i] = b;
-                break;
-            }
-        }
-    }
-    return ret;
-}
 
-std::size_t bytes_required_for_digits(std::size_t digits) {
-    static std::array<std::size_t, max_decimal_digits> arr = init_digits_map();
-    return arr[digits];
-}
-
-void writable_stream::write_variable_integer(std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr) {
     for (std::size_t offset = 0, n = std::min(sz, sizeof(std::uint64_t)); offset < n; ++offset) {
         auto ch = static_cast<char>(lo >> (offset * 8U));
-        if (offset == sz-1) {
+        if (offset == sz-1 && !msb_inverted) {
             ch ^= details::SIGN_BIT<8>;
+            msb_inverted = true;
         }
         *(base_ + pos_ + sz - offset - 1) = odr == order::ascending ? ch : ~ch;
     }
     if (sz > sizeof(std::uint64_t)) {
         for (std::size_t offset = 0, n = std::min(sz - sizeof(std::uint64_t), sizeof(std::uint64_t)); offset < n; ++offset) {
             auto ch = static_cast<char>(hi >> (offset * 8U));
-            if (offset+sizeof(std::uint64_t) == sz-1) {
+            if (offset+sizeof(std::uint64_t) == sz-1 && !msb_inverted) {
                 ch ^= details::SIGN_BIT<8>;
+                msb_inverted = true;
             }
             *(base_ + pos_ + sz - offset - sizeof(std::uint64_t) - 1) = odr == order::ascending ? ch : ~ch;
         }
@@ -201,7 +190,7 @@ static std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coeffic
 }
 
 status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {
-    auto sz = bytes_required_for_digits(precision);
+    auto sz = utils::bytes_required_for_digits(precision);
     BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
     auto ctx = decimal::IEEEContext(128);
     decimal::Decimal x{data};
@@ -220,7 +209,7 @@ status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data,
     takatori::decimal::triple tri{y};
     auto [hi, lo, s] = make_signed_coefficient_full(tri);
     (void)s;
-    write_variable_integer(lo, hi, sz, odr);
+    write_variable_integer(data.sign(), lo, hi, sz, odr);
     return status::ok;
 }
 

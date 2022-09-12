@@ -142,6 +142,7 @@ inline meta::field_type create_field_type<meta::field_type_kind::decimal>() {
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 std::shared_ptr<meta::record_meta> create_meta(
+    std::vector<meta::field_type> types,
     boost::dynamic_bitset<std::uint64_t> nullability,
     bool all_fields_nullable = false
 ) {
@@ -159,13 +160,22 @@ std::shared_ptr<meta::record_meta> create_meta(
     std::vector<std::size_t> offsets{details::offsets<Kinds...>()};
     auto nullity_offset_base = (offsets.back()+basic_record_field_size)*bits_per_byte;
     return std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{details::create_field_type<Kinds>()...},
+        std::move(types),
         std::move(nullability),
         std::move(offsets),
         details::index_vector(nullity_offset_base, std::make_index_sequence<sizeof...(Kinds)>()),
         basic_record_field_alignment,
         (sizeof...(Kinds) + 1) * basic_record_field_size  // +1 for nullity bits at the bottom
     );
+}
+
+template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
+std::shared_ptr<meta::record_meta> create_meta(
+    boost::dynamic_bitset<std::uint64_t> nullability,
+    bool all_fields_nullable = false
+) {
+    std::vector<meta::field_type> types{details::create_field_type<Kinds>()...};
+    return create_meta<Kinds...>(std::move(types), std::move(nullability), all_fields_nullable);
 }
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
@@ -177,6 +187,34 @@ std::shared_ptr<meta::record_meta> create_meta(bool all_fields_nullable = false)
     return create_meta<Kinds...>(
         bitset
     );
+}
+
+template <class Tuple,
+    class T = std::decay_t<std::tuple_element_t<0, std::decay_t<Tuple>>>>
+std::vector<T> to_vector(Tuple&& tuple)
+{
+    return std::apply([](auto&&... elems){
+        return std::vector<T>{std::forward<decltype(elems)>(elems)...};
+    }, std::forward<Tuple>(tuple));
+}
+
+template <
+    kind ...Kinds,
+    class...Args,
+    typename = std::enable_if_t<sizeof...(Args) !=0>,
+    typename = std::enable_if_t<sizeof...(Kinds) !=0>,
+    typename = std::enable_if_t<sizeof...(Kinds) == sizeof...(Args)>,
+    typename = typename std::enable_if<(true && ... && std::is_same_v<Args, meta::field_type>), void>::type
+>
+std::shared_ptr<meta::record_meta> typed_meta(
+    bool all_fields_nullable,
+    std::tuple<Args...> types
+) {
+    boost::dynamic_bitset<std::uint64_t> bitset{sizeof...(Kinds)};
+    if (all_fields_nullable) {
+        bitset.flip();
+    }
+    return create_meta<Kinds...>(to_vector(types), std::move(bitset), all_fields_nullable);
 }
 
 /**
@@ -549,4 +587,37 @@ basic_record create_nullable_record(
     }
     return ret;
 }
+
+
+/**
+ * @brief construct new object with all fields nullable
+ * @param args values for each field
+ * @warning new record_meta is created based on the template parameter. This constructor should not be used
+ * when creating large number of (e.g. thousands of) records.
+ */
+template <
+    kind ...Kinds,
+    class...Args,
+    typename = std::enable_if_t<sizeof...(Args) !=0>,
+    typename = std::enable_if_t<sizeof...(Kinds) !=0>,
+    typename = std::enable_if_t<sizeof...(Kinds) == sizeof...(Args)>,
+    typename = typename std::enable_if<(true && ... && std::is_same_v<Args, meta::field_type>), void>::type
+>
+basic_record typed_nullable_record(
+    std::tuple<Args...> types,
+    std::tuple<runtime_t<Kinds>...> args
+) {
+    auto meta = typed_meta<Kinds...>(true, types);
+    basic_record_entity_type buf{};
+    std::apply([&](runtime_t<Kinds>... values){
+        details::create_entity<Kinds...>(buf, nullptr, *meta, values...);
+    }, args);
+
+    auto ret = basic_record(std::move(meta), buf);
+    for(std::size_t i=0, n=sizeof...(Args); i<n; ++i) {
+        ret.ref().set_null(ret.record_meta()->nullity_offset(i), true);
+    }
+    return ret;
+}
+
 }

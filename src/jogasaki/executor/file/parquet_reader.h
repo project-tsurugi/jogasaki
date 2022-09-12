@@ -89,6 +89,7 @@ private:
     std::unique_ptr<parquet::ParquetFileReader> file_reader_{};
     std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
     std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
+    std::vector<parquet::ColumnDescriptor const*> columns_{};
 
     boost::filesystem::path path_{};
     std::size_t read_count_{};

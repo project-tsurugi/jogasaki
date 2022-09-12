@@ -17,6 +17,9 @@
 
 #include <gtest/gtest.h>
 #include <jogasaki/test_utils/temporary_folder.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 #include <jogasaki/mock/basic_record.h>
 
@@ -70,6 +73,66 @@ TEST_F(parquet_writer_test, basic_types1) {
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1", "C2", "C3", "C4"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
+
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+}
+
+TEST_F(parquet_writer_test, temporal_types) {
+    boost::filesystem::path p{path()};
+    p = p / "temporal_types.parquet";
+    auto rec = mock::typed_nullable_record<
+        kind::date, kind::time_of_day, kind::time_point
+    >(
+        std::tuple{
+            meta::field_type{meta::field_enum_tag<kind::date>},
+            meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+            meta::field_type{std::make_shared<meta::time_point_field_option>()},
+        },
+        {
+            runtime_t<meta::field_type_kind::date>(),
+            runtime_t<meta::field_type_kind::time_of_day>(),
+            runtime_t<meta::field_type_kind::time_point>(),
+        }
+    );
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1", "C2"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
+
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+}
+
+TEST_F(parquet_writer_test, decimal) {
+    boost::filesystem::path p{path()};
+    p = p / "decimal.parquet";
+    auto rec = mock::typed_nullable_record<
+        kind::decimal
+    >(
+        std::tuple{
+            meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
+        },
+        {
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3),  // 1.230
+        }
+    );
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0"}
         ), p.string());
     ASSERT_TRUE(writer);
 

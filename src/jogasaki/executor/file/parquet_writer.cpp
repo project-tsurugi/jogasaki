@@ -16,6 +16,7 @@
 #include "parquet_writer.h"
 
 #include <iomanip>
+#include <array>
 
 #include <glog/logging.h>
 #include <arrow/io/file.h>
@@ -24,10 +25,12 @@
 
 #include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/decimal/triple.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {
 
@@ -152,11 +155,53 @@ void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
     writer->WriteBatch(1, &definition_level, nullptr, &value);
 }
 
+constexpr std::size_t max_decimal_length = sizeof(std::uint64_t) * 2 + 1;
+
+void create_decimal(
+    std::int8_t sign,
+    std::uint64_t lo,
+    std::uint64_t hi,
+    std::size_t sz,
+    std::array<std::uint8_t, max_decimal_length>& out
+    ) {
+    auto base_ = out.data();
+    std::size_t pos_ = 0;
+
+    if (sz > sizeof(std::uint64_t) * 2) {
+        // write sign bit
+        *(base_ + pos_) = sign >= 0 ? '\x00' : '\xFF';  // NOLINT
+        ++pos_;
+        --sz;
+    }
+
+    for (std::size_t offset = 0, n = std::min(sz, sizeof(std::uint64_t)); offset < n; ++offset) {
+        *(base_ + pos_ + sz - offset - 1) = static_cast<char>(lo >> (offset * 8U));;  //NOLINT
+    }
+    if (sz > sizeof(std::uint64_t)) {
+        for (std::size_t offset = 0, n = std::min(sz - sizeof(std::uint64_t), sizeof(std::uint64_t)); offset < n; ++offset) {
+            *(base_ + pos_ + sz - offset - sizeof(std::uint64_t) - 1) = static_cast<char>(hi >> (offset * 8U));;
+        }
+    }
+}
+
 void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null) {
-    (void) colidx;
-    (void) v;
-    (void) null;
-    fail();
+    auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
+    if (null) {
+        int16_t definition_level = 0;
+        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        return;
+    }
+
+    parquet::ByteArray value{};
+    auto sv = static_cast<decimal::Decimal>(v);
+    std::array<std::uint8_t, max_decimal_length> out{};
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full(v);
+    create_decimal(v.sign(), hi, lo, sz, out);
+
+    int16_t definition_level = 1;
+    value.ptr = reinterpret_cast<const uint8_t*>(out.data());  //NOLINT
+    value.len = sz;
+    writer->WriteBatch(1, &definition_level, nullptr, &value);
 }
 
 void parquet_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null) {
@@ -226,7 +271,8 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
                 break;
             }
             case meta::field_type_kind::decimal: {
-                fail();
+                auto opt = meta_->at(i).option<meta::field_type_kind::decimal>();
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Decimal(*opt->precision_, opt->scale_), Type::BYTE_ARRAY)); //TODO
                 break;
             }
             case meta::field_type_kind::date: {

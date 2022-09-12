@@ -26,5 +26,9 @@ namespace jogasaki::utils {
 
 std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value);
 
+bool validate_decimal_coefficient(std::string_view buf);
+
+takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale);
+
 }
 

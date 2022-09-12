@@ -79,12 +79,12 @@ auto init_digits_map() {
     auto log2 = std::log10(2.0);
     digits_to_bytes.emplace(0, 0);
     for(std::size_t i=1; i < 16+2; ++i) {
-        digits_to_bytes.emplace(std::floor((8*i-1) * log2), i);
+        digits_to_bytes.emplace(std::floor(static_cast<double>(8*i-1) * log2), i);
     }
     for(std::size_t i=0, n=ret.size(); i < n; ++i) {
         for(auto [a, b]: digits_to_bytes) {
             if(a >= i) {
-                ret[i] = b;
+                ret.at(i) = b;
                 break;
             }
         }
@@ -95,7 +95,7 @@ auto init_digits_map() {
 std::size_t bytes_required_for_digits(std::size_t digits) {
     static auto arr = init_digits_map();
     BOOST_ASSERT(digits < arr.size());  //NOLINT
-    return arr[digits];
+    return arr.at(digits);
 }
 
 }

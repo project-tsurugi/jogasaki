@@ -23,6 +23,7 @@
 #include <decimal.hh>
 
 #include <jogasaki/utils/coder.h>
+#include <jogasaki/utils/decimal.h>
 
 #include "readable_stream.h"
 
@@ -148,47 +149,6 @@ void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uin
     pos_ += sz;
 }
 
-static std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value) {
-    std::uint64_t c_hi = value.coefficient_high();
-    std::uint64_t c_lo = value.coefficient_low();
-
-    if (value.sign() >= 0) {
-        for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
-            std::uint64_t octet = (c_hi >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
-            if (octet != 0) {
-                std::size_t size { sizeof(std::uint64_t) * 2 - offset };
-                if ((octet & 0x80U) != 0) {
-                    ++size;
-                }
-                return { c_hi, c_lo, size };
-            }
-        }
-        return { c_hi, c_lo, sizeof(std::uint64_t) + 1 };
-    }
-
-    // for negative numbers
-
-    if (value.sign() < 0) {
-        c_lo = ~c_lo + 1;
-        c_hi = ~c_hi;
-        if (c_lo == 0) {
-            c_hi += 1; // carry up
-        }
-    }
-
-    for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
-        std::uint64_t octet = (c_hi >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
-        if (octet != 0xffU) {
-            std::size_t size { sizeof(std::uint64_t) * 2 - offset };
-            if ((octet & 0x80U) == 0) {
-                ++size;
-            }
-            return { c_hi, c_lo, size };
-        }
-    }
-    return { c_hi, c_lo, sizeof(std::uint64_t) + 1 };
-}
-
 status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {
     auto sz = utils::bytes_required_for_digits(precision);
     BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
@@ -207,7 +167,7 @@ status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data,
         return status::err_expression_evaluation_failure; // TODO
     }
     takatori::decimal::triple tri{y};
-    auto [hi, lo, s] = make_signed_coefficient_full(tri);
+    auto [hi, lo, s] = utils::make_signed_coefficient_full(tri);
     (void)s;
     write_decimal(data.sign(), lo, hi, sz, odr);
     return status::ok;

@@ -57,13 +57,13 @@ std::string_view read_decimal_coefficient(
     order odr,
     std::string_view buffer,
     std::size_t sz,
-    std::array<char, max_decimal_coefficient_size>& out
+    std::array<std::uint8_t, max_decimal_coefficient_size>& out
 ) {
     for(std::size_t i=0; i < sz; ++i) {
-        char ch = i==0 ? buffer[i] ^ details::SIGN_BIT<8> : buffer[i];
-        out[i] = odr == order::ascending ? ch : ~ch;
+        std::uint8_t ch = i==0 ? static_cast<std::uint8_t>(buffer[i]) ^ details::SIGN_BIT<8> : buffer[i];
+        out.at(i) = odr == order::ascending ? ch : ~ch;
     }
-    std::string_view buf{out.data(), sz};
+    std::string_view buf{reinterpret_cast<char*>(out.data()), sz};  //NOLINT
     if (sz != max_decimal_coefficient_size) {
         return buf;
     }
@@ -91,8 +91,8 @@ runtime_t<meta::field_type_kind::decimal>
 readable_stream::do_read(order odr, bool discard, std::size_t precision, std::size_t scale) {
     auto sz = utils::bytes_required_for_digits(precision);
     BOOST_ASSERT(pos_ + sz <= capacity_);  // NOLINT
-    std::array<char, max_decimal_coefficient_size> buf{0};
-    auto data = read_decimal_coefficient(odr, {base_+pos_, capacity_}, sz, buf);
+    std::array<std::uint8_t, max_decimal_coefficient_size> buf{0};
+    auto data = read_decimal_coefficient(odr, {base_+pos_, capacity_}, sz, buf); //NOLINT
     pos_ += sz;
     if (discard) {
         return {};

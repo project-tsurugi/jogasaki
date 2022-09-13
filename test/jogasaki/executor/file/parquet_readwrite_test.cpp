@@ -40,6 +40,7 @@ public:
     }
 
     test::temporary_folder temporary_{};  //NOLINT
+    void test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec);
 };
 
 TEST_F(parquet_readwrite_test, simple) {
@@ -165,19 +166,10 @@ TEST_F(parquet_readwrite_test, temporal_types) {
     EXPECT_TRUE(reader->close());
 }
 
-TEST_F(parquet_readwrite_test, decimal) {
+void parquet_readwrite_test::test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec) {
     boost::filesystem::path p{path()};
-    p = p / "decimal.parquet";
-    auto rec = mock::typed_nullable_record<
-        kind::decimal
-    >(
-        std::tuple{
-            meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
-        },
-        {
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3),  // 1.230
-        }
-    );
+    p = p / std::string{filename};
+
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
@@ -187,7 +179,6 @@ TEST_F(parquet_readwrite_test, decimal) {
 
     EXPECT_TRUE(writer->write(rec.ref()));
     EXPECT_TRUE(writer->close());
-
     ASSERT_LT(0, boost::filesystem::file_size(p));
 
     auto reader = parquet_reader::open(p.string());
@@ -198,11 +189,43 @@ TEST_F(parquet_readwrite_test, decimal) {
     {
         accessor::record_ref ref{};
         ASSERT_TRUE(reader->next(ref));
-        EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        ASSERT_EQ(rec, mock::basic_record(ref, meta->origin()));
     }
     EXPECT_TRUE(reader->close());
 }
 
+TEST_F(parquet_readwrite_test, decimal) {
+    auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    {
+        SCOPED_TRACE("read/write 1.230");
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3)});
+        test_rw_decimal(fm, "decimal.parquet", rec);
+    }
+}
+
+TEST_F(parquet_readwrite_test, decimal_max_values) {
+    auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(38, 37)};
+    {
+        SCOPED_TRACE("-9.99....9 (38 digits)");
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37)});
+        test_rw_decimal(fm, "decimal_max_values_0.parquet", rec);
+    }
+    {
+        SCOPED_TRACE("-9.99....8 (38 digits)");
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, -37)});
+        test_rw_decimal(fm, "decimal_max_values_1.parquet", rec);
+    }
+    {
+        SCOPED_TRACE("+9.99....8 (38 digits)");
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, -37)});
+        test_rw_decimal(fm, "decimal_max_values_2.parquet", rec);
+    }
+    {
+        SCOPED_TRACE("+9.99....9 (38 digits)");
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37)});
+        test_rw_decimal(fm, "decimal_max_values_3.parquet", rec);
+    }
+}
 
 TEST_F(parquet_readwrite_test, nulls) {
     boost::filesystem::path p{path()};

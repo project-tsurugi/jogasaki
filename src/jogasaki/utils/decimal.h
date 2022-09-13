@@ -24,10 +24,33 @@
 
 namespace jogasaki::utils {
 
+/**
+ * @brief create signed coefficient from triple that has unsigned components
+ * @param value source triple
+ * @return `hi`, `lo` and `sz` return values:
+ * hi - more significant 64-bit
+ * lo - less significant 64 bit
+ * sz - min size in bytes to represent the signed coefficient. The `sz` bytes from the least significant byte in
+ * result 128-bit (concatenated `hi` with `lo`) represents the result. For valid input, `sz` ranges from 1 to 17.
+ * The `sz` being 17 is the special case where most significant byte (not part of `hi` or `lo`) is 0x00 or 0xFF
+ * to represent only sign.
+ */
 std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value);
 
+/**
+ * @brief validate the decimal data in the buffer
+ * @param buf the data to validate
+ * @return true if buffer has valid decimal coefficient
+ * @return false otherwise
+ */
 bool validate_decimal_coefficient(std::string_view buf);
 
+/**
+ * @brief read decimal from the buffer and return triple
+ * @param data the decimal data to read
+ * @param scale the scale of the result decimal
+ * @return the triple to represent the decimal data
+ */
 takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale);
 
 }

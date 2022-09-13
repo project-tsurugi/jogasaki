@@ -192,4 +192,18 @@ TEST_F(basic_record_test, field_size) {
     EXPECT_LE(sizeof(rtype<ft::time_of_day>), mock::basic_record_field_size);
     EXPECT_LE(sizeof(rtype<ft::time_point>), mock::basic_record_field_size);
 }
+
+TEST_F(basic_record_test, compare_decimal) {
+    auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3)});
+    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 123, -2)});
+    EXPECT_EQ(r1, r2);
+    auto r3 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 1231, -3)});
+    EXPECT_NE(r1, r3);
+
+    EXPECT_LT(r1, r3);
+    EXPECT_GT(r3, r1);
+}
+
+
 }

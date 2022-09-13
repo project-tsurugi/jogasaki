@@ -615,7 +615,7 @@ basic_record typed_nullable_record(
 
     auto ret = basic_record(std::move(meta), buf);
     for(std::size_t i=0, n=sizeof...(Args); i<n; ++i) {
-        ret.ref().set_null(ret.record_meta()->nullity_offset(i), true);
+        ret.ref().set_null(ret.record_meta()->nullity_offset(i), false);
     }
     return ret;
 }

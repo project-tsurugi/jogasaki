@@ -196,7 +196,7 @@ void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_typ
     auto sv = static_cast<decimal::Decimal>(v);
     std::array<std::uint8_t, max_decimal_length> out{};
     auto [hi, lo, sz] = utils::make_signed_coefficient_full(v);
-    create_decimal(v.sign(), hi, lo, sz, out);
+    create_decimal(v.sign(), lo, hi, sz, out);
 
     int16_t definition_level = 1;
     value.ptr = reinterpret_cast<const uint8_t*>(out.data());  //NOLINT

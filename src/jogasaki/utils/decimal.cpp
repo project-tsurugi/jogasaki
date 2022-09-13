@@ -24,22 +24,42 @@
 
 namespace jogasaki::utils {
 
+constexpr static std::size_t npos = static_cast<std::size_t>(-1);
+
+std::pair<std::size_t, bool> most_significant_non_zero_offset(std::uint64_t v, std::uint64_t zero) {
+    for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
+        std::uint64_t octet = (v >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
+        if (octet != zero) {
+            if ((octet & 0x80U) != 0) {
+                return {offset, true};
+            }
+            return {offset, false};
+        }
+    }
+    return {npos, false};
+}
+
 std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value) {
     std::uint64_t c_hi = value.coefficient_high();
     std::uint64_t c_lo = value.coefficient_low();
 
     if (value.sign() >= 0) {
-        for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
-            std::uint64_t octet = (c_hi >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
-            if (octet != 0) {
-                std::size_t size { sizeof(std::uint64_t) * 2 - offset };
-                if ((octet & 0x80U) != 0) {
-                    ++size;
-                }
-                return { c_hi, c_lo, size };
+        if(auto [offset, expanded] = most_significant_non_zero_offset(c_hi, 0); offset != npos) {
+            std::size_t size { sizeof(std::uint64_t) * 2 - offset };
+            if(expanded) {
+                ++size;
             }
+            return { c_hi, c_lo, size };
         }
-        return { c_hi, c_lo, sizeof(std::uint64_t) + 1 };
+        if(auto [offset, expanded] = most_significant_non_zero_offset(c_lo, 0); offset != npos) {
+            std::size_t size { sizeof(std::uint64_t) - offset };
+            if(expanded) {
+                ++size;
+            }
+            return { c_hi, c_lo, size };
+        }
+        // all values zero
+        return { c_hi, c_lo, 1 };
     }
 
     // for negative numbers
@@ -52,22 +72,31 @@ std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_fu
         }
     }
 
-    for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
-        std::uint64_t octet = (c_hi >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
-        if (octet != 0xffU) {
-            std::size_t size { sizeof(std::uint64_t) * 2 - offset };
-            if ((octet & 0x80U) == 0) {
-                ++size;
-            }
-            return { c_hi, c_lo, size };
+    if(auto [offset, expanded] = most_significant_non_zero_offset(c_hi, 0xffU); offset != npos) {
+        std::size_t size { sizeof(std::uint64_t) * 2 - offset };
+        if(expanded) {
+            ++size;
         }
+        return { c_hi, c_lo, size };
     }
-    return { c_hi, c_lo, sizeof(std::uint64_t) + 1 };
+    if(auto [offset, expanded] = most_significant_non_zero_offset(c_lo, 0xffU); offset != npos) {
+        std::size_t size { sizeof(std::uint64_t) - offset };
+        if(expanded) {
+            ++size;
+        }
+        return { c_hi, c_lo, size };
+    }
+    return { c_hi, c_lo, 1 };
 }
+
+constexpr std::size_t max_decimal_coefficient_size = sizeof(std::uint64_t) * 2 + 1;
 
 bool validate_decimal_coefficient(
     std::string_view buf
 ) {
+    if(buf.size() < max_decimal_coefficient_size) {
+        return true;
+    }
     auto first = static_cast<std::uint8_t>(buf[0]);
     // positive is OK because coefficient is [0, 2^128)
     if (first == 0) {

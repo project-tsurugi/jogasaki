@@ -75,10 +75,7 @@ std::string_view read_decimal_coefficient(
     std::array<std::uint8_t, max_decimal_coefficient_size>& out
 ) {
     auto buf = process_order_and_msb(odr, buffer, sz, out);
-    if (sz != max_decimal_coefficient_size) {
-        return buf;
-    }
-    if(utils::validate_decimal_coefficient(buf)) {
+    if(utils::validate_decimal_coefficient({buf.data(), sz})) {
         return buf;
     }
     fail(); // TODO raise exception?

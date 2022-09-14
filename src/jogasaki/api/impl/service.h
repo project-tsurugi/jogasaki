@@ -41,10 +41,10 @@
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/endpoint/response_code.h>
 
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
-#include "status.pb.h"
+#include "jogasaki/proto/sql/request.pb.h"
+#include "jogasaki/proto/sql/response.pb.h"
+#include "jogasaki/proto/sql/common.pb.h"
+#include "jogasaki/proto/sql/status.pb.h"
 
 namespace jogasaki::api::impl {
 

@@ -1,3 +1,6 @@
+# generated files
+/src/jogasaki/proto/sql/
+
 # CMake
 /build*
 

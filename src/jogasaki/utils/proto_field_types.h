@@ -17,7 +17,7 @@
 
 #include <jogasaki/api/field_type_kind.h>
 
-#include "common.pb.h"
+#include "jogasaki/proto/sql/common.pb.h"
 
 namespace jogasaki::utils {
 

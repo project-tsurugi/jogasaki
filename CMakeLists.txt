@@ -91,6 +91,7 @@ find_package(likwid)
 # to suppress not-found warnings
 set(re2Alt_FIND_QUIETLY TRUE)
 set(c-aresAlt_FIND_QUIETLY TRUE)
+set(lz4Alt_FIND_QUIETLY TRUE)
 
 # Parquet dependencies
 find_package(Arrow REQUIRED)
@@ -126,7 +127,6 @@ target_link_libraries(api
 )
 
 if (NOT INSTALL_API_ONLY)
-add_subdirectory(protos)
 add_subdirectory(src)
 add_subdirectory(mock)
 if(BUILD_TESTS)

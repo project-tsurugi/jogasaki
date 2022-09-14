@@ -40,10 +40,10 @@
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/create_tx.h>
 
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
-#include "status.pb.h"
+#include "jogasaki/proto/sql/request.pb.h"
+#include "jogasaki/proto/sql/response.pb.h"
+#include "jogasaki/proto/sql/common.pb.h"
+#include "jogasaki/proto/sql/status.pb.h"
 
 namespace jogasaki::api {
 

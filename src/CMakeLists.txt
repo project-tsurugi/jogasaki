@@ -2,6 +2,38 @@ if(NOT TARGET sharksfin-${SHARKSFIN_IMPLEMENTATION})
     message(FATAL_ERROR "sharksfin implementation \"sharksfin-${SHARKSFIN_IMPLEMENTATION}\" not found")
 endif()
 
+set(ProtoFiles
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/common.proto
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/request.proto
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/response.proto
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/status.proto
+        )
+
+add_custom_command(
+        OUTPUT ${ProtoFiles}
+        COMMAND ${CMAKE_COMMAND}
+        ARGS -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/common.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/request.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/response.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/status.proto"
+        "${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql"
+)
+
+# By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.
+# Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH
+set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
+
+PROTOBUF_GENERATE_CPP(ProtobufSources ProtobufHeaders ${ProtoFiles})
+
+# needed in both current and parent scopes
+set(GENERATED_PROTO_SRCS ${ProtobufSources} PARENT_SCOPE)
+set(GENERATED_PROTO_SRCS ${ProtobufSources})
+
+add_custom_target(build_protos
+        DEPENDS ${ProtobufSources} ${ProtoFiles}
+        )
+
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"
@@ -31,6 +63,7 @@ file(GLOB SOURCES
         "jogasaki/executor/function/incremental/*.cpp"
         "jogasaki/executor/sequence/*.cpp"
         "jogasaki/index/*.cpp"
+        "jogasaki/kvs/*.cpp"
         "jogasaki/logship/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
@@ -39,11 +72,8 @@ file(GLOB SOURCES
         "jogasaki/plan/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/scheduler/details/*.cpp"
-        "jogasaki/kvs/*.cpp"
         "jogasaki/utils/*.cpp"
-        "jogasaki/endpoint/*.cpp"
 )
-
 
 set_source_files_properties(
         ${GENERATED_PROTO_SRCS}
@@ -66,7 +96,7 @@ set_target_properties(${ENGINE} PROPERTIES
         )
 
 target_include_directories(${ENGINE}
-        PRIVATE ${CMAKE_BINARY_DIR}/protos
+        PRIVATE ${CMAKE_BINARY_DIR}/src
         PRIVATE .
 )
 
@@ -128,7 +158,7 @@ install_custom(${ENGINE} ${export_name})
 add_library(jogasaki-impl INTERFACE)
 
 target_include_directories(jogasaki-impl
-        INTERFACE ${CMAKE_BINARY_DIR}/protos
+        INTERFACE ${CMAKE_BINARY_DIR}/src
         INTERFACE .
         )
 

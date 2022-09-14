@@ -23,10 +23,10 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include "request.pb.h"
-#include "response.pb.h"
-#include "common.pb.h"
-#include "status.pb.h"
+#include "jogasaki/proto/sql/request.pb.h"
+#include "jogasaki/proto/sql/response.pb.h"
+#include "jogasaki/proto/sql/common.pb.h"
+#include "jogasaki/proto/sql/status.pb.h"
 
 #include <jogasaki/api.h>
 #include <jogasaki/meta/field_type.h>

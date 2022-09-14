@@ -87,8 +87,6 @@ accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::Colu
     fail();
 }
 
-constexpr std::size_t max_decimal_coefficient_size = sizeof(std::uint64_t) * 2 + 1;
-
 template <>
 runtime_t<meta::field_type_kind::decimal>
 read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(
@@ -116,7 +114,7 @@ read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(
             return {};
         }
         if (values_read == 1) {
-            std::string_view buffer{reinterpret_cast<char const*>(value.ptr), value.len};
+            std::string_view buffer{reinterpret_cast<char const*>(value.ptr), value.len};  //NOLINT
             if(! utils::validate_decimal_coefficient(buffer)) {
                 fail();
             }

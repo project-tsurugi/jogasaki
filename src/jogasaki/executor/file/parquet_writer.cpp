@@ -23,7 +23,6 @@
 #include <arrow/util/logging.h>
 #include <parquet/api/writer.h>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/decimal/triple.h>
 
@@ -35,7 +34,6 @@
 namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::fail;
 
 using parquet::ConvertedType;
 using parquet::Repetition;
@@ -175,11 +173,11 @@ void create_decimal(
     }
 
     for (std::size_t offset = 0, n = std::min(sz, sizeof(std::uint64_t)); offset < n; ++offset) {
-        *(base_ + pos_ + sz - offset - 1) = static_cast<char>(lo >> (offset * 8U));;  //NOLINT
+        *(base_ + pos_ + sz - offset - 1) = static_cast<char>(lo >> (offset * 8U));  //NOLINT
     }
     if (sz > sizeof(std::uint64_t)) {
         for (std::size_t offset = 0, n = std::min(sz - sizeof(std::uint64_t), sizeof(std::uint64_t)); offset < n; ++offset) {
-            *(base_ + pos_ + sz - offset - sizeof(std::uint64_t) - 1) = static_cast<char>(hi >> (offset * 8U));;
+            *(base_ + pos_ + sz - offset - sizeof(std::uint64_t) - 1) = static_cast<char>(hi >> (offset * 8U));  //NOLINT
         }
     }
 }

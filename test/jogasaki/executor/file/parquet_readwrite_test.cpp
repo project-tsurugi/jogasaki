@@ -275,5 +275,65 @@ TEST_F(parquet_readwrite_test, nulls) {
     EXPECT_TRUE(reader->close());
 }
 
+TEST_F(parquet_readwrite_test, generate_decimal_sample) {
+    auto fm0 = meta::field_type{std::make_shared<meta::decimal_field_option>(6, 3)};
+    auto fm1 = meta::field_type{std::make_shared<meta::decimal_field_option>(4, 1)};
+    auto fm2 = meta::field_type{std::make_shared<meta::decimal_field_option>(20, 0)};
+
+    auto rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
+        std::tuple{fm0, fm1, fm2},
+        {
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+        }
+    );
+    auto null_rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
+        std::tuple{fm0, fm1, fm2},
+        {
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+        },
+        { true, true, true }
+    );
+
+    boost::filesystem::path p{path()};
+    p = p / "decimals.parquet";
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"decimal_6_3_f", "decimal_4_1_f", "decimal_20_0_f"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+
+    writer->write(null_rec.ref());
+    for(std::size_t i=0; i < 500; ++i) {
+        auto rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
+            std::tuple{fm0, fm1, fm2},
+            {
+                runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
+                runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
+                runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
+            }
+        );
+        writer->write(rec.ref());
+    }
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = parquet_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    ASSERT_EQ(3, meta->field_count());
+    {
+        accessor::record_ref ref{};
+        while(reader->next(ref)) {
+            std::cerr << "rec: " << ref << *meta->origin() << std::endl;
+        }
+    }
+    EXPECT_TRUE(reader->close());
+}
+
 }
 

@@ -605,7 +605,8 @@ template <
 >
 basic_record typed_nullable_record(
     std::tuple<Args...> types,
-    std::tuple<runtime_t<Kinds>...> args
+    std::tuple<runtime_t<Kinds>...> args,
+    std::initializer_list<bool> nullities = {}
 ) {
     auto meta = typed_meta<Kinds...>(true, types);
     basic_record_entity_type buf{};
@@ -614,8 +615,12 @@ basic_record typed_nullable_record(
     }, args);
 
     auto ret = basic_record(std::move(meta), buf);
+    std::vector<bool> nulls{nullities};
+    if(nulls.empty()) {
+        nulls.resize(sizeof...(Args), false);
+    }
     for(std::size_t i=0, n=sizeof...(Args); i<n; ++i) {
-        ret.ref().set_null(ret.record_meta()->nullity_offset(i), false);
+        ret.ref().set_null(ret.record_meta()->nullity_offset(i), nulls[i]);
     }
     return ret;
 }

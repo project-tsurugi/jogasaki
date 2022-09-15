@@ -90,14 +90,14 @@
 | `0xeb` | `float8` | `#eb, s=b(8)` | `s` からなる binary64
 | `0xec` | `decimal` | `#ec, e=sint, v=sint` | `v * 10^e`
 | `0xed` | `decimal` | `#ed, e=sint, n=uint, v=b(n)` | v を big-endian の多倍長符号付き整数とみなして `v * 10^e`
-| `0xee` | `time_of_day (with_offset=true)` | `#ee, v=uint, o=sint` | `00:00:00 ±hh:mm` にナノ秒 `v` を足したもの( `±hh:mm` はタイムゾーンオフセットを表す文字列で分 `o` を時 `hh` と分 `mm` に分解したもの)
-| `0xef` | `time_point (with_offset=true)` | `#ef, e=sint, n=uint, o=sint` | `1970-01-01 00:00:00 ±hh:mm` からの秒数 `e` とナノ秒 `n`( `±hh:mm` はタイムゾーンオフセットを表す文字列で分 `o` を時 `hh` と分 `mm` に分解したもの)
+| `0xee` | `time_of_day (with_offset=true)` | `#ee, v=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `00:00:00` にナノ秒 `v` を足たしたもの
+| `0xef` | `time_point (with_offset=true)` | `#ef, e=sint, n=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `1970-01-01 00:00:00` に秒 `e` とナノ秒 `n` を足したもの
 | `0xf0` | `character` | `#f0, n=uint, s=b(n)` | `s` からなる UTF-8 文字列
 | `0xf1` | `octet` | `#f1, n=uint, s=b(n)` | `s` からなるオクテット列
 | `0xf2` | `bit` | `#f2, n=uint, s=d(n)` | `s` からなるビット列
 | `0xf3` | `date` | `#f3, v=sint` | `1970-01-01` に日数 `v` を足したもの
 | `0xf4` | `time_of_day (with_offset=false)` | `#f4, v=uint` | `00:00:00` にナノ秒 `v` を足したもの
-| `0xf5` | `time_point (with_offset=false)` | `#f5, e=sint, n=uint` | `1970-01-01 00:00:00` からの秒数 `e` とナノ秒 `n`
+| `0xf5` | `time_point (with_offset=false)` | `#f5, e=sint, n=uint` | `1970-01-01 00:00:00` に秒 `e` とナノ秒 `n`を足したもの
 | `0xf6` | `datetime_interval` | `#f6, y=sint, m=sint, d=sint, t=sint` | `y` 年 `m` 月 `d` 日 `v` ナノ秒
 | `0xf7` | _reserved_ |`#f7`
 | `0xf8` | `row` |`#f8, n=uint, s=e(n)` | `s` からなる行

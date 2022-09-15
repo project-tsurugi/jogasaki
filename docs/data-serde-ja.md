@@ -90,7 +90,7 @@
 | `0xeb` | `float8` | `#eb, s=b(8)` | `s` からなる binary64
 | `0xec` | `decimal` | `#ec, e=sint, v=sint` | `v * 10^e`
 | `0xed` | `decimal` | `#ed, e=sint, n=uint, v=b(n)` | v を big-endian の多倍長符号付き整数とみなして `v * 10^e`
-| `0xee` | `time_of_day (with_offset=true)` | `#ee, v=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `00:00:00` にナノ秒 `v` を足たしたもの
+| `0xee` | `time_of_day (with_offset=true)` | `#ee, v=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `00:00:00` にナノ秒 `v` を足したもの
 | `0xef` | `time_point (with_offset=true)` | `#ef, e=sint, n=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `1970-01-01 00:00:00` に秒 `e` とナノ秒 `n` を足したもの
 | `0xf0` | `character` | `#f0, n=uint, s=b(n)` | `s` からなる UTF-8 文字列
 | `0xf1` | `octet` | `#f1, n=uint, s=b(n)` | `s` からなるオクテット列

@@ -40,14 +40,14 @@
 | `0xeb` | `float8` | binary64
 | `0xec` | `decimal` | 10進数 (係数部が `[-2^63,+2^63)`)
 | `0xed` | `decimal` | 10進数
-| `0xee` | _reserved_ 
-| `0xef` | _reserved_
+| `0xee` | `time_of_day (with_offset=true)` | タイムゾーンオフセット情報付きの時刻
+| `0xef` | `time_point (with_offset=true)` | タイムゾーンオフセット情報付きの特定時点
 | `0xf0` | `character` | UTF-8 文字列
 | `0xf1` | `octet` | オクテット列
 | `0xf2` | `bit` | ビット列
 | `0xf3` | `date` | 日付
-| `0xf4` | `time_of_day` | 時刻
-| `0xf5` | `time_point` | 特定時点
+| `0xf4` | `time_of_day (with_offset=false)` | タイムゾーンオフセット情報なしの時刻
+| `0xf5` | `time_point (with_offset=false)` | タイムゾーンオフセット情報なしの特定時点
 | `0xf6` | `datetime_interval` | 日時区間
 | `0xf7` | _reserved_
 | `0xf8` | `row` | 行
@@ -90,14 +90,14 @@
 | `0xeb` | `float8` | `#eb, s=b(8)` | `s` からなる binary64
 | `0xec` | `decimal` | `#ec, e=sint, v=sint` | `v * 10^e`
 | `0xed` | `decimal` | `#ed, e=sint, n=uint, v=b(n)` | v を big-endian の多倍長符号付き整数とみなして `v * 10^e`
-| `0xee` | _reserved_ | `#ee`
-| `0xef` | _reserved_ | `#ef`
+| `0xee` | `time_of_day (with_offset=true)` | `#ee, v=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `00:00:00` にナノ秒 `v` を足したもの
+| `0xef` | `time_point (with_offset=true)` | `#ef, e=sint, n=uint, o=sint` | 分単位のタイムゾーンオフセット `o` で表されるタイムゾーンの現地時間の `1970-01-01 00:00:00` に秒 `e` とナノ秒 `n` を足したもの
 | `0xf0` | `character` | `#f0, n=uint, s=b(n)` | `s` からなる UTF-8 文字列
 | `0xf1` | `octet` | `#f1, n=uint, s=b(n)` | `s` からなるオクテット列
 | `0xf2` | `bit` | `#f2, n=uint, s=d(n)` | `s` からなるビット列
 | `0xf3` | `date` | `#f3, v=sint` | `1970-01-01` に日数 `v` を足したもの
-| `0xf4` | `time_of_day` | `#f4, v=uint` | `00:00:00` にナノ秒 `v` を足したもの
-| `0xf5` | `time_point` | `#f5, e=sint, n=uint` | `1970-01-01 00:00:00 GMT` からの秒数 `e` とナノ秒 `n`
+| `0xf4` | `time_of_day (with_offset=false)` | `#f4, v=uint` | `00:00:00` にナノ秒 `v` を足したもの
+| `0xf5` | `time_point (with_offset=false)` | `#f5, e=sint, n=uint` | `1970-01-01 00:00:00` に秒 `e` とナノ秒 `n`を足したもの
 | `0xf6` | `datetime_interval` | `#f6, y=sint, m=sint, d=sint, t=sint` | `y` 年 `m` 月 `d` 日 `v` ナノ秒
 | `0xf7` | _reserved_ |`#f7`
 | `0xf8` | `row` |`#f8, n=uint, s=e(n)` | `s` からなる行

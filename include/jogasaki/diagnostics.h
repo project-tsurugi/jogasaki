@@ -61,7 +61,7 @@ public:
      * @return true if the diagnostics is not empty
      * @return false otherwise
      */
-    [[nodiscard]] operator bool() const noexcept {
+    [[nodiscard]] explicit operator bool() const noexcept {
         return ! message_.empty();
     }
 

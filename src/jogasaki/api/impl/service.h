@@ -145,12 +145,13 @@ inline sql::status::Status map_status(jogasaki::status s) {
 }
 
 template<typename T>
-void error(tateyama::api::server::response& res, jogasaki::status s, std::string msg) { //NOLINT(performance-unnecessary-value-param)
+void error(tateyama::api::server::response& res, jogasaki::status s, std::string_view msg) { //NOLINT(performance-unnecessary-value-param)
     sql::response::Error e{};
     T p{};
     sql::response::Response r{};
     e.set_status(map_status(s));
-    e.set_detail(msg);
+    std::string m{msg};
+    e.set_detail(m);
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
     res.code(response_code::application_error);

@@ -132,7 +132,7 @@ void service::command_prepare(
     if(auto rc = db_->prepare(sql, variables, statement); rc == jogasaki::status::ok) {
         details::success<sql::response::Prepare>(*res, statement);
     } else {
-        details::error<sql::response::Prepare>(*res, rc, "error in db_->prepare()");
+        details::error<sql::response::Prepare>(*res, rc, db_->fetch_diagnostics()->message());
     }
 }
 
@@ -172,8 +172,7 @@ void service::command_execute_statement(
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
-        VLOG(log_error) << "error in db_->create_executable()";
-        details::error<sql::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
+        details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message());
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx);
@@ -239,8 +238,7 @@ void service::command_execute_prepared_statement(
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        VLOG(log_error) << "error in db_->resolve()";
-        details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+        details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message());
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx);
@@ -350,15 +348,14 @@ void service::command_explain(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e);
         rc != jogasaki::status::ok) {
-        VLOG(log_error) << "error in db_->resolve() : " << rc;
-        details::error<sql::response::Explain>(*res, rc, "error in db_->resolve()");
+        details::error<sql::response::Explain>(*res, rc, db_->fetch_diagnostics()->message());
         return;
     }
     std::stringstream ss{};
     if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
         details::success<sql::response::Explain>(*res, ss.str());
     } else {
-        details::error<sql::response::Explain>(*res, st, "error in db_->explain()");
+        fail();
     }
 }
 
@@ -641,8 +638,7 @@ void service::execute_query(
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
         if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
-            VLOG(log_error) << "error in db_->resolve() : " << rc;
-            details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+            details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message());
             return;
         }
         has_result_records = statement.has_result_records();
@@ -669,7 +665,7 @@ void service::execute_query(
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, message);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     fail();
@@ -782,8 +778,7 @@ void service::execute_dump(
     BOOST_ASSERT(! q.has_sql());  //NOLINT
     jogasaki::api::statement_handle statement{q.sid()};
     if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
-        VLOG(log_error) << "error in db_->resolve() : " << rc;
-        details::error<sql::response::ResultOnly>(*res, rc, "error in db_->resolve()");
+        details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message());
         return;
     }
     {
@@ -816,7 +811,7 @@ void service::execute_dump(
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, message);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     fail();
@@ -856,7 +851,7 @@ void service::execute_load(
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
+                    details::error<sql::response::ResultOnly>(*cbp->response_, s, message);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     fail();
@@ -867,7 +862,6 @@ void service::execute_load(
         fail();
     }
 }
-
 
 service::service(std::shared_ptr<tateyama::api::configuration::whole> cfg, jogasaki::api::database* db) :
     cfg_(std::move(cfg)),

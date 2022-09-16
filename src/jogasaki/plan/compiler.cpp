@@ -192,6 +192,7 @@ status create_prepared_statement(
 
 status parse_validate(
     std::string_view sql,
+    compiler_context &ctx,
     std::unique_ptr<shakujo::model::program::Program>& program
 ) {
     shakujo::parser::Parser parser{};
@@ -212,11 +213,17 @@ status parse_validate(
             if (errs.str().empty()) {
                 return status::ok;
             }
-            VLOG(log_error) << "syntax validation error:" << errs.str();
+            std::stringstream msg{};
+            msg << "syntax validation failed: " << errs.str();
+            VLOG(log_error) << status::err_parse_error << ": " << msg.str();
+            ctx.diag()->set(msg.str());
             return status::err_parse_error;
         }
     } catch (shakujo::parser::Parser::Exception &e) {
-        VLOG(log_error) << "parse error:" << e.message() << " (" << e.region() << ")";
+        std::stringstream msg{};
+        msg << "parsing statement failed: " << e.message() << " (" << e.region() << ")";
+        VLOG(log_error) << status::err_parse_error << ": " <<  msg.str();
+        ctx.diag()->set(msg.str());
         return status::err_parse_error;
     }
     return status::ok;
@@ -228,7 +235,7 @@ status prepare(
     std::shared_ptr<plan::prepared_statement>& out
 ) {
     std::unique_ptr<shakujo::model::program::Program> program{};
-    if(auto res = parse_validate(sql, program); res != status::ok) {
+    if(auto res = parse_validate(sql, ctx, program); res != status::ok) {
         return res;
     }
 
@@ -265,9 +272,13 @@ status prepare(
     auto r = translator(options, *program->main(), documents);
     if (! r) {
         auto errors = r.release<result_kind::diagnostics>();
+        std::stringstream msg{};
+        msg << "translating statement failed: ";
         for(auto&& e : errors) {
-            VLOG(log_error) << e.code() << " " << e.message();
+            msg << e.code() << " " << e.message();
         }
+        VLOG(log_error) << status::err_translator_error << ": " <<  msg.str();
+        ctx.diag()->set(msg.str());
         return status::err_translator_error;
     }
     return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, out);
@@ -473,6 +484,7 @@ std::shared_ptr<executor::process::impl::variable_table_info> create_host_variab
 }
 
 status validate_host_variables(
+    compiler_context& ctx,
     parameter_set const* parameters,
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
 ) {
@@ -480,7 +492,10 @@ status validate_host_variables(
     for(auto it = info->name_list_begin(); it != info->name_list_end(); ++it) {
         auto& name = it->first;
         if(! parameters->find(name)) {
-            VLOG(log_error) << "Value is not assigned for host variable '" << name << "'";
+            std::stringstream ss{};
+            ss << "Value is not assigned for host variable '" << name << "'";
+            VLOG(log_error) << status::err_unresolved_host_variable << ": " << ss.str();
+            ctx.diag()->set(ss.str());
             return status::err_unresolved_host_variable;
         }
     }
@@ -683,10 +698,8 @@ void create_mirror_for_execute(
 status create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
     using takatori::statement::statement_kind;
     auto p = ctx.prepared_statement();
-    if (!p) {
-        return status::err_invalid_argument;
-    }
-    if(auto res = validate_host_variables(parameters, p->mirrors()->host_variable_info()); res != status::ok) {
+    BOOST_ASSERT(p != nullptr); //NOLINT
+    if(auto res = validate_host_variables(ctx, parameters, p->mirrors()->host_variable_info()); res != status::ok) {
         return res;
     }
     switch(p->statement()->kind()) {

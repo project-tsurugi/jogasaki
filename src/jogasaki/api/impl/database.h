@@ -26,6 +26,7 @@
 #include <yugawara/variable/configurable_provider.h>
 
 #include <jogasaki/status.h>
+#include <jogasaki/diagnostics.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/api/statement_handle.h>
@@ -134,6 +135,9 @@ public:
     std::shared_ptr<class configuration>& config() noexcept override;
 
     void init();
+
+    [[nodiscard]] std::shared_ptr<diagnostics> fetch_diagnostics() noexcept override;
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -194,6 +198,7 @@ private:
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<impl::transaction>> transactions_{};
     bool initialized_{false};
+    inline thread_local static std::shared_ptr<diagnostics> diagnostics_{std::make_shared<diagnostics>()};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

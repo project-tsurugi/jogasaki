@@ -147,6 +147,17 @@ public:
     }
     void test_dispose_prepare(std::uint64_t& handle);
 
+    template <class ...Args>
+    void test_error_prepare(std::uint64_t& handle, std::string sql) {
+        auto s = encode_prepare(sql);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::application_error, res->code_);
+        EXPECT_EQ(-1, decode_prepare(res->body_));
+    }
 
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
 
@@ -260,6 +271,17 @@ TEST_F(service_api_test, prepare_and_dispose) {
     test_dispose_prepare(handle);
 }
 
+TEST_F(service_api_test, error_prepare) {
+    utils_raise_exception_on_error = false;
+    {
+        std::uint64_t handle{};
+        test_error_prepare(handle, "select * from DUMMY");
+    }
+    {
+        std::uint64_t handle{};
+        test_error_prepare(handle, "bad sql statement");
+    }
+}
 TEST_F(service_api_test, error_on_dispose) {
     std::uint64_t handle{0};
     auto s = encode_dispose_prepare(handle);

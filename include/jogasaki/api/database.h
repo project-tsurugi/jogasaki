@@ -28,6 +28,7 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>
+#include <jogasaki/diagnostics.h>
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/transaction_option.h>
 
@@ -93,7 +94,7 @@ public:
      * @param sql the sql text string to prepare
      * @param statement [out] the handle to be filled with one for the created prepared statement
      * @return status::ok when successful
-     * @return other code when error
+     * @return other code when error occurs, and additional diagnostics may be available via fetch_diagnostics()
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
      */
@@ -111,7 +112,7 @@ public:
      * @param variables the placeholder variable name/type mapping
      * @param statement [out] the handle to be filled with one for the created prepared statement
      * @return status::ok when successful
-     * @return other code when error
+     * @return other code when error occurs, and additional diagnostics may be available via fetch_diagnostics()
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
      */
@@ -364,6 +365,16 @@ public:
     }
 
     virtual std::shared_ptr<configuration>& config() noexcept = 0;
+
+    /**
+     * @brief retrieve diagnostics
+     * @details retrieve diagnostics for the most recent api call of this object
+     * @returns non-null diagnostics object for the most recent call. If no api has been called or recent api doesn't
+     * support diagnostics information, the returned value may be empty (but not nullptr)
+     * @attention the diagnostics are stored thread local storage, and this function can be called simultaneously from
+     * different thread. Only the most recent result diagnostics from the same thread can be retrieved.
+     */
+    virtual std::shared_ptr<diagnostics> fetch_diagnostics() noexcept = 0;
 
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;

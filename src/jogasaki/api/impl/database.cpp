@@ -214,8 +214,8 @@ status database::prepare_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     ctx->variable_provider(std::move(provider));
+    ctx->diag(*diagnostics_);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
-        VLOG(log_error) << "compilation failed.";
         return rc;
     }
     statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
@@ -275,6 +275,7 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
     );
     return status::ok;
 }
+
 status database::validate_option(transaction_option const& option) {
     if(option.is_long()) {
         for(auto&& wp : option.write_preserves()) {
@@ -370,6 +371,7 @@ status database::resolve_common(
     auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);
+    ctx->diag(*diagnostics_);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
         VLOG(log_error) << "compilation failed.";
@@ -597,6 +599,13 @@ database::database(std::shared_ptr<class configuration> cfg, sharksfin::Database
     cfg_(std::move(cfg)),
     kvs_db_(std::make_unique<kvs::database>(db))
 {}
+
+std::shared_ptr<diagnostics> database::fetch_diagnostics() noexcept {
+    if (! diagnostics_) {
+        diagnostics_ = std::make_shared<diagnostics>();
+    }
+    return diagnostics_;
+}
 
 }
 

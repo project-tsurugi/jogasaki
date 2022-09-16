@@ -198,7 +198,7 @@ private:
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::unique_ptr<impl::transaction>> transactions_{};
     bool initialized_{false};
-    inline thread_local static std::shared_ptr<diagnostics> diagnostics_{std::make_shared<diagnostics>()};
+    inline thread_local static std::shared_ptr<diagnostics> diagnostics_{std::make_shared<diagnostics>()};  //NOLINT
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

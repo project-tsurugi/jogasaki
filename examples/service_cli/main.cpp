@@ -25,7 +25,6 @@
 #include <takatori/util/fail.h>
 #include <takatori/util/downcast.h>
 
-#include <tateyama/api/server/service.h>
 #include <tateyama/api/server/mock/request_response.h>
 
 #include <jogasaki/api.h>
@@ -68,7 +67,7 @@ namespace tateyama::service_cli {
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
-using tateyama::api::endpoint::response_code;
+using tateyama::api::server::response_code;
 
 using takatori::util::unsafe_downcast;
 

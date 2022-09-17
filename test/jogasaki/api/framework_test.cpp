@@ -20,8 +20,8 @@
 #include <takatori/util/downcast.h>
 
 #include <tateyama/framework/server.h>
-#include <tateyama/framework/endpoint_broker.h>
-#include <tateyama/api/endpoint/mock/request_response.h>
+#include <tateyama/framework/routing_service.h>
+#include <tateyama/api/server/mock/request_response.h>
 #include <tateyama/proto/framework/request.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
 #include <tateyama/utils/protobuf_utils.h>
@@ -98,7 +98,7 @@ class test_endpoint : public framework::endpoint {
 public:
 
     bool setup(framework::environment& env) override {
-        broker_ = env.service_repository().find<framework::endpoint_broker>();
+        router_ = env.service_repository().find<framework::routing_service>();
         return true;
     }
 
@@ -110,13 +110,13 @@ public:
         return true;
     }
 
-    std::string send(std::string_view data) {
-        auto req = std::make_shared<tateyama::api::endpoint::mock::test_request>(data);
-        auto res = std::make_shared<tateyama::api::endpoint::mock::test_response>();
-        (*broker_)(req, res);
+    std::string send(std::string_view data, std::size_t session_id, std::size_t service_id) {
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(data, session_id, service_id);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+        (*router_)(req, res);
         return res->body_;
     }
-    std::shared_ptr<framework::endpoint_broker> broker_{};
+    std::shared_ptr<framework::routing_service> router_{};
 };
 
 TEST_F(framework_test, send_request_with_header) {
@@ -137,51 +137,12 @@ TEST_F(framework_test, send_request_with_header) {
     std::uint64_t handle{};
     {
         auto s = utils::encode_begin(false, false, std::vector<std::string>{});
-
-        std::string result{};
-        {
-            ::tateyama::proto::framework::request::Header hdr{};
-            hdr.set_message_version(1);
-            hdr.set_session_id(100);
-            hdr.set_service_id(framework::service_id_sql);
-            std::stringstream ss{};
-            ASSERT_TRUE(tateyama::utils::SerializeDelimitedToOstream(hdr, &ss));
-            ASSERT_TRUE(tateyama::utils::PutDelimitedBodyToOstream(s, &ss));
-            auto str = ss.str();
-            result = ep->send(str);
-        }
-        {
-            ::tateyama::proto::framework::response::Header hdr{};
-            google::protobuf::io::ArrayInputStream in(result.data(), result.size());
-            ASSERT_TRUE(tateyama::utils::ParseDelimitedFromZeroCopyStream(&hdr, &in, nullptr));
-            std::string_view out{};
-            ASSERT_TRUE(tateyama::utils::GetDelimitedBodyFromZeroCopyStream(&in, nullptr, out));
-            result = out;
-        }
+        std::string result = ep->send(s, 100, framework::service_id_sql);
         handle = utils::decode_begin(result);
     }
     {
-        std::string result{};
-        {
-            ::tateyama::proto::framework::request::Header hdr{};
-            hdr.set_message_version(1);
-            hdr.set_session_id(100);
-            hdr.set_service_id(framework::service_id_sql);
-            std::stringstream ss{};
-            ASSERT_TRUE(tateyama::utils::SerializeDelimitedToOstream(hdr, &ss));
-            auto s = utils::encode_commit(handle);
-            ASSERT_TRUE(tateyama::utils::PutDelimitedBodyToOstream(s, &ss));
-            auto str = ss.str();
-            result = ep->send(str);
-        }
-        {
-            ::tateyama::proto::framework::response::Header hdr{};
-            google::protobuf::io::ArrayInputStream in(result.data(), result.size());
-            ASSERT_TRUE(tateyama::utils::ParseDelimitedFromZeroCopyStream(&hdr, &in, nullptr));
-            std::string_view out{};
-            ASSERT_TRUE(tateyama::utils::GetDelimitedBodyFromZeroCopyStream(&in, nullptr, out));
-            result = out;
-        }
+        auto s = utils::encode_commit(handle);
+        std::string result = ep->send(s, 100, framework::service_id_sql);
         auto [success, error] = utils::decode_result_only(result);
         ASSERT_TRUE(success);
     }

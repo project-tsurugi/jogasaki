@@ -41,9 +41,6 @@
 #include <jogasaki/test_utils/temporary_folder.h>
 
 #include <tateyama/api/server/mock/request_response.h>
-#include <tateyama/api/endpoint/service.h>
-#include <tateyama/api/environment.h>
-#include <tateyama/api/server/service.h>
 #include <jogasaki/utils/msgpack_utils.h>
 
 namespace jogasaki::api {
@@ -56,7 +53,6 @@ using namespace jogasaki::utils;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
-using namespace tateyama::api::endpoint;
 namespace sql = jogasaki::proto::sql;
 using ValueCase = sql::request::Parameter::ValueCase;
 

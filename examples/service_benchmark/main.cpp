@@ -26,9 +26,6 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <tateyama/api/environment.h>
-#include <tateyama/api/server/service.h>
-#include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/server/mock/request_response.h>
 #include <tateyama/utils/thread_affinity.h>
 
@@ -80,7 +77,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 using namespace jogasaki::query_bench_cli;
-using tateyama::api::endpoint::response_code;
+using tateyama::api::server::response_code;
 
 using takatori::util::unsafe_downcast;
 

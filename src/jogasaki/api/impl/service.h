@@ -39,7 +39,7 @@
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/writer.h>
 #include <tateyama/api/server/data_channel.h>
-#include <tateyama/api/endpoint/response_code.h>
+#include <tateyama/api/server/response_code.h>
 
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
@@ -51,7 +51,7 @@ namespace jogasaki::api::impl {
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
-using response_code = tateyama::api::endpoint::response_code;
+using response_code = tateyama::api::server::response_code;
 
 namespace sql = jogasaki::proto::sql;
 

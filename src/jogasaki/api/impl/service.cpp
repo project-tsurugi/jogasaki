@@ -35,7 +35,6 @@
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
-#include <tateyama/api/environment.h>
 
 namespace jogasaki::api::impl {
 

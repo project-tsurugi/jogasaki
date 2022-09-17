@@ -34,11 +34,11 @@ std::string_view test_request::payload() const {
 }
 
 std::size_t test_request::session_id() const {
-    return 100;
+    return session_id_;
 }
 
 std::size_t test_request::service_id() const {
-    return 0;
+    return service_id_;
 }
 
 status test_channel::acquire(std::shared_ptr<writer>& wrt) {

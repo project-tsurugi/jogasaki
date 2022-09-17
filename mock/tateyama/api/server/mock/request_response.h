@@ -17,7 +17,7 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/data_channel.h>
-#include <tateyama/api/endpoint/response_code.h>
+#include <tateyama/api/server/response_code.h>
 
 #include <memory>
 #include <regex>
@@ -79,13 +79,24 @@ public:
     test_request() = default;
 
     explicit test_request(std::string_view payload);
+    test_request(
+        std::string_view payload,
+        std::size_t session_id,
+        std::size_t service_id
+    ) :
+        payload_(payload),
+        session_id_(session_id),
+        service_id_(service_id)
+    {}
+
 
     [[nodiscard]] std::size_t session_id() const override;
-
     [[nodiscard]] std::size_t service_id() const;
     [[nodiscard]] std::string_view payload() const override;
 
     std::string payload_{};  //NOLINT
+    std::size_t session_id_{};
+    std::size_t service_id_{};
 };
 
 class test_channel : public data_channel {

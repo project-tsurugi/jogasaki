@@ -497,7 +497,7 @@ TEST_F(sequence_manager_test, drop_sequence) {
 }
 
 TEST_F(sequence_manager_test, save_and_recover) {
-    if (jogasaki::kvs::implementation_id() != "memory" && BUILD_WP) {
+    if (jogasaki::kvs::implementation_id() != "memory") {
         GTEST_SKIP() << "shirakami wp build doesn't support recovery yet";
     }
     {

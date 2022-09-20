@@ -98,12 +98,10 @@ TEST_F(sequence_test, generate_primary_key) {
     }
 }
 
-TEST_F(sequence_test, recovery) {
+// shirakami wp build doesn't support recovery yet
+TEST_F(sequence_test, DISABLED_recovery) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
-    }
-    if (BUILD_WP) {
-        GTEST_SKIP() << "shirakami wp build doesn't support recovery yet";
     }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");

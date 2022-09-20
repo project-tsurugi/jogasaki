@@ -17,7 +17,6 @@
 
 #include <thread>
 #include <chrono>
-#include <jogasaki/utils/wp_base.h>
 
 namespace jogasaki {
 

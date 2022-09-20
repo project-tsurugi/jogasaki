@@ -21,7 +21,6 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/transaction_option.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/utils/wp_base.h>
 
 namespace jogasaki::utils {
 
@@ -53,15 +52,13 @@ std::shared_ptr<api::transaction_handle> create_transaction(
     bool force_ltx
 ) {
     // until LTX build becomes stables, test mainly with LTX //TODO
-    if(BUILD_WP || force_ltx) {
-        auto& impl = jogasaki::api::impl::get_impl(db);
-        std::vector<std::string> wp{};
-        impl.tables()->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& entry) {
-            wp.emplace_back(entry->simple_name());
-        });
-        return create_transaction(db, false, true, wp);
-    }
-    return create_transaction(db, false, false, {});
+    (void) force_ltx;
+    auto& impl = jogasaki::api::impl::get_impl(db);
+    std::vector<std::string> wp{};
+    impl.tables()->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& entry) {
+        wp.emplace_back(entry->simple_name());
+    });
+    return create_transaction(db, false, true, wp);
 }
 }
 

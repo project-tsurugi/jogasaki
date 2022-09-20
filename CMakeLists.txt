@@ -39,7 +39,6 @@ option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 option(TRACY_ENABLE "enable tracy profiler" OFF)
 option(INSTALL_API_ONLY "configure cmake build dir. just to install public api files. No build runs. This is used to provide api files to components outside jogasaki" OFF)
 option(LIKWID_ENABLE "enable likwid hardware counter profiling" OFF)
-option(BUILD_SHIRAKAMI_WP "Build transaction engine with shirakami enabling write preserve" ON)
 option(LOGSHIP "enable log-shipping integrated with hayatsuki. Installing and setup hayatsuki is required." OFF)
 
 if (ENABLE_GOOGLE_PERFTOOLS)

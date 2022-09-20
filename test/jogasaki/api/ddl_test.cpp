@@ -145,7 +145,7 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
 TEST_F(ddl_test, existing_table) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::err_translator_error,db_->prepare("CREATE TABLE T0 (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", variables, prepared));
+    ASSERT_EQ(status::err_compiler_error,db_->prepare("CREATE TABLE T0 (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", variables, prepared));
 }
 
 TEST_F(ddl_test, duplicate_table_name) {
@@ -155,7 +155,7 @@ TEST_F(ddl_test, duplicate_table_name) {
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared0));
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared1));
     execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
-    ASSERT_EQ(status::err_translator_error, db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared2));
+    ASSERT_EQ(status::err_compiler_error, db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared2));
     execute_statement(prepared1, status::err_already_exists);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared0));
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared1));
@@ -164,7 +164,7 @@ TEST_F(ddl_test, duplicate_table_name) {
 TEST_F(ddl_test, drop_missing_table) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::err_translator_error,db_->prepare("DROP TABLE DUMMY111", variables, prepared));
+    ASSERT_EQ(status::err_compiler_error,db_->prepare("DROP TABLE DUMMY111", variables, prepared));
 }
 
 TEST_F(ddl_test, drop_missing_table_runtime) {

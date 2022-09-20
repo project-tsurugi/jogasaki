@@ -277,9 +277,9 @@ status prepare(
         for(auto&& e : errors) {
             msg << e.code() << " " << e.message();
         }
-        VLOG(log_error) << status::err_translator_error << ": " <<  msg.str();
+        VLOG(log_error) << status::err_compiler_error << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
-        return status::err_translator_error;
+        return status::err_compiler_error;
     }
     return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, out);
 }

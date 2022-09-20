@@ -81,12 +81,12 @@ TEST_F(api_test, syntax_error) {
 
 TEST_F(api_test, missing_table) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_translator_error, db_->create_executable("select * from dummy", stmt));
+    ASSERT_EQ(status::err_compiler_error, db_->create_executable("select * from dummy", stmt));
 }
 
 TEST_F(api_test, invalid_column_name) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_translator_error, db_->create_executable("INSERT INTO T0(dummy) VALUES(1)", stmt));
+    ASSERT_EQ(status::err_compiler_error, db_->create_executable("INSERT INTO T0(dummy) VALUES(1)", stmt));
 }
 
 TEST_F(api_test, inconsistent_type_in_write) {
@@ -486,9 +486,9 @@ TEST_F(api_test, extra_parameter_not_used_by_stmt) {
 TEST_F(api_test, undefined_host_variables) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     api::statement_handle prepared{};
-    ASSERT_EQ(status::err_translator_error, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:undefined0, 0)", variables, prepared));
+    ASSERT_EQ(status::err_compiler_error, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:undefined0, 0)", variables, prepared));
     api::statement_handle query{};
-    ASSERT_EQ(status::err_translator_error, db_->prepare("SELECT C0, C1 FROM T0 WHERE C0=:undefined0", variables, query));
+    ASSERT_EQ(status::err_compiler_error, db_->prepare("SELECT C0, C1 FROM T0 WHERE C0=:undefined0", variables, query));
 }
 
 TEST_F(api_test, unresolved_parameters) {

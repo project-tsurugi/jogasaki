@@ -18,8 +18,8 @@
 #include <sstream>
 
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/serializer/value_input.h>
 
+#include <jogasaki/serializer/value_input.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -54,34 +54,34 @@ std::vector<mock::basic_record> deserialize_msg(
     auto it = buf.cbegin();
     auto end = buf.cend();
     while(it < end) {
-        auto typ = takatori::serializer::peek_type(it, end);
-        if (typ == takatori::serializer::entry_type::row) {
-            [[maybe_unused]] auto num_columns = takatori::serializer::read_row_begin(it, end);
+        auto typ = serializer::peek_type(it, end);
+        if (typ == serializer::entry_type::row) {
+            [[maybe_unused]] auto num_columns = serializer::read_row_begin(it, end);
             BOOST_ASSERT(num_columns == meta.field_count());
             continue;
         }
         auto& record = ret.emplace_back(maybe_shared_ptr{&meta});
         auto ref = record.ref();
         for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
-            if(auto tp = takatori::serializer::peek_type(it, end); tp == takatori::serializer::entry_type::null) {
+            if(auto tp = serializer::peek_type(it, end); tp == serializer::entry_type::null) {
                 set_null(ref, index, meta);
                 continue;
             }
             switch (meta.at(index).kind()) {
-                case jogasaki::meta::field_type_kind::int4: ref.set_value<std::int32_t>(meta.value_offset(index), static_cast<std::int32_t>(takatori::serializer::read_int(it, end))); break;
-                case jogasaki::meta::field_type_kind::int8: ref.set_value<std::int64_t>(meta.value_offset(index), takatori::serializer::read_int(it, end)); break;
-                case jogasaki::meta::field_type_kind::float4: ref.set_value<float>(meta.value_offset(index), takatori::serializer::read_float4(it, end)); break;
-                case jogasaki::meta::field_type_kind::float8: ref.set_value<double>(meta.value_offset(index), takatori::serializer::read_float8(it, end)); break;
+                case jogasaki::meta::field_type_kind::int4: ref.set_value<std::int32_t>(meta.value_offset(index), static_cast<std::int32_t>(serializer::read_int(it, end))); break;
+                case jogasaki::meta::field_type_kind::int8: ref.set_value<std::int64_t>(meta.value_offset(index), serializer::read_int(it, end)); break;
+                case jogasaki::meta::field_type_kind::float4: ref.set_value<float>(meta.value_offset(index), serializer::read_float4(it, end)); break;
+                case jogasaki::meta::field_type_kind::float8: ref.set_value<double>(meta.value_offset(index), serializer::read_float8(it, end)); break;
                 case jogasaki::meta::field_type_kind::character: {
-                    auto v = takatori::serializer::read_character(it, end);
+                    auto v = serializer::read_character(it, end);
                     auto sv = record.allocate_varlen_data(v);
                     record.ref().set_value(meta.value_offset(index), accessor::text{sv});
                     break;
                 }
-                case jogasaki::meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta.value_offset(index), takatori::serializer::read_decimal(it, end)); break;
-                case jogasaki::meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta.value_offset(index), takatori::serializer::read_date(it, end)); break;
-                case jogasaki::meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta.value_offset(index), takatori::serializer::read_time_of_day(it, end)); break;
-                case jogasaki::meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta.value_offset(index), takatori::serializer::read_time_point(it, end)); break;
+                case jogasaki::meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta.value_offset(index), serializer::read_decimal(it, end)); break;
+                case jogasaki::meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta.value_offset(index), serializer::read_date(it, end)); break;
+                case jogasaki::meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta.value_offset(index), serializer::read_time_of_day(it, end)); break;
+                case jogasaki::meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta.value_offset(index), serializer::read_time_point(it, end)); break;
                 default:
                     std::abort();
             }

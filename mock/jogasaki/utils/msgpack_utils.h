@@ -18,7 +18,6 @@
 #include <sstream>
 
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/serializer/value_input.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>

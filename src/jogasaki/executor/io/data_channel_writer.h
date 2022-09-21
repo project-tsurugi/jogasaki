@@ -16,8 +16,8 @@
 #pragma once
 
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/serializer/value_writer.h>
 
+#include <jogasaki/serializer/value_writer.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
@@ -32,7 +32,7 @@ using takatori::util::maybe_shared_ptr;
  */
 class cache_align data_channel_writer : public record_writer {
 public:
-    using value_writer = takatori::serializer::value_writer<api::writer, std::size_t>;
+    using value_writer = jogasaki::serializer::value_writer<api::writer, std::size_t>;
 
     /**
      * @brief create empty object

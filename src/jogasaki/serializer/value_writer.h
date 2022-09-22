@@ -61,6 +61,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_null(iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -74,6 +75,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_int(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -88,6 +90,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_float4(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -102,6 +105,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_float8(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -116,6 +120,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_decimal(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -130,6 +135,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_character(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -187,6 +193,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_date(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -201,6 +208,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_time_of_day(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -215,6 +223,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_time_point(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -243,6 +252,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_array_begin(size, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);
@@ -257,6 +267,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_row_begin(size, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+		(void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);

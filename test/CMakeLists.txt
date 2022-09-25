@@ -1,5 +1,3 @@
-set(test_target jogasaki-test)
-
 set_source_files_properties(
         ${GENERATED_PROTO_SRCS}
         PROPERTIES
@@ -7,34 +5,51 @@ set_source_files_properties(
         COMPILE_FLAGS -Wno-unused-parameter
 )
 
-add_executable(${test_target}
-        main.cpp
+file(GLOB TEST_COMMON_SRCS
+        "main.cpp"
         ${GENERATED_PROTO_SRCS}
+        "jogasaki/api/api_test_base.cpp"
+        "jogasaki/mock/mock_task.cpp"
+        "jogasaki/kvs_test_utils.cpp"
+        "jogasaki/kvs/kvs_test_base.cpp"
         )
 
-add_dependencies(${test_target}
-        build_protos
-        )
-
-target_include_directories(${test_target}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        PRIVATE ${CMAKE_BINARY_DIR}/protos
-        )
-
-target_link_libraries(${test_target}
+add_library(test_common OBJECT ${TEST_COMMON_SRCS})
+target_link_libraries(test_common
+        PUBLIC gtest
         PRIVATE jogasaki-impl
         PRIVATE common
         PRIVATE common-impl
-        PUBLIC gtest
-        PRIVATE tbb
-        PRIVATE takatori
-        PRIVATE atomic
-        PRIVATE protobuf::libprotobuf
-        PRIVATE mpdecpp
+        )
+target_include_directories(test_common
+        PRIVATE .
         )
 
 function (add_test_executable source_file)
     get_filename_component(test_name "${source_file}" NAME_WE)
+    set(test_target ${test_name})
+    add_executable(${test_target})
+    add_dependencies(${test_target}
+            build_protos
+            )
+
+    target_include_directories(${test_target}
+            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+            )
+
+    target_link_libraries(${test_target}
+            PRIVATE test_common
+            PRIVATE jogasaki-impl
+            PRIVATE common
+            PRIVATE common-impl
+            PUBLIC gtest
+            PRIVATE tbb
+            PRIVATE takatori
+            PRIVATE atomic
+            PRIVATE protobuf::libprotobuf
+            PRIVATE mpdecpp
+            )
+
     target_sources(${test_target}
             PRIVATE ${source_file}
             )
@@ -102,6 +117,8 @@ foreach(file ${ADDED})
 endforeach()
 
 foreach(file ${SRCS})
-    add_test_executable(${file})
+    if(file MATCHES "test.cpp$")
+        add_test_executable(${file})
+    endif()
 endforeach()
 

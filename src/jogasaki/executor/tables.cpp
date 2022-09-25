@@ -22,6 +22,7 @@
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/decimal.h>
+#include <takatori/datetime/time_zone.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <jogasaki/common_types.h>
 #include <jogasaki/constants.h>
@@ -273,14 +274,14 @@ void add_test_tables(storage::configurable_provider& provider) {
             {
                 { "K0", type::date(), nullity{false} },
                 { "K1", type::time_of_day(), nullity{false} },
-                { "K2", type::time_of_day(), nullity{false} }, // TODO with offset
+                { "K2", type::time_of_day(takatori::datetime::time_zone::UTC), nullity{false} }, // TODO with offset
                 { "K3", type::time_point(), nullity{false} },
-                { "K4", type::time_point(), nullity{false} }, // TODO with offset
+                { "K4", type::time_point(takatori::datetime::time_zone::UTC), nullity{false} }, // TODO with offset
                 { "C0", type::date(), nullity{true} },
                 { "C1", type::time_of_day(), nullity{true} },
-                { "C2", type::time_of_day(), nullity{true} }, // TODO with offset
+                { "C2", type::time_of_day(takatori::datetime::time_zone::UTC), nullity{true} }, // TODO with offset
                 { "C3", type::time_point(), nullity{true} },
-                { "C4", type::time_point(), nullity{true} }, // TODO with offset
+                { "C4", type::time_point(takatori::datetime::time_zone::UTC), nullity{true} }, // TODO with offset
             },
         });
         provider.add_index({

@@ -255,13 +255,15 @@ TEST_F(host_variables_test, insert_temporal_types) {
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
     auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
     auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+    auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
+    auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
     EXPECT_EQ((mock::typed_nullable_record<
         kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point,
         kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point
     >(
         std::tuple{
-            dat, tod, tod, tp, tp,
-            dat, tod, tod, tp, tp,
+            dat, tod, todtz, tp, tptz,
+            dat, tod, todtz, tp, tptz,
         },
         {
             d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
@@ -274,6 +276,8 @@ TEST_F(host_variables_test, update_temporal_types) {
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
     auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
     auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+    auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
+    auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
 
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::date},
@@ -330,8 +334,8 @@ TEST_F(host_variables_test, update_temporal_types) {
             kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point
         >(
             std::tuple{
-                dat, tod, tod, tp, tp,
-                dat, tod, tod, tp, tp,
+                dat, tod, todtz, tp, tptz,
+                dat, tod, todtz, tp, tptz,
             },
             {
                 d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,

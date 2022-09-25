@@ -357,7 +357,9 @@ inline void fill_parameters(
             }
             case ValueCase::kDateValue: c0->set_date_value(std::any_cast<runtime_t<meta::field_type_kind::date>>(p.value_).days_since_epoch()); break;
             case ValueCase::kTimeOfDayValue: c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count()); break;
-            case ValueCase::kTimePointValue: {
+            case ValueCase::kTimeOfDayWithTimeZoneValue: c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count()); break;
+            case ValueCase::kTimePointValue: // fall-thru
+            case ValueCase::kTimePointWithTimeZoneValue: {
                 auto tp = std::any_cast<runtime_t<meta::field_type_kind::time_point>>(p.value_);
                 auto* v = c0->mutable_time_point_value();
                 v->set_offset_seconds(tp.seconds_since_epoch().count());

@@ -16,6 +16,9 @@
 #pragma once
 
 #include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/decimal_field_option.h>
+#include <jogasaki/api/time_of_day_field_option.h>
+#include <jogasaki/api/time_point_field_option.h>
 
 namespace jogasaki::api {
 
@@ -52,6 +55,27 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept {
         return kind() != field_type_kind::undefined;
     }
+
+    /**
+     * @brief accessor to decimal field option
+     * @return decimal type field option if the field type is decimal
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] virtual std::shared_ptr<decimal_field_option> const& decimal_option() const noexcept = 0;
+
+    /**
+     * @brief accessor to time_of_day field option
+     * @return decimal type field option if the field type is time_of_day
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] virtual std::shared_ptr<time_of_day_field_option> const& time_of_day_option() const noexcept = 0;
+
+    /**
+     * @brief accessor to time_point field option
+     * @return decimal type field option if the field type is time_point
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] virtual std::shared_ptr<time_point_field_option> const& time_point_option() const noexcept = 0;
 };
 
 } // namespace

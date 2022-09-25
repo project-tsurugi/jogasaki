@@ -752,7 +752,8 @@ void details::set_metadata(channel_info const& info, sql::response::ResultSetMet
         if(auto name = metadata->field_name(i); name.has_value()) {
             column->set_name(std::string{*name});
         }
-        switch(metadata->at(i).kind()) {
+        auto& fld = metadata->at(i);
+        switch(fld.kind()) {
             case jogasaki::api::field_type_kind::int4:
                 column->set_atom_type(sql::common::AtomType::INT4);
                 break;
@@ -775,9 +776,19 @@ void details::set_metadata(channel_info const& info, sql::response::ResultSetMet
                 column->set_atom_type(sql::common::AtomType::DATE);
                 break;
             case jogasaki::api::field_type_kind::time_of_day:
+                BOOST_ASSERT(fld.time_of_day_option() != nullptr);  //NOLINT
+                if(fld.time_of_day_option()->with_offset()) {
+                    column->set_atom_type(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE);
+                    break;
+                }
                 column->set_atom_type(sql::common::AtomType::TIME_OF_DAY);
                 break;
             case jogasaki::api::field_type_kind::time_point:
+                BOOST_ASSERT(fld.time_point_option() != nullptr);  //NOLINT
+                if(fld.time_point_option()->with_offset()) {
+                    column->set_atom_type(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
+                    break;
+                }
                 column->set_atom_type(sql::common::AtomType::TIME_POINT);
                 break;
             default:

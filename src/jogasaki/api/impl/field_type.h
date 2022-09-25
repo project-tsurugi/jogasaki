@@ -26,6 +26,13 @@ namespace jogasaki::api::impl {
 class field_type : public api::field_type {
 public:
 
+    using option_type = std::variant<
+        std::monostate,
+        std::shared_ptr<decimal_field_option>,
+        std::shared_ptr<time_of_day_field_option>,
+        std::shared_ptr<time_point_field_option>
+    >;
+
     /**
      * @brief construct empty object (kind undefined)
      */
@@ -41,9 +48,30 @@ public:
      */
     [[nodiscard]] api::field_type_kind kind() const noexcept override;;
 
-    // TODO support filed options
+    /**
+     * @brief accessor to decimal field option
+     * @return decimal type field option if the field type is decimal
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] std::shared_ptr<decimal_field_option> const& decimal_option() const noexcept override;
+
+    /**
+     * @brief accessor to time_of_day field option
+     * @return decimal type field option if the field type is time_of_day
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] std::shared_ptr<time_of_day_field_option> const& time_of_day_option() const noexcept override;
+
+    /**
+     * @brief accessor to time_point field option
+     * @return decimal type field option if the field type is time_point
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] std::shared_ptr<time_point_field_option> const& time_point_option() const noexcept override;
+
 private:
     meta::field_type type_{};
+    option_type option_{};
 };
 
 } // namespace

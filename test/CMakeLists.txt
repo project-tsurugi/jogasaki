@@ -25,6 +25,13 @@ target_include_directories(test_common
         PRIVATE .
         )
 
+if(USE_PCH)
+    add_library(pch_target INTERFACE)
+    target_precompile_headers(pch_target
+            INTERFACE ../pch/pch_targets.h
+            )
+endif()
+
 function (add_test_executable source_file)
     get_filename_component(test_name "${source_file}" NAME_WE)
     set(test_target ${test_name})
@@ -36,6 +43,10 @@ function (add_test_executable source_file)
     target_include_directories(${test_target}
             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             )
+
+    if(USE_PCH)
+        target_link_libraries(${test_target} INTERFACE pch_target)
+    endif()
 
     target_link_libraries(${test_target}
             PRIVATE test_common

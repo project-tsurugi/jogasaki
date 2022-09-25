@@ -101,6 +101,12 @@ target_include_directories(${ENGINE}
         PRIVATE .
 )
 
+if(USE_PCH)
+target_precompile_headers(${ENGINE} PRIVATE
+        ../pch/pch_targets.h
+        )
+endif()
+
 target_link_libraries(${ENGINE}
         PUBLIC api
         PUBLIC ${tateyama_engine}

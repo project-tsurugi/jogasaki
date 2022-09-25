@@ -96,6 +96,7 @@ available options:
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.
 * `-DLOGSHIP=ON` - enable logshipping integration with hayatsuki. Require installing hayatsuki beforehand.
+* `-DUSE_PCH=ON` - enable building with pre-compiled headers. This may make incremental builds faster by decreasing processed header files.
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)

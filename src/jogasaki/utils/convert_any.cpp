@@ -73,6 +73,34 @@ bool convert_any(any& a, meta::field_type const& type) {
             }
             break;
         }
+        case k::decimal: {
+            switch(a.type_index()) {
+                case any::index<takatori::decimal::triple>: break;
+                default: return false;
+            }
+            break;
+        }
+        case k::date: {
+            switch(a.type_index()) {
+                case any::index<takatori::datetime::date>: break;
+                default: return false;
+            }
+            break;
+        }
+        case k::time_of_day: {
+            switch(a.type_index()) {
+                case any::index<takatori::datetime::time_of_day>: break;
+                default: return false;
+            }
+            break;
+        }
+        case k::time_point: {
+            switch(a.type_index()) {
+                case any::index<takatori::datetime::time_point>: break;
+                default: return false;
+            }
+            break;
+        }
         default:   //TODO add more conversions
             return false;
     }

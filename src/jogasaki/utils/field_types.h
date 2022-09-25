@@ -19,13 +19,16 @@
 
 #include <yugawara/compiled_info.h>
 #include <takatori/type/type_kind.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
+#include <takatori/type/decimal.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
-#include <takatori/type/decimal.h>
 
 namespace jogasaki::utils {
 
@@ -49,8 +52,16 @@ using ::takatori::util::fail;
         case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
         case t::date: return meta::field_type(meta::field_enum_tag<k::date>);
-        case t::time_of_day: return meta::field_type(std::shared_ptr<meta::time_of_day_field_option>{});
-        case t::time_point: return meta::field_type(std::shared_ptr<meta::time_point_field_option>{});
+        case t::time_of_day: {
+            auto& typ = static_cast<::takatori::type::time_of_day const&>(type);  //NOLINT
+            (void) typ;
+            return meta::field_type(std::make_shared<meta::time_of_day_field_option>(false)); //TODO propagate with_offset from typ
+        }
+        case t::time_point: {
+            auto& typ = static_cast<::takatori::type::time_point const&>(type);  //NOLINT
+            (void) typ;
+            return meta::field_type(std::make_shared<meta::time_point_field_option>(false)); //TODO propagate with_offset from typ
+        }
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
         case t::unknown: return meta::field_type(std::shared_ptr<meta::unknown_field_option>{});
 

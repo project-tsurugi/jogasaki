@@ -161,7 +161,9 @@ entry_type peek_type(buffer_view::const_iterator position, buffer_view::const_it
         case header_bit: return entry_type::bit;
         case header_date: return entry_type::date;
         case header_time_of_day: return entry_type::time_of_day;
+        case header_time_of_day_with_offset: return entry_type::time_of_day_with_offset;
         case header_time_point: return entry_type::time_point;
+        case header_time_point_with_offset: return entry_type::time_point_with_offset;
         case header_datetime_interval: return entry_type::datetime_interval;
         case header_row: return entry_type::row;
         case header_array: return entry_type::array;
@@ -428,6 +430,16 @@ takatori::datetime::time_of_day read_time_of_day(buffer_view::const_iterator& po
     return takatori::datetime::time_of_day { takatori::datetime::time_of_day::time_unit { offset }};
 }
 
+std::pair<takatori::datetime::time_of_day, std::int32_t> read_time_of_day_with_offset(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+    requires_entry(entry_type::time_of_day_with_offset, position, end);
+    buffer_view::const_iterator iter = position;
+    ++iter;
+    auto offset = read_uint(iter, end);
+    auto timezone_offset = read_sint32(iter, end);
+    position = iter;
+    return {takatori::datetime::time_of_day { takatori::datetime::time_of_day::time_unit { offset }}, timezone_offset};
+}
+
 takatori::datetime::time_point read_time_point(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
     requires_entry(entry_type::time_point, position, end);
     buffer_view::const_iterator iter = position;
@@ -438,6 +450,23 @@ takatori::datetime::time_point read_time_point(buffer_view::const_iterator& posi
     return takatori::datetime::time_point {
             takatori::datetime::time_point::offset_type { offset },
             takatori::datetime::time_point::subsecond_unit { adjustment },
+    };
+}
+
+std::pair<takatori::datetime::time_point, std::int32_t> read_time_point_with_offset(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+    requires_entry(entry_type::time_point_with_offset, position, end);
+    buffer_view::const_iterator iter = position;
+    ++iter;
+    auto offset = read_sint(iter, end);
+    auto adjustment = read_uint(iter, end);
+    auto timezone_offset = read_sint32(iter, end);
+    position = iter;
+    return {
+        takatori::datetime::time_point {
+            takatori::datetime::time_point::offset_type { offset },
+            takatori::datetime::time_point::subsecond_unit { adjustment },
+        },
+        timezone_offset
     };
 }
 

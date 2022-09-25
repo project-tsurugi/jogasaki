@@ -420,6 +420,35 @@ TEST_F(value_input_test, write_time_of_day) {
     }
 }
 
+TEST_F(value_input_test, write_time_of_day_with_offset) {
+    {
+        std::pair<takatori::datetime::time_of_day, std::int32_t> input;
+        auto buf = dump([=](auto& iter, auto end) { return write_time_of_day_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_of_day_with_offset(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+    {
+        std::pair<takatori::datetime::time_of_day, std::int32_t> input{
+            takatori::datetime::time_of_day {
+                takatori::datetime::time_of_day::time_unit { 1000 },
+            },
+            15
+        };
+        auto buf = dump([=](auto& iter, auto end) { return write_time_of_day_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_of_day_with_offset(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+    {
+        std::pair<takatori::datetime::time_of_day, std::int32_t> input {
+            takatori::datetime::time_of_day::max_value,
+            24*60
+        };
+        auto buf = dump([=](auto& iter, auto end) { return write_time_of_day_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_of_day_with_offset(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+}
+
 TEST_F(value_input_test, write_time_point) {
     {
         takatori::datetime::time_point input {};
@@ -450,6 +479,49 @@ TEST_F(value_input_test, write_time_point) {
         };
         auto buf = dump([=](auto& iter, auto end) { return write_time_point(input, iter, end); });
         auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_point(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+}
+
+TEST_F(value_input_test, write_time_point_with_offset) {
+    {
+        std::pair<takatori::datetime::time_point, std::int32_t> input {};
+        auto buf = dump([=](auto& iter, auto end) { return write_time_point_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_point_with_offset(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+    {
+        std::pair<takatori::datetime::time_point, std::int32_t> input {
+            takatori::datetime::time_point {
+                takatori::datetime::time_point::offset_type { 1000 },
+            },
+            15
+        };
+        auto buf = dump([=](auto& iter, auto end) { return write_time_point_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_point_with_offset(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+    {
+        std::pair<takatori::datetime::time_point, std::int32_t> input {
+            takatori::datetime::time_point {
+                takatori::datetime::time_point::offset_type { -1000 },
+            },
+            -15
+        };
+        auto buf = dump([=](auto& iter, auto end) { return write_time_point_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_point_with_offset(iter, end); });
+        EXPECT_EQ(result, input);
+    }
+    {
+        std::pair<takatori::datetime::time_point, std::int32_t> input {
+            takatori::datetime::time_point {
+                takatori::datetime::time_point::offset_type { 1000 },
+                    takatori::datetime::time_point::subsecond_unit { 123456789 },
+            },
+            -24*60
+        };
+        auto buf = dump([=](auto& iter, auto end) { return write_time_point_with_offset(input.first, input.second, iter, end); });
+        auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_time_point_with_offset(iter, end); });
         EXPECT_EQ(result, input);
     }
 }

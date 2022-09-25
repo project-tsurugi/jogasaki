@@ -319,6 +319,19 @@ TEST_F(value_output_test, write_time_of_day) {
             perform([](auto& iter, auto end) { return write_time_of_day(takatori::datetime::time_of_day(takatori::datetime::time_of_day::max_value), iter, end); }));
 }
 
+TEST_F(value_output_test, write_time_of_day_with_offset) {
+    using unit = takatori::datetime::time_of_day::time_unit;
+    EXPECT_EQ(
+        sequence(header_time_of_day_with_offset, { uint(0), sint(0) }),
+        perform([](auto& iter, auto end) { return write_time_of_day_with_offset(takatori::datetime::time_of_day(unit(0)), 0, iter, end); }));
+    EXPECT_EQ(
+        sequence(header_time_of_day_with_offset, { uint(1000), sint(15) }),
+        perform([](auto& iter, auto end) { return write_time_of_day_with_offset(takatori::datetime::time_of_day(unit(1000)), 15, iter, end); }));
+    EXPECT_EQ(
+        sequence(header_time_of_day_with_offset, { uint(86'400'000'000'000ULL - 1ULL), sint(60*24) }),
+        perform([](auto& iter, auto end) { return write_time_of_day_with_offset(takatori::datetime::time_of_day(takatori::datetime::time_of_day::max_value), 60*24, iter, end); }));
+}
+
 TEST_F(value_output_test, write_time_point) {
     using unit = takatori::datetime::time_point::offset_type;
     using ns = takatori::datetime::time_point::subsecond_unit;
@@ -334,6 +347,23 @@ TEST_F(value_output_test, write_time_point) {
     EXPECT_EQ(
             sequence(header_time_point, { sint(0), uint(123456789) }),
             perform([](auto& iter, auto end) { return write_time_point(takatori::datetime::time_point({}, ns(123456789)), iter, end); }));
+}
+
+TEST_F(value_output_test, write_time_point_with_offset) {
+    using unit = takatori::datetime::time_point::offset_type;
+    using ns = takatori::datetime::time_point::subsecond_unit;
+    EXPECT_EQ(
+        sequence(header_time_point_with_offset, { sint(0), uint(0), sint(0) }),
+        perform([](auto& iter, auto end) { return write_time_point_with_offset(takatori::datetime::time_point(), 0, iter, end); }));
+    EXPECT_EQ(
+        sequence(header_time_point_with_offset, { sint(1000), uint(0), sint(15) }),
+        perform([](auto& iter, auto end) { return write_time_point_with_offset(takatori::datetime::time_point(unit(1000)), 15, iter, end); }));
+    EXPECT_EQ(
+        sequence(header_time_point_with_offset, { sint(-1000), uint(0), sint(-15) }),
+        perform([](auto& iter, auto end) { return write_time_point_with_offset(takatori::datetime::time_point(unit(-1000)), -15, iter, end); }));
+    EXPECT_EQ(
+        sequence(header_time_point_with_offset, { sint(0), uint(123456789), sint(24*60) }),
+        perform([](auto& iter, auto end) { return write_time_point_with_offset(takatori::datetime::time_point({}, ns(123456789)), 24*60, iter, end); }));
 }
 
 TEST_F(value_output_test, write_datetime_interval) {

@@ -47,8 +47,14 @@ enum class entry_type {
     /// @brief time of day value.
     time_of_day,
 
+    /// @brief time of day with offset value.
+    time_of_day_with_offset,
+
     /// @brief time-point value.
     time_point,
+
+    /// @brief time-point with offset value.
+    time_point_with_offset,
 
     /// @brief date-time interval value.
     datetime_interval,
@@ -86,7 +92,9 @@ constexpr inline std::string_view to_string_view(entry_type value) noexcept {
         case kind::bit: return "bit"sv;
         case kind::date: return "date"sv;
         case kind::time_of_day: return "time_of_day"sv;
+        case kind::time_of_day_with_offset: return "time_of_day_with_offset"sv;
         case kind::time_point: return "time_point"sv;
+        case kind::time_point_with_offset: return "time_point_with_offset"sv;
         case kind::datetime_interval: return "datetime_interval"sv;
         case kind::row: return "row"sv;
         case kind::array: return "array"sv;

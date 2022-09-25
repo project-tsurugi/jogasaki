@@ -32,9 +32,9 @@ static constexpr std::uint32_t header_decimal_compact = 0xecU;
 
 static constexpr std::uint32_t header_decimal = 0xedU;
 
-static constexpr std::uint32_t header_reserved_ee = 0xeeU;
+static constexpr std::uint32_t header_time_of_day_with_offset = 0xeeU;
 
-static constexpr std::uint32_t header_reserved_ef = 0xefU;
+static constexpr std::uint32_t header_time_point_with_offset = 0xefU;
 
 static constexpr std::uint32_t header_character = 0xf0U;
 

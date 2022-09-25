@@ -398,6 +398,21 @@ bool write_time_of_day(
     return true;
 }
 
+bool write_time_of_day_with_offset(
+    takatori::datetime::time_of_day value,
+    std::int32_t timezone_offset,
+    buffer_view::iterator& position,
+    buffer_view::const_iterator end) {
+    if (buffer_remaining(position, end) < 1 + base128v::size_unsigned(value.time_since_epoch().count())
+        + base128v::size_signed(timezone_offset)) {
+        return false;
+    }
+    write_fixed8(header_time_of_day_with_offset, position, end);
+    base128v::write_unsigned(value.time_since_epoch().count(), position, end);
+    base128v::write_signed(timezone_offset, position, end);
+    return true;
+}
+
 bool write_time_point(
         takatori::datetime::time_point value,
         buffer_view::iterator& position,
@@ -410,6 +425,24 @@ bool write_time_point(
     write_fixed8(header_time_point, position, end);
     base128v::write_signed(value.seconds_since_epoch().count(), position, end);
     base128v::write_unsigned(value.subsecond().count(), position, end);
+    return true;
+}
+
+bool write_time_point_with_offset(
+    takatori::datetime::time_point value,
+    std::int32_t timezone_offset,
+    buffer_view::iterator& position,
+    buffer_view::const_iterator end) {
+    if (buffer_remaining(position, end) < 1
+        + base128v::size_signed(value.seconds_since_epoch().count())
+        + base128v::size_unsigned(value.subsecond().count())
+        + base128v::size_signed(timezone_offset)) {
+        return false;
+    }
+    write_fixed8(header_time_point_with_offset, position, end);
+    base128v::write_signed(value.seconds_since_epoch().count(), position, end);
+    base128v::write_unsigned(value.subsecond().count(), position, end);
+    base128v::write_signed(timezone_offset, position, end);
     return true;
 }
 

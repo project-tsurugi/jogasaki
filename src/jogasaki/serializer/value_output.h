@@ -209,6 +209,23 @@ bool write_time_of_day(
         buffer_view::const_iterator end);
 
 /**
+ * @brief puts `time_of_day` with timezone offset entry onto the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param value the value to write
+ * @param timezone_offset the timezone offset (in minute) to write
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return the retrieved value
+ * @return true the operation successfully completed
+ * @return false the remaining buffer is too short to write contents
+ */
+bool write_time_of_day_with_offset(
+    takatori::datetime::time_of_day value,
+    std::int32_t timezone_offset,
+    buffer_view::iterator& position,
+    buffer_view::const_iterator end);
+
+/**
  * @brief puts `time_point` entry onto the current position.
  * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
  * @param value the value to write
@@ -222,6 +239,23 @@ bool write_time_point(
         takatori::datetime::time_point value,
         buffer_view::iterator& position,
         buffer_view::const_iterator end);
+
+/**
+ * @brief puts `time_point` with timezone offset entry onto the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param value the value to write
+ * @param timezone_offset the timezone offset (in minute) to write
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return the retrieved value
+ * @return true the operation successfully completed
+ * @return false the remaining buffer is too short to write contents
+ */
+bool write_time_point_with_offset(
+    takatori::datetime::time_point value,
+    std::int32_t timezone_offset,
+    buffer_view::iterator& position,
+    buffer_view::const_iterator end);
 
 /**
  * @brief puts `datetime_interval` entry onto the current position.

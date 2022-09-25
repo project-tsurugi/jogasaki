@@ -171,6 +171,18 @@ takatori::datetime::date read_date(buffer_view::const_iterator& position, buffer
 takatori::datetime::time_of_day read_time_of_day(buffer_view::const_iterator& position, buffer_view::const_iterator end);
 
 /**
+ * @brief retrieves `time_of_day` with offset entry on the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return the retrieved value, the second element contains timezone offset
+ * @throws std::runtime_error if the entry is not expected type
+ * @throws value_input_exception if the encoded value is not valid
+ * @see peek_type()
+ */
+std::pair<takatori::datetime::time_of_day, std::int32_t> read_time_of_day_with_offset(buffer_view::const_iterator& position, buffer_view::const_iterator end);
+
+/**
  * @brief retrieves `time_point` entry on the current position.
  * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
  * @param position the buffer content iterator
@@ -181,6 +193,18 @@ takatori::datetime::time_of_day read_time_of_day(buffer_view::const_iterator& po
  * @see peek_type()
  */
 takatori::datetime::time_point read_time_point(buffer_view::const_iterator& position, buffer_view::const_iterator end);
+
+/**
+ * @brief retrieves `time_point` with offset entry on the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return the retrieved value, the second element contains timezone offset
+ * @throws std::runtime_error if the entry is not expected type
+ * @throws value_input_exception if the encoded value is not valid
+ * @see peek_type()
+ */
+std::pair<takatori::datetime::time_point, std::int32_t> read_time_point_with_offset(buffer_view::const_iterator& position, buffer_view::const_iterator end);
 
 /**
  * @brief retrieves `datetime_interval` entry on the current position.

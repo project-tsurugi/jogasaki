@@ -215,6 +215,22 @@ public:
     }
 
     /**
+     * @brief puts `time_of_day` with offset entry onto the current position.
+     * @param value the value to write
+     * @param timezone_offset the timezone offset in minute
+     */
+    result_type write_time_of_day_with_offset(takatori::datetime::time_of_day value, std::int32_t timezone_offset) {
+        auto buf = buffer();
+        auto *iter = buf.begin();
+        auto ret = ::jogasaki::serializer::write_time_of_day_with_offset(value, timezone_offset, iter, buf.end());
+        BOOST_ASSERT(ret); // NOLINT
+        (void) ret;
+
+        auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
+        return writer_->write(buf.data(), write_size);
+    }
+
+    /**
      * @brief puts `time_point` entry onto the current position.
      * @param value the value to write
      */
@@ -224,6 +240,22 @@ public:
         auto ret = ::jogasaki::serializer::write_time_point(value, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
 		(void) ret;
+
+        auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
+        return writer_->write(buf.data(), write_size);
+    }
+
+    /**
+     * @brief puts `time_point` with offset entry onto the current position.
+     * @param value the value to write
+     * @param timezone_offset the timezone offset in minute
+     */
+    result_type write_time_point_with_offset(takatori::datetime::time_point value, std::int32_t timezone_offset) {
+        auto buf = buffer();
+        auto *iter = buf.begin();
+        auto ret = ::jogasaki::serializer::write_time_point_with_offset(value, timezone_offset, iter, buf.end());
+        BOOST_ASSERT(ret); // NOLINT
+        (void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);

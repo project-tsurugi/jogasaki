@@ -67,7 +67,8 @@ std::vector<mock::basic_record> deserialize_msg(
                 set_null(ref, index, meta);
                 continue;
             }
-            switch (meta.at(index).kind()) {
+            auto& fld = meta.at(index);
+            switch (fld.kind()) {
                 case jogasaki::meta::field_type_kind::int4: ref.set_value<std::int32_t>(meta.value_offset(index), static_cast<std::int32_t>(serializer::read_int(it, end))); break;
                 case jogasaki::meta::field_type_kind::int8: ref.set_value<std::int64_t>(meta.value_offset(index), serializer::read_int(it, end)); break;
                 case jogasaki::meta::field_type_kind::float4: ref.set_value<float>(meta.value_offset(index), serializer::read_float4(it, end)); break;
@@ -80,8 +81,26 @@ std::vector<mock::basic_record> deserialize_msg(
                 }
                 case jogasaki::meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta.value_offset(index), serializer::read_decimal(it, end)); break;
                 case jogasaki::meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta.value_offset(index), serializer::read_date(it, end)); break;
-                case jogasaki::meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta.value_offset(index), serializer::read_time_of_day(it, end)); break;
-                case jogasaki::meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta.value_offset(index), serializer::read_time_point(it, end)); break;
+                case jogasaki::meta::field_type_kind::time_of_day: {
+                    if(fld.option_unsafe<jogasaki::meta::field_type_kind::time_of_day>()->with_offset_) {
+                        auto [v, o] = serializer::read_time_of_day_with_offset(it, end);
+                        (void) o; // currently ignoring offset
+                        ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta.value_offset(index), v);
+                        break;
+                    }
+                    ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta.value_offset(index), serializer::read_time_of_day(it, end));
+                    break;
+                }
+                case jogasaki::meta::field_type_kind::time_point: {
+                    if(fld.option_unsafe<jogasaki::meta::field_type_kind::time_point>()->with_offset_) {
+                        auto [v, o] = serializer::read_time_point_with_offset(it, end);
+                        (void) o; // currently ignoring offset
+                        ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta.value_offset(index), v);
+                        break;
+                    }
+                    ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta.value_offset(index), serializer::read_time_point(it, end));
+                    break;
+                }
                 default:
                     std::abort();
             }

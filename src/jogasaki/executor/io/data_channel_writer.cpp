@@ -37,7 +37,8 @@ bool data_channel_writer::write(accessor::record_ref rec) {
         } else {
             using k = jogasaki::meta::field_type_kind;
             auto os = meta_->value_offset(i);
-            switch (meta_->at(i).kind()) {
+            auto& type = meta_->at(i);
+            switch (type.kind()) {
                 case k::int4: value_writer_->write_int(rec.get_value<runtime_t<k::int4>>(os)); break;
                 case k::int8: value_writer_->write_int(rec.get_value<runtime_t<k::int8>>(os)); break;
                 case k::float4: value_writer_->write_float4(rec.get_value<runtime_t<k::float4>>(os)); break;
@@ -49,8 +50,24 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                 }
                 case k::decimal: value_writer_->write_decimal(rec.get_value<runtime_t<k::decimal>>(os)); break;
                 case k::date: value_writer_->write_date(rec.get_value<runtime_t<k::date>>(os)); break;
-                case k::time_of_day: value_writer_->write_time_of_day(rec.get_value<runtime_t<k::time_of_day>>(os)); break;
-                case k::time_point: value_writer_->write_time_point(rec.get_value<runtime_t<k::time_point>>(os)); break;
+                case k::time_of_day: {
+                    if(type.option_unsafe<k::time_of_day>()->with_offset_) {
+                        // TODO timezone offset is zero for now
+                        value_writer_->write_time_of_day_with_offset(rec.get_value<runtime_t<k::time_of_day>>(os), 0);
+                        break;
+                    }
+                    value_writer_->write_time_of_day(rec.get_value<runtime_t<k::time_of_day>>(os));
+                    break;
+                }
+                case k::time_point: {
+                    if(type.option_unsafe<k::time_point>()->with_offset_) {
+                        // TODO timezone offset is zero for now
+                        value_writer_->write_time_point_with_offset(rec.get_value<runtime_t<k::time_point>>(os), 0);
+                        break;
+                    }
+                    value_writer_->write_time_point(rec.get_value<runtime_t<k::time_point>>(os));
+                    break;
+                }
                 default:
                     fail();
             }

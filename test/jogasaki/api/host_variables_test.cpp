@@ -238,12 +238,15 @@ TEST_F(host_variables_test, insert_temporal_types) {
         {"p3", api::field_type_kind::time_point},
         {"p4", api::field_type_kind::time_point}, //TODO with time zone
     };
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
     auto ps = api::create_parameter_set();
-    ps->set_date("p0", date_v{2000, 1, 1});
-    ps->set_time_of_day("p1", time_of_day_v{12, 0, 0});
-    ps->set_time_of_day("p2", time_of_day_v{12, 0, 0});
-    ps->set_time_point("p3", time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}});
-    ps->set_time_point("p4", time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}});
+    ps->set_date("p0", d2000_1_1);
+    ps->set_time_of_day("p1", t12_0_0);
+    ps->set_time_of_day("p2", t12_0_0);
+    ps->set_time_point("p3", tp2000_1_1_12_0_0);
+    ps->set_time_point("p4", tp2000_1_1_12_0_0);
     execute_statement( "INSERT INTO TTEMPORALS (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM TTEMPORALS", result);
@@ -261,8 +264,8 @@ TEST_F(host_variables_test, insert_temporal_types) {
             dat, tod, tod, tp, tp,
         },
         {
-            {date_v{2000, 1, 1}}, {time_of_day_v{12, 0, 0}}, {time_of_day_v{12, 0, 0}}, {time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}}}, {time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}}},
-            {date_v{2000, 1, 1}}, {time_of_day_v{12, 0, 0}}, {time_of_day_v{12, 0, 0}}, {time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}}}, {time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}}},
+            d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
+            d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
         }
     )), result[0]);
 }
@@ -285,13 +288,19 @@ TEST_F(host_variables_test, update_temporal_types) {
         {"n3", api::field_type_kind::time_point},
         {"n4", api::field_type_kind::time_point}, //TODO with time zone
     };
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto d2000_2_2 = date_v{2000, 2, 2};
+    auto t12_2_2 = time_of_day_v{12, 2, 2};
+    auto tp2000_2_2_12_2_2 = time_point_v{d2000_2_2, t12_2_2};
     {
         auto ps = api::create_parameter_set();
-        ps->set_date("p0", date_v{2000, 1, 1});
-        ps->set_time_of_day("p1", time_of_day_v{12, 0, 0});
-        ps->set_time_of_day("p2", time_of_day_v{12, 0, 0});
-        ps->set_time_point("p3", time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}});
-        ps->set_time_point("p4", time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}});
+        ps->set_date("p0", d2000_1_1);
+        ps->set_time_of_day("p1", t12_0_0);
+        ps->set_time_of_day("p2", t12_0_0);
+        ps->set_time_point("p3", tp2000_1_1_12_0_0);
+        ps->set_time_point("p4", tp2000_1_1_12_0_0);
         execute_statement( "INSERT INTO TTEMPORALS (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TTEMPORALS", result);
@@ -299,17 +308,17 @@ TEST_F(host_variables_test, update_temporal_types) {
     }
     {
         auto ps = api::create_parameter_set();
-        ps->set_date("p0", date_v{2000, 1, 1});
-        ps->set_time_of_day("p1", time_of_day_v{12, 0, 0});
-        ps->set_time_of_day("p2", time_of_day_v{12, 0, 0});
-        ps->set_time_point("p3", time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}});
-        ps->set_time_point("p4", time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}});
+        ps->set_date("p0", d2000_1_1);
+        ps->set_time_of_day("p1", t12_0_0);
+        ps->set_time_of_day("p2", t12_0_0);
+        ps->set_time_point("p3", tp2000_1_1_12_0_0);
+        ps->set_time_point("p4", tp2000_1_1_12_0_0);
 
-        ps->set_date("n0", date_v{2000, 2, 2});
-        ps->set_time_of_day("n1", time_of_day_v{12, 2, 2});
-        ps->set_time_of_day("n2", time_of_day_v{12, 2, 2});
-        ps->set_time_point("n3", time_point_v{date_v{2000, 2, 2}, time_of_day_v{12, 2, 2}});
-        ps->set_time_point("n4", time_point_v{date_v{2000, 2, 2}, time_of_day_v{12, 2, 2}});
+        ps->set_date("n0", d2000_2_2);
+        ps->set_time_of_day("n1", t12_2_2);
+        ps->set_time_of_day("n2", t12_2_2);
+        ps->set_time_point("n3", tp2000_2_2_12_2_2);
+        ps->set_time_point("n4", tp2000_2_2_12_2_2);
         execute_statement( "UPDATE TTEMPORALS SET C0 = :n0, C1 = :n1, C2 = :n2, C3 = :n3, C4 = :n4 WHERE K0 = :p0 AND K1 = :p1 AND K2 = :p2 AND K3 = :p3 AND K4 = :p4", variables, *ps);
 
         std::vector<mock::basic_record> result{};
@@ -325,8 +334,8 @@ TEST_F(host_variables_test, update_temporal_types) {
                 dat, tod, tod, tp, tp,
             },
             {
-                {date_v{2000, 1, 1}}, {time_of_day_v{12, 0, 0}}, {time_of_day_v{12, 0, 0}}, {time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}}}, {time_point_v{date_v{2000, 1, 1}, time_of_day_v{12, 0, 0}}},
-                {date_v{2000, 2, 2}}, {time_of_day_v{12, 2, 2}}, {time_of_day_v{12, 2, 2}}, {time_point_v{date_v{2000, 2, 2}, time_of_day_v{12, 2, 2}}}, {time_point_v{date_v{2000, 2, 2}, time_of_day_v{12, 2, 2}}},
+                d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
+                d2000_2_2, t12_2_2, t12_2_2, tp2000_2_2_12_2_2, tp2000_2_2_12_2_2,
             }
         )), result[0]);
     }

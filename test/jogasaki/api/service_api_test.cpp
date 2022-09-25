@@ -738,6 +738,114 @@ TEST_F(service_api_test, decimals) {
     test_dispose_prepare(query_handle);
 }
 
+TEST_F(service_api_test, temporal_types) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into TTEMPORALS(K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) values (:p0, :p1, :p2, :p3, p4, :p0, :p1, :p2, :p3, p4)",
+        std::pair{"p0"s, sql::common::AtomType::DATE},
+        std::pair{"p1"s, sql::common::AtomType::TIME_OF_DAY},
+        std::pair{"p2"s, sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE},
+        std::pair{"p3"s, sql::common::AtomType::TIME_POINT},
+        std::pair{"p4"s, sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE}
+    );
+
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kDateValue, std::any{std::in_place_type<date_v>, d2000_1_1}},
+            {"p1"s, ValueCase::kTimeOfDayValue, std::any{std::in_place_type<time_of_day_v>, t12_0_0}},
+            {"p2"s, ValueCase::kTimeOfDayWithTimeZoneValue, std::any{std::in_place_type<time_of_day_v>, t12_0_0}},
+            {"c3"s, ValueCase::kTimePointValue, std::any{std::in_place_type<time_point_v>, tp2000_1_1_12_0_0}},
+            {"c4"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_v>, tp2000_1_1_12_0_0}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select * from TTEMPORALS"
+    );
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(10, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::DATE, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE, cols[2].type_);
+            EXPECT_TRUE(cols[2].nullable_);
+            EXPECT_EQ(sql::common::AtomType::TIME_POINT, cols[3].type_);
+            EXPECT_TRUE(cols[3].nullable_);
+            EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, cols[4].type_);
+            EXPECT_TRUE(cols[4].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                auto dat = meta::field_type{meta::field_enum_tag<ft::date>};
+                auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
+                auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+                EXPECT_EQ((mock::typed_nullable_record<
+                    ft::date, ft::time_of_day, ft::time_of_day, ft::time_point, ft::time_point,
+                    ft::date, ft::time_of_day, ft::time_of_day, ft::time_point, ft::time_point
+                >(
+                    std::tuple{
+                        dat, tod, tod, tp, tp,
+                        dat, tod, tod, tp, tp,
+                    },
+                    {
+                        d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
+                        d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
+                    }
+                )), v[0]);
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
 TEST_F(service_api_test, protobuf1) {
     // verify protobuf behavior
     using namespace std::string_view_literals;

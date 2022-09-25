@@ -117,6 +117,11 @@ void writable_stream::ignore_overflow(bool arg) noexcept {
 }
 
 void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr) {
+    if (capacity_ < pos_ + sz) {
+        if(! ignore_overflow_) fail();
+        pos_ += sz;
+        return;
+    }
     bool msb_inverted = false;
     if (sz > sizeof(std::uint64_t) * 2) {
         // write sign bit

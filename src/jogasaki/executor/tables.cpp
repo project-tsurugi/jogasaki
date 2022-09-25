@@ -309,10 +309,10 @@ void add_test_tables(storage::configurable_provider& provider) {
             {
                 { "K0", type::decimal(3, 0), nullity{false} },
                 { "K1", type::decimal(5, 3), nullity{false} },
-                { "K2", type::decimal(10), nullity{false} },
+                { "K2", type::decimal(10,1), nullity{false} },
                 { "C0", type::decimal(3, 0), nullity{true} },
                 { "C1", type::decimal(5, 3), nullity{true} },
-                { "C2", type::decimal(10), nullity{true} },
+                { "C2", type::decimal(10,1), nullity{true} },
             },
         });
         provider.add_index({

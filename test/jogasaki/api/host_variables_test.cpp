@@ -46,6 +46,7 @@ using namespace jogasaki::scheduler;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
 
 using takatori::util::unsafe_downcast;
 
@@ -331,4 +332,103 @@ TEST_F(host_variables_test, update_temporal_types) {
     }
 }
 
+TEST_F(host_variables_test, insert_decimal_types) {
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal},
+        {"p2", api::field_type_kind::decimal},
+    };
+    auto ps = api::create_parameter_set();
+    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+
+    ps->set_decimal("p0", v111);
+    ps->set_decimal("p1", v11_111);
+    ps->set_decimal("p2", v11111_1);
+    execute_statement( "INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM TDECIMALS", result);
+    ASSERT_EQ(1, result.size());
+
+    auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+    auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+    EXPECT_EQ((mock::typed_nullable_record<
+        kind::decimal, kind::decimal, kind::decimal,
+        kind::decimal, kind::decimal, kind::decimal
+    >(
+        std::tuple{
+            dec_3_0, dec_5_3, dec_10_1,
+            dec_3_0, dec_5_3, dec_10_1,
+        },
+        {
+            v111, v11_111, v11111_1,
+            v111, v11_111, v11111_1,
+        }
+    )), result[0]);
+}
+
+TEST_F(host_variables_test, update_decimal_types) {
+    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
+    auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
+    auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal},
+        {"p2", api::field_type_kind::decimal},
+        {"n0", api::field_type_kind::decimal},
+        {"n1", api::field_type_kind::decimal},
+        {"n2", api::field_type_kind::decimal},
+    };
+    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    auto v222 = decimal_v{1, 0, 222, 0}; // 222
+    auto v22_222 = decimal_v{1, 0, 22222, -3}; // 11.111
+    auto v22222_2 = decimal_v{1, 0, 222222, -1}; // 11111.1
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_decimal("p0", v111);
+        ps->set_decimal("p1", v11_111);
+        ps->set_decimal("p2", v11111_1);
+        execute_statement( "INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TDECIMALS", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_decimal("p0", v111);
+        ps->set_decimal("p1", v11_111);
+        ps->set_decimal("p2", v11111_1);
+
+        ps->set_decimal("n0", v222);
+        ps->set_decimal("n1", v22_222);
+        ps->set_decimal("n2", v22222_2);
+        execute_statement( "UPDATE TDECIMALS SET C0 = :n0, C1 = :n1, C2 = :n2 WHERE K0 = :p0 AND K1 = :p1 AND K2 = :p2", variables, *ps);
+
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TDECIMALS", result);
+        ASSERT_EQ(1, result.size());
+
+        auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+        auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+        EXPECT_EQ((mock::typed_nullable_record<
+            kind::decimal, kind::decimal, kind::decimal,
+            kind::decimal, kind::decimal, kind::decimal
+        >(
+            std::tuple{
+                dec_3_0, dec_5_3, dec_10_1,
+                dec_3_0, dec_5_3, dec_10_1,
+            },
+            {
+                v111, v11_111, v11111_1,
+                v222, v22_222, v22222_2,
+            }
+        )), result[0]);
+    }
+}
 }

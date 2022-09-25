@@ -23,11 +23,11 @@ namespace jogasaki::meta {
 struct time_point_field_option {
     time_point_field_option() = default;
 
-    explicit time_point_field_option(std::int64_t tz_min_offset) :
-        tz_min_offset_(tz_min_offset)
+    explicit time_point_field_option(bool with_offset) :
+        with_offset_(with_offset)
     {}
 
-    std::int64_t tz_min_offset_{};  //NOLINT
+    bool with_offset_{};  //NOLINT
 }; //NOLINT
 
 bool operator==(time_point_field_option const& a, time_point_field_option const& b) noexcept;

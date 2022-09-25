@@ -18,11 +18,11 @@
 namespace jogasaki::meta {
 
 bool operator==(time_point_field_option const& a, time_point_field_option const& b) noexcept {
-    return a.tz_min_offset_ == b.tz_min_offset_;
+    return a.with_offset_ == b.with_offset_;
 }
 
 std::ostream& operator<<(std::ostream& out, time_point_field_option const& value) {
-    return out << "time_point(tz_min_offset=" << value.tz_min_offset_ << ")";
+    return out << "time_point(with_offset=" << value.with_offset_ << ")";
 }
 
 } // namespace

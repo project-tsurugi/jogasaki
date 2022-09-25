@@ -174,5 +174,33 @@ takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale)
         -static_cast<std::int32_t>(scale),
     };
 }
+
+void create_decimal(
+    std::int8_t sign,
+    std::uint64_t lo,
+    std::uint64_t hi,
+    std::size_t sz,
+    decimal_buffer& out
+) {
+    auto base_ = out.data();
+    std::size_t pos_ = 0;
+
+    if (sz > sizeof(std::uint64_t) * 2) {
+        // write sign bit
+        *(base_ + pos_) = sign >= 0 ? '\x00' : '\xFF';  // NOLINT
+        ++pos_;
+        --sz;
+    }
+
+    for (std::size_t offset = 0, n = std::min(sz, sizeof(std::uint64_t)); offset < n; ++offset) {
+        *(base_ + pos_ + sz - offset - 1) = static_cast<char>(lo >> (offset * 8U));  //NOLINT
+    }
+    if (sz > sizeof(std::uint64_t)) {
+        for (std::size_t offset = 0, n = std::min(sz - sizeof(std::uint64_t), sizeof(std::uint64_t)); offset < n; ++offset) {
+            *(base_ + pos_ + sz - offset - sizeof(std::uint64_t) - 1) = static_cast<char>(hi >> (offset * 8U));  //NOLINT
+        }
+    }
+}
+
 }
 

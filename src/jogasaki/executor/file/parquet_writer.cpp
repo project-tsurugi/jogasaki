@@ -153,35 +153,6 @@ void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
     writer->WriteBatch(1, &definition_level, nullptr, &value);
 }
 
-constexpr std::size_t max_decimal_length = sizeof(std::uint64_t) * 2 + 1;
-
-void create_decimal(
-    std::int8_t sign,
-    std::uint64_t lo,
-    std::uint64_t hi,
-    std::size_t sz,
-    std::array<std::uint8_t, max_decimal_length>& out
-    ) {
-    auto base_ = out.data();
-    std::size_t pos_ = 0;
-
-    if (sz > sizeof(std::uint64_t) * 2) {
-        // write sign bit
-        *(base_ + pos_) = sign >= 0 ? '\x00' : '\xFF';  // NOLINT
-        ++pos_;
-        --sz;
-    }
-
-    for (std::size_t offset = 0, n = std::min(sz, sizeof(std::uint64_t)); offset < n; ++offset) {
-        *(base_ + pos_ + sz - offset - 1) = static_cast<char>(lo >> (offset * 8U));  //NOLINT
-    }
-    if (sz > sizeof(std::uint64_t)) {
-        for (std::size_t offset = 0, n = std::min(sz - sizeof(std::uint64_t), sizeof(std::uint64_t)); offset < n; ++offset) {
-            *(base_ + pos_ + sz - offset - sizeof(std::uint64_t) - 1) = static_cast<char>(hi >> (offset * 8U));  //NOLINT
-        }
-    }
-}
-
 void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
@@ -192,9 +163,9 @@ void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_typ
 
     parquet::ByteArray value{};
     auto sv = static_cast<decimal::Decimal>(v);
-    std::array<std::uint8_t, max_decimal_length> out{};
+    utils::decimal_buffer out{};
     auto [hi, lo, sz] = utils::make_signed_coefficient_full(v);
-    create_decimal(v.sign(), lo, hi, sz, out);
+    utils::create_decimal(v.sign(), lo, hi, sz, out);
 
     int16_t definition_level = 1;
     value.ptr = reinterpret_cast<const uint8_t*>(out.data());  //NOLINT

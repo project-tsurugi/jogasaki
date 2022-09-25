@@ -31,6 +31,7 @@
 #include <jogasaki/api.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::utils {
 
@@ -344,7 +345,16 @@ inline void fill_parameters(
             case ValueCase::kFloat4Value: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
             case ValueCase::kFloat8Value: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
             case ValueCase::kCharacterValue: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
-            case ValueCase::kDecimalValue: std::abort(); //FIXME
+            case ValueCase::kDecimalValue: {
+                auto triple = std::any_cast<takatori::decimal::triple>(p.value_);
+                auto* v = c0->mutable_decimal_value();
+                auto [hi, lo, sz] = utils::make_signed_coefficient_full(triple);
+                utils::decimal_buffer buf{};
+                utils::create_decimal(triple.sign(), lo, hi, sz, buf);
+                v->set_unscaled_value(buf.data(), sz);
+                v->set_exponent(triple.exponent());
+                break;
+            }
             case ValueCase::kDateValue: c0->set_date_value(std::any_cast<runtime_t<meta::field_type_kind::date>>(p.value_).days_since_epoch()); break;
             case ValueCase::kTimeOfDayValue: c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count()); break;
             case ValueCase::kTimePointValue: {

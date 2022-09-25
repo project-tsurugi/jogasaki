@@ -21,6 +21,10 @@
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
 
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
@@ -65,6 +69,13 @@ using ValueCase = sql::request::Parameter::ValueCase;
 
 using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
+
+using date_v = takatori::datetime::date;
+using time_of_day_v = takatori::datetime::time_of_day;
+using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
+using ft = meta::field_type_kind;
+
 std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
 
@@ -596,6 +607,125 @@ TEST_F(service_api_test, data_types) {
                 auto exp2 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(2, 2, 2.0, 2.0, accessor::text{"2"sv});
                 EXPECT_EQ(exp1, v[0]);
                 EXPECT_EQ(exp2, v[1]);
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, decimals) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into TDECIMALS(K0, K1, K2, C0, C1, C2) values (:p0, :p1, :p2, :p3, :p4, :p5)",
+        std::pair{"p0"s, sql::common::AtomType::DECIMAL},
+        std::pair{"p1"s, sql::common::AtomType::DECIMAL},
+        std::pair{"p2"s, sql::common::AtomType::DECIMAL},
+        std::pair{"p3"s, sql::common::AtomType::DECIMAL},
+        std::pair{"p4"s, sql::common::AtomType::DECIMAL},
+        std::pair{"p5"s, sql::common::AtomType::DECIMAL}
+    );
+
+    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    auto v222 = decimal_v{1, 0, 222, 0}; // 222
+    auto v22_222 = decimal_v{1, 0, 22222, -3}; // 22.222
+    auto v22222_2 = decimal_v{1, 0, 222222, -1}; // 22222.2
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v111}},
+            {"p1"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v11_111}},
+            {"p2"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v11111_1}},
+            {"p3"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v222}},
+            {"p4"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v22_222}},
+            {"p5"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v22222_2}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [success, error] = decode_result_only(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select * from TDECIMALS"
+    );
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(wait_completion(*res));
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(6, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[2].type_);
+            EXPECT_TRUE(cols[2].nullable_);
+            EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[3].type_);
+            EXPECT_TRUE(cols[3].nullable_);
+            EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[4].type_);
+            EXPECT_TRUE(cols[4].nullable_);
+            EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[5].type_);
+            EXPECT_TRUE(cols[5].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                // currently result type of decimal has no precision/scale info.
+//                auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+//                auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+//                auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+                auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>()};
+                auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>()};
+                auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>()};
+                EXPECT_EQ((mock::typed_nullable_record<
+                    ft::decimal, ft::decimal, ft::decimal,
+                    ft::decimal, ft::decimal, ft::decimal
+                >(
+                    std::tuple{
+                        dec_3_0, dec_5_3, dec_10_1,
+                        dec_3_0, dec_5_3, dec_10_1,
+                    },
+                    {
+                        v111, v11_111, v11111_1,
+                        v222, v22_222, v22222_2,
+                    }
+                )), v[0]);
             }
         }
         {

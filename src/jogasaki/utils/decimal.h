@@ -53,5 +53,23 @@ bool validate_decimal_coefficient(std::string_view buf);
  */
 takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale);
 
+constexpr std::size_t max_decimal_length = sizeof(std::uint64_t) * 2 + 1;
+
+using decimal_buffer = std::array<std::uint8_t, max_decimal_length>;
+
+/**
+ * @brief write decimal to the buffer
+ * @param triple the decimal triple to write to the output buffer
+ * @param out the output buffer
+ */
+void create_decimal(
+    std::int8_t sign,
+    std::uint64_t lo,
+    std::uint64_t hi,
+    std::size_t sz,
+    decimal_buffer& out
+);
+
 }
+
 

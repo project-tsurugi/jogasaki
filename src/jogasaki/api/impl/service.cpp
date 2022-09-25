@@ -32,6 +32,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
+#include <jogasaki/utils/decimal.h>
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
@@ -572,6 +573,12 @@ void service::execute_statement(
     }
 }
 
+takatori::decimal::triple to_triple(::jogasaki::proto::sql::common::Decimal const& arg) {
+    std::string_view buf{arg.unscaled_value()};
+    auto exp = arg.exponent();
+    return utils::read_decimal(buf, -exp);
+}
+
 void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params) {
     for (std::size_t i=0, n=static_cast<std::size_t>(ps.size()); i < n; ++i) {
         auto& p = ps.Get(i);
@@ -591,6 +598,36 @@ void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Para
             case sql::request::Parameter::ValueCase::kCharacterValue:
                 params->set_character(p.name(), p.character_value());
                 break;
+            case sql::request::Parameter::ValueCase::kDecimalValue:
+                params->set_decimal(p.name(), to_triple(p.decimal_value()));
+                break;
+            case sql::request::Parameter::ValueCase::kDateValue:
+                params->set_date(p.name(), field_type_traits<kind::date>::runtime_type{p.date_value()});
+                break;
+            case sql::request::Parameter::ValueCase::kTimeOfDayValue:
+                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{std::chrono::duration<std::uint64_t, std::nano>{p.time_of_day_value()}});
+                break;
+            case sql::request::Parameter::ValueCase::kTimePointValue: {
+                auto v = p.time_point_value();
+                params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
+                    std::chrono::duration<std::int64_t>{v.offset_seconds()},
+                    std::chrono::nanoseconds{v.nano_adjustment()}
+                });
+                break;
+            }
+            case sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue:
+                // TODO pass time zone offset
+                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{std::chrono::duration<std::uint64_t, std::nano>{p.time_of_day_value()}});
+                break;
+            case sql::request::Parameter::ValueCase::kTimePointWithTimeZoneValue: {
+                // TODO pass time zone offset
+                auto v = p.time_point_value();
+                params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
+                    std::chrono::duration<std::int64_t>{v.offset_seconds()},
+                    std::chrono::nanoseconds{v.nano_adjustment()}
+                });
+                break;
+            }
             case sql::request::Parameter::ValueCase::kReferenceColumnPosition:
                 params->set_reference_column(p.name(), p.reference_column_position());
                 break;

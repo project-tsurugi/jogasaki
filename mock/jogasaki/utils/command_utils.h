@@ -358,14 +358,29 @@ inline void fill_parameters(
                 break;
             }
             case ValueCase::kDateValue: c0->set_date_value(std::any_cast<runtime_t<meta::field_type_kind::date>>(p.value_).days_since_epoch()); break;
-            case ValueCase::kTimeOfDayValue: c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count()); break;
-            case ValueCase::kTimeOfDayWithTimeZoneValue: c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count()); break;
-            case ValueCase::kTimePointValue: // fall-thru
-            case ValueCase::kTimePointWithTimeZoneValue: {
+            case ValueCase::kTimeOfDayValue: {
+                c0->set_time_of_day_value(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count());
+                break;
+            }
+            case ValueCase::kTimeOfDayWithTimeZoneValue: {
+                auto* v = c0->mutable_time_of_day_with_time_zone_value();
+                v->set_offset_nanoseconds(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count());
+                v->set_time_zone_offset(0);  //TOOD pass correct offset
+                break;
+            }
+            case ValueCase::kTimePointValue: {
                 auto tp = std::any_cast<runtime_t<meta::field_type_kind::time_point>>(p.value_);
                 auto* v = c0->mutable_time_point_value();
                 v->set_offset_seconds(tp.seconds_since_epoch().count());
                 v->set_nano_adjustment(tp.subsecond().count());
+                break;
+            }
+            case ValueCase::kTimePointWithTimeZoneValue: {
+                auto tp = std::any_cast<runtime_t<meta::field_type_kind::time_point>>(p.value_);
+                auto* v = c0->mutable_time_point_with_time_zone_value();
+                v->set_offset_seconds(tp.seconds_since_epoch().count());
+                v->set_nano_adjustment(tp.subsecond().count());
+                v->set_time_zone_offset(0);  //TOOD pass correct offset
                 break;
             }
             case ValueCase::kReferenceColumnPosition: c0->set_reference_column_position(std::any_cast<std::uint64_t>(p.value_)); break;

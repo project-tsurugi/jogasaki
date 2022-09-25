@@ -617,11 +617,15 @@ void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Para
             }
             case sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue:
                 // TODO pass time zone offset
-                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{std::chrono::duration<std::uint64_t, std::nano>{p.time_of_day_value()}});
+                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{
+                    std::chrono::duration<std::uint64_t, std::nano>{
+                        p.time_of_day_with_time_zone_value().offset_nanoseconds()
+                    }
+                });
                 break;
             case sql::request::Parameter::ValueCase::kTimePointWithTimeZoneValue: {
                 // TODO pass time zone offset
-                auto v = p.time_point_value();
+                auto v = p.time_point_with_time_zone_value();
                 params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
                     std::chrono::duration<std::int64_t>{v.offset_seconds()},
                     std::chrono::nanoseconds{v.nano_adjustment()}

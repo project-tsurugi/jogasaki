@@ -48,10 +48,6 @@ if(LIKWID_ENABLE)
     add_definitions(-DLIKWID_PERFMON)
 endif()
 
-if(BUILD_SHIRAKAMI_WP)
-    add_definitions(-DBUILD_SHIRAKAMI_WP)
-endif()
-
 if(LOGSHIP)
     add_definitions(-DLOGSHIP)
 endif()

@@ -59,15 +59,15 @@ field_type::option_type create_option(meta::field_type const& type) noexcept {
     switch(type.kind()) {
         using t = decltype(type.kind());
         case t::decimal: {
-            auto opt = type.option_unsafe<meta::field_type_kind::decimal>();
+            auto& opt = type.option_unsafe<meta::field_type_kind::decimal>();
             return std::make_shared<decimal_field_option>(opt->precision_, opt->scale_);
         }
         case t::time_of_day: {
-            auto opt = type.option_unsafe<meta::field_type_kind::time_of_day>();
+            auto& opt = type.option_unsafe<meta::field_type_kind::time_of_day>();
             return std::make_shared<time_of_day_field_option>(opt->with_offset_);
         }
         case t::time_point: {
-            auto opt = type.option_unsafe<meta::field_type_kind::time_point>();
+            auto& opt = type.option_unsafe<meta::field_type_kind::time_point>();
             return std::make_shared<time_point_field_option>(opt->with_offset_);
         }
         default:
@@ -88,19 +88,19 @@ api::field_type_kind field_type::kind() const noexcept {
 std::shared_ptr<decimal_field_option> const& field_type::decimal_option() const noexcept {
     static std::shared_ptr<decimal_field_option> nullopt{};
     if(type_.kind() != meta::field_type_kind::decimal) return nullopt;
-    return std::get<std::shared_ptr<decimal_field_option>>(option_);
+    return *std::get_if<std::shared_ptr<decimal_field_option>>(std::addressof(option_));
 }
 
 std::shared_ptr<time_of_day_field_option> const& field_type::time_of_day_option() const noexcept {
     static std::shared_ptr<time_of_day_field_option> nullopt{};
     if(type_.kind() != meta::field_type_kind::time_of_day) return nullopt;
-    return std::get<std::shared_ptr<time_of_day_field_option>>(option_);
+    return *std::get_if<std::shared_ptr<time_of_day_field_option>>(std::addressof(option_));
 }
 
 std::shared_ptr<time_point_field_option> const& field_type::time_point_option() const noexcept {
     static std::shared_ptr<time_point_field_option> nullopt{};
     if(type_.kind() != meta::field_type_kind::time_point) return nullopt;
-    return std::get<std::shared_ptr<time_point_field_option>>(option_);
+    return *std::get_if<std::shared_ptr<time_point_field_option>>(std::addressof(option_));
 }
 
 } // namespace

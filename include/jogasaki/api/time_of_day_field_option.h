@@ -33,7 +33,7 @@ public:
     /**
      * @brief construct new object
      */
-    constexpr time_of_day_field_option(bool with_offset) noexcept :
+    explicit constexpr time_of_day_field_option(bool with_offset) noexcept :
         with_offset_(with_offset)
     {}
 

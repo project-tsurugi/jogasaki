@@ -157,6 +157,7 @@ status create_prepared_statement(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     yugawara::compiler_options& c_options,
     std::shared_ptr<storage_processor> const& sp,
+    compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
     yugawara::compiler_result result{};
@@ -173,9 +174,13 @@ status create_prepared_statement(
             fail();
     }
     if(!result.success()) {
-        for (auto&& d : result.diagnostics()) {
-            VLOG(log_error) << "compile result: " << d.code() << " " << d.message() << " at " << d.location();
+        std::stringstream msg{};
+        msg << "compile failed: ";
+        for(auto&& e : result.diagnostics()) {
+            msg << e.code() << " " << e.message() << " ";
         }
+        VLOG(log_error) << status::err_compiler_error << ": " <<  msg.str();
+        ctx.diag()->set(msg.str());
         return status::err_compiler_error;
     }
     auto stmt = result.release_statement();
@@ -281,7 +286,7 @@ status prepare(
         ctx.diag()->set(msg.str());
         return status::err_compiler_error;
     }
-    return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, out);
+    return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, ctx, out);
 }
 
 executor::process::step create(

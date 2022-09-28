@@ -22,6 +22,7 @@ namespace jogasaki {
  * @details this object represents the result details of the API call.
  * If API supports additional diagnostics info, this object can be retrieved just after the API
  * call (e.g. by database::fetch_diagnostics)
+ * @warning this api is still evolving and can change frequently in the future
  */
 class diagnostics {
 public:
@@ -63,6 +64,13 @@ public:
      */
     [[nodiscard]] explicit operator bool() const noexcept {
         return ! message_.empty();
+    }
+
+    /**
+     * @brief clear and reset the diagnostics content
+     */
+    void clear() noexcept {
+        message_.clear();
     }
 
 private:

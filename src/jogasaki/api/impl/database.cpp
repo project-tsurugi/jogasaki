@@ -214,6 +214,7 @@ status database::prepare_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     ctx->variable_provider(std::move(provider));
+    diagnostics_->clear();
     ctx->diag(*diagnostics_);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         return rc;
@@ -371,6 +372,7 @@ status database::resolve_common(
     auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);
+    diagnostics_->clear();
     ctx->diag(*diagnostics_);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {

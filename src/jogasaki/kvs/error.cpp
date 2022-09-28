@@ -48,6 +48,7 @@ status resolve(sharksfin::StatusCode code) noexcept {
         case sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TRANSACTION: std::abort(); // internal error should not be here
         case sharksfin::StatusCode::ERR_WRITE_WITHOUT_WRITE_PRESERVE: return status::err_illegal_operation;
         case sharksfin::StatusCode::ERR_INACTIVE_TRANSACTION: return status::err_inactive_transaction;
+        case sharksfin::StatusCode::ERR_BLOCKED_BY_CONCURRENT_OPERATION: std::abort(); // should not be handled by this function
     }
     std::abort();
 }

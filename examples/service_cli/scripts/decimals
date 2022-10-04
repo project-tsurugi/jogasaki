@@ -1,0 +1,8 @@
+s "create table TT (C0 DECIMAL(5,3))"
+v c0:dec
+p "insert into TT (C0) values (:c0)"
+s 0 c0=1
+s 0 c0=2
+s 0 c0=3
+p "select * from TT"
+q 1

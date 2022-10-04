@@ -55,12 +55,12 @@ DEFINE_bool(verify_record, true, "Whether to deserialize the query result record
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_string(history_file, ".service_cli_history", "specify the command history file name");  //NOLINT
-DEFINE_int32(exit_on_idle, 180, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
+DEFINE_int32(exit_on_idle, 180, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit. This auto exit is disabled if lazy_worker is true.");  //NOLINT
 DEFINE_string(input_file, "", "specify the input commands file to read and execute");  //NOLINT
 DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
-DEFINE_bool(lazy_worker, false, "worker sleeps frequently to wait for queue content");  //NOLINT
+DEFINE_bool(lazy_worker, true, "worker sleeps frequently to wait for queue content");  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -98,7 +98,7 @@ class cli {
     jogasaki::meta::record_meta query_meta_{};
     jogasaki::common_cli::temporary_folder temporary_{};
     std::map<std::string, sql::common::AtomType> host_variables_{};
-    std::int32_t exit_on_idle_{};
+    std::int32_t exit_on_idle_{-1};
     std::ifstream input_file_stream_{};
 
     using Clock = std::chrono::system_clock;
@@ -179,7 +179,9 @@ public:
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify_record;
         auto_commit_ = FLAGS_auto_commit;
-        exit_on_idle_ = FLAGS_exit_on_idle;
+        if(! cfg->lazy_worker()) {
+            exit_on_idle_ = FLAGS_exit_on_idle;
+        }
         load_from_ = FLAGS_load_from;
 
         auto& impl = jogasaki::api::impl::get_impl(*db_);
@@ -669,6 +671,9 @@ private:
             return std::strtod(val.data(), nullptr);
         } else if constexpr (std::is_same_v<T, std::string>) {  //NOLINT
             return std::string{val};
+        } else if constexpr (std::is_same_v<T, takatori::decimal::triple>) {  //NOLINT
+            decimal::Decimal d{std::string{val}};
+            return takatori::decimal::triple{d.as_uint128_triple()};
         } else {
             std::abort();
         }
@@ -716,7 +721,7 @@ private:
                 case sql::common::AtomType::DATE: parameters.emplace_back(name, ValueCase::kDateValue, to_value<takatori::datetime::time_of_day>(val)); break;
                 case sql::common::AtomType::TIME_OF_DAY: parameters.emplace_back(name, ValueCase::kTimeOfDayValue, to_value<takatori::datetime::time_of_day>(val)); break;
                 case sql::common::AtomType::TIME_POINT: parameters.emplace_back(name, ValueCase::kTimePointValue, to_value<takatori::datetime::time_point>(val)); break;
-                case sql::common::AtomType::DECIMAL: parameters.emplace_back(name, ValueCase::kDecimalValue, to_value<double>(val)); break;
+                case sql::common::AtomType::DECIMAL: parameters.emplace_back(name, ValueCase::kDecimalValue, to_value<takatori::decimal::triple>(val)); break;
                 default:
                     std::cerr << "invalid type" << std::endl;
                     return false;

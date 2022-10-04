@@ -75,6 +75,9 @@ double triple_to_double(triple arg) {
     return std::stod(dec.to_eng());
 }
 
+any return_unsupported() {
+    return any{std::in_place_type<error>, error(error_kind::unsupported)};
+}
 any promote_binary_numeric_left(any const& l, any const& r) {
     switch(l.type_index()) {
         case any::index<std::int32_t>: {
@@ -85,7 +88,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<float>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<triple>: return any{std::in_place_type<triple>, triple_from_int(l.to<L>())};
-                default: fail();
+                default: return return_unsupported();
             }
             break;
         }
@@ -97,7 +100,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<float>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<triple>: return any{std::in_place_type<triple>, triple_from_int(l.to<L>())};
-                default: fail();
+                default: return return_unsupported();
             }
             break;
         }
@@ -109,7 +112,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<float>: return any{std::in_place_type<double>, l.to<L>()}; // float v.s. float becomes double
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<triple>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
-                default: fail();
+                default: return return_unsupported();
             }
             break;
         }
@@ -121,7 +124,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<float>: return l;
                 case any::index<double>: return l;
                 case any::index<triple>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
-                default: fail();
+                default: return return_unsupported();
             }
             break;
         }
@@ -133,7 +136,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<float>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
                 case any::index<double>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
                 case any::index<triple>: return l;
-                default: fail();
+                default: return return_unsupported();
             }
             break;
         }
@@ -143,13 +146,13 @@ any promote_binary_numeric_left(any const& l, any const& r) {
         case any::index<takatori::datetime::time_point>:  // fall-thru
         {
             if(l.type_index() != r.type_index()) {
-                fail();
+                return return_unsupported();
             }
             return l;
         }
-        default: fail();
+        default: return return_unsupported();
     }
-    fail();
+    return return_unsupported();
 }
 
 std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
@@ -168,7 +171,7 @@ any engine::add_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::float4>>: return add(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return add(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return add(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -191,7 +194,7 @@ any engine::subtract_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::float4>>: return subtract(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return subtract(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -203,7 +206,7 @@ any engine::concat_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     switch(left.type_index()) {
         case any::index<accessor::text>: return concat(left.to<accessor::text>(), right.to<accessor::text>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -226,7 +229,7 @@ any engine::multiply_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::float4>>: return multiply(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return multiply(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return multiply(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -256,7 +259,7 @@ any engine::divide_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::float4>>: return divide(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return divide(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return divide(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -284,7 +287,7 @@ any engine::remainder_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return remainder(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
         case any::index<runtime_t<meta::field_type_kind::int8>>: return remainder(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return remainder(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -297,7 +300,7 @@ any engine::conditional_and_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     switch(left.type_index()) {
         case any::index<bool>: return conditional_and(left.to<bool>(), right.to<bool>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -310,7 +313,7 @@ any engine::conditional_or_any(any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
     switch(left.type_index()) {
         case any::index<bool>: return conditional_or(left.to<bool>(), right.to<bool>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -329,7 +332,7 @@ any engine::operator()(takatori::scalar::binary const& exp) {
         case optype::remainder: return remainder_any(l, r);
         case optype::conditional_and: return conditional_and_any(l, r);
         case optype::conditional_or: return conditional_or_any(l, r);
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -362,7 +365,7 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
         case t::date: return create_any<runtime_t<meta::field_type_kind::date>>(ref, info);
         case t::time_of_day: return create_any<runtime_t<meta::field_type_kind::time_of_day>>(ref, info);
         case t::time_point: return create_any<runtime_t<meta::field_type_kind::time_point>>(ref, info);
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -384,7 +387,7 @@ any engine::sign_inversion_any(any const& exp) {
         case any::index<runtime_t<meta::field_type_kind::float4>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -397,7 +400,7 @@ any engine::conditional_not_any(any const& exp) {
     BOOST_ASSERT(exp);  //NOLINT
     switch(exp.type_index()) {
         case any::index<bool>: return conditional_not(exp.to<bool>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -410,7 +413,7 @@ any engine::length_any(any const& exp) {
     BOOST_ASSERT(exp);  //NOLINT
     switch(exp.type_index()) {
         case any::index<accessor::text>: return length(exp.to<accessor::text>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -428,7 +431,7 @@ any engine::operator()(takatori::scalar::unary const& exp) {
             return conditional_not_any(v);
         case optype::length:
             return length_any(v);
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -443,7 +446,7 @@ any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
         case optype::greater_equal: result = l >= r; break;
         case optype::less: result = l < r; break;
         case optype::less_equal: result = l <= r; break;
-        default: fail();
+        default: return return_unsupported();
     }
     return any{std::in_place_type<bool>, result};
 }
@@ -462,7 +465,7 @@ any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type
         case optype::greater_equal: result = ll >= rr; break;
         case optype::less: result = ll < rr; break;
         case optype::less_equal: result = ll <= rr; break;
-        default: fail();
+        default: return return_unsupported();
     }
     return any{std::in_place_type<bool>, result};
 }
@@ -479,7 +482,7 @@ any engine::compare_any(takatori::scalar::comparison_operator optype, any const&
         case any::index<runtime_t<meta::field_type_kind::float8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::character>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: fail();
+        default: return return_unsupported();
     }
 }
 
@@ -489,7 +492,7 @@ any engine::operator()(takatori::scalar::immediate const& exp) {
 }
 
 any engine::operator()(takatori::scalar::cast const&) {
-    fail(); //TODO implement
+    return return_unsupported();
 }
 
 any engine::operator()(takatori::scalar::compare const& exp) {
@@ -501,27 +504,27 @@ any engine::operator()(takatori::scalar::compare const& exp) {
 }
 
 any engine::operator()(takatori::scalar::match const&) {
-    fail(); //TODO implement
+    return return_unsupported();
 }
 
 any engine::operator()(takatori::scalar::conditional const&) {
-    fail(); //TODO implement
+    return return_unsupported();
 }
 
 any engine::operator()(takatori::scalar::coalesce const&) {
-    fail(); //TODO implement
+    return return_unsupported();
 }
 
 any engine::operator()(takatori::scalar::let const&) {
-    fail(); //TODO implement
+    return return_unsupported();
 }
 
 any engine::operator()(takatori::scalar::function_call const&) {
-    fail(); //TODO implement
+    return return_unsupported();
 }
 
 any engine::operator()(takatori::scalar::extension const&) {
-    fail();
+    return return_unsupported();
 }
 
 }

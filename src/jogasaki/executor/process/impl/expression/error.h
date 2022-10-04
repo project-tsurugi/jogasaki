@@ -30,6 +30,7 @@ enum class error_kind : std::size_t {
     undefined = 0,
     arithmetic_error,
     overflow,
+    unsupported,
 };
 
 /**
@@ -44,6 +45,7 @@ enum class error_kind : std::size_t {
         case kind::undefined: return "undefined"sv;
         case kind::arithmetic_error: return "arithmetic_error"sv;
         case kind::overflow: return "overflow"sv;
+        case kind::unsupported: return "unsupported"sv;
     }
     std::abort();
 }
@@ -62,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& out, error_kind value) {
 using error_kind_set = takatori::util::enum_set<
     error_kind,
     error_kind::undefined,
-    error_kind::overflow>;
+    error_kind::unsupported>;
 
 /**
  * @brief class representing evaluation error

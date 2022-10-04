@@ -42,6 +42,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
+using decimal_v = takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
@@ -259,6 +260,44 @@ TEST_F(sql_test, min_empty_table) {
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.is_null(0));
+}
+
+TEST_F(sql_test, aggregate_decimals) {
+    execute_statement("CREATE TABLE TT(C0 DECIMAL(5,3) NOT NULL PRIMARY KEY)");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal}
+    };
+    auto ps = api::create_parameter_set();
+    auto v10 = decimal_v{1, 0, 10, 0}; // 10
+    auto v20 = decimal_v{1, 0, 20, 0}; // 20
+    ps->set_decimal("p0", v10);
+    ps->set_decimal("p1", v20);
+    execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
+    execute_statement("INSERT INTO TT (C0) VALUES (:p1)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MAX(C0), MIN(C0), COUNT(C0), AVG(C0) FROM TT", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_FALSE(rec.is_null(1));
+    EXPECT_FALSE(rec.is_null(2));
+    EXPECT_FALSE(rec.is_null(3));
+    auto v15 = decimal_v{1, 0, 15, 0}; // 15
+
+    auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
+    auto i64 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
+    EXPECT_EQ((mock::typed_nullable_record<
+        kind::decimal, kind::decimal, kind::int8, kind::decimal
+    >(
+        std::tuple{
+            dec, dec, i64, dec
+        },
+        {
+            v20, v10, 2, v15
+        }
+    )), result[0]);
 }
 
 TEST_F(sql_test, update_delete_secondary_index) {

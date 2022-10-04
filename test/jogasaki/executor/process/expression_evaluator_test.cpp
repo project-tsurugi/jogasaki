@@ -490,5 +490,57 @@ TEST_F(expression_evaluator_test, arithmetic_error) {
         ASSERT_EQ(error_kind::arithmetic_error, err.kind());
     }
 }
+
+TEST_F(expression_evaluator_test, to_triple) {
+    EXPECT_EQ(0, details::triple_from_int(0));
+    auto i64max = std::numeric_limits<std::int64_t>::max();
+    EXPECT_EQ(i64max, details::triple_from_int(i64max));
+    auto i64min = std::numeric_limits<std::int64_t>::min();
+    EXPECT_EQ(i64min, details::triple_from_int(i64min));
+}
+
+takatori::decimal::triple from_double(double x) {
+    decimal::Decimal d{std::to_string(x)};
+    return takatori::decimal::triple{d.as_uint128_triple()};
+}
+
+TEST_F(expression_evaluator_test, triple_to_double) {
+    using takatori::decimal::triple;
+    {
+        // boundary values for decimal with max precision
+        auto v0 = triple{-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, 0}; // -999....9 (38 digits)
+        auto v1 = triple{-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, 0}; // -999....8 (38 digits)
+        auto v2 = triple{0, 0, 0, 0}; // 0
+        auto v3 = triple{1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, 0}; // +999....8 (38 digits)
+        auto v4 = triple{1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, 0}; // +999....9 (38 digits)
+
+        // expected values are approximate
+        EXPECT_DOUBLE_EQ(-9.9999999999999998E37, details::triple_to_double(v0));
+        EXPECT_DOUBLE_EQ(-9.9999999999999998E37, details::triple_to_double(v1));
+        EXPECT_DOUBLE_EQ(0, details::triple_to_double(v2));
+        EXPECT_DOUBLE_EQ(+9.9999999999999998E37, details::triple_to_double(v3));
+        EXPECT_DOUBLE_EQ(+9.9999999999999998E37, details::triple_to_double(v4));
+    }
+    {
+        // boundary values for triples
+        auto v0 = triple{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
+        auto v1 = triple{-1, 0x8000000000000000UL, 0x0000000000000000UL, 0};
+        auto v2 = triple{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
+        auto v3 = triple{1, 0x8000000000000000UL,  0x0000000000000000UL, 0};
+        auto v4 = triple{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
+
+        // expected values are approximate
+        EXPECT_DOUBLE_EQ(-3.4028236692093846e+38, details::triple_to_double(v0));
+        EXPECT_DOUBLE_EQ(-1.7014118346046923e+38, details::triple_to_double(v1));
+        EXPECT_DOUBLE_EQ(-1.7014118346046923e+38, details::triple_to_double(v2));
+        EXPECT_DOUBLE_EQ(+1.7014118346046923e+38, details::triple_to_double(v3));
+        EXPECT_DOUBLE_EQ(+3.4028236692093846e+38, details::triple_to_double(v4));
+    }
+    {
+        // underflow
+        auto v0 = from_double(DBL_MIN);
+        EXPECT_DOUBLE_EQ(0, details::triple_to_double(v0));
+    }
+}
 }
 

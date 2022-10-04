@@ -170,6 +170,59 @@ TEST_F(recovery_test, system_table) {
     }
 }
 
+TEST_F(recovery_test, recovery_metadata) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE RECOVER (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (3, 30)");
+    {
+        SCOPED_TRACE("before recovery");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM RECOVER", result);
+        ASSERT_EQ(3, result.size());
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    execute_statement("CREATE TABLE RECOVER (C0 INT PRIMARY KEY, C1 INT)"); // for now metadata is not recovered TODO
+    {
+        SCOPED_TRACE("after recovery");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM RECOVER", result);
+        ASSERT_EQ(3, result.size());
+    }
+    dump_content();
+}
+
+TEST_F(recovery_test, recovery_sequence_metadata) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE RECOVER (C0 INT, C1 INT)");
+    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (3, 30)");
+    {
+        SCOPED_TRACE("before recovery");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM RECOVER", result);
+        ASSERT_EQ(3, result.size());
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    execute_statement("CREATE TABLE RECOVER (C0 INT, C1 INT)");
+    {
+        SCOPED_TRACE("after recovery");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM RECOVER", result);
+        ASSERT_EQ(3, result.size());
+        execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (4, 40)", status::err_already_exists); // recoverying sequence metadata is not in place and this cause duplicate primary key TODO
+    }
+    dump_content();
+}
+
 // TODO recovery currently recovers deleted records
 TEST_F(recovery_test, DISABLED_delete) {
     if (jogasaki::kvs::implementation_id() == "memory") {
@@ -247,7 +300,7 @@ TEST_F(recovery_test, recover_create_index) {
                 column{ "C1", type::float8 (), nullity{true} },
             }
         );
-        ASSERT_EQ(status::err_already_exists, db_->create_table(t));
+        ASSERT_EQ(status::ok, db_->create_table(t)); // recoverying metadata is not yet implemented //TODO
         auto i = std::make_shared<yugawara::storage::index>(
             t,
             "TEST",
@@ -264,7 +317,7 @@ TEST_F(recovery_test, recover_create_index) {
                 ::yugawara::storage::index_feature::primary,
             }
         );
-        ASSERT_EQ(status::err_already_exists, db_->create_index(i));
+        ASSERT_EQ(status::ok, db_->create_index(i)); // recoverying metadata is not yet implemented //TODO
     }
 }
 
@@ -276,6 +329,7 @@ TEST_F(recovery_test, recover_ddl) {
     execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
+    execute_statement("CREATE TABLE TEST (C0 INT NOT NULL PRIMARY KEY, C1 INT)"); // recoverying metadata is not yet implemented //TODO
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TEST", result);

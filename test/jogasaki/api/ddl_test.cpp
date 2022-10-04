@@ -42,6 +42,11 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
+using date_v = takatori::datetime::date;
+using time_of_day_v = takatori::datetime::time_of_day;
+using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
+
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
@@ -124,6 +129,83 @@ TEST_F(ddl_test, create_table_varieties_types) {
         );
         EXPECT_EQ(exp, result[0]);
     }
+}
+
+TEST_F(ddl_test, create_table_temporal_types) {
+    execute_statement("CREATE TABLE T (C0 DATE NOT NULL PRIMARY KEY, C1 TIME, C2 TIME WITH TIME ZONE, C3 TIMESTAMP, C4 TIMESTAMP WITH TIME ZONE)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::date},
+        {"p1", api::field_type_kind::time_of_day},
+        {"p2", api::field_type_kind::time_of_day}, //TODO with time zone
+        {"p3", api::field_type_kind::time_point},
+        {"p4", api::field_type_kind::time_point}, //TODO with time zone
+    };
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto ps = api::create_parameter_set();
+    ps->set_date("p0", d2000_1_1);
+    ps->set_time_of_day("p1", t12_0_0);
+    ps->set_time_of_day("p2", t12_0_0);
+    ps->set_time_point("p3", tp2000_1_1_12_0_0);
+    ps->set_time_point("p4", tp2000_1_1_12_0_0);
+    execute_statement( "INSERT INTO T (C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4)", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
+        auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
+        auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
+        EXPECT_EQ((mock::typed_nullable_record<
+            kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point
+        >(
+            std::tuple{
+                dat, tod, todtz, tp, tptz,
+            },
+            {
+                d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
+            }
+        )), result[0]);
+    }
+}
+
+TEST_F(ddl_test, create_table_decimals) {
+    execute_statement("CREATE TABLE T (C0 DECIMAL(3, 0) NOT NULL PRIMARY KEY, C1 DECIMAL(5, 3), C2 DECIMAL(10,1))");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal},
+        {"p2", api::field_type_kind::decimal},
+    };
+    auto ps = api::create_parameter_set();
+    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+
+    ps->set_decimal("p0", v111);
+    ps->set_decimal("p1", v11_111);
+    ps->set_decimal("p2", v11111_1);
+    execute_statement( "INSERT INTO T (C0, C1, C2) VALUES (:p0, :p1, :p2)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T", result);
+    ASSERT_EQ(1, result.size());
+
+    auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+    auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+    EXPECT_EQ((mock::typed_nullable_record<
+        kind::decimal, kind::decimal, kind::decimal
+    >(
+        std::tuple{
+            dec_3_0, dec_5_3, dec_10_1,
+        },
+        {
+            v111, v11_111, v11111_1,
+        }
+    )), result[0]);
 }
 
 TEST_F(ddl_test, create_table_varieties_types_non_nullable) {

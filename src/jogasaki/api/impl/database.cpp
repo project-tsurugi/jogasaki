@@ -123,6 +123,9 @@ status database::stop() {
         task_scheduler_->stop();
     }
     sequence_manager_.reset();
+    tables_.reset();
+    aggregate_functions_.reset();
+    prepared_statements_.clear();
 
     if (kvs_db_) {
         if(! kvs_db_->close()) {
@@ -138,9 +141,10 @@ status database::stop() {
                 }
             }
         }
-
         kvs_db_ = nullptr;
     }
+    transactions_.clear();
+    initialized_ = false;
     return status::ok;
 }
 
@@ -159,6 +163,8 @@ database::database() : database(std::make_shared<class configuration>()) {}
 void database::init() {
     global::config_pool(cfg_);
     if(initialized_) return;
+    tables_ = std::make_shared<yugawara::storage::configurable_provider>();
+    aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::add_builtin_tables(*tables_);
     executor::add_test_tables(*tables_);  //TODO remove on production environment
     executor::add_qa_tables(*tables_);

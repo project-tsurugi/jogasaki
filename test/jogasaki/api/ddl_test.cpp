@@ -307,10 +307,6 @@ TEST_F(ddl_test, unsupported_types) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TINYINT PRIMARY KEY)", variables, prepared));
     EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 SMALLINT PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 REAL PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 DATE PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TIME PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TIMESTAMP PRIMARY KEY)", variables, prepared));
 }
 
 TEST_F(ddl_test, default_value) {

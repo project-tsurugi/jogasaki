@@ -241,7 +241,7 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
             }
             case meta::field_type_kind::decimal: {
                 auto opt = meta_->at(i).option<meta::field_type_kind::decimal>();
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Decimal(*opt->precision_, opt->scale_), Type::BYTE_ARRAY)); //TODO
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Decimal(*opt->precision_, *opt->scale_), Type::BYTE_ARRAY)); //TODO
                 break;
             }
             case meta::field_type_kind::date: {

@@ -190,7 +190,7 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, T> read(order odr, bool discard, meta::decimal_field_option const& option) {
-        return do_read(odr, discard, *option.precision_, option.scale_);
+        return do_read(odr, discard, *option.precision_, *option.scale_); //FIXME if precision scale doesn't exist
     }
     /**
      * @brief reset the current position

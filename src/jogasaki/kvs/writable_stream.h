@@ -179,7 +179,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, status>
     write(T data, order odr, meta::decimal_field_option const& option) {
-        return do_write(data, odr, *option.precision_, option.scale_);
+        return do_write(data, odr, *option.precision_, *option.scale_); //TDOO if precision scale doesn't exist
     }
     /**
      * @brief write raw data to the stream buffer

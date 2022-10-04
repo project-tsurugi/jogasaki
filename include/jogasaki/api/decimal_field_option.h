@@ -35,7 +35,7 @@ public:
      */
     constexpr decimal_field_option(
         std::optional<std::size_t> precision,
-        std::size_t scale
+        std::optional<std::size_t> scale
     ) noexcept :
         precision_(precision),
         scale_(scale)
@@ -54,13 +54,13 @@ public:
         return precision_;
     }
 
-    [[nodiscard]] std::size_t scale() const noexcept {
+    [[nodiscard]] std::optional<std::size_t> scale() const noexcept {
         return scale_;
     }
 
 private:
     std::optional<std::size_t> precision_{};  //NOLINT
-    std::size_t scale_{};  //NOLINT
+    std::optional<std::size_t> scale_{};  //NOLINT
 
 };
 

@@ -32,14 +32,14 @@ struct decimal_field_option {
      */
     decimal_field_option(
         std::optional<std::size_t> precision,
-        std::size_t scale
+        std::optional<std::size_t> scale
     ) :
         precision_(precision),
         scale_(scale)
     {}
 
     std::optional<std::size_t> precision_{};  //NOLINT
-    std::size_t scale_{};  //NOLINT
+    std::optional<std::size_t> scale_{};  //NOLINT
 }; //NOLINT
 
 bool operator==(decimal_field_option const& a, decimal_field_option const& b) noexcept;

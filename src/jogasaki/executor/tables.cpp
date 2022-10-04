@@ -274,14 +274,14 @@ void add_test_tables(storage::configurable_provider& provider) {
             {
                 { "K0", type::date(), nullity{false} },
                 { "K1", type::time_of_day(), nullity{false} },
-                { "K2", type::time_of_day(takatori::datetime::time_zone::UTC), nullity{false} }, // TODO with offset
+                { "K2", type::time_of_day(type::with_time_zone_t{true}), nullity{false} },
                 { "K3", type::time_point(), nullity{false} },
-                { "K4", type::time_point(takatori::datetime::time_zone::UTC), nullity{false} }, // TODO with offset
+                { "K4", type::time_point(type::with_time_zone_t{true}), nullity{false} },
                 { "C0", type::date(), nullity{true} },
                 { "C1", type::time_of_day(), nullity{true} },
-                { "C2", type::time_of_day(takatori::datetime::time_zone::UTC), nullity{true} }, // TODO with offset
+                { "C2", type::time_of_day(type::with_time_zone_t{true}), nullity{true} },
                 { "C3", type::time_point(), nullity{true} },
-                { "C4", type::time_point(takatori::datetime::time_zone::UTC), nullity{true} }, // TODO with offset
+                { "C4", type::time_point(type::with_time_zone_t{true}), nullity{true} },
             },
         });
         provider.add_index({

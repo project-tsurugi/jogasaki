@@ -25,7 +25,7 @@ std::ostream& operator<<(std::ostream& out, decimal_field_option const& value) {
     return out << "decimal(" <<
         (value.precision_.has_value() ? std::to_string(value.precision_.value()) : "*") <<
         ", " <<
-        std::to_string(value.scale_) <<
+        (value.scale_.has_value() ? std::to_string(value.scale_.value()) : "*") <<
         ")";
 }
 

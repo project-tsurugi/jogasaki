@@ -54,12 +54,12 @@ meta::field_type type_for(takatori::type::data const& type) {
         case t::date: return meta::field_type(meta::field_enum_tag<k::date>);
         case t::time_of_day: {
             auto& typ = static_cast<::takatori::type::time_of_day const&>(type);  //NOLINT
-            bool with_offset = typ.time_zone().has_value(); //TODO temporarily assuming time_zone as offset info.
+            bool with_offset = typ.with_time_zone();
             return meta::field_type(std::make_shared<meta::time_of_day_field_option>(with_offset));
         }
         case t::time_point: {
             auto& typ = static_cast<::takatori::type::time_point const&>(type);  //NOLINT
-            bool with_offset = typ.time_zone().has_value(); //TODO temporarily assuming time_zone as offset info.
+            bool with_offset = typ.with_time_zone();
             return meta::field_type(std::make_shared<meta::time_point_field_option>(with_offset));
         }
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);

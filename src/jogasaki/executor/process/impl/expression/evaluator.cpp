@@ -37,6 +37,7 @@
 namespace jogasaki::executor::process::impl::expression {
 
 using jogasaki::data::any;
+using takatori::decimal::triple;
 
 using takatori::util::fail;
 
@@ -64,15 +65,26 @@ any add<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_ki
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)+static_cast<decimal::Decimal>(r)};
 }
 
+triple triple_from_int(std::int64_t arg) {
+    decimal::Decimal dec{arg};
+    return triple{dec};
+}
+
+double triple_to_double(triple arg) {
+    decimal::Decimal dec{arg};
+    return std::stod(dec.to_eng());
+}
+
 any promote_binary_numeric_left(any const& l, any const& r) {
     switch(l.type_index()) {
         case any::index<std::int32_t>: {
             using L = std::int32_t;
             switch(r.type_index()) {
-                case any::index<std::int32_t>: break; // unused
+                case any::index<std::int32_t>: return l;
                 case any::index<std::int64_t>: return any{std::in_place_type<std::int64_t>, l.to<L>()};
                 case any::index<float>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
+                case any::index<triple>: return any{std::in_place_type<triple>, triple_from_int(l.to<L>())};
                 default: fail();
             }
             break;
@@ -81,9 +93,10 @@ any promote_binary_numeric_left(any const& l, any const& r) {
             using L = std::int64_t;
             switch(r.type_index()) {
                 case any::index<std::int32_t>: return l;
-                case any::index<std::int64_t>: break; // unused
+                case any::index<std::int64_t>: return l;
                 case any::index<float>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
+                case any::index<triple>: return any{std::in_place_type<triple>, triple_from_int(l.to<L>())};
                 default: fail();
             }
             break;
@@ -93,18 +106,33 @@ any promote_binary_numeric_left(any const& l, any const& r) {
             switch(r.type_index()) {
                 case any::index<std::int32_t>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<std::int64_t>: return any{std::in_place_type<double>, l.to<L>()};
-                case any::index<float>: break; // unused
+                case any::index<float>: return any{std::in_place_type<double>, l.to<L>()}; // float v.s. float becomes double
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
+                case any::index<triple>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
                 default: fail();
             }
             break;
         }
         case any::index<double>: {
+            using L = double;
             switch(r.type_index()) {
                 case any::index<std::int32_t>: return l;
                 case any::index<std::int64_t>: return l;
                 case any::index<float>: return l;
-                case any::index<double>: break; // unused
+                case any::index<double>: return l;
+                case any::index<triple>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
+                default: fail();
+            }
+            break;
+        }
+        case any::index<triple>: {
+            using L = triple;
+            switch(r.type_index()) {
+                case any::index<std::int32_t>: return l;
+                case any::index<std::int64_t>: return l;
+                case any::index<float>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
+                case any::index<double>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
+                case any::index<triple>: return l;
                 default: fail();
             }
             break;
@@ -115,7 +143,6 @@ any promote_binary_numeric_left(any const& l, any const& r) {
 }
 
 std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
-    if (l.type_index() == r.type_index()) return {l, r};
     return {
         promote_binary_numeric_left(l,r),
         promote_binary_numeric_left(r,l)

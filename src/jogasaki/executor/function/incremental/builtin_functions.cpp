@@ -782,6 +782,7 @@ void identity_post(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(offset)); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(offset)); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(offset)); break;
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, source.get_value<runtime_t<kind::character>>(offset)); break;
         case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, source.get_value<runtime_t<kind::decimal>>(offset)); break;
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, source.get_value<runtime_t<kind::date>>(offset)); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, source.get_value<runtime_t<kind::time_of_day>>(offset)); break;

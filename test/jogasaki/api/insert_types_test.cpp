@@ -79,7 +79,6 @@ TEST_F(insert_types_test, default) {
 
 TEST_F(insert_types_test, insert) {
     auto cfg = std::make_shared<configuration>();
-    cfg->default_insert_mode(insert_mode::insert);
     db_setup(cfg);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", status::err_already_exists);
@@ -91,10 +90,9 @@ TEST_F(insert_types_test, insert) {
 
 TEST_F(insert_types_test, insert_skip) {
     auto cfg = std::make_shared<configuration>();
-    cfg->default_insert_mode(insert_mode::insert_skip);
     db_setup(cfg);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)");
+    execute_statement("INSERT IF NOT EXISTS INTO T0 (C0, C1) VALUES (1, 20.0)");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 ORDER BY C0", result);
     ASSERT_EQ(1, result.size());
@@ -103,10 +101,9 @@ TEST_F(insert_types_test, insert_skip) {
 
 TEST_F(insert_types_test, insert_overwrite) {
     auto cfg = std::make_shared<configuration>();
-    cfg->default_insert_mode(insert_mode::insert_overwrite);
     db_setup(cfg);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)");
+    execute_statement("INSERT OR REPLACE INTO T0 (C0, C1) VALUES (1, 20.0)");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 ORDER BY C0", result);
     ASSERT_EQ(1, result.size());

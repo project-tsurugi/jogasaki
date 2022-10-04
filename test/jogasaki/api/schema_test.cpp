@@ -60,6 +60,11 @@ using nullity = yugawara::variable::nullity;
 using kind = meta::field_type_kind;
 using accessor::text;
 
+using date_v = takatori::datetime::date;
+using time_of_day_v = takatori::datetime::time_of_day;
+using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
+
 class schema_test :
     public ::testing::Test,
     public api_test_base {
@@ -473,6 +478,7 @@ TEST_F(schema_test, ascending_keys_ordering) {
     check_desc(5, "K5");
     check_desc(6, "K6");
 }
+
 TEST_F(schema_test, default_value) {
     auto t = std::make_shared<table>(
         "TEST",
@@ -587,56 +593,6 @@ TEST_F(schema_test, null_value) {
         );
         EXPECT_EQ(exp, result[0]);
     }
-}
-
-// TODO temporal type requires modernizing compiler
-TEST_F(schema_test, DISABLED_temporal_types) {
-    auto t = std::make_shared<table>(
-        "TEST",
-        std::initializer_list<column>{
-            column{ "C0", type::int8(), nullity{false} },
-            column{ "K1", type::date(), nullity{false} },
-            column{ "K2", type::time_of_day(), nullity{false} },
-            column{ "K3", type::time_point(), nullity{false} },
-            column{ "V1", type::date(), nullity{false} },
-            column{ "V2", type::time_of_day(), nullity{false} },
-            column{ "V3", type::time_point(), nullity{false} },
-        }
-    );
-    ASSERT_EQ(status::ok, db_->create_table(t));
-    auto i = std::make_shared<yugawara::storage::index>(
-        t,
-        t->simple_name(),
-        std::initializer_list<index::key>{
-            t->columns()[0],
-            t->columns()[1],
-            t->columns()[2],
-            t->columns()[3],
-        },
-        std::initializer_list<index::column_ref>{
-            t->columns()[4],
-            t->columns()[5],
-            t->columns()[6],
-        },
-        index_feature_set{
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-            ::yugawara::storage::index_feature::unique,
-            ::yugawara::storage::index_feature::primary,
-        }
-    );
-    ASSERT_EQ(status::ok, db_->create_index(i));
-
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, V1, V2, V3) VALUES (0, cast('2000-01-01' as double), cast('10:10:10' as time_of_day), cast('2000-01-01 10:10:10' as time_point), cast('2000-01-01' as date), cast('10:10:10' as time_of_day), cast('2000-01-01 10:10:10' as time_point))");
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT C0, K1, K2, K3, V1, V2, V3 FROM TEST ", result);
-    ASSERT_EQ(1, result.size());
-//    auto exp = mock::create_record<kind::int8, kind::date, kind::time_of_day, kind::time_point, kind::date, kind::time_of_day, kind::time_point>(
-//        boost::dynamic_bitset<std::uint64_t>{"0000000"s},  // note right most is position 0
-//        std::forward_as_tuple(1, 1, 1, 1, 1, 1, 1),
-//        {false, false, false, false, false, false, false }
-//    );
-//    EXPECT_EQ(exp, result[0]);
 }
 
 }

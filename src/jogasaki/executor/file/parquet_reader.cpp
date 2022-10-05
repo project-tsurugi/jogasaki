@@ -156,27 +156,32 @@ runtime_t<meta::field_type_kind::time_point> read_data<runtime_t<meta::field_typ
 
 bool parquet_reader::next(accessor::record_ref& ref) {
     ref = accessor::record_ref{buf_.data(), buf_.capacity()};
-    for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-        auto& reader = *column_readers_[i];
-        auto& type = *columns_[i];
-        bool null{false};
-        bool nodata{false};
-        switch(meta_->at(i).kind()) {
-            case meta::field_type_kind::int4: ref.set_value<runtime_t<meta::field_type_kind::int4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, parquet::Int32Reader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::int8: ref.set_value<runtime_t<meta::field_type_kind::int8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, parquet::Int64Reader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::float4: ref.set_value<runtime_t<meta::field_type_kind::float4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, parquet::FloatReader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::float8: ref.set_value<runtime_t<meta::field_type_kind::float8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, parquet::DoubleReader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
-            case meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(reader, type, null, nodata)); break;
-            default: fail();
+    try {
+        for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
+            auto& reader = *column_readers_[i];
+            auto& type = *columns_[i];
+            bool null{false};
+            bool nodata{false};
+            switch(meta_->at(i).kind()) {
+                case meta::field_type_kind::int4: ref.set_value<runtime_t<meta::field_type_kind::int4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, parquet::Int32Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::int8: ref.set_value<runtime_t<meta::field_type_kind::int8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, parquet::Int64Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::float4: ref.set_value<runtime_t<meta::field_type_kind::float4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, parquet::FloatReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::float8: ref.set_value<runtime_t<meta::field_type_kind::float8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, parquet::DoubleReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(reader, type, null, nodata)); break;
+                default: fail();
+            }
+            if (nodata) {
+                return false;
+            }
+            ref.set_null(meta_->nullity_offset(i), null);
         }
-        if (nodata) {
-            return false;
-        }
-        ref.set_null(meta_->nullity_offset(i), null);
+    } catch (std::exception const& e) {
+        VLOG(log_error) << "Parquet reader read error: " << e.what();
+        return false;
     }
     ++read_count_;
     return true;

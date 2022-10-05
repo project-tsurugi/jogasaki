@@ -93,11 +93,17 @@ bool parquet_writer::write(accessor::record_ref ref) {
     return true;
 }
 
+template <class T>
+void write_null(T* writer) {
+    int16_t definition_level = 0;
+    writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+    return;
+}
+
 void parquet_writer::write_int4(std::size_t colidx, int32_t v, bool null) {
     auto* writer = static_cast<parquet::Int32Writer*>(column_writers_[colidx]);  //NOLINT
     if (null) {
-        int16_t definition_level = 0;
-        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        write_null(writer);
         return;
     }
     int16_t definition_level = 1;
@@ -107,8 +113,7 @@ void parquet_writer::write_int4(std::size_t colidx, int32_t v, bool null) {
 void parquet_writer::write_int8(std::size_t colidx, std::int64_t v, bool null) {
     auto* writer = static_cast<parquet::Int64Writer*>(column_writers_[colidx]);  //NOLINT
     if (null) {
-        int16_t definition_level = 0;
-        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        write_null(writer);
         return;
     }
     int16_t definition_level = 1;
@@ -118,8 +123,7 @@ void parquet_writer::write_int8(std::size_t colidx, std::int64_t v, bool null) {
 void parquet_writer::write_float4(std::size_t colidx, float v, bool null) {
     auto* writer = static_cast<parquet::FloatWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
-        int16_t definition_level = 0;
-        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        write_null(writer);
         return;
     }
     int16_t definition_level = 1;
@@ -129,8 +133,7 @@ void parquet_writer::write_float4(std::size_t colidx, float v, bool null) {
 void parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
     auto* writer = static_cast<parquet::DoubleWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
-        int16_t definition_level = 0;
-        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        write_null(writer);
         return;
     }
     int16_t definition_level = 1;
@@ -140,8 +143,7 @@ void parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
 void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool null) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
-        int16_t definition_level = 0;
-        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        write_null(writer);
         return;
     }
 
@@ -156,8 +158,7 @@ void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
 void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
-        int16_t definition_level = 0;
-        writer->WriteBatch(1, &definition_level, nullptr, nullptr);
+        write_null(writer);
         return;
     }
 

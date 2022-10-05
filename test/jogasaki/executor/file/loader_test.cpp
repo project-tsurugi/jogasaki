@@ -62,7 +62,7 @@ public:
 
     test::temporary_folder temporary_{};  //NOLINT
 
-    void test_load(std::vector<std::string> const& files, std::shared_ptr<loader>& ldr, std::size_t bulk_size = 10000, bool expect_error = false) {
+    void test_load(std::vector<std::string> const& files, std::shared_ptr<loader>& ldr, std::size_t bulk_size = 10000, bool expect_error = false, std::unique_ptr<api::parameter_set> ps = nullptr) {
         auto* impl = db_impl();
         api::statement_handle prepared{};
         std::unordered_map<std::string, api::field_type_kind> variables{
@@ -71,9 +71,11 @@ public:
         };
         ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, prepared));
 
-        auto ps = api::create_parameter_set();
-        ps->set_float8("p1", 1000.0);
-        ps->set_reference_column("p0", "C0");
+        if(! ps) {
+            ps = api::create_parameter_set();
+            ps->set_float8("p1", 1000.0);
+            ps->set_reference_column("p0", "C0");
+        }
         auto trans = utils::create_transaction(*db_);
 
         auto* tx = reinterpret_cast<api::impl::transaction*>(trans->get());
@@ -178,5 +180,49 @@ TEST_F(loader_test, empty_file_name) {
     test_load(std::vector<std::string>{""}, ldr, 3, true);
 }
 
+TEST_F(loader_test, bad_reference_column_name) {
+    boost::filesystem::path p{path()};
+    p = p / "bad_reference_column_name.parquet";
+    create_test_file(p, 2, 0);
+
+    std::shared_ptr<loader> ldr{};
+    auto ps = api::create_parameter_set();
+    ps->set_float8("p1", 1000.0);
+    ps->set_reference_column("p0", "dummy");
+    test_load(std::vector<std::string>{p.string()}, ldr, 3, true, std::move(ps));
+}
+
+TEST_F(loader_test, bad_reference_column_index) {
+    boost::filesystem::path p{path()};
+    p = p / "bad_reference_column_index.parquet";
+    create_test_file(p, 2, 0);
+
+    std::shared_ptr<loader> ldr{};
+    auto ps = api::create_parameter_set();
+    ps->set_float8("p1", 1000.0);
+    ps->set_reference_column("p0", 100);
+    test_load(std::vector<std::string>{p.string()}, ldr, 3, true, std::move(ps));
+}
+
+TEST_F(loader_test, extra_parameter) {
+    // test extra parameter is ignored
+    boost::filesystem::path p{path()};
+    p = p / "extra_parameter.parquet";
+    create_test_file(p, 2, 0);
+    std::shared_ptr<loader> ldr{};
+    auto ps = api::create_parameter_set();
+    ps->set_float8("p1", 1000.0);
+    ps->set_reference_column("p0", "C0");
+    ps->set_reference_column("dummy", "bad"); // extra parameter not used in statement
+    test_load(std::vector<std::string>{p.string()}, ldr, 3, false, std::move(ps));
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(0,1000.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,1000.0)), result[1]);
+    }
+    EXPECT_EQ(2, ldr->records_loaded());
+}
 }
 

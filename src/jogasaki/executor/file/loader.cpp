@@ -20,6 +20,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
@@ -31,6 +32,7 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
+using takatori::util::string_builder;
 
 loader::loader(
     std::vector<std::string> files,
@@ -48,30 +50,39 @@ loader::loader(
 {}
 
 meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
-    if (! vinfo.exists(name)) {
-        fail();
-    }
     auto idx = vinfo.at(name).index();
     return vinfo.meta()->at(idx).kind();
 }
 
-std::unordered_map<std::string, parameter> create_mapping(
+bool create_mapping(
     api::parameter_set const& ps,
     api::statement_handle prepared,
-    meta::external_record_meta const& meta
+    meta::external_record_meta const& meta,
+    std::unordered_map<std::string, parameter>& out,
+    std::string& msg
 ) {
-    std::unordered_map<std::string, parameter> ret{};
+    out.clear();
     auto& impl = static_cast<api::impl::parameter_set const&>(ps);  //NOLINT
     auto& body = impl.body();
 
     auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
     auto vinfo = stmt->body()->mirrors()->host_variable_info();
 
-    ret.reserve(body->size());
+    out.reserve(body->size());
     for(auto&& [name, e ] : *body) {
+        if (! vinfo->exists(name)) {
+            VLOG(log_warning) << "Parameter " << name << " is not used by the statement and simply ignored.";
+            continue;
+        }
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
             auto idx = e.as_any().to<std::size_t>();
-            ret[name] = parameter{
+            if(meta.field_count() <= idx) {
+                msg = string_builder{} <<
+                    "Reference column index " << idx << " is out of range" << string_builder::to_string;
+                VLOG(log_error) << msg;
+                return false;
+            }
+            out[name] = parameter{
                 host_variable_type(*vinfo, name),
                 idx,
                 meta.value_offset(idx),
@@ -84,9 +95,12 @@ std::unordered_map<std::string, parameter> create_mapping(
             auto referenced = static_cast<std::string_view>(t);
             auto idx = meta.field_index(referenced);
             if(idx == meta::external_record_meta::undefined) {
-                fail();
+                msg = string_builder{} <<
+                    "Referenced column name " << referenced << " not found" << string_builder::to_string;
+                VLOG(log_error) << msg;
+                return false;
             }
-            ret[name] = parameter{
+            out[name] = parameter{
                 host_variable_type(*vinfo, name),
                 idx,
                 meta.value_offset(idx),
@@ -95,7 +109,7 @@ std::unordered_map<std::string, parameter> create_mapping(
             continue;
         }
     }
-    return ret;
+    return true;
 }
 
 void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, parameter> const& mapping) {
@@ -167,7 +181,11 @@ loader_result loader::operator()() {
 
         if (! meta_) {
             meta_ = reader_->meta();
-            mapping_ = create_mapping(*parameters_, prepared_, *meta_);
+            if(! create_mapping(*parameters_, prepared_, *meta_, mapping_, msg_)) {
+                status_ = status::err_unresolved_host_variable;
+                error_aborting_ = true;
+                return loader_result::running;
+            }
         }
 
         accessor::record_ref ref{};

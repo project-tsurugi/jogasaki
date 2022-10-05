@@ -52,6 +52,10 @@ using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
+using date_v = takatori::datetime::date;
+using time_of_day_v = takatori::datetime::time_of_day;
+using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 inline std::shared_ptr<jogasaki::meta::external_record_meta> create_file_meta() {
@@ -128,7 +132,11 @@ public:
     }
 
     void test_load(
-        std::vector<std::string> const& files, status expected = status::ok
+        std::vector<std::string> const& files,
+        std::string_view statement,
+        std::unordered_map<std::string, api::field_type_kind>& variables,
+        std::unique_ptr<api::parameter_set> ps,
+        status expected = status::ok
     ) {
         auto transaction = utils::create_transaction(*db_);
         auto& tx = *reinterpret_cast<impl::transaction*>(transaction->get());
@@ -137,15 +145,7 @@ public:
         std::atomic_bool run{false};
 
         api::statement_handle prepared{};
-        std::unordered_map<std::string, api::field_type_kind> variables{
-            {"p0", api::field_type_kind::int8},
-            {"p1", api::field_type_kind::float8},
-        };
-        ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, prepared));
-
-        auto ps = api::create_parameter_set();
-        ps->set_float8("p1", 1.0);
-        ps->set_reference_column("p0", "C0");
+        ASSERT_EQ(status::ok, db_->prepare(statement, variables, prepared));
 
         ASSERT_TRUE(tx.execute_load(
             prepared,
@@ -165,6 +165,19 @@ public:
         } else {
             ASSERT_EQ(status::ok, tx.abort());
         }
+    }
+
+    void test_load(
+        std::vector<std::string> const& files, status expected = status::ok
+    ) {
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int8},
+            {"p1", api::field_type_kind::float8},
+        };
+        auto ps = api::create_parameter_set();
+        ps->set_float8("p1", 1.0);
+        ps->set_reference_column("p0", "C0");
+        test_load(files, "INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, std::move(ps), expected);
     }
 };
 
@@ -215,4 +228,127 @@ TEST_F(load_test, existing_file_and_missing_file) {
     }
 }
 
+TEST_F(load_test, decimals) {
+    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    {
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::decimal},
+            {"p1", api::field_type_kind::decimal},
+            {"p2", api::field_type_kind::decimal},
+        };
+        auto ps = api::create_parameter_set();
+
+        ps->set_decimal("p0", v111);
+        ps->set_decimal("p1", v11_111);
+        ps->set_decimal("p2", v11111_1);
+        execute_statement("INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
+    }
+
+    std::vector<std::string> files{};
+    test_dump("select * from TDECIMALS", files);
+    execute_statement("DELETE FROM TDECIMALS");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal},
+        {"p2", api::field_type_kind::decimal},
+        {"p3", api::field_type_kind::decimal},
+        {"p4", api::field_type_kind::decimal},
+        {"p5", api::field_type_kind::decimal},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_reference_column("p0", "K0");
+    ps->set_reference_column("p1", "K1");
+    ps->set_reference_column("p2", "K2");
+    ps->set_reference_column("p3", "C0");
+    ps->set_reference_column("p4", "C1");
+    ps->set_reference_column("p5", "C2");
+
+    test_load(files, "INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p3, :p4, :p5)", variables, std::move(ps));
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TDECIMALS ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+        auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+        EXPECT_EQ((mock::typed_nullable_record<
+            kind::decimal, kind::decimal, kind::decimal,
+            kind::decimal, kind::decimal, kind::decimal
+        >(
+            std::tuple{
+                dec_3_0, dec_5_3, dec_10_1,
+                dec_3_0, dec_5_3, dec_10_1,
+            },
+            {
+                v111, v11_111, v11111_1,
+                v111, v11_111, v11111_1,
+            }
+        )), result[0]);
+    }
+}
+
+TEST_F(load_test, decimals_with_indefinite_precscale) {
+    auto v1 = decimal_v{1, 0, 1, 0}; // 1
+    {
+        std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::decimal},
+            {"p1", api::field_type_kind::decimal},
+            {"p2", api::field_type_kind::decimal},
+        };
+        auto ps = api::create_parameter_set();
+
+        ps->set_decimal("p0", v1);
+        ps->set_decimal("p1", v1);
+        ps->set_decimal("p2", v1);
+        execute_statement("INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
+    }
+
+    std::vector<std::string> files{};
+    test_dump("select K0*K0 as K0, K1*K1 as K1, K2*K2 as K2, C0*C0 as C0, C1*C1 as C1, C2*C2 as C2 from TDECIMALS", files);
+    execute_statement("DELETE FROM TDECIMALS");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal},
+        {"p2", api::field_type_kind::decimal},
+        {"p3", api::field_type_kind::decimal},
+        {"p4", api::field_type_kind::decimal},
+        {"p5", api::field_type_kind::decimal},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_reference_column("p0", "K0");
+    ps->set_reference_column("p1", "K1");
+    ps->set_reference_column("p2", "K2");
+    ps->set_reference_column("p3", "C0");
+    ps->set_reference_column("p4", "C1");
+    ps->set_reference_column("p5", "C2");
+
+    test_load(files, "INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p3, :p4, :p5)", variables, std::move(ps));
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TDECIMALS ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+        auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+        EXPECT_EQ((mock::typed_nullable_record<
+            kind::decimal, kind::decimal, kind::decimal,
+            kind::decimal, kind::decimal, kind::decimal
+        >(
+            std::tuple{
+                dec_3_0, dec_5_3, dec_10_1,
+                dec_3_0, dec_5_3, dec_10_1,
+            },
+            {
+                v1, v1, v1,
+                v1, v1, v1,
+            }
+        )), result[0]);
+    }
+}
 }

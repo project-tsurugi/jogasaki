@@ -26,6 +26,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/decimal/triple.h>
 
+#include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -50,7 +51,8 @@ bool parquet_writer::init(std::string_view path) {
     try {
         path_ = std::string{path};
         PARQUET_ASSIGN_OR_THROW(fs_ , ::arrow::io::FileOutputStream::Open(path_.string()));
-        auto schema = create_schema();
+        auto [schema, colopts] = create_schema();
+        column_options_ = std::move(colopts);
         parquet::WriterProperties::Builder builder;
         builder.compression(parquet::Compression::SNAPPY);
         file_writer_ = parquet::ParquetFileWriter::Open(fs_, schema, builder.build());
@@ -71,18 +73,22 @@ bool parquet_writer::write(accessor::record_ref ref) {
         using k = meta::field_type_kind;
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
             bool null = ref.is_null(meta_->nullity_offset(i)) && meta_->nullable(i);
+            bool success{false};
             switch(meta_->at(i).kind()) {
-                case k::int4: write_int4(i, ref.get_value<std::int32_t>(meta_->value_offset(i)), null); break;
-                case k::int8: write_int8(i, ref.get_value<std::int64_t>(meta_->value_offset(i)), null); break;
-                case k::float4: write_float4(i, ref.get_value<float>(meta_->value_offset(i)), null); break;
-                case k::float8: write_float8(i, ref.get_value<double>(meta_->value_offset(i)), null); break;
-                case k::character: write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i)), null); break;
-                case k::decimal: write_decimal(i, ref.get_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i)), null); break;
-                case k::date: write_date(i, ref.get_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i)), null); break;
-                case k::time_of_day: write_time_of_day(i, ref.get_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i)), null); break;
-                case k::time_point: write_time_point(i, ref.get_value<runtime_t<meta::field_type_kind::time_point>>(meta_->value_offset(i)), null); break;
+                case k::int4: success = write_int4(i, ref.get_value<std::int32_t>(meta_->value_offset(i)), null); break;
+                case k::int8: success = write_int8(i, ref.get_value<std::int64_t>(meta_->value_offset(i)), null); break;
+                case k::float4: success = write_float4(i, ref.get_value<float>(meta_->value_offset(i)), null); break;
+                case k::float8: success = write_float8(i, ref.get_value<double>(meta_->value_offset(i)), null); break;
+                case k::character: success = write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i)), null); break;
+                case k::decimal: success = write_decimal(i, ref.get_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i)), null, column_options_[i]); break;
+                case k::date: success = write_date(i, ref.get_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i)), null); break;
+                case k::time_of_day: success = write_time_of_day(i, ref.get_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i)), null); break;
+                case k::time_point: success = write_time_point(i, ref.get_value<runtime_t<meta::field_type_kind::time_point>>(meta_->value_offset(i)), null); break;
                 default:
                     break;
+            }
+            if(! success) {
+                return false;
             }
         }
     } catch (std::exception const& e) {
@@ -100,51 +106,55 @@ void write_null(T* writer) {
     return;
 }
 
-void parquet_writer::write_int4(std::size_t colidx, int32_t v, bool null) {
+bool parquet_writer::write_int4(std::size_t colidx, int32_t v, bool null) {
     auto* writer = static_cast<parquet::Int32Writer*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         write_null(writer);
-        return;
+        return true;
     }
     int16_t definition_level = 1;
     writer->WriteBatch(1, &definition_level, nullptr, &v);
+    return true;
 }
 
-void parquet_writer::write_int8(std::size_t colidx, std::int64_t v, bool null) {
+bool parquet_writer::write_int8(std::size_t colidx, std::int64_t v, bool null) {
     auto* writer = static_cast<parquet::Int64Writer*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         write_null(writer);
-        return;
+        return true;
     }
     int16_t definition_level = 1;
     writer->WriteBatch(1, &definition_level, nullptr, &v);
+    return true;
 }
 
-void parquet_writer::write_float4(std::size_t colidx, float v, bool null) {
+bool parquet_writer::write_float4(std::size_t colidx, float v, bool null) {
     auto* writer = static_cast<parquet::FloatWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         write_null(writer);
-        return;
+        return true;
     }
     int16_t definition_level = 1;
     writer->WriteBatch(1, &definition_level, nullptr, &v);
+    return true;
 }
 
-void parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
+bool parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
     auto* writer = static_cast<parquet::DoubleWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         write_null(writer);
-        return;
+        return true;
     }
     int16_t definition_level = 1;
     writer->WriteBatch(1, &definition_level, nullptr, &v);
+    return true;
 }
 
-void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool null) {
+bool parquet_writer::write_character(std::size_t colidx, accessor::text v, bool null) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         write_null(writer);
-        return;
+        return true;
     }
 
     parquet::ByteArray value{};
@@ -153,41 +163,49 @@ void parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
     value.ptr = reinterpret_cast<const uint8_t*>(sv.data());  //NOLINT
     value.len = sv.size();
     writer->WriteBatch(1, &definition_level, nullptr, &value);
+    return true;
 }
 
-void parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null) {
+bool parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null, details::column_option const& colopt) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         write_null(writer);
-        return;
+        return true;
     }
-
-    parquet::ByteArray value{};
     auto sv = static_cast<decimal::Decimal>(v);
+    decimal::context.clear_status();
+    auto y = sv.rescale(-static_cast<std::int64_t>(colopt.scale_));
+    if((decimal::context.status() & MPD_Inexact) != 0) {
+        // value error
+        VLOG(log_error) << "value error: decimal rescaling failed. src=" << v << " scale=" << colopt.scale_;
+        return false;
+    }
     utils::decimal_buffer out{};
-    auto [hi, lo, sz] = utils::make_signed_coefficient_full(v);
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full(takatori::decimal::triple{y});
     utils::create_decimal(v.sign(), lo, hi, sz, out);
 
+    parquet::ByteArray value{};
     int16_t definition_level = 1;
     value.ptr = reinterpret_cast<const uint8_t*>(out.data());  //NOLINT
     value.len = sz;
     writer->WriteBatch(1, &definition_level, nullptr, &value);
+    return true;
 }
 
-void parquet_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null) {
+bool parquet_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null) {
     auto d = static_cast<std::int32_t>(v.days_since_epoch());
-    write_int4(colidx, d, null);
+    return write_int4(colidx, d, null);
 }
 
-void parquet_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null) {
+bool parquet_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null) {
     auto ns = static_cast<std::int64_t>(v.time_since_epoch().count());
-    write_int8(colidx, ns, null);
+    return write_int8(colidx, ns, null);
 }
 
-void parquet_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null) {
+bool parquet_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null) {
     auto secs = static_cast<std::int64_t>(v.seconds_since_epoch().count());
     auto subsecs = static_cast<std::int64_t>(v.subsecond().count());
-    write_int8(colidx, secs*1000*1000*1000 + subsecs, null);
+    return write_int8(colidx, secs*1000*1000*1000 + subsecs, null);
 }
 
 bool parquet_writer::close() {
@@ -211,9 +229,12 @@ parquet_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::str
     return {};
 }
 
-std::shared_ptr<GroupNode> parquet_writer::create_schema() {
+std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::column_option>>
+parquet_writer::create_schema() {
     parquet::schema::NodeVector fields{};
     fields.reserve(meta_->field_count());
+    std::vector<details::column_option> options{};
+    options.resize(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
         std::string name{};
         if(auto o = meta_->field_name(i)) {
@@ -242,7 +263,11 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
             }
             case meta::field_type_kind::decimal: {
                 auto opt = meta_->at(i).option<meta::field_type_kind::decimal>();
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Decimal(*opt->precision_, *opt->scale_), Type::BYTE_ARRAY)); //TODO
+                std::size_t p = opt->precision_.has_value() ? *opt->precision_ : decimal_default_precision;
+                std::size_t s = opt->scale_.has_value() ? *opt->scale_: dumped_decimal_default_scale;
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Decimal(p, s), Type::BYTE_ARRAY));
+                options[i].precision_ = p;
+                options[i].scale_ = s;
                 break;
             }
             case meta::field_type_kind::date: {
@@ -261,7 +286,10 @@ std::shared_ptr<GroupNode> parquet_writer::create_schema() {
                 break;
         }
     }
-    return std::static_pointer_cast<GroupNode>(GroupNode::Make("schema", Repetition::REQUIRED, fields));
+    return {
+        std::static_pointer_cast<GroupNode>(GroupNode::Make("schema", Repetition::REQUIRED, fields)),
+        std::move(options)
+    };
 }
 
 std::string parquet_writer::path() const noexcept {

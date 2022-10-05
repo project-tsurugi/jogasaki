@@ -32,6 +32,32 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 
+namespace details {
+
+/**
+ * @brief column metadata options kept by parquet writer
+ */
+struct column_option {
+    /**
+     * @brief constant for undefined precision and scale
+     */
+    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
+
+    /**
+     * @brief precision for decimal field
+     * @details this property is mandatory for decimal field, and undefined for other types
+     */
+    std::size_t precision_{undefined};
+
+    /**
+     * @brief scale for decimal field
+     * @details this property is mandatory for decimal field, and undefined for other types
+     */
+    std::size_t scale_{undefined};
+};
+
+}  // namespace details
+
 /**
  * @brief parquet file writer
  */
@@ -86,17 +112,18 @@ private:
     std::vector<parquet::ColumnWriter*> column_writers_{};
     boost::filesystem::path path_{};
     std::size_t write_count_{};
+    std::vector<details::column_option> column_options_{};
 
-    std::shared_ptr<parquet::schema::GroupNode> create_schema();
-    void write_int4(std::size_t colidx, std::int32_t v, bool null = false);
-    void write_int8(std::size_t colidx, std::int64_t v, bool null = false);
-    void write_float4(std::size_t colidx, float v, bool null = false);
-    void write_float8(std::size_t colidx, double v, bool null = false);
-    void write_character(std::size_t colidx, accessor::text v, bool null = false);
-    void write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null = false);
-    void write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
-    void write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
-    void write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
+    std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::column_option>> create_schema();
+    bool write_int4(std::size_t colidx, std::int32_t v, bool null = false);
+    bool write_int8(std::size_t colidx, std::int64_t v, bool null = false);
+    bool write_float4(std::size_t colidx, float v, bool null = false);
+    bool write_float8(std::size_t colidx, double v, bool null = false);
+    bool write_character(std::size_t colidx, accessor::text v, bool null = false);
+    bool write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null = false, details::column_option const& colopt = {});
+    bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
+    bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
+    bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
     bool init(std::string_view path);
 };
 

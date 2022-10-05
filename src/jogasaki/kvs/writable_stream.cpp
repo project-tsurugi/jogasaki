@@ -154,20 +154,27 @@ void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uin
     pos_ += sz;
 }
 
+void decimal_error_logging(std::string_view operation, runtime_t<meta::field_type_kind::decimal> data, std::size_t precision, std::size_t scale, std::size_t digits) {
+    VLOG(log_error) << "decimal operation (" << operation << ") failed. src=" << data << " precision= " << precision << " scale=" << scale << " digits=" << digits;
+}
+
 status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {
     auto sz = utils::bytes_required_for_digits(precision);
     BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
     decimal::Decimal x{data};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
+        decimal_error_logging("value creation", data, precision, scale, -1);
         return status::err_expression_evaluation_failure; // TODO
     }
     decimal::context.clear_status();
     auto y = x.rescale(-static_cast<std::int64_t>(scale));
     if((decimal::context.status() & MPD_Inexact) != 0) {
+        decimal_error_logging("rescale", data, precision, scale, -1);
         return status::err_expression_evaluation_failure; // TODO
     }
     auto digits = y.get()->digits;
     if(static_cast<std::int64_t>(precision) < digits) {
+        decimal_error_logging("digits", data, precision, scale, digits);
         return status::err_expression_evaluation_failure; // TODO
     }
     takatori::decimal::triple tri{y};

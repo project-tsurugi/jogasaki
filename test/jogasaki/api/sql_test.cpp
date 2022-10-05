@@ -300,6 +300,27 @@ TEST_F(sql_test, aggregate_decimals) {
     )), result[0]);
 }
 
+TEST_F(sql_test, decimals_indefinitive_precscale) {
+    execute_statement("CREATE TABLE TT(C0 DECIMAL(5,3) NOT NULL PRIMARY KEY)");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+        {"p1", api::field_type_kind::decimal}
+    };
+    auto ps = api::create_parameter_set();
+    auto v1 = decimal_v{1, 0, 1, 0}; // 1
+    ps->set_decimal("p0", v1);
+    execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0*C0 as C0 FROM TT", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+
+    auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
+    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec}, {v1})), result[0]);
+}
+
 TEST_F(sql_test, update_delete_secondary_index) {
     execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (1, 100)");
     execute_statement( "INSERT INTO TSECONDARY (C0, C1) VALUES (2, 200)");

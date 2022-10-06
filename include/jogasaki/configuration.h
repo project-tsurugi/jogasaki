@@ -107,6 +107,22 @@ public:
         force_numa_node_ = arg;
     }
 
+    [[nodiscard]] bool prepare_test_tables() const noexcept {
+        return prepare_test_tables_;
+    }
+
+    void prepare_test_tables(bool arg) noexcept {
+        prepare_test_tables_ = arg;
+    }
+
+    [[nodiscard]] bool prepare_qa_tables() const noexcept {
+        return prepare_qa_tables_;
+    }
+
+    void prepare_qa_tables(bool arg) noexcept {
+        prepare_qa_tables_ = arg;
+    }
+
     [[nodiscard]] bool prepare_benchmark_tables() const noexcept {
         return prepare_benchmark_tables_;
     }
@@ -263,6 +279,8 @@ private:
     bool assign_numa_nodes_uniformly_ = false;
     std::size_t randomize_memory_usage_ = 0;
     std::size_t force_numa_node_ = numa_node_unspecified;
+    bool prepare_test_tables_ = true;
+    bool prepare_qa_tables_ = true;
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = false;

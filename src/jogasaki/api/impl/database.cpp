@@ -166,8 +166,12 @@ void database::init() {
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::add_builtin_tables(*tables_);
-    executor::add_test_tables(*tables_);  //TODO remove on production environment
-    executor::add_qa_tables(*tables_);
+    if(cfg_->prepare_test_tables()) {
+        executor::add_test_tables(*tables_);
+    }
+    if(cfg_->prepare_test_tables()) {
+        executor::add_qa_tables(*tables_);
+    }
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
         global::incremental_aggregate_function_repository()

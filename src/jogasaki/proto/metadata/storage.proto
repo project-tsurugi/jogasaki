@@ -12,130 +12,13 @@ message TexualDefinition {
 }
 
 /* For table metadata. */
-message Table {
-    // the definition format version.
-    uint64 format_version = 1;
+message Storage {
+    // the storage metadata message version.
+    uint64 message_version = 1;
 
-    // the column type.
+    // the storage definition.
     oneof definition {
         // SQL DDL statement
         TexualDefinition statement = 10;
     }
 }
-
-/*
-
-// the column of relation or row type.
-message Column {
-    // the optional column name.
-    string name = 1;
-
-    // the column type.
-    oneof type_info {
-        // the atom type.
-        AtomType atom_type = 2;
-        // the row type.
-        RowType row_type = 3;
-        // the user defined type.
-        UserType user_type = 4;
-    }
-    reserved 5 to 10;
-
-    // the type dimension for array types.
-    uint32 dimension = 11;
-
-    // FIXME type details (e.g. decimal precisions)
-}
-
-// the row type.
-message RowType {
-    // the columns of the row.
-    repeated Column columns = 1;
-}
-
-// pseudo type structure to represent types.
-message TypeInfo {
-    // the column type.
-    oneof type_info {
-        // the atom type.
-        AtomType atom_type = 1;
-        // the row type.
-        RowType row_type = 2;
-        // the user defined type.
-        UserType user_type = 3;
-    }
-    reserved 4 to 10;
-
-    // the type dimension for array types.
-    uint32 dimension = 11;
-}
-
-// the multi precision decimal number value.
-message Decimal {
-    // the signed unscaled value (2's complement, big endian).
-    bytes unscaled_value = 1;
-
-    // the exponent of the value (value = unscaled_value * 10^exponent).
-    int32 exponent = 2;
-}
-
-// the bit value.
-message Bit {
-    // packed bit sequence (little-endian, from LST to MSB).
-    bytes packed = 1;
-    // the number of bits.
-    uint64 size = 2;
-}
-
-// the time-of-day-with-time-zone value.
-message TimeOfDayWithTimeZone {
-    // offset nano-seconds from epoch (00:00:00) in the time zone.
-    uint64 offset_nanoseconds = 1;
-    // timezone offset in minute.
-    sint32 time_zone_offset = 2;
-}
-
-// the time-point value.
-message TimePoint {
-    // offset seconds from epoch (1970-01-01 00:00:00).
-    sint64 offset_seconds = 1;
-    // nano-seconds adjustment [0, 10^9-1].
-    uint32 nano_adjustment = 2;
-}
-
-// the time-point-with-time-zone value.
-message TimePointWithTimeZone {
-    // offset seconds from epoch (1970-01-01 00:00:00) in the time zone.
-    sint64 offset_seconds = 1;
-    // nano-seconds adjustment [0, 10^9-1].
-    uint32 nano_adjustment = 2;
-    // timezone offset in minute.
-    sint32 time_zone_offset = 3;
-}
-
-// the date-time interval value.
-message DateTimeInterval {
-    // years offset.
-    sint32 year = 1;
-    // months offset.
-    sint32 month = 2;
-    // days offset.
-    sint32 day = 3;
-    // nano-seconds offset.
-    sint32 time = 4;
-}
-
-
-// unit for time and timestamp value
-enum TimeUnit {
-    // unit unspecified.
-    TIME_UNIT_UNSPECIFIED = 0;
-    // unit nano-second.
-    NANOSECOND = 1;
-    // unit micro-second.
-    MICROSECOND = 2;
-    // unit milli-second.
-    MILLISECOND = 3;
-}
-
- */

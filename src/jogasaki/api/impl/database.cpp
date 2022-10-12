@@ -608,17 +608,17 @@ status database::initialize_from_providers() {
 }
 
 bool validate_extract(std::string_view payload, std::string& out) {
-    proto::metadata::storage::Table t{};
-    if (! t.ParseFromArray(payload.data(), payload.size())) {
+    proto::metadata::storage::Storage st{};
+    if (! st.ParseFromArray(payload.data(), payload.size())) {
         VLOG(log_error) << "parse error";
         return false;
     }
-    if(t.format_version() != metadata_format_version) {
+    if(st.message_version() != metadata_format_version) {
         VLOG(log_error) << "data version error";
         return false;
     }
-    if(t.has_statement()) {
-        out = t.statement().ddl_statement();
+    if(st.has_statement()) {
+        out = st.statement().ddl_statement();
     }
     return true;
 }

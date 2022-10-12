@@ -29,17 +29,17 @@ namespace jogasaki::executor::common {
 using takatori::util::fail;
 
 std::string create_metadata(std::string_view sql_text) {
-    proto::metadata::storage::Table t{};
+    proto::metadata::storage::Storage st{};
     proto::metadata::storage::TexualDefinition text{};
-    t.set_format_version(metadata_format_version);
-    t.set_allocated_statement(&text);
+    st.set_message_version(metadata_format_version);
+    st.set_allocated_statement(&text);
     text.set_ddl_statement(std::string{sql_text});
 
     std::stringstream ss{};
-    if (!t.SerializeToOstream(&ss)) {
+    if (!st.SerializeToOstream(&ss)) {
         fail();
     }
-    t.release_statement();
+    st.release_statement();
     return ss.str();
 }
 

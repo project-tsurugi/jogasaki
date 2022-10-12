@@ -211,7 +211,6 @@ TEST_F(recovery_test, recovery_sequence_metadata) {
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    execute_statement("CREATE TABLE RECOVER (C0 INT, C1 INT)");
     {
         SCOPED_TRACE("after recovery");
         std::vector<mock::basic_record> result{};
@@ -328,7 +327,6 @@ TEST_F(recovery_test, recover_ddl) {
     execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    execute_statement("CREATE TABLE TEST (C0 INT NOT NULL PRIMARY KEY, C1 INT)"); // recoverying metadata is not yet implemented //TODO
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TEST", result);

@@ -70,7 +70,7 @@ constexpr std::size_t decimal_default_precision = 38;
 constexpr std::size_t dumped_decimal_default_scale = 5;
 
 /**
- * @brief serialized metadata format version
+ * @brief serialized storage metadata version
  */
 constexpr std::size_t metadata_format_version = 1;
 }

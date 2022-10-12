@@ -610,11 +610,12 @@ status database::initialize_from_providers() {
 bool validate_extract(std::string_view payload, std::string& out) {
     proto::metadata::storage::Storage st{};
     if (! st.ParseFromArray(payload.data(), payload.size())) {
-        VLOG(log_error) << "parse error";
+        LOG(ERROR) << "Invalid metadata data is detected in the storage.";
         return false;
     }
     if(st.message_version() != metadata_format_version) {
-        VLOG(log_error) << "data version error";
+        LOG(ERROR) << "Incompatible metadata version (" << st.message_version() <<
+            ") is stored in the storage. This version is not supported.";
         return false;
     }
     if(st.has_statement()) {

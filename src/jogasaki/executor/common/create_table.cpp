@@ -16,15 +16,38 @@
 #include "create_table.h"
 
 #include <yugawara/binding/extract.h>
+#include <takatori/util/fail.h>
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 
+#include <jogasaki/proto/metadata/storage.pb.h>
+
 namespace jogasaki::executor::common {
 
+using takatori::util::fail;
 
-create_table::create_table(takatori::statement::create_table& ct) noexcept:
-    ct_(std::addressof(ct))
+std::string create_metadata(std::string_view sql_text) {
+    proto::metadata::storage::Table t{};
+    proto::metadata::storage::TexualDefinition text{};
+    t.set_format_version(1);
+    t.set_allocated_statement(&text);
+    text.set_ddl_statement(std::string{sql_text});
+
+    std::stringstream ss{};
+    if (!t.SerializeToOstream(&ss)) {
+        fail();
+    }
+    t.release_statement();
+    return ss.str();
+}
+
+create_table::create_table(
+    takatori::statement::create_table& ct,
+    std::string_view sql_text
+) noexcept:
+    ct_(std::addressof(ct)),
+    metadata_(create_metadata(sql_text))
 {}
 
 model::statement_kind create_table::kind() const noexcept {
@@ -69,7 +92,9 @@ bool create_table::operator()(request_context& context) const {
         context.status_code(status::err_already_exists);
         return false;
     }
-    if(auto stg = context.database()->get_or_create_storage(c->simple_name());! stg) {
+    sharksfin::StorageOptions options{};
+    options.payload(metadata_);
+    if(auto stg = context.database()->create_storage(c->simple_name(), options);! stg) {
         VLOG(log_error) << "storage " << c->simple_name() << " already exists ";
     }
     return true;

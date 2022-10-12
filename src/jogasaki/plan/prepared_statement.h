@@ -52,12 +52,14 @@ public:
         maybe_shared_ptr<::takatori::statement::statement> statement,
         yugawara::compiled_info compiled_info,
         std::shared_ptr<::yugawara::variable::configurable_provider> host_variables,
-        std::shared_ptr<mirror_container> mirrors
+        std::shared_ptr<mirror_container> mirrors,
+        std::string_view sql_text
     ) noexcept :
         statement_(std::move(statement)),
         compiled_info_(std::move(compiled_info)),
         host_variables_(std::move(host_variables)),
-        mirrors_(std::move(mirrors))
+        mirrors_(std::move(mirrors)),
+        sql_text_(sql_text)
     {}
 
     [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept {
@@ -79,11 +81,17 @@ public:
     [[nodiscard]] bool has_result_records() const noexcept {
         return mirrors_ && mirrors_->external_writer_meta();
     }
+
+    [[nodiscard]] std::string_view sql_text() const noexcept {
+        return sql_text_;
+    }
+
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
     std::shared_ptr<yugawara::variable::configurable_provider> host_variables_{};
     std::shared_ptr<mirror_container> mirrors_{};
+    std::string sql_text_{};
 };
 
 }

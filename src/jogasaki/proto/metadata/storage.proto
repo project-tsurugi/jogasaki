@@ -17,7 +17,7 @@ message Table {
     uint64 format_version = 1;
 
     // the column type.
-    oneof type_info {
+    oneof definition {
         // SQL DDL statement
         TexualDefinition statement = 10;
     }

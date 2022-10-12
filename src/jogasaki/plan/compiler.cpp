@@ -190,7 +190,8 @@ status create_prepared_statement(
         s,
         result.info(),
         provider,
-        preprocess_mirror(s, provider, result.info())
+        preprocess_mirror(s, provider, result.info()),
+        ctx.sql_text()
     );
     return status::ok;
 }
@@ -239,6 +240,8 @@ status prepare(
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
+    ctx.sql_text(sql);
+
     std::unique_ptr<shakujo::model::program::Program> program{};
     if(auto res = parse_validate(sql, ctx, program); res != status::ok) {
         return res;
@@ -580,7 +583,7 @@ void create_mirror_for_ddl(
     switch(statement->kind()) {
         case statement::statement_kind::create_table: {
             auto& node = unsafe_downcast<statement::create_table>(*statement);
-            ops = std::make_shared<executor::common::create_table>(node);
+            ops = std::make_shared<executor::common::create_table>(node, ctx.sql_text());
             break;
         }
         case statement::statement_kind::drop_table: {
@@ -708,6 +711,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
     if(auto res = validate_host_variables(ctx, parameters, p->mirrors()->host_variable_info()); res != status::ok) {
         return res;
     }
+    ctx.sql_text(p->sql_text());
     switch(p->statement()->kind()) {
         case statement_kind::write:
             create_mirror_for_write(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);

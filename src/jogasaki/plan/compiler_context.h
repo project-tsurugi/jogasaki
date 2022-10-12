@@ -105,6 +105,15 @@ public:
     [[nodiscard]] diagnostics* diag() const {
         return diag_;
     }
+
+    void sql_text(std::string_view sql) noexcept {
+        sql_text_ = sql;
+    }
+
+    [[nodiscard]] std::string_view sql_text() const {
+        return sql_text_;
+    }
+
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
@@ -114,6 +123,7 @@ private:
     std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
     diagnostics* diag_{};
+    std::string_view sql_text_{};
 };
 
 }

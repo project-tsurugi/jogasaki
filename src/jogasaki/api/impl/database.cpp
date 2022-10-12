@@ -109,6 +109,7 @@ status database::start() {
 
     // recovery metadata uses task scheduler
     if(auto res = recover_metadata(); res != status::ok) {
+        // TODO clean-up 
         return res;
     }
 

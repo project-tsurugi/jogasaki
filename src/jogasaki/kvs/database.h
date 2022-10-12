@@ -140,8 +140,7 @@ public:
     std::unique_ptr<storage> get_or_create_storage(std::string_view name);
 
     /**
-     * @brief return the native handle in the transaction layer
-     * @return the handle held by this object
+     * @brief list storages defined for the database
      */
     [[nodiscard]] status list_storages(std::vector<std::string>& out) const noexcept;
 

@@ -711,7 +711,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
     if(auto res = validate_host_variables(ctx, parameters, p->mirrors()->host_variable_info()); res != status::ok) {
         return res;
     }
-    ctx.sql_text(p->sql_text());
+    ctx.sql_text(p->sql_text()); // compiler context doesn't always have sql text, so copy from prepared statement
     switch(p->statement()->kind()) {
         case statement_kind::write:
             create_mirror_for_write(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);

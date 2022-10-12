@@ -96,7 +96,9 @@ bool create_table::operator()(request_context& context) const {
     sharksfin::StorageOptions options{};
     options.payload(metadata_);
     if(auto stg = context.database()->create_storage(c->simple_name(), options);! stg) {
-        VLOG(log_error) << "storage " << c->simple_name() << " already exists ";
+        VLOG(log_info) << "storage " << c->simple_name() << " already exists ";
+        // recovery possibly issues CREATE TABLE ddl and in that case storage already exists.
+        // TODO when recovery stops using CREATE TABLE, handle this as error
     }
     return true;
 }

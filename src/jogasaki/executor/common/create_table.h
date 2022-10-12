@@ -53,7 +53,7 @@ public:
 
 private:
     takatori::statement::create_table* ct_{};
-    std::string metadata_{}; // content held in prepared statement
+    std::string metadata_{};
 
 };
 

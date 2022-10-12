@@ -2,15 +2,19 @@ if(NOT TARGET sharksfin-${SHARKSFIN_IMPLEMENTATION})
     message(FATAL_ERROR "sharksfin implementation \"sharksfin-${SHARKSFIN_IMPLEMENTATION}\" not found")
 endif()
 
-set(ProtoFiles
+set(SqlProtoFiles
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/common.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/request.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/response.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/status.proto
         )
 
+set(MetadataProtoFiles
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/metadata/storage.proto
+        )
+
 add_custom_command(
-        OUTPUT ${ProtoFiles}
+        OUTPUT ${SqlProtoFiles}
         COMMAND ${CMAKE_COMMAND}
         ARGS -E copy_if_different
         "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/common.proto"
@@ -24,14 +28,21 @@ add_custom_command(
 # Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
 
-PROTOBUF_GENERATE_CPP(ProtobufSources ProtobufHeaders ${ProtoFiles})
+PROTOBUF_GENERATE_CPP(SqlProtobufSources SqlProtobufHeaders ${SqlProtoFiles})
+PROTOBUF_GENERATE_CPP(MetadataProtobufSources MetadataProtobufHeaders ${MetadataProtoFiles})
 
 # needed in both current and parent scopes
-set(GENERATED_PROTO_SRCS ${ProtobufSources} PARENT_SCOPE)
-set(GENERATED_PROTO_SRCS ${ProtobufSources})
+set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources} PARENT_SCOPE)
+set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources})
+
+set(GENERATED_METADATA_PROTO_SRCS ${MetadataProtobufSources})
 
 add_custom_target(build_protos
-        DEPENDS ${ProtobufSources} ${ProtoFiles}
+        DEPENDS
+        ${SqlProtobufSources}
+        ${SqlProtoFiles}
+        ${MetadataProtobufSources}
+        ${SqlProtoFiles}
         )
 
 file(GLOB SOURCES
@@ -77,7 +88,8 @@ file(GLOB SOURCES
 )
 
 set_source_files_properties(
-        ${GENERATED_PROTO_SRCS}
+        ${GENERATED_SQL_PROTO_SRCS}
+        ${GENERATED_METADATA_PROTO_SRCS}
         PROPERTIES
         GENERATED TRUE
         COMPILE_FLAGS -Wno-unused-parameter
@@ -85,7 +97,8 @@ set_source_files_properties(
 
 add_library(${ENGINE}
         ${SOURCES}
-        ${GENERATED_PROTO_SRCS}
+        ${GENERATED_SQL_PROTO_SRCS}
+        ${GENERATED_METADATA_PROTO_SRCS}
 )
 
 add_dependencies(${ENGINE}

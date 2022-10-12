@@ -1,5 +1,5 @@
 set_source_files_properties(
-        ${GENERATED_PROTO_SRCS}
+        ${GENERATED_SQL_PROTO_SRCS}
         PROPERTIES
         GENERATED TRUE
         COMPILE_FLAGS -Wno-unused-parameter
@@ -7,7 +7,7 @@ set_source_files_properties(
 
 file(GLOB TEST_COMMON_SRCS
         "main.cpp"
-        ${GENERATED_PROTO_SRCS}
+        ${GENERATED_SQL_PROTO_SRCS}
         "jogasaki/api/api_test_base.cpp"
         "jogasaki/mock/mock_task.cpp"
         "jogasaki/kvs_test_utils.cpp"

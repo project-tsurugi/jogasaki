@@ -8,7 +8,7 @@ file(GLOB SOURCES
 )
 
 set_source_files_properties(
-        ${GENERATED_PROTO_SRCS}
+        ${GENERATED_SQL_PROTO_SRCS}
         PROPERTIES
         GENERATED TRUE
         COMPILE_FLAGS -Wno-unused-parameter
@@ -16,7 +16,7 @@ set_source_files_properties(
 
 add_library(common
         ${SOURCES}
-        ${GENERATED_PROTO_SRCS}
+        ${GENERATED_SQL_PROTO_SRCS}
 )
 
 add_dependencies(common

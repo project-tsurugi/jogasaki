@@ -127,5 +127,12 @@ sharksfin::EndPointKind storage::kind(end_point_kind k) {
     return sharksfin::EndPointKind(static_cast<std::uint32_t>(k));
 }
 
+status storage::set_options(sharksfin::StorageOptions const& options) {
+    return resolve(sharksfin::storage_set_options(handle_, options));
+}
+
+status storage::get_options(sharksfin::StorageOptions& options) {
+    return resolve(sharksfin::storage_get_options(handle_, options));
+}
 }
 

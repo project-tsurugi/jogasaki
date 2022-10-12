@@ -165,6 +165,28 @@ public:
         std::string_view key
     );
 
+    /**
+     * @brief set the storage options
+     * @param options storage options to set
+     * @param tx transaction used
+     * @return status::ok if the operation is successful
+     * @return otherwise, other status code
+     */
+    [[nodiscard]] status set_options(
+        sharksfin::StorageOptions const& options
+    );
+
+    /**
+     * @brief set the storage options
+     * @param options storage options to set
+     * @param tx transaction used
+     * @return status::ok if the operation is successful
+     * @return otherwise, other status code
+     */
+    [[nodiscard]] status get_options(
+        sharksfin::StorageOptions& options
+    );
+
 private:
     sharksfin::StorageHandle handle_{};
 

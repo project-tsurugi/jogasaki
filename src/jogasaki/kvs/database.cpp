@@ -65,12 +65,8 @@ std::unique_ptr<transaction> database::create_transaction(
     return std::make_unique<transaction>(*this, options);
 }
 
-std::unique_ptr<storage> database::create_storage(std::string_view name, std::uint64_t storage_id) {
+std::unique_ptr<storage> database::create_storage(std::string_view name, StorageOptions const& options) {
     sharksfin::StorageHandle stg{};
-    StorageOptions options{};
-    if(storage_id != undefined_storage_id) {
-        options.storage_id(storage_id);
-    }
     if (auto res = sharksfin::storage_create(handle_, sharksfin::Slice(name), options, &stg);
         res == sharksfin::StatusCode::ALREADY_EXISTS) {
         return {};

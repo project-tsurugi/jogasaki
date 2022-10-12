@@ -501,7 +501,8 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         VLOG(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
     }
-    kvs_db_->create_storage(name, storage_id);
+    sharksfin::StorageOptions opt{storage_id};
+    kvs_db_->create_storage(name, opt);
     return status::ok;
 }
 

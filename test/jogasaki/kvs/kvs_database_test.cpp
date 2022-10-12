@@ -70,7 +70,7 @@ TEST_F(kvs_database_test, create_storage) {
     ASSERT_TRUE(t2);
 }
 
-TEST_F(kvs_database_test,get_storage) {
+TEST_F(kvs_database_test, get_storage) {
     auto ng = db_->get_storage("T");
     ASSERT_FALSE(ng); // no storage exists
     auto t1 = db_->create_storage("T");
@@ -91,6 +91,27 @@ TEST_F(kvs_database_test, create_transaction) {
     auto tx = db_->create_transaction();
     ASSERT_TRUE(tx);
     ASSERT_EQ(status::ok, tx->abort());
+}
+
+TEST_F(kvs_database_test, create_storage_with_options) {
+    sharksfin::StorageOptions opts{100, "option_payload"};
+    auto t1 = db_->create_storage("T", opts);
+    ASSERT_TRUE(t1);
+    auto dup = db_->create_storage("T");
+    ASSERT_FALSE(dup); // already exists
+    auto t2 = db_->get_storage("T");
+    ASSERT_TRUE(t2);
+    sharksfin::StorageOptions opt{};
+    EXPECT_EQ(status::ok, t2->get_options(opt));
+    EXPECT_EQ(100, opt.storage_id());
+    EXPECT_EQ("option_payload", opt.payload());
+    opt.storage_id(200);
+    opt.payload("updated");
+    EXPECT_EQ(status::ok, t2->set_options(opt));
+    sharksfin::StorageOptions updated{};
+    EXPECT_EQ(status::ok, t2->get_options(updated));
+    EXPECT_EQ(200, opt.storage_id());
+    EXPECT_EQ("updated", opt.payload());
 }
 
 }

@@ -105,12 +105,13 @@ public:
     /**
      * @brief create new storage on the database
      * @param name name of the newly created storage
+     * @param options the options for the newly created storage
      * @return storage object for the newly created one
      * @return nullptr if the storage with given name already exists
      * @attention Concurrent operations for adding/removing storage entries are not strictly controlled for safety.
      * For the time being, storages are expected to be created sequentially before any transactions are started.
      */
-    std::unique_ptr<storage> create_storage(std::string_view name, std::uint64_t storage_id = undefined_storage_id);
+    std::unique_ptr<storage> create_storage(std::string_view name, sharksfin::StorageOptions const& options = {});
 
     /**
      * @brief retrieve the storage on the database

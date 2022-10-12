@@ -140,6 +140,12 @@ public:
     std::unique_ptr<storage> get_or_create_storage(std::string_view name);
 
     /**
+     * @brief return the native handle in the transaction layer
+     * @return the handle held by this object
+     */
+    [[nodiscard]] status list_storages(std::vector<std::string>& out) const noexcept;
+
+    /**
      * @brief create new sequence
      * @returns the newly assigned sequence id
      */
@@ -188,6 +194,7 @@ public:
      * @return listener object held by this instance
      */
     [[nodiscard]] logship::log_event_listener* log_event_listener() noexcept;
+
 private:
     sharksfin::DatabaseHandle handle_{};
     bool handle_borrowed_{true};

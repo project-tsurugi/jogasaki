@@ -68,4 +68,9 @@ constexpr std::size_t decimal_default_precision = 38;
  * @details default precision for decimal types that has no scale information defined (e.g. DECIMAL(*, *))
  */
 constexpr std::size_t dumped_decimal_default_scale = 5;
+
+/**
+ * @brief serialized metadata format version
+ */
+constexpr std::size_t metadata_format_version = 1;
 }

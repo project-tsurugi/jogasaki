@@ -41,10 +41,12 @@
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
+#include <jogasaki/constants.h>
 
 #include <string_view>
 #include <memory>
 #include <takatori/serializer/json_printer.h>
+#include <jogasaki/proto/metadata/storage.pb.h>
 
 namespace jogasaki::api::impl {
 
@@ -103,6 +105,11 @@ status database::start() {
             }
         }
         task_scheduler_->start();
+    }
+
+    // recovery metadata uses task scheduler
+    if(auto res = recover_metadata(); res != status::ok) {
+        return res;
     }
 
     if (cfg_->enable_logship()) {
@@ -595,6 +602,72 @@ status database::initialize_from_providers() {
         if(auto res = tx->commit(); res != status::ok) {
             LOG(ERROR) << "committing table schema entries failed";
             return status::err_io_error;
+        }
+    }
+    return status::ok;
+}
+
+bool validate_extract(std::string_view payload, std::string& out) {
+    proto::metadata::storage::Table t{};
+    if (! t.ParseFromArray(payload.data(), payload.size())) {
+        VLOG(log_error) << "parse error";
+        return false;
+    }
+    if(t.format_version() != metadata_format_version) {
+        VLOG(log_error) << "data version error";
+        return false;
+    }
+    if(t.has_statement()) {
+        out = t.statement().ddl_statement();
+    }
+    return true;
+}
+
+status database::recover_table(std::string_view ddl) {
+    std::unique_ptr<api::executable_statement> statement{};
+    if(auto res = create_executable(ddl, statement); res != status::ok) {
+        return res;
+    }
+    transaction_handle tx{};
+    if(auto res = create_transaction(tx); res != status::ok) {
+        return res;
+    }
+    if(auto res = tx.execute(*statement); res != status::ok) {
+        return res;
+    }
+    if(auto res = tx.commit(); res != status::ok) {
+        return res;
+    }
+    return status::ok;
+}
+
+status database::recover_metadata() {
+    std::vector<std::string> names{};
+    if(auto res = kvs_db_->list_storages(names); res != status::ok) {
+        return res;
+    }
+    for(auto&& n : names) {
+        auto stg = kvs_db_->get_storage(n);
+        if(! stg) {
+            LOG(ERROR) << "Metadata recovery failed. Missing storage:" << n;
+            return status::err_unknown;
+        }
+        sharksfin::StorageOptions opt{};
+        if(auto res = stg->get_options(opt); res != status::ok) {
+            return res;
+        }
+        auto payload = opt.payload();
+        if(payload.empty()) {
+            continue;
+        }
+        std::string ddl{};
+        if(! validate_extract(payload, ddl)) {
+            LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
+            return status::err_unknown;
+        }
+        VLOG(log_info) << "Recover table " << n << " : " << ddl;
+        if(auto res = recover_table(ddl); res != status::ok) {
+            return res;
         }
     }
     return status::ok;

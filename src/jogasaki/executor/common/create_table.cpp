@@ -20,6 +20,7 @@
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/constants.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -30,7 +31,7 @@ using takatori::util::fail;
 std::string create_metadata(std::string_view sql_text) {
     proto::metadata::storage::Table t{};
     proto::metadata::storage::TexualDefinition text{};
-    t.set_format_version(1);
+    t.set_format_version(metadata_format_version);
     t.set_allocated_statement(&text);
     text.set_ddl_statement(std::string{sql_text});
 
@@ -99,4 +100,5 @@ bool create_table::operator()(request_context& context) const {
     }
     return true;
 }
+
 }

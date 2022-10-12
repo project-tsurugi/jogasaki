@@ -138,6 +138,8 @@ public:
 
     [[nodiscard]] std::shared_ptr<diagnostics> fetch_diagnostics() noexcept override;
 
+    status recover_metadata();
+    status recover_table(std::string_view ddl);
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

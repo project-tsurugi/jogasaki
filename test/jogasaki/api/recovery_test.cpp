@@ -186,7 +186,6 @@ TEST_F(recovery_test, recovery_metadata) {
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    execute_statement("CREATE TABLE RECOVER (C0 INT PRIMARY KEY, C1 INT)"); // for now metadata is not recovered TODO
     {
         SCOPED_TRACE("after recovery");
         std::vector<mock::basic_record> result{};

@@ -18,6 +18,7 @@
 #include <jogasaki/logship/log_event_listener.h>
 #include "database.h"
 #include "transaction.h"
+#include "error.h"
 
 namespace jogasaki::kvs {
 
@@ -155,6 +156,10 @@ logship::log_event_listener* database::log_event_listener() noexcept {
 }
 
 database::database(DatabaseHandle handle) : handle_(handle) {}
+
+status database::list_storages(std::vector<std::string>& out) const noexcept {
+    return resolve(sharksfin::storage_list(handle_, out));
+}
 
 database::database() = default;
 

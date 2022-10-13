@@ -15,6 +15,7 @@
  */
 #include <memory>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/logship/log_event_listener.h>
 #include "database.h"
 #include "transaction.h"
@@ -113,7 +114,8 @@ bool database::update_sequence(transaction& tx, sequence_id id, sequence_version
             version,
             value
         ); res != sharksfin::StatusCode::OK) {
-        fail();
+        VLOG(log_error) << "sharksfin::sequence_put failed with error:" << res;
+        return false;
     }
     return true;
 }

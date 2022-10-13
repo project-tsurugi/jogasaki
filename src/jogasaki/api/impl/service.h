@@ -67,7 +67,9 @@ struct cache_align channel_info {
 };
 
 void reply(tateyama::api::server::response& res, sql::response::Response& r, bool body_head = false);
-void set_metadata(channel_info const& info, sql::response::ResultSetMetadata& meta);
+
+template <class T>
+void set_metadata(jogasaki::api::record_meta const* metadata, T& meta);
 
 template<bool flag = false> void static_fail() {
     static_assert(flag);
@@ -209,25 +211,6 @@ inline void success<sql::response::Prepare>(tateyama::api::server::response& res
     p.release_prepared_statement_handle();
 }
 
-template<>
-inline void success<sql::response::Explain>(tateyama::api::server::response& res, std::string output) {  //NOLINT(performance-unnecessary-value-param)
-    sql::response::Explain explain{};
-    sql::response::Response r{};
-    sql::response::Explain::Success success{};
-    explain.set_allocated_success(&success);
-    success.set_format_version(sql_proto_explain_format_version);
-    std::string id{sql_proto_explain_format_id};
-    success.set_allocated_format_id(&id);
-    success.set_allocated_contents(&output);
-    r.set_allocated_explain(&explain);
-    res.code(response_code::success);
-    reply(res, r);
-    r.release_explain();
-    success.release_format_id();
-    success.release_contents();
-    explain.release_success();
-}
-
 inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::data const& type) {
     using k = takatori::type::type_kind;
     using AtomType = ::jogasaki::proto::sql::common::AtomType;
@@ -248,6 +231,27 @@ inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::dat
         default:
             return AtomType::UNKNOWN;
     }
+}
+
+template<>
+inline void success<sql::response::Explain>(tateyama::api::server::response& res, std::string output, api::record_meta const* meta) {  //NOLINT(performance-unnecessary-value-param)
+    sql::response::Explain explain{};
+    sql::response::Response r{};
+    sql::response::Explain::Success success{};
+    explain.set_allocated_success(&success);
+    success.set_format_version(sql_proto_explain_format_version);
+    std::string id{sql_proto_explain_format_id};
+    success.set_allocated_format_id(&id);
+    success.set_allocated_contents(&output);
+    r.set_allocated_explain(&explain);
+    set_metadata(meta, success);
+    res.code(response_code::success);
+    reply(res, r);
+    success.clear_columns();
+    r.release_explain();
+    success.release_format_id();
+    success.release_contents();
+    explain.release_success();
 }
 
 template<>
@@ -279,7 +283,7 @@ inline void send_body_head(tateyama::api::server::response& res, channel_info co
     sql::response::ExecuteQuery e{};
     sql::response::Response r{};
 
-    set_metadata(info, meta);
+    set_metadata(info.meta_, meta);
     e.set_name(info.name_);
     e.set_allocated_record_meta(&meta);
     r.set_allocated_execute_query(&e);

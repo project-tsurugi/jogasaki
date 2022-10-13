@@ -884,7 +884,8 @@ private:
             std::cerr << "service invocation failed" << std::endl;
             return false;
         }
-        auto [explained, err] = jogasaki::utils::decode_explain(res->body_);
+
+        auto [explained, id, version, err] = jogasaki::utils::decode_explain(res->body_);
         if (explained.empty()) {
             std::cerr << "explain error: " << err.status_ << " " << err.message_ << std::endl;
             return false;

@@ -353,7 +353,7 @@ void service::command_explain(
     }
     std::stringstream ss{};
     if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
-        details::success<sql::response::Explain>(*res, ss.str());
+        details::success<sql::response::Explain>(*res, ss.str(), e->meta());
     } else {
         fail();
     }
@@ -422,7 +422,7 @@ void service::command_describe_table(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     auto table = db_->find_table(dt.name());
     if(! table) {
-        VLOG(log_error) << "table noe found : " << dt.name();
+        VLOG(log_error) << "table not found : " << dt.name();
         details::error<sql::response::DescribeTable>(*res, status::err_not_found, "table not found");
         return;
     }
@@ -747,10 +747,15 @@ void details::reply(tateyama::api::server::response& res, sql::response::Respons
     }
 }
 
-void details::set_metadata(channel_info const& info, sql::response::ResultSetMetadata& meta) {
-    auto* metadata = info.meta_;
-    std::size_t n = metadata->field_count();
+template
+void details::set_metadata(jogasaki::api::record_meta const* metadata, sql::response::ResultSetMetadata& meta);
+template
+void details::set_metadata(jogasaki::api::record_meta const* metadata, sql::response::Explain::Success& meta);
 
+template <class T>
+void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) {
+    if(metadata == nullptr) return;
+    std::size_t n = metadata->field_count();
     for (std::size_t i = 0; i < n; i++) {
         auto column = meta.add_columns();
         if(auto name = metadata->field_name(i); name.has_value()) {

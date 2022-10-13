@@ -27,6 +27,7 @@
 #include <takatori/datetime/time_point.h>
 
 #include <jogasaki/kvs/id.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/utils/command_utils.h>
@@ -984,8 +985,11 @@ TEST_F(service_api_test, explain_insert) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [result, error] = decode_explain(res->body_);
+        auto [result, id, version, error] = decode_explain(res->body_);
         ASSERT_FALSE(result.empty());
+        EXPECT_EQ(sql_proto_explain_format_id, id);
+        EXPECT_EQ(sql_proto_explain_format_version, version);
+
         LOG(INFO) << result;
     }
 }
@@ -1014,8 +1018,10 @@ TEST_F(service_api_test, explain_query) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [result, error] = decode_explain(res->body_);
+        auto [result, id, version, error] = decode_explain(res->body_);
         ASSERT_FALSE(result.empty());
+        EXPECT_EQ(sql_proto_explain_format_id, id);
+        EXPECT_EQ(sql_proto_explain_format_version, version);
         LOG(INFO) << result;
     }
 }
@@ -1033,8 +1039,9 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
         ASSERT_TRUE(st);
         ASSERT_NE(response_code::success, res->code_);
 
-        auto [result, error] = decode_explain(res->body_);
+        auto [result, id, version, error] = decode_explain(res->body_);
         ASSERT_TRUE(result.empty());
+
         ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
         LOG(INFO) << error.message_;
@@ -1061,7 +1068,7 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::application_error, res->code_);
 
-        auto [explained, error] = decode_explain(res->body_);
+        auto [explained, id, version, error] = decode_explain(res->body_);
         ASSERT_TRUE(explained.empty());
         ASSERT_EQ(sql::status::Status::ERR_UNRESOLVED_HOST_VARIABLE, error.status_);
         ASSERT_FALSE(error.message_.empty());

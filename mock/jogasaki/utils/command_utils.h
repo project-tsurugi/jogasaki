@@ -468,20 +468,20 @@ inline std::string encode_explain(std::uint64_t stmt_handle, std::vector<paramet
     return s;
 }
 
-inline std::pair<std::string, error> decode_explain(std::string_view res) {
+inline std::tuple<std::string, std::string, std::size_t, error> decode_explain(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
     if (! resp.has_explain())  {
         LOG(ERROR) << "**** missing explain **** ";
         if (utils_raise_exception_on_error) std::abort();
-        return {{}, {}};
+        return {{}, {}, {}, {}};
     }
     auto& explain = resp.explain();
     if (explain.has_error()) {
         auto& er = explain.error();
-        return {{}, {er.status(), er.detail()}};
+        return {{}, {}, {}, {er.status(), er.detail()}};
     }
-    return {explain.success().contents(), {}};
+    return {explain.success().contents(), explain.success().format_id(), explain.success().format_version(), {}};
 }
 
 inline std::string encode_describe_table(std::string_view name) {

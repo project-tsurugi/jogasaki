@@ -481,7 +481,7 @@ inline std::pair<std::string, error> decode_explain(std::string_view res) {
         auto& er = explain.error();
         return {{}, {er.status(), er.detail()}};
     }
-    return {explain.output(), {}};
+    return {explain.success().contents(), {}};
 }
 
 inline std::string encode_describe_table(std::string_view name) {

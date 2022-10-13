@@ -24,6 +24,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
+#include <jogasaki/constants.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/api/transaction_handle.h>
@@ -212,13 +213,19 @@ template<>
 inline void success<sql::response::Explain>(tateyama::api::server::response& res, std::string output) {  //NOLINT(performance-unnecessary-value-param)
     sql::response::Explain explain{};
     sql::response::Response r{};
-
-    explain.set_allocated_output(&output);
+    sql::response::Explain::Success success{};
+    explain.set_allocated_success(&success);
+    success.set_format_version(sql_proto_explain_format_version);
+    std::string id{sql_proto_explain_format_id};
+    success.set_allocated_format_id(&id);
+    success.set_allocated_contents(&output);
     r.set_allocated_explain(&explain);
     res.code(response_code::success);
     reply(res, r);
     r.release_explain();
-    explain.release_output();
+    success.release_format_id();
+    success.release_contents();
+    explain.release_success();
 }
 
 inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::data const& type) {

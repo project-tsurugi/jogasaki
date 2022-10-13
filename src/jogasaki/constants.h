@@ -73,4 +73,14 @@ constexpr std::size_t dumped_decimal_default_scale = 5;
  * @brief serialized storage metadata version
  */
 constexpr std::size_t metadata_format_version = 1;
+
+/**
+ * @brief format id of the explain response
+ */
+constexpr std::string_view sql_proto_explain_format_id{"jogasaki-statement.json"};
+
+/**
+ * @brief format version of the explain response
+ */
+constexpr std::size_t sql_proto_explain_format_version = 1;
 }

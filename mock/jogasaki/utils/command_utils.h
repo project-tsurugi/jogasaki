@@ -44,6 +44,7 @@ using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
 std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
+struct column_info;
 
 struct colinfo {
     colinfo(std::string name, sql::common::AtomType type, bool nullable) :
@@ -291,6 +292,18 @@ inline std::string encode_execute_query(std::uint64_t tx_handle, std::string_vie
     return encode_execute_statement_or_query<sql::request::ExecuteQuery>(tx_handle, sql);
 }
 
+template <class T>
+std::vector<colinfo> create_colinfo(T& meta) {
+    std::vector<colinfo> cols{};
+    std::size_t sz = meta.columns_size();
+    cols.reserve(sz);
+    for(std::size_t i=0; i < sz; ++i) {
+        auto& c = meta.columns(i);
+        cols.emplace_back(c.name(), c.atom_type(), true);  // all nullable
+    }
+    return cols;
+}
+
 inline std::pair<std::string, std::vector<colinfo>> decode_execute_query(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
@@ -305,12 +318,7 @@ inline std::pair<std::string, std::vector<colinfo>> decode_execute_query(std::st
         if (utils_raise_exception_on_error) std::abort();
     }
     auto meta = eq.record_meta();
-    std::size_t sz = meta.columns_size();
-    std::vector<colinfo> cols{};
-    for(std::size_t i=0; i < sz; ++i) {
-        auto& c = meta.columns(i);
-        cols.emplace_back(c.name(), c.atom_type(), true);  // all nullable
-    }
+    auto cols = create_colinfo(meta);
     return {name, std::move(cols)};
 }
 
@@ -468,20 +476,28 @@ inline std::string encode_explain(std::uint64_t stmt_handle, std::vector<paramet
     return s;
 }
 
-inline std::tuple<std::string, std::string, std::size_t, error> decode_explain(std::string_view res) {
+
+inline std::tuple<std::string, std::string, std::size_t, std::vector<colinfo>, error> decode_explain(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
     if (! resp.has_explain())  {
         LOG(ERROR) << "**** missing explain **** ";
         if (utils_raise_exception_on_error) std::abort();
-        return {{}, {}, {}, {}};
+        return {{}, {}, {}, {}, {}};
     }
     auto& explain = resp.explain();
     if (explain.has_error()) {
         auto& er = explain.error();
-        return {{}, {}, {}, {er.status(), er.detail()}};
+        return {{}, {}, {}, {}, {er.status(), er.detail()}};
     }
-    return {explain.success().contents(), explain.success().format_id(), explain.success().format_version(), {}};
+    auto cols = create_colinfo(explain.success());
+    return {
+        explain.success().contents(),
+        explain.success().format_id(),
+        explain.success().format_version(),
+        std::move(cols),
+        {}
+    };
 }
 
 inline std::string encode_describe_table(std::string_view name) {

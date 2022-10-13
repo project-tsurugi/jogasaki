@@ -885,7 +885,7 @@ private:
             return false;
         }
 
-        auto [explained, id, version, err] = jogasaki::utils::decode_explain(res->body_);
+        auto [explained, id, version, cols, err] = jogasaki::utils::decode_explain(res->body_);
         if (explained.empty()) {
             std::cerr << "explain error: " << err.status_ << " " << err.message_ << std::endl;
             return false;

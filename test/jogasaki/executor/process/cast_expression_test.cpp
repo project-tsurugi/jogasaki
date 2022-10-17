@@ -341,15 +341,16 @@ TEST_F(cast_expression_test, string_to_decimal) {
 
 TEST_F(cast_expression_test, string_to_decimal_min_max) {
     evaluator_context ctx{};
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("170141183460469231731687303715884105727", ctx));
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0x8000000000000000UL, 0, 0}}), details::to_decimal("170141183460469231731687303715884105728", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("340282366920938463463374607431768211455", ctx));
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("-170141183460469231731687303715884105727", ctx));
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0x8000000000000000UL, 0, 0}}), details::to_decimal("-170141183460469231731687303715884105728", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("-340282366920938463463374607431768211455", ctx));
-
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_decimal("340282366920938463463374607431768211456", ctx));
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_decimal("-340282366920938463463374607431768211456", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_decimal_large) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, 100}}), details::to_decimal("1E100", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 1, 100}}), details::to_decimal("-1E100", ctx));
 }
 }
 

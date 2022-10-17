@@ -40,10 +40,8 @@
 
 namespace jogasaki::executor::process::impl::expression::details {
 
-using any = jogasaki::data::any;
-
-inline any return_unsupported() {
-    return any{std::in_place_type<error>, error(error_kind::unsupported)};
+inline jogasaki::data::any return_unsupported() {
+    return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
 inline std::string_view trim_spaces(std::string_view src) {
@@ -57,7 +55,7 @@ inline std::string_view trim_spaces(std::string_view src) {
 }
 
 inline bool is_prefix_of_case_insensitive(std::string_view a, std::string_view b) {
-    return a.size() > 0 && a.size() <= b.size() &&
+    return ! a.empty() && a.size() <= b.size() &&
         std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
             return std::tolower(l) == std::tolower(r);
         });

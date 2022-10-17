@@ -22,7 +22,6 @@
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/walk.h>
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/string_builder.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -41,9 +40,7 @@
 
 namespace jogasaki::executor::process::impl::expression::details {
 
-using jogasaki::data::any;
 using takatori::decimal::triple;
-using takatori::util::fail;
 using takatori::util::string_builder;
 
 template <class T>

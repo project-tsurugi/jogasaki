@@ -52,7 +52,6 @@ public:
     /**
      * @brief creates a new instance.
      * @param code the diagnostic code
-     * @param location the diagnostic location
      */
     diagnostic_record(code_type code) noexcept :
         diagnostic_record(std::move(code), {})

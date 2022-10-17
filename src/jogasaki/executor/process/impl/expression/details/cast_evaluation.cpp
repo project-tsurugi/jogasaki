@@ -62,7 +62,11 @@ T to(decimal::Decimal const& d) {
     std::abort();
 }
 
-template <class T>
+/**
+ * @tparam T type used to validate the value range
+ * @tparam E type used to store in any
+ */
+template <class T, class E = T>
 any to_int(std::string_view s, evaluator_context& ctx) {
     auto a = to_decimal(s, ctx);
     if(! a) {
@@ -88,7 +92,7 @@ any to_int(std::string_view s, evaluator_context& ctx) {
     if(dd < int_min<T> || int_max<T> < dd) {
         return any{std::in_place_type<error>, error(error_kind::overflow)};
     }
-    return any{std::in_place_type<T>, to<T>(dd)};
+    return any{std::in_place_type<E>, to<E>(dd)};
 }
 
 // string to numeric conversion should be done via decimal,
@@ -140,14 +144,12 @@ any to_boolean(std::string_view s, evaluator_context& ctx) {
     return any{std::in_place_type<runtime_t<meta::field_type_kind::boolean>>, value};
 }
 
-
-
 any to_int1(std::string_view s, evaluator_context& ctx) {
-    return to_int<std::int32_t>(s, ctx);
+    return to_int<std::int8_t, std::int32_t>(s, ctx);
 }
 
 any to_int2(std::string_view s, evaluator_context& ctx) {
-    return to_int<std::int32_t>(s, ctx);
+    return to_int<std::int16_t, std::int32_t>(s, ctx);
 }
 
 any to_int4(std::string_view s, evaluator_context& ctx) {

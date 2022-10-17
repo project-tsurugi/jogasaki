@@ -253,10 +253,36 @@ TEST_F(cast_expression_test, string_to_int) {
     EXPECT_EQ((any{std::in_place_type<std::int64_t>, -1}), details::to_int8("-1", ctx));
 }
 
-TEST_F(cast_expression_test, string_to_int_min_max) {
+TEST_F(cast_expression_test, string_to_int1_min_max) {
     evaluator_context ctx{};
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 127}), details::to_int1("127", ctx));
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 128}), details::to_int1("128", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 127}), details::to_int1("+127", ctx));  // 2^7-1
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, -128}), details::to_int1("-128", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int1("128", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int1("-129", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_int2_min_max) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 32767}), details::to_int2("+32767", ctx)); // 2^15-1
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, -32768}), details::to_int2("-32768", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int2("32768", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int2("-32769", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_int4_min_max) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 2147483647}), details::to_int4("+2147483647", ctx));  // 2^31-1
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, -2147483648}), details::to_int4("-2147483648", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int4("2147483648", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int4("-2147483649", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_int8_min_max) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 9'223'372'036'854'775'807L}), details::to_int8("+9223372036854775807", ctx));  // 2^63-1
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, -9'223'372'036'854'775'807L-1}), details::to_int8("-9223372036854775808", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int8("9223372036854775808", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_int8("-9223372036854775809", ctx));
 }
 
 TEST_F(cast_expression_test, string_trim) {

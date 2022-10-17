@@ -352,5 +352,23 @@ TEST_F(cast_expression_test, string_to_decimal_large) {
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, 100}}), details::to_decimal("1E100", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 1, 100}}), details::to_decimal("-1E100", ctx));
 }
+
+TEST_F(cast_expression_test, string_to_float) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<float>, 1.0}), details::to_float4("1.0", ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 3.40282e+38}), details::to_float4("3.40282e+38", ctx));  // FLT_MAX
+    EXPECT_EQ((any{std::in_place_type<float>, 1.17550e-38}), details::to_float4("1.17550e-38", ctx));  // FLT_MIN is 1.17549e-38
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_float4("3.40283e+38", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_float4("1.17549e-38", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_double) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<double>, 1.0}), details::to_float8("1.0", ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 1.79769e+308}), details::to_float8("1.79769e+308", ctx)); // DBL_MAX
+    EXPECT_EQ((any{std::in_place_type<double>, 2.22508e-308}), details::to_float8("2.22508e-308", ctx)); // DBL_MIN is 2.22507e-308
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_float8("1.79770e+308", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_float8("2.22507e-308", ctx));
+}
 }
 

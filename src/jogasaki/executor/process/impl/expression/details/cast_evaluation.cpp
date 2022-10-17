@@ -95,28 +95,36 @@ any to_int(std::string_view s, evaluator_context& ctx) {
     return {std::in_place_type<E>, to<E>(dd)};
 }
 
-// string to numeric conversion should be done via decimal,
-// but in order to to support float representation outside decimal range such as 1E100, we use stof/stod for now TODO
 any to_float4(std::string_view s, evaluator_context& ctx) {
     (void) ctx;
+    auto a = to_decimal(s, ctx);
+    if(! a) {
+        return a;
+    }
+    decimal::Decimal d{a.to<triple>()};
     float value{};
     try {
-        // std::from_chars for float/double is not available until gcc 11
-        value = std::stof(std::string{s});
+        // std::from_chars is preferable, but it is not available for float/double until gcc 11
+        value = std::stof(d.to_sci());
     } catch (std::exception& e) {
-        return any{std::in_place_type<error>, error(error_kind::format_error)};
+        return any{std::in_place_type<error>, error(error_kind::overflow)};
     }
     return any{std::in_place_type<float>, value};
 }
 
 any to_float8(std::string_view s, evaluator_context& ctx) {
     (void) ctx;
+    auto a = to_decimal(s, ctx);
+    if(! a) {
+        return a;
+    }
+    decimal::Decimal d{a.to<triple>()};
     double value{};
     try {
-        // std::from_chars for float/double is not available until gcc 11
-        value = std::stod(std::string{s});
+        // std::from_chars is preferable, but it is not available for float/double until gcc 11
+        value = std::stod(d.to_sci());
     } catch (std::exception& e) {
-        return any{std::in_place_type<error>, error(error_kind::format_error)};
+        return any{std::in_place_type<error>, error(error_kind::overflow)};
     }
     return any{std::in_place_type<double>, value};
 }

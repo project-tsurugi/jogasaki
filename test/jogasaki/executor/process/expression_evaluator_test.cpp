@@ -63,6 +63,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 
 #include <jogasaki/test_utils/to_field_type_kind.h>
 
@@ -204,20 +205,23 @@ public:
         {
             set_values<In1, In2>(c1, c2, false, false);
             utils::checkpoint_holder cph{&resource_};
-            auto result = evaluator_(vars_, &resource_).to<out_type>();
+            evaluator_context c{};
+            auto result = evaluator_(c, vars_, &resource_).to<out_type>();
             ASSERT_EQ(exp, result);
         }
         {
             set_values<In1, In2>(c1, c2, true, false);
             utils::checkpoint_holder cph{&resource_};
-            auto result = evaluator_(vars_, &resource_);
+            evaluator_context c{};
+            auto result = evaluator_(c, vars_, &resource_);
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
         }
         {
             set_values<In1, In2>(c1, c2, false, true);
             utils::checkpoint_holder cph{&resource_};
-            auto result = evaluator_(vars_, &resource_);
+            evaluator_context c{};
+            auto result = evaluator_(c, vars_, &resource_);
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
         }
@@ -339,7 +343,8 @@ TEST_F(expression_evaluator_test, binary_expression) {
 
     set_values<t::int8, t::int8>(10, 20, false, false);
 
-    auto result = evaluator_(vars_).to<std::int64_t>();
+    evaluator_context c{};
+    auto result = evaluator_(c, vars_).to<std::int64_t>();
     ASSERT_EQ(-40, result);
 }
 
@@ -364,7 +369,8 @@ TEST_F(expression_evaluator_test, unary_expression) {
     expression::evaluator ev{expr, c_info};
 
     variable_table vars{};
-    auto result = ev(vars).to<std::int64_t>();
+    evaluator_context c{};
+    auto result = ev(c, vars).to<std::int64_t>();
     ASSERT_EQ(-30, result);
 }
 
@@ -380,7 +386,8 @@ TEST_F(expression_evaluator_test, conditional_not) {
     expression::evaluator ev{expr, c_info};
 
     variable_table vars{};
-    ASSERT_TRUE(ev(vars).to<bool>());
+    evaluator_context c{};
+    ASSERT_TRUE(ev(c, vars).to<bool>());
 }
 
 TEST_F(expression_evaluator_test, text_length) {
@@ -416,8 +423,8 @@ TEST_F(expression_evaluator_test, text_length) {
     ref.set_null(meta->nullity_offset(0), false);
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
-    auto result = ev(vars, &resource).to<std::int32_t>();
-    ASSERT_EQ(30, ev(vars, &resource).to<std::int32_t>());
+    evaluator_context c{};
+    ASSERT_EQ(30, ev(c, vars, &resource).to<std::int32_t>());
 }
 
 template<class T>
@@ -482,7 +489,8 @@ TEST_F(expression_evaluator_test, arithmetic_error) {
     {
         set_values<t::float8, t::float8>(10.0, 0.0, false, false);
         utils::checkpoint_holder cph{&resource_};
-        auto result = evaluator_(vars_, &resource_);
+        evaluator_context c{};
+        auto result = evaluator_(c, vars_, &resource_);
         ASSERT_FALSE(result);
         ASSERT_FALSE(result.empty());
         ASSERT_TRUE(result.error());

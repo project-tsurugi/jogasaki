@@ -351,4 +351,57 @@ TEST_F(load_test, decimals_with_indefinite_precscale) {
         )), result[0]);
     }
 }
+
+TEST_F(load_test, cast_from_string) {
+    execute_statement("create table TT (C0 int primary key, C1 bigint, C2 float, C3 double, C4 decimal(5,3))");
+    execute_statement("create table SRC (C0 VARCHAR(10), C1 VARCHAR(10), C2 VARCHAR(10), C3 VARCHAR(10), C4 VARCHAR(10))");
+    execute_statement("INSERT INTO SRC (C0, C1, C2, C3, C4) VALUES ('1', '10', '100.0', '1000.0', '11.111')");
+    execute_statement("INSERT INTO SRC (C0, C1, C2, C3, C4) VALUES ('2', '20', '200.0', '2000.0', '22.222')");
+
+    std::vector<std::string> files{};
+    test_dump("select C0, C1, C2, C3, C4 from SRC", files);
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character},
+        {"p1", api::field_type_kind::character},
+        {"p2", api::field_type_kind::character},
+        {"p3", api::field_type_kind::character},
+        {"p4", api::field_type_kind::character},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_reference_column("p0", "C0");
+    ps->set_reference_column("p1", "C1");
+    ps->set_reference_column("p2", "C2");
+    ps->set_reference_column("p3", "C3");
+    ps->set_reference_column("p4", "C4");
+
+    test_load(files, "INSERT INTO TT (C0, C1, C2, C3, C4) VALUES (CAST(:p0 AS INT), CAST(:p1 AS BIGINT), CAST(:p2 AS FLOAT), CAST(:p3 AS DOUBLE), CAST(:p4 AS DECIMAL(5,3)))", variables, std::move(ps));
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TT ORDER BY C0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(
+            std::tuple{
+                meta::field_type{meta::field_enum_tag<kind::int4>},
+                meta::field_type{meta::field_enum_tag<kind::int8>},
+                meta::field_type{meta::field_enum_tag<kind::float4>},
+                meta::field_type{meta::field_enum_tag<kind::float8>},
+                meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
+            },
+            { 1, 10, 100.0, 1000.0, decimal_v{1, 0, 11111, -3} /* 11.111 */ }
+        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(
+            std::tuple{
+                meta::field_type{meta::field_enum_tag<kind::int4>},
+                meta::field_type{meta::field_enum_tag<kind::int8>},
+                meta::field_type{meta::field_enum_tag<kind::float4>},
+                meta::field_type{meta::field_enum_tag<kind::float8>},
+                meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
+            },
+            { 2, 20, 200.0, 2000.0, decimal_v{1, 0, 22222, -3} /* 22.222 */ }
+        )), result[1]);
+    }
+}
+
 }

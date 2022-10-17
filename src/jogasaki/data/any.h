@@ -161,6 +161,12 @@ inline bool operator!=(any const& a, any const& b) noexcept {
     return !(a == b);
 }
 
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output stream
+ */
 inline std::ostream& operator<<(std::ostream& out, any const& value) {
     out << "any(index:" << value.type_index() <<", ";
     switch (value.type_index()) {

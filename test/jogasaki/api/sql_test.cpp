@@ -417,4 +417,24 @@ TEST_F(sql_test, DISABLED_join_condition_on_clause) {
     }
 }
 
+TEST_F(sql_test, cast) {
+    execute_statement("create table TT (C0 int primary key, C1 bigint, C2 float, C3 double)");
+    execute_statement("INSERT INTO TT (C0, C1, C2, C3) VALUES (CAST('1' AS INT), CAST('10' AS BIGINT), CAST('100.0' AS FLOAT), CAST('1000.0' AS DOUBLE))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1, C2, C3 FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+    }
+}
+
+TEST_F(sql_test, cast_failure) {
+    execute_statement("create table TT (C0 int primary key)");
+    execute_statement("INSERT INTO TT (C0) VALUES (CAST('BADVALUE' AS INT))", status::err_expression_evaluation_failure);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM TT", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

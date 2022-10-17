@@ -53,6 +53,7 @@
 #include <takatori/scalar/binary_operator.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
+#include <takatori/decimal/triple.h>
 
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/checkpoint_holder.h>
@@ -106,6 +107,8 @@ using unary = takatori::scalar::unary;
 using unary_operator = takatori::scalar::unary_operator;
 using immediate = takatori::scalar::immediate;
 using compiled_info = yugawara::compiled_info;
+
+using takatori::decimal::triple;
 
 class cast_expression_test : public test_root {
 public:
@@ -308,6 +311,45 @@ TEST_F(cast_expression_test, is_prefix) {
 
     EXPECT_FALSE(details::is_prefix_of_case_insensitive("TRUEX", "true"));
     EXPECT_FALSE(details::is_prefix_of_case_insensitive("", "true"));
+}
+
+TEST_F(cast_expression_test, bad_format) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), details::to_int4("++1", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), details::to_int4("", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_boolean) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<std::int8_t>, 1}), details::to_boolean("true", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int8_t>, 1}), details::to_boolean("T", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int8_t>, 0}), details::to_boolean("false", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int8_t>, 0}), details::to_boolean("F", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), details::to_boolean("", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), details::to_boolean("wrong text", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_decimal) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<triple>, 1}), details::to_decimal("1", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, -1}), details::to_decimal("-1", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, 0}), details::to_decimal("+0", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, 0}), details::to_decimal("-0", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, -2}}), details::to_decimal("1.23", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 1234567890, -5}}), details::to_decimal("-12345.67890", ctx));
+}
+
+TEST_F(cast_expression_test, string_to_decimal_min_max) {
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("170141183460469231731687303715884105727", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0x8000000000000000UL, 0, 0}}), details::to_decimal("170141183460469231731687303715884105728", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("340282366920938463463374607431768211455", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("-170141183460469231731687303715884105727", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0x8000000000000000UL, 0, 0}}), details::to_decimal("-170141183460469231731687303715884105728", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}}), details::to_decimal("-340282366920938463463374607431768211455", ctx));
+
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_decimal("340282366920938463463374607431768211456", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::overflow}), details::to_decimal("-340282366920938463463374607431768211456", ctx));
 }
 }
 

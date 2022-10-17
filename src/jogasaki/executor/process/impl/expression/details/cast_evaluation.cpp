@@ -90,9 +90,9 @@ any to_int(std::string_view s, evaluator_context& ctx) {
         }
     }
     if(dd < int_min<T> || int_max<T> < dd) {
-        return any{std::in_place_type<error>, error(error_kind::overflow)};
+        return {std::in_place_type<error>, error(error_kind::overflow)};
     }
-    return any{std::in_place_type<E>, to<E>(dd)};
+    return {std::in_place_type<E>, to<E>(dd)};
 }
 
 // string to numeric conversion should be done via decimal,
@@ -104,7 +104,7 @@ any to_float4(std::string_view s, evaluator_context& ctx) {
         // std::from_chars for float/double is not available until gcc 11
         value = std::stof(std::string{s});
     } catch (std::exception& e) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+        return any{std::in_place_type<error>, error(error_kind::format_error)};
     }
     return any{std::in_place_type<float>, value};
 }
@@ -116,17 +116,23 @@ any to_float8(std::string_view s, evaluator_context& ctx) {
         // std::from_chars for float/double is not available until gcc 11
         value = std::stod(std::string{s});
     } catch (std::exception& e) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+        return any{std::in_place_type<error>, error(error_kind::format_error)};
     }
     return any{std::in_place_type<double>, value};
 }
 
 any to_decimal(std::string_view s, evaluator_context& ctx) {
     (void) ctx;
-    decimal::context.clear_status();
+    decimal::context = decimal::IEEEContext(128);
     decimal::Decimal value{std::string{s}};
-    if((decimal::context.status() & MPD_Inexact) != 0) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
+        return any{std::in_place_type<error>, error(error_kind::format_error)};
+    }
+
+    auto tri = value.as_uint128_triple();
+    if(tri.tag != MPD_TRIPLE_NORMAL) {
+        // out of the range that triple can handle
+        return any{std::in_place_type<error>, error(error_kind::overflow)};
     }
     return any{std::in_place_type<triple>, value};
 }

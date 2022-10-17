@@ -51,6 +51,7 @@ any conduct_cast(
 );
 
 // conversion from string
+any to_boolean(std::string_view s, evaluator_context& ctx);
 any to_int1(std::string_view s, evaluator_context& ctx);
 any to_int2(std::string_view s, evaluator_context& ctx);
 any to_int4(std::string_view s, evaluator_context& ctx);

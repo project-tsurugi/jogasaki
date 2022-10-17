@@ -467,4 +467,40 @@ TEST_F(host_variables_test, cast_test) {
     }
 }
 
+TEST_F(host_variables_test, cast_decimals) {
+    execute_statement("create table TT (C0 decimal(5,3) primary key, C1 decimal(4,1), C2 decimal(10))");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character},
+        {"p1", api::field_type_kind::character},
+        {"p2", api::field_type_kind::character},
+        {"p3", api::field_type_kind::character},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_character("p0", "12.345");
+    ps->set_character("p1", "123.4");
+    ps->set_character("p2", "1234567890");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (CAST(:p0 AS DECIMAL(*,*)), CAST(:p1 AS DECIMAL(*,*)), CAST(:p2 AS DECIMAL(*,*)))", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1, C2 FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+        auto dec_4_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(4, 1)};
+        auto dec_10 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 0)};
+        auto v12_345 = decimal_v{1, 0, 12345, -3};
+        auto v123_4 = decimal_v{1, 0, 1234, -1};
+        auto v1234567890 = decimal_v{1, 0, 1234567890, 0};
+        EXPECT_EQ((mock::typed_nullable_record<
+            kind::decimal, kind::decimal, kind::decimal
+        >(
+            std::tuple{
+                dec_5_3, dec_4_1, dec_10
+            },
+            {
+                v12_345, v123_4, v1234567890
+            }
+        )), result[0]);
+    }
+}
+
 }

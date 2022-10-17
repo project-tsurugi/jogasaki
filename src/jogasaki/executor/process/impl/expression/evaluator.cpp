@@ -523,6 +523,36 @@ any to<double>(std::string_view s) {
     return any{std::in_place_type<double>, value};
 }
 
+template <>
+any to<triple>(std::string_view s) {
+    decimal::context.clear_status();
+    decimal::Decimal value{std::string{s}};
+    if((decimal::context.status() & MPD_Inexact) != 0) {
+        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    return any{std::in_place_type<triple>, value};
+}
+
+bool equals_case_insensitive(std::string_view a, std::string_view b) {
+    return a.size() == b.size() &&
+        std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
+            return std::tolower(l) == std::tolower(r);
+        });
+}
+
+template <>
+any to<runtime_t<meta::field_type_kind::boolean>>(std::string_view s) {
+    runtime_t<meta::field_type_kind::boolean> value{};
+    if(equals_case_insensitive(s, "TRUE")) {
+        value = 1;
+    } else if (equals_case_insensitive(s, "FALSE")) {
+        value = 0;
+    } else {
+        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::boolean>>, value};
+}
+
 any from_character(
     ::takatori::type::data const& tgt,
     any const& a
@@ -531,14 +561,14 @@ any from_character(
     auto txt = a.to<runtime_t<meta::field_type_kind::character>>();
     auto sv = static_cast<std::string_view>(txt);
     switch(tgt.kind()) {
-        case k::boolean: break;
+        case k::boolean: return to<runtime_t<meta::field_type_kind::boolean>>(sv);
         case k::int1: return to<runtime_t<meta::field_type_kind::int1>>(sv);
         case k::int2: return to<runtime_t<meta::field_type_kind::int2>>(sv);
         case k::int4: return to<runtime_t<meta::field_type_kind::int4>>(sv);
         case k::int8: return to<runtime_t<meta::field_type_kind::int8>>(sv);
         case k::float4: return to<runtime_t<meta::field_type_kind::float4>>(sv);
         case k::float8: return to<runtime_t<meta::field_type_kind::float8>>(sv);
-        case k::decimal: break;
+        case k::decimal: return to<runtime_t<meta::field_type_kind::decimal>>(sv);
         case k::character: return a;
         case k::octet: break;
         case k::bit: break;
@@ -562,8 +592,6 @@ any conduct_cast(
     ::takatori::type::data const& tgt,
     any const& a
     ) {
-    (void) tgt;
-    (void) a;
     using k = takatori::type::type_kind;
     switch(src.kind()) {
         case k::boolean: break;

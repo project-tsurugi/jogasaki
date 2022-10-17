@@ -161,5 +161,36 @@ TEST_F(any_test, bool) {
         ASSERT_FALSE(a.to<bool>());
     }
 }
+
+TEST_F(any_test, comparison) {
+    {
+        any a{};
+        any b{};
+        ASSERT_EQ(a, b);
+    }
+    {
+        any a{std::in_place_type<std::int32_t>, 1};
+        any b{std::in_place_type<std::int32_t>, 1};
+        ASSERT_EQ(a, b);
+    }
+    {
+        any a{std::in_place_type<std::int32_t>, 1};
+        any b{std::in_place_type<std::int64_t>, 1};
+        ASSERT_NE(a, b);
+    }
+    {
+        any a{};
+        any b{std::in_place_type<std::int64_t>, 1};
+        ASSERT_NE(a, b);
+    }
+}
+
+TEST_F(any_test, print) {
+    std::cerr << "empty " << any{} << std::endl;
+    std::cerr << "1:int32_t " << any{std::in_place_type<std::int32_t>, 1} << std::endl;
+    std::cerr << "1:int64_t " << any{std::in_place_type<std::int64_t>, 1} << std::endl;
+    std::cerr << "1:float " << any{std::in_place_type<float>, 1} << std::endl;
+    std::cerr << "1:double " << any{std::in_place_type<double>, 1} << std::endl;
+}
 }
 

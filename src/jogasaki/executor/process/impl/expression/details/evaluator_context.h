@@ -26,7 +26,7 @@ namespace jogasaki::executor::process::impl::expression {
 /**
  * @brief error kind
  */
-enum class error_kind : std::size_t {
+enum class loss_policy : std::size_t {
     undefined = 0,
     arithmetic_error,
     overflow,
@@ -64,26 +64,20 @@ inline std::ostream& operator<<(std::ostream& out, error_kind value) {
     return out << to_string_view(value);
 }
 
-/// @brief a set of error_kind.
-using error_kind_set = takatori::util::enum_set<
-    error_kind,
-    error_kind::undefined,
-    error_kind::unsupported>;
-
 /**
  * @brief class representing evaluation error
  */
-class error {
+class evaluator_context {
 public:
     /**
      * @brief create undefined object
      */
-    error() = default;
+    evaluator_context() = default;
 
     /**
      * @brief create new object
      */
-    explicit error(error_kind kind) noexcept;
+    explicit evaluator_context(error_kind kind) noexcept;
 
     /**
      * @brief accessor for error kind

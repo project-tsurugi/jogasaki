@@ -64,6 +64,9 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 
+#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
+#include <jogasaki/executor/process/impl/expression/details/common.h>
+
 #include <jogasaki/test_utils/to_field_type_kind.h>
 
 namespace jogasaki::executor::process::impl::expression {
@@ -227,14 +230,6 @@ public:
     void test_compare();
 };
 
-TEST_F(cast_expression_test, add_numeric) {
-    test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::float4, t::float4, t::float8>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::add, 10, 20, 30);
-}
-
 inline immediate constant(int v, type::data&& type = type::int8()) {
     return immediate { value::int8(v), std::move(type) };
 }
@@ -243,253 +238,44 @@ inline immediate constant_bool(bool v, type::data&& type = type::boolean()) {
     return immediate { value::boolean(v), std::move(type) };
 }
 
-TEST_F(cast_expression_test, binary_expression) {
-    auto&& c1 = f_.stream_variable("c1");
-    auto&& c2 = f_.stream_variable("c2");
+TEST_F(cast_expression_test, string_to_int) {
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int1("1"));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int2("1"));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int4("1"));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), details::to_int8("1"));
 
-    binary expr {
-        binary_operator::subtract,
-        varref(c1),
-        binary {
-            binary_operator::add,
-            varref(c2),
-            constant(30)
-        }
-    };
-    expressions().bind(expr, t::int8 {});
-    expressions().bind(expr.left(), t::int8 {});
-    expressions().bind(expr.right(), t::int8 {});
-
-    auto& r = static_cast<binary&>(expr.right());
-    expressions().bind(r.left(), t::int8 {});
-    expressions().bind(r.right(), t::int8 {});
-
-    compiled_info c_info{
-        expressions_,
-        variables_
-    };
-    evaluator_ = expression::evaluator{expr, c_info};
-
-    meta_ = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::int8>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{2}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-        {c2, 1},
-    };
-
-    info_ = variable_table_info{m, meta_};
-    vars_ = variable_table{info_};
-
-    set_values<t::int8, t::int8>(10, 20, false, false);
-
-    auto result = evaluator_(vars_).to<std::int64_t>();
-    ASSERT_EQ(-40, result);
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), details::to_int8("+1"));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, -1}), details::to_int8("-1"));
 }
 
-TEST_F(cast_expression_test, unary_expression) {
-    unary expr {
-        unary_operator::sign_inversion,
-        unary {
-            unary_operator::plus,
-            constant(30)
-        }
-    };
-    expressions().bind(expr, t::int8 {});
-    expressions().bind(expr.operand(), t::int8 {});
-
-    auto& o = static_cast<unary&>(expr.operand());
-    expressions().bind(o.operand(), t::int8 {});
-
-    compiled_info c_info{
-        expressions_,
-        variables_
-    };
-    expression::evaluator ev{expr, c_info};
-
-    variable_table vars{};
-    auto result = ev(vars).to<std::int64_t>();
-    ASSERT_EQ(-30, result);
+TEST_F(cast_expression_test, string_to_int_min_max) {
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 127}), details::to_int1("127"));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 128}), details::to_int1("128"));
 }
 
-TEST_F(cast_expression_test, conditional_not) {
-    unary expr {
-        unary_operator::conditional_not,
-        constant_bool(false)
-    };
-    expressions().bind(expr, t::boolean {});
-    expressions().bind(expr.operand(), t::boolean {});
-
-    compiled_info c_info{ expressions_, variables_ };
-    expression::evaluator ev{expr, c_info};
-
-    variable_table vars{};
-    ASSERT_TRUE(ev(vars).to<bool>());
+TEST_F(cast_expression_test, string_trim) {
+    EXPECT_EQ(std::string_view{}, details::trim_spaces(""));
+    EXPECT_EQ("ABC", details::trim_spaces(" ABC "));
+    EXPECT_EQ("A  B", details::trim_spaces(" A  B "));
+    EXPECT_EQ("ABC", details::trim_spaces("  ABC"));
+    EXPECT_EQ("ABC", details::trim_spaces("ABC  "));
+    EXPECT_EQ("ABC  ABC", details::trim_spaces("ABC  ABC "));
+    EXPECT_EQ("ABC  ABC", details::trim_spaces(" ABC  ABC"));
 }
 
-TEST_F(cast_expression_test, text_length) {
-    factory f;
-    auto&& c1 = f.stream_variable("c1");
+TEST_F(cast_expression_test, is_prefix) {
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("T", "true"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("TR", "true"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("TRU", "true"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("TRUE", "true"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("F", "false"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("FA", "false"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("FAL", "false"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("FALS", "false"));
+    EXPECT_TRUE(details::is_prefix_of_case_insensitive("FALSE", "false"));
 
-    unary expr {
-        unary_operator::length,
-        varref(c1)
-    };
-    expressions().bind(expr, t::int4 {});
-    expressions().bind(expr.operand(), t::character{type::varying, 200});
-
-    maybe_shared_ptr<meta::record_meta> meta = std::make_shared<meta::record_meta>(
-        std::vector<meta::field_type>{
-            meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
-        },
-        boost::dynamic_bitset<std::uint64_t>{1}.flip()
-    );
-
-    std::unordered_map<variable, std::size_t> m{
-        {c1, 0},
-    };
-
-    variable_table_info info{m, meta};
-    variable_table vars{info};
-
-    memory::page_pool pool{};
-    memory::lifo_paged_memory_resource resource{&pool};
-    auto cp = resource.get_checkpoint();
-    auto&& ref = vars.store().ref();
-    ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
-    ref.set_null(meta->nullity_offset(0), false);
-    compiled_info c_info{ expressions_, variables_ };
-    expression::evaluator ev{expr, c_info};
-    auto result = ev(vars, &resource).to<std::int32_t>();
-    ASSERT_EQ(30, ev(vars, &resource).to<std::int32_t>());
-}
-
-template<class T>
-void cast_expression_test::test_compare() {
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, 1, 2, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, 1, 1, false);
-
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 1, 2, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 1, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 2, 1, false);
-
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 2, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 1, 1, false);
-
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, 2, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, 1, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 1, 2, false);
-
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, 1, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, 1, 2, false);
-
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 1, false);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 2, true);
-}
-
-TEST_F(cast_expression_test, compare_numeric) {
-    {
-        SCOPED_TRACE("int4");
-        test_compare<t::int4>();
-    }
-    {
-        SCOPED_TRACE("int8");
-        test_compare<t::int8>();
-    }
-    {
-        SCOPED_TRACE("float4");
-        test_compare<t::float4>();
-    }
-    {
-        SCOPED_TRACE("float8");
-        test_compare<t::float8>();
-    }
-    {
-        SCOPED_TRACE("decimal");
-        test_compare<t::decimal>();
-    }
-}
-
-TEST_F(cast_expression_test, conditional_and_or) {
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, 1, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, 0, false);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 0, 1, false);
-
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, 1, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, 0, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 1, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 0, false);
-}
-
-TEST_F(cast_expression_test, arithmetic_error) {
-    auto expr = create_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::divide);
-    {
-        set_values<t::float8, t::float8>(10.0, 0.0, false, false);
-        utils::checkpoint_holder cph{&resource_};
-        auto result = evaluator_(vars_, &resource_);
-        ASSERT_FALSE(result);
-        ASSERT_FALSE(result.empty());
-        ASSERT_TRUE(result.error());
-        auto err = result.to<error>();
-        ASSERT_EQ(error_kind::arithmetic_error, err.kind());
-    }
-}
-
-TEST_F(cast_expression_test, to_triple) {
-    EXPECT_EQ(0, details::triple_from_int(0));
-    auto i64max = std::numeric_limits<std::int64_t>::max();
-    EXPECT_EQ(i64max, details::triple_from_int(i64max));
-    auto i64min = std::numeric_limits<std::int64_t>::min();
-    EXPECT_EQ(i64min, details::triple_from_int(i64min));
-}
-
-takatori::decimal::triple from_double(double x) {
-    decimal::Decimal d{std::to_string(x)};
-    return takatori::decimal::triple{d.as_uint128_triple()};
-}
-
-TEST_F(cast_expression_test, triple_to_double) {
-    using takatori::decimal::triple;
-    {
-        // boundary values for decimal with max precision
-        auto v0 = triple{-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, 0}; // -999....9 (38 digits)
-        auto v1 = triple{-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, 0}; // -999....8 (38 digits)
-        auto v2 = triple{0, 0, 0, 0}; // 0
-        auto v3 = triple{1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, 0}; // +999....8 (38 digits)
-        auto v4 = triple{1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, 0}; // +999....9 (38 digits)
-
-        // expected values are approximate
-        EXPECT_DOUBLE_EQ(-9.9999999999999998E37, details::triple_to_double(v0));
-        EXPECT_DOUBLE_EQ(-9.9999999999999998E37, details::triple_to_double(v1));
-        EXPECT_DOUBLE_EQ(0, details::triple_to_double(v2));
-        EXPECT_DOUBLE_EQ(+9.9999999999999998E37, details::triple_to_double(v3));
-        EXPECT_DOUBLE_EQ(+9.9999999999999998E37, details::triple_to_double(v4));
-    }
-    {
-        // boundary values for triples
-        auto v0 = triple{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
-        auto v1 = triple{-1, 0x8000000000000000UL, 0x0000000000000000UL, 0};
-        auto v2 = triple{-1, 0x7FFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
-        auto v3 = triple{1, 0x8000000000000000UL,  0x0000000000000000UL, 0};
-        auto v4 = triple{1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0};
-
-        // expected values are approximate
-        EXPECT_DOUBLE_EQ(-3.4028236692093846e+38, details::triple_to_double(v0));
-        EXPECT_DOUBLE_EQ(-1.7014118346046923e+38, details::triple_to_double(v1));
-        EXPECT_DOUBLE_EQ(-1.7014118346046923e+38, details::triple_to_double(v2));
-        EXPECT_DOUBLE_EQ(+1.7014118346046923e+38, details::triple_to_double(v3));
-        EXPECT_DOUBLE_EQ(+3.4028236692093846e+38, details::triple_to_double(v4));
-    }
-    {
-        // underflow
-        auto v0 = from_double(DBL_MIN);
-        EXPECT_DOUBLE_EQ(0, details::triple_to_double(v0));
-    }
+    EXPECT_FALSE(details::is_prefix_of_case_insensitive("TRUEX", "true"));
+    EXPECT_FALSE(details::is_prefix_of_case_insensitive("", "true"));
 }
 }
 

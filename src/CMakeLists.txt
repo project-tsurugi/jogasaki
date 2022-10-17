@@ -60,6 +60,7 @@ file(GLOB SOURCES
         "jogasaki/executor/process/*.cpp"
         "jogasaki/executor/process/impl/*.cpp"
         "jogasaki/executor/process/impl/expression/*.cpp"
+        "jogasaki/executor/process/impl/expression/details/*.cpp"
         "jogasaki/executor/process/impl/ops/*.cpp"
         "jogasaki/executor/process/impl/ops/details/*.cpp"
         "jogasaki/executor/process/abstract/*.cpp"

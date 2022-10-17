@@ -35,6 +35,9 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 
+#include "details/cast_evaluation.h"
+#include "details/common.h"
+
 namespace jogasaki::executor::process::impl::expression {
 
 using jogasaki::data::any;
@@ -75,9 +78,6 @@ double triple_to_double(triple arg) {
     return std::stod(dec.to_eng());
 }
 
-any return_unsupported() {
-    return any{std::in_place_type<error>, error(error_kind::unsupported)};
-}
 any promote_binary_numeric_left(any const& l, any const& r) {
     switch(l.type_index()) {
         case any::index<std::int32_t>: {
@@ -491,141 +491,12 @@ any engine::operator()(takatori::scalar::immediate const& exp) {
     return utils::as_any(exp.value(), type, resource_);
 }
 
-template <class T>
-any to(std::string_view s) {
-    T value{};
-    if(auto [p, e] = std::from_chars(s.data(), s.data()+s.size(), value); e != std::errc()) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
-    }
-    return any{std::in_place_type<T>, value};
-}
-
-// std::from_chars for float/double is not available until gcc 11
-template <>
-any to<float>(std::string_view s) {
-    float value{};
-    try {
-        value = std::stof(std::string{s});
-    } catch (std::exception& e) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
-    }
-    return any{std::in_place_type<float>, value};
-}
-
-template <>
-any to<double>(std::string_view s) {
-    double value{};
-    try {
-        value = std::stod(std::string{s});
-    } catch (std::exception& e) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
-    }
-    return any{std::in_place_type<double>, value};
-}
-
-template <>
-any to<triple>(std::string_view s) {
-    decimal::context.clear_status();
-    decimal::Decimal value{std::string{s}};
-    if((decimal::context.status() & MPD_Inexact) != 0) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
-    }
-    return any{std::in_place_type<triple>, value};
-}
-
-bool equals_case_insensitive(std::string_view a, std::string_view b) {
-    return a.size() == b.size() &&
-        std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
-            return std::tolower(l) == std::tolower(r);
-        });
-}
-
-template <>
-any to<runtime_t<meta::field_type_kind::boolean>>(std::string_view s) {
-    runtime_t<meta::field_type_kind::boolean> value{};
-    if(equals_case_insensitive(s, "TRUE")) {
-        value = 1;
-    } else if (equals_case_insensitive(s, "FALSE")) {
-        value = 0;
-    } else {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
-    }
-    return any{std::in_place_type<runtime_t<meta::field_type_kind::boolean>>, value};
-}
-
-any from_character(
-    ::takatori::type::data const& tgt,
-    any const& a
-) {
-    using k = takatori::type::type_kind;
-    auto txt = a.to<runtime_t<meta::field_type_kind::character>>();
-    auto sv = static_cast<std::string_view>(txt);
-    switch(tgt.kind()) {
-        case k::boolean: return to<runtime_t<meta::field_type_kind::boolean>>(sv);
-        case k::int1: return to<runtime_t<meta::field_type_kind::int1>>(sv);
-        case k::int2: return to<runtime_t<meta::field_type_kind::int2>>(sv);
-        case k::int4: return to<runtime_t<meta::field_type_kind::int4>>(sv);
-        case k::int8: return to<runtime_t<meta::field_type_kind::int8>>(sv);
-        case k::float4: return to<runtime_t<meta::field_type_kind::float4>>(sv);
-        case k::float8: return to<runtime_t<meta::field_type_kind::float8>>(sv);
-        case k::decimal: return to<runtime_t<meta::field_type_kind::decimal>>(sv);
-        case k::character: return a;
-        case k::octet: break;
-        case k::bit: break;
-        case k::date: break;
-        case k::time_of_day: break;
-        case k::time_point: break;
-        case k::datetime_interval: break;
-        case k::array: break;
-        case k::record: break;
-        case k::unknown: break;
-        case k::row_reference: break;
-        case k::row_id: break;
-        case k::declared: break;
-        case k::extension: break;
-    }
-    return return_unsupported();
-}
-
-any conduct_cast(
-    ::takatori::type::data const& src,
-    ::takatori::type::data const& tgt,
-    any const& a
-    ) {
-    using k = takatori::type::type_kind;
-    switch(src.kind()) {
-        case k::boolean: break;
-        case k::int1: break;
-        case k::int2: break;
-        case k::int4: break;
-        case k::int8: break;
-        case k::float4: break;
-        case k::float8: break;
-        case k::decimal: break;
-        case k::character: return from_character(tgt, a);
-        case k::octet: break;
-        case k::bit: break;
-        case k::date: break;
-        case k::time_of_day: break;
-        case k::time_point: break;
-        case k::datetime_interval: break;
-        case k::array: break;
-        case k::record: break;
-        case k::unknown: break;
-        case k::row_reference: break;
-        case k::row_id: break;
-        case k::declared: break;
-        case k::extension: break;
-    }
-    return return_unsupported();
-}
-
 any engine::operator()(takatori::scalar::cast const& exp) {
     auto v = dispatch(*this, exp.operand());
     if (! v) return v;
     auto& src_type = info_.type_of(exp.operand());
     auto& tgt_type = exp.type();
-    return conduct_cast(src_type, tgt_type, v);
+    return details::conduct_cast(src_type, tgt_type, v);
 }
 
 any engine::operator()(takatori::scalar::compare const& exp) {

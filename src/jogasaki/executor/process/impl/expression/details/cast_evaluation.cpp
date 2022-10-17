@@ -23,6 +23,7 @@
 #include <takatori/scalar/walk.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/string_builder.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -36,12 +37,14 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 
 #include "common.h"
+#include "jogasaki/executor/process/impl/expression/evaluator_context.h"
 
 namespace jogasaki::executor::process::impl::expression::details {
 
 using jogasaki::data::any;
 using takatori::decimal::triple;
 using takatori::util::fail;
+using takatori::util::string_builder;
 
 template <class T>
 inline decimal::Decimal int_max{std::numeric_limits<T>::max()};
@@ -60,26 +63,38 @@ T to(decimal::Decimal const& d) {
 }
 
 template <class T>
-any to_int(std::string_view s) {
-    auto a = to_decimal(s);
+any to_int(std::string_view s, evaluator_context& ctx) {
+    auto a = to_decimal(s, ctx);
     if(! a) {
         return a;
     }
     decimal::Decimal d{a.to<triple>()};
     decimal::context.clear_status();
-    d = d.rescale(0);
+    auto dd = d.rescale(0);
     if((decimal::context.status() & MPD_Inexact) != 0) {
-        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+        // inexact operation
+        switch(ctx.get_cast_loss_policy()) {
+            case cast_loss_policy::ignore: break;
+            case cast_loss_policy::floor: return {std::in_place_type<error>, error(error_kind::unsupported)};
+            case cast_loss_policy::ceil: return {std::in_place_type<error>, error(error_kind::unsupported)};
+            case cast_loss_policy::unknown: return {};
+            case cast_loss_policy::warn: {
+                ctx.add_error({error_kind::cast_failure, string_builder{} << "cast warning src:" << d << " dest:" << dd << string_builder::to_string});
+                break;
+            }
+            case cast_loss_policy::error: return {std::in_place_type<error>, error(error_kind::cast_failure)};
+        }
     }
-    if(d < int_min<T> || int_max<T> < d) {
+    if(dd < int_min<T> || int_max<T> < dd) {
         return any{std::in_place_type<error>, error(error_kind::overflow)};
     }
-    return any{std::in_place_type<T>, to<T>(d)};
+    return any{std::in_place_type<T>, to<T>(dd)};
 }
 
 // string to numeric conversion should be done via decimal,
 // but in order to to support float representation outside decimal range such as 1E100, we use stof/stod for now TODO
-any to_float4(std::string_view s) {
+any to_float4(std::string_view s, evaluator_context& ctx) {
+    (void) ctx;
     float value{};
     try {
         // std::from_chars for float/double is not available until gcc 11
@@ -90,7 +105,8 @@ any to_float4(std::string_view s) {
     return any{std::in_place_type<float>, value};
 }
 
-any to_float8(std::string_view s) {
+any to_float8(std::string_view s, evaluator_context& ctx) {
+    (void) ctx;
     double value{};
     try {
         // std::from_chars for float/double is not available until gcc 11
@@ -101,7 +117,8 @@ any to_float8(std::string_view s) {
     return any{std::in_place_type<double>, value};
 }
 
-any to_decimal(std::string_view s) {
+any to_decimal(std::string_view s, evaluator_context& ctx) {
+    (void) ctx;
     decimal::context.clear_status();
     decimal::Decimal value{std::string{s}};
     if((decimal::context.status() & MPD_Inexact) != 0) {
@@ -110,7 +127,8 @@ any to_decimal(std::string_view s) {
     return any{std::in_place_type<triple>, value};
 }
 
-any to_boolean(std::string_view s) {
+any to_boolean(std::string_view s, evaluator_context& ctx) {
+    (void) ctx;
     runtime_t<meta::field_type_kind::boolean> value{};
     if(is_prefix_of_case_insensitive(s, "true")) {
         value = 1;
@@ -124,23 +142,23 @@ any to_boolean(std::string_view s) {
 
 
 
-any to_int1(std::string_view s) {
-    return to_int<std::int32_t>(s);
+any to_int1(std::string_view s, evaluator_context& ctx) {
+    return to_int<std::int32_t>(s, ctx);
 }
 
-any to_int2(std::string_view s) {
-    return to_int<std::int32_t>(s);
+any to_int2(std::string_view s, evaluator_context& ctx) {
+    return to_int<std::int32_t>(s, ctx);
 }
 
-any to_int4(std::string_view s) {
-    return to_int<std::int32_t>(s);
+any to_int4(std::string_view s, evaluator_context& ctx) {
+    return to_int<std::int32_t>(s, ctx);
 }
 
-any to_int8(std::string_view s) {
-    return to_int<std::int64_t>(s);
+any to_int8(std::string_view s, evaluator_context& ctx) {
+    return to_int<std::int64_t>(s, ctx);
 }
 
-any from_character(
+any from_character(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -148,14 +166,14 @@ any from_character(
     auto txt = a.to<runtime_t<meta::field_type_kind::character>>();
     auto sv = trim_spaces(static_cast<std::string_view>(txt));
     switch(tgt.kind()) {
-        case k::boolean: return to_boolean(sv);
-        case k::int1: return to_int1(sv);
-        case k::int2: return to_int2(sv);
-        case k::int4: return to_int4(sv);
-        case k::int8: return to_int8(sv);
-        case k::float4: return to_float4(sv);
-        case k::float8: return to_float8(sv);
-        case k::decimal: return to_decimal(sv);
+        case k::boolean: return to_boolean(sv, ctx);
+        case k::int1: return to_int1(sv, ctx);
+        case k::int2: return to_int2(sv, ctx);
+        case k::int4: return to_int4(sv, ctx);
+        case k::int8: return to_int8(sv, ctx);
+        case k::float4: return to_float4(sv, ctx);
+        case k::float8: return to_float8(sv, ctx);
+        case k::decimal: return to_decimal(sv, ctx);
         case k::character: return a;
         case k::octet: break;
         case k::bit: break;
@@ -175,6 +193,7 @@ any from_character(
 }
 
 any conduct_cast(
+    evaluator_context& ctx,
     ::takatori::type::data const& src,
     ::takatori::type::data const& tgt,
     any const& a
@@ -189,7 +208,7 @@ any conduct_cast(
         case k::float4: break;
         case k::float8: break;
         case k::decimal: break;
-        case k::character: return from_character(tgt, a);
+        case k::character: return from_character(ctx, tgt, a);
         case k::octet: break;
         case k::bit: break;
         case k::date: break;

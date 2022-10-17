@@ -30,6 +30,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/utils/iterator_pair.h>
 #include <jogasaki/utils/iterator_incrementer.h>
@@ -146,7 +147,8 @@ public:
             if (all_groups_available) {
                 auto resource = ctx.varlen_resource();
                 auto& vars = ctx.input_variables();
-                bool res = !has_condition_ || evaluate_bool(evaluator_, vars, resource);
+                expression::evaluator_context c{};
+                bool res = !has_condition_ || evaluate_bool(c, evaluator_, vars, resource);
                 if (res && downstream_) {
                     if(auto st = unsafe_downcast<record_operator>(
                             downstream_.get())->process_record(context); !st) {

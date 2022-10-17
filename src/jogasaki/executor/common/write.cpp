@@ -27,6 +27,7 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/utils.h>
@@ -188,9 +189,11 @@ status encode_tuple(
                         break;
                 }
             } else {
+
                 evaluator eval{t.elements()[f.index_], info, host_variables};
                 process::impl::variable_table empty{};
-                auto res = eval(empty, &resource);
+                process::impl::expression::evaluator_context c{};
+                auto res = eval(c, empty, &resource);
                 if (res.error()) {
                     VLOG(log_error) << "evaluation error: " << res.to<process::impl::expression::error>();
                     return status::err_expression_evaluation_failure;

@@ -38,6 +38,8 @@
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
+#include "evaluator_context.h"
+
 namespace jogasaki::executor::process::impl::expression {
 
 using any = jogasaki::data::any;
@@ -49,6 +51,7 @@ public:
     using memory_resource = memory::paged_memory_resource;
 
     engine(
+        evaluator_context& ctx,
         executor::process::impl::variable_table& variables,
         yugawara::compiled_info const& info,
         executor::process::impl::variable_table const* host_variables,
@@ -80,7 +83,9 @@ public:
     any operator()(takatori::scalar::function_call const&);
     any operator()(takatori::scalar::extension const&);
 
+    evaluator_context& context() noexcept;
 private:
+    evaluator_context& ctx_;
     executor::process::impl::variable_table& variables_;
     yugawara::compiled_info const& info_;
     executor::process::impl::variable_table const* host_variables_{};
@@ -133,6 +138,7 @@ public:
      * @return the result of evaluation
      */
     [[nodiscard]] any operator()(
+        evaluator_context& ctx,
         executor::process::impl::variable_table& variables,
         memory_resource* resource = nullptr
     ) const;
@@ -155,6 +161,7 @@ private:
  * @return the result of evaluation. If the result is empty (i.e. null value), false is returned.
  */
 [[nodiscard]] bool evaluate_bool(
+    evaluator_context& ctx,
     evaluator& eval,
     executor::process::impl::variable_table& variables,
     memory::lifo_paged_memory_resource* resource = nullptr

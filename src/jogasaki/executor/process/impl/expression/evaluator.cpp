@@ -47,11 +47,13 @@ using takatori::util::fail;
 namespace details {
 
 engine::engine(
+    evaluator_context& ctx,
     variable_table& variables,
     yugawara::compiled_info const& info,
     executor::process::impl::variable_table const* host_variables,
     engine::memory_resource* resource
 ) noexcept:
+    ctx_(ctx),
     variables_(variables),
     info_(info),
     host_variables_(host_variables),
@@ -491,12 +493,29 @@ any engine::operator()(takatori::scalar::immediate const& exp) {
     return utils::as_any(exp.value(), type, resource_);
 }
 
+cast_loss_policy from(takatori::scalar::cast_loss_policy t) {
+    switch(t) {
+        case takatori::scalar::cast_loss_policy::ignore: return cast_loss_policy::ignore;
+        case takatori::scalar::cast_loss_policy::floor: return cast_loss_policy::floor;
+        case takatori::scalar::cast_loss_policy::ceil: return cast_loss_policy::ceil;
+        case takatori::scalar::cast_loss_policy::unknown: return cast_loss_policy::unknown;
+        case takatori::scalar::cast_loss_policy::warn: return cast_loss_policy::warn;
+        case takatori::scalar::cast_loss_policy::error: return cast_loss_policy::error;
+    }
+    fail();
+}
+
 any engine::operator()(takatori::scalar::cast const& exp) {
     auto v = dispatch(*this, exp.operand());
     if (! v) return v;
     auto& src_type = info_.type_of(exp.operand());
     auto& tgt_type = exp.type();
-    return details::conduct_cast(src_type, tgt_type, v);
+
+    auto original = ctx_.get_cast_loss_policy();
+    ctx_.set_cast_loss_policy(from(exp.loss_policy()));
+    auto ret = details::conduct_cast(ctx_, src_type, tgt_type, v);
+    ctx_.set_cast_loss_policy(original);
+    return ret;
 }
 
 any engine::operator()(takatori::scalar::compare const& exp) {
@@ -531,6 +550,10 @@ any engine::operator()(takatori::scalar::extension const&) {
     return return_unsupported();
 }
 
+evaluator_context& engine::context() noexcept {
+    return ctx_;
+}
+
 }
 
 evaluator::evaluator(
@@ -544,20 +567,22 @@ evaluator::evaluator(
 {}
 
 any evaluator::operator()(
+    evaluator_context& ctx,
     variable_table& variables,
     evaluator::memory_resource* resource
 ) const {
-    details::engine e{variables, *info_, host_variables_, resource};
+    details::engine e{ctx, variables, *info_, host_variables_, resource};
     return takatori::scalar::dispatch(e, *expression_);
 }
 
 bool evaluate_bool(
+    evaluator_context& ctx,
     evaluator& eval,
     variable_table& variables,
     memory::lifo_paged_memory_resource* resource
 ) {
     utils::checkpoint_holder h{resource};
-    auto a = eval(variables, resource);
+    auto a = eval(ctx, variables, resource);
     if (a.error()) {
         LOG(ERROR) << "evaluation error: " << a.to<process::impl::expression::error>();
     }

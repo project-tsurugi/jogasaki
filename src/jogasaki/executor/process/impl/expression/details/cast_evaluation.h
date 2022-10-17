@@ -37,24 +37,26 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 
 namespace jogasaki::executor::process::impl::expression::details {
 
 using any = jogasaki::data::any;
 
 any conduct_cast(
+    evaluator_context& ctx,
     ::takatori::type::data const& src,
     ::takatori::type::data const& tgt,
     any const& a
 );
 
 // conversion from string
-any to_int1(std::string_view s);
-any to_int2(std::string_view s);
-any to_int4(std::string_view s);
-any to_int8(std::string_view s);
-any to_float4(std::string_view s);
-any to_float8(std::string_view s);
-any to_decimal(std::string_view s);
+any to_int1(std::string_view s, evaluator_context& ctx);
+any to_int2(std::string_view s, evaluator_context& ctx);
+any to_int4(std::string_view s, evaluator_context& ctx);
+any to_int8(std::string_view s, evaluator_context& ctx);
+any to_float4(std::string_view s, evaluator_context& ctx);
+any to_float8(std::string_view s, evaluator_context& ctx);
+any to_decimal(std::string_view s, evaluator_context& ctx);
 
 } // namespace

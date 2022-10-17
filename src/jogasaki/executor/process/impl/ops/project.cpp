@@ -22,6 +22,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 
 #include "operator_base.h"
 #include "project_context.h"
@@ -75,7 +76,8 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& v = variables_[i];
         auto info = vars.info().at(variables_[i]);
         auto& ev = evaluators_[i];
-        auto result = ev(vars, ctx.varlen_resource()); // result resource will be deallocated at once
+        expression::evaluator_context c{};
+        auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {
             VLOG(log_error) << "evaluation error: " << result.to<expression::error>();

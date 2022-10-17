@@ -66,6 +66,7 @@
 
 #include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
 #include <jogasaki/executor/process/impl/expression/details/common.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 
 #include <jogasaki/test_utils/to_field_type_kind.h>
 
@@ -207,20 +208,23 @@ public:
         {
             set_values<In1, In2>(c1, c2, false, false);
             utils::checkpoint_holder cph{&resource_};
-            auto result = evaluator_(vars_, &resource_).to<out_type>();
+            evaluator_context ctx{};
+            auto result = evaluator_(ctx, vars_, &resource_).to<out_type>();
             ASSERT_EQ(exp, result);
         }
         {
             set_values<In1, In2>(c1, c2, true, false);
             utils::checkpoint_holder cph{&resource_};
-            auto result = evaluator_(vars_, &resource_);
+            evaluator_context ctx{};
+            auto result = evaluator_(ctx, vars_, &resource_);
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
         }
         {
             set_values<In1, In2>(c1, c2, false, true);
             utils::checkpoint_holder cph{&resource_};
-            auto result = evaluator_(vars_, &resource_);
+            evaluator_context ctx{};
+            auto result = evaluator_(ctx, vars_, &resource_);
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
         }
@@ -239,18 +243,20 @@ inline immediate constant_bool(bool v, type::data&& type = type::boolean()) {
 }
 
 TEST_F(cast_expression_test, string_to_int) {
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int1("1"));
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int2("1"));
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int4("1"));
-    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), details::to_int8("1"));
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int1("1", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int2("1", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), details::to_int4("1", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), details::to_int8("1", ctx));
 
-    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), details::to_int8("+1"));
-    EXPECT_EQ((any{std::in_place_type<std::int64_t>, -1}), details::to_int8("-1"));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), details::to_int8("+1", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, -1}), details::to_int8("-1", ctx));
 }
 
 TEST_F(cast_expression_test, string_to_int_min_max) {
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 127}), details::to_int1("127"));
-    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 128}), details::to_int1("128"));
+    evaluator_context ctx{};
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 127}), details::to_int1("127", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int32_t>, 128}), details::to_int1("128", ctx));
 }
 
 TEST_F(cast_expression_test, string_trim) {

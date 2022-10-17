@@ -35,7 +35,8 @@ status encode_key(
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
         for(auto&& k : keys) {
-            auto a = k.evaluator_(input_variables, &resource);
+            expression::evaluator_context ctx{};
+            auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {
                 VLOG(log_error) << "evaluation error: " << a.to<expression::error>();
                 return status::err_expression_evaluation_failure;

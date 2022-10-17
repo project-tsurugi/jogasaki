@@ -444,4 +444,27 @@ TEST_F(host_variables_test, update_decimal_types) {
         )), result[0]);
     }
 }
+
+TEST_F(host_variables_test, cast_test) {
+    execute_statement("create table TT (C0 int primary key, C1 bigint, C2 float, C3 double)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character},
+        {"p1", api::field_type_kind::character},
+        {"p2", api::field_type_kind::character},
+        {"p3", api::field_type_kind::character},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_character("p0", "1");
+    ps->set_character("p1", "10");
+    ps->set_character("p2", "100.0");
+    ps->set_character("p3", "1000.0");
+    execute_statement("INSERT INTO TT (C0, C1, C2, C3) VALUES (CAST(:p0 AS INT), CAST(:p1 AS BIGINT), CAST(:p2 AS FLOAT), CAST(:p3 AS DOUBLE))", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1, C2, C3 FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+    }
+}
+
 }

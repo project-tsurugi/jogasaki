@@ -17,10 +17,12 @@
 
 #include <cstddef>
 #include <functional>
+#include <charconv>
 
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/walk.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -37,6 +39,7 @@ namespace jogasaki::executor::process::impl::expression {
 
 using jogasaki::data::any;
 using takatori::decimal::triple;
+using takatori::util::fail;
 
 namespace details {
 
@@ -488,8 +491,113 @@ any engine::operator()(takatori::scalar::immediate const& exp) {
     return utils::as_any(exp.value(), type, resource_);
 }
 
-any engine::operator()(takatori::scalar::cast const&) {
+template <class T>
+any to(std::string_view s) {
+    T value{};
+    if(auto [p, e] = std::from_chars(s.data(), s.data()+s.size(), value); e != std::errc()) {
+        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    return any{std::in_place_type<T>, value};
+}
+
+// std::from_chars for float/double is not available until gcc 11
+template <>
+any to<float>(std::string_view s) {
+    float value{};
+    try {
+        value = std::stof(std::string{s});
+    } catch (std::exception& e) {
+        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    return any{std::in_place_type<float>, value};
+}
+
+template <>
+any to<double>(std::string_view s) {
+    double value{};
+    try {
+        value = std::stod(std::string{s});
+    } catch (std::exception& e) {
+        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    return any{std::in_place_type<double>, value};
+}
+
+any from_character(
+    ::takatori::type::data const& tgt,
+    any const& a
+) {
+    using k = takatori::type::type_kind;
+    auto txt = a.to<runtime_t<meta::field_type_kind::character>>();
+    auto sv = static_cast<std::string_view>(txt);
+    switch(tgt.kind()) {
+        case k::boolean: break;
+        case k::int1: return to<runtime_t<meta::field_type_kind::int1>>(sv);
+        case k::int2: return to<runtime_t<meta::field_type_kind::int2>>(sv);
+        case k::int4: return to<runtime_t<meta::field_type_kind::int4>>(sv);
+        case k::int8: return to<runtime_t<meta::field_type_kind::int8>>(sv);
+        case k::float4: return to<runtime_t<meta::field_type_kind::float4>>(sv);
+        case k::float8: return to<runtime_t<meta::field_type_kind::float8>>(sv);
+        case k::decimal: break;
+        case k::character: return a;
+        case k::octet: break;
+        case k::bit: break;
+        case k::date: break;
+        case k::time_of_day: break;
+        case k::time_point: break;
+        case k::datetime_interval: break;
+        case k::array: break;
+        case k::record: break;
+        case k::unknown: break;
+        case k::row_reference: break;
+        case k::row_id: break;
+        case k::declared: break;
+        case k::extension: break;
+    }
     return return_unsupported();
+}
+
+any conduct_cast(
+    ::takatori::type::data const& src,
+    ::takatori::type::data const& tgt,
+    any const& a
+    ) {
+    (void) tgt;
+    (void) a;
+    using k = takatori::type::type_kind;
+    switch(src.kind()) {
+        case k::boolean: break;
+        case k::int1: break;
+        case k::int2: break;
+        case k::int4: break;
+        case k::int8: break;
+        case k::float4: break;
+        case k::float8: break;
+        case k::decimal: break;
+        case k::character: return from_character(tgt, a);
+        case k::octet: break;
+        case k::bit: break;
+        case k::date: break;
+        case k::time_of_day: break;
+        case k::time_point: break;
+        case k::datetime_interval: break;
+        case k::array: break;
+        case k::record: break;
+        case k::unknown: break;
+        case k::row_reference: break;
+        case k::row_id: break;
+        case k::declared: break;
+        case k::extension: break;
+    }
+    return return_unsupported();
+}
+
+any engine::operator()(takatori::scalar::cast const& exp) {
+    auto v = dispatch(*this, exp.operand());
+    if (! v) return v;
+    auto& src_type = info_.type_of(exp.operand());
+    auto& tgt_type = exp.type();
+    return conduct_cast(src_type, tgt_type, v);
 }
 
 any engine::operator()(takatori::scalar::compare const& exp) {

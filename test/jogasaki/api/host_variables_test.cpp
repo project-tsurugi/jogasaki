@@ -249,7 +249,7 @@ TEST_F(host_variables_test, insert_temporal_types) {
     ps->set_time_point("p4", tp2000_1_1_12_0_0);
     execute_statement( "INSERT INTO TTEMPORALS (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM TTEMPORALS where C0 <= :p0", variables, *ps, result);
+    execute_query("SELECT * FROM TTEMPORALS", result);
     ASSERT_EQ(1, result.size());
 
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};

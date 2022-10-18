@@ -84,6 +84,7 @@ public:
     any operator()(takatori::scalar::extension const&);
 
     evaluator_context& context() noexcept;
+
 private:
     evaluator_context& ctx_;
     executor::process::impl::variable_table& variables_;

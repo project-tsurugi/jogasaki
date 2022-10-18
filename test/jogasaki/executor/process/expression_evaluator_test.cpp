@@ -71,6 +71,7 @@ namespace jogasaki::executor::process::impl::expression {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+using namespace std::chrono_literals;
 using namespace meta;
 using namespace takatori::util;
 using namespace yugawara::binding;
@@ -229,6 +230,11 @@ public:
     }
     template<class T>
     void test_compare();
+
+    void compare_time_points(comparison_operator op, takatori::datetime::time_point l, takatori::datetime::time_point r, bool expected) {
+        test_two_arity_exp<t::time_point, t::time_point, t::boolean>(op, l, r, expected);
+    }
+
 };
 
 TEST_F(expression_evaluator_test, add_numeric) {
@@ -429,25 +435,43 @@ TEST_F(expression_evaluator_test, text_length) {
 
 template<class T>
 void expression_evaluator_test::test_compare() {
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, 1, 2, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, 1, 1, false);
+    typename meta::field_type_traits<utils::to_field_type_kind<T>()>::runtime_type one{};
+    typename meta::field_type_traits<utils::to_field_type_kind<T>()>::runtime_type two{};
 
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 1, 2, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 1, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, 2, 1, false);
+    if constexpr (std::is_same_v<T, t::date>) {
+        one = takatori::datetime::date{1};
+        two = takatori::datetime::date{2};
+    } else
+    if constexpr (std::is_same_v<T, t::time_of_day>) {
+        one = takatori::datetime::time_of_day{1ns};
+        two = takatori::datetime::time_of_day{2ns};
+    } else
+    if constexpr (std::is_same_v<T, t::time_point>) {
+        one = takatori::datetime::time_point{1ns};
+        two = takatori::datetime::time_point{2ns};
+    } else {
+        one = 1;
+        two = 2;
+    }
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, one, two, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less, one, one, false);
 
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 2, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 1, 1, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, one, two, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, one, one, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::less_equal, two, one, false);
 
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, 2, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, 1, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, 1, 2, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, two, one, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, one, one, false);
 
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, 1, 1, true);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, 1, 2, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, two, one, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater_equal, one, one, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::greater, one, two, false);
 
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 1, false);
-    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, 1, 2, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, one, one, true);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::equal, one, two, false);
+
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, one, one, false);
+    test_two_arity_exp<T, T, t::boolean>(comparison_operator::not_equal, one, two, true);
 }
 
 TEST_F(expression_evaluator_test, compare_numeric) {
@@ -471,6 +495,44 @@ TEST_F(expression_evaluator_test, compare_numeric) {
         SCOPED_TRACE("decimal");
         test_compare<t::decimal>();
     }
+    {
+        SCOPED_TRACE("date");
+        test_compare<t::date>();
+    }
+    {
+        SCOPED_TRACE("time_of_day");
+        test_compare<t::time_of_day>();
+    }
+    {
+        SCOPED_TRACE("time_point");
+        test_compare<t::time_point>();
+    }
+}
+
+TEST_F(expression_evaluator_test, compare_time_point) {
+    // time point use lexicographical comparison for two parts
+    auto one = takatori::datetime::time_point{
+        takatori::datetime::date{1},
+        takatori::datetime::time_of_day{999ns},
+    };
+    auto two = takatori::datetime::time_point{
+        takatori::datetime::date{2},
+        takatori::datetime::time_of_day{9ns},
+    };
+
+    compare_time_points(comparison_operator::less, one, two, true);
+    compare_time_points(comparison_operator::less, two, one, false);
+
+    compare_time_points(comparison_operator::less_equal, one, two, true);
+    compare_time_points(comparison_operator::less_equal, one, one, true);
+    compare_time_points(comparison_operator::less_equal, two, one, false);
+
+    compare_time_points(comparison_operator::greater, two, one, true);
+    compare_time_points(comparison_operator::greater, one, two, false);
+
+    compare_time_points(comparison_operator::greater_equal, two, one, true);
+    compare_time_points(comparison_operator::greater_equal, one, one, true);
+    compare_time_points(comparison_operator::greater_equal, one, two, false);
 }
 
 TEST_F(expression_evaluator_test, conditional_and_or) {

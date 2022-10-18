@@ -437,4 +437,24 @@ TEST_F(sql_test, cast_failure) {
         ASSERT_EQ(0, result.size());
     }
 }
+
+// regression test scenario - once updating sequence stuck on 4th insert
+TEST_F(sql_test, pkless_insert) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true});
+    execute_statement("create table TT (C0 int, C1 int)");
+    wait_epochs(1);
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
+    wait_epochs(1);
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
+    wait_epochs(1);
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
+    wait_epochs(1);
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM TT", result);
+        ASSERT_EQ(4, result.size());
+    }
+}
+
 }

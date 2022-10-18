@@ -47,10 +47,15 @@ create_transaction(api::database& db, bool readonly, bool is_long, std::vector<s
     return tx;
 }
 
+std::unique_ptr<create_tx_option> g_tx_option{};
+
 std::shared_ptr<api::transaction_handle> create_transaction(
     api::database& db,
     bool force_ltx
 ) {
+    if(g_tx_option && g_tx_option->force_occ) {
+        return create_transaction(db, false, false);
+    }
     // until LTX build becomes stables, test mainly with LTX //TODO
     (void) force_ltx;
     auto& impl = jogasaki::api::impl::get_impl(db);
@@ -60,5 +65,14 @@ std::shared_ptr<api::transaction_handle> create_transaction(
     });
     return create_transaction(db, false, true, wp);
 }
+
+void set_global_tx_option(create_tx_option const& opt) {
+    g_tx_option = std::make_unique<create_tx_option>(opt);
+}
+
+create_tx_option* get_global_tx_option() {
+    return g_tx_option.get();
+}
+
 }
 

@@ -24,6 +24,15 @@
 
 namespace jogasaki::utils {
 
+struct create_tx_option {
+    bool force_ltx = false;
+    bool force_occ = false;
+};
+
+void set_global_tx_option(create_tx_option const& opt);
+
+create_tx_option* get_global_tx_option();
+
 std::shared_ptr<api::transaction_handle> create_transaction(
     api::database& db,
     bool readonly,

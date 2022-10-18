@@ -27,6 +27,7 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -472,7 +473,39 @@ any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type
     return any{std::in_place_type<bool>, result};
 }
 
+template <>
+any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::date> const& l, runtime_t<meta::field_type_kind::date> const& r) {
+    auto ll{l.days_since_epoch()};
+    auto rr{r.days_since_epoch()};
+    return compare(op, ll, rr);
+}
 
+template <>
+any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::time_of_day> const& l, runtime_t<meta::field_type_kind::time_of_day> const& r) {
+    auto ll{l.time_since_epoch()};
+    auto rr{r.time_since_epoch()};
+    return compare(op, ll, rr);
+}
+
+template <>
+any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::time_point> const& l, runtime_t<meta::field_type_kind::time_point> const& r) {
+    using optype = takatori::scalar::comparison_operator;
+    bool result = false;
+    auto l0{l.seconds_since_epoch()};
+    auto r0{r.seconds_since_epoch()};
+    auto l1{l.subsecond()};
+    auto r1{r.subsecond()};
+    switch(op) {
+        case optype::equal: result = l0 == r0 && l1 == r1; break;
+        case optype::not_equal: result = l0 != r0 || l1 != r1; break;
+        case optype::greater: result = l0 > r0 || (l0 == r0 && l1 > r1); break;
+        case optype::greater_equal: result = (l0 == r0 && l1 == r1) || (l0 > r0 || (l0 == r0 && l1 > r1)); break;
+        case optype::less: result = l0 < r0 || (l0 == r0 && l1 < r1); break;
+        case optype::less_equal: result = (l0 == r0 && l1 == r1) || (l0 < r0 || (l0 == r0 && l1 < r1)); break;
+        default: return return_unsupported();
+    }
+    return any{std::in_place_type<bool>, result};
+}
 
 any engine::compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right) {
     BOOST_ASSERT(left && right);  //NOLINT
@@ -484,6 +517,9 @@ any engine::compare_any(takatori::scalar::comparison_operator optype, any const&
         case any::index<runtime_t<meta::field_type_kind::float8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::character>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::date>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::date>>(), r.to<runtime_t<meta::field_type_kind::date>>());
+        case any::index<runtime_t<meta::field_type_kind::time_of_day>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::time_of_day>>(), r.to<runtime_t<meta::field_type_kind::time_of_day>>());
+        case any::index<runtime_t<meta::field_type_kind::time_point>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::time_point>>(), r.to<runtime_t<meta::field_type_kind::time_point>>());
         default: return return_unsupported();
     }
 }
@@ -584,7 +620,7 @@ bool evaluate_bool(
     utils::checkpoint_holder h{resource};
     auto a = eval(ctx, variables, resource);
     if (a.error()) {
-        LOG(ERROR) << "evaluation error: " << a.to<process::impl::expression::error>();
+        VLOG(log_error) << "evaluation error: " << a.to<process::impl::expression::error>();
     }
     return a && a.to<bool>();
 }

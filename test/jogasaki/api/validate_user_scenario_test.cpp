@@ -43,7 +43,12 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
 
-class validate_batch_test :
+using date_v = takatori::datetime::date;
+using time_of_day_v = takatori::datetime::time_of_day;
+using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
+
+class validate_user_scenario_test :
     public ::testing::Test,
     public api_test_base {
 
@@ -65,7 +70,7 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(validate_batch_test, join_scan) {
+TEST_F(validate_user_scenario_test, join_scan) {
     execute_statement("create table history ("
                       "caller_phone_number varchar(15) not null,"
                       "recipient_phone_number varchar(15) not null,"
@@ -105,7 +110,7 @@ TEST_F(validate_batch_test, join_scan) {
     ASSERT_EQ(1, result.size());
 }
 
-TEST_F(validate_batch_test, self_read_after_update) {
+TEST_F(validate_user_scenario_test, self_read_after_update) {
     // test scenario coming from batch verify
     execute_statement("create table test (foo int, bar bigint, zzz varchar(10), primary key(foo))");
     execute_statement("INSERT INTO test (foo, bar, zzz) VALUES (0,  0, '000')");
@@ -117,5 +122,28 @@ TEST_F(validate_batch_test, self_read_after_update) {
     execute_query("SELECT foo, bar, zzz FROM test", *tx, result);
     EXPECT_EQ(2, result.size());
     ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(validate_user_scenario_test, select_date) {
+    // test scenario coming from batch verify
+    execute_statement("create table test (c0 int primary key, c1 date)");
+
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p1", api::field_type_kind::date},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_date("p1", d2000_1_1);
+    execute_statement("INSERT INTO test (c0, c1) VALUES (1, :p1)", variables, *ps);
+
+    std::vector<mock::basic_record> result{};
+
+    execute_query("SELECT * FROM test where c1 <= :p1", variables, *ps, result);
+    ASSERT_EQ(1, result.size());
+
+    using kind = meta::field_type_kind;
+    auto i4 = meta::field_type{meta::field_enum_tag<kind::int4>};
+    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
+    EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::date>(std::tuple{i4, dat}, {1, d2000_1_1})), result[0]);
 }
 }

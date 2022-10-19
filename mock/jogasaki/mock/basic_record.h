@@ -382,6 +382,11 @@ public:
         if (a.meta_->field_count() != b.meta_->field_count()) {
             return false;
         }
+        for(std::size_t i=0, n = a.meta_->field_count(); i < n; ++i) {
+            if(a.meta_->at(i) != b.meta_->at(i)) {
+                return false;
+            }
+        }
         executor::compare_info cm{*a.meta_, *b.meta_};
         executor::comparator comp{cm};
         return comp(a.ref(), b.ref()) == 0;
@@ -397,6 +402,11 @@ public:
         if (a.meta_->field_count() != b.meta_->field_count()) {
             return false;
         }
+        for(std::size_t i=0, n = a.meta_->field_count(); i < n; ++i) {
+            if(a.meta_->at(i) != b.meta_->at(i)) {
+                return false;
+            }
+        }
         executor::compare_info cm{*a.meta_, *b.meta_};
         executor::comparator comp{cm};
         return comp(a.ref(), b.ref()) < 0;
@@ -406,6 +416,11 @@ public:
     friend bool operator>(basic_record const& a, basic_record const& b) noexcept {
         if (a.meta_->field_count() != b.meta_->field_count()) {
             return false;
+        }
+        for(std::size_t i=0, n = a.meta_->field_count(); i < n; ++i) {
+            if(a.meta_->at(i) != b.meta_->at(i)) {
+                return false;
+            }
         }
         executor::compare_info cm{*a.meta_, *b.meta_};
         executor::comparator comp{cm};

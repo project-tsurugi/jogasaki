@@ -281,7 +281,7 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
     using kind = field_type_kind;
     switch (a.kind()) {
         case kind::decimal: return impl::eq<kind::decimal>()(a, b);
-        case kind::date: return impl::eq<kind::date>()(a, b);
+        case kind::time_of_day: return impl::eq<kind::time_of_day>()(a, b);
         case kind::time_point: return impl::eq<kind::time_point>()(a, b);
         case kind::array: return impl::eq<kind::array>()(a, b);
         case kind::record: return impl::eq<kind::record>()(a, b);

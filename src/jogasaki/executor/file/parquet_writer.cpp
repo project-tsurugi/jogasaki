@@ -269,11 +269,13 @@ parquet_writer::create_schema() {
                 break;
             }
             case meta::field_type_kind::time_of_day: {
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Time(true, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
+                auto opt = meta_->at(i).option<meta::field_type_kind::time_of_day>();
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Time(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
                 break;
             }
             case meta::field_type_kind::time_point: {
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Timestamp(true, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
+                auto opt = meta_->at(i).option<meta::field_type_kind::time_point>();
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Timestamp(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
                 break;
             }
             default:

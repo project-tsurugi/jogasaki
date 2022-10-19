@@ -60,8 +60,9 @@ T read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, boo
     fail();
 }
 
-template <>
-accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
+template <class T>
+std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, T>
+read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
     int16_t definition_level = 0;
@@ -81,7 +82,7 @@ accessor::text read_data<accessor::text, parquet::ByteArrayReader>(parquet::Colu
             return {};
         }
         if (values_read == 1) {
-            return accessor::text{reinterpret_cast<char const*>(value.ptr), value.len};  //NOLINT
+            return T{reinterpret_cast<char const*>(value.ptr), value.len};  //NOLINT
         }
     }
     fail();
@@ -167,7 +168,8 @@ bool parquet_reader::next(accessor::record_ref& ref) {
                 case meta::field_type_kind::int8: ref.set_value<runtime_t<meta::field_type_kind::int8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, parquet::Int64Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::float4: ref.set_value<runtime_t<meta::field_type_kind::float4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, parquet::FloatReader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::float8: ref.set_value<runtime_t<meta::field_type_kind::float8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, parquet::DoubleReader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::octet: ref.set_value<runtime_t<meta::field_type_kind::octet>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
@@ -219,36 +221,56 @@ meta::field_type type(parquet::ColumnDescriptor const* c) {
     if (c->physical_type() == parquet::Type::type::DOUBLE) {
         return meta::field_type{meta::field_enum_tag<meta::field_type_kind::float8>};
     }
+    if (c->physical_type() == parquet::Type::type::BOOLEAN) {
+        return meta::field_type{meta::field_enum_tag<meta::field_type_kind::boolean>};
+    }
     switch(c->logical_type()->type()) {
         case parquet::LogicalType::Type::STRING:
             return meta::field_type{meta::field_enum_tag<meta::field_type_kind::character>};
         case parquet::LogicalType::Type::INT:
-            if(c->logical_type()->Equals(*parquet::LogicalType::Int(32, true))) {
+            if(c->logical_type()->Equals(*parquet::LogicalType::Int(8, true))) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int1>};
+            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(16, true))) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int2>};
+            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(32, true))) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
             } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(64, true))) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
             }
-            std::cerr << " length " << c->type_length() << std::endl;
-            fail();
+            VLOG(log_error) << "unsupported length for int : " << c->type_length();
+            break;
         case parquet::LogicalType::Type::DECIMAL: {
             return meta::field_type{std::make_shared<meta::decimal_field_option>(
                 c->type_precision(),
                 c->type_scale()
             )};
         }
-        case parquet::LogicalType::Type::NIL:
-        case parquet::LogicalType::Type::NONE:
         case parquet::LogicalType::Type::DATE:
             return meta::field_type{meta::field_enum_tag<meta::field_type_kind::date>};
         case parquet::LogicalType::Type::TIME:
-            return meta::field_type{std::make_shared<meta::time_of_day_field_option>()};
+            if(auto t = dynamic_cast<parquet::TimeLogicalType const*>(c->logical_type().get()); t != nullptr) {
+                auto with_offset = t->is_adjusted_to_utc();
+                return meta::field_type{std::make_shared<meta::time_of_day_field_option>(with_offset)};
+            }
+            break;
         case parquet::LogicalType::Type::TIMESTAMP:
-            return meta::field_type{std::make_shared<meta::time_point_field_option>()};
+            if(auto t = dynamic_cast<parquet::TimestampLogicalType const*>(c->logical_type().get()); t != nullptr) {
+                auto with_offset = t->is_adjusted_to_utc();
+                return meta::field_type{std::make_shared<meta::time_point_field_option>(with_offset)};
+            }
+            break;
         case parquet::LogicalType::Type::INTERVAL:
-            fail();
+            break;
+        case parquet::LogicalType::Type::NONE:
+            if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::octet>};
+            }
+            break;
         default:
-            fail();
+            break;
     }
+    VLOG(log_error) << "Column '" << c->name() << "' data type '" << c->logical_type()->ToString() << "' is not supported.";
+    return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
 
 std::vector<parquet::ColumnDescriptor const*> create_columns_meta(parquet::FileMetaData& pmeta) {
@@ -270,7 +292,12 @@ std::shared_ptr<meta::external_record_meta> create_meta(parquet::FileMetaData& p
     for(std::size_t i=0; i < sz; ++i) {
         auto c = pmeta.schema()->Column(i);
         names.emplace_back(c->name());
-        types.emplace_back(type(c));
+        auto t = type(c);
+        if(t.kind() == meta::field_type_kind::undefined) {
+            // unsupported type
+            return {};
+        }
+        types.emplace_back(t);
     }
 
     return std::make_shared<meta::external_record_meta>(
@@ -292,6 +319,9 @@ bool parquet_reader::init(std::string_view path) {
             return false;
         }
         meta_ = create_meta(*file_metadata);
+        if(! meta_) {
+            return false;
+        }
         columns_ = create_columns_meta(*file_metadata);
         buf_ = data::aligned_buffer{meta_->record_size(), meta_->record_alignment()};
         buf_.resize(meta_->record_size());

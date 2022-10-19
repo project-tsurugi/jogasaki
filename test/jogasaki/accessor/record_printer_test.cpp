@@ -270,7 +270,7 @@ TEST_F(record_printer_test, temporal_types) {
 
     std::stringstream ss{};
     ss << r << meta;
-    ASSERT_EQ("(0:date)[date(1970-1-2)] (1:time_of_day)[time_of_day(00:00:00.000000002)] (2:time_point)[time_point(1970-1-1 00:00:00.000000003)]", ss.str());
+    ASSERT_EQ("(0:date)[date(1970-1-2)] (1:time_of_day(with_offset=0))[time_of_day(00:00:00.000000002)] (2:time_point(with_offset=0))[time_point(1970-1-1 00:00:00.000000003)]", ss.str());
 }
 
 TEST_F(record_printer_test, decimal) {
@@ -297,7 +297,7 @@ TEST_F(record_printer_test, decimal) {
 
     std::stringstream ss{};
     ss << r << meta;
-    ASSERT_EQ("(0:decimal)[1] (1:decimal)[100] (2:decimal)[999.999]", ss.str());
+    ASSERT_EQ("(0:decimal(6, 3))[1] (1:decimal(6, 3))[100] (2:decimal(6, 3))[999.999]", ss.str());
 }
 }
 

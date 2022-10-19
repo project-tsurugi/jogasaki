@@ -74,5 +74,32 @@ TEST_F(field_type_test, pointer_type) {
     EXPECT_TRUE(t);
 }
 
+TEST_F(field_type_test, comparison) {
+    field_type i4{field_enum_tag<field_type_kind::int4>};
+    field_type i8{field_enum_tag<field_type_kind::int8>};
+    field_type dec{std::make_shared<decimal_field_option>(5,3)};
+    field_type dat{field_enum_tag<field_type_kind::date>};
+    field_type tod{std::make_shared<time_of_day_field_option>(false)};
+    field_type todtz{std::make_shared<time_of_day_field_option>(true)};
+    field_type tp{std::make_shared<time_point_field_option>(false)};
+    field_type tptz{std::make_shared<time_point_field_option>(true)};
+
+    EXPECT_EQ(i4, i4);
+    EXPECT_EQ(dec, dec);
+    EXPECT_EQ(dat, dat);
+    EXPECT_EQ(tod, tod);
+    EXPECT_EQ(tp, tp);
+
+    EXPECT_NE(i8, i4);
+    EXPECT_NE(dec, i4);
+    EXPECT_NE(dec, i4);
+    EXPECT_NE(dec, dat);
+    EXPECT_NE(tod, dat);
+    EXPECT_NE(tp, dat);
+    EXPECT_NE(tp, tod);
+    EXPECT_NE(tod, todtz);
+    EXPECT_NE(tp, tptz);
+
+}
 }
 

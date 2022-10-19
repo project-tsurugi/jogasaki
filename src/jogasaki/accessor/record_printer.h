@@ -104,7 +104,7 @@ public:
             stream_ << "(";
             stream_ << idx;
             stream_ << ":";
-            stream_ << meta[idx].kind();
+            stream_ << meta[idx];
             if (nullable) {
                 stream_ << "*";
             }

@@ -422,6 +422,29 @@ TEST_F(coder_test, text_non_variant_desc) {
     EXPECT_EQ('\xFF', buf[8]);
     EXPECT_EQ('\xFF', buf[9]);
 }
+
+TEST_F(coder_test, binary) {
+    // asc/desc ordering is not fully supported for binary type
+    // currently re-cycling most of the logic for accessor::text
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::binary bin{&resource, "ABC"sv};
+    EXPECT_EQ(status::ok, s.write(bin, asc, 10));
+
+    auto rs = s.readable();
+    auto result = rs.read<accessor::binary>(asc, false, &resource);
+    EXPECT_EQ(3, result.size());
+    ASSERT_EQ(bin, result);
+    EXPECT_EQ('\x80', buf[0]);  // actually top bit is not needed because ordering is not yet supported for binary
+    EXPECT_EQ('\x03', buf[1]);
+    EXPECT_EQ('A', buf[2]);
+    EXPECT_EQ('B', buf[3]);
+    EXPECT_EQ('C', buf[4]);
+    EXPECT_EQ('\x00', buf[5]);
+    EXPECT_EQ('\x00', buf[6]);
+}
+
 TEST_F(coder_test, encode_decode) {
     std::string src(100, 0);
     std::string tgt(100, 0);

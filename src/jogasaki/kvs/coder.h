@@ -130,6 +130,9 @@ constexpr coding_spec spec_value = coding_spec(false, order::undefined);
 
 namespace details {
 
+using binary_encoding_prefix_type = std::int16_t;
+constexpr static std::size_t binary_encoding_prefix_type_bits = sizeof(std::int16_t) * bits_per_byte;
+
 class text_terminator {
 public:
     constexpr static size_t byte_size = 4;

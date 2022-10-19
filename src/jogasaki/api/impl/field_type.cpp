@@ -36,6 +36,7 @@ api::field_type_kind from(meta::field_type_kind k) noexcept {
         case meta::field_type_kind::float8: return kind::float8;
         case meta::field_type_kind::decimal: return kind::decimal;
         case meta::field_type_kind::character: return kind::character;
+        case meta::field_type_kind::octet: return kind::octet;
         case meta::field_type_kind::bit: return kind::bit;
         case meta::field_type_kind::date: return kind::date;
         case meta::field_type_kind::time_of_day: return kind::time_of_day;

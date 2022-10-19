@@ -47,6 +47,7 @@ public:
         float,
         double,
         accessor::text,
+        accessor::binary,
         takatori::decimal::triple,
         takatori::datetime::date,
         takatori::datetime::time_of_day,
@@ -144,6 +145,7 @@ inline bool operator==(any const& a, any const& b) noexcept {
         case any::index<float>: return eq<float>()(a, b);
         case any::index<double>: return eq<double>()(a, b);
         case any::index<accessor::text>: return eq<accessor::text>()(a, b);
+        case any::index<accessor::binary>: return eq<accessor::binary>()(a, b);
         case any::index<takatori::decimal::triple>: return eq<takatori::decimal::triple>()(a, b);
         case any::index<takatori::datetime::date>: return eq<takatori::datetime::date>()(a, b);
         case any::index<takatori::datetime::time_of_day>: return eq<takatori::datetime::time_of_day>()(a, b);
@@ -179,6 +181,7 @@ inline std::ostream& operator<<(std::ostream& out, any const& value) {
         case any::index<float>: out << value.to<float>(); break;
         case any::index<double>: out << value.to<double>(); break;
         case any::index<accessor::text>: out << value.to<accessor::text>(); break;
+        case any::index<accessor::binary>: out << value.to<accessor::binary>(); break;
         case any::index<takatori::decimal::triple>: out << value.to<takatori::decimal::triple>(); break;
         case any::index<takatori::datetime::date>: out << value.to<takatori::datetime::date>(); break;
         case any::index<takatori::datetime::time_of_day>: out << value.to<takatori::datetime::time_of_day>(); break;

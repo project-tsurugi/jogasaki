@@ -67,6 +67,7 @@ public:
     void set_float4(std::string_view name, runtime_t<kind::float4> value);
     void set_float8(std::string_view name, runtime_t<kind::float8> value);
     void set_character(std::string_view name, runtime_t<kind::character> value);
+    void set_octet(std::string_view name, runtime_t<kind::octet> value);
     void set_decimal(std::string_view name, runtime_t<kind::decimal> value);
     void set_date(std::string_view name, runtime_t<kind::date> value);
     void set_time_of_day(std::string_view name, runtime_t<kind::time_of_day> value);

@@ -128,6 +128,26 @@ public:
     }
 
     /**
+     * @brief write the accessor::binary field data respecting order to the stream
+     * @tparam T must be accessor::binary
+     * @param data the binary data to be written
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, std::size_t max_len) {
+        std::string_view sv{data};
+        auto sz = sv.length();
+        if(max_len < sz) {
+            VLOG(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
+            return status::err_type_mismatch;
+        }
+        auto len = static_cast<details::binary_encoding_prefix_type>(sz);
+        do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));
+        do_write(sv.data(), sz, odr);
+        return status::ok;
+    }
+
+    /**
      * @brief write the date field data respecting order to the stream
      * @tparam T the runtime type of the field
      * @param data the data of the field type

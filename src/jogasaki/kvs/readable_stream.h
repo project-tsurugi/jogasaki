@@ -147,6 +147,34 @@ public:
     }
 
     /**
+     * @brief read next binary in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     * @param resource the resource to allocate the content read
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
+        auto l = read<details::binary_encoding_prefix_type>(odr, false);
+        BOOST_ASSERT(l >= 0); //NOLINT
+        auto len = static_cast<std::size_t>(l);
+        BOOST_ASSERT(pos_ + len <= capacity_);  // NOLINT
+        auto pos = pos_;
+        pos_ += len;
+        if (!discard && len > 0) {
+            auto p = static_cast<char*>(resource->allocate(len));
+            if (odr == order::ascending) {
+                std::memcpy(p, base_ + pos, len);  // NOLINT
+            } else {
+                for (std::size_t i = 0; i < len; ++i) {
+                    *(p + i) = ~(*(base_ + pos + i));  // NOLINT
+                }
+            }
+            return accessor::binary{p, static_cast<std::size_t>(len)};
+        }
+        return accessor::binary{};
+    }
+
+    /**
      * @brief read next date data in the buffer
      * @param odr the order of the field
      * @param discard specify true if the read should not actually happen.

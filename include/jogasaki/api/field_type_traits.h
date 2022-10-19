@@ -71,6 +71,9 @@ template <>
 struct field_type_traits<field_type_kind::character> : simple_field_type_traits<std::string_view> {}; // use string_view for simplicity
 
 template <>
+struct field_type_traits<field_type_kind::octet> : simple_field_type_traits<std::string_view> {}; // use string_view for simplicity
+
+template <>
 struct field_type_traits<field_type_kind::date> : simple_field_type_traits<takatori::datetime::date> {};
 
 template <>

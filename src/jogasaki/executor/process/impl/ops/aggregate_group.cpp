@@ -114,6 +114,7 @@ void copy_value(
         case kind::float4: dest.append(src.get_value<runtime_t<kind::float4>>(offset)); break;
         case kind::float8: dest.append(src.get_value<runtime_t<kind::float8>>(offset)); break;
         case kind::character: dest.append(src.get_value<runtime_t<kind::character>>(offset)); break;
+        case kind::octet: dest.append(src.get_value<runtime_t<kind::octet>>(offset)); break;
         case kind::decimal: dest.append(src.get_value<runtime_t<kind::decimal>>(offset)); break;
         case kind::date: dest.append(src.get_value<runtime_t<kind::date>>(offset)); break;
         case kind::time_of_day: dest.append(src.get_value<runtime_t<kind::time_of_day>>(offset)); break;

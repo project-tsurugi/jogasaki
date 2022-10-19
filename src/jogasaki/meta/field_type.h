@@ -68,6 +68,7 @@ public:
         std::monostate, // float8
         std::shared_ptr<decimal_field_option>, // decimal
         std::monostate, // character
+        std::monostate, // octet
         std::monostate, // bit
         std::monostate, // date
         std::shared_ptr<time_of_day_field_option>, // time_of_day
@@ -177,6 +178,7 @@ public:
             case k::float8: return field_type_traits<k::float8>::size;
             case k::decimal: return field_type_traits<k::decimal>::size;
             case k::character: return field_type_traits<k::character>::size;
+            case k::octet: return field_type_traits<k::octet>::size;
             case k::date: return field_type_traits<k::date>::size;
             case k::time_of_day: return field_type_traits<k::time_of_day>::size;
             case k::time_point: return field_type_traits<k::time_point>::size;
@@ -206,6 +208,7 @@ public:
             case k::float8: return field_type_traits<k::float8>::alignment;
             case k::decimal: return field_type_traits<k::decimal>::alignment;
             case k::character: return field_type_traits<k::character>::alignment;
+            case k::octet: return field_type_traits<k::octet>::alignment;
             case k::date: return field_type_traits<k::date>::alignment;
             case k::time_of_day: return field_type_traits<k::time_of_day>::alignment;
             case k::time_point: return field_type_traits<k::time_point>::alignment;

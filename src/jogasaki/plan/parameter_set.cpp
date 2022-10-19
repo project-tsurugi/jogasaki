@@ -65,6 +65,15 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
     );
 }
 
+void parameter_set::set_octet(std::string_view name, runtime_t<kind::octet> value) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::octet>},
+            data::value{std::in_place_type<std::string>, static_cast<std::string_view>(value)}
+            // use std::string so that the content is copied from accessor::text
+        }
+    );
+}
 void parameter_set::set_decimal(std::string_view name, runtime_t<kind::decimal> value) {
     add(std::string(name),
         {

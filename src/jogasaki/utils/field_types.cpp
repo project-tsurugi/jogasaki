@@ -50,6 +50,7 @@ meta::field_type type_for(takatori::type::data const& type) {
             return meta::field_type(std::make_shared<meta::decimal_field_option>(typ.precision(), typ.scale()));
         }
         case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
+        case t::octet: return meta::field_type(meta::field_enum_tag<k::octet>);
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
         case t::date: return meta::field_type(meta::field_enum_tag<k::date>);
         case t::time_of_day: {
@@ -65,7 +66,6 @@ meta::field_type type_for(takatori::type::data const& type) {
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
         case t::unknown: return meta::field_type(std::shared_ptr<meta::unknown_field_option>{});
 
-        case t::octet:
         case t::array:
         case t::record:
         case t::row_reference:

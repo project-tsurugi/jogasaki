@@ -42,6 +42,7 @@ status encode(
         case kind::float4: return dest.write<runtime_t<kind::float4>>(src.get_value<runtime_t<kind::float4>>(offset), odr);
         case kind::float8: return dest.write<runtime_t<kind::float8>>(src.get_value<runtime_t<kind::float8>>(offset), odr);
         case kind::character: return dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr, vi.add_padding(), vi.length());
+        case kind::octet: return dest.write<runtime_t<kind::octet>>(src.get_value<runtime_t<kind::octet>>(offset), odr, vi.length());
         case kind::decimal: return dest.write<runtime_t<kind::decimal>>(src.get_value<runtime_t<kind::decimal>>(offset), odr, *type.option<kind::decimal>());
         case kind::date: return dest.write<runtime_t<kind::date>>(src.get_value<runtime_t<kind::date>>(offset), odr);
         case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.get_value<runtime_t<kind::time_of_day>>(offset), odr);
@@ -90,6 +91,7 @@ status encode(
         case kind::float4: return dest.write<runtime_t<kind::float4>>(src.to<runtime_t<kind::float4>>(), odr);
         case kind::float8: return dest.write<runtime_t<kind::float8>>(src.to<runtime_t<kind::float8>>(), odr);
         case kind::character: return dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr, vi.add_padding(), vi.length());
+        case kind::octet: return dest.write<runtime_t<kind::octet>>(src.to<runtime_t<kind::octet>>(), odr, vi.length());
         case kind::decimal: return dest.write<runtime_t<kind::decimal>>(src.to<runtime_t<kind::decimal>>(), odr, *type.option<kind::decimal>());
         case kind::date: return dest.write<runtime_t<kind::date>>(src.to<runtime_t<kind::date>>(), odr);
         case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.to<runtime_t<kind::time_of_day>>(), odr);
@@ -136,6 +138,7 @@ status decode(
         case kind::float4: dest = any{std::in_place_type<runtime_t<kind::float4>>, src.read<runtime_t<kind::float4>>(odr, false)}; break;
         case kind::float8: dest = any{std::in_place_type<runtime_t<kind::float8>>, src.read<runtime_t<kind::float8>>(odr, false)}; break;
         case kind::character: dest = any{std::in_place_type<runtime_t<kind::character>>, src.read<runtime_t<kind::character>>(odr, false, resource)}; break;
+        case kind::octet: dest = any{std::in_place_type<runtime_t<kind::octet>>, src.read<runtime_t<kind::octet>>(odr, false, resource)}; break;
         case kind::decimal: dest = any{std::in_place_type<runtime_t<kind::decimal>>, src.read<runtime_t<kind::decimal>>(odr, false, *type.option<kind::decimal>())}; break;
         case kind::date: dest = any{std::in_place_type<runtime_t<kind::date>>, src.read<runtime_t<kind::date>>(odr, false)}; break;
         case kind::time_of_day: dest = any{std::in_place_type<runtime_t<kind::time_of_day>>, src.read<runtime_t<kind::time_of_day>>(odr, false)}; break;
@@ -165,6 +168,7 @@ status decode(
         case kind::float4: dest.set_value<runtime_t<kind::float4>>(offset, src.read<runtime_t<kind::float4>>(odr, false)); break;
         case kind::float8: dest.set_value<runtime_t<kind::float8>>(offset, src.read<runtime_t<kind::float8>>(odr, false)); break;
         case kind::character: dest.set_value<runtime_t<kind::character>>(offset, src.read<runtime_t<kind::character>>(odr, false, resource)); break;
+        case kind::octet: dest.set_value<runtime_t<kind::octet>>(offset, src.read<runtime_t<kind::octet>>(odr, false, resource)); break;
         case kind::decimal: dest.set_value<runtime_t<kind::decimal>>(offset, src.read<runtime_t<kind::decimal>>(odr, false, *type.option<kind::decimal>())); break;
         case kind::date: dest.set_value<runtime_t<kind::date>>(offset, src.read<runtime_t<kind::date>>(odr, false)); break;
         case kind::time_of_day: dest.set_value<runtime_t<kind::time_of_day>>(offset, src.read<runtime_t<kind::time_of_day>>(odr, false)); break;
@@ -231,6 +235,7 @@ status consume_stream(
         case kind::float4: src.read<runtime_t<kind::float4>>(odr, true); break;
         case kind::float8: src.read<runtime_t<kind::float8>>(odr, true); break;
         case kind::character: src.read<runtime_t<kind::character>>(odr, true, nullptr); break;
+        case kind::octet: src.read<runtime_t<kind::octet>>(odr, true, nullptr); break;
         case kind::decimal: src.read<runtime_t<kind::decimal>>(odr, true, *type.option<kind::decimal>()); break;
         case kind::date: src.read<runtime_t<kind::date>>(odr, true); break;
         case kind::time_of_day: src.read<runtime_t<kind::time_of_day>>(odr, true); break;

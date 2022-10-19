@@ -24,6 +24,7 @@
 #include <takatori/decimal/triple.h>
 
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
@@ -73,6 +74,9 @@ struct field_type_traits<field_type_kind::decimal> : simple_field_type_traits<ta
 
 template <>
 struct field_type_traits<field_type_kind::character> : simple_field_type_traits<accessor::text> {};
+
+template <>
+struct field_type_traits<field_type_kind::octet> : simple_field_type_traits<accessor::binary> {};
 
 template <>
 struct field_type_traits<field_type_kind::date> : simple_field_type_traits<takatori::datetime::date> {};

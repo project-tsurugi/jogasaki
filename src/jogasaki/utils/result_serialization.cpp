@@ -47,6 +47,11 @@ bool write_msg(accessor::record_ref rec, msgpack::sbuffer& buf, meta::record_met
                     msgpack::pack(buf, static_cast<std::string_view>(text));
                     break;
                 }
+                case k::octet: {
+                    auto bin = rec.get_value<meta::field_type_traits<k::octet>::runtime_type>(os);
+                    msgpack::pack(buf, static_cast<std::string_view>(bin));
+                    break;
+                }
                 default:
                     // FIXME decimal, temp. types
                     fail();

@@ -58,6 +58,12 @@ record::runtime_type<kind::character> impl::record::get_character(std::size_t in
     );
 }
 
+record::runtime_type<kind::octet> impl::record::get_octet(std::size_t index) const {
+    return static_cast<field_type_traits<kind::octet>::runtime_type>(
+        ref_.get_reference<runtime_t<k::octet>>(meta_->value_offset(index))
+    );
+}
+
 record::runtime_type<kind::decimal> impl::record::get_decimal(std::size_t index) const {
     return ref_.get_value<runtime_t<k::decimal>>(meta_->value_offset(index));
 }

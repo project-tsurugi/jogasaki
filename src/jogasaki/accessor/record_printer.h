@@ -19,6 +19,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::accessor {
 
@@ -51,6 +52,12 @@ inline void print_field(
         case kind::character: {
             auto t = record.get_value<runtime_t<kind::character>>(offset);
             os << static_cast<std::string_view>(t);
+            break;
+        }
+        case kind::octet: {
+            auto t = record.get_value<runtime_t<kind::octet>>(offset);
+            auto sv = static_cast<std::string_view>(t);
+            os << utils::binary_printer{sv.data(), sv.size()};
             break;
         }
 //        case kind::bit: os << record.get_value<runtime_t<kind::bit>>(offset); break;

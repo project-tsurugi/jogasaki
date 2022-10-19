@@ -34,6 +34,7 @@ enum class field_type_kind : std::size_t {
     float8,
     decimal,
     character,
+    octet,
     bit,
     date,
     time_of_day,
@@ -69,6 +70,7 @@ enum class field_type_kind : std::size_t {
         case kind::float8: return "float8"sv;
         case kind::decimal: return "decimal"sv;
         case kind::character: return "character"sv;
+        case kind::octet: return "octet"sv;
         case kind::bit: return "bit"sv;
         case kind::date: return "date"sv;
         case kind::time_of_day: return "time_of_day"sv;

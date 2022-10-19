@@ -48,6 +48,11 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                     value_writer_->write_character(static_cast<std::string_view>(text));
                     break;
                 }
+                case k::octet: {
+                    auto binary = rec.get_value<runtime_t<k::octet>>(os);
+                    value_writer_->write_octet(static_cast<std::string_view>(binary));
+                    break;
+                }
                 case k::decimal: value_writer_->write_decimal(rec.get_value<runtime_t<k::decimal>>(os)); break;
                 case k::date: value_writer_->write_date(rec.get_value<runtime_t<k::date>>(os)); break;
                 case k::time_of_day: {

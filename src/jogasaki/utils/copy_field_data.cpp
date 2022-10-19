@@ -53,6 +53,13 @@ void copy_field(
             );
             return;
         }
+        case k::octet: {
+            auto bin = source.get_value<runtime_t<k::octet>>(source_offset);
+            target.set_value(target_offset,
+                resource != nullptr ? accessor::binary(resource, bin) : bin
+            );
+            return;
+        }
         case k::bit:
             break;
         case k::date: target.set_value(target_offset, source.get_value<runtime_t<k::date>>(source_offset)); return;
@@ -122,6 +129,13 @@ void copy_field(
             auto text = source.to<runtime_t<k::character>>();
             target.set_value(target_offset,
                 resource != nullptr ? accessor::text(resource, text) : text
+            );
+            return;
+        }
+        case k::octet: {
+            auto bin = source.to<runtime_t<k::octet>>();
+            target.set_value(target_offset,
+                resource != nullptr ? accessor::binary(resource, bin) : bin
             );
             return;
         }

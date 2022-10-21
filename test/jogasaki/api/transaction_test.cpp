@@ -128,4 +128,13 @@ TEST_F(transaction_test, concurrent_query_requests_on_same_tx) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(transaction_test, readonly_option) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    auto tx = utils::create_transaction(*db_, true);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0", *tx, result);
+    ASSERT_EQ(1, result.size());
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
 }

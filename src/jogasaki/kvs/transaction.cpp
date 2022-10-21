@@ -58,7 +58,7 @@ transaction::transaction(
     if(auto res = sharksfin::transaction_begin(db.handle(), opts, &tx_); res != sharksfin::StatusCode::OK) {
         fail();
     }
-    if(options.type() == transaction_option::transaction_type::ltx) {
+    if(options.type() == transaction_option::transaction_type::ltx || options.type() == transaction_option::transaction_type::read_only) {
         utils::backoff_waiter waiter{};
         while(true) {
             auto st = check_state().state_kind();

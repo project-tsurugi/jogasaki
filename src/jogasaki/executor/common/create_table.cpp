@@ -21,6 +21,7 @@
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/executor/sequence/metadata_store.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -63,7 +64,14 @@ bool create_table::operator()(request_context& context) const {
     auto rh = std::any_cast<plan::storage_processor_result>(ct_->runtime_hint());
     if(rh.primary_key_generated()) {
         auto p = rh.primary_key_sequence();
-        BOOST_ASSERT(p->definition_id()); //NOLINT
+        executor::sequence::metadata_store ms{*context.transaction()->object()};
+        std::size_t def_id{};
+        if(! ms.find_next_empty_def_id(def_id)) {
+            VLOG(log_error) << "assigning sequence def id failed";
+            context.status_code(status::err_unknown);
+            return false;
+        }
+        p->definition_id(def_id); // TODO p is part of prepared statement, avoid updating it directly
         context.sequence_manager()->register_sequence(
             std::addressof(static_cast<kvs::transaction&>(*context.transaction())),
             *p->definition_id(),

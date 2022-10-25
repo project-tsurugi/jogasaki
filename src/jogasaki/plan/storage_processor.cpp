@@ -44,9 +44,6 @@ bool contains(std::vector<index::key>& keys, yugawara::storage::column& c) {
     return contained;
 }
 
-constexpr static sequence_definition_id generated_sequence_definition_id_begin = 1000000;
-std::atomic_size_t generated_pkey_definition_id_src{generated_sequence_definition_id_begin};
-
 bool storage_processor::ensure(
     schema::declaration const& location,
     table& table_prototype,
@@ -58,17 +55,13 @@ bool storage_processor::ensure(
 
     if(primary_index_prototype.keys().empty()) {
         primary_key_generated_ = true;
-        auto defid = generated_pkey_definition_id_src++;
-        auto name = std::string(generated_pkey_column_prefix)+std::to_string(defid);
-        auto seq = std::make_shared<yugawara::storage::sequence>(defid, name);
+        auto name = std::string(generated_pkey_column_prefix)+"_"+std::string{location.name()}+"_"+std::string{table_prototype.simple_name()};
+        auto seq = std::make_shared<yugawara::storage::sequence>(name);
         auto& c = table_prototype.columns().emplace_back(
             yugawara::storage::column{name, takatori::type::int8(), yugawara::variable::nullity{false}, {seq}}
         );
         primary_index_prototype.keys().emplace_back(c);
         primary_key_sequence_ = seq;
-
-        // For now, generated def id is valid only the DBMS is up and running. After recovery, different one might be used.
-        //TODO save metadata (mapping def id and column that uses the sequence) for the consistency after recovery
     }
 
     yugawara::storage::index_feature_set index_features{
@@ -108,7 +101,7 @@ storage_processor_result storage_processor::result() const noexcept {
 }
 
 storage_processor_result::storage_processor_result(bool primary_key_generated,
-    std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence) :
+    std::shared_ptr<yugawara::storage::sequence> primary_key_sequence) :
     primary_key_generated_(primary_key_generated),
     primary_key_sequence_(std::move(primary_key_sequence))
 {}
@@ -117,7 +110,7 @@ bool storage_processor_result::primary_key_generated() const noexcept {
     return primary_key_generated_;
 }
 
-std::shared_ptr<yugawara::storage::sequence const> storage_processor_result::primary_key_sequence() const noexcept {
+std::shared_ptr<yugawara::storage::sequence> storage_processor_result::primary_key_sequence() const noexcept {
     return primary_key_sequence_;
 }
 }

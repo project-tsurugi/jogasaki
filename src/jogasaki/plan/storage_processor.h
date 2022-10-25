@@ -35,16 +35,16 @@ public:
 
     explicit storage_processor_result(
         bool primary_key_generated,
-        std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence
+        std::shared_ptr<yugawara::storage::sequence> primary_key_sequence
     );
 
     [[nodiscard]] bool primary_key_generated() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence() const noexcept;
+    [[nodiscard]] std::shared_ptr<yugawara::storage::sequence> primary_key_sequence() const noexcept;
 
 private:
     bool primary_key_generated_{};
-    std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence_{};
+    std::shared_ptr<yugawara::storage::sequence> primary_key_sequence_{};
 };
 
 /**
@@ -93,7 +93,7 @@ public:
 
 private:
     bool primary_key_generated_{};
-    std::shared_ptr<yugawara::storage::sequence const> primary_key_sequence_;
+    std::shared_ptr<yugawara::storage::sequence> primary_key_sequence_;
 };
 
 }

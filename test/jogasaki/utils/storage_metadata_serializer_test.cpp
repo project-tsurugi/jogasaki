@@ -324,4 +324,45 @@ TEST_F(storage_metadata_serializer_test, default_value_with_types) {
     auto t2 = deserialized->find_table("TT");
     EXPECT_EQ(to_string(*t2), to_string(*t));
 }
+
+TEST_F(storage_metadata_serializer_test, default_value_sequence) {
+    auto s0 = std::make_shared<storage::sequence>(
+        1000,
+        "test_sequence0"
+    );
+    auto s1 = std::make_shared<storage::sequence>(
+        1000,
+        "test_sequence1",
+        10,
+        100,
+        1000,
+        10000,
+        false
+    );
+    provider_.add_sequence(s0);
+    provider_.add_sequence(s1);
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false}, {s0} },
+            { "C1", type::int8(), nullity{true}, {s1} },
+        },
+    });
+    auto primary = provider_.add_index({
+        t,
+        t->simple_name(),
+        {
+            t->columns()[0],
+        },
+        {
+            t->columns()[1],
+        },
+        index_features_
+    });
+
+    std::shared_ptr<storage::configurable_provider> deserialized{};
+    test_index(*primary, provider_, deserialized);
+    auto t2 = deserialized->find_table("TT");
+    EXPECT_EQ(to_string(*t2), to_string(*t));
+}
 }

@@ -417,7 +417,19 @@ yugawara::storage::column_value default_value(::jogasaki::proto::metadata::stora
         case proto::metadata::storage::TableColumn::kSequenceNext: return {}; //TODO
         case proto::metadata::storage::TableColumn::kIdentityNext: {
             auto v = column.identity_next();
-            (void) v;
+            BOOST_ASSERT(v.has_name());  //NOLINT
+            auto seq = std::make_shared<yugawara::storage::sequence>(
+                v.name().element_name(),
+                v.initial_value(),
+                v.increment_value(),
+                v.min_value(),
+                v.max_value(),
+                v.cycle()
+            );
+            if(v.definition_id_optional_case() != proto::metadata::storage::SequenceDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) {
+                seq->definition_id(v.definition_id());
+            }
+            return column_value{std::move(seq)};
         }
         case proto::metadata::storage::TableColumn::DEFAULT_VALUE_NOT_SET: break;
         default: break;

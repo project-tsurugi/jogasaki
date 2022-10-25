@@ -32,9 +32,12 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/sequence/info.h>
 
+#include "metadata_store.h"
+
 namespace jogasaki::executor::sequence {
 
 using takatori::util::fail;
+using kind = meta::field_type_kind;
 
 manager::sequences_type create_sequences(manager::id_map_type const& id_map) {
     manager::sequences_type ret{};
@@ -63,24 +66,15 @@ std::size_t manager::load_id_map(kvs::transaction* tx) {
         created_tx = db_->create_transaction();
         tx = created_tx.get();
     }
-    std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg->scan(
-            *tx,
-            "",
-            kvs::end_point_kind::unbound,
-            "",
-            kvs::end_point_kind::unbound,
-            it
-        );
-        res != status::ok || !it) {
-        fail();
-    }
+    metadata_store s{*tx};
+
     std::size_t ret{};
-    while(status::ok == it->next()) {
-        auto [def_id, seq_id, found] = read_entry(it);
-        if (! found) continue;
-        sequences_[def_id] = details::sequence_element(seq_id);
-        ++ret;
+    if(auto res = s.scan([this, &ret](std::int64_t def_id, std::int64_t id) {
+            sequences_[def_id] = details::sequence_element(id);
+            ++ret;
+        }); ! res) {
+        VLOG(log_error) << "Sequences scan failed : " << res;
+        fail();
     }
     if (created_tx) {
         (void)created_tx ->commit();
@@ -199,40 +193,6 @@ void manager::mark_sequence_used_by(kvs::transaction& tx, sequence& seq) {
     used_sequences_[std::addressof(tx)].emplace(std::addressof(seq));
 }
 
-using kind = meta::field_type_kind;
-
-std::tuple<sequence_definition_id, sequence_id, bool> manager::read_entry(std::unique_ptr<kvs::iterator>& it) {
-    std::string_view k{};
-    std::string_view v{};
-    if (auto r = it->key(k); r != status::ok) {
-        if(r == status::not_found) {
-            return {{}, {}, false};
-        }
-        fail();
-    }
-    if (auto r = it->value(v); r != status::ok) {
-        if(r == status::not_found) {
-            return {{}, {}, false};
-        }
-        fail();
-    }
-    kvs::readable_stream key{k.data(), k.size()};
-    kvs::readable_stream value{v.data(), v.size()};
-    data::any dest{};
-    if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
-        res != status::ok) {
-        fail();
-    }
-    sequence_definition_id def_id{};
-    sequence_id id{};
-    def_id = dest.to<std::int64_t>();
-    if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
-        res != status::ok) {
-        fail();
-    }
-    id = dest.to<std::int64_t>();
-    return {def_id, id, true};
-}
 
 void manager::save_id_map(kvs::transaction* tx) {
     std::unique_ptr<kvs::transaction> created_tx{};
@@ -241,22 +201,10 @@ void manager::save_id_map(kvs::transaction* tx) {
         created_tx = db_->create_transaction();
         tx = created_tx.get();
     }
-    auto stg = db_->get_or_create_storage(system_sequences_name);
-    data::aligned_buffer key_buf{10};
-    data::aligned_buffer val_buf{10};
+    metadata_store s{*tx};
     for(auto& [def_id, element] : sequences_) {
         auto id = element.id();
-        kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
-        kvs::writable_stream value{val_buf.data(), val_buf.capacity()};
-        data::any k{std::in_place_type<std::int64_t>, def_id};
-        data::any v{std::in_place_type<std::int64_t>, id};
-        kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
-        kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
-        if (auto res = stg->put(
-                *tx,
-                {key.data(), key.size()},
-                {value.data(), value.size()}
-            ); res != status::ok) {
+        if(auto res = s.put(def_id, id); ! res) {
             fail();
         }
     }
@@ -264,6 +212,10 @@ void manager::save_id_map(kvs::transaction* tx) {
         (void) created_tx->commit();
     }
 }
+
+
+
+
 
 manager::sequences_type const& manager::sequences() const noexcept {
     return sequences_;

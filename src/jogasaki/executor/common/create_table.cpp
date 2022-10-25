@@ -22,6 +22,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -56,6 +57,83 @@ model::statement_kind create_table::kind() const noexcept {
     return model::statement_kind::create_table;
 }
 
+
+bool add_to_provider(
+    request_context& context,
+    yugawara::storage::index const& i,
+    yugawara::storage::configurable_provider& provider,
+    std::string& index_def
+) {
+    index_def.clear();
+    utils::storage_metadata_serializer ser{};
+    if(! ser.serialize_primary_index(i, index_def)) {
+        VLOG(log_error) << "serialization error";
+        return false;
+    }
+    std::shared_ptr<yugawara::storage::configurable_provider> deserialized{};
+    if(! ser.deserialize(index_def, provider, deserialized)) {
+        VLOG(log_error) << "deserialization error";
+        return false;
+    }
+
+    std::shared_ptr<yugawara::storage::index const> idx{};
+    std::size_t cnt = 0;
+    deserialized->each_index([&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+        idx = entry;
+        ++cnt;
+    });
+    if(cnt != 1) {
+        VLOG(log_error) << "deserialization error: too many indices";
+        return false;
+    }
+
+    try {
+        provider.add_table(idx->shared_table(), false);
+    } catch(std::invalid_argument& e) {
+        VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
+        context.status_code(status::err_already_exists);
+        return false;
+    }
+    try {
+        provider.add_index(idx, false);
+    } catch(std::invalid_argument& e) {
+        VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";
+        context.status_code(status::err_already_exists);
+        return false;
+    }
+    return true;
+}
+
+bool serialize_deserialize_add_primary(
+    request_context& context,
+    yugawara::storage::index const& i,
+    yugawara::storage::configurable_provider& provider,
+    std::string& storage) {
+    storage.clear();
+    std::string index_def{};
+    if(! add_to_provider(context, i, provider, index_def)) {
+        return false;
+    }
+
+    proto::metadata::storage::IndexDefinition idef{};
+    if (! idef.ParseFromString(index_def)) {
+        VLOG(log_error) << "data parse error";
+        return false;
+    }
+
+    proto::metadata::storage::Storage stg{};
+    stg.set_message_version(metadata_format_version);
+    stg.set_allocated_index(&idef);
+
+    std::stringstream ss{};
+    if (!stg.SerializeToOstream(&ss)) {
+        return false;
+    }
+    storage = ss.str();
+    stg.release_index();
+    return true;
+}
+
 bool create_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
@@ -85,24 +163,14 @@ bool create_table::operator()(request_context& context) const {
         );
         provider.add_sequence(p);
     }
-    std::shared_ptr<yugawara::storage::table const> t{};
-    try {
-        t = provider.add_table(c, false);
-    } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "table " << c->simple_name() << " already exists";
-        context.status_code(status::err_already_exists);
-        return false;
+
+    std::string storage{};
+    if(auto res = serialize_deserialize_add_primary(context, *i, provider, storage); ! res) {
+        return res;
     }
-    BOOST_ASSERT(i.ownership());  //NOLINT
-    try {
-        provider.add_index(i.ownership(), false);
-    } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "primary index " << i->simple_name() << " already exists";
-        context.status_code(status::err_already_exists);
-        return false;
-    }
+
     sharksfin::StorageOptions options{};
-    options.payload(metadata_);
+    options.payload(std::move(storage));
     if(auto stg = context.database()->create_storage(c->simple_name(), options);! stg) {
         VLOG(log_info) << "storage " << c->simple_name() << " already exists ";
         // recovery possibly issues CREATE TABLE ddl and in that case storage already exists.

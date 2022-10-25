@@ -17,7 +17,11 @@ enum AtomType {
     // boolean type.
     BOOLEAN = 1;
 
-    reserved 2, 3;
+    // 8-bit signed integer.
+    INT1 = 2;
+
+    // 16-bit signed integer.
+    INT2 = 3;
 
     // 32-bit signed integer.
     INT4 = 4;
@@ -81,6 +85,24 @@ enum AtomType {
     reserved 32 to 99;
 }
 
+message CharacterTypeOption {
+    bool varying = 20;
+
+    oneof length_optional {
+        // the data length.
+        int64 length = 21;
+    }
+}
+
+message OctetTypeOption {
+    bool varying = 20;
+
+    oneof length_optional {
+        // the data length.
+        int64 length = 21;
+    }
+}
+
 message DecimalTypeOption {
     oneof precision_optional {
         // the initial value.
@@ -91,6 +113,14 @@ message DecimalTypeOption {
         // the increment value.
         int64 scale = 21;
     }
+}
+
+message TimeOfDayTypeOption {
+    bool has_timezone_offset = 20;
+}
+
+message TimePointTypeOption {
+    bool has_timezone_offset = 20;
 }
 
 // pseudo type structure to represent types.
@@ -106,8 +136,11 @@ message TypeInfo {
     uint32 dimension = 11;
 
     oneof options {
-        DecimalTypeOption decimal_option = 20;
-        // TODO ... more
+        CharacterTypeOption character_option = 20;
+        DecimalTypeOption decimal_option = 21;
+        TimeOfDayTypeOption time_of_day_option = 22;
+        TimePointTypeOption time_point_option = 23;
+        OctetTypeOption octet_option = 24;
     }
 }
 

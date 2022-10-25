@@ -657,14 +657,6 @@ void service::execute_query(
     info = std::make_unique<details::channel_info>();
     info->name_ = std::string("resultset-");
     info->name_ += std::to_string(new_resultset_id());
-    std::shared_ptr<tateyama::api::server::data_channel> ch{};
-    {
-        trace_scope_name("acquire_channel");  //NOLINT
-        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-            fail();
-        }
-    }
-    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
 
     bool has_result_records = false;
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -689,6 +681,15 @@ void service::execute_query(
         details::error<sql::response::ResultOnly>(*res, status::err_illegal_operation, msg);
         return;
     }
+
+    std::shared_ptr<tateyama::api::server::data_channel> ch{};
+    {
+        trace_scope_name("acquire_channel");  //NOLINT
+        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+            fail();
+        }
+    }
+    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
     info->meta_ = e->meta();
     details::send_body_head(*res, *info);
     auto* cbp = c.get();
@@ -821,14 +822,6 @@ void service::execute_dump(
     info = std::make_unique<details::channel_info>();
     info->name_ = std::string("resultset-");
     info->name_ += std::to_string(new_resultset_id());
-    std::shared_ptr<tateyama::api::server::data_channel> ch{};
-    {
-        trace_scope_name("acquire_channel");  //NOLINT
-        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-            fail();
-        }
-    }
-    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     BOOST_ASSERT(! q.has_sql());  //NOLINT
@@ -837,6 +830,15 @@ void service::execute_dump(
         details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message());
         return;
     }
+
+    std::shared_ptr<tateyama::api::server::data_channel> ch{};
+    {
+        trace_scope_name("acquire_channel");  //NOLINT
+        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+            fail();
+        }
+    }
+    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);
     {
         auto m = std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{

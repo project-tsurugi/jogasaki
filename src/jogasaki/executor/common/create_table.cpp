@@ -88,6 +88,7 @@ bool add_to_provider(
     }
 
     try {
+        deserialized->remove_relation(idx->shared_table()->simple_name());
         provider.add_table(idx->shared_table(), false);
     } catch(std::invalid_argument& e) {
         VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
@@ -95,6 +96,7 @@ bool add_to_provider(
         return false;
     }
     try {
+        deserialized->remove_index(idx->simple_name());
         provider.add_index(idx, false);
     } catch(std::invalid_argument& e) {
         VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";

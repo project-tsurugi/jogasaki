@@ -32,6 +32,7 @@
 #include "api_test_base.h"
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/utils/storage_dump_formatter.h>
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::testing {
 
@@ -76,7 +77,16 @@ public:
     }
 };
 
+TEST_F(recovery_test, restart) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+}
+
 TEST_F(recovery_test, simple) {
+    utils::set_global_tx_option({false, false});  // to cusomize scenario
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }

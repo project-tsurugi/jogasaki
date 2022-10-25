@@ -99,7 +99,7 @@ TEST_F(sequence_test, generate_primary_key) {
 }
 
 TEST_F(sequence_test, recovery) {
-    utils::set_global_tx_option({false, true}); // TODO test ltx - once ltx had problem with sequence
+    utils::set_global_tx_option({false, false}); // to customize
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }

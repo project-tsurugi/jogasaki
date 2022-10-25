@@ -274,10 +274,8 @@ bool serialize_index(yugawara::storage::index const& idx, proto::metadata::stora
 
 } // namespace details
 
-bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx, std::string& out) {
+bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef) {
     bool is_primary = idx.table().simple_name() == idx.simple_name();
-
-    proto::metadata::storage::IndexDefinition idef{};
     if(is_primary) {
         auto* tdef = idef.mutable_table_definition();
         auto& t = idx.table();
@@ -293,6 +291,15 @@ bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx,
         }
         idef.mutable_table_reference()->mutable_name()->mutable_element_name()->assign(idx.table().simple_name());
     }
+    return true;
+}
+
+bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx, std::string& out) {
+    proto::metadata::storage::IndexDefinition idef{};
+    if(! serialize(idx, idef)) {
+        VLOG(log_error) << "serialization failed";
+        return false;
+    }
 
     std::stringstream ss{};
     if (! idef.SerializeToOstream(&ss)) {
@@ -302,6 +309,7 @@ bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx,
     out = ss.str();
     return true;
 }
+
 std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::storage::TableColumn const& column) {
     std::shared_ptr<takatori::type::data const> type{};
     switch(column.type().atom_type()) {
@@ -382,7 +390,10 @@ takatori::decimal::triple to_triple(::jogasaki::proto::metadata::common::Decimal
     return utils::read_decimal(buf, -exp);
 }
 
-yugawara::storage::column_value default_value(::jogasaki::proto::metadata::storage::TableColumn const& column) {
+yugawara::storage::column_value default_value(
+    ::jogasaki::proto::metadata::storage::TableColumn const& column,
+    yugawara::storage::configurable_provider& provider
+) {
     using yugawara::storage::column_value;
     switch(column.default_value_case()) {
         case proto::metadata::storage::TableColumn::kBooleanValue: return column_value{std::make_shared<takatori::value::boolean const>(column.boolean_value())};
@@ -429,6 +440,7 @@ yugawara::storage::column_value default_value(::jogasaki::proto::metadata::stora
             if(v.definition_id_optional_case() != proto::metadata::storage::SequenceDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) {
                 seq->definition_id(v.definition_id());
             }
+            provider.add_sequence(seq);
             return column_value{std::move(seq)};
         }
         case proto::metadata::storage::TableColumn::DEFAULT_VALUE_NOT_SET: break;
@@ -437,33 +449,34 @@ yugawara::storage::column_value default_value(::jogasaki::proto::metadata::stora
     return {};
 }
 
-yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column) {
+yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column, yugawara::storage::configurable_provider& provider) {
     yugawara::variable::criteria criteria{yugawara::variable::nullity{column.nullable()}};
     return yugawara::storage::column{
         column.name(),
         type(column),
         std::move(criteria),
-        default_value(column)
+        default_value(column, provider)
     };
 }
 
-bool deserialize_table(::jogasaki::proto::metadata::storage::TableDefinition const& tdef, std::shared_ptr<yugawara::storage::table>& out) {
+// deserialize table and add its depending definitions (base table, and sequence) to the provider
+bool deserialize_table_recursive(::jogasaki::proto::metadata::storage::TableDefinition const& tdef, std::shared_ptr<yugawara::storage::table>& out, yugawara::storage::configurable_provider& provider) {
     std::optional<yugawara::storage::table::definition_id_type> definition_id{};
     if(tdef.definition_id_optional_case() != proto::metadata::storage::TableDefinition::DefinitionIdOptionalCase::DEFINITION_ID_OPTIONAL_NOT_SET) {
         definition_id = tdef.definition_id();
     }
     takatori::util::reference_vector<yugawara::storage::column> columns{};
     for(auto&& c : tdef.columns()) {
-        columns.emplace_back(from(c));
+        columns.emplace_back(from(c, provider));
     }
     if(! tdef.has_name()) {
         return false;
     }
-    out = std::make_shared<yugawara::storage::table>(
+    out = provider.add_table(std::make_shared<yugawara::storage::table>(
         std::move(definition_id),
         tdef.name().element_name(),
         std::move(columns)
-    );
+    ));
     return true;
 }
 
@@ -553,14 +566,22 @@ bool storage_metadata_serializer::deserialize(
         VLOG(log_error) << "storage metadata deserialize: parse error";
         return false;
     }
+    return deserialize(idef, in, out);
+}
+
+bool storage_metadata_serializer::deserialize(
+    proto::metadata::storage::IndexDefinition const& idef,
+    yugawara::storage::configurable_provider const& in,
+    std::shared_ptr<yugawara::storage::configurable_provider>& out
+) {
     out = std::make_shared<yugawara::storage::configurable_provider>();
     if(idef.has_table_definition()) {
+        // primary index
         auto& tdef = idef.table_definition();
         std::shared_ptr<yugawara::storage::table> tbl{};
-        if(! deserialize_table(tdef, tbl)) {
+        if(! deserialize_table_recursive(tdef, tbl, *out)) {
             return false;
         }
-        out->add_table(tbl);
         std::shared_ptr<yugawara::storage::index> idx{};
         if(! deserialize_index(idef, tbl, idx)) {
             return false;
@@ -568,6 +589,7 @@ bool storage_metadata_serializer::deserialize(
         out->add_index(idx);
         return true;
     }
+    // secondary index
     if(! idef.has_table_reference()) {
         return false;
     }

@@ -41,12 +41,14 @@
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/constants.h>
 
 #include <string_view>
 #include <memory>
 #include <takatori/serializer/json_printer.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/recovery/index.h>
 
 namespace jogasaki::api::impl {
 
@@ -92,6 +94,10 @@ status database::start() {
         return status::err_io_error;
     }
 
+    if(auto res = recover_metadata(); res != status::ok) {
+        // TODO clean-up
+        return res;
+    }
     if(auto res = initialize_from_providers(); res != status::ok) {
         return res;
     }
@@ -105,12 +111,6 @@ status database::start() {
             }
         }
         task_scheduler_->start();
-    }
-
-    // recovery metadata uses task scheduler
-    if(auto res = recover_metadata(); res != status::ok) {
-        // TODO clean-up 
-        return res;
     }
 
     if (cfg_->enable_logship()) {
@@ -608,7 +608,7 @@ status database::initialize_from_providers() {
     return status::ok;
 }
 
-bool validate_extract(std::string_view payload, std::string& out) {
+bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
     proto::metadata::storage::Storage st{};
     if (! st.ParseFromArray(payload.data(), payload.size())) {
         LOG(ERROR) << "Invalid metadata data is detected in the storage.";
@@ -619,27 +619,20 @@ bool validate_extract(std::string_view payload, std::string& out) {
             ") is stored in the storage. This version is not supported.";
         return false;
     }
-    if(st.has_statement()) {
-        out = st.statement().ddl_statement();
+    if(st.has_index()) {
+        out = st.index();
     }
     return true;
 }
 
-status database::recover_table(std::string_view ddl) {
-    std::unique_ptr<api::executable_statement> statement{};
-    if(auto res = create_executable(ddl, statement); res != status::ok) {
-        return res;
+status database::recover_table(proto::metadata::storage::IndexDefinition const& idef) {
+    utils::storage_metadata_serializer ser{};
+
+    std::shared_ptr<yugawara::storage::configurable_provider> deserialized{};
+    if(! ser.deserialize(idef, *tables_, deserialized)) {
+        return status::err_inconsistent_index;
     }
-    transaction_handle tx{};
-    if(auto res = create_transaction(tx); res != status::ok) {
-        return res;
-    }
-    if(auto res = tx.execute(*statement); res != status::ok) {
-        return res;
-    }
-    if(auto res = tx.commit(); res != status::ok) {
-        return res;
-    }
+
     return status::ok;
 }
 
@@ -662,14 +655,15 @@ status database::recover_metadata() {
         if(payload.empty()) {
             continue;
         }
-        std::string ddl{};
-        if(! validate_extract(payload, ddl)) {
+        proto::metadata::storage::IndexDefinition idef{};
+        if(! validate_extract(payload, idef)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }
-        VLOG(log_info) << "Recover table " << n << " : " << ddl;
-        if(auto res = recover_table(ddl); res != status::ok) {
-            return res;
+        VLOG(log_info) << "Recover table " << n << " : " << idef.Utf8DebugString();
+        if(! recovery::deserialize_into_provider(idef, *tables_)) {
+            LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
+            return status::err_unknown;
         }
     }
     return status::ok;

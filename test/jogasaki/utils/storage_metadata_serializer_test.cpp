@@ -328,11 +328,11 @@ TEST_F(storage_metadata_serializer_test, default_value_with_types) {
 TEST_F(storage_metadata_serializer_test, default_value_sequence) {
     auto s0 = std::make_shared<storage::sequence>(
         1000,
-        "test_sequence0"
+        "seq0"
     );
     auto s1 = std::make_shared<storage::sequence>(
         1000,
-        "test_sequence1",
+        "seq1",
         10,
         100,
         1000,
@@ -364,5 +364,11 @@ TEST_F(storage_metadata_serializer_test, default_value_sequence) {
     test_index(*primary, provider_, deserialized);
     auto t2 = deserialized->find_table("TT");
     EXPECT_EQ(to_string(*t2), to_string(*t));
+    auto seq0 = deserialized->find_sequence("seq0");
+    ASSERT_TRUE(seq0);
+    auto seq1 = deserialized->find_sequence("seq1");
+    ASSERT_TRUE(seq1);
+    EXPECT_EQ(to_string(*s0), to_string(*seq0));
+    EXPECT_EQ(to_string(*s1), to_string(*seq1));
 }
 }

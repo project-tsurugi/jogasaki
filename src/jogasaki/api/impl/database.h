@@ -37,6 +37,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/proto/metadata/storage.pb.h>
 
 #include <tateyama/status.h>
 
@@ -139,7 +140,7 @@ public:
     [[nodiscard]] std::shared_ptr<diagnostics> fetch_diagnostics() noexcept override;
 
     status recover_metadata();
-    status recover_table(std::string_view ddl);
+    status recover_table(proto::metadata::storage::IndexDefinition const& idef);
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

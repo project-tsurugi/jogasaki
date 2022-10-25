@@ -83,6 +83,7 @@ file(GLOB SOURCES
         "jogasaki/meta/*.cpp"
         "jogasaki/model/*.cpp"
         "jogasaki/plan/*.cpp"
+        "jogasaki/recovery/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/serializer/*.cpp"

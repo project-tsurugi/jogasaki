@@ -25,6 +25,7 @@
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/recovery/index.h>
 
 namespace jogasaki::executor::common {
 
@@ -57,72 +58,29 @@ model::statement_kind create_table::kind() const noexcept {
     return model::statement_kind::create_table;
 }
 
-
-bool add_to_provider(
-    request_context& context,
+bool serialize_deserialize_add_primary(
     yugawara::storage::index const& i,
     yugawara::storage::configurable_provider& provider,
-    std::string& index_def
+    proto::metadata::storage::IndexDefinition& idef
 ) {
-    index_def.clear();
+    idef = {};
     utils::storage_metadata_serializer ser{};
-    if(! ser.serialize(i, index_def)) {
+    if(! ser.serialize(i, idef)) {
         VLOG(log_error) << "serialization error";
         return false;
     }
-    std::shared_ptr<yugawara::storage::configurable_provider> deserialized{};
-    if(! ser.deserialize(index_def, provider, deserialized)) {
-        VLOG(log_error) << "deserialization error";
-        return false;
-    }
-
-    std::shared_ptr<yugawara::storage::index const> idx{};
-    std::size_t cnt = 0;
-    deserialized->each_index([&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-        idx = entry;
-        ++cnt;
-    });
-    if(cnt != 1) {
-        VLOG(log_error) << "deserialization error: too many indices";
-        return false;
-    }
-
-    try {
-        deserialized->remove_relation(idx->shared_table()->simple_name());
-        provider.add_table(idx->shared_table(), false);
-    } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
-        context.status_code(status::err_already_exists);
-        return false;
-    }
-    try {
-        deserialized->remove_index(idx->simple_name());
-        provider.add_index(idx, false);
-    } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";
-        context.status_code(status::err_already_exists);
-        return false;
-    }
-    return true;
+    return recovery::deserialize_into_provider(idef, provider);
 }
 
-bool serialize_deserialize_add_primary(
-    request_context& context,
+bool create_storage_option(
     yugawara::storage::index const& i,
     yugawara::storage::configurable_provider& provider,
     std::string& storage) {
     storage.clear();
-    std::string index_def{};
-    if(! add_to_provider(context, i, provider, index_def)) {
-        return false;
-    }
-
     proto::metadata::storage::IndexDefinition idef{};
-    if (! idef.ParseFromString(index_def)) {
-        VLOG(log_error) << "data parse error";
+    if(! serialize_deserialize_add_primary(i, provider, idef)) {
         return false;
     }
-
     proto::metadata::storage::Storage stg{};
     stg.set_message_version(metadata_format_version);
     stg.set_allocated_index(&idef);
@@ -163,11 +121,12 @@ bool create_table::operator()(request_context& context) const {
             p->cycle(),
             true
         );
-        provider.add_sequence(p);
+//        provider.add_sequence(p);
     }
 
     std::string storage{};
-    if(auto res = serialize_deserialize_add_primary(context, *i, provider, storage); ! res) {
+    if(auto res = create_storage_option(*i, provider, storage); ! res) {
+        context.status_code(status::err_already_exists);
         return res;
     }
 

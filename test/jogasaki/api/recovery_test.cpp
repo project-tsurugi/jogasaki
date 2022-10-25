@@ -60,11 +60,9 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->single_thread(true);
+        cfg->prepare_qa_tables(false);
+        cfg->prepare_test_tables(true);
         db_setup(cfg);
-
-        auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
-        impl->initialize_from_providers();
     }
 
     void TearDown() override {
@@ -174,14 +172,14 @@ TEST_F(recovery_test, recovery_metadata) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("CREATE TABLE RECOVER (C0 INT PRIMARY KEY, C1 INT)");
-    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (1, 10)");
-    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (2, 20)");
-    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
     {
         SCOPED_TRACE("before recovery");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM RECOVER", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
     ASSERT_EQ(status::ok, db_->stop());
@@ -189,7 +187,7 @@ TEST_F(recovery_test, recovery_metadata) {
     {
         SCOPED_TRACE("after recovery");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM RECOVER", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
     dump_content();
@@ -199,24 +197,29 @@ TEST_F(recovery_test, recovery_sequence_metadata) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("CREATE TABLE RECOVER (C0 INT, C1 INT)");
-    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (1, 10)");
-    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (2, 20)");
-    execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 INT, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
     {
         SCOPED_TRACE("before recovery");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM RECOVER", result);
-        ASSERT_EQ(3, result.size());
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(2, result.size());
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
         SCOPED_TRACE("after recovery");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM RECOVER", result);
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(2, result.size());
+    }
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
+    {
+        SCOPED_TRACE("after recovery+insert");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
-        execute_statement("INSERT INTO RECOVER (C0, C1) VALUES (4, 40)", status::err_already_exists); // recoverying sequence metadata is not in place and this cause duplicate primary key TODO
     }
     dump_content();
 }
@@ -341,21 +344,4 @@ TEST_F(recovery_test, recover_ddl) {
     }
 }
 
-// recoverying sequence is not in place yet TODO
-TEST_F(recovery_test, DISABLED_recover_ddl_without_primary_key) {
-    if (jogasaki::kvs::implementation_id() == "memory") {
-        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
-    }
-    execute_statement("CREATE TABLE TEST (C0 INT, C1 INT)");
-    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
-    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");
-    ASSERT_EQ(status::ok, db_->stop());
-    ASSERT_EQ(status::ok, db_->start());
-    execute_statement("INSERT INTO TEST (C0, C1) VALUES (1, 10)");  //TODO insert fails as recoverying seq. fails
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TEST", result);
-        ASSERT_EQ(3, result.size());
-    }
-}
 }

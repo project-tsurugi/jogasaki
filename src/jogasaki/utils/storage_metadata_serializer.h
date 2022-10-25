@@ -26,6 +26,8 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/any.h>
 
+#include <jogasaki/proto/metadata/storage.pb.h>
+
 namespace jogasaki::utils {
 
 /**
@@ -60,6 +62,16 @@ public:
     bool serialize(yugawara::storage::index const& idx, std::string& out);
 
     /**
+     * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
+     * @param idx the primary index
+     * @param out [out] to be filled with result serialized string
+     * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
+     * @return true when successful
+     * @return false otherwise
+     */
+    bool serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& out);
+
+    /**
      * @brief deserialize protobuf msg for primary index
      * @param src the target string to deserialize as jogasaki::proto::metadata::storage::IndexDefinition
      * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
@@ -74,6 +86,20 @@ public:
         std::shared_ptr<yugawara::storage::configurable_provider>& out
     );
 
+    /**
+     * @brief deserialize protobuf msg for primary index
+     * @param src the target string to deserialize as jogasaki::proto::metadata::storage::IndexDefinition
+     * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
+     * contain the base table definition.
+     * @param provider [out] to be filled with result objects (index, table, sequence, etc.)
+     * @return true when successful
+     * @return false otherwise
+     */
+    bool deserialize(
+        proto::metadata::storage::IndexDefinition const& src,
+        yugawara::storage::configurable_provider const& in,
+        std::shared_ptr<yugawara::storage::configurable_provider>& out
+    );
 };
 
 }

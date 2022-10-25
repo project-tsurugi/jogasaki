@@ -27,6 +27,15 @@
 #include <takatori/type/date.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
+#include <takatori/value/boolean.h>
+#include <takatori/value/int.h>
+#include <takatori/value/float.h>
+#include <takatori/value/character.h>
+#include <takatori/value/octet.h>
+#include <takatori/value/decimal.h>
+#include <takatori/value/date.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
 
 #include <yugawara/variable/criteria.h>
 
@@ -72,6 +81,127 @@ proto::metadata::common::AtomType from(takatori::type::data const& t) {
     fail();
 }
 
+void set_type(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
+    auto typ = col->mutable_type();
+    typ->set_atom_type(from(c.type()));
+    switch(c.type().kind()) {
+        using proto::metadata::common::AtomType;
+        using k = takatori::type::type_kind;
+        case k::decimal: {
+            auto& d = static_cast<takatori::type::decimal const&>(c.type());  //NOLINT
+            auto* opt = typ->mutable_decimal_option();
+            if(d.precision().has_value()) {
+                opt->set_precision(static_cast<std::int64_t>(*d.precision()));
+            }
+            if(d.scale().has_value()) {
+                opt->set_scale(static_cast<std::int64_t>(*d.scale()));
+            }
+            break;
+        }
+        case k::character: {
+            auto& d = static_cast<takatori::type::character const&>(c.type());  //NOLINT
+            auto* op = typ->mutable_character_option();
+            op->set_varying(d.varying());
+            if(d.length().has_value()) {
+                op->set_length(static_cast<std::int64_t>(*d.length()));
+            }
+            break;
+        }
+        case k::octet: {
+            auto& d = static_cast<takatori::type::octet const&>(c.type());  //NOLINT
+            auto* op = typ->mutable_octet_option();
+            op->set_varying(d.varying());
+            if(d.length().has_value()) {
+                op->set_length(static_cast<std::int64_t>(*d.length()));
+            }
+            break;
+        }
+        case k::time_of_day: {
+            auto& d = static_cast<takatori::type::time_of_day const&>(c.type());  //NOLINT
+            typ->set_atom_type(d.with_time_zone() ? AtomType::TIME_OF_DAY_WITH_TIME_ZONE : AtomType::TIME_OF_DAY);
+            break;
+        }
+        case k::time_point: {
+            auto& d = static_cast<takatori::type::time_point const&>(c.type());  //NOLINT
+            typ->set_atom_type(d.with_time_zone() ? AtomType::TIME_POINT_WITH_TIME_ZONE : AtomType::TIME_POINT);
+            break;
+        }
+        default: break;
+    }
+}
+
+void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
+    switch(c.default_value().kind()) {
+        case yugawara::storage::column_value_kind::nothing: {
+            col->clear_default_value();
+            break;
+        }
+        case yugawara::storage::column_value_kind::immediate: {
+            auto& value = c.default_value().element<yugawara::storage::column_value_kind::immediate>();
+            switch(c.type().kind()) {
+                using proto::metadata::common::AtomType;
+                using k = takatori::type::type_kind;
+                case k::boolean: col->set_boolean_value(static_cast<takatori::value::boolean const&>(*value).get()); break; //NOLINT
+                case k::int1: col->set_int4_value(static_cast<takatori::value::int4 const&>(*value).get()); break;  //TODO verify cast correctness //NOLINT
+                case k::int2: col->set_int4_value(static_cast<takatori::value::int4 const&>(*value).get()); break;  //TODO verify cast correctness //NOLINT
+                case k::int4: col->set_int4_value(static_cast<takatori::value::int4 const&>(*value).get()); break; //NOLINT
+                case k::int8: col->set_int8_value(static_cast<takatori::value::int8 const&>(*value).get()); break; //NOLINT
+                case k::float4: col->set_float4_value(static_cast<takatori::value::float4 const&>(*value).get()); break; //NOLINT
+                case k::float8: col->set_float8_value(static_cast<takatori::value::float8 const&>(*value).get()); break; //NOLINT
+                case k::decimal: {
+                    // TODO specifying default for decimal is not possible for now
+                    break;
+                }
+                case k::character: col->set_character_value(std::string{static_cast<takatori::value::character const&>(*value).get()}); break; //NOLINT
+                case k::octet: col->set_octet_value(std::string{static_cast<takatori::value::octet const&>(*value).get()}); break; //NOLINT
+                case k::date: col->set_date_value(static_cast<takatori::value::date const&>(*value).get().days_since_epoch()); break; //NOLINT
+                case k::time_of_day: {
+                    auto p = static_cast<takatori::value::time_of_day const&>(*value).get();  //NOLINT
+                    auto& d = static_cast<takatori::type::time_of_day const&>(c.type());  //NOLINT
+                    if(d.with_time_zone()) {
+                        auto v = col->mutable_time_of_day_with_time_zone_value();
+                        v->set_time_zone_offset(0); // UTC for now
+                        v->set_offset_nanoseconds(p.time_since_epoch().count());
+                    } else {
+                        col->set_time_of_day_value(p.time_since_epoch().count());
+                    }
+                    break;
+                }
+                case k::time_point: {
+                    auto p = static_cast<takatori::value::time_point const&>(*value).get();  //NOLINT
+                    auto& d = static_cast<takatori::type::time_point const&>(c.type());  //NOLINT
+                    if(d.with_time_zone()) {
+                        auto v = col->mutable_time_point_with_time_zone_value();
+                        v->set_time_zone_offset(0); // UTC for now
+                        v->set_offset_seconds(p.seconds_since_epoch().count());
+                        v->set_nano_adjustment(p.subsecond().count());
+                    } else {
+                        auto v = col->mutable_time_point_value();
+                        v->set_offset_seconds(p.seconds_since_epoch().count());
+                        v->set_nano_adjustment(p.subsecond().count());
+                    }
+                    break;
+                }
+                default: break;
+            }
+            break;
+        }
+        case yugawara::storage::column_value_kind::sequence: {
+            auto& value = c.default_value().element<yugawara::storage::column_value_kind::sequence>();
+            auto seq = col->mutable_identity_next();
+            seq->mutable_name()->mutable_element_name()->assign(value->simple_name());
+            if(value->definition_id().has_value()) {
+                seq->set_definition_id(*value->definition_id());
+            }
+            seq->set_increment_value(value->increment_value());
+            seq->set_initial_value(value->initial_value());
+            seq->set_max_value(value->max_value());
+            seq->set_min_value(value->min_value());
+            seq->set_cycle(value->cycle());
+            break;
+        }
+    }
+}
 bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage::TableDefinition& tbl) {
     if(t.definition_id().has_value()) {
         tbl.set_definition_id(*t.definition_id());
@@ -82,52 +212,8 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         auto* col = cols->Add();
         col->mutable_name()->assign(c.simple_name());
         col->set_nullable(c.criteria().nullity().nullable());
-        auto typ = col->mutable_type();
-        typ->set_atom_type(from(c.type()));
-        switch(c.type().kind()) {
-            using proto::metadata::common::AtomType;
-            using k = takatori::type::type_kind;
-            case k::decimal: {
-                auto& d = static_cast<takatori::type::decimal const&>(c.type());  //NOLINT
-                auto* opt = typ->mutable_decimal_option();
-                if(d.precision().has_value()) {
-                    opt->set_precision(static_cast<std::int64_t>(*d.precision()));
-                }
-                if(d.scale().has_value()) {
-                    opt->set_scale(static_cast<std::int64_t>(*d.scale()));
-                }
-                break;
-            }
-            case k::character: {
-                auto& d = static_cast<takatori::type::character const&>(c.type());  //NOLINT
-                auto* op = typ->mutable_character_option();
-                op->set_varying(d.varying());
-                if(d.length().has_value()) {
-                    op->set_length(static_cast<std::int64_t>(*d.length()));
-                }
-                break;
-            }
-            case k::octet: {
-                auto& d = static_cast<takatori::type::octet const&>(c.type());  //NOLINT
-                auto* op = typ->mutable_octet_option();
-                op->set_varying(d.varying());
-                if(d.length().has_value()) {
-                    op->set_length(static_cast<std::int64_t>(*d.length()));
-                }
-                break;
-            }
-            case k::time_of_day: {
-                auto& d = static_cast<takatori::type::time_of_day const&>(c.type());  //NOLINT
-                typ->set_atom_type(d.with_time_zone() ? AtomType::TIME_OF_DAY_WITH_TIME_ZONE : AtomType::TIME_OF_DAY);
-                break;
-            }
-            case k::time_point: {
-                auto& d = static_cast<takatori::type::time_point const&>(c.type());  //NOLINT
-                typ->set_atom_type(d.with_time_zone() ? AtomType::TIME_POINT_WITH_TIME_ZONE : AtomType::TIME_POINT);
-                break;
-            }
-            default: break;
-        }
+        set_type(col, c);
+        set_default(col, c);
     }
     return true;
 }

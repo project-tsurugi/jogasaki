@@ -23,6 +23,14 @@
 #include <takatori/type/time_point.h>
 #include <takatori/type/decimal.h>
 #include <takatori/type/octet.h>
+#include <takatori/value/int.h>
+#include <takatori/value/float.h>
+#include <takatori/value/character.h>
+#include <takatori/value/date.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
+#include <takatori/value/decimal.h>
+#include <takatori/value/octet.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/storage/configurable_provider.h>
 
@@ -35,6 +43,7 @@ namespace jogasaki::utils {
 using namespace yugawara;
 namespace type = ::takatori::type;
 using ::yugawara::variable::nullity;
+using ::yugawara::storage::column_value;
 
 class storage_metadata_serializer_test : public ::testing::Test {
 public:
@@ -232,5 +241,88 @@ TEST_F(storage_metadata_serializer_test, secondary_index) {
     test_index(*secondary, provider_, deserialized);
     auto i2 = deserialized->find_index("TT_SECONDARY");
     EXPECT_EQ(to_string(*i2), to_string(*secondary));
+}
+
+TEST_F(storage_metadata_serializer_test, default_value) {
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false} },
+            { "C1", type::int8(), nullity{true}, column_value{std::make_shared<takatori::value::int8 const>(100)} },
+        },
+    });
+    auto primary = provider_.add_index({
+        t,
+        t->simple_name(),
+        {
+            t->columns()[0],
+        },
+        {
+            t->columns()[1],
+        },
+        index_features_
+    });
+    std::shared_ptr<storage::configurable_provider> deserialized{};
+    test_index(*primary, provider_, deserialized);
+    auto t2 = deserialized->find_table("TT");
+    EXPECT_EQ(to_string(*t2), to_string(*t));
+}
+
+TEST_F(storage_metadata_serializer_test, default_value_with_types) {
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "i1", type::int1(), nullity{false}, column_value{std::make_shared<takatori::value::int4 const>(100)}},
+            { "i2", type::int2(), nullity{true}, column_value{std::make_shared<takatori::value::int4 const>(100)} },
+            { "i4", type::int4(), nullity{true}, column_value{std::make_shared<takatori::value::int4 const>(100)} },
+            { "i8", type::int8(), nullity{true}, column_value{std::make_shared<takatori::value::int8 const>(100)} },
+            { "f4", type::float4(), nullity{true}, column_value{std::make_shared<takatori::value::float4 const>(100)} },
+            { "f8", type::float8(), nullity{true}, column_value{std::make_shared<takatori::value::float8 const>(100)} },
+            { "ch_5", type::character(~type::varying, 5), nullity{true}, column_value{std::make_shared<takatori::value::character const>(std::to_string(100))} },
+            { "vc_10", type::character(type::varying, 10), nullity{true}, column_value{std::make_shared<takatori::value::character const>(std::to_string(100))} },
+            { "vc_a", type::character(type::varying), nullity{true}, column_value{std::make_shared<takatori::value::character const>(std::to_string(100))} },
+            { "oc", type::octet(~type::varying), nullity{true}, column_value{std::make_shared<takatori::value::octet const>(std::to_string(100))} },
+            { "ov", type::octet(type::varying), nullity{true}, column_value{std::make_shared<takatori::value::octet const>(std::to_string(100))} },
+            { "dec_5_3", type::decimal(5, 3), nullity{true}, column_value{std::make_shared<takatori::value::decimal const>("100")} },
+            { "dec_a_3", type::decimal(std::nullopt, 5), nullity{true}, column_value{std::make_shared<takatori::value::decimal const>("100")} },
+            { "dt", type::date(), nullity{true}, column_value{std::make_shared<takatori::value::date const>(2000, 1, 1)} },
+            { "tod", type::time_of_day(~takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_of_day const>(12, 0, 0)} },
+            { "todtz", type::time_of_day(takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_of_day const>(12, 0, 0)} },
+            { "todtz", type::time_of_day(takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_of_day const>(12, 0, 0)} },
+            { "tp", type::time_point(~takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_point const>(2000, 1, 1, 12, 0, 0)} },
+            { "tptz", type::time_point(takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_point const>(2000, 1, 1, 12, 0, 0)} },
+        },
+    });
+    auto primary = provider_.add_index({
+        t,
+        t->simple_name(),
+        {
+            t->columns()[0],
+        },
+        {
+            t->columns()[1],
+            t->columns()[2],
+            t->columns()[3],
+            t->columns()[4],
+            t->columns()[5],
+            t->columns()[6],
+            t->columns()[7],
+            t->columns()[8],
+            t->columns()[9],
+            t->columns()[10],
+            t->columns()[11],
+            t->columns()[12],
+            t->columns()[13],
+            t->columns()[14],
+            t->columns()[15],
+            t->columns()[16],
+            t->columns()[17],
+        },
+        index_features_
+    });
+    std::shared_ptr<storage::configurable_provider> deserialized{};
+    test_index(*primary, provider_, deserialized);
+    auto t2 = deserialized->find_table("TT");
+    EXPECT_EQ(to_string(*t2), to_string(*t));
 }
 }

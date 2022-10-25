@@ -50,30 +50,20 @@ public:
     storage_metadata_serializer& operator=(storage_metadata_serializer&& other) noexcept = default;
 
     /**
-     * @brief serialize primary index as jogasaki::proto::metadata::storage::IndexDefinition
+     * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
      * @param idx the primary index
-     * @details the primary index, its base table and dependant sequences (if any) are serialized and contained in the output string
+     * @param out [out] to be filled with result serialized string
+     * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
      * @return true when successful
      * @return false otherwise
      */
-    bool serialize_primary_index(yugawara::storage::index const& idx, std::string& out);
-
-    /**
-     * @brief serialize secondary index
-     * @param idx the secondary index
-     * @details the secondary index definition is serialized
-     * @return true when successful
-     * @return false otherwise
-     */
-    bool serialize_secondary_index(yugawara::storage::index const& idx, std::string& out) {
-        (void) idx;
-        (void) out;
-        return true;
-    }
+    bool serialize(yugawara::storage::index const& idx, std::string& out);
 
     /**
      * @brief deserialize protobuf msg for primary index
      * @param src the target string to deserialize as jogasaki::proto::metadata::storage::IndexDefinition
+     * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
+     * contain the base table definition.
      * @param provider [out] to be filled with result objects (index, table, sequence, etc.)
      * @return true when successful
      * @return false otherwise
@@ -84,11 +74,6 @@ public:
         std::shared_ptr<yugawara::storage::configurable_provider>& out
     );
 
-//    std::shared_ptr<yugawara::storage::configurable_provider> const& provider() {
-//        return provider_;
-//    }
-//private:
-//    std::shared_ptr<yugawara::storage::configurable_provider> provider_{};
 };
 
 }

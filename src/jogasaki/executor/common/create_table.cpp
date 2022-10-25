@@ -66,7 +66,7 @@ bool add_to_provider(
 ) {
     index_def.clear();
     utils::storage_metadata_serializer ser{};
-    if(! ser.serialize_primary_index(i, index_def)) {
+    if(! ser.serialize(i, index_def)) {
         VLOG(log_error) << "serialization error";
         return false;
     }

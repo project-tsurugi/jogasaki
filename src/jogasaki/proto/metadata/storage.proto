@@ -10,12 +10,6 @@ import "jogasaki/proto/metadata/common.proto";
 
 // -- storages
 
-// external identity of tables and indices.
-message StorageReference {
-    // the key to identify low level storage (cc or datastore). Possibly concatenated 3-part name for schema element.
-    string storage_key = 1;
-}
-
 // the table or index name to identify storage at high level (SQL compiler/engine).
 message StorageName {
     // the database name of this storage.
@@ -28,12 +22,18 @@ message StorageName {
     string element_name = 3;
 }
 
+// external identity of tables and indices.
+message StorageReference {
+    // the name to identify storage
+    StorageName name = 1;
+}
+
 // -- sequences
 
 // external identity of sequences.
 message SequenceReference {
-    // the database name of this storage.
-    string name = 1;
+    // the sequence name
+    StorageName name = 1;
 }
 
 // definition of sequences.

@@ -63,8 +63,8 @@ proto::metadata::common::AtomType from(takatori::type::data const& t) {
         case k::octet: return AtomType::OCTET;
         case k::bit: return AtomType::BIT;
         case k::date: return AtomType::DATE;
-        case k::time_of_day: return AtomType::TIME_OF_DAY;
-        case k::time_point: return AtomType::TIME_POINT;
+        case k::time_of_day: return AtomType::TIME_OF_DAY;  // possibly updated 'with time zone'
+        case k::time_point: return AtomType::TIME_POINT;  // possibly updated 'with time zone'
         case k::datetime_interval: return AtomType::DATETIME_INTERVAL;
         case k::unknown: return AtomType::UNKNOWN;
         default: return AtomType::TYPE_UNSPECIFIED;
@@ -89,14 +89,13 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
             using k = takatori::type::type_kind;
             case k::decimal: {
                 auto& d = static_cast<takatori::type::decimal const&>(c.type());  //NOLINT
-                proto::metadata::common::DecimalTypeOption opt{};
+                auto* opt = typ->mutable_decimal_option();
                 if(d.precision().has_value()) {
-                    opt.set_precision(static_cast<std::int64_t>(*d.precision()));
+                    opt->set_precision(static_cast<std::int64_t>(*d.precision()));
                 }
                 if(d.scale().has_value()) {
-                    opt.set_scale(static_cast<std::int64_t>(*d.scale()));
+                    opt->set_scale(static_cast<std::int64_t>(*d.scale()));
                 }
-                typ->set_allocated_decimal_option(&opt);
                 break;
             }
             case k::character: {
@@ -108,16 +107,23 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
                 }
                 break;
             }
+            case k::octet: {
+                auto& d = static_cast<takatori::type::octet const&>(c.type());  //NOLINT
+                auto* op = typ->mutable_octet_option();
+                op->set_varying(d.varying());
+                if(d.length().has_value()) {
+                    op->set_length(static_cast<std::int64_t>(*d.length()));
+                }
+                break;
+            }
             case k::time_of_day: {
-                auto& d = static_cast<takatori::type::time_of_day const&>(c.type());
-                auto* op = typ->mutable_time_of_day_option();
-                op->set_has_timezone_offset(d.with_time_zone());
+                auto& d = static_cast<takatori::type::time_of_day const&>(c.type());  //NOLINT
+                typ->set_atom_type(d.with_time_zone() ? AtomType::TIME_OF_DAY_WITH_TIME_ZONE : AtomType::TIME_OF_DAY);
                 break;
             }
             case k::time_point: {
-                auto& d = static_cast<takatori::type::time_point const&>(c.type());
-                auto* op = typ->mutable_time_point_option();
-                op->set_has_timezone_offset(d.with_time_zone());
+                auto& d = static_cast<takatori::type::time_point const&>(c.type());  //NOLINT
+                typ->set_atom_type(d.with_time_zone() ? AtomType::TIME_POINT_WITH_TIME_ZONE : AtomType::TIME_POINT);
                 break;
             }
             default: break;
@@ -172,7 +178,7 @@ bool serialize_index(yugawara::storage::index const& idx, proto::metadata::stora
 
 } // namespace details
 
-bool storage_metadata_serializer::serialize_primary_index(yugawara::storage::index const& idx, std::string& out) {
+bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx, std::string& out) {
     bool is_primary = idx.table().simple_name() == idx.simple_name();
 
     proto::metadata::storage::IndexDefinition idef{};
@@ -185,11 +191,17 @@ bool storage_metadata_serializer::serialize_primary_index(yugawara::storage::ind
         if(! details::serialize_index(idx, idef)) {
             return false;
         }
+    } else {
+        if(! details::serialize_index(idx, idef)) {
+            return false;
+        }
+        idef.mutable_table_reference()->mutable_name()->mutable_element_name()->assign(idx.table().simple_name());
     }
 
     std::stringstream ss{};
-    if (!idef.SerializeToOstream(&ss)) {
-        fail();
+    if (! idef.SerializeToOstream(&ss)) {
+        VLOG(log_error) << "serialization failed";
+        return false;
     }
     out = ss.str();
     return true;
@@ -205,7 +217,6 @@ std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::st
         case proto::metadata::common::FLOAT4: type = std::make_shared<takatori::type::float4>(); break;
         case proto::metadata::common::FLOAT8: type = std::make_shared<takatori::type::float8>(); break;
         case proto::metadata::common::DECIMAL: {
-            bool varying = false;
             std::optional<std::size_t> precision{};
             std::optional<std::size_t> scale{};
             if(column.type().has_decimal_option()) {
@@ -248,27 +259,19 @@ std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::st
         }
         case proto::metadata::common::DATE: type = std::make_shared<takatori::type::date>(); break;
         case proto::metadata::common::TIME_OF_DAY: {
-            bool with_offset = false;
-            if(column.type().has_time_of_day_option()) {
-                auto& opt = column.type().time_of_day_option();
-                with_offset = opt.has_timezone_offset();
-            }
-            type = std::make_shared<takatori::type::time_of_day>(takatori::type::with_time_zone_t{with_offset});
+            type = std::make_shared<takatori::type::time_of_day>(~takatori::type::with_time_zone);
             break;
         }
         case proto::metadata::common::TIME_POINT: {
-            bool with_offset = false;
-            if(column.type().has_time_point_option()) {
-                auto& opt = column.type().time_point_option();
-                with_offset = opt.has_timezone_offset();
-            }
-            type = std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone_t{with_offset});
+            type = std::make_shared<takatori::type::time_point>(~takatori::type::with_time_zone);
             break;
         }
         case proto::metadata::common::TIME_OF_DAY_WITH_TIME_ZONE: {
+            type = std::make_shared<takatori::type::time_of_day>(takatori::type::with_time_zone);
             break;
         }
         case proto::metadata::common::TIME_POINT_WITH_TIME_ZONE: {
+            type = std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone);
             break;
         }
         case proto::metadata::common::UNKNOWN: type = std::make_shared<takatori::type::unknown>(); break;
@@ -389,8 +392,6 @@ bool storage_metadata_serializer::deserialize(
     yugawara::storage::configurable_provider const& in,
     std::shared_ptr<yugawara::storage::configurable_provider>& out
 ) {
-    (void) in;
-    (void) out;
     proto::metadata::storage::IndexDefinition idef{};
     if (! idef.ParseFromArray(src.data(), src.size())) {
         VLOG(log_error) << "storage metadata deserialize: parse error";
@@ -409,7 +410,23 @@ bool storage_metadata_serializer::deserialize(
             return false;
         }
         out->add_index(idx);
+        return true;
     }
+    if(! idef.has_table_reference()) {
+        return false;
+    }
+    auto& tabname = idef.table_reference().name().element_name();
+    std::shared_ptr<yugawara::storage::table const> t{};
+    if(t = out->find_table(tabname); t == nullptr) {
+        if(t = in.find_table(idef.table_reference().name().element_name()); t == nullptr) {
+            return false;
+        }
+    }
+    std::shared_ptr<yugawara::storage::index> idx{};
+    if(! deserialize_index(idef, t, idx)) {
+        return false;
+    }
+    out->add_index(idx);
     return true;
 }
 }

@@ -10,6 +10,7 @@ set(SqlProtoFiles
         )
 
 set(MetadataProtoFiles
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/metadata/common.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/metadata/storage.proto
         )
 

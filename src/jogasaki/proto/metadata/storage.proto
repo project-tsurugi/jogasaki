@@ -2,11 +2,243 @@ syntax = "proto3";
 
 package jogasaki.proto.metadata.storage;
 
+import "jogasaki/proto/metadata/common.proto";
+
 /*
  * Storage Metadata
  */
 
-/* For text-based table definition. */
+// -- storages
+
+// external identity of tables and indices.
+message StorageReference {
+    // the key to identify low level storage (cc or datastore). Possibly concatenated 3-part name for schema element.
+    string storage_key = 1;
+}
+
+// the table or index name to identify storage at high level (SQL compiler/engine).
+message StorageName {
+    // the database name of this storage.
+    string database_name = 1;
+
+    // the schema name of this storage.
+    string schema_name = 2;
+
+    // the table/index name of this storage.
+    string element_name = 3;
+}
+
+// -- sequences
+
+// external identity of sequences.
+message SequenceReference {
+    // the database name of this storage.
+    string name = 1;
+}
+
+// definition of sequences.
+message SequenceDefinition {
+
+    // the definition information.
+    oneof definition_id_optional {
+        // the definition ID of this sequence.
+        uint64 definition_id = 1;
+    }
+
+    // the optional sequence name.
+    oneof name_optional {
+        // the sequence name.
+        StorageName name = 10;
+    }
+
+    // the initial value.
+    int64 initial_value = 20;
+
+    // the increment value.
+    int64 increment_value = 21;
+
+    // the minimum value.
+    int64 min_value = 22;
+
+    // the maximum value.
+    int64 max_value = 23;
+
+    // whether to allow value overflow.
+    bool cycle = 24;
+}
+
+// -- tables
+
+// the table column definition.
+message TableColumn {
+
+    // the column name.
+    string name = 1;
+
+    // the data type.
+    common.TypeInfo type = 2;
+
+    // the column nullity.
+    bool nullable = 3;
+
+    // the column default value.
+    oneof default_value {
+        // boolean type.
+        bool boolean_value = 11;
+
+        // 32-bit signed integer.
+        sint32 int4_value = 14;
+
+        // 64-bit signed integer.
+        sint64 int8_value = 15;
+
+        // 32-bit floating point number.
+        float float4_value = 16;
+
+        // 64-bit floating point number.
+        double float8_value = 17;
+
+        // multi precision decimal number.
+        common.Decimal decimal_value = 18;
+
+        // character sequence.
+        string character_value = 19;
+
+        // octet sequence.
+        bytes octet_value = 21;
+
+        // bit sequence.
+        common.Bit bit_value = 23;
+
+        // date (number of days offset of epoch 1970-01-01).
+        sint64 date_value = 25;
+
+        // time of day (nano-seconds since 00:00:00).
+        uint64 time_of_day_value = 26;
+
+        // time point.
+        common.TimePoint time_point_value = 27;
+
+        // date-time interval.
+        common.DateTimeInterval datetime_interval_value = 28;
+
+        // time of day with time zone.
+        common.TimeOfDayWithTimeZone time_of_day_with_time_zone_value = 29;
+
+        // time point with time zone.
+        common.TimePointWithTimeZone time_point_with_time_zone_value = 30;
+
+        // the next value of externally defined sequences.
+        SequenceReference sequence_next = 40;
+
+        // the next value of internally defined sequences.
+        SequenceDefinition identity_next = 41;
+
+        // TODO more date-time functions like NOW()
+    }
+}
+
+// the definition of tables.
+message TableDefinition {
+
+    // the definition information.
+    oneof definition_id_optional {
+        // the definition ID of this table.
+        uint64 definition_id = 10;
+    }
+
+    // the table name.
+    StorageName name = 20;
+
+    // the table columns.
+    repeated TableColumn columns = 21;
+
+    // TODO: constraints.
+}
+
+// the sort kind.
+enum Direction {
+
+    // the sort kind is not defined.
+    DIRECTION_UNSPECIFIED = 0;
+
+    // ascendant order.
+    ASCEND = 1;
+
+    // descendant order.
+    DESCEND = 2;
+}
+
+// index key columns.
+message IndexColumn {
+
+    // the column name.
+    string name = 1;
+
+    // the column sort direction.
+    Direction direction = 2;
+
+    // TODO NULLS FIRST/LAST
+}
+
+// feature of individual indices. (see yugawara::storage::index_feature)
+enum IndexFeature {
+
+    // unspecified.
+    INDEX_FEATURE_UNSPECIFIED = 0;
+
+    // primary index.
+    PRIMARY = 1;
+
+    // capable for find.
+    FIND = 2;
+
+    // capable for 1-dimensional key range scan.
+    SCAN = 3;
+
+    // key distinguishes individual entry
+    UNIQUE = 4;
+
+    // key distinguishes individual entry in the sense of constraint
+    UNIQUE_CONSTRAINT = 5;
+}
+
+// the definition of indices.
+message IndexDefinition {
+
+    // the definition information.
+    oneof definition_id_optional {
+        // the definition ID of this index.
+        uint64 definition_id = 10;
+    }
+
+    // the optional index name.
+    oneof name_optional {
+        // the index name.
+        StorageName name = 20;
+    }
+
+    // the corresponding table information.
+    oneof table {
+
+        // the table definition (only for primary index).
+        TableDefinition table_definition = 30;
+
+        // owner table reference (for secondary indices).
+        StorageReference table_reference = 31;
+    }
+
+    // the index keys.
+    repeated IndexColumn keys = 40;
+
+    // the names of value columns.
+    repeated string values = 41;
+
+    // the index features.
+    repeated IndexFeature index_features = 42;
+}
+
+/* For text-based table definition (deprecated). */
 message TexualDefinition {
     string ddl_statement = 1;
 }
@@ -20,5 +252,9 @@ message Storage {
     oneof definition {
         // SQL DDL statement
         TexualDefinition statement = 10;
+
+        // Index definition
+        IndexDefinition index = 11;
     }
 }
+

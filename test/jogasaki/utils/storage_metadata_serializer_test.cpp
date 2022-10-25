@@ -288,7 +288,6 @@ TEST_F(storage_metadata_serializer_test, default_value_with_types) {
             { "dt", type::date(), nullity{true}, column_value{std::make_shared<takatori::value::date const>(2000, 1, 1)} },
             { "tod", type::time_of_day(~takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_of_day const>(12, 0, 0)} },
             { "todtz", type::time_of_day(takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_of_day const>(12, 0, 0)} },
-            { "todtz", type::time_of_day(takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_of_day const>(12, 0, 0)} },
             { "tp", type::time_point(~takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_point const>(2000, 1, 1, 12, 0, 0)} },
             { "tptz", type::time_point(takatori::type::with_time_zone), nullity{true}, column_value{std::make_shared<takatori::value::time_point const>(2000, 1, 1, 12, 0, 0)} },
         },

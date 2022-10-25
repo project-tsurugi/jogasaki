@@ -36,6 +36,9 @@
 #include <takatori/value/date.h>
 #include <takatori/value/time_of_day.h>
 #include <takatori/value/time_point.h>
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
 
 #include <yugawara/variable/criteria.h>
 
@@ -44,6 +47,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/utils/decimal.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -149,7 +153,13 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
                 case k::float4: col->set_float4_value(static_cast<takatori::value::float4 const&>(*value).get()); break; //NOLINT
                 case k::float8: col->set_float8_value(static_cast<takatori::value::float8 const&>(*value).get()); break; //NOLINT
                 case k::decimal: {
-                    // TODO specifying default for decimal is not possible for now
+                    auto p = static_cast<takatori::value::decimal const&>(*value).get();  //NOLINT
+                    utils::decimal_buffer out{};
+                    auto [hi, lo, sz] = utils::make_signed_coefficient_full(p);
+                    utils::create_decimal(p.sign(), lo, hi, sz, out);
+                    auto v = col->mutable_decimal_value();
+                    v->set_unscaled_value(out.data(), sz);
+                    v->set_exponent(p.exponent());
                     break;
                 }
                 case k::character: col->set_character_value(std::string{static_cast<takatori::value::character const&>(*value).get()}); break; //NOLINT
@@ -366,15 +376,63 @@ std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::st
     return type;
 }
 
+takatori::decimal::triple to_triple(::jogasaki::proto::metadata::common::Decimal const& arg) {
+    std::string_view buf{arg.unscaled_value()};
+    auto exp = arg.exponent();
+    return utils::read_decimal(buf, -exp);
+}
+
+yugawara::storage::column_value default_value(::jogasaki::proto::metadata::storage::TableColumn const& column) {
+    using yugawara::storage::column_value;
+    switch(column.default_value_case()) {
+        case proto::metadata::storage::TableColumn::kBooleanValue: return column_value{std::make_shared<takatori::value::boolean const>(column.boolean_value())};
+        case proto::metadata::storage::TableColumn::kInt4Value: return column_value{std::make_shared<takatori::value::int4 const>(column.int4_value())};
+        case proto::metadata::storage::TableColumn::kInt8Value: return column_value{std::make_shared<takatori::value::int8 const>(column.int8_value())};
+        case proto::metadata::storage::TableColumn::kFloat4Value: return column_value{std::make_shared<takatori::value::float4 const>(column.float4_value())};
+        case proto::metadata::storage::TableColumn::kFloat8Value: return column_value{std::make_shared<takatori::value::float8 const>(column.float8_value())};
+        case proto::metadata::storage::TableColumn::kDecimalValue: {
+            auto v = column.decimal_value();
+            return column_value{std::make_shared<takatori::value::decimal const>(to_triple(v))};
+        }
+        case proto::metadata::storage::TableColumn::kCharacterValue: return column_value{std::make_shared<takatori::value::character const>(column.character_value())};
+        case proto::metadata::storage::TableColumn::kOctetValue: return column_value{std::make_shared<takatori::value::octet const>(column.octet_value())};
+        case proto::metadata::storage::TableColumn::kDateValue: {
+            return column_value{std::make_shared<takatori::value::date const>(takatori::datetime::date{column.date_value()})};
+        }
+        case proto::metadata::storage::TableColumn::kTimeOfDayValue: {
+            return column_value{std::make_shared<takatori::value::time_of_day const>(takatori::datetime::time_of_day{std::chrono::duration<std::uint64_t, std::nano>(column.time_of_day_value())})};
+        }
+        case proto::metadata::storage::TableColumn::kTimePointValue: {
+            auto v = column.time_point_value();
+            return column_value{std::make_shared<takatori::value::time_point const>(takatori::datetime::time_point{std::chrono::duration<std::int64_t>{v.offset_seconds()}, std::chrono::nanoseconds{v.nano_adjustment()}})};
+        }
+        case proto::metadata::storage::TableColumn::kTimeOfDayWithTimeZoneValue: {
+            auto v = column.time_of_day_with_time_zone_value();
+            return column_value{std::make_shared<takatori::value::time_of_day const>(takatori::datetime::time_of_day{std::chrono::duration<std::uint64_t, std::nano>(v.offset_nanoseconds())})};
+        }
+        case proto::metadata::storage::TableColumn::kTimePointWithTimeZoneValue: {
+            auto v = column.time_point_with_time_zone_value();
+            return column_value{std::make_shared<takatori::value::time_point const>(takatori::datetime::time_point{std::chrono::duration<std::int64_t>{v.offset_seconds()}, std::chrono::nanoseconds{v.nano_adjustment()}})};
+        }
+        case proto::metadata::storage::TableColumn::kSequenceNext: return {}; //TODO
+        case proto::metadata::storage::TableColumn::kIdentityNext: {
+            auto v = column.identity_next();
+            (void) v;
+        }
+        case proto::metadata::storage::TableColumn::DEFAULT_VALUE_NOT_SET: break;
+        default: break;
+    }
+    return {};
+}
+
 yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column) {
     yugawara::variable::criteria criteria{yugawara::variable::nullity{column.nullable()}};
     return yugawara::storage::column{
         column.name(),
         type(column),
         std::move(criteria),
-        yugawara::storage::column_value{}  //TODO
+        default_value(column)
     };
-
 }
 
 bool deserialize_table(::jogasaki::proto::metadata::storage::TableDefinition const& tdef, std::shared_ptr<yugawara::storage::table>& out) {

@@ -387,8 +387,29 @@ TEST_F(ddl_test, type_name_variants) {
 TEST_F(ddl_test, unsupported_types) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 BOOLEAN PRIMARY KEY)", variables, prepared));
     EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TINYINT PRIMARY KEY)", variables, prepared));
     EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 SMALLINT PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 BINARY VARYING(4) PRIMARY KEY)", variables, prepared));
+}
+
+TEST_F(ddl_test, decimal_args) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT0 (C0 DECIMAL PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT1 (C0 DECIMAL(*,*) PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT2 (C0 DECIMAL(*,3) PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT3 (C0 DECIMAL(3,*) PRIMARY KEY)", variables, prepared));
+}
+
+TEST_F(ddl_test, string_args) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT0 (C0 CHAR PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE TT1 (C0 CHAR(*) PRIMARY KEY)", variables, prepared));
+    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE TT2 (C0 VARCHAR PRIMARY KEY)", variables, prepared));
+//    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE TT2 (C0 VARCHAR(0) PRIMARY KEY)", variables, prepared));  // varchar(0) should be error  //TODO
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT3 (C0 VARCHAR(*) PRIMARY KEY)", variables, prepared));
 }
 
 TEST_F(ddl_test, default_value) {

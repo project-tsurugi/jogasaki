@@ -63,10 +63,9 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->prepare_qa_tables(false);
+        cfg->prepare_test_tables(false);
         db_setup(cfg);
-        auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
@@ -225,9 +224,10 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
 }
 
 TEST_F(ddl_test, existing_table) {
+    execute_statement( "CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)");
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::err_compiler_error,db_->prepare("CREATE TABLE T0 (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", variables, prepared));
+    ASSERT_EQ(status::err_compiler_error,db_->prepare("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", variables, prepared));
 }
 
 TEST_F(ddl_test, duplicate_table_name) {

@@ -32,6 +32,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
+#include <jogasaki/test_utils/secondary_index.h>
 
 namespace jogasaki::testing {
 
@@ -417,4 +418,21 @@ TEST_F(ddl_test, default_value) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)", variables, prepared));
 }
+
+TEST_F(ddl_test, drop_indices_cascade) {
+    execute_statement("CREATE TABLE T (C0 INT, C1 INT)");
+    auto stg0 = utils::create_secondary_index(*db_impl(), "S0", "T", {1}, {});
+    ASSERT_TRUE(stg0);
+    auto stg1 = utils::create_secondary_index(*db_impl(), "S1", "T", {1}, {});
+    ASSERT_TRUE(stg1);
+    execute_statement("DROP TABLE T");
+    {
+        auto provider = db_impl()->tables();
+        auto s0 = provider->find_index("S0");
+        ASSERT_FALSE(s0);
+        auto s1 = provider->find_index("S0");
+        ASSERT_FALSE(s1);
+    }
+}
+
 }

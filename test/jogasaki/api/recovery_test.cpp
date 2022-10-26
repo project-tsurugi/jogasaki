@@ -33,6 +33,7 @@
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/utils/storage_dump_formatter.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/test_utils/secondary_index.h>
 
 namespace jogasaki::testing {
 
@@ -356,6 +357,7 @@ TEST_F(recovery_test, recover_ddl) {
 
 TEST_F(recovery_test, recovery_empty_table) {
     // verify table without data is recognized after recovery
+    utils::set_global_tx_option({false, false});  // to cusomize scenario
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -393,6 +395,25 @@ TEST_F(recovery_test, drop_cleanup_sequences) {
     ASSERT_EQ(status::ok, db_->start());
     execute_statement("DROP TABLE T");
     execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+}
+
+TEST_F(recovery_test, recovery_secondary_indices) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    auto stg0 = utils::create_secondary_index(*db_impl(), "S0", "T", {1}, {0});
+    ASSERT_TRUE(stg0);
+
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    execute_statement("DROP TABLE T");
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    auto stg00 = utils::create_secondary_index(*db_impl(), "S0", "T", {1}, {0});
+    ASSERT_TRUE(stg00);
 }
 
 }

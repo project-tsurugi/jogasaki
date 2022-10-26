@@ -46,14 +46,36 @@ bool drop_table::operator()(request_context& context) const {
 
     // note: table existence is verified.
     // To fully clean up garbage, try to proceed further even if some entry removal failed or warned.
+
+    // drop auto-generated sequences
     for(auto&& col : t->columns()) {
+        // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
         if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
             provider.remove_sequence(col.simple_name());
         }
     }
+
+    // drop secondary indices
+    std::vector<std::string> indices{};
+    provider.each_table_index(*t, [&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
+        (void) entry;
+        indices.emplace_back(id);
+    });
+
+    for(auto&& n : indices) {
+        provider.remove_index(n);
+        if(auto stg = context.database()->get_storage(n)) {
+            if(auto res = stg->delete_storage(); res != status::ok) {
+                VLOG(log_error) << "deleting storage '" << n << "' failed: " << res;
+            }
+        }
+    }
+
+    // drop primary index
     if(auto res = provider.remove_index(c.simple_name());! res) {
         VLOG(log_error) << "primary index for table " << c.simple_name() << " not found";
     }
+    // drop table
     if(auto res = provider.remove_relation(c.simple_name());! res) {
         VLOG(log_error) << "table " << c.simple_name() << " not found";
     }

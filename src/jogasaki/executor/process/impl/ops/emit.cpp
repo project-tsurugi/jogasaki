@@ -23,6 +23,7 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
+#include <jogasaki/utils/string_manipulation.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include "operator_base.h"
@@ -89,18 +90,6 @@ maybe_shared_ptr<meta::external_record_meta> const& emit::meta() const noexcept 
     return meta_;
 }
 
-bool is_prefix(std::string_view target, std::string_view prefix) noexcept {
-    if (target.size() < prefix.size()) {
-        return false;
-    }
-    for(std::size_t i=0, n=prefix.size(); i < n; ++i) {
-        if(prefix[i] != target[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
 std::shared_ptr<meta::external_record_meta> emit::create_meta(
     yugawara::compiled_info const& info,
     sequence_view<const column> columns
@@ -111,8 +100,8 @@ std::shared_ptr<meta::external_record_meta> emit::create_meta(
     fields.reserve(sz);
     field_names.reserve(sz);
     for(auto&& c : columns) {
-        // temporarily remove the generated pk column. It should be invisible to client. TODO
-        if(c.name() && is_prefix(*c.name(), generated_pkey_column_prefix)) {
+        // remove the generated pk column. It should be invisible to client.
+        if(c.name() && utils::is_prefix(*c.name(), generated_pkey_column_prefix)) {
             --sz;
             continue;
         }

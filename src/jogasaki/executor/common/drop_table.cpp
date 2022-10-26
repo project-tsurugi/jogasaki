@@ -21,6 +21,7 @@
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor::common {
 
@@ -34,28 +35,33 @@ model::statement_kind drop_table::kind() const noexcept {
 
 bool drop_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
-    // note: To fully clean up garbage, try to proceed further even if some entry removal failed or warned.
     auto& provider = *context.storage_provider();
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
+    auto t = provider.find_table(c.simple_name());
+    if(t == nullptr) {
+        VLOG(log_error) << "table " << c.simple_name() << " not found";
+        context.status_code(status::err_not_found);
+        return false;
+    }
+
+    // note: table existence is verified.
+    // To fully clean up garbage, try to proceed further even if some entry removal failed or warned.
+    for(auto&& col : t->columns()) {
+        if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
+            provider.remove_sequence(col.simple_name());
+        }
+    }
     if(auto res = provider.remove_index(c.simple_name());! res) {
         VLOG(log_error) << "primary index for table " << c.simple_name() << " not found";
-        context.status_code(status::err_not_found);
     }
     if(auto res = provider.remove_relation(c.simple_name());! res) {
         VLOG(log_error) << "table " << c.simple_name() << " not found";
-        context.status_code(status::err_not_found);
     }
     if(auto stg = context.database()->get_storage(c.simple_name())) {
         if(auto res = stg->delete_storage(); res != status::ok) {
             VLOG(log_error) << "deleting storage failed: " << res;
         }
     }
-
-    // The delete_storage function removes entry from kvs system storage, but
-    // shirakami delete_record requires some duration to become stable.
-    // For convenience of DDL in testing, simply sleep here.
-    // TODO remove when shirakami reflects the deletion in time
-    std::this_thread::sleep_for(std::chrono::milliseconds{80});
     return true;
 }
 }

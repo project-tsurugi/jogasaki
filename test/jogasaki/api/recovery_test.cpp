@@ -354,4 +354,45 @@ TEST_F(recovery_test, recover_ddl) {
     }
 }
 
+TEST_F(recovery_test, recovery_empty_table) {
+    // verify table without data is recognized after recovery
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TEST", result);
+        ASSERT_EQ(0, result.size());
+    }
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(recovery_test, drop_empty_table) {
+    // verify table without data is recognized after recovery
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(recovery_test, drop_cleanup_sequences) {
+    // verify internally created sequence is dropped and re-create is successful
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    execute_statement("DROP TABLE T");
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+}
+
 }

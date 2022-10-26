@@ -636,12 +636,13 @@ status database::recover_table(proto::metadata::storage::IndexDefinition const& 
     return status::ok;
 }
 
-status database::recover_metadata() {
-    std::vector<std::string> names{};
-    if(auto res = kvs_db_->list_storages(names); res != status::ok) {
-        return res;
-    }
-    for(auto&& n : names) {
+status database::recover_index_metadata(
+    std::vector<std::string> const& keys,
+    bool primary_only,
+    std::vector<std::string>& skipped
+) {
+    skipped.clear();
+    for(auto&& n : keys) {
         auto stg = kvs_db_->get_storage(n);
         if(! stg) {
             LOG(ERROR) << "Metadata recovery failed. Missing storage:" << n;
@@ -660,11 +661,34 @@ status database::recover_metadata() {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }
-        VLOG(log_info) << "Recover table " << n << " : " << idef.Utf8DebugString();
+        if(primary_only && ! idef.has_table_definition()) {
+            skipped.emplace_back(n);
+            continue;
+        }
+        VLOG(log_info) << "Recover table/primary index " << n << " : " << idef.Utf8DebugString();
         if(! recovery::deserialize_into_provider(idef, *tables_)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }
+    }
+    return status::ok;
+}
+
+status database::recover_metadata() {
+    std::vector<std::string> names{};
+    if(auto res = kvs_db_->list_storages(names); res != status::ok) {
+        return res;
+    }
+    std::vector<std::string> secondaries{};
+    secondaries.reserve(names.size());
+    // recover primary index/table
+    if(auto res = recover_index_metadata(names, true, secondaries); res != status::ok) {
+        return res;
+    }
+    // recover secondaries
+    std::vector<std::string> skipped{};
+    if(auto res = recover_index_metadata(secondaries, false, skipped); res != status::ok) {
+        return res;
     }
     return status::ok;
 }

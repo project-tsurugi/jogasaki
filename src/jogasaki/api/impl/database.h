@@ -141,6 +141,11 @@ public:
 
     status recover_metadata();
     status recover_table(proto::metadata::storage::IndexDefinition const& idef);
+    status recover_index_metadata(
+        std::vector<std::string> const& keys,
+        bool primary_only,
+        std::vector<std::string>& skipped
+    );
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

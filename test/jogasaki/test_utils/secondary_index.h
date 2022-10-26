@@ -45,7 +45,7 @@ std::unique_ptr<kvs::storage> create_secondary_index(
     std::string_view base_table,
     std::initializer_list<std::size_t> key_indices,
     std::initializer_list<std::size_t> value_indices
-    ) {
+) {
     auto provider = db.tables();
     auto t = provider->find_table(base_table);
     auto k = keys(t, std::move(key_indices));
@@ -66,7 +66,7 @@ std::unique_ptr<kvs::storage> create_secondary_index(
             ASSERT_TRUE(s0);
         }();
     }
-    return db.kvs_db()->get_or_create_storage(name);
+    return db.kvs_db()->create_storage(name);
 }
 
 }

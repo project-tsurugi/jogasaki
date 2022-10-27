@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 
 #include <takatori/util/fail.h>
+#include <takatori/util/string_builder.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -56,6 +57,7 @@
 namespace jogasaki::api::impl {
 
 using takatori::util::fail;
+using takatori::util::string_builder;
 
 std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
@@ -717,8 +719,8 @@ std::shared_ptr<diagnostics> database::fetch_diagnostics() noexcept {
 }
 
 bool database::do_create_transaction_async(
-    transaction_option const& option,
-    create_transaction_callback on_completion
+    create_transaction_callback on_completion,
+    transaction_option const& option
 ) {
     auto rctx = impl::create_request_context(
         this,
@@ -729,11 +731,16 @@ bool database::do_create_transaction_async(
 
     auto handle = std::make_shared<transaction_handle>();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, option, handle]() mutable {
+        [this, rctx, option, handle]() {
             auto res = do_create_transaction(*handle, option);
             rctx->status_code(res);
             if(res != status::ok) {
-                rctx->status_message("do_create_transaction failed with error");
+                rctx->status_message(
+                    string_builder{} <<
+                        "creating transaction failed with error:" <<
+                        res <<
+                        string_builder::to_string
+                );
             }
         }, false);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based

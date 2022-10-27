@@ -55,7 +55,7 @@ using takatori::util::maybe_shared_ptr;
  */
 class database : public api::database {
 public:
-    using create_transaction_callback = std::function<void(transaction_handle, status, std::string_view)>;
+    using create_transaction_callback = api::database::create_transaction_callback;
 
     database();
 
@@ -119,9 +119,9 @@ public:
     status do_create_transaction(transaction_handle& handle, transaction_option const& option) override;
 
     bool do_create_transaction_async(
-        transaction_option const& option,
-        create_transaction_callback on_completion
-    );
+        create_transaction_callback on_completion,
+        transaction_option const& option
+    ) override;
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
 

@@ -51,6 +51,8 @@ class parameter_set;
  */
 class database {
 public:
+    using create_transaction_callback = std::function<void(transaction_handle, status, std::string_view)>;
+
     /**
      * @brief create empty object
      */
@@ -194,10 +196,25 @@ public:
      * @param option specify option values for the new transaction
      * @return status::ok when successful
      * @return any other error otherwise
+     * @note this function is synchronous and beginning transaction may require wait for epoch.
+     * Use `create_transaction_async` if waiting causes problems.
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      */
     status create_transaction(transaction_handle& handle, transaction_option const& option = transaction_option{}) {
         return do_create_transaction(handle, option);
+    }
+
+    /**
+     * @brief begin the new transaction asynchronously
+     * @param cb callback to receive the async execution result
+     * @param option specify option values for the new transaction
+     * @return true when async request was made successfully
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
+     * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     */
+    bool create_transaction_async(create_transaction_callback cb, transaction_option const& option = transaction_option{}) {
+        return do_create_transaction_async(cb, option);
     }
 
     /**
@@ -378,6 +395,8 @@ public:
 
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
+
+    virtual bool do_create_transaction_async(create_transaction_callback cb, transaction_option const& option) = 0;
 
     virtual status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

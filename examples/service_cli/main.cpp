@@ -412,8 +412,9 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
+        while(!res->completed()) { /* noop */ }
         bool error{false};
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        if(! st || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
@@ -456,7 +457,8 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        while(!res->completed()) { /* noop */ }
+        if(! st || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_, for_autocommit);

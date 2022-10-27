@@ -98,13 +98,16 @@ public:
      * @brief commit the transaction
      * @return status::ok when successful
      * @return error code otherwise
+     * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
+     * Use `commit_async` if waiting causes problems.
      */
     status commit();
 
     /**
-     * @brief commit the transaction
-     * @return status::ok when successful
-     * @return error code otherwise
+     * @brief commit the transaction asynchronously
+     * @return true when async request was made successfully
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
      */
     bool commit_async(callback on_completion);
 

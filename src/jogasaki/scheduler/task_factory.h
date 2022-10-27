@@ -29,63 +29,43 @@ namespace details {
 
 class custom_task : public model::task {
 public:
+    custom_task();
 
-    explicit custom_task(task_body_type body, bool transactional_io = false) :
-        body_(std::move(body)),
-        transactional_io_(transactional_io)
-    {}
+    explicit custom_task(task_body_type body, bool transactional_io = false);
 
     /**
      * @brief returns task id that uniquely identifies the task
      */
-    [[nodiscard]] identity_type id() const override {
-        return -1;
-    }
+    [[nodiscard]] identity_type id() const override;
 
     /**
      * @brief task body
      * @return task_result to instruct scheduler
      */
-    [[nodiscard]] model::task_result operator()() override {
-        body_();
-        return model::task_result::complete;
-    }
+    [[nodiscard]] model::task_result operator()() override;
 
     /**
      * @brief accessor to I/O operation property of the task
      * @return whether the task contains transactional I/O operations that requires special handling in scheduling
      */
-    [[nodiscard]] bool has_transactional_io() override {
-        return transactional_io_;
-    }
+    [[nodiscard]] bool has_transactional_io() override;
 
 protected:
-    std::ostream& write_to(std::ostream& out) const override {
-        //TODO
-        return out;
-    }
+    std::ostream& write_to(std::ostream& out) const override;
 
 private:
+    cache_align static inline std::atomic_size_t id_src = 20000;
+    identity_type id_{id_src++};
     task_body_type body_{};
     bool transactional_io_{};
 };
 
 } // namespace details
 
-inline flat_task create_custom_task(
+flat_task create_custom_task(
     request_context* rctx,
     task_body_type body,
     bool has_transaction_io = false
-) {
-    return flat_task{
-        task_enum_tag<flat_task_kind::wrapped>,
-        rctx,
-        std::make_shared<details::custom_task>(
-            std::move(body),
-            has_transaction_io
-        ),
-        true
-    };
-}
+);
 
 } // namespace jogasaki::scheduler

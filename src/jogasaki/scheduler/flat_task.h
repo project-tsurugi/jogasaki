@@ -140,7 +140,8 @@ public:
      * @brief construct new object wrapping jogasaki task
      * @param rctx the request context where the task belongs
      * @param origin the jogasaki executor task
-     * @param require_teardown indicate whether the teardown task is required that follows after this task
+     * @param require_teardown indicate whether the teardown task is created after this task. 
+     * This makes the wrapped task run as job.
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::wrapped>,

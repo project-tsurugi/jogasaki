@@ -17,6 +17,7 @@
 #include "executable_statement.h"
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
@@ -39,6 +40,7 @@
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::string_builder;
 
 status transaction::commit() {
     return tx_->object()->commit();
@@ -318,7 +320,9 @@ bool transaction::commit_async(transaction::callback on_completion) {
             auto res = commit();
             rctx->status_code(res);
             if(res != status::ok) {
-                rctx->status_message("commit failed with error");
+                rctx->status_message(
+                    string_builder{} << "commit failed with error:" << res << string_builder::to_string
+                );
             }
         }, true);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx](){  // callback is copy-based

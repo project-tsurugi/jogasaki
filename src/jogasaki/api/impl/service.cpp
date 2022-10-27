@@ -25,7 +25,6 @@
 #include <jogasaki/common.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
-#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
@@ -104,15 +103,15 @@ void service::command_begin(
         }
     }
     transaction_option opts{ readonly, is_long, std::move(storages) };
-    jogasaki::api::impl::get_impl(*db_).do_create_transaction_async(
-        opts,
+    db_->create_transaction_async(
         [res](jogasaki::api::transaction_handle tx, status st, std::string_view msg) {
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::Begin>(*res, tx);
             } else {
                 details::error<sql::response::Begin>(*res, st, msg);
             }
-        }
+        },
+        opts
     );
 }
 

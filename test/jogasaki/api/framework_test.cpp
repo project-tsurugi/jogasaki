@@ -51,7 +51,6 @@
 namespace jogasaki::api {
 
 using namespace std::literals::string_literals;
-using namespace std::chrono_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;

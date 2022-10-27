@@ -14,25 +14,9 @@
  * limitations under the License.
  */
 #include "request_context_factory.h"
-#include "executable_statement.h"
 
-#include <takatori/util/downcast.h>
-
-#include <jogasaki/constants.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/impl/result_set.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/executor/common/execute.h>
-#include <jogasaki/executor/common/write.h>
-#include <jogasaki/scheduler/flat_task.h>
-#include <jogasaki/scheduler/task_scheduler.h>
-#include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/api/impl/result_store_channel.h>
-#include <jogasaki/scheduler/task_factory.h>
-#include <jogasaki/executor/io/record_channel_adapter.h>
-#include <jogasaki/executor/io/dump_channel.h>
-#include <jogasaki/executor/io/null_record_channel.h>
+#include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 
 namespace jogasaki::api::impl {
 

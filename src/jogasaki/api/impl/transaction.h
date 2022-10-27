@@ -45,6 +45,11 @@ public:
     );
 
     status commit();
+
+    bool commit_async(
+        callback on_completion
+    );
+
     status abort();
     impl::database& database();
 

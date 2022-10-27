@@ -29,9 +29,12 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/api/impl/result_store_channel.h>
+#include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/null_record_channel.h>
+
+#include "request_context_factory.h"
 
 namespace jogasaki::api::impl {
 
@@ -169,34 +172,17 @@ bool transaction::execute_dump(
         false
     );
 }
+
 std::shared_ptr<request_context> transaction::create_request_context(
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource
 ) {
-    auto& c = database_->configuration();
-    auto rctx = std::make_shared<request_context>(
-        c,
-        std::move(resource),
-        database_->kvs_db(),
+    return impl::create_request_context(
+        database_,
         tx_,
-        database_->sequence_manager(),
-        channel
+        channel,
+        std::move(resource)
     );
-    rctx->scheduler(database_->scheduler());
-    rctx->stmt_scheduler(
-        std::make_shared<scheduler::statement_scheduler>(
-            database_->configuration(),
-            *database_->task_scheduler()
-        )
-    );
-    rctx->storage_provider(database_->tables());
-
-    auto job = std::make_shared<scheduler::job_context>();
-    rctx->job(maybe_shared_ptr{job.get()});
-
-    auto& ts = *database_->task_scheduler();
-    ts.register_job(job);
-    return rctx;
 }
 
 bool transaction::execute_internal(
@@ -319,6 +305,27 @@ bool transaction::execute_load(
         rctx.get(),
         std::move(ldr)
     });
+    return true;
+}
+
+bool transaction::commit_async(transaction::callback on_completion) {
+    auto rctx = create_request_context(
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+    );
+    auto t = scheduler::create_custom_task(rctx.get(),
+        [this, rctx]() {
+            auto res = commit();
+            rctx->status_code(res);
+            if(res != status::ok) {
+                rctx->status_message("commit failed with error");
+            }
+        }, true);
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx](){  // callback is copy-based
+        on_completion(rctx->status_code(), rctx->status_message());
+    });
+    auto& ts = *rctx->scheduler();
+    ts.schedule_task(std::move(t));
     return true;
 }
 

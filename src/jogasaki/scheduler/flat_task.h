@@ -140,12 +140,13 @@ public:
      * @brief construct new object wrapping jogasaki task
      * @param rctx the request context where the task belongs
      * @param origin the jogasaki executor task
-     * @param sticky whether the task is sticky or not
+     * @param require_teardown indicate whether the teardown task is required that follows after this task
      */
     flat_task(
         task_enum_tag_t<flat_task_kind::wrapped>,
         request_context* rctx,
-        std::shared_ptr<model::task> origin
+        std::shared_ptr<model::task> origin,
+        bool require_teardown
     ) noexcept;
 
     /**
@@ -266,6 +267,7 @@ private:
     bool sticky_{};
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
+    bool require_teardown_{};
 
     /**
      * @return true if job completes together with the task
@@ -285,6 +287,7 @@ private:
 
     void write();
     void load();
+    void execute_wrapped();
     void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {

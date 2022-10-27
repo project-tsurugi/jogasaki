@@ -83,11 +83,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
         case kind::bootstrap: bootstrap(ctx); return false;
         case kind::resolve: resolve(ctx); return false;
         case kind::teardown: return teardown();
-        case kind::wrapped: {
-            trace_scope_name("executor_task");  //NOLINT
-            while((*origin_)() == model::task_result::proceed) {}
-            return false;
-        }
+        case kind::wrapped: execute_wrapped(); return false;
         case kind::write: write(); return false;
         case kind::load: load(); return false;
     }
@@ -139,12 +135,14 @@ flat_task::identity_type flat_task::id() const {
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::wrapped>,
     request_context* rctx,
-    std::shared_ptr<model::task> origin
+    std::shared_ptr<model::task> origin,
+    bool require_teardown
 ) noexcept:
     kind_(flat_task_kind::wrapped),
     req_context_(rctx),
     origin_(std::move(origin)),
-    sticky_(origin_->has_transactional_io())
+    sticky_(origin_->has_transactional_io()),
+    require_teardown_(require_teardown)
 {}
 
 flat_task::flat_task(
@@ -251,6 +249,14 @@ flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rct
     req_context_(rctx),
     loader_(std::move(ldr))
 {}
+
+void flat_task::execute_wrapped() {
+    trace_scope_name("executor_task");  //NOLINT
+    while((*origin_)() == model::task_result::proceed) {}
+    if(require_teardown_) {
+        submit_teardown(*req_context_);
+    }
+}
 
 }
 

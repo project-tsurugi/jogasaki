@@ -75,16 +75,17 @@ private:
 inline flat_task create_custom_task(
     request_context* rctx,
     task_body_type body,
-bool has_transaction_io = false
+    bool has_transaction_io = false
 ) {
-return flat_task{
-task_enum_tag<flat_task_kind::wrapped>,
-rctx,
-std::make_shared<details::custom_task>(
-    std::move(body),
-    has_transaction_io
-)
-};
+    return flat_task{
+        task_enum_tag<flat_task_kind::wrapped>,
+        rctx,
+        std::make_shared<details::custom_task>(
+            std::move(body),
+            has_transaction_io
+        ),
+        true
+    };
 }
 
 } // namespace jogasaki::scheduler

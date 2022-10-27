@@ -115,7 +115,6 @@ public:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(data, session_id, service_id);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         (*router_)(req, res);
-//        std::this_thread::sleep_for(100ms);
         while(! res->completed()) { /* noop */ }
         return res->body_;
     }

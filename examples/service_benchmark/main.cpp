@@ -578,6 +578,7 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
+        while(! res->completed()) { /* noop */ }
         if(! st || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
             return false;

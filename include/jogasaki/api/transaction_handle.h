@@ -42,6 +42,12 @@ using takatori::util::maybe_shared_ptr;
  */
 class transaction_handle {
 public:
+    /**
+     * @brief the callback type used for async execution
+     * @see `execute_async` or `commit_async`
+     */
+    using callback = std::function<void(status, std::string_view)>;
+
 
     /**
      * @brief create empty handle - null reference
@@ -96,6 +102,13 @@ public:
     status commit();
 
     /**
+     * @brief commit the transaction
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
+    bool commit_async(callback on_completion);
+
+    /**
      * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)
      * @return status::ok when successful
      * @return error code otherwise
@@ -138,12 +151,6 @@ public:
         api::statement_handle prepared,
         std::shared_ptr<api::parameter_set> parameters,
         std::unique_ptr<result_set>& result);
-
-    /**
-     * @brief the callback type used for async execution
-     * @see `execute_async`
-     */
-    using callback = std::function<void(status, std::string_view)>;
 
     /**
      * @brief asynchronously execute the statement in the transaction. No result records are expected

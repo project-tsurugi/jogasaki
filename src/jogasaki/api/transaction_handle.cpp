@@ -43,6 +43,9 @@ status transaction_handle::commit() {  //NOLINT(readability-make-member-function
     return tx(body_)->commit();
 }
 
+bool transaction_handle::commit_async(callback cb) {  //NOLINT(readability-make-member-function-const)
+    return tx(body_)->commit_async(cb);
+}
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
     return tx(body_)->abort();
 }

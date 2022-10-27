@@ -56,7 +56,6 @@ namespace jogasaki::utils {
 using takatori::util::fail;
 
 storage_metadata_serializer::storage_metadata_serializer() noexcept = default;
-storage_metadata_serializer::~storage_metadata_serializer() = default;
 
 namespace details {
 
@@ -402,7 +401,7 @@ yugawara::storage::column_value default_value(
         case proto::metadata::storage::TableColumn::kFloat4Value: return column_value{std::make_shared<takatori::value::float4 const>(column.float4_value())};
         case proto::metadata::storage::TableColumn::kFloat8Value: return column_value{std::make_shared<takatori::value::float8 const>(column.float8_value())};
         case proto::metadata::storage::TableColumn::kDecimalValue: {
-            auto v = column.decimal_value();
+            auto& v = column.decimal_value();
             return column_value{std::make_shared<takatori::value::decimal const>(to_triple(v))};
         }
         case proto::metadata::storage::TableColumn::kCharacterValue: return column_value{std::make_shared<takatori::value::character const>(column.character_value())};
@@ -414,20 +413,20 @@ yugawara::storage::column_value default_value(
             return column_value{std::make_shared<takatori::value::time_of_day const>(takatori::datetime::time_of_day{std::chrono::duration<std::uint64_t, std::nano>(column.time_of_day_value())})};
         }
         case proto::metadata::storage::TableColumn::kTimePointValue: {
-            auto v = column.time_point_value();
+            auto& v = column.time_point_value();
             return column_value{std::make_shared<takatori::value::time_point const>(takatori::datetime::time_point{std::chrono::duration<std::int64_t>{v.offset_seconds()}, std::chrono::nanoseconds{v.nano_adjustment()}})};
         }
         case proto::metadata::storage::TableColumn::kTimeOfDayWithTimeZoneValue: {
-            auto v = column.time_of_day_with_time_zone_value();
+            auto& v = column.time_of_day_with_time_zone_value();
             return column_value{std::make_shared<takatori::value::time_of_day const>(takatori::datetime::time_of_day{std::chrono::duration<std::uint64_t, std::nano>(v.offset_nanoseconds())})};
         }
         case proto::metadata::storage::TableColumn::kTimePointWithTimeZoneValue: {
-            auto v = column.time_point_with_time_zone_value();
+            auto& v = column.time_point_with_time_zone_value();
             return column_value{std::make_shared<takatori::value::time_point const>(takatori::datetime::time_point{std::chrono::duration<std::int64_t>{v.offset_seconds()}, std::chrono::nanoseconds{v.nano_adjustment()}})};
         }
         case proto::metadata::storage::TableColumn::kSequenceNext: return {}; //TODO
         case proto::metadata::storage::TableColumn::kIdentityNext: {
-            auto v = column.identity_next();
+            auto& v = column.identity_next();
             BOOST_ASSERT(v.has_name());  //NOLINT
             auto seq = std::make_shared<yugawara::storage::sequence>(
                 v.name().element_name(),
@@ -473,7 +472,7 @@ bool deserialize_table_recursive(::jogasaki::proto::metadata::storage::TableDefi
         return false;
     }
     out = provider.add_table(std::make_shared<yugawara::storage::table>(
-        std::move(definition_id),
+        definition_id,
         tdef.name().element_name(),
         std::move(columns)
     ));

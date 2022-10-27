@@ -44,7 +44,7 @@ public:
     /**
      * @brief destruct the object
      */
-    ~storage_metadata_serializer();
+    ~storage_metadata_serializer() = default;
 
     storage_metadata_serializer(storage_metadata_serializer const& other) = default;
     storage_metadata_serializer& operator=(storage_metadata_serializer const& other) = default;
@@ -64,15 +64,15 @@ public:
     /**
      * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
      * @param idx the primary index
-     * @param out [out] to be filled with result serialized string
+     * @param idef [out] to be filled with result serialized object
      * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
      * @return true when successful
      * @return false otherwise
      */
-    bool serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& out);
+    bool serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef);
 
     /**
-     * @brief deserialize protobuf msg for primary index
+     * @brief deserialize protobuf msg for index
      * @param src the target string to deserialize as jogasaki::proto::metadata::storage::IndexDefinition
      * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
      * contain the base table definition.
@@ -88,15 +88,15 @@ public:
 
     /**
      * @brief deserialize protobuf msg for primary index
-     * @param src the target string to deserialize as jogasaki::proto::metadata::storage::IndexDefinition
+     * @param idef the target object to deserialize
      * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
      * contain the base table definition.
-     * @param provider [out] to be filled with result objects (index, table, sequence, etc.)
+     * @param out [out] to be filled with result objects (index, table, sequence, etc.)
      * @return true when successful
      * @return false otherwise
      */
     bool deserialize(
-        proto::metadata::storage::IndexDefinition const& src,
+        proto::metadata::storage::IndexDefinition const& idef,
         yugawara::storage::configurable_provider const& in,
         std::shared_ptr<yugawara::storage::configurable_provider>& out
     );

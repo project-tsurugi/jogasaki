@@ -202,7 +202,7 @@ void service_api_test::test_commit(std::uint64_t& handle) {
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
-    EXPECT_TRUE(res->completed());
+    while(! res->completed()) { /* noop */ }
     ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
     auto [success, error] = decode_result_only(res->body_);

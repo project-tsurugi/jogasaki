@@ -85,6 +85,7 @@ void service::command_begin(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
+    // beware asynchronous call : stack will be released soon after submitting request
     std::vector<std::string> storages{};
     bool readonly = false;
     bool is_long = false;
@@ -272,22 +273,27 @@ void service::command_commit(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
 ) {
+    // beware asynchronous call : stack will be released soon after submitting request
     auto& cm = proto_req.commit();
     auto tx = validate_transaction_handle(cm, *res);
     if(! tx) {
         return;
     }
-    if(auto rc = tx.commit(); rc == jogasaki::status::ok) {
-        details::success<sql::response::ResultOnly>(*res);
-    } else {
-        VLOG(log_error) << "error in transaction_->commit()";
-        details::error<sql::response::ResultOnly>(*res, rc, "error in transaction_->commit()");
-        // currently, commit failure is assumed to abort the transaction anyway.
-        // So let's proceed to destroy the transaction.
-    }
-    if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
-        fail();
-    }
+    tx.commit_async(
+        [this, res, tx](status st, std::string_view msg) {
+            if(st == jogasaki::status::ok) {
+                details::success<sql::response::ResultOnly>(*res);
+            } else {
+                VLOG(log_error) << msg;
+                details::error<sql::response::ResultOnly>(*res, st, msg);
+                // currently, commit failure is assumed to abort the transaction anyway.
+                // So let's proceed to destroy the transaction.
+                if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
+                    fail();
+                }
+            }
+        }
+    );
 }
 void service::command_rollback(
     sql::request::Request const& proto_req,

@@ -717,9 +717,8 @@ std::shared_ptr<diagnostics> database::fetch_diagnostics() noexcept {
 }
 
 bool database::do_create_transaction_async(
-    transaction_handle& handle,
     transaction_option const& option,
-    database::callback on_completion
+    create_transaction_callback on_completion
 ) {
     auto rctx = impl::create_request_context(
         this,
@@ -727,16 +726,18 @@ bool database::do_create_transaction_async(
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
+
+    auto handle = std::make_shared<transaction_handle>();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, handle, option]() mutable {
-            auto res = do_create_transaction(handle, option);
+        [this, rctx, option, handle]() mutable {
+            auto res = do_create_transaction(*handle, option);
             rctx->status_code(res);
             if(res != status::ok) {
                 rctx->status_message("do_create_transaction failed with error");
             }
         }, false);
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx](){  // callback is copy-based
-        on_completion(rctx->status_code(), rctx->status_message());
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based
+        on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));

@@ -359,7 +359,7 @@ void dag_controller::impl::start_running(step& v) {
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;
     for(auto& t : task_list) {
-        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, request_context_.get(), t});
+        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, request_context_.get(), t, false});
         tasks.register_task(task_kind::main, slot, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
         ++slot;
@@ -375,7 +375,7 @@ void dag_controller::impl::start_pretask(step& v, step_state_table::slot_index i
     }
     if(auto view = v.create_pretask(*request_context_, index);!view.empty()) {
         auto& t = view.front();
-        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, request_context_.get(), t});
+        executor_->schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, request_context_.get(), t, false});
         tasks.register_task(task_kind::pre, index, t->id());
         tasks.task_state(t->id(), task_state_kind::running);
     }

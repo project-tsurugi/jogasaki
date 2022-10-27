@@ -51,6 +51,7 @@
 namespace jogasaki::api {
 
 using namespace std::literals::string_literals;
+using namespace std::chrono_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
@@ -114,6 +115,8 @@ public:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(data, session_id, service_id);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         (*router_)(req, res);
+//        std::this_thread::sleep_for(100ms);
+        while(! res->completed()) { /* noop */ }
         return res->body_;
     }
     std::shared_ptr<framework::routing_service> router_{};

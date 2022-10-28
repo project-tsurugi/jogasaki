@@ -79,25 +79,10 @@ transaction::~transaction() noexcept {
 }
 
 status transaction::commit(bool async) {
-    // TODO remove retry here when scheduler is ready to handle waiting tasks
     auto rc = sharksfin::transaction_commit(tx_, async);
     if (rc == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TRANSACTION) {
         VLOG(log_debug) << "commit() returns ERR_WAITING_FOR_OTHER_TX - waiting for others to finish";
-        utils::backoff_waiter waiter{};
-        while(true) {
-            auto st = check_state().state_kind();
-            VLOG(log_debug) << "checking for waiting transaction state:" << st;
-            if (st != ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT) {
-                rc = sharksfin::transaction_commit(tx_, async);
-                if (rc == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TRANSACTION) {
-                    fail();
-                }
-                break;
-            }
-            waiter();
-        }
-    }
-    if(rc == sharksfin::StatusCode::OK ||
+    } else if(rc == sharksfin::StatusCode::OK ||
         rc == sharksfin::StatusCode::ERR_ABORTED ||
         rc == sharksfin::StatusCode::ERR_ABORTED_RETRYABLE) {
         active_ = false;

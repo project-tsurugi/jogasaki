@@ -143,6 +143,7 @@ inline sql::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_missing_operation_target: return sql::status::Status::ERR_MISSING_OPERATION_TARGET;
         case jogasaki::status::err_conflict_on_write_preserve: return sql::status::Status::ERR_CONFLICT_ON_WRITE_PRESERVE;
         case jogasaki::status::err_inactive_transaction: return sql::status::Status::ERR_INACTIVE_TRANSACTION;
+        case jogasaki::status::err_waiting_for_other_transaction: return sql::status::Status::ERR_UNKNOWN;  // wait_for_transaction is internal error, should not be exposed
     }
     fail();
 }

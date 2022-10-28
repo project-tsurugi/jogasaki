@@ -289,6 +289,7 @@ private:
     void write();
     void load();
     void execute_wrapped();
+    void resubmit(request_context& req_context);
     void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {

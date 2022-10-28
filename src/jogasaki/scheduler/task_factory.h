@@ -23,7 +23,7 @@ namespace jogasaki::scheduler {
 
 using callback = std::function<void(status, std::string_view)>;
 
-using task_body_type = std::function<void()>;
+using task_body_type = std::function<model::task_result()>;
 
 namespace details {
 

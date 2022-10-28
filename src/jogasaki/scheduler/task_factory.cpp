@@ -29,8 +29,7 @@ model::task::identity_type details::custom_task::id() const {
 }
 
 model::task_result details::custom_task::operator()() {
-    body_();
-    return model::task_result::complete;
+    return body_();
 }
 
 bool details::custom_task::has_transactional_io() {

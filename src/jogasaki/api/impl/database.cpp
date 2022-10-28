@@ -742,6 +742,7 @@ bool database::do_create_transaction_async(
                         string_builder::to_string
                 );
             }
+            return model::task_result::complete;
         }, false);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based
         on_completion(*handle, rctx->status_code(), rctx->status_message());

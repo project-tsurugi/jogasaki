@@ -58,6 +58,11 @@ void submit_teardown(request_context& req_context, bool force) {
     }
 }
 
+void flat_task::resubmit(request_context& req_context) {
+    auto& ts = *req_context.scheduler();
+    ts.schedule_task(flat_task{*this});
+}
+
 bool flat_task::teardown() {
     DVLOG(log_trace) << *this << " teardown task executed.";
     trace_scope_name("teardown");  //NOLINT
@@ -172,6 +177,7 @@ job_context* flat_task::job() const {
 }
 
 void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
+    DVLOG(log_trace) << *this << " resolve task executed.";
     (void)ctx;
     auto& e = sctx_->executable_statement_;
     if(auto res = sctx_->database_->resolve(sctx_->prepared_,
@@ -225,6 +231,7 @@ flat_task::flat_task(
 {}
 
 void flat_task::load() {
+    DVLOG(log_trace) << *this << " load task executed.";
     auto res = (*loader_)();
     if(res == executor::file::loader_result::running) {
         auto& ts = *req_context_->scheduler();
@@ -251,8 +258,14 @@ flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rct
 {}
 
 void flat_task::execute_wrapped() {
+    DVLOG(log_trace) << *this << " wrapped task executed.";
     trace_scope_name("executor_task");  //NOLINT
-    while((*origin_)() == model::task_result::proceed) {}
+    model::task_result res{};
+    while((res = (*origin_)()) == model::task_result::proceed) {}
+    if(res == model::task_result::yield) {
+        resubmit(*req_context_);
+        return;
+    }
     if(require_teardown_) {
         submit_teardown(*req_context_);
     }

@@ -318,12 +318,16 @@ bool transaction::commit_async(transaction::callback on_completion) {
     auto t = scheduler::create_custom_task(rctx.get(),
         [this, rctx]() {
             auto res = commit();
+            if(res == status::err_waiting_for_other_transaction) {
+                return model::task_result::yield;
+            }
             rctx->status_code(res);
             if(res != status::ok) {
                 rctx->status_message(
                     string_builder{} << "commit failed with error:" << res << string_builder::to_string
                 );
             }
+            return model::task_result::complete;
         }, true);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx](){  // callback is copy-based
         on_completion(rctx->status_code(), rctx->status_message());

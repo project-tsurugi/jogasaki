@@ -137,8 +137,8 @@ public:
 
     void session_id(std::size_t id);
 
-    template <class Rep, class Period>
-    bool wait_completion(std::chrono::duration<Rep, Period> dur) {
+    template <class Rep = std::int64_t, class Period = std::milli>
+    bool wait_completion(std::chrono::duration<Rep, Period> dur = std::chrono::milliseconds{2000}) {
         return completion_latch_.wait(dur);
     }
 

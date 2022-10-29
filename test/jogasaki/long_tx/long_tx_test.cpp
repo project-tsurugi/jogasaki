@@ -113,12 +113,9 @@ TEST_F(long_tx_test, long_insert_long_insert2) {
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx1);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
-    block_verifier vf{};
-    auto f = vf.exec([&](){ tx2->commit(); });
-    ASSERT_FALSE(vf.finished());
+    ASSERT_EQ(status::err_waiting_for_other_transaction, tx2->commit());
     ASSERT_EQ(status::ok, tx1->commit());
-    f.get();
-    ASSERT_TRUE(vf.finished());
+    ASSERT_EQ(status::ok, tx2->commit());
 }
 
 TEST_F(long_tx_test, long_insert_long_insert3) {
@@ -126,12 +123,9 @@ TEST_F(long_tx_test, long_insert_long_insert3) {
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx1);
-    block_verifier vf{};
-    auto f = vf.exec([&](){ tx2->commit(); });
-    ASSERT_FALSE(vf.finished());
+    ASSERT_EQ(status::err_waiting_for_other_transaction, tx2->commit());
     ASSERT_EQ(status::ok, tx1->commit());
-    f.get();
-    ASSERT_TRUE(vf.finished());
+    ASSERT_EQ(status::ok, tx2->commit());
 }
 
 TEST_F(long_tx_test, short_update) {
@@ -449,11 +443,9 @@ TEST_F(long_tx_test, commit_wait) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
 
     block_verifier vf{};
-    auto f = vf.exec([&](){ tx2->commit(); });
-    ASSERT_FALSE(vf.finished());
+    ASSERT_EQ(status::err_waiting_for_other_transaction, tx2->commit());
     ASSERT_EQ(status::ok, tx1->commit());
-    f.get();
-    ASSERT_TRUE(vf.finished());
+    ASSERT_EQ(status::ok, tx2->commit());
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 ORDER BY C0", result);
     ASSERT_EQ(3, result.size());

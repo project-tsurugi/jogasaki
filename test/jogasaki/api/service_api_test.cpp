@@ -487,8 +487,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
     test_dispose_prepare(query_handle);
 }
 
-// disabled to narrow down ci problem
-TEST_F(service_api_test, DISABLED_execute_statement_and_query_multi_thread) {
+TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
 
     static constexpr std::size_t num_thread = 10;

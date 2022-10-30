@@ -184,7 +184,7 @@ public:
      * @return status::ok when successful
      * @return any other error otherwise
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
-     * @deprecated use `create_transaction(transaction_handle& handle, transaction_option const& option)`
+     * @deprecated Use `create_transaction_async`. This function is left for testing.
      */
     status create_transaction(transaction_handle& handle, bool readonly) {
         return do_create_transaction(handle, transaction_option(readonly));
@@ -199,6 +199,7 @@ public:
      * @note this function is synchronous and beginning transaction may require wait for epoch.
      * Use `create_transaction_async` if waiting causes problems.
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
+     * @deprecated Use `create_transaction_async`. This function is left for testing.
      */
     status create_transaction(transaction_handle& handle, transaction_option const& option = transaction_option{}) {
         return do_create_transaction(handle, option);

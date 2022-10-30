@@ -234,6 +234,10 @@ private:
     );
 
     status validate_option(transaction_option const& option);
+
+    // synchronous, not wait for epoch
+    status create_transaction_internal(transaction_handle& handle, transaction_option const& option);
+
 };
 
 inline api::impl::database& get_impl(api::database& db) {

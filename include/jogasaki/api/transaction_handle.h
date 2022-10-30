@@ -99,7 +99,7 @@ public:
      * @return status::ok when successful
      * @return error code otherwise
      * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
-     * Use `commit_async` if waiting causes problems.
+     * @deprecated Use `commit_async`. This function is left for testing.
      */
     status commit();
 
@@ -184,6 +184,13 @@ public:
         maybe_shared_ptr<data_channel> const& channel,
         callback on_completion
     );
+
+    /**
+     * @brief check if transaction is already assigned to epoch and ready for request
+     * @return true when transaction is ready
+     * @return false otherwise
+     */
+    bool is_ready();
 
 private:
     std::uintptr_t body_{};

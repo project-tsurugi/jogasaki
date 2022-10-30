@@ -42,7 +42,9 @@
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/constants.h>
 
 #include <string_view>
@@ -134,6 +136,7 @@ status database::stop() {
     }
     if (cfg_->activate_scheduler()) {
         task_scheduler_->stop();
+        task_scheduler_.reset();
     }
     sequence_manager_.reset();
     tables_.reset();
@@ -344,6 +347,26 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
 }
 
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option) {
+    std::atomic_bool completed = false;
+    status ret{status::ok};
+    do_create_transaction_async([&handle, &completed, &ret](transaction_handle h, status st, std::string_view msg){
+        completed = true;
+        if(st != status::ok) {
+            ret = st;
+            VLOG(log_error) << "do_create_transaction failed with error : " << st << " " << msg;
+            return;
+        }
+        handle = h;
+    }, option);
+
+    task_scheduler_->wait_for_progress(scheduler::job_context::undefined_id);
+    utils::backoff_waiter waiter{};
+    while(! completed) {
+        waiter();
+    }
+    return ret;
+}
+status database::create_transaction_internal(transaction_handle& handle, transaction_option const& option) {
     if (! kvs_db_) {
         VLOG(log_error) << "database not started";
         return status::err_invalid_state;
@@ -729,21 +752,53 @@ bool database::do_create_transaction_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
 
+    struct task_state {
+        enum class state {
+            init,
+            created,
+            done,
+        } state_{};
+    };
+
+    auto st = std::make_shared<task_state>();
     auto handle = std::make_shared<transaction_handle>();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, option, handle]() {
-            auto res = do_create_transaction(*handle, option);
-            rctx->status_code(res);
-            if(res != status::ok) {
-                rctx->status_message(
-                    string_builder{} <<
-                        "creating transaction failed with error:" <<
-                        res <<
-                        string_builder::to_string
-                );
+    [this, rctx, option, handle, st]() {
+        while(st->state_ != task_state::state::done) {
+            switch(st->state_) {
+                case task_state::state::init: {
+                    auto res = create_transaction_internal(*handle, option);
+                    rctx->status_code(res);
+                    if(res != status::ok) {
+                        rctx->status_message(
+                            string_builder{} <<
+                                "creating transaction failed with error:" <<
+                                res <<
+                                string_builder::to_string
+                        );
+                        st->state_ = task_state::state::done;
+                        break;
+                    }
+                    if(! option.is_long() && ! option.readonly()) {
+                        st->state_ = task_state::state::done;
+                        break;
+                    }
+                    st->state_ = task_state::state::created;
+                    break;
+                }
+                case task_state::state::created: {
+                    VLOG(log_debug) << "checking for waiting transaction state:" << st;
+                    if(handle->is_ready()) {
+                        st->state_ = task_state::state::done;
+                        break;
+                    }
+                    return model::task_result::yield;
+                }
+                case task_state::state::done: break;
             }
-            return model::task_result::complete;
-        }, false);
+        }
+        return model::task_result::complete;
+    }, false);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });

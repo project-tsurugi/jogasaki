@@ -88,4 +88,9 @@ bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> co
 transaction_handle::transaction_handle(void* arg) noexcept:
     body_(reinterpret_cast<std::uintptr_t>(arg))  //NOLINT
 {}
+
+bool transaction_handle::is_ready() {
+    return tx(body_)->is_ready();
+}
+
 }

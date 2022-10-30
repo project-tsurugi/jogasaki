@@ -488,6 +488,9 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
 }
 
 TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory causes problem accessing from multiple threads";
+    }
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
 
     static constexpr std::size_t num_thread = 10;

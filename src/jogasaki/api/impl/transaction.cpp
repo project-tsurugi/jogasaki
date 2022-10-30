@@ -337,4 +337,9 @@ bool transaction::commit_async(transaction::callback on_completion) {
     return true;
 }
 
+bool transaction::transaction::is_ready() {
+    auto st = tx_->object()->check_state().state_kind();
+    return st != ::sharksfin::TransactionState::StateKind::WAITING_START;
+}
+
 }

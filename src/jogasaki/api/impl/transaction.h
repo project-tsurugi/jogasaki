@@ -44,8 +44,28 @@ public:
         kvs::transaction_option const& options
     );
 
+    /**
+     * @brief check if transaction is already assigned to epoch and ready for request
+     * @return true when transaction is ready
+     * @return false otherwise
+     */
+    bool is_ready();
+
+    /**
+     * @brief commit the transaction
+     * @return status::ok when successful
+     * @return error code otherwise
+     * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
+     * @deprecated Use `commit_async`. This function is left for testing.
+     */
     status commit();
 
+    /**
+     * @brief commit the transaction asynchronously
+     * @return true when async request was made successfully
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
+     */
     bool commit_async(
         callback on_completion
     );

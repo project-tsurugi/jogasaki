@@ -34,6 +34,7 @@
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/null_record_channel.h>
+#include <jogasaki/utils/backoff_waiter.h>
 
 #include "request_context_factory.h"
 
@@ -43,6 +44,27 @@ using takatori::util::unsafe_downcast;
 using takatori::util::string_builder;
 
 status transaction::commit() {
+    auto res = commit_internal();
+    if(res == status::err_waiting_for_other_transaction) {
+        utils::backoff_waiter waiter{};
+        while(true) {
+            auto st = tx_->object()->check_state().state_kind();
+            VLOG(log_debug) << "checking for waiting transaction state:" << st;
+            if (st != ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT) {
+                if(auto res2 = commit_internal(); res2 == status::err_waiting_for_other_transaction) {
+                    // must not happen
+                    return res2;
+                }
+                res = status::ok;
+                break;
+            }
+            waiter();
+        }
+    }
+    return res;
+}
+
+status transaction::commit_internal() {
     return tx_->object()->commit();
 }
 
@@ -317,7 +339,7 @@ bool transaction::commit_async(transaction::callback on_completion) {
     );
     auto t = scheduler::create_custom_task(rctx.get(),
         [this, rctx]() {
-            auto res = commit();
+            auto res = commit_internal();
             if(res == status::err_waiting_for_other_transaction) {
                 return model::task_result::yield;
             }

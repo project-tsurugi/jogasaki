@@ -181,6 +181,8 @@ private:
         maybe_shared_ptr<executor::io::record_channel> const& channel,
         std::shared_ptr<memory::lifo_paged_memory_resource> resource
     );
+
+    status commit_internal();
 };
 
 }

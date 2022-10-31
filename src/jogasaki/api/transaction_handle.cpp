@@ -89,7 +89,7 @@ transaction_handle::transaction_handle(void* arg) noexcept:
     body_(reinterpret_cast<std::uintptr_t>(arg))  //NOLINT
 {}
 
-bool transaction_handle::is_ready() {
+bool transaction_handle::is_ready() const {
     return tx(body_)->is_ready();
 }
 

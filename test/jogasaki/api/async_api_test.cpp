@@ -26,6 +26,7 @@
 
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -188,6 +189,9 @@ TEST_F(async_api_test, async_query_heavy_write) {
 }
 
 TEST_F(async_api_test, async_query_multi_thread) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory causes problem accessing from multiple threads";
+    }
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
     execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");

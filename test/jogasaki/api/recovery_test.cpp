@@ -204,8 +204,7 @@ TEST_F(recovery_test, recovery_metadata) {
     dump_content();
 }
 
-// sequence recovery needs latest limestone, but shirakami testcase failed after upgrading limestone
-TEST_F(recovery_test, DISABLED_recovery_sequence_metadata) {
+TEST_F(recovery_test, recovery_sequence_metadata) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -420,8 +419,7 @@ TEST_F(recovery_test, DISABLED_recovery_secondary_indices) {
     ASSERT_TRUE(stg00);
 }
 
-// sequence recovery needs latest limestone, but shirakami testcase failed after upgrading limestone
-TEST_F(recovery_test, DISABLED_recover_sequence_multipletimes) {
+TEST_F(recovery_test, recover_sequence_multipletimes) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }

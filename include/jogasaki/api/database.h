@@ -215,7 +215,7 @@ public:
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      */
     bool create_transaction_async(create_transaction_callback cb, transaction_option const& option = transaction_option{}) {
-        return do_create_transaction_async(cb, option);
+        return do_create_transaction_async(std::move(cb), option);
     }
 
     /**

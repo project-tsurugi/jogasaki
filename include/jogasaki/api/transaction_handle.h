@@ -105,6 +105,7 @@ public:
 
     /**
      * @brief commit the transaction asynchronously
+     * @param on_completion callback to be called on completion
      * @return true when async request was made successfully
      * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback

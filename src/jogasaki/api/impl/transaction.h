@@ -49,7 +49,7 @@ public:
      * @return true when transaction is ready
      * @return false otherwise
      */
-    bool is_ready();
+    bool is_ready() const;
 
     /**
      * @brief commit the transaction

@@ -191,7 +191,10 @@ status decode_nullable(
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
-    BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
+    if(! (flag == 0 || flag == 1)) {
+        VLOG(log_error) << "unexpected data in nullity bit:" << flag;
+        return status::err_data_corruption;
+    }
     bool is_null = flag == 0;
     dest.set_null(nullity_offset, is_null);
     if (! is_null) {
@@ -210,7 +213,10 @@ status decode_nullable(
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
-    BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
+    if(! (flag == 0 || flag == 1)) {
+        VLOG(log_error) << "unexpected data in nullity bit:" << flag;
+        return status::err_data_corruption;
+    }
     bool is_null = flag == 0;
     if (is_null) {
         dest = {};
@@ -254,7 +260,10 @@ status consume_stream_nullable(
     using kind = meta::field_type_kind;
     auto odr = spec.ordering();
     auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
-    BOOST_ASSERT(flag == 0 || flag == 1);  //NOLINT
+    if(! (flag == 0 || flag == 1)) {
+        VLOG(log_error) << "unexpected data in nullity bit:" << flag;
+        return status::err_data_corruption;
+    }
     bool is_null = flag == 0;
     if (! is_null) {
         return consume_stream(src, type, spec);

@@ -56,7 +56,11 @@ enum class status : std::int64_t {
     err_missing_operation_target = -22,
     err_conflict_on_write_preserve = -23,
     err_inactive_transaction = -24,
-    err_waiting_for_other_transaction = -25,
+    err_resource_limit_reached = -25,
+    err_data_corruption = -26,
+
+    // internal errors
+    err_waiting_for_other_transaction = -10001,
 };
 
 /**
@@ -97,6 +101,9 @@ enum class status : std::int64_t {
         case status::err_missing_operation_target: return "err_missing_operation_target"sv;
         case status::err_conflict_on_write_preserve: return "err_conflict_on_write_preserve"sv;
         case status::err_inactive_transaction: return "err_inactive_transaction"sv;
+        case status::err_resource_limit_reached: return "err_resource_limit_reached"sv;
+        case status::err_data_corruption: return "err_data_corruption"sv;
+
         case status::err_waiting_for_other_transaction: return "err_waiting_for_other_transaction"sv;
     }
     std::abort();

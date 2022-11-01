@@ -457,4 +457,15 @@ TEST_F(sql_test, pkless_insert) {
     }
 }
 
+// jogasaki should catch runtime exception from compiler
+TEST_F(sql_test, DISABLED_subquery) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 int)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from (select * from TT t00, TT t01) t1", result);
+        ASSERT_EQ(4, result.size());
+    }
+}
 }

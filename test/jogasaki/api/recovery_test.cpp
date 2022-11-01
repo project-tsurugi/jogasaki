@@ -87,7 +87,7 @@ TEST_F(recovery_test, restart) {
 }
 
 TEST_F(recovery_test, simple) {
-    utils::set_global_tx_option({false, false});  // to cusomize scenario
+    utils::set_global_tx_option({false, false});  // to customize scenario
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -355,27 +355,30 @@ TEST_F(recovery_test, recover_ddl) {
     }
 }
 
-// currently shirakami failed recover the option for empty storage
-TEST_F(recovery_test, DISABLED_recovery_empty_table) {
+TEST_F(recovery_test, recovery_empty_table) {
     // verify table without data is recognized after recovery
-    utils::set_global_tx_option({false, false});  // to cusomize scenario
+    utils::set_global_tx_option({false, false});  // to customize scenario
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
     execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(0, result.size());
+    }
     execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TEST", result);
-        ASSERT_EQ(0, result.size());
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
     }
     execute_statement("DROP TABLE T");
 }
 
-// currently shirakami failed recover the option for empty storage
-TEST_F(recovery_test, DISABLED_drop_empty_table) {
+TEST_F(recovery_test, drop_empty_table) {
     // verify table without data is recognized after recovery
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
@@ -384,6 +387,7 @@ TEST_F(recovery_test, DISABLED_drop_empty_table) {
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     execute_statement("DROP TABLE T");
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
 }
 
 TEST_F(recovery_test, drop_cleanup_sequences) {

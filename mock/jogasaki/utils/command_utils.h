@@ -255,13 +255,6 @@ inline std::string encode_dispose_prepare(std::uint64_t handle) {
     return serialize(r);
 }
 
-inline std::string encode_disconnect() {
-    sql::request::Request r{};
-    r.mutable_disconnect();
-    r.mutable_session_handle()->set_handle(1);
-    return serialize(r);
-}
-
 template<class T>
 std::string encode_execute_statement_or_query(std::uint64_t tx_handle, std::string_view sql) {
     sql::request::Request r{};

@@ -296,21 +296,6 @@ TEST_F(service_api_test, error_on_dispose) {
     ASSERT_FALSE(error.message_.empty());
 }
 
-TEST_F(service_api_test, disconnect) {
-    std::uint64_t handle{};
-    {
-        auto s = encode_disconnect();
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        EXPECT_TRUE(res->completed());
-        ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
-        auto [success, error] = decode_result_only(res->body_);
-        ASSERT_TRUE(success);
-    }
-}
-
 void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);

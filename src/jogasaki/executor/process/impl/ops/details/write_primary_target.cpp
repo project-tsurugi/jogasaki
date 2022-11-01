@@ -102,8 +102,12 @@ status write_primary_target::find_record_and_remove(
     }
     kvs::readable_stream keys{k.data(), k.size()};
     kvs::readable_stream values{v.data(), v.size()};
-    decode_fields(extracted_keys_, keys, ctx.key_store_.ref(), varlen_resource);
-    decode_fields(extracted_values_, values, ctx.value_store_.ref(), varlen_resource);
+    if(auto res = decode_fields(extracted_keys_, keys, ctx.key_store_.ref(), varlen_resource); res != status::ok) {
+        return res;
+    }
+    if(auto res = decode_fields(extracted_values_, values, ctx.value_store_.ref(), varlen_resource); res != status::ok) {
+        return res;
+    }
     if(auto res = ctx.stg_->remove( tx, k ); res != status::ok) {
         return res;
     }

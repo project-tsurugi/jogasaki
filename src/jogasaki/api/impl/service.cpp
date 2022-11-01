@@ -334,15 +334,6 @@ void service::command_dispose_prepared_statement(
         details::error<sql::response::ResultOnly>(*res, st, "error destroying statement");
     }
 }
-void service::command_disconnect(
-    sql::request::Request const& proto_req,
-    std::shared_ptr<tateyama::api::server::response> const& res
-) {
-    (void)proto_req;
-    details::success<sql::response::ResultOnly>(*res);
-    res->close_session(); //TODO re-visit when the notion of session is finalized
-}
-
 void service::command_explain(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res
@@ -512,11 +503,6 @@ bool service::operator()(
         case sql::request::Request::RequestCase::kDisposePreparedStatement: {
             trace_scope_name("cmd-dispose_prepared_statement");  //NOLINT
             command_dispose_prepared_statement(proto_req, res);
-            break;
-        }
-        case sql::request::Request::RequestCase::kDisconnect: {
-            trace_scope_name("cmd-disconnect");  //NOLINT
-            command_disconnect(proto_req, res);
             break;
         }
         case sql::request::Request::RequestCase::kExplain: {

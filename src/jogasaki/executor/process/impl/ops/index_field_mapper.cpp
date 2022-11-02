@@ -85,8 +85,7 @@ status index_field_mapper::operator()(
             return res;
         }
     }
-    populate_field_variables(k, v, target, resource);
-    return status::ok;
+    return populate_field_variables(k, v, target, resource);
 }
 
 status index_field_mapper::consume_secondary_key_fields(

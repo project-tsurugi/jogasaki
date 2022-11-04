@@ -285,11 +285,11 @@ void service::command_commit(
             } else {
                 VLOG(log_error) << msg;
                 details::error<sql::response::ResultOnly>(*res, st, msg);
-                // currently, commit failure is assumed to abort the transaction anyway.
-                // So let's proceed to destroy the transaction.
-                if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
-                    fail();
-                }
+            }
+            // currently, commit failure is assumed to abort the transaction anyway.
+            // So let's proceed to destroy the transaction.
+            if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
+                VLOG(log_error) << "unexpected error destroying transaction: " << rc;
             }
         }
     );

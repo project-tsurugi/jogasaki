@@ -1408,4 +1408,13 @@ TEST_F(service_api_test, empty_result_set) {
     test_commit(tx_handle);
 }
 
+TEST_F(service_api_test, create_many_tx) {
+    // verify there is neither resource leak nor lack of closing/destructing tx objects
+    for(std::size_t i=0; i < 300; ++i) {
+        std::uint64_t tx_handle{};
+        test_begin(tx_handle);
+        test_commit(tx_handle);
+    }
+}
+
 }

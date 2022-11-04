@@ -38,5 +38,5 @@ endif()
 
 add_test(
         NAME sql-cli
-        COMMAND sql-cli --location TMP "SELECT C0,C1 FROM T0"
+        COMMAND sql-cli --v=50 --location TMP "SELECT C0,C1 FROM T0"
 )

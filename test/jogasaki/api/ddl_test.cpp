@@ -436,7 +436,7 @@ TEST_F(ddl_test, drop_indices_cascade) {
 }
 
 TEST_F(ddl_test, long_char_data) {
-    std::size_t len = 32767;
+    std::size_t len = 16384;
     std::string strlen = std::to_string(len);
     std::string c0(len, '0');
     std::string c1(len, '1');

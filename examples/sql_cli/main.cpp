@@ -74,12 +74,15 @@ public:
             if(auto rc = tx_->abort(); rc != status::ok) {
                 std::abort();
             }
+            tx_.reset();
             return 0;
         }
         if(auto rc = tx_->commit(); rc != status::ok) {
             LOG(ERROR) << "commit: " << rc;
+            tx_.reset();
             return static_cast<int>(rc);
         }
+        tx_.reset();
         return 0;
     }
     int execute_stmt(

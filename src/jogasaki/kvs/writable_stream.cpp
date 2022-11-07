@@ -96,7 +96,6 @@ void writable_stream::do_write(char const* dt, std::size_t sz, order odr) {
 }
 
 void writable_stream::do_write(char ch, std::size_t sz, order odr) {
-    BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
     if (sz == 0) {
         return;
     }
@@ -160,7 +159,6 @@ void decimal_error_logging(std::string_view operation, runtime_t<meta::field_typ
 
 status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {
     auto sz = utils::bytes_required_for_digits(precision);
-    BOOST_ASSERT(capacity_ == 0 || pos_ + sz <= capacity_);  // NOLINT
     decimal::Decimal x{data};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
         decimal_error_logging("value creation", data, precision, scale, -1);

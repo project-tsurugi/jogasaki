@@ -435,4 +435,22 @@ TEST_F(ddl_test, drop_indices_cascade) {
     }
 }
 
+TEST_F(ddl_test, long_char_data) {
+    std::size_t len = 32767;
+    std::string strlen = std::to_string(len);
+    std::string c0(len, '0');
+    std::string c1(len, '1');
+    std::string c2(len, '2');
+    std::string c3(len, '3');
+    execute_statement("CREATE TABLE T (C0 CHAR("+strlen+") NOT NULL,  C1 VARCHAR("+strlen+") NOT NULL, C2 CHAR("+strlen+"), C3 VARCHAR("+strlen+"), PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO T (C0, C1, C2, C3) VALUES('"+c0+"','"+c1+"', '"+c2+"', '"+c3+"')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character, kind::character, kind::character>(
+            std::forward_as_tuple(accessor::text{c0}, accessor::text{c1}, accessor::text{c2}, accessor::text{c3}), {false, false, false, false})), result[0]);
+    }
+}
+
 }

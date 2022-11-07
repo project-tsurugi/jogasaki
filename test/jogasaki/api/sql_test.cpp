@@ -468,4 +468,20 @@ TEST_F(sql_test, DISABLED_subquery) {
         ASSERT_EQ(4, result.size());
     }
 }
+
+// select distinct not implemented
+TEST_F(sql_test, DISABLED_select_distinct) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 int)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,1)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (3,1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select distinct C1 from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
+
 }

@@ -36,7 +36,8 @@ if(INSTALL_EXAMPLES)
     install_custom(sql-cli ${export_name})
 endif()
 
-add_test(
-        NAME sql-cli
-        COMMAND sql-cli --v=50 --location TMP "SELECT C0,C1 FROM T0"
-)
+# disabled as jogasaki-memory frequently freezes on ci env.
+#add_test(
+#        NAME sql-cli
+#        COMMAND sql-cli --v=50 --location TMP "SELECT C0,C1 FROM T0"
+#)

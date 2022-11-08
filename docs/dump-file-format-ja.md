@@ -96,6 +96,15 @@ tsubakuro経由でのダンプ実行(Transaction.executeDump())においては�
 - 列名は不定
 - 列のタイプは文字列型(VARCHAR)
 
+## Non Logical Type のサポート(ロード)
+
+上記[データ型](#データ型)の多くはParquetのLogical Typeを持つが、サードパーティ製品(Apache Drill等)によって作成されたParquetファイルは必ずしもこの限りではない。この場合、ロード時にAPI経由でplaceholderの型を適切に与える事でこれらの型についてもロードが可能である。この使用法が可能なParquetの型と、そのロード時に指定すべきplaceholderの型の対応を下表に示す
+
+| Parquet  | Tsurugi           |  備考    |
+|-------------|----------|----------------|
+| Primitive Type: INT32<br>Logical Type: None  | int4              |        |
+| Primitive Type: INT64<br>Logical Type: None  | int8              |        |
+
 ## Parquet前提バージョン
 
 本提書の記述はApache Arrow 7.0.0に含まれるParquetを前提としている

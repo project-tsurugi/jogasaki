@@ -34,7 +34,7 @@ namespace jogasaki::executor::file {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief parquet file writer
+ * @brief parquet file reader
  */
 class parquet_reader {
 public:
@@ -46,8 +46,8 @@ public:
     parquet_reader() = default;
 
     /**
-     * @brief write the record
-     * @param ref [out] the record reference read by the writer
+     * @brief read the parquet record
+     * @param ref [out] the record reference filled with the parquet data
      * @return true when successful
      * @return false otherwise
      */
@@ -66,7 +66,7 @@ public:
     [[nodiscard]] std::string path() const noexcept;
 
     /**
-     * @brief accessor to the number of successful write
+     * @brief accessor to the number of successful read
      */
     [[nodiscard]] std::size_t read_count() const noexcept;
 

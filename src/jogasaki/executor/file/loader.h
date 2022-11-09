@@ -34,9 +34,16 @@ namespace executor::file {
 using takatori::util::maybe_shared_ptr;
 
 struct parameter {
+    // parameter type
     meta::field_type_kind type_{};
+
+    // 0-oring index in the parquet record
     std::size_t index_{};
+
+    // value offset in the record read from parquet file
     std::size_t value_offset_{};
+
+    // nullity offset in the record read from parquet file
     std::size_t nullity_offset_{};
 };
 
@@ -129,6 +136,7 @@ public:
      * @return the error status and message
      */
     [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
+
 private:
     std::vector<std::string> files_{};
     std::atomic_size_t running_statement_count_{};

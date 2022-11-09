@@ -135,12 +135,9 @@ private:
     std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
     std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
     std::vector<parquet::ColumnDescriptor const*> columns_{};
-
     boost::filesystem::path path_{};
     std::size_t read_count_{};
-
     data::aligned_buffer buf_{};
-
     std::vector<std::size_t> parameter_to_parquet_field_{};
 
     bool init(std::string_view path, parquet_reader_option const* opt);

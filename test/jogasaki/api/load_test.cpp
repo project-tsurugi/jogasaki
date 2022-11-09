@@ -81,6 +81,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->prepare_qa_tables(false);
         db_setup(cfg);
         temporary_.prepare();
     }
@@ -404,4 +405,27 @@ TEST_F(load_test, cast_from_string) {
     }
 }
 
+// create better way to place custom parquet files
+TEST_F(load_test, DISABLED_third_party_file) {
+    std::vector<std::string> files{
+        "INT_DOUBLE.parquet"
+    };
+
+    execute_statement("create table TT (C0 double, C1 int)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::float8},
+        {"p1", api::field_type_kind::int4},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_reference_column("p0", "Z");
+    ps->set_reference_column("p1", "Inten_sity");
+
+    test_load(files, "INSERT INTO TT (C0, C1) VALUES (:p0, :p1)", variables, std::move(ps));
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TT ORDER BY C0", result);
+        ASSERT_EQ(5, result.size());
+    }
+}
 }

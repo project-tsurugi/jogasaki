@@ -101,6 +101,17 @@ struct field_type_traits<field_type_kind::unknown> {
     static constexpr std::size_t alignment = 1;
 };
 
+template <>
+struct field_type_traits<field_type_kind::undefined> {
+    // undefined is the field type that is not supported (e.g. load file contains unsupported type)
+    // This type actually doesn't store real value, but the trait is defined for compatibility.
+    // Treat this type as if it's 0 length character string.
+    using runtime_type = char;
+    using option_type = void;
+    static constexpr std::size_t size = 0;
+    static constexpr std::size_t alignment = 1;
+};
+
 //TODO add specialization for other types
 
 } // namespace

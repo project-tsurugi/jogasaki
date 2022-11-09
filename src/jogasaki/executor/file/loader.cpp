@@ -54,64 +54,6 @@ meta::field_type_kind host_variable_type(executor::process::impl::variable_table
     return vinfo.meta()->at(idx).kind();
 }
 
-bool create_mapping(
-    api::parameter_set const& ps,
-    api::statement_handle prepared,
-    meta::external_record_meta const& meta,
-    std::unordered_map<std::string, parameter>& out,
-    std::string& msg
-) {
-    out.clear();
-    auto& impl = static_cast<api::impl::parameter_set const&>(ps);  //NOLINT
-    auto& body = impl.body();
-
-    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
-    auto vinfo = stmt->body()->mirrors()->host_variable_info();
-
-    out.reserve(body->size());
-    for(auto&& [name, e ] : *body) {
-        if (! vinfo->exists(name)) {
-            VLOG(log_warning) << "Parameter " << name << " is not used by the statement and simply ignored.";
-            continue;
-        }
-        if(e.type().kind() == meta::field_type_kind::reference_column_position) {
-            auto idx = e.as_any().to<std::size_t>();
-            if(meta.field_count() <= idx) {
-                msg = string_builder{} <<
-                    "Reference column index " << idx << " is out of range" << string_builder::to_string;
-                VLOG(log_error) << msg;
-                return false;
-            }
-            out[name] = parameter{
-                host_variable_type(*vinfo, name),
-                idx,
-                meta.value_offset(idx),
-                meta.nullity_offset(idx)
-            };
-            continue;
-        }
-        if(e.type().kind() == meta::field_type_kind::reference_column_name) {
-            auto t = e.as_any().to<accessor::text>();
-            auto referenced = static_cast<std::string_view>(t);
-            auto idx = meta.field_index(referenced);
-            if(idx == meta::external_record_meta::undefined) {
-                msg = string_builder{} <<
-                    "Referenced column name " << referenced << " not found" << string_builder::to_string;
-                VLOG(log_error) << msg;
-                return false;
-            }
-            out[name] = parameter{
-                host_variable_type(*vinfo, name),
-                idx,
-                meta.value_offset(idx),
-                meta.nullity_offset(idx)
-            };
-            continue;
-        }
-    }
-    return true;
-}
-
 void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, parameter> const& mapping) {
     auto pset = static_cast<api::impl::parameter_set&>(ps).body();  //NOLINT
     for(auto&& [name, param] : mapping) {
@@ -134,6 +76,53 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
             default: fail();
         }
     }
+}
+
+parquet_reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
+    for(auto&& [n, e] : *pset) {
+        if(name != n) continue;
+        if(e.type().kind() == meta::field_type_kind::reference_column_position) {
+            auto idx = e.as_any().to<std::size_t>();
+            return {"", idx};
+        }
+        if(e.type().kind() == meta::field_type_kind::reference_column_name) {
+            auto t = e.as_any().to<accessor::text>();
+            auto referenced = static_cast<std::string_view>(t);
+            return {referenced, npos};
+        }
+    }
+    return {};
+}
+
+void create_reader_option_and_maping(
+    api::parameter_set const& ps,
+    api::statement_handle prepared,
+    std::unordered_map<std::string, parameter>& mapping,
+    parquet_reader_option& out
+) {
+    auto pset = static_cast<api::impl::parameter_set const&>(ps).body();  //NOLINT
+    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
+    auto vinfo = stmt->body()->mirrors()->host_variable_info();
+    std::vector<parquet_reader_field_locator> locs{};
+
+    // create mapping
+    mapping.clear();
+    mapping.reserve(vinfo->meta()->field_count());
+    locs.resize(vinfo->meta()->field_count());
+    for(auto it = vinfo->name_list_begin(), end = vinfo->name_list_end(); it != end; ++it) {
+        auto& name = it->first;
+        auto& v = vinfo->at(name);
+        auto loc = create_locator(name, pset);
+        locs[v.index()] = loc;
+        if(loc.empty_) continue;
+        mapping[name] = parameter{
+            host_variable_type(*vinfo, name),
+            v.index(),
+            vinfo->meta()->value_offset(v.index()),
+            vinfo->meta()->nullity_offset(v.index())
+        };
+    }
+    out = {std::move(locs), *vinfo->meta()};
 }
 
 loader_result loader::operator()() {
@@ -169,21 +158,15 @@ loader_result loader::operator()() {
                 more_to_read_ = false;
                 return running_statement_count_ != 0 ? loader_result::running : loader_result::ok;
             }
-            reader_ = parquet_reader::open(*next_file_);
+
+            parquet_reader_option opt{};
+            create_reader_option_and_maping(*parameters_, prepared_, mapping_, opt);
+            reader_ = parquet_reader::open(*next_file_, std::addressof(opt));
             ++next_file_;
             if(! reader_) {
                 status_ = status::err_io_error;
                 msg_ = "opening parquet file failed.";
                 VLOG(log_error) << msg_;
-                error_aborting_ = true;
-                return loader_result::running;
-            }
-        }
-
-        if (! meta_) {
-            meta_ = reader_->meta();
-            if(! create_mapping(*parameters_, prepared_, *meta_, mapping_, msg_)) {
-                status_ = status::err_unresolved_host_variable;
                 error_aborting_ = true;
                 return loader_result::running;
             }

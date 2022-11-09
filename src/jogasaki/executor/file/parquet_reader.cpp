@@ -16,6 +16,7 @@
 #include "parquet_reader.h"
 
 #include <iomanip>
+#include <algorithm>
 #include <glog/logging.h>
 
 #include <parquet/api/reader.h>
@@ -23,6 +24,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/external_record_meta.h>
@@ -33,6 +35,7 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
+using takatori::util::string_builder;
 
 template <class T, class Reader>
 T read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
@@ -158,28 +161,31 @@ runtime_t<meta::field_type_kind::time_point> read_data<runtime_t<meta::field_typ
 bool parquet_reader::next(accessor::record_ref& ref) {
     ref = accessor::record_ref{buf_.data(), buf_.capacity()};
     try {
-        for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-            auto& reader = *column_readers_[i];
-            auto& type = *columns_[i];
+        auto sz = parameter_to_parquet_field_.size();
+        for(std::size_t i=0; i<sz; ++i) {
+            auto colidx = parameter_to_parquet_field_[i];
+            if(colidx == npos) continue;
+            auto& reader = *column_readers_[colidx];
+            auto& type = *columns_[colidx];
             bool null{false};
             bool nodata{false};
-            switch(meta_->at(i).kind()) {
-                case meta::field_type_kind::int4: ref.set_value<runtime_t<meta::field_type_kind::int4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, parquet::Int32Reader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::int8: ref.set_value<runtime_t<meta::field_type_kind::int8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, parquet::Int64Reader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::float4: ref.set_value<runtime_t<meta::field_type_kind::float4>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, parquet::FloatReader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::float8: ref.set_value<runtime_t<meta::field_type_kind::float8>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, parquet::DoubleReader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::octet: ref.set_value<runtime_t<meta::field_type_kind::octet>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(reader, type, null, nodata)); break;
+            switch(parameter_meta_->at(i).kind()) {
+                case meta::field_type_kind::int4: ref.set_value<runtime_t<meta::field_type_kind::int4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, parquet::Int32Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::int8: ref.set_value<runtime_t<meta::field_type_kind::int8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, parquet::Int64Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::float4: ref.set_value<runtime_t<meta::field_type_kind::float4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, parquet::FloatReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::float8: ref.set_value<runtime_t<meta::field_type_kind::float8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, parquet::DoubleReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::octet: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(reader, type, null, nodata)); break;
                 default: fail();
             }
             if (nodata) {
                 return false;
             }
-            ref.set_null(meta_->nullity_offset(i), null);
+            ref.set_null(parameter_meta_->nullity_offset(i), null);
         }
     } catch (std::exception const& e) {
         VLOG(log_error) << "Parquet reader read error: " << e.what();
@@ -206,9 +212,18 @@ maybe_shared_ptr<meta::external_record_meta> const& parquet_reader::meta() {
     return meta_;
 }
 
-std::shared_ptr<parquet_reader> parquet_reader::open(std::string_view path) {
+parquet_reader_option create_default(meta::record_meta const& meta) {
+    std::vector<parquet_reader_field_locator> locs{};
+    locs.reserve(meta.field_count());
+    for(std::size_t i=0, n=meta.field_count(); i < n; ++i) {
+        locs.emplace_back("", i);
+    }
+    return {std::move(locs), meta};
+}
+
+std::shared_ptr<parquet_reader> parquet_reader::open(std::string_view path, parquet_reader_option const* opt) {
     auto ret = std::make_shared<parquet_reader>();
-    if(ret->init(path)) {
+    if(ret->init(path, opt)) {
         return ret;
     }
     return {};
@@ -309,7 +324,70 @@ std::shared_ptr<meta::external_record_meta> create_meta(parquet::FileMetaData& p
     );
 }
 
-bool parquet_reader::init(std::string_view path) {
+bool validate_option(parquet_reader_option const& opt, parquet::FileMetaData& pmeta) {
+    for(auto&& l : opt.loc_) {
+        if(! l.empty_ && l.index_ != npos && static_cast<std::size_t>(pmeta.schema()->num_columns()) <= l.index_) {
+            auto msg = string_builder{} <<
+                "Reference column index " << l.index_ << " is out of range" << string_builder::to_string;
+            VLOG(log_error) << msg;
+            return false;
+        }
+        if(! l.empty_  && l.index_ == npos) {
+            bool found = false;
+            for(std::size_t i=0, n=pmeta.schema()->num_columns(); i < n; ++i) {
+                if(pmeta.schema()->Column(i)->name() == l.name_) {
+                    found = true;
+                    break;
+                }
+            }
+            if(! found) {
+                auto msg = string_builder{} <<
+                    "Referenced column name " << l.name_ << " not found" << string_builder::to_string;
+                VLOG(log_error) << msg;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+std::size_t index_in(std::vector<std::string>::value_type e, std::vector<std::string>& container) {
+    if(auto it = std::find(container.begin(), container.end(), e); it != container.end()) {
+        return std::distance(container.begin(), it);
+    }
+    return npos;
+}
+
+std::vector<std::size_t> create_parameter_to_parquet_field(parquet_reader_option const& opt, parquet::FileMetaData& pmeta) {
+    std::vector<std::size_t> ret{};
+    auto sz = opt.meta_->field_count();
+    ret.reserve(sz);
+    BOOST_ASSERT(sz == opt.loc_.size()); //NOLINT
+    std::vector<std::string> names{};
+    names.reserve(pmeta.num_columns());
+    for(std::size_t i=0, n=pmeta.num_columns(); i < n; ++i) {
+        names.emplace_back(pmeta.schema()->Column(i)->name());
+    }
+
+    for(std::size_t i=0; i < sz; ++i) {
+        if(opt.loc_[i].empty_) {
+            ret.emplace_back(npos);
+            continue;
+        }
+        if(opt.loc_[i].index_ != npos) {
+            ret.emplace_back(opt.loc_[i].index_);
+            continue;
+        }
+        if(auto idx = index_in(opt.loc_[i].name_, names); idx != npos) {
+            ret.emplace_back(idx);
+            continue;
+        }
+        // something is wrong
+    }
+    return ret;
+}
+
+bool parquet_reader::init(std::string_view path, parquet_reader_option const* opt) {
     try {
         path_ = std::string{path};
         file_reader_ = parquet::ParquetFileReader::OpenFile(path_.string(), false);
@@ -322,9 +400,18 @@ bool parquet_reader::init(std::string_view path) {
         if(! meta_) {
             return false;
         }
+        parquet_reader_option d = create_default(*meta_->origin());
+        if(opt == nullptr) {
+            opt = &d;
+        }
+        parameter_meta_ = maybe_shared_ptr{opt->meta_};
+        if(! validate_option(*opt, *file_metadata)) {
+            return false;
+        }
+        parameter_to_parquet_field_ = create_parameter_to_parquet_field(*opt, *file_metadata);
         columns_ = create_columns_meta(*file_metadata);
-        buf_ = data::aligned_buffer{meta_->record_size(), meta_->record_alignment()};
-        buf_.resize(meta_->record_size());
+        buf_ = data::aligned_buffer{parameter_meta_->record_size(), parameter_meta_->record_alignment()};
+        buf_.resize(parameter_meta_->record_size());
         row_group_reader_ = file_reader_->RowGroup(0);
         column_readers_.reserve(meta_->field_count());
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {

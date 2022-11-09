@@ -16,6 +16,7 @@
 #pragma once
 
 #include <iomanip>
+#include <string_view>
 
 #include <boost/filesystem.hpp>
 #include <arrow/io/file.h>
@@ -33,8 +34,51 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 
+constexpr std::size_t npos = static_cast<std::size_t>(-1);
+
+/**
+ * @brief field locator indicates what parquet column (by name or index) is used as source to read
+ */
+struct parquet_reader_field_locator {
+    parquet_reader_field_locator() = default;
+
+    parquet_reader_field_locator(std::string_view name, std::size_t index) noexcept :
+        name_(name),
+        index_(index),
+        empty_(false)
+    {}
+    std::string name_{};
+    std::size_t index_{npos};
+    bool empty_{true};
+};
+
+class parquet_reader_option {
+public:
+    parquet_reader_option() = default;
+
+    /**
+     * @brief create new option
+     * @param loc locators indicating source to read. The order must correspond to the field order in `meta`
+     * @param meta metadata of the record_ref that reader's next() writes data to.
+     */
+    parquet_reader_option(
+        std::vector<parquet_reader_field_locator> loc,
+        meta::record_meta const& meta
+    ) noexcept :
+        loc_(std::move(loc)),
+        meta_(std::addressof(meta))
+    {
+        BOOST_ASSERT(loc_.size() ==  meta_->field_count());  //NOLINT
+    }
+
+    std::vector<parquet_reader_field_locator> loc_{};
+    meta::record_meta const* meta_{};
+};
+
 /**
  * @brief parquet file reader
+ * @details this reader is created with mapping from parquet fields to record_ref fields that represent values for
+ * parameters/placeholders. The reader reads the parquet record and fills the fields according to the mapping.
  */
 class parquet_reader {
 public:
@@ -82,10 +126,11 @@ public:
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<parquet_reader> open(std::string_view path);
+    static std::shared_ptr<parquet_reader> open(std::string_view path, parquet_reader_option const* opt = nullptr);
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta const> parameter_meta_{};
     std::unique_ptr<parquet::ParquetFileReader> file_reader_{};
     std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
     std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
@@ -94,12 +139,11 @@ private:
     boost::filesystem::path path_{};
     std::size_t read_count_{};
 
-    std::unordered_map<std::string, std::size_t> column_name_to_index_{};
-    std::unordered_map<std::size_t, std::size_t> external_to_parquet_column_index_{};
-
     data::aligned_buffer buf_{};
 
-    bool init(std::string_view path);
+    std::vector<std::size_t> parameter_to_parquet_field_{};
+
+    bool init(std::string_view path, parquet_reader_option const* opt);
 };
 
 

@@ -20,7 +20,6 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
-#include <takatori/util/string_builder.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
@@ -32,7 +31,6 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
-using takatori::util::string_builder;
 
 loader::loader(
     std::vector<std::string> files,

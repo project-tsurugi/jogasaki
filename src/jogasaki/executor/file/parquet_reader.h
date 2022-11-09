@@ -47,9 +47,9 @@ struct parquet_reader_field_locator {
         index_(index),
         empty_(false)
     {}
-    std::string name_{};
-    std::size_t index_{npos};
-    bool empty_{true};
+    std::string name_{};  //NOLINT
+    std::size_t index_{npos};  //NOLINT
+    bool empty_{true};  //NOLINT
 };
 
 class parquet_reader_option {
@@ -71,8 +71,8 @@ public:
         BOOST_ASSERT(loc_.size() ==  meta_->field_count());  //NOLINT
     }
 
-    std::vector<parquet_reader_field_locator> loc_{};
-    meta::record_meta const* meta_{};
+    std::vector<parquet_reader_field_locator> loc_{};  //NOLINT
+    meta::record_meta const* meta_{};  //NOLINT
 };
 
 /**

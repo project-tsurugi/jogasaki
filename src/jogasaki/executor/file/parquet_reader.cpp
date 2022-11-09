@@ -379,7 +379,7 @@ bool validate_option(parquet_reader_option const& opt, parquet::FileMetaData& pm
     return true;
 }
 
-std::size_t index_in(std::vector<std::string>::value_type e, std::vector<std::string>& container) {
+std::size_t index_in(std::vector<std::string>::value_type const& e, std::vector<std::string>& container) {
     if(auto it = std::find(container.begin(), container.end(), e); it != container.end()) {
         return std::distance(container.begin(), it);
     }

@@ -230,46 +230,71 @@ std::shared_ptr<parquet_reader> parquet_reader::open(std::string_view path, parq
     return {};
 }
 
+inline constexpr std::string_view to_string_view(parquet::Type::type value) {
+    switch (value) {
+        case parquet::Type::type::BOOLEAN: return "BOOLEAN";
+        case parquet::Type::type::INT32: return "INT32";
+        case parquet::Type::type::INT64: return "INT64";
+        case parquet::Type::type::INT96: return "INT96";
+        case parquet::Type::type::FLOAT: return "FLOAT";
+        case parquet::Type::type::DOUBLE: return "DOUBLE";
+        case parquet::Type::type::BYTE_ARRAY: return "BYTE_ARRAY";
+        case parquet::Type::type::FIXED_LEN_BYTE_ARRAY: return "FIXED_LEN_BYTE_ARRAY";
+        case parquet::Type::type::UNDEFINED: return "UNDEFINED";
+    }
+    std::abort();
+}
+
+inline std::ostream& operator<<(std::ostream& out, parquet::Type::type value) {
+    return out << to_string_view(value);
+}
+
 meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* parameter_type) {
-    if (c->physical_type() == parquet::Type::type::FLOAT) {
-        return meta::field_type{meta::field_enum_tag<meta::field_type_kind::float4>};
-    }
-    if (c->physical_type() == parquet::Type::type::DOUBLE) {
-        return meta::field_type{meta::field_enum_tag<meta::field_type_kind::float8>};
-    }
-    if (c->physical_type() == parquet::Type::type::BOOLEAN) {
-        return meta::field_type{meta::field_enum_tag<meta::field_type_kind::boolean>};
-    }
     switch(c->logical_type()->type()) {
         case parquet::LogicalType::Type::STRING:
-            return meta::field_type{meta::field_enum_tag<meta::field_type_kind::character>};
+            if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::character>};
+            }
+            break;
         case parquet::LogicalType::Type::INT:
-            if(c->logical_type()->Equals(*parquet::LogicalType::Int(8, true))) {
+            if(c->logical_type()->Equals(*parquet::LogicalType::Int(8, true)) &&
+                c->physical_type() == parquet::Type::type::INT32) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int1>};
-            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(16, true))) {
+            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(16, true)) &&
+                c->physical_type() == parquet::Type::type::INT32) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int2>};
-            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(32, true))) {
+            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(32, true)) &&
+                c->physical_type() == parquet::Type::type::INT32) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
-            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(64, true))) {
+            } else if(c->logical_type()->Equals(*parquet::LogicalType::Int(64, true)) &&
+                c->physical_type() == parquet::Type::type::INT64) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
             }
-            VLOG(log_error) << "unsupported length for int : " << c->type_length();
+            VLOG(log_error) << "unsupported length for int : " << c->type_length() << " physical type:" << c->physical_type();
             break;
         case parquet::LogicalType::Type::DECIMAL: {
-            return meta::field_type{std::make_shared<meta::decimal_field_option>(
-                c->type_precision(),
-                c->type_scale()
-            )};
+            if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
+                return meta::field_type{std::make_shared<meta::decimal_field_option>(
+                    c->type_precision(),
+                    c->type_scale()
+                )};
+            }
+            break;
         }
         case parquet::LogicalType::Type::DATE:
-            return meta::field_type{meta::field_enum_tag<meta::field_type_kind::date>};
+            if (c->physical_type() == parquet::Type::type::INT32) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::date>};
+            }
+            break;
         case parquet::LogicalType::Type::TIME:
+            if (c->physical_type() != parquet::Type::type::INT64) break;
             if(auto t = dynamic_cast<parquet::TimeLogicalType const*>(c->logical_type().get()); t != nullptr) {
                 auto with_offset = t->is_adjusted_to_utc();
                 return meta::field_type{std::make_shared<meta::time_of_day_field_option>(with_offset)};
             }
             break;
         case parquet::LogicalType::Type::TIMESTAMP:
+            if (c->physical_type() != parquet::Type::type::INT64) break;
             if(auto t = dynamic_cast<parquet::TimestampLogicalType const*>(c->logical_type().get()); t != nullptr) {
                 auto with_offset = t->is_adjusted_to_utc();
                 return meta::field_type{std::make_shared<meta::time_point_field_option>(with_offset)};
@@ -278,9 +303,20 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
         case parquet::LogicalType::Type::INTERVAL:
             break;
         case parquet::LogicalType::Type::NONE:
+            if (c->physical_type() == parquet::Type::type::FLOAT) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::float4>};
+            }
+            if (c->physical_type() == parquet::Type::type::DOUBLE) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::float8>};
+            }
+            if (c->physical_type() == parquet::Type::type::BOOLEAN) {
+                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::boolean>};
+            }
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::octet>};
             }
+
+            // even without logical type, parameter type helps guessing the type
             if(parameter_type != nullptr) {
                 if (c->physical_type() == parquet::Type::type::INT32 && *parameter_type == meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>}) {
                     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
@@ -423,10 +459,16 @@ bool validate_parameter_mapping(
     for(std::size_t i=0, n=param_map.size(); i < n; ++i) {
         auto e = param_map[i];
         if(e == npos) continue;
-        if(parameter_meta.at(i).kind() != parquet_meta.at(e).kind()) {
-            auto n = parquet_meta.field_name(e);
+        auto nam = parquet_meta.field_name(e);
+        if(parquet_meta.at(e).kind() == meta::field_type_kind::undefined) {
             auto msg = string_builder{} <<
-                "Invalid parameter type - Parquet column '" << (n.has_value() ? *n : "") << "' of type " <<
+                "Unsupported type - Parquet column '" << (nam.has_value() ? *nam : "") << "'" << string_builder::to_string;
+            VLOG(log_error) << msg;
+            return false;
+        }
+        if(parameter_meta.at(i).kind() != parquet_meta.at(e).kind()) {
+            auto msg = string_builder{} <<
+                "Invalid parameter type - Parquet column '" << (nam.has_value() ? *nam : "") << "' of type " <<
                 parquet_meta.at(e) << " assigned to parameter of type " << parameter_meta.at(i) <<
                 string_builder::to_string;
             VLOG(log_error) << msg;
@@ -436,11 +478,26 @@ bool validate_parameter_mapping(
     return true;
 }
 
+void dump_file_metadata(parquet::FileMetaData& pmeta) {
+    VLOG(log_debug) << "*** begin dump metadata for parquet file ***";
+    VLOG(log_debug) << "#columns:" << pmeta.num_columns();
+    VLOG(log_debug) << "size:" << pmeta.size();
+    VLOG(log_debug) << "num_rows:" << pmeta.num_rows();
+    VLOG(log_debug) << "created_by:" << pmeta.created_by();
+    VLOG(log_debug) << "schema name:" << pmeta.schema()->name();
+    for(std::size_t i=0, n=pmeta.schema()->num_columns(); i<n; ++i) {
+        auto&& c = pmeta.schema()->Column(i);
+        VLOG(log_debug) << "  column name:" << c->name() << " physical type:" << c->physical_type() << " logical type:" << c->logical_type()->ToString();
+    }
+    VLOG(log_debug) << "*** end dump metadata for parquet file ***";
+}
+
 bool parquet_reader::init(std::string_view path, parquet_reader_option const* opt) {
     try {
         path_ = std::string{path};
         file_reader_ = parquet::ParquetFileReader::OpenFile(path_.string(), false);
         auto file_metadata = file_reader_->metadata();
+        dump_file_metadata(*file_metadata);
         if(file_metadata->num_row_groups() != 1) {
             VLOG(log_error) << "parquet file format error : more than one row groups";
             return false;

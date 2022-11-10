@@ -43,12 +43,8 @@ public:
     /**
      * @brief create new object
      * @param db the parent database that the transaction runs on
-     * @param options the options for newly created transaction
      */
-    explicit transaction(
-        kvs::database& db,
-        kvs::transaction_option const& options = {}
-    );
+    explicit transaction(kvs::database& db);
 
     /**
      * @brief destruct object
@@ -113,11 +109,27 @@ public:
      */
     [[nodiscard]] sharksfin::TransactionState check_state() noexcept;
 
+    /**
+     * @brief create and start new transaction
+     * @param db the parent database that the transaction runs on
+     * @param out [OUT] filled with newly created transaction object
+     * @param options transaction options
+     * @return status::ok when successful
+     * @return error otherwise
+     */
+    [[nodiscard]] static status create_transaction(
+        kvs::database &db,
+        std::unique_ptr<transaction>& out,
+        kvs::transaction_option const& options = {}
+    );
+
 private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
     kvs::database* database_{};
-    bool active_{true};
+    bool active_{false};
+
+    status init(kvs::transaction_option const& options);
 };
 
 /**

@@ -375,10 +375,10 @@ status database::create_transaction_internal(transaction_handle& handle, transac
         return res;
     }
     {
-        auto tx = std::make_unique<impl::transaction>(
-            *this,
-            from(option, *tables_)
-        );
+        std::unique_ptr<impl::transaction> tx{};
+        if(auto res = impl::transaction::create_transaction(*this, tx, from(option, *tables_)); res != status::ok) {
+            return res;
+        }
         api::transaction_handle t{tx.get()};
         {
             decltype(transactions_)::accessor acc{};
@@ -625,7 +625,10 @@ status database::initialize_from_providers() {
     }
     sequence_manager_ = std::make_unique<executor::sequence::manager>(*kvs_db_);
     {
-        auto tx = kvs_db_->create_transaction();
+        std::unique_ptr<kvs::transaction> tx{};
+        if(auto res = kvs::transaction::create_transaction(*kvs_db_, tx); res != status::ok) {
+            return res;
+        }
         sequence_manager_->load_id_map(tx.get());
         sequence_manager_->register_sequences(tx.get(), tables_);
         if(auto res = tx->commit(); res != status::ok) {

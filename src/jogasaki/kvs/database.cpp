@@ -64,7 +64,12 @@ sharksfin::DatabaseHandle database::handle() const noexcept {
 std::unique_ptr<transaction> database::create_transaction(
     kvs::transaction_option const& options
 ) {
-    return std::make_unique<transaction>(*this, options);
+    std::unique_ptr<transaction> ret{};
+    if(auto res = transaction::create_transaction(*this, ret, options); res != status::ok) {
+        // left for testing
+        return {};
+    }
+    return ret;
 }
 
 std::unique_ptr<storage> database::create_storage(std::string_view name, StorageOptions const& options) {

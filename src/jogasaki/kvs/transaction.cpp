@@ -36,29 +36,10 @@ sharksfin::TransactionOptions::TransactionType type(kvs::transaction_option::tra
 }
 
 transaction::transaction(
-    kvs::database &db,
-    kvs::transaction_option const& options
-) : database_(std::addressof(db)) {
-    sharksfin::TransactionOptions::WritePreserves wps{};
-    std::vector<std::unique_ptr<kvs::storage>> stgs{}; // to keep storages during transaction_begin call
-    stgs.reserve(options.write_preserves().size());
-    for(auto&& wp : options.write_preserves()) {
-        auto s = db.get_storage(wp);
-        if(! s) {
-            VLOG(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
-            fail(); //TODO
-        }
-        wps.emplace_back(s->handle());
-        stgs.emplace_back(std::move(s));
-    }
-    sharksfin::TransactionOptions opts{
-        type(options.type()),
-        std::move(wps),
-    };
-    if(auto res = sharksfin::transaction_begin(db.handle(), opts, &tx_); res != sharksfin::StatusCode::OK) {
-        fail();
-    }
-}
+    kvs::database &db
+) :
+    database_(std::addressof(db))
+{}
 
 transaction::~transaction() noexcept {
     if (active_) {
@@ -117,6 +98,43 @@ sharksfin::TransactionState transaction::check_state() noexcept {
         fail();
     }
     return result;
+}
+
+status transaction::create_transaction(
+    kvs::database &db,
+    std::unique_ptr<transaction>& out,
+    transaction_option const& options
+) {
+    auto ret = std::make_unique<transaction>(db);
+    if(auto res = ret->init(options); res != status::ok) {
+        return res;
+    }
+    out = std::move(ret);
+    return status::ok;
+}
+
+status transaction::init(transaction_option const& options) {
+    sharksfin::TransactionOptions::WritePreserves wps{};
+    std::vector<std::unique_ptr<kvs::storage>> stgs{}; // to keep storages during transaction_begin call
+    stgs.reserve(options.write_preserves().size());
+    for(auto&& wp : options.write_preserves()) {
+        auto s = database_->get_storage(wp);
+        if(! s) {
+            VLOG(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
+            return status::err_invalid_argument;
+        }
+        wps.emplace_back(s->handle());
+        stgs.emplace_back(std::move(s));
+    }
+    sharksfin::TransactionOptions opts{
+        type(options.type()),
+        std::move(wps),
+    };
+    if(auto res = sharksfin::transaction_begin(database_->handle(), opts, &tx_); res != sharksfin::StatusCode::OK) {
+        return resolve(res);
+    }
+    active_ = true;
+    return status::ok;
 }
 
 }

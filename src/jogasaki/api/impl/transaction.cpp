@@ -96,11 +96,9 @@ impl::database& transaction::database() {
 }
 
 transaction::transaction(
-    impl::database& database,
-    kvs::transaction_option const& options
+    impl::database& database
 ) :
-    database_(std::addressof(database)),
-    tx_(wrap(database_->kvs_db()->create_transaction(options)))
+    database_(std::addressof(database))
 {}
 
 status transaction::execute(
@@ -362,6 +360,28 @@ bool transaction::commit_async(transaction::callback on_completion) {
 bool transaction::transaction::is_ready() const {
     auto st = tx_->object()->check_state().state_kind();
     return st != ::sharksfin::TransactionState::StateKind::WAITING_START;
+}
+
+status transaction::create_transaction(
+    impl::database& db,
+    std::unique_ptr<impl::transaction>& out,
+    kvs::transaction_option const& options
+) {
+    auto ret = std::make_unique<transaction>(db);
+    if(auto res = ret->init(options); res != status::ok) {
+        return res;
+    }
+    out = std::move(ret);
+    return status::ok;
+}
+
+status transaction::init(kvs::transaction_option const& options) {
+    std::unique_ptr<kvs::transaction> kvs_tx{};
+    if(auto res = kvs::transaction::create_transaction(*database_->kvs_db(), kvs_tx, options); res != status::ok) {
+        return res;
+    }
+    tx_ = wrap(std::move(kvs_tx));
+    return status::ok;
 }
 
 }

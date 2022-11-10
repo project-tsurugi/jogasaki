@@ -40,9 +40,8 @@ public:
     using callback = transaction_handle::callback;
 
     transaction() = default;
-    transaction(impl::database& database,
-        kvs::transaction_option const& options
-    );
+
+    explicit transaction(impl::database& database);
 
     /**
      * @brief check if transaction is already assigned to epoch and ready for request
@@ -166,6 +165,20 @@ public:
         callback on_completion
     );
 
+    /**
+     * @brief create and start new transaction
+     * @param db the parent database that the transaction runs on
+     * @param out [OUT] filled with newly created transaction object
+     * @param options transaction options
+     * @return status::ok when successful
+     * @return error otherwise
+     */
+    [[nodiscard]] static status create_transaction(
+        impl::database &db,
+        std::unique_ptr<transaction>& out,
+        kvs::transaction_option const& options
+    );
+
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
@@ -183,6 +196,8 @@ private:
     );
 
     status commit_internal();
+
+    status init(kvs::transaction_option const& options);
 };
 
 }

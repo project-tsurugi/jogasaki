@@ -97,6 +97,7 @@ public:
      * @brief create and start new transaction
      * @param options transaction options
      * @return transaction object
+     * @deprecated use `transaction::create_transaction(kvs::db&, std::unique_ptr<transaction>&, transaction_option const&)`.
      */
     [[nodiscard]] std::unique_ptr<transaction> create_transaction(
         transaction_option const& options = {}

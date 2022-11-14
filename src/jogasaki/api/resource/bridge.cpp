@@ -61,17 +61,23 @@ bool bridge::setup(framework::environment& env) {
 }
 
 bool bridge::start(framework::environment&) {
-    return db_->start() == status::ok;
-}
-
-bool bridge::shutdown(framework::environment&) {
-    auto ret = db_->stop() == status::ok;
-    deactivated_ = ret;
+    auto ret = db_->start() == status::ok;
+    started_ = ret;
     return ret;
 }
 
+bool bridge::shutdown(framework::environment&) {
+    if(started_) {
+        if(db_->stop() == status::ok) {
+            started_ = false;
+            return true;
+        }
+    }
+    return true;
+}
+
 bridge::~bridge() {
-    if(db_ && ! deactivated_) {
+    if(db_ && started_) {
         db_->stop();
     }
 }

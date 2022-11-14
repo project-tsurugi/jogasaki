@@ -97,15 +97,20 @@ status database::start() {
         kvs_db_ = kvs::database::open(opts);
     }
     if (! kvs_db_) {
-        LOG(ERROR) << "opening db failed";
+        LOG(ERROR) << "Opening database failed.";
         return status::err_io_error;
     }
 
     if(auto res = recover_metadata(); res != status::ok) {
-        // TODO clean-up
+        (void) kvs_db_->close();
+        kvs_db_.reset();
+        deinit();
         return res;
     }
     if(auto res = initialize_from_providers(); res != status::ok) {
+        (void) kvs_db_->close();
+        kvs_db_.reset();
+        deinit();
         return res;
     }
 
@@ -126,7 +131,6 @@ status database::start() {
             // ignore error for now TODO
         }
     }
-
     return status::ok;
 }
 
@@ -139,8 +143,7 @@ status database::stop() {
         task_scheduler_.reset();
     }
     sequence_manager_.reset();
-    tables_.reset();
-    aggregate_functions_.reset();
+    deinit();
     prepared_statements_.clear();
 
     if (kvs_db_) {
@@ -160,7 +163,6 @@ status database::stop() {
         kvs_db_ = nullptr;
     }
     transactions_.clear();
-    initialized_ = false;
     return status::ok;
 }
 
@@ -203,6 +205,13 @@ void database::init() {
         executor::add_analytics_benchmark_tables(*tables_);
     }
     initialized_ = true;
+}
+
+void database::deinit() {
+    if(! initialized_) return;
+    tables_.reset();
+    aggregate_functions_.reset();
+    initialized_ = false;
 }
 
 void add_variable(
@@ -633,6 +642,7 @@ status database::initialize_from_providers() {
         sequence_manager_->register_sequences(tx.get(), tables_);
         if(auto res = tx->commit(); res != status::ok) {
             LOG(ERROR) << "committing table schema entries failed";
+            sequence_manager_.reset();
             return status::err_io_error;
         }
     }

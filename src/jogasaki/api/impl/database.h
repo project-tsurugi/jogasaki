@@ -143,6 +143,7 @@ public:
     std::shared_ptr<class configuration>& config() noexcept override;
 
     void init();
+    void deinit();
 
     [[nodiscard]] std::shared_ptr<diagnostics> fetch_diagnostics() noexcept override;
 

@@ -19,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/database.h>
@@ -45,7 +44,6 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 void api_test_base::set_dbpath(configuration& cfg) {
     temporary_.prepare();
@@ -109,12 +107,8 @@ void api_test_base::execute_query(api::statement_handle& prepared, api::paramete
     std::unique_ptr<api::result_set> rs{};
     if(auto res = tx.execute(*stmt, rs);res != status::ok) {
         LOG(ERROR) << "execute failed with rc : " << res;
-        if(res == status::err_not_implemented || res == status::err_aborted_retryable) {
-            // skip testing and proceed
-            FAIL();
-            return;
-        }
-        fail();
+        FAIL();
+        return;
     }
     ASSERT_TRUE(rs);
     auto it = rs->iterator();

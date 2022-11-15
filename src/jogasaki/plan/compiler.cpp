@@ -452,7 +452,7 @@ executor::exchange::aggregate::step create(
             std::move(meta),
             std::move(key_indices),
             std::move(specs),
-            agg.mode() == takatori::plan::group_mode::equivalence_or_whole
+            agg.mode() == takatori::plan::group_mode::equivalence_or_whole && agg.group_keys().empty()
         ),
         std::move(input_order),
         std::move(output_order));

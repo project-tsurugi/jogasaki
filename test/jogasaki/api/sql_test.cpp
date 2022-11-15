@@ -121,12 +121,24 @@ TEST_F(sql_test, count_empty_records) {
     EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
+TEST_F(sql_test, count_empty_records_with_grouping) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT COUNT(C1) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(0, result.size());
+}
+
 TEST_F(sql_test, sum_empty_records) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT SUM(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.is_null(0));
+}
+
+TEST_F(sql_test, sum_empty_records_with_grouping) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT SUM(C1) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(0, result.size());
 }
 
 TEST_F(sql_test, count_null) {
@@ -230,20 +242,10 @@ TEST_F(sql_test, count_rows_empty_table) {
     EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
-TEST_F(sql_test, sum_empty_table) {
+TEST_F(sql_test, count_rows_empty_table_with_grouping) {
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT SUM(C1) FROM T0", result);
-    ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_TRUE(rec.is_null(0));
-}
-
-TEST_F(sql_test, sum_empty_table_with_grouping) {
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT SUM(C1) FROM T0 GROUP BY C1", result);
-    ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_TRUE(rec.is_null(0));
+    execute_query("SELECT COUNT(*) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(0, result.size());
 }
 
 TEST_F(sql_test, avg_empty_table) {
@@ -254,6 +256,12 @@ TEST_F(sql_test, avg_empty_table) {
     EXPECT_TRUE(rec.is_null(0));
 }
 
+TEST_F(sql_test, avg_empty_table_with_grouping) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT AVG(C1) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(0, result.size());
+}
+
 TEST_F(sql_test, max_empty_table) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT MAX(C1) FROM T0", result);
@@ -262,12 +270,24 @@ TEST_F(sql_test, max_empty_table) {
     EXPECT_TRUE(rec.is_null(0));
 }
 
+TEST_F(sql_test, max_empty_table_with_grouping) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MAX(C1) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(0, result.size());
+}
+
 TEST_F(sql_test, min_empty_table) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT MIN(C1) FROM T0", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.is_null(0));
+}
+
+TEST_F(sql_test, min_empty_table_with_grouping) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT MIN(C1) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(0, result.size());
 }
 
 TEST_F(sql_test, aggregate_decimals) {
@@ -512,4 +532,15 @@ TEST_F(sql_test, select_constant) {
     }
 }
 
+// like expression not yet supported
+TEST_F(sql_test, DISABLED_select_boolean_expression) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select C1 like 'A%' from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
 }

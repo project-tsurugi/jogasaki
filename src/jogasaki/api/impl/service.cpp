@@ -760,6 +760,9 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
         }
         auto& fld = metadata->at(i);
         switch(fld.kind()) {
+            case jogasaki::api::field_type_kind::boolean:
+                column->set_atom_type(sql::common::AtomType::BOOLEAN);
+                break;
             case jogasaki::api::field_type_kind::int4:
                 column->set_atom_type(sql::common::AtomType::INT4);
                 break;
@@ -799,7 +802,7 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 break;
             default:
                 LOG(ERROR) << "unsupported data type at field (" << i << "): " << metadata->at(i).kind();
-                fail();
+                break;
         }
     }
 }

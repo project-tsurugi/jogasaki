@@ -39,6 +39,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
             auto os = meta_->value_offset(i);
             auto& type = meta_->at(i);
             switch (type.kind()) {
+                case k::boolean: value_writer_->write_int(rec.get_value<runtime_t<k::boolean>>(os)); break;
                 case k::int4: value_writer_->write_int(rec.get_value<runtime_t<k::int4>>(os)); break;
                 case k::int8: value_writer_->write_int(rec.get_value<runtime_t<k::int8>>(os)); break;
                 case k::float4: value_writer_->write_float4(rec.get_value<runtime_t<k::float4>>(os)); break;

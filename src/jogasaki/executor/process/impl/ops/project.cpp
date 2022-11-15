@@ -17,7 +17,6 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <takatori/relation/project.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
@@ -31,7 +30,6 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 project::project(
     operator_base::operator_index_type index,
@@ -88,6 +86,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         ref.set_null(info.nullity_offset(), is_null);
         if (! is_null) {
             switch(cinfo.type_of(v).kind()) {
+                case t::boolean: copy_to<runtime_t<meta::field_type_kind::boolean>>(ref, info.value_offset(), result); break;
                 case t::int4: copy_to<runtime_t<meta::field_type_kind::int4>>(ref, info.value_offset(), result); break;
                 case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), result); break;
                 case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), result); break;
@@ -97,7 +96,9 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
                 case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), result); break;
                 case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
                 case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
-                default: fail();
+                default:
+                    VLOG(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
+                    return details::error_abort(ctx, status::err_unsupported);
             }
         }
     }

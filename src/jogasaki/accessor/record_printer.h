@@ -41,7 +41,17 @@ inline void print_field(
     using kind = meta::field_type_kind;
     switch(type.kind()) {
         case kind::undefined: os << kind::undefined; break;
-        case kind::boolean: os << record.get_value<runtime_t<kind::int8>>(offset); break;
+        case kind::boolean: {
+            auto b = record.get_value<runtime_t<kind::boolean>>(offset);
+            if(b == 0) {
+                os << "false";
+            } else if (b == 1) {
+                os << "true";
+            } else {
+                os << utils::binary_printer{std::addressof(b), sizeof(b)};
+            }
+            break;
+        }
         case kind::int1: os << record.get_value<runtime_t<kind::int1>>(offset); break;
         case kind::int2: os << record.get_value<runtime_t<kind::int2>>(offset); break;
         case kind::int4: os << record.get_value<runtime_t<kind::int4>>(offset); break;

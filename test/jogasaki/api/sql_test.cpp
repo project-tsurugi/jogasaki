@@ -238,6 +238,14 @@ TEST_F(sql_test, sum_empty_table) {
     EXPECT_TRUE(rec.is_null(0));
 }
 
+TEST_F(sql_test, sum_empty_table_with_grouping) {
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT SUM(C1) FROM T0 GROUP BY C1", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_TRUE(rec.is_null(0));
+}
+
 TEST_F(sql_test, avg_empty_table) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT AVG(C1) FROM T0", result);
@@ -483,5 +491,25 @@ TEST_F(sql_test, DISABLED_select_distinct) {
     }
 }
 
+TEST_F(sql_test, select_constant) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 int)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select 1 from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select true from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select false from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
 
 }

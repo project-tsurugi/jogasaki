@@ -50,8 +50,8 @@ transaction::~transaction() noexcept {
 
 status transaction::commit(bool async) {
     auto rc = sharksfin::transaction_commit(tx_, async);
-    if (rc == sharksfin::StatusCode::ERR_WAITING_FOR_OTHER_TRANSACTION) {
-        VLOG(log_debug) << "commit() returns ERR_WAITING_FOR_OTHER_TX - waiting for others to finish";
+    if (rc == sharksfin::StatusCode::WAITING_FOR_OTHER_TRANSACTION) {
+        VLOG(log_debug) << "commit request has been submitted - waiting for other transaction to finish";
     } else if(rc == sharksfin::StatusCode::OK ||
         rc == sharksfin::StatusCode::ERR_ABORTED ||
         rc == sharksfin::StatusCode::ERR_ABORTED_RETRYABLE) {

@@ -59,8 +59,8 @@ enum class status : std::int64_t {
     err_resource_limit_reached = -25,
     err_data_corruption = -26,
 
-    // internal errors
-    err_waiting_for_other_transaction = -10001,
+    // internal status
+    waiting_for_other_transaction = -10001,
 };
 
 /**
@@ -104,7 +104,7 @@ enum class status : std::int64_t {
         case status::err_resource_limit_reached: return "err_resource_limit_reached"sv;
         case status::err_data_corruption: return "err_data_corruption"sv;
 
-        case status::err_waiting_for_other_transaction: return "err_waiting_for_other_transaction"sv;
+        case status::waiting_for_other_transaction: return "waiting_for_other_transaction"sv;
     }
     std::abort();
 }

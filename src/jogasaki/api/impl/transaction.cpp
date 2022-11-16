@@ -45,13 +45,13 @@ using takatori::util::string_builder;
 
 status transaction::commit() {
     auto res = commit_internal();
-    if(res == status::err_waiting_for_other_transaction) {
+    if(res == status::waiting_for_other_transaction) {
         utils::backoff_waiter waiter{};
         while(true) {
             auto st = tx_->object()->check_state().state_kind();
             VLOG(log_debug) << "checking for waiting transaction state:" << st;
             if (st != ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT) {
-                if(auto res2 = commit_internal(); res2 == status::err_waiting_for_other_transaction) {
+                if(auto res2 = commit_internal(); res2 == status::waiting_for_other_transaction) {
                     // must not happen
                     return res2;
                 }
@@ -338,7 +338,7 @@ bool transaction::commit_async(transaction::callback on_completion) {
     auto t = scheduler::create_custom_task(rctx.get(),
         [this, rctx]() {
             auto res = commit_internal();
-            if(res == status::err_waiting_for_other_transaction) {
+            if(res == status::waiting_for_other_transaction) {
                 return model::task_result::yield;
             }
             rctx->status_code(res);

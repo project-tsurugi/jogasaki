@@ -64,6 +64,10 @@ kvs::database* transaction_context::database() const noexcept {
     return transaction_->database();
 }
 
+std::string_view transaction_context::recent_call_result() noexcept {
+    return transaction_->recent_call_result();
+}
+
 bool transaction_context::increment_worker_count(uint32_t& worker_index) {
     return mgr_.increment_and_set_on_zero(worker_index);
 }

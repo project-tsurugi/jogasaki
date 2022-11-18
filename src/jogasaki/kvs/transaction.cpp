@@ -137,5 +137,12 @@ status transaction::init(transaction_option const& options) {
     return status::ok;
 }
 
+std::string_view transaction::recent_call_result() noexcept {
+    if(auto result = sharksfin::transaction_inspect_recent_call(tx_); result != nullptr) {
+        return result->description();
+    }
+    return {};
+}
+
 }
 

@@ -811,7 +811,7 @@ bool database::do_create_transaction_async(
             }
         }
         return model::task_result::complete;
-    }, false);
+    }, true);  // create transaction doesn't need to be sticky task, but following task checking begin state does.
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });

@@ -110,6 +110,12 @@ public:
     [[nodiscard]] sharksfin::TransactionState check_state() noexcept;
 
     /**
+     * @brief return the detailed info for the recent kvs api call
+     * @return descriptive text about the api call result
+     */
+    [[nodiscard]] std::string_view recent_call_result() noexcept;
+
+    /**
      * @brief create and start new transaction
      * @param db the parent database that the transaction runs on
      * @param out [OUT] filled with newly created transaction object

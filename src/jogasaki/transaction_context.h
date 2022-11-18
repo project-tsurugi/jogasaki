@@ -150,6 +150,12 @@ public:
     [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
+     * @brief return the detailed info for the recent kvs api call
+     * @return descriptive text about the api call result
+     */
+    [[nodiscard]] std::string_view recent_call_result() noexcept;
+
+    /**
      * @brief check worker is same as given index and increment use count if no worker is assigned or given worker index is same as one already assigned
      * @param worker_index [in/out] the worker index to increment use count or assign. If this call returns false, already assigned worker index is returned.
      * @return true if use count increment is successful (including the case when use count becomes 1 from 0 as new worker is assigned)

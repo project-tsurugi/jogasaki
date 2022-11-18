@@ -476,6 +476,31 @@ TEST_F(long_tx_test, commit_wait) {
     EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[2]);
 }
 
+TEST_F(long_tx_test, commit_wait_error) {
+    // wait and abort
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 3.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2);
+
+    block_verifier vf{};
+    status st2{};
+    auto f = vf.exec([&](){ st2 = tx2->commit(); }, 1000*1000*1000); // default wait is too short to observe commit wait
+    ASSERT_FALSE(vf.finished());
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx1);
+    ASSERT_EQ(status::ok, tx1->commit());
+    f.get();
+    EXPECT_EQ(status::err_aborted_retryable, st2);
+    ASSERT_TRUE(vf.finished());
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 ORDER BY C0", result);
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 1.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 3.0)), result[2]);
+}
+
 TEST_F(long_tx_test, start_wait) {
     block_verifier vf{};
     std::shared_ptr<api::transaction_handle> tx1{};

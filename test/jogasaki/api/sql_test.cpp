@@ -543,4 +543,21 @@ TEST_F(sql_test, DISABLED_select_boolean_expression) {
         ASSERT_EQ(1, result.size());
     }
 }
+
+// like expression not yet supported
+TEST_F(sql_test, DISABLED_like_expression) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from TT where C1 like 'A%'", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from TT where NOT C1 like 'A%'", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

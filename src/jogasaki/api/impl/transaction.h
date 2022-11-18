@@ -66,7 +66,8 @@ public:
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
     bool commit_async(
-        callback on_completion
+        callback on_completion,
+        bool sync = false
     );
 
     status abort();

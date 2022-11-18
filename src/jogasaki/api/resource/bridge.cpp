@@ -95,11 +95,29 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
         return ret;
     }
 
-    if (auto thread_pool_size = jogasaki_config->get<std::size_t>("thread_pool_size")) {
-        ret->thread_pool_size(thread_pool_size.value());
+    if (auto v = jogasaki_config->get<std::size_t>("thread_pool_size")) {
+        ret->thread_pool_size(v.value());
     }
-    if (auto lazy_worker = jogasaki_config->get<bool>("lazy_worker")) {
-        ret->lazy_worker(lazy_worker.value());
+    if (auto v = jogasaki_config->get<bool>("lazy_worker")) {
+        ret->lazy_worker(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("prepare_test_tables")) {
+        ret->prepare_test_tables(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("prepare_qa_tables")) {
+        ret->prepare_qa_tables(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("prepare_benchmark_tables")) {
+        ret->prepare_benchmark_tables(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("prepare_analytics_benchmark_tables")) {
+        ret->prepare_analytics_benchmark_tables(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("default_partitions")) {
+        ret->default_partitions(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("stealing_enabled")) {
+        ret->stealing_enabled(v.value());
     }
 
     // datastore

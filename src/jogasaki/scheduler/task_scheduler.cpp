@@ -28,7 +28,7 @@ namespace jogasaki::scheduler {
 void task_scheduler::schedule_task(flat_task&& t) {
     auto cnt = ++t.job()->task_count();
     (void)cnt;
-    VLOG(log_debug) << "incremended job " << t.job()->id() << " task count to " << cnt;
+    //VLOG(log_debug) << "incremended job " << t.job()->id() << " task count to " << cnt;
     do_schedule_task(std::move(t));
 }
 }

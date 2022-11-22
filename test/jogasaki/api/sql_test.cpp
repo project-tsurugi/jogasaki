@@ -560,4 +560,17 @@ TEST_F(sql_test, DISABLED_like_expression) {
         ASSERT_EQ(0, result.size());
     }
 }
+
+// like expression not yet supported
+TEST_F(sql_test, double_literal) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select 1e2 from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
 }

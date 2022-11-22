@@ -28,13 +28,14 @@
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/null_record_channel.h>
-#include <jogasaki/utils/backoff_waiter.h>
+#include <jogasaki/utils/backoff_timer.h>
 
 #include "request_context_factory.h"
 
@@ -320,15 +321,6 @@ bool transaction::execute_load(
     return true;
 }
 
-struct commit_state {
-    enum class status {
-        init,
-        submitted,
-        completed,
-    };
-    status st_{status::init};
-};
-
 void set_commit_error(request_context& rctx, transaction_context& tx) {
     auto desc = tx.object()->recent_call_result();
     rctx.status_message(
@@ -336,55 +328,51 @@ void set_commit_error(request_context& rctx, transaction_context& tx) {
     );
 }
 
+void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& body) {
+    auto t = scheduler::create_custom_task(rctx, std::move(body), true, true);
+    auto& ts = *rctx->scheduler();
+    ts.schedule_task(std::move(t));
+}
+
 bool transaction::commit_async(transaction::callback on_completion, bool sync) {
     auto rctx = create_request_context(
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
-    auto cs = std::make_shared<commit_state>();
-    auto t = scheduler::create_custom_task(rctx.get(),
-    [this, rctx, cs]() {
-        switch(cs->st_) {
-            using cstatus = commit_state::status;
-            case cstatus::init: {
-                auto res = commit_internal();
-                if(res == status::waiting_for_other_transaction) {
-                    cs->st_ = cstatus::submitted;
-                    return model::task_result::yield;
-                }
-
-                rctx->status_code(res);
-                if(res != status::ok) {
-                    set_commit_error(*rctx, *tx_);
-                }
-                cs->st_ = cstatus::completed;
-                return model::task_result::complete;
-            }
-            case cstatus::submitted: {
+    auto timer = std::make_shared<utils::backoff_timer>();
+    auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer]() {
+        auto res = commit_internal();
+        if(res == status::waiting_for_other_transaction) {
+            timer->reset();
+            submit_task_commit_wait(rctx.get(), [rctx, this, timer]() {
+                if(! (*timer)()) return model::task_result::yield;
                 auto st = tx_->object()->check_state().state_kind();
                 VLOG(log_debug) << "checking for waiting transaction state:" << st;
                 switch(st) {
                     case ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
                         return model::task_result::yield;
-                    case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE: // fall-thru
-                    case ::sharksfin::TransactionState::StateKind::DURABLE:
-                        cs->st_ = cstatus::completed;
-                        return model::task_result::complete;
                     case ::sharksfin::TransactionState::StateKind::ABORTED: {
                         // get result and return error info
                         rctx->status_code(status::err_aborted_retryable);
                         set_commit_error(*rctx, *tx_);
-                        cs->st_ = cstatus::completed;
-                        return model::task_result::complete;
+                        break;
                     }
+                    case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE: break;
+                    case ::sharksfin::TransactionState::StateKind::DURABLE: break;
                     default:
                         VLOG(log_error) << "wrong state:" << st; // TODO throw
-                        return model::task_result::complete;
                 }
-            }
-            case cstatus::completed:
-                break;
+                scheduler::submit_teardown(*rctx);
+                return model::task_result::complete;
+            });
+            return model::task_result::complete;
         }
+
+        rctx->status_code(res);
+        if(res != status::ok) {
+            set_commit_error(*rctx, *tx_);
+        }
+        scheduler::submit_teardown(*rctx);
         return model::task_result::complete;
     }, true);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx](){  // callback is copy-based

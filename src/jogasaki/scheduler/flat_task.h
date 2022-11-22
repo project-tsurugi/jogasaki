@@ -147,7 +147,8 @@ public:
         task_enum_tag_t<flat_task_kind::wrapped>,
         request_context* rctx,
         std::shared_ptr<model::task> origin,
-        bool require_teardown
+        bool require_teardown,
+        bool delayed = false
     ) noexcept;
 
     /**
@@ -255,6 +256,13 @@ public:
     [[nodiscard]] bool sticky() const noexcept;
 
     /**
+     * @brief returns whether the task is delayed
+     */
+    [[nodiscard]] bool delayed() const noexcept {
+        return delayed_;
+    }
+
+    /**
      * @brief accessor to the job context that the task belongs to.
      */
     [[nodiscard]] request_context* req_context() const noexcept;
@@ -269,6 +277,7 @@ private:
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
     bool require_teardown_{};
+    bool delayed_{false};
 
     /**
      * @return true if job completes together with the task
@@ -298,6 +307,5 @@ private:
     }
 
 };
-
 
 }

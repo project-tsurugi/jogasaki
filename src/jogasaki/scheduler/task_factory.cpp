@@ -41,7 +41,7 @@ std::ostream& details::custom_task::write_to(std::ostream& out) const {
     return out << "custom_task[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;
 }
 
-flat_task create_custom_task(request_context* rctx, task_body_type body, bool has_transaction_io) {
+flat_task create_custom_task(request_context* rctx, task_body_type body, bool has_transaction_io, bool delayed) {
     return flat_task{
         task_enum_tag<flat_task_kind::wrapped>,
         rctx,
@@ -49,7 +49,8 @@ flat_task create_custom_task(request_context* rctx, task_body_type body, bool ha
             std::move(body),
             has_transaction_io
         ),
-        true // custom task runs as a job
+        false, //TODO
+        delayed
     };
 }
 } // namespace jogasaki::scheduler

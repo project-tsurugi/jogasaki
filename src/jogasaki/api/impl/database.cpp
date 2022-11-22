@@ -44,6 +44,7 @@
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/backoff_timer.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/constants.h>
 
@@ -754,6 +755,12 @@ std::shared_ptr<diagnostics> database::fetch_diagnostics() noexcept {
     return diagnostics_;
 }
 
+void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& body) {
+    auto t = scheduler::create_custom_task(rctx, std::move(body), true, true);
+    auto& ts = *rctx->scheduler();
+    ts.schedule_task(std::move(t));
+}
+
 bool database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
@@ -765,53 +772,37 @@ bool database::do_create_transaction_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
 
-    struct task_state {
-        enum class state {
-            init,
-            created,
-            done,
-        } state_{};
-    };
-
-    auto st = std::make_shared<task_state>();
+    auto timer = std::make_shared<utils::backoff_timer>();
     auto handle = std::make_shared<transaction_handle>();
     auto t = scheduler::create_custom_task(rctx.get(),
-    [this, rctx, option, handle, st]() {
-        while(st->state_ != task_state::state::done) {
-            switch(st->state_) {
-                case task_state::state::init: {
-                    auto res = create_transaction_internal(*handle, option);
-                    rctx->status_code(res);
-                    if(res != status::ok) {
-                        rctx->status_message(
-                            string_builder{} <<
-                                "creating transaction failed with error:" <<
-                                res <<
-                                string_builder::to_string
-                        );
-                        st->state_ = task_state::state::done;
-                        break;
-                    }
-                    if(! option.is_long() && ! option.readonly()) {
-                        st->state_ = task_state::state::done;
-                        break;
-                    }
-                    st->state_ = task_state::state::created;
-                    break;
-                }
-                case task_state::state::created: {
-                    VLOG(log_debug) << "checking for waiting transaction state:" << st;
-                    if(handle->is_ready()) {
-                        st->state_ = task_state::state::done;
-                        break;
-                    }
-                    return model::task_result::yield;
-                }
-                case task_state::state::done: break;
+        [this, rctx, option, handle, timer]() {
+            auto res = create_transaction_internal(*handle, option);
+            rctx->status_code(res);
+            if(res != status::ok) {
+                rctx->status_message(
+                    string_builder{} <<
+                        "creating transaction failed with error:" <<
+                        res <<
+                        string_builder::to_string
+                );
+                scheduler::submit_teardown(*rctx);
+                return model::task_result::complete;
             }
-        }
-        return model::task_result::complete;
-    }, true);  // create transaction doesn't need to be sticky task, but following task checking begin state does.
+            if(! option.is_long() && ! option.readonly()) {
+                scheduler::submit_teardown(*rctx);
+                return model::task_result::complete;
+            }
+            timer->reset();
+            submit_task_begin_wait(rctx.get(), [rctx, handle, timer]() {
+                if(! (*timer)()) return model::task_result::yield;
+                if(handle->is_ready()) {
+                    scheduler::submit_teardown(*rctx);
+                    return model::task_result::complete;
+                }
+                return model::task_result::yield;
+            });
+            return model::task_result::complete;
+        }, false);  // create transaction is not sticky task
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });

@@ -123,7 +123,7 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
     // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown job to finish.
     (void)cnt;
     (void)jobid;
-    VLOG(log_debug) << "decremented job " << jobid << " task count to " << cnt;
+    //VLOG(log_debug) << "decremented job " << jobid << " task count to " << cnt;
     if(! job_completes) {
         return;
     }
@@ -141,13 +141,15 @@ flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::wrapped>,
     request_context* rctx,
     std::shared_ptr<model::task> origin,
-    bool require_teardown
+    bool require_teardown,
+    bool delayed
 ) noexcept:
     kind_(flat_task_kind::wrapped),
     req_context_(rctx),
     origin_(std::move(origin)),
     sticky_(origin_->has_transactional_io()),
-    require_teardown_(require_teardown)
+    require_teardown_(require_teardown),
+    delayed_(delayed)
 {}
 
 flat_task::flat_task(
@@ -258,7 +260,7 @@ flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rct
 {}
 
 void flat_task::execute_wrapped() {
-    DVLOG(log_trace) << *this << " wrapped task executed.";
+    //DVLOG(log_trace) << *this << " wrapped task executed.";
     trace_scope_name("executor_task");  //NOLINT
     model::task_result res{};
     while((res = (*origin_)()) == model::task_result::proceed) {}

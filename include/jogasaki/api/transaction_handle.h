@@ -106,11 +106,9 @@ public:
     /**
      * @brief commit the transaction asynchronously
      * @param on_completion callback to be called on completion
-     * @return true when async request was made successfully
-     * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    bool commit_async(callback on_completion);
+    void commit_async(callback on_completion);
 
     /**
      * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)

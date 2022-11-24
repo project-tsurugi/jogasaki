@@ -273,7 +273,6 @@ private:
     bool sticky_{};
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
-    bool require_teardown_{};
     bool delayed_{false};
 
     /**

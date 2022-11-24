@@ -46,6 +46,13 @@ add_custom_target(build_protos
         ${SqlProtoFiles}
         )
 
+install(DIRECTORY
+        ${CMAKE_BINARY_DIR}/src/jogasaki
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jogasaki
+        FILES_MATCHING
+        PATTERN "proto/sql/*.pb.h"
+        )
+
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"

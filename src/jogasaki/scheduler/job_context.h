@@ -33,6 +33,11 @@ namespace scheduler {
 class cache_align job_context {
 public:
     /**
+     * @brief job identifier
+     */
+    using job_id_type = std::size_t;
+
+    /**
      * @brief constant to specify worker index is undefined
      */
     constexpr static std::size_t undefined_index = static_cast<std::size_t>(-1);
@@ -40,7 +45,7 @@ public:
     /**
      * @brief constant to specify job id is undefined
      */
-    constexpr static std::size_t undefined_id = static_cast<std::size_t>(-1);
+    constexpr static job_id_type undefined_id = static_cast<job_id_type>(-1);
 
     /**
      * @brief callback type at the end of job
@@ -103,11 +108,11 @@ public:
      * @brief accessor for job context unique id
      * @return id value
      */
-    [[nodiscard]] std::size_t id() const noexcept;
+    [[nodiscard]] job_id_type id() const noexcept;
 
 private:
 
-    std::size_t id_{id_src_++};
+    job_id_type id_{id_src_++};
     utils::latch completion_latch_{};
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};

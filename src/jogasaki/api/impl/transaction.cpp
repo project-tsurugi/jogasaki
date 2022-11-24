@@ -46,12 +46,13 @@ using takatori::util::string_builder;
 
 status transaction::commit() {
     status ret{};
-    commit_async([&](status st, std::string_view m){
+    auto jobid = commit_async([&](status st, std::string_view m){
         ret = st;
         if(st != status::ok) {
             VLOG(log_error) << m;
         }
-    }, true);
+    });
+    database_->task_scheduler()->wait_for_progress(jobid);
     return ret;
 }
 
@@ -334,20 +335,19 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
     ts.schedule_task(std::move(t));
 }
 
-bool transaction::commit_async(transaction::callback on_completion, bool sync) {
+scheduler::job_context::job_id_type transaction::commit_async(transaction::callback on_completion) {
     auto rctx = create_request_context(
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
     auto timer = std::make_shared<utils::backoff_timer>();
-    auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer]() {
+    auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer=std::move(timer)]() {
         auto res = commit_internal();
         if(res == status::waiting_for_other_transaction) {
             timer->reset();
             submit_task_commit_wait(rctx.get(), [rctx, this, timer]() {
                 if(! (*timer)()) return model::task_result::yield;
                 auto st = tx_->object()->check_state().state_kind();
-                VLOG(log_debug) << "checking for waiting transaction state:" << st;
                 switch(st) {
                     case ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
                         return model::task_result::yield;
@@ -357,10 +357,14 @@ bool transaction::commit_async(transaction::callback on_completion, bool sync) {
                         set_commit_error(*rctx, *tx_);
                         break;
                     }
-                    case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE: break;
-                    case ::sharksfin::TransactionState::StateKind::DURABLE: break;
-                    default:
-                        VLOG(log_error) << "wrong state:" << st; // TODO throw
+                    case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
+                        break;
+                    case ::sharksfin::TransactionState::StateKind::DURABLE:
+                        break;
+                    default: {
+                        scheduler::submit_teardown(*rctx); // try to recover as much as possible
+                        throw std::logic_error(string_builder{} << "wrong state:" << st << string_builder::to_string);
+                    }
                 }
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
@@ -381,10 +385,7 @@ bool transaction::commit_async(transaction::callback on_completion, bool sync) {
     auto jobid = rctx->job()->id();
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
-    if(sync) {
-        ts.wait_for_progress(jobid);
-    }
-    return true;
+    return jobid;
 }
 
 bool transaction::transaction::is_ready() const {

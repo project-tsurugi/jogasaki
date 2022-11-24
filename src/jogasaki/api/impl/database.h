@@ -118,7 +118,7 @@ public:
 
     status do_create_transaction(transaction_handle& handle, transaction_option const& option) override;
 
-    bool do_create_transaction_async(
+    scheduler::job_context::job_id_type do_create_transaction_async(
         create_transaction_callback on_completion,
         transaction_option const& option
     ) override;

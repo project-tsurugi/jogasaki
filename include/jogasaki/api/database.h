@@ -209,13 +209,11 @@ public:
      * @brief begin the new transaction asynchronously
      * @param cb callback to receive the async execution result
      * @param option specify option values for the new transaction
-     * @return true when async request was made successfully
-     * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      */
-    bool create_transaction_async(create_transaction_callback cb, transaction_option const& option = transaction_option{}) {
-        return do_create_transaction_async(std::move(cb), option);
+    void create_transaction_async(create_transaction_callback cb, transaction_option const& option = transaction_option{}) {
+        do_create_transaction_async(std::move(cb), option);
     }
 
     /**
@@ -397,7 +395,7 @@ public:
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
 
-    virtual bool do_create_transaction_async(create_transaction_callback cb, transaction_option const& option) = 0;
+    virtual size_t do_create_transaction_async(create_transaction_callback cb, transaction_option const& option) = 0;
 
     virtual status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

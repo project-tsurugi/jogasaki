@@ -22,6 +22,7 @@
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/utils/latch.h>
 
 #include <jogasaki/transaction_context.h>
@@ -61,13 +62,11 @@ public:
 
     /**
      * @brief commit the transaction asynchronously
-     * @return true when async request was made successfully
-     * @return false on error in preparing async execution (normally this should not happen)
+     * @return id of the job to execute commit
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    bool commit_async(
-        callback on_completion,
-        bool sync = false
+    scheduler::job_context::job_id_type commit_async(
+        callback on_completion
     );
 
     status abort();

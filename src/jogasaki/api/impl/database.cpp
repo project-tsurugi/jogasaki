@@ -359,7 +359,7 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option) {
     std::atomic_bool completed = false;
     status ret{status::ok};
-    do_create_transaction_async([&handle, &completed, &ret](transaction_handle h, status st, std::string_view msg){
+    auto jobid = do_create_transaction_async([&handle, &completed, &ret](transaction_handle h, status st, std::string_view msg){
         completed = true;
         if(st != status::ok) {
             ret = st;
@@ -369,7 +369,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
         handle = h;
     }, option);
 
-    task_scheduler_->wait_for_progress(scheduler::job_context::undefined_id);
+    task_scheduler_->wait_for_progress(jobid);
     utils::backoff_waiter waiter{};
     while(! completed) {
         waiter();
@@ -761,7 +761,7 @@ void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& b
     ts.schedule_task(std::move(t));
 }
 
-bool database::do_create_transaction_async(
+scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
 ) {
@@ -775,15 +775,12 @@ bool database::do_create_transaction_async(
     auto timer = std::make_shared<utils::backoff_timer>();
     auto handle = std::make_shared<transaction_handle>();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, option, handle, timer]() {
+        [this, rctx, option, handle, timer=std::move(timer)]() {
             auto res = create_transaction_internal(*handle, option);
             rctx->status_code(res);
             if(res != status::ok) {
                 rctx->status_message(
-                    string_builder{} <<
-                        "creating transaction failed with error:" <<
-                        res <<
-                        string_builder::to_string
+                    string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string
                 );
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
@@ -802,13 +799,14 @@ bool database::do_create_transaction_async(
                 return model::task_result::yield;
             });
             return model::task_result::complete;
-        }, false);  // create transaction is not sticky task
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){  // callback is copy-based
+        }, false);  // create transaction is not sticky task while its waiting task is.
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
+    auto jobid = rctx->job()->id();
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
-    return true;
+    return jobid;
 }
 
 }

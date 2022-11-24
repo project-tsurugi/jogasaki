@@ -141,14 +141,12 @@ flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::wrapped>,
     request_context* rctx,
     std::shared_ptr<model::task> origin,
-    bool require_teardown,
     bool delayed
 ) noexcept:
     kind_(flat_task_kind::wrapped),
     req_context_(rctx),
     origin_(std::move(origin)),
     sticky_(origin_->has_transactional_io()),
-    require_teardown_(require_teardown),
     delayed_(delayed)
 {}
 
@@ -267,9 +265,6 @@ void flat_task::execute_wrapped() {
     if(res == model::task_result::yield) {
         resubmit(*req_context_);
         return;
-    }
-    if(require_teardown_) {
-        submit_teardown(*req_context_);
     }
 }
 

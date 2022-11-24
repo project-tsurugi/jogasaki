@@ -49,7 +49,6 @@ flat_task create_custom_task(request_context* rctx, task_body_type body, bool ha
             std::move(body),
             has_transaction_io
         ),
-        false, //TODO
         delayed
     };
 }

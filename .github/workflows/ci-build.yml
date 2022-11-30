@@ -22,14 +22,14 @@ jobs:
     steps:
       - id: Checkout
         name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
           token: ${{ secrets.GHA_PAT }}
 
       - id: Checkout_Actions
         name: Checkout_Actions
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: project-tsurugi/tsurugi-github-actions
           path: .github/actions
@@ -228,8 +228,8 @@ jobs:
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
 
-  IT:
-    uses: ./.github/workflows/integration-test.yml
+  Eisen:
+    uses: ./.github/workflows/eisen-integration-test.yml
     if: (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
     needs: Build
     secrets:

@@ -1,4 +1,4 @@
-name: Jogasaki-Integration-Test
+name: Eisen-Integration-Test
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
         required: true
 
 jobs:
-  Build:
+  Test:
     runs-on: [self-hosted, docker]
     timeout-minutes: 30
     container:
@@ -173,4 +173,4 @@ jobs:
           status: ${{ job.status }}
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
-          job_name: 'IT / Build'
+          job_name: 'Eisen / Test'

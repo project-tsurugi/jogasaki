@@ -1450,6 +1450,94 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
     }
 }
 
+void add_phone_bill_tables(storage::configurable_provider& provider) {
+    namespace type = ::takatori::type;
+    using ::yugawara::variable::nullity;
+    yugawara::storage::index_feature_set index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+        ::yugawara::storage::index_feature::unique,
+        ::yugawara::storage::index_feature::primary,
+    };
+    yugawara::storage::index_feature_set secondary_index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+    };
+
+//    create table history (
+//        caller_phone_number varchar(15) not null,
+//        recipient_phone_number varchar(15) not null,
+//        payment_categorty char(1) not null,
+//        start_time timestamp not null,
+//        time_secs int not null,
+//        charge int,
+//        df int not null,
+//        primary key (caller_phone_number, start_time)
+//    );
+
+//	  create index history(df);
+//	  create index idx_st on history(start_time);
+//    create index idx_rp on history(recipient_phone_number, start_time);
+    {
+        auto t = provider.add_table({
+            "history",
+            {
+                { "caller_phone_number", type::character(type::varying, 15), nullity{false} },
+                { "recipient_phone_number", type::character(type::varying, 15), nullity{false} },
+                { "payment_categorty", type::character(1), nullity{false} },
+                { "start_time", type::time_point(), nullity{false} },
+                { "time_secs", type::int4(), nullity{false} },
+                { "charge", type::int4(), nullity{true} },
+                { "df", type::int4(), nullity{false} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[3],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[4],
+                t->columns()[5],
+                t->columns()[6],
+            },
+            index_features
+        });
+        provider.add_index({
+            t,
+            "history_df_idx",
+            {
+                t->columns()[6],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "idx_st",
+            {
+                t->columns()[3],
+            },
+            {},
+            secondary_index_features
+        });
+        provider.add_index({
+            t,
+            "idx_rp",
+            {
+                t->columns()[1],
+                t->columns()[3],
+            },
+            {},
+            secondary_index_features
+        });
+    }
+}
+
 void register_kvs_storage(kvs::database& db, yugawara::storage::configurable_provider& provider) {
     provider.each_index([&db](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& ){
         auto stg = db.get_or_create_storage(id);

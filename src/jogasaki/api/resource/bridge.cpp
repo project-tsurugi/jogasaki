@@ -113,6 +113,9 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<bool>("prepare_analytics_benchmark_tables")) {
         ret->prepare_analytics_benchmark_tables(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("prepare_phone_bill_tables")) {
+        ret->prepare_phone_bill_tables(v.value());
+    }
     if (auto v = jogasaki_config->get<std::size_t>("default_partitions")) {
         ret->default_partitions(v.value());
     }

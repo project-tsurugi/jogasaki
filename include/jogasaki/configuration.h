@@ -248,6 +248,21 @@ public:
         return enable_logship_;
     }
 
+    /**
+     * @brief setter for prepare_phone_bill_tables flag
+     */
+    void prepare_phone_bill_tables(bool arg) noexcept {
+        prepare_phone_bill_tables_ = arg;
+    }
+
+    /**
+     * @brief accessor for prepare_phone_bill_tables
+     * @return whether built-in tables for phone billing benchmark are created
+     */
+    [[nodiscard]] bool prepare_phone_bill_tables() const noexcept {
+        return prepare_phone_bill_tables_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -260,6 +275,7 @@ public:
             "stealing_enabled:" << cfg.stealing_enabled() << " " <<
             "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
             "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
+            "prepare_phone_bill_tables:" << cfg.prepare_phone_bill_tables() << " " <<
             "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
             "quiescent:" << cfg.quiescent() << " " <<
@@ -283,6 +299,7 @@ private:
     bool prepare_qa_tables_ = true;
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
+    bool prepare_phone_bill_tables_ = false;
     bool stealing_enabled_ = false;
     std::string db_location_{};
     bool tasked_write_ = true;

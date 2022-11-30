@@ -188,7 +188,7 @@ void database::init() {
     if(cfg_->prepare_test_tables()) {
         executor::add_test_tables(*tables_);
     }
-    if(cfg_->prepare_test_tables()) {
+    if(cfg_->prepare_qa_tables()) {
         executor::add_qa_tables(*tables_);
     }
     executor::function::incremental::add_builtin_aggregate_functions(

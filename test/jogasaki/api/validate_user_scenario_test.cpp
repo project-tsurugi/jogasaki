@@ -110,6 +110,45 @@ TEST_F(validate_user_scenario_test, join_scan) {
     ASSERT_EQ(1, result.size());
 }
 
+TEST_F(validate_user_scenario_test, join_scan_primary_key_specified) {
+    execute_statement("create table history ("
+                      "caller_phone_number varchar(15) not null,"
+                      "recipient_phone_number varchar(15) not null,"
+                      "payment_categorty char(1) not null,"
+                      "start_time bigint not null,"
+                      "time_secs int not null,"
+                      "charge int,"
+                      "df int not null,"
+                      "primary key (caller_phone_number, start_time)"
+                      ")"
+    );
+    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('001', '002', 'A', 20220505, 0, 0, 0)");
+//    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('001', '002', 'A', 20230101, 0, 0, 0)");
+//    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('010', '002', 'A', 20220505, 0, 0, 0)");
+
+    execute_statement("create table contracts ("
+                      "phone_number varchar(15) not null,"
+                      "start_date bigint not null,"
+                      "end_date bigint,"
+                      "charge_rule varchar(255) not null,"
+                      "primary key (phone_number, start_date)"
+                      ")"
+    );
+    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('001', 20220101, 20221231, 'XXX')");
+//    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('010', 20220101, 20221231, 'XXX')");
+    std::vector<mock::basic_record> result{};
+    execute_query(
+        "select"
+        " h.caller_phone_number, h.recipient_phone_number, h.payment_categorty, h.start_time, h.time_secs,"
+        " h.charge, h.df from history h"
+        " inner join contracts c on c.phone_number = h.caller_phone_number"
+        " where c.start_date < h.start_time and (h.start_time < c.end_date + 1"
+        " or c.end_date = 99999999)"
+        " and c.phone_number = '001' and c.start_date = 20220101 and h.caller_phone_number = '001' order by h.start_time",
+        result);
+    ASSERT_EQ(1, result.size());
+}
+
 TEST_F(validate_user_scenario_test, self_read_after_update) {
     // test scenario coming from batch verify
     execute_statement("create table test (foo int, bar bigint, zzz varchar(10), primary key(foo))");
@@ -146,4 +185,5 @@ TEST_F(validate_user_scenario_test, select_date) {
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
     EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::date>(std::tuple{i4, dat}, {1, d2000_1_1})), result[0]);
 }
+
 }

@@ -1472,12 +1472,12 @@ void add_phone_bill_tables(storage::configurable_provider& provider) {
 //        time_secs int not null,
 //        charge int,
 //        df int not null,
-//        primary key (caller_phone_number, start_time)
+//        primary key (caller_phone_number, payment_categorty, start_time)
 //    );
 
 //	  create index history(df);
 //	  create index idx_st on history(start_time);
-//    create index idx_rp on history(recipient_phone_number, start_time);
+//    create index idx_rp on history(recipient_phone_number, payment_categorty, start_time)
     {
         auto t = provider.add_table({
             "history",
@@ -1496,11 +1496,11 @@ void add_phone_bill_tables(storage::configurable_provider& provider) {
             t->simple_name(),
             {
                 t->columns()[0],
+                t->columns()[2],
                 t->columns()[3],
             },
             {
                 t->columns()[1],
-                t->columns()[2],
                 t->columns()[4],
                 t->columns()[5],
                 t->columns()[6],
@@ -1530,6 +1530,7 @@ void add_phone_bill_tables(storage::configurable_provider& provider) {
             "idx_rp",
             {
                 t->columns()[1],
+                t->columns()[2],
                 t->columns()[3],
             },
             {},

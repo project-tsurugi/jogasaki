@@ -332,6 +332,11 @@ private:
     jogasaki::api::database* db_{};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
 
+    bool process(
+            std::shared_ptr<tateyama::api::server::request const> req,
+            std::shared_ptr<tateyama::api::server::response> res
+    );
+
     void command_begin(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res

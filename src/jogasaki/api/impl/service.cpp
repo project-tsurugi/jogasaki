@@ -434,6 +434,21 @@ bool service::operator()(
     std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
+    try {
+        return process(std::move(req), std::move(res));
+    } catch (std::exception& e) {
+        LOG(ERROR) << "Unhandled exception caught: " << e.what();
+        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
+            LOG(ERROR) << *tr;
+        }
+    }
+    return true;
+}
+
+bool service::process(
+    std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
+) {
     sql::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
     bool enable_performance_counter = false;

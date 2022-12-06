@@ -503,4 +503,21 @@ TEST_F(host_variables_test, cast_decimals) {
     }
 }
 
+// currently host variable works even without colon
+TEST_F(host_variables_test, missing_colon) {
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int8},
+            {"p1", api::field_type_kind::float8},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_int8("p0", 1);
+    ps->set_float8("p1", 10.0);
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (p0, p1)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
+    EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
+}
+
 }

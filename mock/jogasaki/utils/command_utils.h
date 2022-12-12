@@ -187,13 +187,13 @@ inline std::uint64_t decode_begin(std::string_view res) {
         return -1;
     }
     auto& begin = resp.begin();
-    if (! begin.has_transaction_handle()) {
+    if (! begin.has_success()) {
         auto& err = begin.error();
         LOG(ERROR) << "**** error returned in Begin : " << err.status() << "'" << err.detail() << "' **** ";
         if (utils_raise_exception_on_error) std::abort();
         return -1;
     }
-    auto& tx = begin.transaction_handle();
+    auto& tx = begin.success().transaction_handle();
     return tx.handle();
 }
 

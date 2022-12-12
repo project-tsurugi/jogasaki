@@ -186,16 +186,23 @@ inline void success<sql::response::ResultOnly>(tateyama::api::server::response& 
 template<>
 inline void success<sql::response::Begin>(tateyama::api::server::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
     sql::common::Transaction t{};
+    sql::common::TransactionId tid{};
     sql::response::Begin b{};
+    sql::response::Begin::Success s{};
     sql::response::Response r{};
 
+    tid.set_id("");
     t.set_handle(static_cast<std::size_t>(tx));
-    b.set_allocated_transaction_handle(&t);
+    s.set_allocated_transaction_handle(&t);
+    s.set_allocated_transaction_id(&tid);
+    b.set_allocated_success(&s);
     r.set_allocated_begin(&b);
     res.code(response_code::success);
     reply(res, r);
     r.release_begin();
-    b.release_transaction_handle();
+    b.release_success();
+    s.release_transaction_id();
+    s.release_transaction_handle();
 }
 
 template<>

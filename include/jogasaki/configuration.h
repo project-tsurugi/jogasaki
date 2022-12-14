@@ -296,7 +296,7 @@ private:
     std::size_t randomize_memory_usage_ = 0;
     std::size_t force_numa_node_ = numa_node_unspecified;
     bool prepare_test_tables_ = true;
-    bool prepare_qa_tables_ = true;
+    bool prepare_qa_tables_ = false;
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool prepare_phone_bill_tables_ = false;

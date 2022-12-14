@@ -121,7 +121,7 @@ public:
      * @return transaction id string
      * @return empty string when it's not available
      */
-    [[nodiscard]] std::string_view transaction_id() noexcept;
+    [[nodiscard]] std::string_view transaction_id() const noexcept;
 
     /**
      * @brief create and start new transaction

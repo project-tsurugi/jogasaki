@@ -93,7 +93,7 @@ bool transaction_handle::is_ready() const {
     return tx(body_)->is_ready();
 }
 
-std::string_view transaction_handle::transaction_id() noexcept {
+std::string_view transaction_handle::transaction_id() const noexcept {
     return tx(body_)->transaction_id();
 }
 

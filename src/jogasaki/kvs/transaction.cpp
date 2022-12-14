@@ -144,7 +144,7 @@ std::shared_ptr<sharksfin::CallResult> transaction::recent_call_result() noexcep
     return sharksfin::transaction_inspect_recent_call(tx_);
 }
 
-std::string_view transaction::transaction_id() noexcept {
+std::string_view transaction::transaction_id() const noexcept {
     if(! info_) return {};
     return info_->id();
 }

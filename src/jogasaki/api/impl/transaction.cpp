@@ -378,7 +378,7 @@ void handle_code_and_locator(
         case ErrorCode::CC_LTX_WRITE_ERROR: // fall-thru
         case ErrorCode::CC_OCC_READ_ERROR: {
             BOOST_ASSERT(locator->kind() == sharksfin::ErrorLocatorKind::storage_key); //NOLINT
-            auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);
+            auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);  //NOLINT
             data::aligned_buffer buf{default_record_buffer_size};
             auto [meta, ref] = read_key_as_record_ref(tables, buf, loc->storage(), loc->key(), resource);
             ss << "location={key:";
@@ -494,7 +494,7 @@ status transaction::init(kvs::transaction_option const& options) {
     return status::ok;
 }
 
-std::string_view transaction::transaction_id() noexcept {
+std::string_view transaction::transaction_id() const noexcept {
     return tx_->object()->transaction_id();
 }
 

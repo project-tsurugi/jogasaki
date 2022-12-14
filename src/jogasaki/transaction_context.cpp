@@ -64,7 +64,7 @@ kvs::database* transaction_context::database() const noexcept {
     return transaction_->database();
 }
 
-std::string_view transaction_context::recent_call_result() noexcept {
+std::shared_ptr<sharksfin::CallResult> transaction_context::recent_call_result() noexcept {
     return transaction_->recent_call_result();
 }
 

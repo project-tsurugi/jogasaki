@@ -322,10 +322,35 @@ bool transaction::execute_load(
     return true;
 }
 
+void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator* locator, std::ostream& ss) {
+    if(locator == nullptr) return;
+    using ErrorCode = sharksfin::ErrorCode;
+    switch(code) {
+        case ErrorCode::KVS_KEY_ALREADY_EXISTS: // fall-thru
+        case ErrorCode::KVS_KEY_NOT_FOUND: // fall-thru
+        case ErrorCode::CC_LTX_WRITE_ERROR: // fall-thru
+        case ErrorCode::CC_OCC_READ_ERROR: {
+            BOOST_ASSERT(locator->kind() == sharksfin::ErrorLocatorKind::storage_key); //NOLINT
+            auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);
+            ss << "location={key:" << loc->key();
+            ss << " ";
+            ss << "storage:" << loc->storage();
+            ss << "}";
+        }
+        default: break;
+    }
+}
+
 void set_commit_error(request_context& rctx, transaction_context& tx) {
-    auto desc = tx.object()->recent_call_result();
+    auto result = tx.object()->recent_call_result();
+    std::string_view desc{};
+    std::stringstream ss{};
+    if(result) {
+        desc = result->description();
+        handle_code_and_locator(result->code(), result->location().get(), ss);
+    }
     rctx.status_message(
-        string_builder{} << "Commit operation failed. " << desc << string_builder::to_string
+        string_builder{} << "Commit operation failed. " << desc << " " << ss.str() << string_builder::to_string
     );
 }
 

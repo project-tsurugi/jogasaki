@@ -151,9 +151,10 @@ public:
 
     /**
      * @brief return the detailed info for the recent kvs api call
-     * @return descriptive text about the api call result
+     * @return recent api call result
+     * @return nullptr if result is not available
      */
-    [[nodiscard]] std::string_view recent_call_result() noexcept;
+    [[nodiscard]] std::shared_ptr<sharksfin::CallResult> recent_call_result() noexcept;
 
     /**
      * @brief check worker is same as given index and increment use count if no worker is assigned or given worker index is same as one already assigned

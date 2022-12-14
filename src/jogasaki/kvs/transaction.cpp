@@ -140,11 +140,8 @@ status transaction::init(transaction_option const& options) {
     return status::ok;
 }
 
-std::string_view transaction::recent_call_result() noexcept {
-    if(auto result = sharksfin::transaction_inspect_recent_call(tx_); result != nullptr) {
-        return result->description();
-    }
-    return {};
+std::shared_ptr<sharksfin::CallResult> transaction::recent_call_result() noexcept {
+    return sharksfin::transaction_inspect_recent_call(tx_);
 }
 
 std::string_view transaction::transaction_id() noexcept {

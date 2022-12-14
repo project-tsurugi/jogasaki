@@ -117,6 +117,11 @@ public:
         bool is_long = false,
         std::vector<std::string> const& write_preserves = {}
     );
+    void test_begin(begin_result& result,
+                    bool readonly = false,
+                    bool is_long = false,
+                    std::vector<std::string> const& write_preserves = {}
+    );
     void test_commit(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
@@ -174,6 +179,15 @@ void service_api_test::test_begin(std::uint64_t& handle,
     bool is_long,
     std::vector<std::string> const& write_preserves
 ) {
+    begin_result result{};
+    test_begin(result, readonly, is_long, write_preserves);
+    handle = result.handle_;
+}
+void service_api_test::test_begin(begin_result& result,
+                                  bool readonly,
+                                  bool is_long,
+                                  std::vector<std::string> const& write_preserves
+) {
     auto s = encode_begin(readonly, is_long, write_preserves);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -181,7 +195,7 @@ void service_api_test::test_begin(std::uint64_t& handle,
     EXPECT_TRUE(res->wait_completion());
     ASSERT_TRUE(st);
     ASSERT_EQ(response_code::success, res->code_);
-    handle = decode_begin(res->body_);
+    result = decode_begin(res->body_);
 }
 
 void service_api_test::test_commit(std::uint64_t& handle) {
@@ -1415,6 +1429,14 @@ TEST_F(service_api_test, create_many_tx) {
         test_begin(tx_handle);
         test_commit(tx_handle);
     }
+}
+
+TEST_F(service_api_test, tx_id) {
+    begin_result result{};
+    test_begin(result);
+    test_commit(result.handle_);
+    EXPECT_FALSE(result.transaction_id_.empty());
+    LOG(INFO) << "tx_id: " << result.transaction_id_;
 }
 
 }

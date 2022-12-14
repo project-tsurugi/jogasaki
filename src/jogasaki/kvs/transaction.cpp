@@ -133,6 +133,9 @@ status transaction::init(transaction_option const& options) {
     if(auto res = sharksfin::transaction_begin(database_->handle(), opts, &tx_); res != sharksfin::StatusCode::OK) {
         return resolve(res);
     }
+    if(auto res = sharksfin::transaction_get_info(tx_, info_); res != sharksfin::StatusCode::OK) {
+        return resolve(res);
+    }
     active_ = true;
     return status::ok;
 }
@@ -142,6 +145,11 @@ std::string_view transaction::recent_call_result() noexcept {
         return result->description();
     }
     return {};
+}
+
+std::string_view transaction::transaction_id() noexcept {
+    if(! info_) return {};
+    return info_->id();
 }
 
 }

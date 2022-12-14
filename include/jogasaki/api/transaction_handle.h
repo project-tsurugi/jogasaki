@@ -191,6 +191,12 @@ public:
      */
     [[nodiscard]] bool is_ready() const;
 
+    /**
+     * @brief return the transaction id
+     * @return transaction id string
+     * @return empty string when it's not available
+     */
+    [[nodiscard]] std::string_view transaction_id() noexcept;
 private:
     std::uintptr_t body_{};
 };

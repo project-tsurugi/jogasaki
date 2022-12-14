@@ -139,7 +139,9 @@ TEST_F(framework_test, send_request_with_header) {
     {
         auto s = utils::encode_begin(false, false, std::vector<std::string>{});
         std::string result = ep->send(s, 100, framework::service_id_sql);
-        handle = utils::decode_begin(result);
+        auto [h, id] = utils::decode_begin(result);
+        handle = h;
+        (void) id;
     }
     {
         auto s = utils::encode_commit(handle);

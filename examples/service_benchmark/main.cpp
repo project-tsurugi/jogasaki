@@ -583,7 +583,9 @@ private:
             LOG(ERROR) << "error executing command";
             return false;
         }
-        handle = jogasaki::utils::decode_begin(res->body_);
+        auto [h, id] = jogasaki::utils::decode_begin(res->body_);
+        handle = h;
+        (void) id;
         return true;
     }
 

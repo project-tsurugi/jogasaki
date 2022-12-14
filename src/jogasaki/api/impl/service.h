@@ -191,7 +191,8 @@ inline void success<sql::response::Begin>(tateyama::api::server::response& res, 
     sql::response::Begin::Success s{};
     sql::response::Response r{};
 
-    tid.set_id("");
+    auto idstr = tx.transaction_id();
+    tid.set_id(idstr.data(), idstr.size());
     t.set_handle(static_cast<std::size_t>(tx));
     s.set_allocated_transaction_handle(&t);
     s.set_allocated_transaction_id(&tid);

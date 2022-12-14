@@ -418,7 +418,9 @@ private:
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
-        tx_handle_ = jogasaki::utils::decode_begin(res->body_);
+        auto [h, id] = jogasaki::utils::decode_begin(res->body_);
+        tx_handle_ = h;
+        (void) id;
         if(error) return false;
         if(! for_autocommit) {  // suppress msg if auto commit
             std::cout << "transaction begin: " << tx_handle_ << std::endl;

@@ -116,6 +116,13 @@ public:
     [[nodiscard]] std::string_view recent_call_result() noexcept;
 
     /**
+     * @brief return the transaction id
+     * @return transaction id string
+     * @return empty string when it's not available
+     */
+    [[nodiscard]] std::string_view transaction_id() noexcept;
+
+    /**
      * @brief create and start new transaction
      * @param db the parent database that the transaction runs on
      * @param out [OUT] filled with newly created transaction object
@@ -134,6 +141,7 @@ private:
     sharksfin::TransactionHandle handle_{};
     kvs::database* database_{};
     bool active_{false};
+    std::shared_ptr<sharksfin::TransactionInfo> info_{};
 
     status init(kvs::transaction_option const& options);
 };

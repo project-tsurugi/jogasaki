@@ -178,23 +178,30 @@ inline std::string encode_begin(
     return s;
 }
 
-inline std::uint64_t decode_begin(std::string_view res) {
+constexpr static std::uint64_t handle_undefined = static_cast<std::uint64_t>(-1);
+
+struct begin_result {
+    std::uint64_t handle_{handle_undefined};
+    std::string transaction_id_{};
+};
+
+inline begin_result decode_begin(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
     if (! resp.has_begin()) {
         LOG(ERROR) << "**** missing begin msg **** ";
         if (utils_raise_exception_on_error) std::abort();
-        return -1;
+        return {};
     }
     auto& begin = resp.begin();
     if (! begin.has_success()) {
         auto& err = begin.error();
         LOG(ERROR) << "**** error returned in Begin : " << err.status() << "'" << err.detail() << "' **** ";
         if (utils_raise_exception_on_error) std::abort();
-        return -1;
+        return {};
     }
-    auto& tx = begin.success().transaction_handle();
-    return tx.handle();
+    auto& s = begin.success();
+    return {s.transaction_handle().handle(), s.transaction_id().id()};
 }
 
 inline std::uint64_t decode_prepare(std::string_view res) {

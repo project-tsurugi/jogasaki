@@ -166,6 +166,13 @@ public:
     );
 
     /**
+     * @brief return the transaction id
+     * @return transaction id string
+     * @return empty string when it's not available
+     */
+    [[nodiscard]] std::string_view transaction_id() noexcept;
+
+    /**
      * @brief create and start new transaction
      * @param db the parent database that the transaction runs on
      * @param out [OUT] filled with newly created transaction object

@@ -415,4 +415,8 @@ status transaction::init(kvs::transaction_option const& options) {
     return status::ok;
 }
 
+std::string_view transaction::transaction_id() noexcept {
+    return tx_->object()->transaction_id();
+}
+
 }

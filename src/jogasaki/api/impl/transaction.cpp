@@ -36,8 +36,13 @@
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/null_record_channel.h>
 #include <jogasaki/utils/backoff_timer.h>
+#include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/index/utils.h>
+#include <jogasaki/index/index_accessor.h>
+#include <jogasaki/kvs/readable_stream.h>
 
 #include "request_context_factory.h"
+#include "jogasaki/index/field_factory.h"
 
 namespace jogasaki::api::impl {
 
@@ -322,7 +327,49 @@ bool transaction::execute_load(
     return true;
 }
 
-void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator* locator, std::ostream& ss) {
+std::shared_ptr<yugawara::storage::index const> find_storage(
+    yugawara::storage::configurable_provider const& tables,
+    std::string_view storage_name
+) {
+    std::shared_ptr<yugawara::storage::index const> found{};
+    tables.each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
+        (void) id;
+        if (entry->simple_name() == storage_name) {
+            found = entry;
+        }
+    });
+    return found;
+}
+
+std::pair<maybe_shared_ptr<meta::record_meta>, accessor::record_ref> read_key_as_record_ref(
+    yugawara::storage::configurable_provider const& tables,
+    data::aligned_buffer& buf,
+    std::string_view storage_name,
+    std::string_view data,
+    memory::lifo_paged_memory_resource* resource
+) {
+    auto idx = find_storage(tables, storage_name);
+    auto meta = index::create_meta(*idx, true);
+    auto mapper = std::make_shared<index::mapper>(
+        index::index_fields(*idx, true),
+        index::index_fields(*idx, false)
+    );
+    kvs::readable_stream stream{data.data(), data.size()};
+    auto sz = meta->record_size();
+    buf.resize(sz);
+    accessor::record_ref rec{buf.data(), sz};
+    if(! mapper->read(true, stream, rec, resource)) {
+        return {};
+    }
+    return {std::move(meta), rec};
+}
+
+void handle_code_and_locator(
+    sharksfin::ErrorCode code,
+    sharksfin::ErrorLocator* locator,
+    yugawara::storage::configurable_provider const& tables,
+    memory::lifo_paged_memory_resource* resource,
+    std::ostream& ss) {
     if(locator == nullptr) return;
     using ErrorCode = sharksfin::ErrorCode;
     switch(code) {
@@ -332,7 +379,14 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator*
         case ErrorCode::CC_OCC_READ_ERROR: {
             BOOST_ASSERT(locator->kind() == sharksfin::ErrorLocatorKind::storage_key); //NOLINT
             auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);
-            ss << "location={key:" << loc->key();
+            data::aligned_buffer buf{default_record_buffer_size};
+            auto [meta, ref] = read_key_as_record_ref(tables, buf, loc->storage(), loc->key(), resource);
+            ss << "location={key:";
+            if(meta) {
+                ss << ref << *meta;
+            } else {
+                ss << loc->key();
+            }
             ss << " ";
             ss << "storage:" << loc->storage();
             ss << "}";
@@ -341,13 +395,13 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator*
     }
 }
 
-void set_commit_error(request_context& rctx, transaction_context& tx) {
+void set_commit_error(request_context& rctx, transaction_context& tx, yugawara::storage::configurable_provider const& tables) {
     auto result = tx.object()->recent_call_result();
     std::string_view desc{};
     std::stringstream ss{};
     if(result) {
         desc = result->description();
-        handle_code_and_locator(result->code(), result->location().get(), ss);
+        handle_code_and_locator(result->code(), result->location().get(), tables, rctx.request_resource(), ss);
     }
     rctx.status_message(
         string_builder{} << "Commit operation failed. " << desc << " " << ss.str() << string_builder::to_string
@@ -379,7 +433,7 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
                     case ::sharksfin::TransactionState::StateKind::ABORTED: {
                         // get result and return error info
                         rctx->status_code(status::err_aborted_retryable);
-                        set_commit_error(*rctx, *tx_);
+                        set_commit_error(*rctx, *tx_, *database_->tables());
                         break;
                     }
                     case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
@@ -399,7 +453,7 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
 
         rctx->status_code(res);
         if(res != status::ok) {
-            set_commit_error(*rctx, *tx_);
+            set_commit_error(*rctx, *tx_, *database_->tables());
         }
         scheduler::submit_teardown(*rctx);
         return model::task_result::complete;

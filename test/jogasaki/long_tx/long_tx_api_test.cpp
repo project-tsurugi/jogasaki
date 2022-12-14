@@ -89,8 +89,8 @@ TEST_F(long_tx_api_test, delete_to_non_preserved) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
-TEST_F(long_tx_api_test, multiple_tx_iud_same_key) {
-    // multiple_tx_iud_same_key scenario in long_tx_test to verify commit error code handling
+TEST_F(long_tx_api_test, verify_key_locator) {
+    // borrowed multiple_tx_iud_same_key scenario in long_tx_test to verify commit error code handling
     // erroneous key and storage name should be dumped in the server log
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
@@ -100,11 +100,19 @@ TEST_F(long_tx_api_test, multiple_tx_iud_same_key) {
     execute_statement("UPDATE T0 SET C1=20.0 WHERE C0=1", *tx2);
     ASSERT_EQ(status::ok, tx1->commit());
     ASSERT_EQ(status::err_aborted_retryable, tx2->commit());
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 ORDER BY C0", result);
-    ASSERT_EQ(2, result.size());
-    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 2.0)), result[1]);
 }
 
+TEST_F(long_tx_api_test, verify_key_locator_with_char) {
+    // same as verify_key_locator tc, but using varlen string for key
+    // erroneous key and storage name should be dumped in the server log
+    execute_statement("CREATE TABLE T (C0 VARCHAR(100) PRIMARY KEY, C1 INT) ");
+    execute_statement("INSERT INTO T (C0, C1) VALUES ('11111111111111111111111111111111', 1.0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES ('22222222222222222222222222222222', 2.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
+    auto tx2 = utils::create_transaction(*db_, false, true, {"T"});
+    execute_statement("UPDATE T SET C1=1 WHERE C0='11111111111111111111111111111111'", *tx1);
+    execute_statement("UPDATE T SET C1=2 WHERE C0='11111111111111111111111111111111'", *tx2);
+    ASSERT_EQ(status::ok, tx1->commit());
+    ASSERT_EQ(status::err_aborted_retryable, tx2->commit());
+}
 }

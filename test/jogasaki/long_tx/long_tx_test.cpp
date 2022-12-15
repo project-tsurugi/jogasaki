@@ -514,4 +514,29 @@ TEST_F(long_tx_test, start_wait) {
     ASSERT_TRUE(vf.finished());
     ASSERT_EQ(status::ok, tx1->commit());
 }
+
+TEST_F(long_tx_test, occ_accessing_wp) {
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
+    {
+        auto tx2 = utils::create_transaction(*db_, false, false);
+        execute_statement("SELECT * FROM T0 WHERE C0=1", *tx2, status::err_conflict_on_write_preserve);
+        ASSERT_EQ(status::ok, tx2->abort());
+    }
+    {
+        auto tx2 = utils::create_transaction(*db_, false, false);
+        execute_statement("DELETE FROM T0 WHERE C0=1", *tx2, status::err_conflict_on_write_preserve);
+        ASSERT_EQ(status::ok, tx2->abort());
+    }
+    {
+        auto tx2 = utils::create_transaction(*db_, false, false);
+        execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2, status::err_conflict_on_write_preserve);
+        ASSERT_EQ(status::ok, tx2->abort());
+    }
+    {
+        auto tx2 = utils::create_transaction(*db_, false, false);
+        execute_statement("UPDATE T0 SET C1=3.0 WHERE C1=1", *tx2, status::err_aborted); // ERR_FAIL_WP on read_key_from_scan() resulting in err_aborted TODO be consistent
+        ASSERT_EQ(status::ok, tx2->abort());
+    }
+}
 }

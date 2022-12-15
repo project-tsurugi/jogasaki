@@ -25,7 +25,7 @@
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
-#include <jogasaki/recovery/index.h>
+#include <jogasaki/recovery/storage_options.h>
 
 namespace jogasaki::executor::common {
 
@@ -56,42 +56,6 @@ create_table::create_table(
 
 model::statement_kind create_table::kind() const noexcept {
     return model::statement_kind::create_table;
-}
-
-bool serialize_deserialize_add_primary(
-    yugawara::storage::index const& i,
-    yugawara::storage::configurable_provider& provider,
-    proto::metadata::storage::IndexDefinition& idef
-) {
-    idef = {};
-    utils::storage_metadata_serializer ser{};
-    if(! ser.serialize(i, idef)) {
-        VLOG(log_error) << "serialization error";
-        return false;
-    }
-    return recovery::deserialize_into_provider(idef, provider);
-}
-
-bool create_storage_option(
-    yugawara::storage::index const& i,
-    yugawara::storage::configurable_provider& provider,
-    std::string& storage) {
-    storage.clear();
-    proto::metadata::storage::IndexDefinition idef{};
-    if(! serialize_deserialize_add_primary(i, provider, idef)) {
-        return false;
-    }
-    proto::metadata::storage::Storage stg{};
-    stg.set_message_version(metadata_format_version);
-    stg.set_allocated_index(&idef);
-
-    std::stringstream ss{};
-    if (!stg.SerializeToOstream(&ss)) {
-        return false;
-    }
-    storage = ss.str();
-    stg.release_index();
-    return true;
 }
 
 bool create_table::operator()(request_context& context) const {
@@ -125,7 +89,7 @@ bool create_table::operator()(request_context& context) const {
     }
 
     std::string storage{};
-    if(auto res = create_storage_option(*i, provider, storage); ! res) {
+    if(auto res = recovery::create_storage_option(*i, provider, storage); ! res) {
         context.status_code(status::err_already_exists);
         return res;
     }

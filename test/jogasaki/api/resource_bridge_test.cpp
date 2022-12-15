@@ -62,9 +62,6 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
@@ -79,6 +76,7 @@ TEST_F(resource_bridge_test, resource_cfg) {
         "[sql]\n"
         "thread_pool_size=99\n"
         "lazy_worker=true\n"
+        "enable_index_join=true\n"
         "[datastore]\n"
         "log_location=LOCATION\n"
         "logging_max_parallelism=111\n"
@@ -90,6 +88,7 @@ TEST_F(resource_bridge_test, resource_cfg) {
     EXPECT_TRUE(c->lazy_worker());
     EXPECT_EQ("LOCATION", c->db_location());
     EXPECT_EQ(111, c->max_logging_parallelism());
+    EXPECT_TRUE(c->enable_index_join());
 }
 
 TEST_F(resource_bridge_test, cfg_default_value) {
@@ -102,4 +101,5 @@ TEST_F(resource_bridge_test, cfg_default_value) {
     jogasaki::configuration jc{};
     EXPECT_NE(jc.max_logging_parallelism(), c->max_logging_parallelism());
 }
+
 }

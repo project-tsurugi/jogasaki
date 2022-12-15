@@ -122,6 +122,9 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<bool>("stealing_enabled")) {
         ret->stealing_enabled(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("enable_index_join")) {
+        ret->enable_index_join(v.value());
+    }
 
     // datastore
     auto datastore_config = cfg.get_section("datastore");

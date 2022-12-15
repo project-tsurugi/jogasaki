@@ -263,6 +263,21 @@ public:
         return prepare_phone_bill_tables_;
     }
 
+    /**
+     * @brief setter for enable index join flag
+     */
+    void enable_index_join(bool arg) noexcept {
+        enable_index_join_ = arg;
+    }
+
+    /**
+     * @brief accessor for enable index join flag
+     * @return whether index join is enabled or not
+     */
+    [[nodiscard]] bool enable_index_join() const noexcept {
+        return enable_index_join_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -281,6 +296,7 @@ public:
             "quiescent:" << cfg.quiescent() << " " <<
             "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
             "enable_logship:" << cfg.enable_logship() << " " <<
+            "enable_index_join:" << cfg.enable_index_join() << " " <<
             "";
     }
 
@@ -309,6 +325,7 @@ private:
     bool quiescent_ = false;
     std::size_t max_logging_parallelism_ = 1;
     bool enable_logship_ = false;
+    bool enable_index_join_ = false;
 };
 
 }

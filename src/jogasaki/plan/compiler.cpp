@@ -262,11 +262,13 @@ status prepare(
 
         yugawara::runtime_feature::aggregate_exchange,
 
-// temporarily disable index_join until join_scan becomes ready
-//        yugawara::runtime_feature::index_join,
-
 //        yugawara::runtime_feature::broadcast_join_scan,
     };
+
+    auto cfg = global::config_pool();
+    if(cfg && cfg->enable_index_join()) {
+        runtime_features.insert(yugawara::runtime_feature::index_join);
+    }
     std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
 
     auto sp = std::make_shared<storage_processor>();

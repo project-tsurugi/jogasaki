@@ -403,8 +403,13 @@ void set_commit_error(request_context& rctx, transaction_context& tx, yugawara::
         desc = result->description();
         handle_code_and_locator(result->code(), result->location().get(), tables, rctx.request_resource(), ss);
     }
+    std::string idstr{};
+    if(auto txid = tx.object()->transaction_id(); ! txid.empty()) {
+        idstr = "transaction:" + std::string{txid} + " ";
+    }
+
     rctx.status_message(
-        string_builder{} << "Commit operation failed. " << desc << " " << ss.str() << string_builder::to_string
+        string_builder{} << "Commit operation failed. " << idstr << desc << " " << ss.str() << string_builder::to_string
     );
 }
 

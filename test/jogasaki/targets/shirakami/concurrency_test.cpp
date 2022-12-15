@@ -54,10 +54,8 @@ public:
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
         cfg->single_thread(true);
+        cfg->prepare_test_tables(true);
         db_->start();
-        auto* db_impl = unsafe_downcast<api::impl::database>(db_.get());
-        add_benchmark_tables(*db_impl->tables());
-        register_kvs_storage(*db_impl->kvs_db(), *db_impl->tables());
     }
 
     void TearDown() {

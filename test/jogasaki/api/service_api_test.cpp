@@ -93,16 +93,13 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->single_thread(false);
+        cfg->prepare_test_tables(true);
         set_dbpath(*cfg);
 
         db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};
         auto c = std::make_shared<tateyama::api::configuration::whole>("");
         service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
-
-        auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
 
         utils::utils_raise_exception_on_error = true;
         temporary_.prepare();

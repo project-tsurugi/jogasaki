@@ -59,10 +59,8 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->single_thread(true);
+        cfg->prepare_test_tables(true);
         db_setup(cfg);
-        auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
-        impl->initialize_from_providers();
     }
 
     void TearDown() override {

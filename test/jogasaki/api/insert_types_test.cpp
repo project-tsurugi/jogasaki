@@ -58,6 +58,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->prepare_test_tables(true);
         db_setup(cfg);
     }
 
